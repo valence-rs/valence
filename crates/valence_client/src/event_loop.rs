@@ -69,9 +69,9 @@ impl PacketEvent {
     #[inline]
     pub fn decode<'a, P>(&'a self) -> Option<P>
     where
-        P: Packet<'a> + Decode<'a>,
+        P: Packet + Decode<'a>,
     {
-        if self.id == P::PACKET_ID {
+        if self.id == P::ID {
             let mut r = &self.data[..];
 
             match P::decode(&mut r) {
@@ -83,13 +83,13 @@ impl PacketEvent {
                     warn!(
                         "missed {} bytes while decoding packet {} (ID = {})",
                         r.len(),
-                        pkt.packet_name(),
-                        P::PACKET_ID
+                        P::NAME,
+                        P::ID
                     );
                     debug!("complete packet after partial decode: {pkt:?}");
                 }
                 Err(e) => {
-                    warn!("failed to decode packet with ID of {}: {e:#}", P::PACKET_ID);
+                    warn!("failed to decode packet with ID of {}: {e:#}", P::ID);
                 }
             }
         }
@@ -120,7 +120,7 @@ fn run_event_loop(
                     client: entity,
                     timestamp: pkt.timestamp,
                     id: pkt.id,
-                    data: pkt.data,
+                    data: pkt.body,
                 });
 
                 let remaining = client.connection().len();
@@ -154,7 +154,7 @@ fn run_event_loop(
                             client: *entity,
                             timestamp: pkt.timestamp,
                             id: pkt.id,
-                            data: pkt.data,
+                            data: pkt.body,
                         });
                         *remaining -= 1;
                         // Keep looping as long as there are packets to process this tick.

@@ -1,7 +1,7 @@
 use std::io::Write;
 use std::mem;
 
-use crate::protocol::{Decode, Encode, Packet};
+use crate::protocol::{Decode, Encode};
 
 /// While [encoding], the contained slice is written directly to the output
 /// without any length prefix or metadata.
@@ -38,25 +38,3 @@ impl<'a> From<RawBytes<'a>> for &'a [u8] {
     }
 }
 
-/// A fake [`Packet`] which simply reads all data into a slice, or writes all
-/// data from a slice. The packet ID is included in the slice.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
-pub struct RawPacket<'a>(pub &'a [u8]);
-
-impl<'a> Packet<'a> for RawPacket<'a> {
-    fn packet_id(&self) -> i32 {
-        -1
-    }
-
-    fn packet_name(&self) -> &str {
-        "RawPacket"
-    }
-
-    fn encode_packet(&self, mut w: impl Write) -> anyhow::Result<()> {
-        Ok(w.write_all(self.0)?)
-    }
-
-    fn decode_packet(r: &mut &'a [u8]) -> anyhow::Result<Self> {
-        Ok(Self(mem::take(r)))
-    }
-}

@@ -118,7 +118,7 @@ impl MockClientConnection {
             .push_back(ReceivedPacket {
                 timestamp: Instant::now(),
                 id,
-                data: bytes.freeze(),
+                body: bytes.freeze(),
             });
     }
 
@@ -152,7 +152,6 @@ struct MockClientHelper {
     conn: MockClientConnection,
     dec: PacketDecoder,
     scratch: BytesMut,
-    collected_frames: Vec<BytesMut>,
 }
 
 impl MockClientHelper {
@@ -161,7 +160,6 @@ impl MockClientHelper {
             conn,
             dec: PacketDecoder::new(),
             scratch: BytesMut::new(),
-            collected_frames: vec![],
         }
     }
 
@@ -175,6 +173,7 @@ impl MockClientHelper {
         self.conn.inject_recv(self.scratch.split());
     }
 
+    /*
     /// Collect all packets that have been sent to the client.
     fn collect_sent(&mut self) -> Vec<S2cPlayPacket> {
         self.dec.queue_bytes(self.conn.take_sent());
@@ -193,11 +192,35 @@ impl MockClientHelper {
             .iter()
             .map(|frame| decode_packet(frame).expect("failed to decode packet"))
             .collect()
+    }*/
+
+    /// Collect all packets that have been sent to the client.
+    fn collect_sent(&mut self) -> Vec<PacketFrame> {
+        self.dec.queue_bytes(self.conn.take_sent());
+
+        let mut res = vec![];
+
+        while let Some(frame) = self
+            .dec
+            .try_next_packet()
+            .expect("failed to decode packet frame")
+        {
+
+
+            res.push(frame);
+        }
+
+        res
     }
 
     fn clear_sent(&mut self) {
         self.conn.clear_sent();
     }
+}
+
+pub struct PacketFrame {
+    id: VarInt,
+    body: BytesMut,
 }
 
 macro_rules! assert_packet_order {

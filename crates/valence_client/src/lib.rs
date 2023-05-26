@@ -49,7 +49,7 @@ use valence_core::protocol::encode::{PacketEncoder, WritePacket};
 use valence_core::protocol::global_pos::GlobalPos;
 use valence_core::protocol::packet::sound::{PlaySoundS2c, Sound, SoundCategory};
 use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::Packet;
+use valence_core::protocol::{Encode, Packet};
 use valence_core::scratch::ScratchBuf;
 use valence_core::text::Text;
 use valence_core::uuid::UniqueId;
@@ -277,7 +277,7 @@ pub struct ReceivedPacket {
     /// This packet's ID.
     pub id: i32,
     /// The content of the packet, excluding the leading varint packet ID.
-    pub data: Bytes,
+    pub body: Bytes,
 }
 
 impl Drop for Client {
@@ -289,7 +289,10 @@ impl Drop for Client {
 /// Writes packets into this client's packet buffer. The buffer is flushed at
 /// the end of the tick.
 impl WritePacket for Client {
-    fn write_packet<'a>(&mut self, packet: &impl Packet<'a>) {
+    fn write_packet<P>(&mut self, packet: &P)
+    where
+        P: Packet + Encode,
+    {
         self.enc.write_packet(packet)
     }
 

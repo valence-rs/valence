@@ -8,7 +8,6 @@ use std::borrow::Cow;
 use std::io::Write;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use anyhow::Context;
 use bevy_app::{CoreSet, Plugin};
 use bevy_ecs::prelude::{Bundle, Component, Entity};
 use bevy_ecs::query::{Added, Changed, Or, With};
@@ -262,27 +261,9 @@ impl<'w, 's, 'a> Encode for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
     }
 }
 
-impl<'w, 's, 'a, 'b> Packet<'b> for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
-    const PACKET_ID: i32 = packet_id::ADVANCEMENT_UPDATE_S2C;
-
-    fn packet_id(&self) -> i32 {
-        Self::PACKET_ID
-    }
-
-    fn packet_name(&self) -> &str {
-        "AdvancementUpdateEncodeS2c"
-    }
-
-    fn encode_packet(&self, mut w: impl Write) -> anyhow::Result<()> {
-        VarInt(Self::PACKET_ID)
-            .encode(&mut w)
-            .context("failed to encode packet ID")?;
-        self.encode(w)
-    }
-
-    fn decode_packet(_r: &mut &'b [u8]) -> anyhow::Result<Self> {
-        panic!("Packet can not be decoded")
-    }
+impl<'w, 's, 'a> Packet for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
+    const ID: i32 = packet_id::ADVANCEMENT_UPDATE_S2C;
+    const NAME: &'static str = "AdvancementUpdateEncodeS2c";
 }
 
 #[allow(clippy::type_complexity)]

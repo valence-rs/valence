@@ -38,9 +38,9 @@ impl PacketEncoder {
         self.buf.extend_from_slice(bytes)
     }
 
-    pub fn prepend_packet<'a, P>(&mut self, pkt: &P) -> anyhow::Result<()>
+    pub fn prepend_packet<P>(&mut self, pkt: &P) -> anyhow::Result<()>
     where
-        P: Packet<'a>,
+        P: Packet + Encode,
     {
         let start_len = self.buf.len();
         self.append_packet(pkt)?;
@@ -59,13 +59,13 @@ impl PacketEncoder {
         Ok(())
     }
 
-    pub fn append_packet<'a, P>(&mut self, pkt: &P) -> anyhow::Result<()>
+    pub fn append_packet<P>(&mut self, pkt: &P) -> anyhow::Result<()>
     where
-        P: Packet<'a>,
+        P: Packet + Encode,
     {
         let start_len = self.buf.len();
 
-        pkt.encode_packet((&mut self.buf).writer())?;
+        pkt.encode_with_id((&mut self.buf).writer())?;
 
         let data_len = self.buf.len() - start_len;
 
@@ -183,14 +183,20 @@ impl PacketEncoder {
 pub trait WritePacket {
     /// Writes a packet to this object. Encoding errors are typically logged and
     /// discarded.
-    fn write_packet<'a>(&mut self, packet: &impl Packet<'a>);
+    fn write_packet<P>(&mut self, packet: &P)
+    where
+        P: Packet + Encode;
+
     /// Copies raw packet data directly into this object. Don't use this unless
     /// you know what you're doing.
     fn write_packet_bytes(&mut self, bytes: &[u8]);
 }
 
 impl<W: WritePacket> WritePacket for &mut W {
-    fn write_packet<'a>(&mut self, packet: &impl Packet<'a>) {
+    fn write_packet<P>(&mut self, packet: &P)
+    where
+        P: Packet + Encode,
+    {
         (*self).write_packet(packet)
     }
 
@@ -200,7 +206,10 @@ impl<W: WritePacket> WritePacket for &mut W {
 }
 
 impl<T: WritePacket> WritePacket for Mut<'_, T> {
-    fn write_packet<'a>(&mut self, packet: &impl Packet<'a>) {
+    fn write_packet<P>(&mut self, packet: &P)
+    where
+        P: Packet + Encode,
+    {
         self.as_mut().write_packet(packet)
     }
 
@@ -227,7 +236,10 @@ impl<'a> PacketWriter<'a> {
 }
 
 impl WritePacket for PacketWriter<'_> {
-    fn write_packet<'a>(&mut self, pkt: &impl Packet<'a>) {
+    fn write_packet<P>(&mut self, pkt: &P)
+    where
+        P: Packet + Encode,
+    {
         #[cfg(feature = "compression")]
         let res = if let Some(threshold) = self.threshold {
             encode_packet_compressed(self.buf, pkt, threshold, self.scratch)
@@ -251,7 +263,10 @@ impl WritePacket for PacketWriter<'_> {
 }
 
 impl WritePacket for PacketEncoder {
-    fn write_packet<'a>(&mut self, packet: &impl Packet<'a>) {
+    fn write_packet<P>(&mut self, packet: &P)
+    where
+        P: Packet + Encode,
+    {
         if let Err(e) = self.append_packet(packet) {
             warn!("failed to write packet: {e:#}");
         }
@@ -262,13 +277,13 @@ impl WritePacket for PacketEncoder {
     }
 }
 
-pub fn encode_packet<'a, P>(buf: &mut Vec<u8>, pkt: &P) -> anyhow::Result<()>
+pub fn encode_packet<P>(buf: &mut Vec<u8>, pkt: &P) -> anyhow::Result<()>
 where
-    P: Packet<'a>,
+    P: Packet + Encode,
 {
     let start_len = buf.len();
 
-    pkt.encode_packet(&mut *buf)?;
+    pkt.encode_with_id(&mut *buf)?;
 
     let packet_len = buf.len() - start_len;
 
@@ -292,14 +307,14 @@ where
 }
 
 #[cfg(feature = "compression")]
-pub fn encode_packet_compressed<'a, P>(
+pub fn encode_packet_compressed<P>(
     buf: &mut Vec<u8>,
     pkt: &P,
     threshold: u32,
     scratch: &mut Vec<u8>,
 ) -> anyhow::Result<()>
 where
-    P: Packet<'a>,
+    P: Packet + Encode,
 {
     use std::io::Read;
 
@@ -308,7 +323,7 @@ where
 
     let start_len = buf.len();
 
-    pkt.encode_packet(&mut *buf)?;
+    pkt.encode_with_id(&mut *buf)?;
 
     let data_len = buf.len() - start_len;
 

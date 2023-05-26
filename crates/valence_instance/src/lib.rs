@@ -42,7 +42,7 @@ use valence_core::protocol::byte_angle::ByteAngle;
 use valence_core::protocol::encode::{PacketWriter, WritePacket};
 use valence_core::protocol::packet::sound::{PlaySoundS2c, Sound, SoundCategory};
 use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::Packet;
+use valence_core::protocol::{Encode, Packet};
 use valence_core::Server;
 use valence_dimension::DimensionType;
 use valence_entity::packet::{
@@ -705,9 +705,9 @@ impl Instance {
     ///
     /// This is more efficient than sending the packet to each client
     /// individually.
-    pub fn write_packet_at<'a, P>(&mut self, pkt: &P, pos: impl Into<ChunkPos>)
+    pub fn write_packet_at<P>(&mut self, pkt: &P, pos: impl Into<ChunkPos>)
     where
-        P: Packet<'a>,
+        P: Packet + Encode,
     {
         let pos = pos.into();
         if let Some(cell) = self.partition.get_mut(&pos) {
@@ -798,7 +798,10 @@ impl Instance {
 /// This is more efficient than sending the packet to each client individually.
 impl WritePacket for Instance {
     #[inline]
-    fn write_packet<'a>(&mut self, packet: &impl Packet<'a>) {
+    fn write_packet<P>(&mut self, packet: &P)
+    where
+        P: Packet + Encode,
+    {
         PacketWriter::new(
             &mut self.packet_buf,
             self.info.compression_threshold,

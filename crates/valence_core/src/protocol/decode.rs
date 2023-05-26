@@ -2,9 +2,10 @@
 use aes::cipher::generic_array::GenericArray;
 #[cfg(feature = "encryption")]
 use aes::cipher::{BlockDecryptMut, BlockSizeUser, KeyIvInit};
-use anyhow::{bail, ensure};
+use anyhow::{bail, ensure, Context};
 use bytes::{Buf, BytesMut};
 
+use super::Decode;
 use crate::protocol::var_int::{VarInt, VarIntDecodeError};
 use crate::protocol::{Packet, MAX_PACKET_SIZE};
 
@@ -29,7 +30,7 @@ impl PacketDecoder {
         Self::default()
     }
 
-    pub fn try_next_packet(&mut self) -> anyhow::Result<Option<BytesMut>> {
+    pub fn try_next_packet(&mut self) -> anyhow::Result<Option<PacketFrame>> {
         let mut r = &self.buf[..];
 
         let packet_len = match VarInt::decode_partial(&mut r) {
@@ -50,14 +51,14 @@ impl PacketDecoder {
 
         let packet_len_len = VarInt(packet_len).written_size();
 
+        let mut data;
+
         #[cfg(feature = "compression")]
         if let Some(threshold) = self.compression_threshold {
             use std::io::Write;
 
             use bytes::BufMut;
             use flate2::write::ZlibDecoder;
-
-            use crate::protocol::Decode;
 
             r = &r[..packet_len as usize];
 
@@ -94,7 +95,7 @@ impl PacketDecoder {
 
                 self.buf.advance(total_packet_len);
 
-                return Ok(Some(self.decompress_buf.split()));
+                data = self.decompress_buf.split();
             } else {
                 debug_assert_eq!(data_len, 0);
 
@@ -108,12 +109,32 @@ impl PacketDecoder {
                 let remaining_len = r.len();
 
                 self.buf.advance(packet_len_len + 1);
-                return Ok(Some(self.buf.split_to(remaining_len)));
+
+                data = self.buf.split_to(remaining_len);
             }
+        } else {
+            self.buf.advance(packet_len_len);
+            data = self.buf.split_to(packet_len as usize);
         }
 
-        self.buf.advance(packet_len_len);
-        Ok(Some(self.buf.split_to(packet_len as usize)))
+        #[cfg(not(feature = "compression"))]
+        {
+            self.buf.advance(packet_len_len);
+            data = self.buf.split_to(packet_len as usize);
+        }
+
+        // Decode the leading packet ID.
+        r = &data[..];
+        let packet_id = VarInt::decode(&mut r)
+            .context("failed to decode packet ID")?
+            .0;
+
+        data.advance(data.len() - r.len());
+
+        Ok(Some(PacketFrame {
+            id: packet_id,
+            body: data,
+        }))
     }
 
     #[cfg(feature = "compression")]
@@ -138,7 +159,8 @@ impl PacketDecoder {
         self.cipher = Some(cipher);
     }
 
-    /// Decrypts the provided byte slice in place using the cipher, without consuming the cipher.
+    /// Decrypts the provided byte slice in place using the cipher, without
+    /// consuming the cipher.
     #[cfg(feature = "encryption")]
     fn decrypt_bytes(cipher: &mut Cipher, bytes: &mut [u8]) {
         for chunk in bytes.chunks_mut(Cipher::block_size()) {
@@ -180,17 +202,40 @@ impl PacketDecoder {
     }
 }
 
-/// Decodes a (packet ID + data) packet frame. An error is returned if the input
-/// is not read to the end.
-pub fn decode_packet<'a, P: Packet<'a>>(mut bytes: &'a [u8]) -> anyhow::Result<P> {
-    let pkt = P::decode_packet(&mut bytes)?;
+#[derive(Clone, Debug)]
+pub struct PacketFrame {
+    /// The ID of the decoded packet.
+    pub id: i32,
+    /// The contents of the packet after the leading VarInt ID.
+    pub body: BytesMut,
+}
 
-    ensure!(
-        bytes.is_empty(),
-        "missed {} bytes while decoding {}",
-        bytes.len(),
-        pkt.packet_name()
-    );
+impl PacketFrame {
+    /// Attempts to decode this packet as type `P`. An error is returned if the
+    /// packet ID does not match, the body of the packet failed to decode, or
+    /// some input was missed.
+    pub fn decode<'a, P>(&'a self) -> anyhow::Result<P>
+    where
+        P: Packet + Decode<'a>,
+    {
+        ensure!(
+            P::ID == self.id,
+            "packet ID mismatch: expected {}, got {}",
+            P::ID,
+            self.id
+        );
 
-    Ok(pkt)
+        let mut r = &self.body[..];
+
+        let pkt = P::decode(&mut r)?;
+
+        ensure!(
+            r.is_empty(),
+            "missed {} bytes while decoding packet {}",
+            r.len(),
+            P::NAME
+        );
+
+        Ok(pkt)
+    }
 }

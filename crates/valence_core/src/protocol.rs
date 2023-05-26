@@ -17,7 +17,9 @@ pub mod var_long;
 
 use std::io::Write;
 
+use anyhow::Context;
 pub use valence_core_macros::{Decode, Encode, Packet};
+use var_int::VarInt;
 
 /// The maximum number of bytes in a single Minecraft packet.
 pub const MAX_PACKET_SIZE: i32 = 2097152;
@@ -38,7 +40,7 @@ pub const MAX_PACKET_SIZE: i32 = 2097152;
 /// to variants using rules similar to regular enum discriminants.
 ///
 /// ```
-/// use valence_core::packet::Encode;
+/// use valence_core::protocol::Encode;
 ///
 /// #[derive(Encode)]
 /// struct MyStruct<'a> {
@@ -124,7 +126,7 @@ pub trait Encode {
 /// to variants using rules similar to regular enum discriminants.
 ///
 /// ```
-/// use valence_core::packet::Decode;
+/// use valence_core::protocol::Decode;
 ///
 /// #[derive(PartialEq, Debug, Decode)]
 /// struct MyStruct {
@@ -163,222 +165,27 @@ pub trait Decode<'a>: Sized {
     fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self>;
 }
 
-/// Like [`Encode`] + [`Decode`], but implementations must read and write a
-/// leading [`VarInt`] packet ID before any other data.
+/// Types considered to be Minecraft packets.
 ///
-/// # Deriving
-///
-/// This trait can be implemented automatically by using the
-/// [`Packet`][macro] derive macro. The trait is implemented by reading or
-/// writing the packet ID provided in the `#[packet(id = ...)]` helper attribute
-/// followed by a call to [`Encode::encode`] or [`Decode::decode`]. The target
-/// type must implement [`Encode`], [`Decode`], and [`std::fmt::Debug`].
-///
-/// ```
-/// use valence_core::packet::{Decode, Encode, Packet};
-///
-/// #[derive(Encode, Decode, Packet, Debug)]
-/// #[packet(id = 42)]
-/// struct MyStruct {
-///     first: i32,
-/// }
-///
-/// let value = MyStruct { first: 123 };
-/// let mut buf = vec![];
-///
-/// value.encode_packet(&mut buf).unwrap();
-/// println!("{buf:?}");
-/// ```
-///
-/// [macro]: valence_core_macros::Packet
-/// [`VarInt`]: var_int::VarInt
-pub trait Packet<'a>: Sized + std::fmt::Debug {
-    /// The packet returned by [`Self::packet_id`]. If the packet ID is not
-    /// statically known, then a negative value is used instead.
-    const PACKET_ID: i32 = -1;
-    /// Returns the ID of this packet.
-    fn packet_id(&self) -> i32;
-    /// Returns the name of this packet, typically without whitespace or
-    /// additional formatting.
-    fn packet_name(&self) -> &str;
-    /// Like [`Encode::encode`], but a leading [`VarInt`] packet ID must be
-    /// written by this method first.
-    ///
-    /// [`VarInt`]: var_int::VarInt
-    fn encode_packet(&self, w: impl Write) -> anyhow::Result<()>;
-    /// Like [`Decode::decode`], but a leading [`VarInt`] packet ID must be read
-    /// by this method first.
-    ///
-    /// [`VarInt`]: var_int::VarInt
-    fn decode_packet(r: &mut &'a [u8]) -> anyhow::Result<Self>;
-}
+/// In serialized form, a packet begins with a [`VarInt`] packet ID followed by
+/// the body of the packet. If present, the implementations of [`Encode`] and
+/// [`Decode`] on `Self` are expected to only encode/decode the _body_ of this
+/// packet without the leading ID.
+pub trait Packet: std::fmt::Debug {
+    /// The leading VarInt ID of this packet.
+    const ID: i32;
+    /// The name of this packet for debugging purposes.
+    const NAME: &'static str;
 
-/// Defines an enum of packets and implements [`Packet`] for the whole enum.
-/// Each variant of the packet must implement [`Packet`].
-///
-/// TODO: example.
-#[macro_export]
-macro_rules! packet_group {
-    (
-        $(#[$attrs:meta])*
-        $enum_vis:vis $enum_name:ident<$enum_life:lifetime> {
-            $($packet:ident $(<$life:lifetime>)?),* $(,)?
-        }
-    ) => {
-        $(#[$attrs])*
-        $enum_vis enum $enum_name<$enum_life> {
-            $(
-                $packet($packet $(<$life>)?),
-            )*
-        }
-
-        $(
-            impl<$enum_life> From<$packet $(<$life>)?> for $enum_name<$enum_life> {
-                fn from(p: $packet $(<$life>)?) -> Self {
-                    Self::$packet(p)
-                }
-            }
-        )*
-
-        impl<$enum_life> $crate::protocol::Packet<$enum_life> for $enum_name<$enum_life> {
-            fn packet_id(&self) -> i32 {
-                match self {
-                    $(
-                        Self::$packet(_) => <$packet as $crate::protocol::Packet>::PACKET_ID,
-                    )*
-                }
-            }
-
-            fn packet_name(&self) -> &str {
-                use $crate::protocol::Packet;
-
-                match self {
-                    $(
-                        Self::$packet(pkt) => pkt.packet_name(),
-                    )*
-                }
-            }
-
-            fn encode_packet(&self, mut w: impl std::io::Write) -> $crate::__private::Result<()> {
-                use $crate::__private::*;
-
-                match self {
-                    $(
-                        Self::$packet(pkt) => {
-                            VarInt(<$packet as Packet>::PACKET_ID).encode(&mut w)?;
-                            pkt.encode(w)?;
-                        }
-                    )*
-                }
-
-                Ok(())
-            }
-
-            fn decode_packet(r: &mut &$enum_life [u8]) -> $crate::__private::Result<Self> {
-                use $crate::__private::*;
-
-                let id = VarInt::decode(r)?.0;
-                Ok(match id {
-                    $(
-                        <$packet as Packet>::PACKET_ID =>
-                            Self::$packet($packet::decode(r)?),
-                    )*
-                    id => bail!("unknown packet ID {} while decoding {}", id, stringify!($enum_name)),
-                })
-            }
-        }
-
-        impl<$enum_life> std::fmt::Debug for $enum_name<$enum_life> {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                match self {
-                    $(
-                        Self::$packet(pkt) => pkt.fmt(f),
-                    )*
-                }
-            }
-        }
-    };
-    // No lifetime on the enum in this case.
-    (
-        $(#[$attrs:meta])*
-        $enum_vis:vis $enum_name:ident {
-            $($packet:ident),* $(,)?
-        }
-    ) => {
-        $(#[$attrs])*
-        $enum_vis enum $enum_name {
-            $(
-                $packet($packet),
-            )*
-        }
-
-        $(
-            impl From<$packet> for $enum_name {
-                fn from(p: $packet) -> Self {
-                    Self::$packet(p)
-                }
-            }
-        )*
-
-        impl $crate::__private::Packet<'_> for $enum_name {
-            fn packet_id(&self) -> i32 {
-                use $crate::__private::*;
-
-                match self {
-                    $(
-                        Self::$packet(_) => <$packet as Packet>::PACKET_ID,
-                    )*
-                }
-            }
-
-            fn packet_name(&self) -> &str {
-                use $crate::__private::*;
-
-                match self {
-                    $(
-                        Self::$packet(pkt) => pkt.packet_name(),
-                    )*
-                }
-            }
-
-            fn encode_packet(&self, mut w: impl std::io::Write) -> $crate::__private::Result<()> {
-                use $crate::__private::*;
-
-                match self {
-                    $(
-                        Self::$packet(pkt) => {
-                            VarInt(<$packet as Packet>::PACKET_ID).encode(&mut w)?;
-                            pkt.encode(w)?;
-                        }
-                    )*
-                }
-
-                Ok(())
-            }
-
-            fn decode_packet(r: &mut &[u8]) -> $crate::__private::Result<Self> {
-                use $crate::__private::*;
-
-                let id = VarInt::decode(r)?.0;
-                Ok(match id {
-                    $(
-                        <$packet as Packet>::PACKET_ID =>
-                            Self::$packet($packet::decode(r)?),
-                    )*
-                    id => anyhow::bail!("unknown packet ID {} while decoding {}", id, stringify!($enum_name)),
-                })
-            }
-        }
-
-        impl std::fmt::Debug for $enum_name {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                match self {
-                    $(
-                        Self::$packet(pkt) => pkt.fmt(f),
-                    )*
-                }
-            }
-        }
+    /// Encodes this packet's VarInt ID first, followed by the packet's body.
+    fn encode_with_id(&self, mut w: impl Write) -> anyhow::Result<()>
+    where
+        Self: Encode,
+    {
+        VarInt(Self::ID)
+            .encode(&mut w)
+            .context("failed to encode packet ID")?;
+        self.encode(w)
     }
 }
 
@@ -395,7 +202,6 @@ mod tests {
     use bytes::BytesMut;
 
     use super::*;
-    use crate::protocol::c2s::play::{C2sPlayPacket, HandSwingC2s};
     use crate::protocol::decode::{decode_packet, PacketDecoder};
     use crate::protocol::encode::PacketEncoder;
 
@@ -430,36 +236,10 @@ mod tests {
     #[packet(id = 6)]
     struct TupleStructWithGenerics<'z, T = ()>(&'z str, i32, T);
 
-    #[derive(Encode, Decode, Packet, Debug)]
-    #[packet(id = 7)]
-    enum RegularEnum {
-        Empty,
-        Tuple(i32, bool, f64),
-        Fields { foo: i32, bar: bool, baz: f64 },
-    }
-
-    #[derive(Encode, Decode, Packet, Debug)]
-    #[packet(id = 8)]
-    enum EmptyEnum {}
-
-    #[derive(Encode, Decode, Packet, Debug)]
-    #[packet(id = 0xbeef)]
-    enum EnumWithGenericsAndTags<'z, T = ()> {
-        #[packet(tag = 5)]
-        First {
-            foo: &'z str,
-        },
-        Second(&'z str),
-        #[packet(tag = 0xff)]
-        Third,
-        #[packet(tag = 0)]
-        Fourth(T),
-    }
-
     #[allow(unconditional_recursion, clippy::extra_unused_type_parameters)]
     fn assert_has_impls<'a, T>()
     where
-        T: Encode + Decode<'a> + Packet<'a>,
+        T: Encode + Decode<'a> + Packet,
     {
         assert_has_impls::<RegularStruct>();
         assert_has_impls::<UnitStruct>();
@@ -467,30 +247,13 @@ mod tests {
         assert_has_impls::<TupleStruct>();
         assert_has_impls::<StructWithGenerics>();
         assert_has_impls::<TupleStructWithGenerics>();
-        assert_has_impls::<RegularEnum>();
-        assert_has_impls::<EmptyEnum>();
-        assert_has_impls::<EnumWithGenericsAndTags>();
     }
 
     #[test]
     fn packet_name() {
-        assert_eq!(UnitStruct.packet_name(), "UnitStruct");
-        assert_eq!(RegularEnum::Empty.packet_name(), "RegularEnum");
-        assert_eq!(
-            StructWithGenerics {
-                foo: "blah",
-                bar: ()
-            }
-            .packet_name(),
-            "StructWithGenerics"
-        );
-        assert_eq!(
-            C2sPlayPacket::HandSwingC2s(HandSwingC2s {
-                hand: Default::default()
-            })
-            .packet_name(),
-            "HandSwingC2s"
-        );
+        assert_eq!(RegularStruct::NAME, "RegularStruct");
+        assert_eq!(UnitStruct::NAME, "UnitStruct");
+        assert_eq!(StructWithGenerics::<()>::NAME, "StructWithGenerics");
     }
 
     use crate::block_pos::BlockPos;
@@ -549,7 +312,7 @@ mod tests {
     fn check_test_packet(dec: &mut PacketDecoder, string: &str) {
         let frame = dec.try_next_packet().unwrap().unwrap();
 
-        let pkt = decode_packet::<TestPacket>(&frame).unwrap();
+        let pkt = frame.decode::<TestPacket>().unwrap();
 
         assert_eq!(&pkt, &TestPacket::new(string));
     }
