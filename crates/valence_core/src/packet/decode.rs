@@ -138,7 +138,8 @@ impl PacketDecoder {
         self.cipher = Some(cipher);
     }
 
-    /// Decrypts the provided byte slice in place using the cipher, without consuming the cipher.
+    /// Decrypts the provided byte slice in place using the cipher, without
+    /// consuming the cipher.
     #[cfg(feature = "encryption")]
     fn decrypt_bytes(cipher: &mut Cipher, bytes: &mut [u8]) {
         for chunk in bytes.chunks_mut(Cipher::block_size()) {
