@@ -401,17 +401,20 @@ fn login_bungeecord(
     // Get data from server_address field of the handshake
     let data = server_address.split('\0').take(4).collect::<Vec<_>>();
 
+    // Ip of player, only given if ip_forward on bungee is true
     let ip = match data.get(1) {
         Some(ip) => ip.parse()?,
         None => remote_addr.ip(),
     };
 
+    // Uuid of player, only given if ip_forward on bungee is true
     let uuid = match data.get(2) {
         Some(uuid) => uuid.parse()?,
         None => offline_uuid(username.as_str())?,
     };
 
     // Read properties and get textures
+    // Properties of player's game profile, only given if ip_forward and online_mode on bungee both are true
     let properties: Vec<Property> = match data.get(3) {
         Some(properties) => serde_json::from_str(properties)
             .context("failed to parse BungeeCord player properties")?,
