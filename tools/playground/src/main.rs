@@ -16,8 +16,8 @@
     clippy::dbg_macro
 )]
 
-use std::str::FromStr;
 use std::env;
+use std::str::FromStr;
 
 use tracing::Level;
 use valence::app::App;
@@ -33,9 +33,7 @@ fn main() {
         _ => Level::DEBUG,
     };
 
-    tracing_subscriber::fmt()
-        .with_max_level(log_level)
-        .init();
+    tracing_subscriber::fmt().with_max_level(log_level).init();
 
     let mut app = App::new();
     playground::build_app(&mut app);
