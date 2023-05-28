@@ -33,7 +33,9 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
-    tracing_subscriber::fmt().with_max_level(args.log_level).init();
+    tracing_subscriber::fmt()
+        .with_max_level(args.log_level)
+        .init();
 
     let mut app = App::new();
     playground::build_app(&mut app);
