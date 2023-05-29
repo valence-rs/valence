@@ -1,8 +1,4 @@
-//! Types and functions used in Minecraft's packets. Structs for each packet are
-//! defined here too.
-//!
-//! Client-to-server packets live in [`c2s`] while server-to-client packets are
-//! in [`s2c`].
+//! Minecraft's protocol.
 
 pub mod array;
 pub mod byte_angle;

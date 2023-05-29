@@ -218,7 +218,7 @@ impl PacketFrames {
         let positions: Vec<_> = self
             .0
             .iter()
-            .filter_map(|f| L::packets().into_iter().position(|(id, _)| f.id == *id))
+            .filter_map(|f| L::packets().iter().position(|(id, _)| f.id == *id))
             .collect();
 
         // TODO: replace with slice::is_sorted.
@@ -237,7 +237,7 @@ impl PacketFrames {
             .iter()
             .map(|f| {
                 L::packets()
-                    .into_iter()
+                    .iter()
                     .find(|(id, _)| f.id == *id)
                     .cloned()
                     .unwrap_or((f.id, "<ignored>"))
