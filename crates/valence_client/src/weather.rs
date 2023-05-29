@@ -15,10 +15,8 @@
 //! New joined players are handled, so that they are get weather events from
 //! the instance.
 
-use valence_core::packet::s2c::play::game_state_change::GameEventKind;
-use valence_core::packet::s2c::play::GameStateChangeS2c;
-
 use super::*;
+use crate::packet::{GameEventKind, GameStateChangeS2c};
 
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 struct UpdateWeatherPerInstanceSet;

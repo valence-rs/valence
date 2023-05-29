@@ -11,7 +11,7 @@ use uuid::Uuid;
 use valence_nbt::Value;
 
 use crate::ident::Ident;
-use crate::packet::{Decode, Encode};
+use crate::protocol::{Decode, Encode};
 
 /// Represents formatted text in Minecraft's JSON text format.
 ///

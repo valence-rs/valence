@@ -26,6 +26,8 @@ use bevy_app::{PluginGroup, PluginGroupBuilder};
 #[cfg(test)]
 mod tests;
 
+#[cfg(feature = "advancement")]
+pub use valence_advancement as advancement;
 #[cfg(feature = "anvil")]
 pub use valence_anvil as anvil;
 pub use valence_core::*;
@@ -64,10 +66,11 @@ pub mod prelude {
     pub use client::command::*;
     pub use client::event_loop::{EventLoopSchedule, EventLoopSet};
     pub use client::interact_entity::*;
+    pub use client::title::SetTitle as _;
     pub use client::{
         despawn_disconnected_clients, Client, CompassPos, DeathLocation, HasRespawnScreen,
-        HashedSeed, Ip, IsDebug, IsFlat, IsHardcore, OldView, OldViewDistance, OpLevel,
-        PrevGameMode, Properties, ReducedDebugInfo, Username, View, ViewDistance,
+        HashedSeed, Ip, IsDebug, IsFlat, IsHardcore, OldView, OldViewDistance, PrevGameMode,
+        Properties, ReducedDebugInfo, Username, View, ViewDistance,
     };
     pub use despawn::Despawned;
     pub use dimension::{DimensionType, DimensionTypeRegistry};
@@ -93,7 +96,7 @@ pub mod prelude {
         ErasedNetworkCallbacks, NetworkCallbacks, NetworkSettings, NewClientInfo,
         SharedNetworkState,
     };
-    pub use packet::s2c::play::particle::Particle;
+    pub use particle::Particle;
     #[cfg(feature = "player_list")]
     pub use player_list::{PlayerList, PlayerListEntry};
     pub use text::{Color, Text, TextFormat};

@@ -1,7 +1,7 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use valence_core::packet::c2s::play::client_command::Action;
-use valence_core::packet::c2s::play::ClientCommandC2s;
+use valence_core::protocol::var_int::VarInt;
+use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 use valence_entity::entity::Flags;
 use valence_entity::{entity, Pose};
 
@@ -74,7 +74,7 @@ fn handle_client_command(
     for packet in packets.iter() {
         if let Some(pkt) = packet.decode::<ClientCommandC2s>() {
             match pkt.action {
-                Action::StartSneaking => {
+                ClientCommand::StartSneaking => {
                     if let Ok((mut pose, mut flags)) = clients.get_mut(packet.client) {
                         pose.0 = Pose::Sneaking;
                         flags.set_sneaking(true);
@@ -85,7 +85,7 @@ fn handle_client_command(
                         state: SneakState::Start,
                     })
                 }
-                Action::StopSneaking => {
+                ClientCommand::StopSneaking => {
                     if let Ok((mut pose, mut flags)) = clients.get_mut(packet.client) {
                         pose.0 = Pose::Standing;
                         flags.set_sneaking(false);
@@ -96,10 +96,10 @@ fn handle_client_command(
                         state: SneakState::Stop,
                     })
                 }
-                Action::LeaveBed => leave_bed_events.send(LeaveBed {
+                ClientCommand::LeaveBed => leave_bed_events.send(LeaveBed {
                     client: packet.client,
                 }),
-                Action::StartSprinting => {
+                ClientCommand::StartSprinting => {
                     if let Ok((_, mut flags)) = clients.get_mut(packet.client) {
                         flags.set_sprinting(true);
                     }
@@ -109,7 +109,7 @@ fn handle_client_command(
                         state: SprintState::Start,
                     });
                 }
-                Action::StopSprinting => {
+                ClientCommand::StopSprinting => {
                     if let Ok((_, mut flags)) = clients.get_mut(packet.client) {
                         flags.set_sprinting(false);
                     }
@@ -119,18 +119,18 @@ fn handle_client_command(
                         state: SprintState::Stop,
                     })
                 }
-                Action::StartJumpWithHorse => jump_with_horse_events.send(JumpWithHorse {
+                ClientCommand::StartJumpWithHorse => jump_with_horse_events.send(JumpWithHorse {
                     client: packet.client,
                     state: JumpWithHorseState::Start {
                         power: pkt.jump_boost.0 as u8,
                     },
                 }),
-                Action::StopJumpWithHorse => jump_with_horse_events.send(JumpWithHorse {
+                ClientCommand::StopJumpWithHorse => jump_with_horse_events.send(JumpWithHorse {
                     client: packet.client,
                     state: JumpWithHorseState::Stop,
                 }),
-                Action::OpenHorseInventory => {} // TODO
-                Action::StartFlyingWithElytra => {
+                ClientCommand::OpenHorseInventory => {} // TODO
+                ClientCommand::StartFlyingWithElytra => {
                     if let Ok((mut pose, _)) = clients.get_mut(packet.client) {
                         pose.0 = Pose::FallFlying;
                     }
@@ -140,4 +140,25 @@ fn handle_client_command(
             }
         }
     }
+}
+
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::CLIENT_COMMAND_C2S)]
+pub struct ClientCommandC2s {
+    pub entity_id: VarInt,
+    pub action: ClientCommand,
+    pub jump_boost: VarInt,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
+pub enum ClientCommand {
+    StartSneaking,
+    StopSneaking,
+    LeaveBed,
+    StartSprinting,
+    StopSprinting,
+    StartJumpWithHorse,
+    StopJumpWithHorse,
+    OpenHorseInventory,
+    StartFlyingWithElytra,
 }

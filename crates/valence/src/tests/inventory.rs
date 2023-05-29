@@ -1,9 +1,10 @@
 use bevy_app::App;
 use valence_core::game_mode::GameMode;
 use valence_core::item::{ItemKind, ItemStack};
-use valence_core::packet::c2s::play::click_slot::{ClickMode, Slot};
-use valence_core::packet::c2s::play::ClickSlotC2s;
-use valence_core::packet::s2c::play::S2cPlayPacket;
+use valence_inventory::packet::{
+    ClickMode, ClickSlotC2s, CloseScreenS2c, CreativeInventoryActionC2s, InventoryS2c,
+    OpenScreenS2c, ScreenHandlerSlotUpdateS2c, SlotChange, UpdateSelectedSlotC2s,
+};
 use valence_inventory::{
     convert_to_player_slot_id, ClientInventoryState, CursorItem, DropItemStack, Inventory,
     InventoryKind, OpenInventory,
@@ -35,13 +36,9 @@ fn test_should_open_inventory() {
     // Make assertions
     let sent_packets = client_helper.collect_sent();
 
-    assert_packet_count!(sent_packets, 1, S2cPlayPacket::OpenScreenS2c(_));
-    assert_packet_count!(sent_packets, 1, S2cPlayPacket::InventoryS2c(_));
-    assert_packet_order!(
-        sent_packets,
-        S2cPlayPacket::OpenScreenS2c(_),
-        S2cPlayPacket::InventoryS2c(_)
-    );
+    sent_packets.assert_count::<OpenScreenS2c>(1);
+    sent_packets.assert_count::<InventoryS2c>(1);
+    sent_packets.assert_order::<(OpenScreenS2c, InventoryS2c)>();
 }
 
 #[test]
@@ -77,7 +74,7 @@ fn test_should_close_inventory() {
     // Make assertions
     let sent_packets = client_helper.collect_sent();
 
-    assert_packet_count!(sent_packets, 1, S2cPlayPacket::CloseScreenS2c(_));
+    sent_packets.assert_count::<CloseScreenS2c>(1);
 }
 
 #[test]
@@ -109,8 +106,9 @@ fn test_should_remove_invalid_open_inventory() {
 
     // Make assertions
     assert!(app.world.get::<OpenInventory>(client_ent).is_none());
+
     let sent_packets = client_helper.collect_sent();
-    assert_packet_count!(sent_packets, 1, S2cPlayPacket::CloseScreenS2c(_));
+    sent_packets.assert_count::<CloseScreenS2c>(1);
 }
 
 #[test]
@@ -134,13 +132,14 @@ fn test_should_modify_player_inventory_click_slot() {
         .get::<ClientInventoryState>(client_ent)
         .unwrap()
         .state_id();
-    client_helper.send(&valence_core::packet::c2s::play::ClickSlotC2s {
+
+    client_helper.send(&ClickSlotC2s {
         window_id: 0,
         button: 0,
-        mode: valence_core::packet::c2s::play::click_slot::ClickMode::Click,
+        mode: ClickMode::Click,
         state_id: VarInt(state_id.0),
         slot_idx: 20,
-        slot_changes: vec![valence_core::packet::c2s::play::click_slot::Slot {
+        slot_changes: vec![SlotChange {
             idx: 20,
             item: None,
         }],
@@ -155,20 +154,21 @@ fn test_should_modify_player_inventory_click_slot() {
     // because the inventory was changed as a result of the client's click, the
     // server should not send any packets to the client because the client
     // already knows about the change.
-    assert_packet_count!(
-        sent_packets,
-        0,
-        S2cPlayPacket::InventoryS2c(_) | S2cPlayPacket::ScreenHandlerSlotUpdateS2c(_)
-    );
+    sent_packets.assert_count::<InventoryS2c>(0);
+    sent_packets.assert_count::<ScreenHandlerSlotUpdateS2c>(0);
+
     let inventory = app
         .world
         .get::<Inventory>(client_ent)
         .expect("could not find inventory for client");
+
     assert_eq!(inventory.slot(20), None);
+
     let cursor_item = app
         .world
         .get::<CursorItem>(client_ent)
         .expect("could not find client");
+
     assert_eq!(
         cursor_item.0,
         Some(ItemStack::new(ItemKind::Diamond, 2, None))
@@ -205,11 +205,7 @@ fn test_should_modify_player_inventory_server_side() {
     let sent_packets = client_helper.collect_sent();
     // because the inventory was modified server side, the client needs to be
     // updated with the change.
-    assert_packet_count!(
-        sent_packets,
-        1,
-        S2cPlayPacket::ScreenHandlerSlotUpdateS2c(_)
-    );
+    sent_packets.assert_count::<ScreenHandlerSlotUpdateS2c>(1);
 }
 
 #[test]
@@ -231,7 +227,7 @@ fn test_should_sync_entire_player_inventory() {
 
     // Make assertions
     let sent_packets = client_helper.collect_sent();
-    assert_packet_count!(sent_packets, 1, S2cPlayPacket::InventoryS2c(_));
+    sent_packets.assert_count::<InventoryS2c>(1);
 }
 
 fn set_up_open_inventory(app: &mut App, client_ent: Entity) -> Entity {
@@ -267,13 +263,13 @@ fn test_should_modify_open_inventory_click_slot() {
     let inv_state = app.world.get::<ClientInventoryState>(client_ent).unwrap();
     let state_id = inv_state.state_id();
     let window_id = inv_state.window_id();
-    client_helper.send(&valence_core::packet::c2s::play::ClickSlotC2s {
+    client_helper.send(&ClickSlotC2s {
         window_id,
-        button: 0,
-        mode: valence_core::packet::c2s::play::click_slot::ClickMode::Click,
         state_id: VarInt(state_id.0),
         slot_idx: 20,
-        slot_changes: vec![valence_core::packet::c2s::play::click_slot::Slot {
+        button: 0,
+        mode: ClickMode::Click,
+        slot_changes: vec![SlotChange {
             idx: 20,
             item: None,
         }],
@@ -288,11 +284,9 @@ fn test_should_modify_open_inventory_click_slot() {
     // because the inventory was modified as a result of the client's click, the
     // server should not send any packets to the client because the client
     // already knows about the change.
-    assert_packet_count!(
-        sent_packets,
-        0,
-        S2cPlayPacket::InventoryS2c(_) | S2cPlayPacket::ScreenHandlerSlotUpdateS2c(_)
-    );
+    sent_packets.assert_count::<InventoryS2c>(0);
+    sent_packets.assert_count::<ScreenHandlerSlotUpdateS2c>(0);
+
     let inventory = app
         .world
         .get::<Inventory>(inventory_ent)
@@ -332,15 +326,13 @@ fn test_should_modify_open_inventory_server_side() {
 
     // because the inventory was modified server side, the client needs to be
     // updated with the change.
-    assert_packet_count!(
-        sent_packets,
-        1,
-        S2cPlayPacket::ScreenHandlerSlotUpdateS2c(_)
-    );
+    sent_packets.assert_count::<ScreenHandlerSlotUpdateS2c>(1);
+
     let inventory = app
         .world
         .get::<Inventory>(inventory_ent)
         .expect("could not find inventory for client");
+
     assert_eq!(
         inventory.slot(5),
         Some(&ItemStack::new(ItemKind::IronIngot, 1, None))
@@ -367,7 +359,7 @@ fn test_should_sync_entire_open_inventory() {
 
     // Make assertions
     let sent_packets = client_helper.collect_sent();
-    assert_packet_count!(sent_packets, 1, S2cPlayPacket::InventoryS2c(_));
+    sent_packets.assert_count::<InventoryS2c>(1);
 }
 
 #[test]
@@ -384,12 +376,10 @@ fn test_set_creative_mode_slot_handling() {
     app.update();
     client_helper.clear_sent();
 
-    client_helper.send(
-        &valence_core::packet::c2s::play::CreativeInventoryActionC2s {
-            slot: 36,
-            clicked_item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
-        },
-    );
+    client_helper.send(&CreativeInventoryActionC2s {
+        slot: 36,
+        clicked_item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
+    });
 
     app.update();
 
@@ -398,6 +388,7 @@ fn test_set_creative_mode_slot_handling() {
         .world
         .get::<Inventory>(client_ent)
         .expect("could not find inventory for client");
+
     assert_eq!(
         inventory.slot(36),
         Some(&ItemStack::new(ItemKind::Diamond, 2, None))
@@ -418,12 +409,10 @@ fn test_ignore_set_creative_mode_slot_if_not_creative() {
     app.update();
     client_helper.clear_sent();
 
-    client_helper.send(
-        &valence_core::packet::c2s::play::CreativeInventoryActionC2s {
-            slot: 36,
-            clicked_item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
-        },
-    );
+    client_helper.send(&CreativeInventoryActionC2s {
+        slot: 36,
+        clicked_item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
+    });
 
     app.update();
 
@@ -480,7 +469,7 @@ fn test_should_handle_set_held_item() {
     app.update();
     client_helper.clear_sent();
 
-    client_helper.send(&valence_core::packet::c2s::play::UpdateSelectedSlotC2s { slot: 4 });
+    client_helper.send(&UpdateSelectedSlotC2s { slot: 4 });
 
     app.update();
 
@@ -489,6 +478,7 @@ fn test_should_handle_set_held_item() {
         .world
         .get::<ClientInventoryState>(client_ent)
         .expect("could not find client");
+
     assert_eq!(inv_state.held_item_slot(), 40);
 }
 
@@ -525,10 +515,9 @@ fn should_not_increment_state_id_on_cursor_item_change() {
 }
 
 mod dropping_items {
+    use valence_client::packet::{PlayerAction, PlayerActionC2s};
     use valence_core::block_pos::BlockPos;
     use valence_core::direction::Direction;
-    use valence_core::packet::c2s::play::click_slot::{ClickMode, Slot};
-    use valence_core::packet::c2s::play::player_action::Action;
     use valence_inventory::convert_to_player_slot_id;
 
     use super::*;
@@ -548,8 +537,8 @@ mod dropping_items {
             .expect("could not find inventory");
         inventory.set_slot(36, ItemStack::new(ItemKind::IronIngot, 3, None));
 
-        client_helper.send(&valence_core::packet::c2s::play::PlayerActionC2s {
-            action: Action::DropItem,
+        client_helper.send(&PlayerActionC2s {
+            action: PlayerAction::DropItem,
             position: BlockPos::new(0, 0, 0),
             direction: Direction::Down,
             sequence: VarInt(0),
@@ -562,15 +551,19 @@ mod dropping_items {
             .world
             .get::<Inventory>(client_ent)
             .expect("could not find client");
+
         assert_eq!(
             inventory.slot(36),
             Some(&ItemStack::new(ItemKind::IronIngot, 2, None))
         );
+
         let events = app
             .world
             .get_resource::<Events<DropItemStack>>()
             .expect("expected drop item stack events");
+
         let events = events.iter_current_update_events().collect::<Vec<_>>();
+
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].client, client_ent);
         assert_eq!(events[0].from_slot, Some(36));
@@ -580,11 +573,8 @@ mod dropping_items {
         );
 
         let sent_packets = client_helper.collect_sent();
-        assert_packet_count!(
-            sent_packets,
-            0,
-            S2cPlayPacket::ScreenHandlerSlotUpdateS2c(_)
-        );
+
+        sent_packets.assert_count::<ScreenHandlerSlotUpdateS2c>(0);
     }
 
     #[test]
@@ -602,8 +592,8 @@ mod dropping_items {
             .expect("could not find inventory");
         inventory.set_slot(36, ItemStack::new(ItemKind::IronIngot, 32, None));
 
-        client_helper.send(&valence_core::packet::c2s::play::PlayerActionC2s {
-            action: Action::DropAllItems,
+        client_helper.send(&PlayerActionC2s {
+            action: PlayerAction::DropAllItems,
             position: BlockPos::new(0, 0, 0),
             direction: Direction::Down,
             sequence: VarInt(0),
@@ -647,12 +637,10 @@ mod dropping_items {
 
         app.world.entity_mut(client_ent).insert(GameMode::Creative);
 
-        client_helper.send(
-            &valence_core::packet::c2s::play::CreativeInventoryActionC2s {
-                slot: -1,
-                clicked_item: Some(ItemStack::new(ItemKind::IronIngot, 32, None)),
-            },
-        );
+        client_helper.send(&CreativeInventoryActionC2s {
+            slot: -1,
+            clicked_item: Some(ItemStack::new(ItemKind::IronIngot, 32, None)),
+        });
 
         app.update();
 
@@ -693,12 +681,12 @@ mod dropping_items {
             .expect("could not find client");
         let state_id = inv_state.state_id().0;
 
-        client_helper.send(&valence_core::packet::c2s::play::ClickSlotC2s {
+        client_helper.send(&ClickSlotC2s {
             window_id: 0,
+            state_id: VarInt(state_id),
             slot_idx: -999,
             button: 0,
             mode: ClickMode::Click,
-            state_id: VarInt(state_id),
             slot_changes: vec![],
             carried_item: None,
         });
@@ -710,12 +698,16 @@ mod dropping_items {
             .world
             .get::<CursorItem>(client_ent)
             .expect("could not find client");
+
         assert_eq!(cursor_item.0, None);
+
         let events = app
             .world
             .get_resource::<Events<DropItemStack>>()
             .expect("expected drop item stack events");
+
         let events = events.iter_current_update_events().collect::<Vec<_>>();
+
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].client, client_ent);
         assert_eq!(events[0].from_slot, None);
@@ -738,20 +730,23 @@ mod dropping_items {
             .world
             .get_mut::<ClientInventoryState>(client_ent)
             .expect("could not find client");
+
         let state_id = inv_state.state_id().0;
+
         let mut inventory = app
             .world
             .get_mut::<Inventory>(client_ent)
             .expect("could not find inventory");
+
         inventory.set_slot(40, ItemStack::new(ItemKind::IronIngot, 32, None));
 
-        client_helper.send(&valence_core::packet::c2s::play::ClickSlotC2s {
+        client_helper.send(&ClickSlotC2s {
             window_id: 0,
             slot_idx: 40,
             button: 0,
             mode: ClickMode::DropKey,
             state_id: VarInt(state_id),
-            slot_changes: vec![Slot {
+            slot_changes: vec![SlotChange {
                 idx: 40,
                 item: Some(ItemStack::new(ItemKind::IronIngot, 31, None)),
             }],
@@ -765,7 +760,9 @@ mod dropping_items {
             .world
             .get_resource::<Events<DropItemStack>>()
             .expect("expected drop item stack events");
+
         let events = events.iter_current_update_events().collect::<Vec<_>>();
+
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].client, client_ent);
         assert_eq!(events[0].from_slot, Some(40));
@@ -788,20 +785,23 @@ mod dropping_items {
             .world
             .get_mut::<ClientInventoryState>(client_ent)
             .expect("could not find client");
+
         let state_id = inv_state.state_id().0;
+
         let mut inventory = app
             .world
             .get_mut::<Inventory>(client_ent)
             .expect("could not find inventory");
+
         inventory.set_slot(40, ItemStack::new(ItemKind::IronIngot, 32, None));
 
-        client_helper.send(&valence_core::packet::c2s::play::ClickSlotC2s {
+        client_helper.send(&ClickSlotC2s {
             window_id: 0,
             slot_idx: 40,
             button: 1, // pressing control
             mode: ClickMode::DropKey,
             state_id: VarInt(state_id),
-            slot_changes: vec![Slot {
+            slot_changes: vec![SlotChange {
                 idx: 40,
                 item: None,
             }],
@@ -815,7 +815,9 @@ mod dropping_items {
             .world
             .get_resource::<Events<DropItemStack>>()
             .expect("expected drop item stack events");
+
         let events = events.iter_current_update_events().collect::<Vec<_>>();
+
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].client, client_ent);
         assert_eq!(events[0].from_slot, Some(40));
@@ -840,13 +842,16 @@ mod dropping_items {
             .world
             .get_mut::<Inventory>(client_ent)
             .expect("could not find inventory");
+
         inventory.set_slot(
             convert_to_player_slot_id(InventoryKind::Generic9x3, 50),
             ItemStack::new(ItemKind::IronIngot, 32, None),
         );
+
         let _inventory_ent = set_up_open_inventory(&mut app, client_ent);
 
         app.update();
+
         client_helper.clear_sent();
 
         let inv_state = app
@@ -857,13 +862,13 @@ mod dropping_items {
         let state_id = inv_state.state_id().0;
         let window_id = inv_state.window_id();
 
-        client_helper.send(&valence_core::packet::c2s::play::ClickSlotC2s {
+        client_helper.send(&ClickSlotC2s {
             window_id,
-            slot_idx: 50,
-            button: 0, // not pressing control
-            mode: ClickMode::DropKey,
             state_id: VarInt(state_id),
-            slot_changes: vec![Slot {
+            slot_idx: 50, // not pressing control
+            button: 0,
+            mode: ClickMode::DropKey,
+            slot_changes: vec![SlotChange {
                 idx: 50,
                 item: Some(ItemStack::new(ItemKind::IronIngot, 31, None)),
             }],
@@ -877,21 +882,26 @@ mod dropping_items {
             .world
             .get_resource::<Events<DropItemStack>>()
             .expect("expected drop item stack events");
+
         let player_inventory = app
             .world
             .get::<Inventory>(client_ent)
             .expect("could not find inventory");
+
         let events = events.iter_current_update_events().collect::<Vec<_>>();
+
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].client, client_ent);
         assert_eq!(
             events[0].from_slot,
             Some(convert_to_player_slot_id(InventoryKind::Generic9x3, 50))
         );
+
         assert_eq!(
             events[0].stack,
             ItemStack::new(ItemKind::IronIngot, 1, None)
         );
+
         // Also make sure that the player inventory was updated correctly.
         let expected_player_slot_id = convert_to_player_slot_id(InventoryKind::Generic9x3, 50);
         assert_eq!(
@@ -916,10 +926,12 @@ fn should_drop_item_stack_player_open_inventory_with_dropkey() {
         .world
         .get_mut::<Inventory>(client_ent)
         .expect("could not find inventory");
+
     inventory.set_slot(
         convert_to_player_slot_id(InventoryKind::Generic9x3, 50),
         ItemStack::new(ItemKind::IronIngot, 32, None),
     );
+
     let _inventory_ent = set_up_open_inventory(&mut app, client_ent);
 
     app.update();
@@ -933,13 +945,13 @@ fn should_drop_item_stack_player_open_inventory_with_dropkey() {
     let state_id = inv_state.state_id().0;
     let window_id = inv_state.window_id();
 
-    client_helper.send(&valence_core::packet::c2s::play::ClickSlotC2s {
+    client_helper.send(&ClickSlotC2s {
         window_id,
-        slot_idx: 50,
-        button: 1, // pressing control, the whole stack is dropped
-        mode: ClickMode::DropKey,
         state_id: VarInt(state_id),
-        slot_changes: vec![Slot {
+        slot_idx: 50, // pressing control, the whole stack is dropped
+        button: 1,
+        mode: ClickMode::DropKey,
+        slot_changes: vec![SlotChange {
             idx: 50,
             item: None,
         }],
@@ -953,11 +965,14 @@ fn should_drop_item_stack_player_open_inventory_with_dropkey() {
         .world
         .get_resource::<Events<DropItemStack>>()
         .expect("expected drop item stack events");
+
     let player_inventory = app
         .world
         .get::<Inventory>(client_ent)
         .expect("could not find inventory");
+
     let events = events.iter_current_update_events().collect::<Vec<_>>();
+
     assert_eq!(events.len(), 1);
     assert_eq!(events[0].client, client_ent);
     assert_eq!(
@@ -968,6 +983,7 @@ fn should_drop_item_stack_player_open_inventory_with_dropkey() {
         events[0].stack,
         ItemStack::new(ItemKind::IronIngot, 32, None)
     );
+
     // Also make sure that the player inventory was updated correctly.
     let expected_player_slot_id = convert_to_player_slot_id(InventoryKind::Generic9x3, 50);
     assert_eq!(player_inventory.slot(expected_player_slot_id), None);
@@ -996,15 +1012,15 @@ fn dragging_items() {
         button: 2,
         mode: ClickMode::Drag,
         slot_changes: vec![
-            Slot {
+            SlotChange {
                 idx: 9,
                 item: Some(ItemStack::new(ItemKind::Diamond, 21, None)),
             },
-            Slot {
+            SlotChange {
                 idx: 10,
                 item: Some(ItemStack::new(ItemKind::Diamond, 21, None)),
             },
-            Slot {
+            SlotChange {
                 idx: 11,
                 item: Some(ItemStack::new(ItemKind::Diamond, 21, None)),
             },
@@ -1015,20 +1031,23 @@ fn dragging_items() {
 
     app.update();
     let sent_packets = client_helper.collect_sent();
-    assert_eq!(sent_packets.len(), 0);
+    assert_eq!(sent_packets.0.len(), 0);
 
     let cursor_item = app
         .world
         .get::<CursorItem>(client_ent)
         .expect("could not find client");
+
     assert_eq!(
         cursor_item.0,
         Some(ItemStack::new(ItemKind::Diamond, 1, None))
     );
+
     let inventory = app
         .world
         .get::<Inventory>(client_ent)
         .expect("could not find inventory");
+
     for i in 9..12 {
         assert_eq!(
             inventory.slot(i),

@@ -11,7 +11,7 @@ use serde::de::Error as _;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 
-use crate::packet::{Decode, Encode};
+use crate::protocol::{Decode, Encode};
 
 #[doc(hidden)]
 pub mod __private {

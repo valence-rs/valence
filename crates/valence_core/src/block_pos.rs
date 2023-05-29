@@ -3,7 +3,7 @@ use std::io::Write;
 use anyhow::bail;
 
 use crate::direction::Direction;
-use crate::packet::{Decode, Encode};
+use crate::protocol::{Decode, Encode};
 
 /// Represents an absolute block position in world space.
 #[derive(Clone, Copy, Default, PartialEq, Eq, Hash, Debug)]

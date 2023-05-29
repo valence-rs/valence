@@ -2,8 +2,8 @@ use std::hint::black_box;
 
 use criterion::Criterion;
 use rand::Rng;
-use valence::packet::var_long::VarLong;
-use valence::packet::{Decode, Encode};
+use valence::protocol::var_long::VarLong;
+use valence::protocol::{Decode, Encode};
 
 pub fn var_long(c: &mut Criterion) {
     let mut rng = rand::thread_rng();
