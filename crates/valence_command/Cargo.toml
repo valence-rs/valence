@@ -1,5 +1,5 @@
 [package]
-name = "valence_brigadier"
+name = "valence_command"
 version.workspace = true
 edition.workspace = true
 
