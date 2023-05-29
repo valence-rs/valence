@@ -202,7 +202,7 @@ mod tests {
     use bytes::BytesMut;
 
     use super::*;
-    use crate::protocol::decode::{decode_packet, PacketDecoder};
+    use crate::protocol::decode::PacketDecoder;
     use crate::protocol::encode::PacketEncoder;
 
     #[derive(Encode, Decode, Packet, Debug)]

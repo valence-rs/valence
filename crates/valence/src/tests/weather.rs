@@ -1,50 +1,9 @@
 use bevy_app::App;
+use valence_client::packet::GameStateChangeS2c;
 use valence_client::weather::{Rain, Thunder};
 use valence_client::Client;
-use valence_core::packet::s2c::play::game_state_change::GameEventKind;
-use valence_core::packet::s2c::play::{GameStateChangeS2c, S2cPlayPacket};
 
 use super::*;
-
-fn assert_weather_packets(sent_packets: Vec<S2cPlayPacket>) {
-    assert_packet_count!(sent_packets, 6, S2cPlayPacket::GameStateChangeS2c(_));
-
-    assert_packet_order!(
-        sent_packets,
-        S2cPlayPacket::GameStateChangeS2c(GameStateChangeS2c {
-            kind: GameEventKind::BeginRaining,
-            value: _
-        }),
-        S2cPlayPacket::GameStateChangeS2c(GameStateChangeS2c {
-            kind: GameEventKind::RainLevelChange,
-            value: _
-        }),
-        S2cPlayPacket::GameStateChangeS2c(GameStateChangeS2c {
-            kind: GameEventKind::ThunderLevelChange,
-            value: _
-        }),
-        S2cPlayPacket::GameStateChangeS2c(GameStateChangeS2c {
-            kind: GameEventKind::EndRaining,
-            value: _
-        })
-    );
-
-    if let S2cPlayPacket::GameStateChangeS2c(pkt) = sent_packets[1] {
-        assert_eq!(pkt.value, 0.5);
-    }
-
-    if let S2cPlayPacket::GameStateChangeS2c(pkt) = sent_packets[2] {
-        assert_eq!(pkt.value, 1.0);
-    }
-
-    if let S2cPlayPacket::GameStateChangeS2c(pkt) = sent_packets[3] {
-        assert_eq!(pkt.value, 0.5);
-    }
-
-    if let S2cPlayPacket::GameStateChangeS2c(pkt) = sent_packets[4] {
-        assert_eq!(pkt.value, 1.0);
-    }
-}
 
 #[test]
 fn test_weather_instance() {
@@ -138,4 +97,9 @@ fn test_weather_client() {
     let sent_packets = client_helper.collect_sent();
 
     assert_weather_packets(sent_packets);
+}
+
+#[track_caller]
+fn assert_weather_packets(sent_packets: PacketFrames) {
+    sent_packets.assert_count::<GameStateChangeS2c>(6);
 }

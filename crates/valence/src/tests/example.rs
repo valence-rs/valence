@@ -6,8 +6,8 @@
 //! Some of the tests in this file may be inferior duplicates of real tests.
 
 use bevy_app::App;
-use valence_core::packet::c2s::play::PositionAndOnGround;
-use valence_core::packet::s2c::play::S2cPlayPacket;
+use valence_client::movement::PositionAndOnGroundC2s;
+use valence_inventory::packet::{InventoryS2c, OpenScreenS2c};
 
 use super::*;
 use crate::prelude::*;
@@ -35,7 +35,7 @@ fn example_test_client_position() {
     let (client_ent, mut client_helper) = scenario_single_client(&mut app);
 
     // Send a packet as the client to the server.
-    let packet = PositionAndOnGround {
+    let packet = PositionAndOnGroundC2s {
         position: DVec3::new(12.0, 64.0, 0.0),
         on_ground: true,
     };
@@ -76,13 +76,11 @@ fn example_test_open_inventory() {
     app.world
         .get::<Client>(client_ent)
         .expect("client not found");
+
     let sent_packets = client_helper.collect_sent();
 
-    assert_packet_count!(sent_packets, 1, S2cPlayPacket::OpenScreenS2c(_));
-    assert_packet_count!(sent_packets, 1, S2cPlayPacket::InventoryS2c(_));
-    assert_packet_order!(
-        sent_packets,
-        S2cPlayPacket::OpenScreenS2c(_),
-        S2cPlayPacket::InventoryS2c(_)
-    );
+    sent_packets.assert_count::<OpenScreenS2c>(1);
+    sent_packets.assert_count::<InventoryS2c>(1);
+
+    sent_packets.assert_order::<(OpenScreenS2c, InventoryS2c)>();
 }

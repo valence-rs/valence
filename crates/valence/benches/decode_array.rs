@@ -1,7 +1,7 @@
 use std::hint::black_box;
 
 use criterion::Criterion;
-use valence::packet::{Decode, Encode};
+use valence::protocol::{Decode, Encode};
 
 pub fn decode_array(c: &mut Criterion) {
     let floats = [123.0, 456.0, 789.0];

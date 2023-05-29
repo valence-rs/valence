@@ -37,4 +37,3 @@ impl<'a> From<RawBytes<'a>> for &'a [u8] {
         value.0
     }
 }
-

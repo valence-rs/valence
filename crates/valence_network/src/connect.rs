@@ -411,7 +411,8 @@ fn login_bungeecord(
     };
 
     // Read properties and get textures
-    // Properties of player's game profile, only given if ip_forward and online_mode on bungee both are true
+    // Properties of player's game profile, only given if ip_forward and online_mode
+    // on bungee both are true
     let properties: Vec<Property> = match data.get(3) {
         Some(properties) => serde_json::from_str(properties)
             .context("failed to parse BungeeCord player properties")?,
