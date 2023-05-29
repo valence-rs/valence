@@ -36,7 +36,7 @@ pub struct QueryPingC2s {
 pub struct QueryRequestC2s;
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::QUERY_RESPONSE_S2C)]
+#[packet(id = packet_id::QUERY_PONG_S2C)]
 pub struct QueryPongS2c {
     pub payload: u64,
 }
