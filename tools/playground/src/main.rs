@@ -16,6 +16,7 @@
     clippy::dbg_macro
 )]
 
+use clap::Parser;
 use tracing::Level;
 use valence::app::App;
 
@@ -23,9 +24,17 @@ use valence::app::App;
 mod extras;
 mod playground;
 
+#[derive(Parser)]
+struct Args {
+    #[arg(short, default_value_t = Level::DEBUG)]
+    log_level: Level,
+}
+
 fn main() {
+    let args = Args::parse();
+
     tracing_subscriber::fmt()
-        .with_max_level(Level::DEBUG)
+        .with_max_level(args.log_level)
         .init();
 
     let mut app = App::new();

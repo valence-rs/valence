@@ -4,7 +4,7 @@ use std::io;
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use anyhow::{anyhow, bail, ensure, Context};
+use anyhow::{bail, ensure, Context};
 use base64::prelude::*;
 use hmac::digest::Update;
 use hmac::{Hmac, Mac};
@@ -227,7 +227,9 @@ async fn handle_login(
     let info = match shared.connection_mode() {
         ConnectionMode::Online { .. } => login_online(shared, conn, remote_addr, username).await?,
         ConnectionMode::Offline => login_offline(remote_addr, username)?,
-        ConnectionMode::BungeeCord => login_bungeecord(&handshake.server_address, username)?,
+        ConnectionMode::BungeeCord => {
+            login_bungeecord(remote_addr, &handshake.server_address, username)?
+        }
         ConnectionMode::Velocity { secret } => login_velocity(conn, username, secret).await?,
     };
 
@@ -372,11 +374,15 @@ fn auth_digest(bytes: &[u8]) -> String {
     BigInt::from_signed_bytes_be(bytes).to_str_radix(16)
 }
 
+fn offline_uuid(username: &str) -> anyhow::Result<Uuid> {
+    Uuid::from_slice(&Sha256::digest(username)[..16]).map_err(Into::into)
+}
+
 /// Login procedure for offline mode.
 fn login_offline(remote_addr: SocketAddr, username: String) -> anyhow::Result<NewClientInfo> {
     Ok(NewClientInfo {
         // Derive the client's UUID from a hash of their username.
-        uuid: Uuid::from_slice(&Sha256::digest(username.as_str())[..16])?,
+        uuid: offline_uuid(username.as_str())?,
         username,
         properties: vec![].into(),
         ip: remote_addr.ip(),
@@ -384,24 +390,39 @@ fn login_offline(remote_addr: SocketAddr, username: String) -> anyhow::Result<Ne
 }
 
 /// Login procedure for BungeeCord.
-fn login_bungeecord(server_address: &str, username: String) -> anyhow::Result<NewClientInfo> {
+fn login_bungeecord(
+    remote_addr: SocketAddr,
+    server_address: &str,
+    username: String,
+) -> anyhow::Result<NewClientInfo> {
     // Get data from server_address field of the handshake
-    let [_, client_ip, uuid, properties]: [&str; 4] = server_address
-        .split('\0')
-        .take(4)
-        .collect::<Vec<_>>()
-        .try_into()
-        .map_err(|_| anyhow!("malformed BungeeCord server address data"))?;
+    let data = server_address.split('\0').take(4).collect::<Vec<_>>();
+
+    // Ip of player, only given if ip_forward on bungee is true
+    let ip = match data.get(1) {
+        Some(ip) => ip.parse()?,
+        None => remote_addr.ip(),
+    };
+
+    // Uuid of player, only given if ip_forward on bungee is true
+    let uuid = match data.get(2) {
+        Some(uuid) => uuid.parse()?,
+        None => offline_uuid(username.as_str())?,
+    };
 
     // Read properties and get textures
-    let properties: Vec<Property> =
-        serde_json::from_str(properties).context("failed to parse BungeeCord player properties")?;
+    // Properties of player's game profile, only given if ip_forward and online_mode on bungee both are true
+    let properties: Vec<Property> = match data.get(3) {
+        Some(properties) => serde_json::from_str(properties)
+            .context("failed to parse BungeeCord player properties")?,
+        None => vec![],
+    };
 
     Ok(NewClientInfo {
-        uuid: uuid.parse()?,
+        uuid,
         username,
         properties: properties.into(),
-        ip: client_ip.parse()?,
+        ip,
     })
 }
 
