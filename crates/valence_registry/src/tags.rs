@@ -26,7 +26,7 @@ pub struct TagEntry {
 }
 
 impl TagsRegistry {
-    pub(crate) fn build_synchronize_tags<'a>(&'a self) -> SynchronizeTagsS2c<'a> {
+    pub(crate) fn build_synchronize_tags(&self) -> SynchronizeTagsS2c<'_> {
         SynchronizeTagsS2c {
             tags: self
                 .registries
