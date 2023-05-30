@@ -25,6 +25,10 @@ use tracing::error;
 use valence_core::ident::Ident;
 use valence_nbt::{compound, Compound, List, Value};
 
+mod tags;
+
+pub use tags::*;
+
 pub struct RegistryPlugin;
 
 /// The [`SystemSet`] where the [`RegistryCodec`] cache is rebuilt. Systems that
@@ -35,8 +39,11 @@ pub struct RegistryCodecSet;
 impl Plugin for RegistryPlugin {
     fn build(&self, app: &mut bevy_app::App) {
         app.init_resource::<RegistryCodec>()
+            .init_resource::<TagsRegistry>()
             .configure_set(RegistryCodecSet.in_base_set(CoreSet::PostUpdate))
-            .add_system(cache_registry_codec.in_set(RegistryCodecSet));
+            .add_startup_system(init_tags_registry.in_set(RegistryCodecSet))
+            .add_system(cache_registry_codec.in_set(RegistryCodecSet))
+            .add_system(cache_tags_packet.in_set(RegistryCodecSet));
     }
 }
 
@@ -159,6 +166,24 @@ impl Default for RegistryCodec {
             registries,
             // Cache will be created later.
             cached_codec: Compound::new(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn smoke_test() {
+        let mut app = bevy_app::App::new();
+        app.add_plugin(RegistryPlugin);
+        app.update();
+
+        let registry_codec = app.world.get_resource::<RegistryCodec>().unwrap();
+
+        for registry in registry_codec.registries.iter() {
+            println!("registry: {}", registry.0);
         }
     }
 }

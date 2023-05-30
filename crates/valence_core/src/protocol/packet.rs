@@ -1392,6 +1392,6 @@ pub mod synchronize_tags {
     #[derive(Clone, PartialEq, Eq, Debug, Encode, Decode)]
     pub struct Tag<'a> {
         pub name: Ident<Cow<'a, str>>,
-        pub entries: Vec<VarInt>,
+        pub entries: Vec<u64>,
     }
 }

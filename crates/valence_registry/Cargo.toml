@@ -9,3 +9,6 @@ valence_core.workspace = true
 valence_nbt.workspace = true
 bevy_ecs.workspace = true
 bevy_app.workspace = true
+bytes.workspace = true
+serde.workspace = true
+serde_json.workspace = true

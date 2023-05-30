@@ -67,7 +67,7 @@ use valence_instance::packet::{
     ChunkLoadDistanceS2c, ChunkRenderDistanceCenterS2c, UnloadChunkS2c,
 };
 use valence_instance::{ClearInstanceChangesSet, Instance, WriteUpdatePacketsToInstancesSet};
-use valence_registry::{RegistryCodec, RegistryCodecSet};
+use valence_registry::{RegistryCodec, RegistryCodecSet, TagsRegistry};
 
 pub mod action;
 pub mod chat;
@@ -678,6 +678,7 @@ struct ClientJoinQuery {
 
 fn initial_join(
     codec: Res<RegistryCodec>,
+    tags: Res<TagsRegistry>,
     mut clients: Query<ClientJoinQuery, Added<Client>>,
     instances: Query<&Instance>,
     mut commands: Commands,
@@ -723,6 +724,8 @@ fn initial_join(
             is_flat: q.is_flat.0,
             last_death_location,
         });
+
+        q.client.enc.append_bytes(tags.sync_tags_packet());
 
         /*
         // TODO: enable all the features?
