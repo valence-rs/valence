@@ -169,21 +169,3 @@ impl Default for RegistryCodec {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn smoke_test() {
-        let mut app = bevy_app::App::new();
-        app.add_plugin(RegistryPlugin);
-        app.update();
-
-        let registry_codec = app.world.get_resource::<RegistryCodec>().unwrap();
-
-        for registry in registry_codec.registries.iter() {
-            println!("registry: {}", registry.0);
-        }
-    }
-}

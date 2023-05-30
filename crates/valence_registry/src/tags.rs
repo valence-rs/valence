@@ -90,6 +90,6 @@ mod tests {
 
         let tags_registry = app.world.get_resource::<TagsRegistry>().unwrap();
         let packet = tags_registry.build_synchronize_tags();
-        assert!(packet.tags.len() > 0);
+        assert!(!packet.tags.is_empty());
     }
 }
