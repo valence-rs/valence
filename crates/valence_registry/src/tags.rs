@@ -2,8 +2,8 @@ use bevy_ecs::prelude::*;
 use bytes::Bytes;
 use serde::Deserialize;
 use valence_core::ident::Ident;
+use valence_core::protocol::encode::encode_packet;
 use valence_core::protocol::packet::synchronize_tags::*;
-use valence_core::protocol::Encode;
 
 #[derive(Debug, Resource)]
 pub struct TagsRegistry {
@@ -63,9 +63,7 @@ pub fn cache_tags_packet(tags: ResMut<TagsRegistry>) {
         let tags = tags.into_inner();
         let packet = tags.build_synchronize_tags();
         let mut bytes = vec![];
-        packet
-            .encode(&mut bytes)
-            .expect("failed to encode tags packet");
+        encode_packet(&mut bytes, &packet).expect("failed to encode tags packet");
         tags.cached_packet = bytes.into();
     }
 }
