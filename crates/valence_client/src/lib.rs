@@ -678,7 +678,7 @@ struct ClientJoinQuery {
 
 fn initial_join(
     codec: Res<RegistryCodec>,
-    tags: Res<TagsRegistry>,
+    tags: Res<TagsRegistry<'static>>,
     mut clients: Query<ClientJoinQuery, Added<Client>>,
     instances: Query<&Instance>,
     mut commands: Commands,
