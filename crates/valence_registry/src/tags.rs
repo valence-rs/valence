@@ -11,28 +11,28 @@ use valence_core::Server;
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 #[packet(id = packet_id::SYNCHRONIZE_TAGS_S2C)]
 pub struct SynchronizeTagsS2c<'a> {
-    pub registries: Cow<'a, [Registry<'a>]>,
+    pub registries: Cow<'a, [Registry]>,
 }
 
 #[derive(Debug, Resource, Default)]
-pub struct TagsRegistry<'a> {
-    pub registries: Vec<Registry<'a>>,
+pub struct TagsRegistry {
+    pub registries: Vec<Registry>,
     cached_packet: Vec<u8>,
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq, Eq, Encode, Decode)]
-pub struct Registry<'a> {
-    pub registry: Ident<Cow<'a, str>>,
-    pub tags: Vec<TagEntry<'a>>,
+pub struct Registry {
+    pub registry: Ident<String>,
+    pub tags: Vec<TagEntry>,
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq, Eq, Encode, Decode)]
-pub struct TagEntry<'a> {
-    pub name: Ident<Cow<'a, str>>,
+pub struct TagEntry {
+    pub name: Ident<String>,
     pub entries: Vec<VarInt>,
 }
 
-impl<'a> TagsRegistry<'a> {
+impl<'a> TagsRegistry {
     pub(crate) fn build_synchronize_tags(&'a self) -> SynchronizeTagsS2c<'a> {
         SynchronizeTagsS2c {
             registries: Cow::Borrowed(&self.registries),
@@ -44,14 +44,14 @@ impl<'a> TagsRegistry<'a> {
     }
 }
 
-pub(crate) fn init_tags_registry(mut tags: ResMut<TagsRegistry<'static>>) {
+pub(crate) fn init_tags_registry(mut tags: ResMut<TagsRegistry>) {
     let registries =
         serde_json::from_str::<Vec<Registry>>(include_str!("../../../extracted/tags.json"))
             .expect("tags.json is invalid");
     tags.registries = registries;
 }
 
-pub(crate) fn cache_tags_packet(server: Res<Server>, tags: ResMut<TagsRegistry<'static>>) {
+pub(crate) fn cache_tags_packet(server: Res<Server>, tags: ResMut<TagsRegistry>) {
     if tags.is_changed() {
         let tags = tags.into_inner();
         let packet = tags.build_synchronize_tags();
