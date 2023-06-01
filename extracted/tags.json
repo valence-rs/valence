@@ -4,7 +4,7 @@
     "tags": [
       {
         "name": "minecraft:placeable",
-        "values": [
+        "entries": [
           0,
           1,
           2,
@@ -40,7 +40,7 @@
     "tags": [
       {
         "name": "c:climate_wet",
-        "values": [
+        "entries": [
           10,
           11,
           8,
@@ -62,7 +62,7 @@
       },
       {
         "name": "minecraft:has_structure/nether_fortress",
-        "values": [
+        "entries": [
           33,
           47,
           6,
@@ -72,7 +72,7 @@
       },
       {
         "name": "minecraft:water_on_map_outlines",
-        "values": [
+        "entries": [
           10,
           8,
           12,
@@ -90,21 +90,21 @@
       },
       {
         "name": "minecraft:is_river",
-        "values": [
+        "entries": [
           39,
           23
         ]
       },
       {
         "name": "c:nether_forests",
-        "values": [
+        "entries": [
           57,
           6
         ]
       },
       {
         "name": "minecraft:has_structure/mineshaft",
-        "values": [
+        "entries": [
           10,
           8,
           12,
@@ -157,20 +157,20 @@
       },
       {
         "name": "minecraft:has_structure/jungle_temple",
-        "values": [
+        "entries": [
           1,
           27
         ]
       },
       {
         "name": "c:mushroom",
-        "values": [
+        "entries": [
           32
         ]
       },
       {
         "name": "c:in_nether",
-        "values": [
+        "entries": [
           33,
           47,
           6,
@@ -180,7 +180,7 @@
       },
       {
         "name": "c:tree_coniferous",
-        "values": [
+        "entries": [
           24,
           53,
           46,
@@ -190,7 +190,7 @@
       },
       {
         "name": "c:mountain",
-        "values": [
+        "entries": [
           31,
           22,
           26,
@@ -200,7 +200,7 @@
       },
       {
         "name": "c:savanna",
-        "values": [
+        "entries": [
           40,
           41,
           61
@@ -208,7 +208,7 @@
       },
       {
         "name": "minecraft:is_jungle",
-        "values": [
+        "entries": [
           1,
           27,
           48
@@ -216,7 +216,7 @@
       },
       {
         "name": "minecraft:is_ocean",
-        "values": [
+        "entries": [
           10,
           8,
           12,
@@ -230,7 +230,7 @@
       },
       {
         "name": "c:caves",
-        "values": [
+        "entries": [
           9,
           14,
           29
@@ -238,21 +238,21 @@
       },
       {
         "name": "c:floral",
-        "values": [
+        "entries": [
           51,
           19
         ]
       },
       {
         "name": "minecraft:has_structure/buried_treasure",
-        "values": [
+        "entries": [
           3,
           43
         ]
       },
       {
         "name": "minecraft:has_structure/ocean_ruin_cold",
-        "values": [
+        "entries": [
           21,
           5,
           34,
@@ -263,13 +263,13 @@
       },
       {
         "name": "minecraft:produces_corals_from_bonemeal",
-        "values": [
+        "entries": [
           56
         ]
       },
       {
         "name": "c:badlands",
-        "values": [
+        "entries": [
           62,
           18,
           0
@@ -277,7 +277,7 @@
       },
       {
         "name": "minecraft:has_structure/stronghold",
-        "values": [
+        "entries": [
           32,
           10,
           21,
@@ -334,7 +334,7 @@
       },
       {
         "name": "minecraft:has_structure/mineshaft_mesa",
-        "values": [
+        "entries": [
           0,
           18,
           62
@@ -342,13 +342,13 @@
       },
       {
         "name": "minecraft:has_structure/ancient_city",
-        "values": [
+        "entries": [
           9
         ]
       },
       {
         "name": "c:underground",
-        "values": [
+        "entries": [
           9,
           14,
           29
@@ -356,7 +356,7 @@
       },
       {
         "name": "minecraft:has_structure/shipwreck",
-        "values": [
+        "entries": [
           10,
           8,
           12,
@@ -370,13 +370,13 @@
       },
       {
         "name": "c:snowy_plains",
-        "values": [
+        "entries": [
           44
         ]
       },
       {
         "name": "minecraft:is_savanna",
-        "values": [
+        "entries": [
           40,
           41,
           61
@@ -384,7 +384,7 @@
       },
       {
         "name": "c:vegetation_dense",
-        "values": [
+        "entries": [
           1,
           27,
           48,
@@ -393,7 +393,7 @@
       },
       {
         "name": "c:jungle",
-        "values": [
+        "entries": [
           1,
           27,
           48
@@ -401,7 +401,7 @@
       },
       {
         "name": "minecraft:has_structure/igloo",
-        "values": [
+        "entries": [
           46,
           44,
           45
@@ -409,18 +409,18 @@
       },
       {
         "name": "minecraft:has_structure/shipwreck_beached",
-        "values": [
+        "entries": [
           3,
           43
         ]
       },
       {
         "name": "c:wasteland",
-        "values": []
+        "entries": []
       },
       {
         "name": "minecraft:is_hill",
-        "values": [
+        "entries": [
           60,
           58,
           59
@@ -428,7 +428,7 @@
       },
       {
         "name": "c:forest",
-        "values": [
+        "entries": [
           20,
           19,
           4,
@@ -439,22 +439,22 @@
       },
       {
         "name": "c:end_islands",
-        "values": []
+        "entries": []
       },
       {
         "name": "c:dead",
-        "values": []
+        "entries": []
       },
       {
         "name": "minecraft:allows_surface_slime_spawns",
-        "values": [
+        "entries": [
           52,
           30
         ]
       },
       {
         "name": "c:deep_ocean",
-        "values": [
+        "entries": [
           10,
           11,
           8,
@@ -463,14 +463,14 @@
       },
       {
         "name": "c:swamp",
-        "values": [
+        "entries": [
           30,
           52
         ]
       },
       {
         "name": "minecraft:required_ocean_monument_surrounding",
-        "values": [
+        "entries": [
           10,
           8,
           12,
@@ -486,7 +486,7 @@
       },
       {
         "name": "c:in_overworld",
-        "values": [
+        "entries": [
           32,
           10,
           21,
@@ -543,7 +543,7 @@
       },
       {
         "name": "c:tree_jungle",
-        "values": [
+        "entries": [
           1,
           27,
           48
@@ -551,7 +551,7 @@
       },
       {
         "name": "minecraft:has_structure/ocean_monument",
-        "values": [
+        "entries": [
           10,
           8,
           12,
@@ -560,7 +560,7 @@
       },
       {
         "name": "minecraft:spawns_white_rabbits",
-        "values": [
+        "entries": [
           44,
           25,
           21,
@@ -575,7 +575,7 @@
       },
       {
         "name": "minecraft:has_structure/ruined_portal_jungle",
-        "values": [
+        "entries": [
           1,
           27,
           48
@@ -583,7 +583,7 @@
       },
       {
         "name": "c:climate_cold",
-        "values": [
+        "entries": [
           44,
           24,
           26,
@@ -597,7 +597,7 @@
       },
       {
         "name": "minecraft:plays_underwater_music",
-        "values": [
+        "entries": [
           10,
           8,
           12,
@@ -613,13 +613,13 @@
       },
       {
         "name": "minecraft:has_structure/desert_pyramid",
-        "values": [
+        "entries": [
           13
         ]
       },
       {
         "name": "minecraft:has_structure/ruined_portal_ocean",
-        "values": [
+        "entries": [
           10,
           8,
           12,
@@ -633,7 +633,7 @@
       },
       {
         "name": "c:in_the_end",
-        "values": [
+        "entries": [
           54,
           16,
           17,
@@ -643,7 +643,7 @@
       },
       {
         "name": "minecraft:is_deep_ocean",
-        "values": [
+        "entries": [
           10,
           8,
           12,
@@ -652,14 +652,14 @@
       },
       {
         "name": "c:river",
-        "values": [
+        "entries": [
           39,
           23
         ]
       },
       {
         "name": "c:windswept",
-        "values": [
+        "entries": [
           60,
           59,
           58,
@@ -668,7 +668,7 @@
       },
       {
         "name": "minecraft:is_nether",
-        "values": [
+        "entries": [
           33,
           47,
           6,
@@ -678,7 +678,7 @@
       },
       {
         "name": "c:climate_hot",
-        "values": [
+        "entries": [
           1,
           27,
           48,
@@ -700,13 +700,13 @@
       },
       {
         "name": "c:desert",
-        "values": [
+        "entries": [
           13
         ]
       },
       {
         "name": "minecraft:increased_fire_burnout",
-        "values": [
+        "entries": [
           1,
           32,
           30,
@@ -719,13 +719,13 @@
       },
       {
         "name": "minecraft:has_structure/woodland_mansion",
-        "values": [
+        "entries": [
           7
         ]
       },
       {
         "name": "c:mountain_peak",
-        "values": [
+        "entries": [
           22,
           26,
           49
@@ -733,7 +733,7 @@
       },
       {
         "name": "minecraft:has_structure/ocean_ruin_warm",
-        "values": [
+        "entries": [
           28,
           56,
           11
@@ -741,7 +741,7 @@
       },
       {
         "name": "c:shallow_ocean",
-        "values": [
+        "entries": [
           34,
           28,
           21,
@@ -751,13 +751,13 @@
       },
       {
         "name": "c:flower_forests",
-        "values": [
+        "entries": [
           19
         ]
       },
       {
         "name": "c:tree_deciduous",
-        "values": [
+        "entries": [
           20,
           58,
           19,
@@ -768,20 +768,20 @@
       },
       {
         "name": "minecraft:has_structure/village_desert",
-        "values": [
+        "entries": [
           13
         ]
       },
       {
         "name": "minecraft:more_frequent_drowned_spawns",
-        "values": [
+        "entries": [
           39,
           23
         ]
       },
       {
         "name": "c:tree_savanna",
-        "values": [
+        "entries": [
           40,
           41,
           61
@@ -789,7 +789,7 @@
       },
       {
         "name": "minecraft:spawns_snow_foxes",
-        "values": [
+        "entries": [
           44,
           25,
           21,
@@ -804,7 +804,7 @@
       },
       {
         "name": "minecraft:is_forest",
-        "values": [
+        "entries": [
           20,
           19,
           4,
@@ -815,7 +815,7 @@
       },
       {
         "name": "minecraft:is_overworld",
-        "values": [
+        "entries": [
           32,
           10,
           21,
@@ -872,77 +872,77 @@
       },
       {
         "name": "minecraft:has_structure/village_savanna",
-        "values": [
+        "entries": [
           40
         ]
       },
       {
         "name": "c:icy",
-        "values": [
+        "entries": [
           22,
           25
         ]
       },
       {
         "name": "c:stony_shores",
-        "values": [
+        "entries": [
           50
         ]
       },
       {
         "name": "minecraft:without_patrol_spawns",
-        "values": [
+        "entries": [
           32
         ]
       },
       {
         "name": "c:mountain_slope",
-        "values": [
+        "entries": [
           45
         ]
       },
       {
         "name": "minecraft:has_structure/village_taiga",
-        "values": [
+        "entries": [
           53
         ]
       },
       {
         "name": "minecraft:allows_tropical_fish_spawns_at_any_height",
-        "values": [
+        "entries": [
           29
         ]
       },
       {
         "name": "c:void",
-        "values": [
+        "entries": [
           55
         ]
       },
       {
         "name": "minecraft:polar_bears_spawn_on_alternate_blocks",
-        "values": [
+        "entries": [
           21,
           10
         ]
       },
       {
         "name": "minecraft:has_closer_water_fog",
-        "values": [
+        "entries": [
           52,
           30
         ]
       },
       {
         "name": "minecraft:has_structure/village_plains",
-        "values": [
+        "entries": [
           38,
           31
         ]
       },
       {
         "name": "c:ocean",
-        "values": [
+        "entries": [
           10,
           11,
           8,
@@ -956,7 +956,7 @@
       },
       {
         "name": "minecraft:snow_golem_melts",
-        "values": [
+        "entries": [
           0,
           2,
           6,
@@ -973,32 +973,32 @@
       },
       {
         "name": "minecraft:without_wandering_trader_spawns",
-        "values": [
+        "entries": [
           55
         ]
       },
       {
         "name": "minecraft:has_structure/ruined_portal_desert",
-        "values": [
+        "entries": [
           13
         ]
       },
       {
         "name": "minecraft:has_structure/ruined_portal_swamp",
-        "values": [
+        "entries": [
           52,
           30
         ]
       },
       {
         "name": "minecraft:has_structure/swamp_hut",
-        "values": [
+        "entries": [
           52
         ]
       },
       {
         "name": "minecraft:spawns_cold_variant_frogs",
-        "values": [
+        "entries": [
           44,
           25,
           22,
@@ -1020,7 +1020,7 @@
       },
       {
         "name": "minecraft:has_structure/ruined_portal_nether",
-        "values": [
+        "entries": [
           33,
           47,
           6,
@@ -1030,7 +1030,7 @@
       },
       {
         "name": "minecraft:is_end",
-        "values": [
+        "entries": [
           54,
           16,
           17,
@@ -1040,7 +1040,7 @@
       },
       {
         "name": "c:climate_dry",
-        "values": [
+        "entries": [
           33,
           47,
           6,
@@ -1057,7 +1057,7 @@
       },
       {
         "name": "minecraft:stronghold_biased_to",
-        "values": [
+        "entries": [
           38,
           51,
           44,
@@ -1097,20 +1097,20 @@
       },
       {
         "name": "minecraft:without_zombie_sieges",
-        "values": [
+        "entries": [
           32
         ]
       },
       {
         "name": "minecraft:is_beach",
-        "values": [
+        "entries": [
           3,
           43
         ]
       },
       {
         "name": "minecraft:has_structure/ruined_portal_standard",
-        "values": [
+        "entries": [
           3,
           43,
           39,
@@ -1137,7 +1137,7 @@
       },
       {
         "name": "minecraft:has_structure/pillager_outpost",
-        "values": [
+        "entries": [
           13,
           38,
           40,
@@ -1153,14 +1153,14 @@
       },
       {
         "name": "c:birch_forest",
-        "values": [
+        "entries": [
           4,
           35
         ]
       },
       {
         "name": "c:mesa",
-        "values": [
+        "entries": [
           62,
           18,
           0
@@ -1168,7 +1168,7 @@
       },
       {
         "name": "minecraft:is_taiga",
-        "values": [
+        "entries": [
           53,
           46,
           36,
@@ -1177,7 +1177,7 @@
       },
       {
         "name": "minecraft:spawns_warm_variant_frogs",
-        "values": [
+        "entries": [
           13,
           56,
           1,
@@ -1199,13 +1199,13 @@
       },
       {
         "name": "minecraft:mineshaft_blocking",
-        "values": [
+        "entries": [
           9
         ]
       },
       {
         "name": "minecraft:is_mountain",
-        "values": [
+        "entries": [
           31,
           22,
           26,
@@ -1215,20 +1215,20 @@
       },
       {
         "name": "c:plains",
-        "values": [
+        "entries": [
           51,
           38
         ]
       },
       {
         "name": "minecraft:has_structure/village_snowy",
-        "values": [
+        "entries": [
           44
         ]
       },
       {
         "name": "c:snowy",
-        "values": [
+        "entries": [
           43,
           44,
           45,
@@ -1237,7 +1237,7 @@
       },
       {
         "name": "minecraft:is_badlands",
-        "values": [
+        "entries": [
           0,
           18,
           62
@@ -1245,7 +1245,7 @@
       },
       {
         "name": "c:climate_temperate",
-        "values": [
+        "entries": [
           20,
           51,
           52,
@@ -1260,13 +1260,13 @@
       },
       {
         "name": "minecraft:spawns_gold_rabbits",
-        "values": [
+        "entries": [
           13
         ]
       },
       {
         "name": "c:aquatic",
-        "values": [
+        "entries": [
           10,
           11,
           8,
@@ -1282,7 +1282,7 @@
       },
       {
         "name": "c:taiga",
-        "values": [
+        "entries": [
           53,
           46,
           36,
@@ -1291,7 +1291,7 @@
       },
       {
         "name": "c:aquatic_icy",
-        "values": [
+        "entries": [
           23,
           10,
           21
@@ -1299,13 +1299,13 @@
       },
       {
         "name": "minecraft:has_structure/nether_fossil",
-        "values": [
+        "entries": [
           47
         ]
       },
       {
         "name": "c:vegetation_sparse",
-        "values": [
+        "entries": [
           40,
           41,
           61,
@@ -1315,14 +1315,14 @@
       },
       {
         "name": "minecraft:has_structure/end_city",
-        "values": [
+        "entries": [
           16,
           17
         ]
       },
       {
         "name": "c:beach",
-        "values": [
+        "entries": [
           3,
           43,
           50
@@ -1330,21 +1330,21 @@
       },
       {
         "name": "c:extreme_hills",
-        "values": [
+        "entries": [
           59,
           60
         ]
       },
       {
         "name": "minecraft:reduce_water_ambient_spawns",
-        "values": [
+        "entries": [
           39,
           23
         ]
       },
       {
         "name": "minecraft:has_structure/bastion_remnant",
-        "values": [
+        "entries": [
           6,
           33,
           47,
@@ -1353,7 +1353,7 @@
       },
       {
         "name": "minecraft:has_structure/ruined_portal_mountain",
-        "values": [
+        "entries": [
           0,
           18,
           62,
@@ -1377,14 +1377,14 @@
     "tags": [
       {
         "name": "minecraft:bee_home",
-        "values": [
+        "entries": [
           15,
           16
         ]
       },
       {
         "name": "minecraft:acquirable_job_site",
-        "values": [
+        "entries": [
           0,
           1,
           2,
@@ -1402,7 +1402,7 @@
       },
       {
         "name": "minecraft:village",
-        "values": [
+        "entries": [
           0,
           1,
           2,
@@ -1427,7 +1427,7 @@
     "tags": [
       {
         "name": "minecraft:vibrations",
-        "values": [
+        "entries": [
           1,
           2,
           3,
@@ -1475,7 +1475,7 @@
       },
       {
         "name": "minecraft:ignore_vibrations_sneaking",
-        "values": [
+        "entries": [
           28,
           40,
           45,
@@ -1486,7 +1486,7 @@
       },
       {
         "name": "minecraft:warden_can_listen",
-        "values": [
+        "entries": [
           1,
           2,
           3,
@@ -1535,13 +1535,13 @@
       },
       {
         "name": "minecraft:allay_can_listen",
-        "values": [
+        "entries": [
           35
         ]
       },
       {
         "name": "minecraft:shrieker_can_listen",
-        "values": [
+        "entries": [
           41
         ]
       }
@@ -1552,7 +1552,7 @@
     "tags": [
       {
         "name": "minecraft:default_spawns",
-        "values": [
+        "entries": [
           0,
           1,
           2,
@@ -1567,7 +1567,7 @@
       },
       {
         "name": "minecraft:full_moon_spawns",
-        "values": [
+        "entries": [
           0,
           1,
           2,
@@ -1588,26 +1588,26 @@
     "tags": [
       {
         "name": "minecraft:always_most_significant_fall",
-        "values": [
+        "entries": [
           28
         ]
       },
       {
         "name": "minecraft:bypasses_effects",
-        "values": [
+        "entries": [
           33
         ]
       },
       {
         "name": "minecraft:is_fall",
-        "values": [
+        "entries": [
           8,
           32
         ]
       },
       {
         "name": "minecraft:bypasses_armor",
-        "values": [
+        "entries": [
           27,
           19,
           3,
@@ -1628,13 +1628,13 @@
       },
       {
         "name": "minecraft:ignites_armor_stands",
-        "values": [
+        "entries": [
           18
         ]
       },
       {
         "name": "minecraft:witch_resistant_to",
-        "values": [
+        "entries": [
           23,
           20,
           31,
@@ -1643,19 +1643,19 @@
       },
       {
         "name": "minecraft:bypasses_invulnerability",
-        "values": [
+        "entries": [
           28
         ]
       },
       {
         "name": "minecraft:burns_armor_stands",
-        "values": [
+        "entries": [
           27
         ]
       },
       {
         "name": "minecraft:avoids_guardian_thorns",
-        "values": [
+        "entries": [
           23,
           36,
           13,
@@ -1666,31 +1666,31 @@
       },
       {
         "name": "minecraft:bypasses_resistance",
-        "values": [
+        "entries": [
           28
         ]
       },
       {
         "name": "minecraft:no_anger",
-        "values": [
+        "entries": [
           25
         ]
       },
       {
         "name": "minecraft:is_drowning",
-        "values": [
+        "entries": [
           5
         ]
       },
       {
         "name": "minecraft:always_triggers_silverfish",
-        "values": [
+        "entries": [
           23
         ]
       },
       {
         "name": "minecraft:always_hurts_ender_dragons",
-        "values": [
+        "entries": [
           13,
           7,
           30,
@@ -1699,7 +1699,7 @@
       },
       {
         "name": "minecraft:is_fire",
-        "values": [
+        "entries": [
           18,
           27,
           21,
@@ -1710,7 +1710,7 @@
       },
       {
         "name": "minecraft:damages_helmet",
-        "values": [
+        "entries": [
           9,
           10,
           11
@@ -1718,7 +1718,7 @@
       },
       {
         "name": "minecraft:bypasses_shield",
-        "values": [
+        "entries": [
           27,
           19,
           3,
@@ -1741,19 +1741,19 @@
       },
       {
         "name": "minecraft:wither_immune_to",
-        "values": [
+        "entries": [
           5
         ]
       },
       {
         "name": "minecraft:no_impact",
-        "values": [
+        "entries": [
           5
         ]
       },
       {
         "name": "minecraft:is_explosion",
-        "values": [
+        "entries": [
           13,
           7,
           30,
@@ -1762,19 +1762,19 @@
       },
       {
         "name": "minecraft:is_lightning",
-        "values": [
+        "entries": [
           22
         ]
       },
       {
         "name": "minecraft:is_freezing",
-        "values": [
+        "entries": [
           15
         ]
       },
       {
         "name": "minecraft:is_projectile",
-        "values": [
+        "entries": [
           0,
           38,
           26,
@@ -1786,7 +1786,7 @@
       },
       {
         "name": "minecraft:bypasses_enchantments",
-        "values": [
+        "entries": [
           31
         ]
       }
@@ -1797,7 +1797,7 @@
     "tags": [
       {
         "name": "c:weapon_damage_enhancement",
-        "values": [
+        "entries": [
           15,
           31,
           14,
@@ -1807,7 +1807,7 @@
       },
       {
         "name": "c:entity_movement_enhancement",
-        "values": [
+        "entries": [
           12,
           8,
           11
@@ -1815,13 +1815,13 @@
       },
       {
         "name": "c:looting",
-        "values": [
+        "entries": [
           18
         ]
       },
       {
         "name": "c:entity_defense_enhancement",
-        "values": [
+        "entries": [
           2,
           0,
           3,
@@ -1832,7 +1832,7 @@
       },
       {
         "name": "c:fortune",
-        "values": [
+        "entries": [
           23
         ]
       }
@@ -1843,28 +1843,28 @@
     "tags": [
       {
         "name": "minecraft:soul_fire_base_blocks",
-        "values": [
+        "entries": [
           256,
           257
         ]
       },
       {
         "name": "minecraft:campfires",
-        "values": [
+        "entries": [
           782,
           783
         ]
       },
       {
         "name": "minecraft:infiniburn_nether",
-        "values": [
+        "entries": [
           255,
           604
         ]
       },
       {
         "name": "minecraft:wooden_slabs",
-        "values": [
+        "entries": [
           538,
           539,
           540,
@@ -1878,7 +1878,7 @@
       },
       {
         "name": "minecraft:snaps_goat_horn",
-        "values": [
+        "entries": [
           49,
           47,
           45,
@@ -1896,14 +1896,14 @@
       },
       {
         "name": "minecraft:coal_ores",
-        "values": [
+        "entries": [
           42,
           43
         ]
       },
       {
         "name": "minecraft:occludes_vibration_signals",
-        "values": [
+        "entries": [
           129,
           130,
           131,
@@ -1924,7 +1924,7 @@
       },
       {
         "name": "minecraft:replaceable_plants",
-        "values": [
+        "entries": [
           122,
           123,
           124,
@@ -1941,7 +1941,7 @@
       },
       {
         "name": "minecraft:small_flowers",
-        "values": [
+        "entries": [
           146,
           148,
           149,
@@ -1959,7 +1959,7 @@
       },
       {
         "name": "minecraft:azalea_root_replaceable",
-        "values": [
+        "entries": [
           1,
           2,
           4,
@@ -2002,7 +2002,7 @@
       },
       {
         "name": "minecraft:wooden_trapdoors",
-        "values": [
+        "entries": [
           288,
           286,
           290,
@@ -2016,14 +2016,14 @@
       },
       {
         "name": "minecraft:invalid_spawn_inside",
-        "values": [
+        "entries": [
           334,
           600
         ]
       },
       {
         "name": "minecraft:wolves_spawnable_on",
-        "values": [
+        "entries": [
           8,
           246,
           248
@@ -2031,7 +2031,7 @@
       },
       {
         "name": "minecraft:foxes_spawnable_on",
-        "values": [
+        "entries": [
           8,
           246,
           248,
@@ -2041,7 +2041,7 @@
       },
       {
         "name": "minecraft:wool",
-        "values": [
+        "entries": [
           129,
           130,
           131,
@@ -2062,7 +2062,7 @@
       },
       {
         "name": "minecraft:stairs",
-        "values": [
+        "entries": [
           175,
           347,
           348,
@@ -2117,7 +2117,7 @@
       },
       {
         "name": "minecraft:logs",
-        "values": [
+        "entries": [
           51,
           71,
           61,
@@ -2158,14 +2158,14 @@
       },
       {
         "name": "minecraft:beehives",
-        "values": [
+        "entries": [
           832,
           833
         ]
       },
       {
         "name": "minecraft:all_signs",
-        "values": [
+        "entries": [
           185,
           186,
           187,
@@ -2188,7 +2188,7 @@
       },
       {
         "name": "minecraft:ice",
-        "values": [
+        "entries": [
           247,
           495,
           720,
@@ -2197,7 +2197,7 @@
       },
       {
         "name": "minecraft:azalea_grows_on",
-        "values": [
+        "entries": [
           9,
           8,
           11,
@@ -2232,7 +2232,7 @@
       },
       {
         "name": "minecraft:wool_carpets",
-        "values": [
+        "entries": [
           477,
           478,
           479,
@@ -2253,7 +2253,7 @@
       },
       {
         "name": "minecraft:crops",
-        "values": [
+        "entries": [
           598,
           382,
           383,
@@ -2264,7 +2264,7 @@
       },
       {
         "name": "minecraft:dragon_immune",
-        "values": [
+        "entries": [
           463,
           31,
           334,
@@ -2286,7 +2286,7 @@
       },
       {
         "name": "minecraft:mangrove_roots_can_grow_through",
-        "values": [
+        "entries": [
           964,
           54,
           53,
@@ -2298,7 +2298,7 @@
       },
       {
         "name": "minecraft:features_cannot_replace",
-        "values": [
+        "entries": [
           31,
           174,
           176,
@@ -2308,14 +2308,14 @@
       },
       {
         "name": "minecraft:valid_spawn",
-        "values": [
+        "entries": [
           8,
           11
         ]
       },
       {
         "name": "minecraft:mushroom_grow_block",
-        "values": [
+        "entries": [
           322,
           11,
           798,
@@ -2324,7 +2324,7 @@
       },
       {
         "name": "minecraft:wooden_doors",
-        "values": [
+        "entries": [
           194,
           582,
           583,
@@ -2338,14 +2338,14 @@
       },
       {
         "name": "minecraft:crystal_sound_blocks",
-        "values": [
+        "entries": [
           899,
           900
         ]
       },
       {
         "name": "minecraft:warped_stems",
-        "values": [
+        "entries": [
           785,
           786,
           787,
@@ -2354,7 +2354,7 @@
       },
       {
         "name": "minecraft:standing_signs",
-        "values": [
+        "entries": [
           185,
           186,
           187,
@@ -2368,7 +2368,7 @@
       },
       {
         "name": "minecraft:infiniburn_end",
-        "values": [
+        "entries": [
           255,
           604,
           31
@@ -2376,14 +2376,14 @@
       },
       {
         "name": "minecraft:emerald_ores",
-        "values": [
+        "entries": [
           341,
           342
         ]
       },
       {
         "name": "minecraft:crimson_stems",
-        "values": [
+        "entries": [
           794,
           795,
           796,
@@ -2392,7 +2392,7 @@
       },
       {
         "name": "minecraft:needs_stone_tool",
-        "values": [
+        "entries": [
           163,
           987,
           40,
@@ -2440,7 +2440,7 @@
       },
       {
         "name": "minecraft:lava_pool_stone_cannot_replace",
-        "values": [
+        "entries": [
           31,
           174,
           176,
@@ -2495,7 +2495,7 @@
       },
       {
         "name": "minecraft:inside_step_sound_blocks",
-        "values": [
+        "entries": [
           246,
           908,
           911,
@@ -2526,7 +2526,7 @@
       },
       {
         "name": "minecraft:prevent_mob_spawning_inside",
-        "values": [
+        "entries": [
           196,
           118,
           119,
@@ -2535,7 +2535,7 @@
       },
       {
         "name": "minecraft:terracotta",
-        "values": [
+        "entries": [
           493,
           424,
           425,
@@ -2557,7 +2557,7 @@
       },
       {
         "name": "minecraft:climbable",
-        "values": [
+        "entries": [
           195,
           316,
           768,
@@ -2571,14 +2571,14 @@
       },
       {
         "name": "minecraft:wart_blocks",
-        "values": [
+        "entries": [
           605,
           791
         ]
       },
       {
         "name": "minecraft:parrots_spawnable_on",
-        "values": [
+        "entries": [
           8,
           0,
           84,
@@ -2630,7 +2630,7 @@
       },
       {
         "name": "minecraft:dark_oak_logs",
-        "values": [
+        "entries": [
           51,
           71,
           61,
@@ -2639,14 +2639,14 @@
       },
       {
         "name": "minecraft:frog_prefer_jump_to",
-        "values": [
+        "entries": [
           323,
           959
         ]
       },
       {
         "name": "minecraft:coral_plants",
-        "values": [
+        "entries": [
           694,
           695,
           696,
@@ -2656,7 +2656,7 @@
       },
       {
         "name": "minecraft:goats_spawnable_on",
-        "values": [
+        "entries": [
           8,
           1,
           246,
@@ -2667,7 +2667,7 @@
       },
       {
         "name": "c:chests",
-        "values": [
+        "entries": [
           176,
           343,
           410
@@ -2675,7 +2675,7 @@
       },
       {
         "name": "minecraft:sculk_replaceable_world_gen",
-        "values": [
+        "entries": [
           1,
           2,
           4,
@@ -2735,7 +2735,7 @@
       },
       {
         "name": "minecraft:beacon_base_blocks",
-        "values": [
+        "entries": [
           836,
           346,
           180,
@@ -2745,13 +2745,13 @@
       },
       {
         "name": "c:quartz_ores",
-        "values": [
+        "entries": [
           416
         ]
       },
       {
         "name": "minecraft:frogs_spawnable_on",
-        "values": [
+        "entries": [
           8,
           964,
           53,
@@ -2760,7 +2760,7 @@
       },
       {
         "name": "minecraft:shulker_boxes",
-        "values": [
+        "entries": [
           610,
           626,
           622,
@@ -2782,7 +2782,7 @@
       },
       {
         "name": "minecraft:anvil",
-        "values": [
+        "entries": [
           407,
           408,
           409
@@ -2790,7 +2790,7 @@
       },
       {
         "name": "minecraft:birch_logs",
-        "values": [
+        "entries": [
           47,
           67,
           57,
@@ -2799,7 +2799,7 @@
       },
       {
         "name": "minecraft:moss_replaceable",
-        "values": [
+        "entries": [
           1,
           2,
           4,
@@ -2821,14 +2821,14 @@
       },
       {
         "name": "minecraft:lapis_ores",
-        "values": [
+        "entries": [
           94,
           95
         ]
       },
       {
         "name": "minecraft:wall_corals",
-        "values": [
+        "entries": [
           714,
           715,
           716,
@@ -2838,7 +2838,7 @@
       },
       {
         "name": "minecraft:convertable_to_mud",
-        "values": [
+        "entries": [
           9,
           10,
           963
@@ -2846,7 +2846,7 @@
       },
       {
         "name": "minecraft:lush_ground_replaceable",
-        "values": [
+        "entries": [
           1,
           2,
           4,
@@ -2871,7 +2871,7 @@
       },
       {
         "name": "c:glass_panes",
-        "values": [
+        "entries": [
           310,
           447,
           455,
@@ -2893,7 +2893,7 @@
       },
       {
         "name": "minecraft:fences",
-        "values": [
+        "entries": [
           253,
           577,
           579,
@@ -2908,7 +2908,7 @@
       },
       {
         "name": "minecraft:saplings",
-        "values": [
+        "entries": [
           23,
           24,
           25,
@@ -2922,7 +2922,7 @@
       },
       {
         "name": "minecraft:mineable/pickaxe",
-        "values": [
+        "entries": [
           1,
           2,
           3,
@@ -3301,7 +3301,7 @@
       },
       {
         "name": "minecraft:beds",
-        "values": [
+        "entries": [
           116,
           117,
           113,
@@ -3322,14 +3322,14 @@
       },
       {
         "name": "minecraft:iron_ores",
-        "values": [
+        "entries": [
           40,
           41
         ]
       },
       {
         "name": "minecraft:oak_logs",
-        "values": [
+        "entries": [
           45,
           65,
           62,
@@ -3338,7 +3338,7 @@
       },
       {
         "name": "minecraft:unstable_bottom_center",
-        "values": [
+        "entries": [
           569,
           567,
           571,
@@ -3352,7 +3352,7 @@
       },
       {
         "name": "minecraft:doors",
-        "values": [
+        "entries": [
           194,
           582,
           583,
@@ -3367,7 +3367,7 @@
       },
       {
         "name": "minecraft:enderman_holdable",
-        "values": [
+        "entries": [
           146,
           148,
           149,
@@ -3411,7 +3411,7 @@
       },
       {
         "name": "minecraft:banners",
-        "values": [
+        "entries": [
           502,
           503,
           504,
@@ -3448,21 +3448,21 @@
       },
       {
         "name": "minecraft:infiniburn_overworld",
-        "values": [
+        "entries": [
           255,
           604
         ]
       },
       {
         "name": "minecraft:smelts_to_glass",
-        "values": [
+        "entries": [
           34,
           36
         ]
       },
       {
         "name": "minecraft:flower_pots",
-        "values": [
+        "entries": [
           354,
           366,
           367,
@@ -3500,7 +3500,7 @@
       },
       {
         "name": "minecraft:wooden_fences",
-        "values": [
+        "entries": [
           253,
           577,
           579,
@@ -3514,7 +3514,7 @@
       },
       {
         "name": "minecraft:piglin_repellents",
-        "values": [
+        "entries": [
           173,
           260,
           781,
@@ -3524,13 +3524,13 @@
       },
       {
         "name": "minecraft:mooshrooms_spawnable_on",
-        "values": [
+        "entries": [
           322
         ]
       },
       {
         "name": "minecraft:wall_post_override",
-        "values": [
+        "entries": [
           170,
           260,
           243,
@@ -3602,13 +3602,13 @@
       },
       {
         "name": "c:bookshelves",
-        "values": [
+        "entries": [
           166
         ]
       },
       {
         "name": "minecraft:portals",
-        "values": [
+        "entries": [
           263,
           334,
           600
@@ -3616,7 +3616,7 @@
       },
       {
         "name": "minecraft:bamboo_plantable_on",
-        "values": [
+        "entries": [
           34,
           36,
           9,
@@ -3635,13 +3635,13 @@
       },
       {
         "name": "minecraft:polar_bears_spawnable_on_alternate",
-        "values": [
+        "entries": [
           247
         ]
       },
       {
         "name": "minecraft:cauldrons",
-        "values": [
+        "entries": [
           330,
           331,
           332,
@@ -3650,7 +3650,7 @@
       },
       {
         "name": "minecraft:big_dripleaf_placeable",
-        "values": [
+        "entries": [
           250,
           958,
           9,
@@ -3666,7 +3666,7 @@
       },
       {
         "name": "minecraft:pressure_plates",
-        "values": [
+        "entries": [
           411,
           412,
           232,
@@ -3684,7 +3684,7 @@
       },
       {
         "name": "minecraft:dampens_vibrations",
-        "values": [
+        "entries": [
           129,
           130,
           131,
@@ -3721,7 +3721,7 @@
       },
       {
         "name": "minecraft:mangrove_logs",
-        "values": [
+        "entries": [
           52,
           72,
           63,
@@ -3730,7 +3730,7 @@
       },
       {
         "name": "minecraft:overworld_carver_replaceables",
-        "values": [
+        "entries": [
           1,
           2,
           4,
@@ -3782,7 +3782,7 @@
       },
       {
         "name": "minecraft:snow_layer_can_survive_on",
-        "values": [
+        "entries": [
           834,
           256,
           964
@@ -3790,7 +3790,7 @@
       },
       {
         "name": "minecraft:jungle_logs",
-        "values": [
+        "entries": [
           48,
           68,
           58,
@@ -3799,7 +3799,7 @@
       },
       {
         "name": "minecraft:dead_bush_may_place_on",
-        "values": [
+        "entries": [
           34,
           36,
           493,
@@ -3832,7 +3832,7 @@
       },
       {
         "name": "minecraft:snow_layer_cannot_survive_on",
-        "values": [
+        "entries": [
           247,
           495,
           463
@@ -3840,7 +3840,7 @@
       },
       {
         "name": "minecraft:sculk_replaceable",
-        "values": [
+        "entries": [
           1,
           2,
           4,
@@ -3894,7 +3894,7 @@
       },
       {
         "name": "minecraft:wooden_stairs",
-        "values": [
+        "entries": [
           175,
           347,
           348,
@@ -3908,7 +3908,7 @@
       },
       {
         "name": "minecraft:signs",
-        "values": [
+        "entries": [
           185,
           186,
           187,
@@ -3931,7 +3931,7 @@
       },
       {
         "name": "minecraft:spruce_logs",
-        "values": [
+        "entries": [
           46,
           66,
           56,
@@ -3940,7 +3940,7 @@
       },
       {
         "name": "minecraft:ancient_city_replaceable",
-        "values": [
+        "entries": [
           965,
           978,
           974,
@@ -3957,7 +3957,7 @@
       },
       {
         "name": "minecraft:mangrove_logs_can_grow_through",
-        "values": [
+        "entries": [
           964,
           54,
           53,
@@ -3970,7 +3970,7 @@
       },
       {
         "name": "minecraft:base_stone_overworld",
-        "values": [
+        "entries": [
           1,
           2,
           4,
@@ -3981,7 +3981,7 @@
       },
       {
         "name": "minecraft:wooden_buttons",
-        "values": [
+        "entries": [
           384,
           385,
           386,
@@ -3995,20 +3995,20 @@
       },
       {
         "name": "minecraft:axolotls_spawnable_on",
-        "values": [
+        "entries": [
           250
         ]
       },
       {
         "name": "minecraft:wither_summon_base_blocks",
-        "values": [
+        "entries": [
           256,
           257
         ]
       },
       {
         "name": "minecraft:dripstone_replaceable_blocks",
-        "values": [
+        "entries": [
           1,
           2,
           4,
@@ -4019,7 +4019,7 @@
       },
       {
         "name": "minecraft:hoglin_repellents",
-        "values": [
+        "entries": [
           790,
           841,
           263,
@@ -4028,7 +4028,7 @@
       },
       {
         "name": "minecraft:stone_bricks",
-        "values": [
+        "entries": [
           293,
           294,
           295,
@@ -4037,14 +4037,14 @@
       },
       {
         "name": "minecraft:fire",
-        "values": [
+        "entries": [
           172,
           173
         ]
       },
       {
         "name": "minecraft:mineable/axe",
-        "values": [
+        "entries": [
           101,
           313,
           312,
@@ -4291,7 +4291,7 @@
       },
       {
         "name": "minecraft:needs_diamond_tool",
-        "values": [
+        "entries": [
           169,
           838,
           836,
@@ -4301,7 +4301,7 @@
       },
       {
         "name": "minecraft:base_stone_nether",
-        "values": [
+        "entries": [
           255,
           258,
           845
@@ -4309,7 +4309,7 @@
       },
       {
         "name": "minecraft:wall_signs",
-        "values": [
+        "entries": [
           198,
           199,
           200,
@@ -4323,7 +4323,7 @@
       },
       {
         "name": "minecraft:slabs",
-        "values": [
+        "entries": [
           538,
           539,
           540,
@@ -4382,13 +4382,13 @@
       },
       {
         "name": "minecraft:animals_spawnable_on",
-        "values": [
+        "entries": [
           8
         ]
       },
       {
         "name": "minecraft:guarded_by_piglins",
-        "values": [
+        "entries": [
           162,
           770,
           176,
@@ -4420,7 +4420,7 @@
       },
       {
         "name": "minecraft:mineable/shovel",
-        "values": [
+        "entries": [
           250,
           9,
           10,
@@ -4459,7 +4459,7 @@
       },
       {
         "name": "minecraft:nether_carver_replaceables",
-        "values": [
+        "entries": [
           1,
           2,
           4,
@@ -4488,7 +4488,7 @@
       },
       {
         "name": "minecraft:stone_ore_replaceables",
-        "values": [
+        "entries": [
           1,
           2,
           4,
@@ -4497,14 +4497,14 @@
       },
       {
         "name": "minecraft:redstone_ores",
-        "values": [
+        "entries": [
           241,
           242
         ]
       },
       {
         "name": "minecraft:trapdoors",
-        "values": [
+        "entries": [
           288,
           286,
           290,
@@ -4519,7 +4519,7 @@
       },
       {
         "name": "minecraft:fall_damage_resetting",
-        "values": [
+        "entries": [
           195,
           316,
           768,
@@ -4535,7 +4535,7 @@
       },
       {
         "name": "minecraft:flowers",
-        "values": [
+        "entries": [
           146,
           148,
           149,
@@ -4560,7 +4560,7 @@
       },
       {
         "name": "minecraft:buttons",
-        "values": [
+        "entries": [
           384,
           385,
           386,
@@ -4576,7 +4576,7 @@
       },
       {
         "name": "minecraft:corals",
-        "values": [
+        "entries": [
           694,
           695,
           696,
@@ -4591,7 +4591,7 @@
       },
       {
         "name": "minecraft:rabbits_spawnable_on",
-        "values": [
+        "entries": [
           8,
           246,
           248,
@@ -4600,7 +4600,7 @@
       },
       {
         "name": "minecraft:planks",
-        "values": [
+        "entries": [
           13,
           14,
           15,
@@ -4614,14 +4614,14 @@
       },
       {
         "name": "minecraft:soul_speed_blocks",
-        "values": [
+        "entries": [
           256,
           257
         ]
       },
       {
         "name": "minecraft:rails",
-        "values": [
+        "entries": [
           196,
           118,
           119,
@@ -4630,14 +4630,14 @@
       },
       {
         "name": "minecraft:diamond_ores",
-        "values": [
+        "entries": [
           178,
           179
         ]
       },
       {
         "name": "minecraft:geode_invalid_blocks",
-        "values": [
+        "entries": [
           31,
           32,
           33,
@@ -4648,7 +4648,7 @@
       },
       {
         "name": "minecraft:overworld_natural_logs",
-        "values": [
+        "entries": [
           49,
           47,
           45,
@@ -4660,14 +4660,14 @@
       },
       {
         "name": "minecraft:deepslate_ore_replaceables",
-        "values": [
+        "entries": [
           965,
           905
         ]
       },
       {
         "name": "c:shulker_boxes",
-        "values": [
+        "entries": [
           610,
           622,
           623,
@@ -4689,7 +4689,7 @@
       },
       {
         "name": "minecraft:leaves",
-        "values": [
+        "entries": [
           84,
           81,
           82,
@@ -4703,7 +4703,7 @@
       },
       {
         "name": "minecraft:walls",
-        "values": [
+        "entries": [
           352,
           353,
           755,
@@ -4730,14 +4730,14 @@
       },
       {
         "name": "minecraft:cave_vines",
-        "values": [
+        "entries": [
           952,
           951
         ]
       },
       {
         "name": "c:glass_blocks",
-        "values": [
+        "entries": [
           93,
           275,
           283,
@@ -4760,7 +4760,7 @@
       },
       {
         "name": "minecraft:coral_blocks",
-        "values": [
+        "entries": [
           684,
           685,
           686,
@@ -4770,13 +4770,13 @@
       },
       {
         "name": "minecraft:strider_warm_blocks",
-        "values": [
+        "entries": [
           33
         ]
       },
       {
         "name": "minecraft:fence_gates",
-        "values": [
+        "entries": [
           569,
           567,
           571,
@@ -4790,7 +4790,7 @@
       },
       {
         "name": "minecraft:bee_growables",
-        "values": [
+        "entries": [
           598,
           382,
           383,
@@ -4804,7 +4804,7 @@
       },
       {
         "name": "minecraft:wither_immune",
-        "values": [
+        "entries": [
           463,
           31,
           334,
@@ -4822,7 +4822,7 @@
       },
       {
         "name": "minecraft:wooden_pressure_plates",
-        "values": [
+        "entries": [
           232,
           233,
           234,
@@ -4836,7 +4836,7 @@
       },
       {
         "name": "minecraft:acacia_logs",
-        "values": [
+        "entries": [
           49,
           69,
           59,
@@ -4845,7 +4845,7 @@
       },
       {
         "name": "minecraft:candles",
-        "values": [
+        "entries": [
           865,
           866,
           867,
@@ -4867,7 +4867,7 @@
       },
       {
         "name": "minecraft:tall_flowers",
-        "values": [
+        "entries": [
           496,
           497,
           499,
@@ -4876,7 +4876,7 @@
       },
       {
         "name": "minecraft:dragon_transparent",
-        "values": [
+        "entries": [
           464,
           172,
           173
@@ -4884,7 +4884,7 @@
       },
       {
         "name": "minecraft:underwater_bonemeals",
-        "values": [
+        "entries": [
           125,
           694,
           695,
@@ -4905,14 +4905,14 @@
       },
       {
         "name": "minecraft:stone_pressure_plates",
-        "values": [
+        "entries": [
           230,
           859
         ]
       },
       {
         "name": "minecraft:impermeable",
-        "values": [
+        "entries": [
           93,
           268,
           269,
@@ -4935,14 +4935,14 @@
       },
       {
         "name": "minecraft:copper_ores",
-        "values": [
+        "entries": [
           918,
           919
         ]
       },
       {
         "name": "minecraft:snow",
-        "values": [
+        "entries": [
           246,
           248,
           908
@@ -4950,21 +4950,21 @@
       },
       {
         "name": "minecraft:nylium",
-        "values": [
+        "entries": [
           798,
           789
         ]
       },
       {
         "name": "minecraft:sand",
-        "values": [
+        "entries": [
           34,
           36
         ]
       },
       {
         "name": "minecraft:gold_ores",
-        "values": [
+        "entries": [
           38,
           44,
           39
@@ -4972,14 +4972,14 @@
       },
       {
         "name": "minecraft:small_dripleaf_placeable",
-        "values": [
+        "entries": [
           250,
           958
         ]
       },
       {
         "name": "minecraft:completes_find_tree_tutorial",
-        "values": [
+        "entries": [
           51,
           71,
           61,
@@ -5031,7 +5031,7 @@
       },
       {
         "name": "minecraft:logs_that_burn",
-        "values": [
+        "entries": [
           51,
           71,
           61,
@@ -5064,7 +5064,7 @@
       },
       {
         "name": "minecraft:mineable/hoe",
-        "values": [
+        "entries": [
           605,
           791,
           476,
@@ -5093,7 +5093,7 @@
       },
       {
         "name": "minecraft:dirt",
-        "values": [
+        "entries": [
           9,
           8,
           11,
@@ -5107,7 +5107,7 @@
       },
       {
         "name": "c:ores",
-        "values": [
+        "entries": [
           241,
           242,
           918,
@@ -5130,7 +5130,7 @@
       },
       {
         "name": "minecraft:candle_cakes",
-        "values": [
+        "entries": [
           882,
           883,
           884,
@@ -5152,7 +5152,7 @@
       },
       {
         "name": "minecraft:needs_iron_tool",
-        "values": [
+        "entries": [
           180,
           178,
           179,
@@ -5174,14 +5174,14 @@
     "tags": [
       {
         "name": "minecraft:soul_fire_base_blocks",
-        "values": [
+        "entries": [
           302,
           303
         ]
       },
       {
         "name": "c:foods",
-        "values": [
+        "entries": [
           755,
           805,
           811,
@@ -5226,7 +5226,7 @@
       },
       {
         "name": "minecraft:beacon_payment_items",
-        "values": [
+        "entries": [
           771,
           761,
           760,
@@ -5236,19 +5236,19 @@
       },
       {
         "name": "c:lava_buckets",
-        "values": [
+        "entries": [
           866
         ]
       },
       {
         "name": "c:raw_iron_ores",
-        "values": [
+        "entries": [
           765
         ]
       },
       {
         "name": "minecraft:wooden_slabs",
-        "values": [
+        "entries": [
           228,
           229,
           230,
@@ -5262,20 +5262,20 @@
       },
       {
         "name": "c:magenta_dyes",
-        "values": [
+        "entries": [
           902
         ]
       },
       {
         "name": "minecraft:coal_ores",
-        "values": [
+        "entries": [
           48,
           49
         ]
       },
       {
         "name": "minecraft:small_flowers",
-        "values": [
+        "entries": [
           195,
           196,
           197,
@@ -5293,7 +5293,7 @@
       },
       {
         "name": "c:axes",
-        "values": [
+        "entries": [
           796,
           786,
           776,
@@ -5304,13 +5304,13 @@
       },
       {
         "name": "c:raw_iron_blocks",
-        "values": [
+        "entries": [
           68
         ]
       },
       {
         "name": "minecraft:wooden_trapdoors",
-        "values": [
+        "entries": [
           701,
           699,
           703,
@@ -5324,13 +5324,13 @@
       },
       {
         "name": "c:pink_dyes",
-        "values": [
+        "entries": [
           906
         ]
       },
       {
         "name": "c:shovels",
-        "values": [
+        "entries": [
           794,
           784,
           774,
@@ -5341,37 +5341,37 @@
       },
       {
         "name": "c:black_dyes",
-        "values": [
+        "entries": [
           915
         ]
       },
       {
         "name": "c:lapis",
-        "values": [
+        "entries": [
           762
         ]
       },
       {
         "name": "c:netherite_ingots",
-        "values": [
+        "entries": [
           771
         ]
       },
       {
         "name": "minecraft:axolotl_tempt_items",
-        "values": [
+        "entries": [
           874
         ]
       },
       {
         "name": "c:spears",
-        "values": [
+        "entries": [
           1133
         ]
       },
       {
         "name": "minecraft:wool",
-        "values": [
+        "entries": [
           179,
           180,
           181,
@@ -5392,7 +5392,7 @@
       },
       {
         "name": "minecraft:stairs",
-        "values": [
+        "entries": [
           359,
           360,
           361,
@@ -5447,13 +5447,13 @@
       },
       {
         "name": "c:purple_dyes",
-        "values": [
+        "entries": [
           910
         ]
       },
       {
         "name": "minecraft:logs",
-        "values": [
+        "entries": [
           115,
           149,
           128,
@@ -5494,7 +5494,7 @@
       },
       {
         "name": "minecraft:tools",
-        "values": [
+        "entries": [
           793,
           778,
           783,
@@ -5530,7 +5530,7 @@
       },
       {
         "name": "minecraft:creeper_drop_music_discs",
-        "values": [
+        "entries": [
           1117,
           1118,
           1119,
@@ -5547,20 +5547,20 @@
       },
       {
         "name": "minecraft:compasses",
-        "values": [
+        "entries": [
           884,
           885
         ]
       },
       {
         "name": "c:lime_dyes",
-        "values": [
+        "entries": [
           905
         ]
       },
       {
         "name": "minecraft:arrows",
-        "values": [
+        "entries": [
           757,
           1109,
           1108
@@ -5568,7 +5568,7 @@
       },
       {
         "name": "minecraft:wool_carpets",
-        "values": [
+        "entries": [
           422,
           423,
           424,
@@ -5589,7 +5589,7 @@
       },
       {
         "name": "c:dyes",
-        "values": [
+        "entries": [
           915,
           911,
           912,
@@ -5610,7 +5610,7 @@
       },
       {
         "name": "c:pickaxes",
-        "values": [
+        "entries": [
           795,
           785,
           775,
@@ -5621,19 +5621,19 @@
       },
       {
         "name": "c:white_dyes",
-        "values": [
+        "entries": [
           900
         ]
       },
       {
         "name": "c:brown_dyes",
-        "values": [
+        "entries": [
           912
         ]
       },
       {
         "name": "minecraft:wooden_doors",
-        "values": [
+        "entries": [
           685,
           686,
           687,
@@ -5647,7 +5647,7 @@
       },
       {
         "name": "minecraft:warped_stems",
-        "values": [
+        "entries": [
           120,
           131,
           152,
@@ -5656,14 +5656,14 @@
       },
       {
         "name": "minecraft:emerald_ores",
-        "values": [
+        "entries": [
           58,
           59
         ]
       },
       {
         "name": "minecraft:crimson_stems",
-        "values": [
+        "entries": [
           119,
           130,
           151,
@@ -5672,19 +5672,19 @@
       },
       {
         "name": "c:gold_ingots",
-        "values": [
+        "entries": [
           770
         ]
       },
       {
         "name": "minecraft:ignored_by_piglin_babies",
-        "values": [
+        "entries": [
           869
         ]
       },
       {
         "name": "minecraft:swords",
-        "values": [
+        "entries": [
           793,
           778,
           783,
@@ -5695,7 +5695,7 @@
       },
       {
         "name": "minecraft:stone_tool_materials",
-        "values": [
+        "entries": [
           22,
           1171,
           9
@@ -5703,7 +5703,7 @@
       },
       {
         "name": "minecraft:terracotta",
-        "values": [
+        "entries": [
           438,
           403,
           404,
@@ -5725,20 +5725,20 @@
       },
       {
         "name": "minecraft:wart_blocks",
-        "values": [
+        "entries": [
           493,
           494
         ]
       },
       {
         "name": "c:light_gray_dyes",
-        "values": [
+        "entries": [
           908
         ]
       },
       {
         "name": "minecraft:dark_oak_logs",
-        "values": [
+        "entries": [
           115,
           149,
           128,
@@ -5747,7 +5747,7 @@
       },
       {
         "name": "minecraft:non_flammable_wood",
-        "values": [
+        "entries": [
           120,
           131,
           152,
@@ -5780,27 +5780,27 @@
       },
       {
         "name": "minecraft:coals",
-        "values": [
+        "entries": [
           758,
           759
         ]
       },
       {
         "name": "minecraft:piglin_food",
-        "values": [
+        "entries": [
           837,
           838
         ]
       },
       {
         "name": "c:quartz_ores",
-        "values": [
+        "entries": [
           65
         ]
       },
       {
         "name": "minecraft:anvil",
-        "values": [
+        "entries": [
           395,
           396,
           397
@@ -5808,7 +5808,7 @@
       },
       {
         "name": "minecraft:birch_logs",
-        "values": [
+        "entries": [
           111,
           145,
           124,
@@ -5817,20 +5817,20 @@
       },
       {
         "name": "minecraft:lapis_ores",
-        "values": [
+        "entries": [
           60,
           61
         ]
       },
       {
         "name": "c:emeralds",
-        "values": [
+        "entries": [
           761
         ]
       },
       {
         "name": "minecraft:axes",
-        "values": [
+        "entries": [
           796,
           781,
           786,
@@ -5841,7 +5841,7 @@
       },
       {
         "name": "minecraft:hoes",
-        "values": [
+        "entries": [
           797,
           782,
           787,
@@ -5852,19 +5852,19 @@
       },
       {
         "name": "c:green_dyes",
-        "values": [
+        "entries": [
           913
         ]
       },
       {
         "name": "c:raw_gold_ores",
-        "values": [
+        "entries": [
           769
         ]
       },
       {
         "name": "c:glass_panes",
-        "values": [
+        "entries": [
           333,
           470,
           478,
@@ -5886,7 +5886,7 @@
       },
       {
         "name": "minecraft:fences",
-        "values": [
+        "entries": [
           287,
           291,
           293,
@@ -5901,7 +5901,7 @@
       },
       {
         "name": "minecraft:saplings",
-        "values": [
+        "entries": [
           35,
           36,
           37,
@@ -5915,7 +5915,7 @@
       },
       {
         "name": "minecraft:beds",
-        "values": [
+        "entries": [
           934,
           935,
           931,
@@ -5936,14 +5936,14 @@
       },
       {
         "name": "minecraft:iron_ores",
-        "values": [
+        "entries": [
           50,
           51
         ]
       },
       {
         "name": "minecraft:oak_logs",
-        "values": [
+        "entries": [
           109,
           143,
           122,
@@ -5952,7 +5952,7 @@
       },
       {
         "name": "minecraft:doors",
-        "values": [
+        "entries": [
           685,
           686,
           687,
@@ -5967,13 +5967,13 @@
       },
       {
         "name": "c:raw_copper_ores",
-        "values": [
+        "entries": [
           767
         ]
       },
       {
         "name": "minecraft:banners",
-        "values": [
+        "entries": [
           1083,
           1084,
           1085,
@@ -5994,26 +5994,26 @@
       },
       {
         "name": "c:diamonds",
-        "values": [
+        "entries": [
           760
         ]
       },
       {
         "name": "c:orange_dyes",
-        "values": [
+        "entries": [
           901
         ]
       },
       {
         "name": "minecraft:smelts_to_glass",
-        "values": [
+        "entries": [
           44,
           46
         ]
       },
       {
         "name": "minecraft:stone_crafting_materials",
-        "values": [
+        "entries": [
           22,
           1171,
           9
@@ -6021,7 +6021,7 @@
       },
       {
         "name": "minecraft:wooden_fences",
-        "values": [
+        "entries": [
           287,
           291,
           293,
@@ -6035,7 +6035,7 @@
       },
       {
         "name": "minecraft:piglin_repellents",
-        "values": [
+        "entries": [
           307,
           1158,
           1162
@@ -6043,19 +6043,19 @@
       },
       {
         "name": "c:redstone_dusts",
-        "values": [
+        "entries": [
           632
         ]
       },
       {
         "name": "c:shears",
-        "values": [
+        "entries": [
           938
         ]
       },
       {
         "name": "c:potions",
-        "values": [
+        "entries": [
           1110,
           1107,
           953
@@ -6063,7 +6063,7 @@
       },
       {
         "name": "minecraft:dampens_vibrations",
-        "values": [
+        "entries": [
           179,
           180,
           181,
@@ -6100,7 +6100,7 @@
       },
       {
         "name": "minecraft:mangrove_logs",
-        "values": [
+        "entries": [
           116,
           150,
           129,
@@ -6109,7 +6109,7 @@
       },
       {
         "name": "minecraft:jungle_logs",
-        "values": [
+        "entries": [
           112,
           146,
           125,
@@ -6118,14 +6118,14 @@
       },
       {
         "name": "minecraft:lectern_books",
-        "values": [
+        "entries": [
           1043,
           1042
         ]
       },
       {
         "name": "minecraft:spruce_logs",
-        "values": [
+        "entries": [
           110,
           144,
           123,
@@ -6134,7 +6134,7 @@
       },
       {
         "name": "minecraft:signs",
-        "values": [
+        "entries": [
           842,
           843,
           844,
@@ -6148,7 +6148,7 @@
       },
       {
         "name": "minecraft:wooden_stairs",
-        "values": [
+        "entries": [
           359,
           360,
           361,
@@ -6162,7 +6162,7 @@
       },
       {
         "name": "minecraft:wooden_buttons",
-        "values": [
+        "entries": [
           658,
           659,
           660,
@@ -6176,7 +6176,7 @@
       },
       {
         "name": "minecraft:fishes",
-        "values": [
+        "entries": [
           891,
           895,
           892,
@@ -6187,13 +6187,13 @@
       },
       {
         "name": "c:milk_buckets",
-        "values": [
+        "entries": [
           870
         ]
       },
       {
         "name": "minecraft:stone_bricks",
-        "values": [
+        "entries": [
           316,
           317,
           318,
@@ -6202,19 +6202,19 @@
       },
       {
         "name": "c:light_blue_dyes",
-        "values": [
+        "entries": [
           903
         ]
       },
       {
         "name": "c:iron_ingots",
-        "values": [
+        "entries": [
           766
         ]
       },
       {
         "name": "minecraft:shovels",
-        "values": [
+        "entries": [
           794,
           779,
           784,
@@ -6225,7 +6225,7 @@
       },
       {
         "name": "minecraft:chest_boats",
-        "values": [
+        "entries": [
           733,
           735,
           737,
@@ -6237,20 +6237,20 @@
       },
       {
         "name": "minecraft:creeper_igniters",
-        "values": [
+        "entries": [
           754,
           1041
         ]
       },
       {
         "name": "c:gray_dyes",
-        "values": [
+        "entries": [
           907
         ]
       },
       {
         "name": "minecraft:slabs",
-        "values": [
+        "entries": [
           228,
           229,
           230,
@@ -6309,26 +6309,26 @@
       },
       {
         "name": "c:coal",
-        "values": [
+        "entries": [
           758,
           759
         ]
       },
       {
         "name": "c:raw_copper_blocks",
-        "values": [
+        "entries": [
           69
         ]
       },
       {
         "name": "c:raw_gold_blocks",
-        "values": [
+        "entries": [
           70
         ]
       },
       {
         "name": "minecraft:trapdoors",
-        "values": [
+        "entries": [
           701,
           699,
           703,
@@ -6343,14 +6343,14 @@
       },
       {
         "name": "minecraft:redstone_ores",
-        "values": [
+        "entries": [
           56,
           57
         ]
       },
       {
         "name": "c:hoes",
-        "values": [
+        "entries": [
           797,
           787,
           777,
@@ -6361,13 +6361,13 @@
       },
       {
         "name": "c:red_dyes",
-        "values": [
+        "entries": [
           914
         ]
       },
       {
         "name": "minecraft:buttons",
-        "values": [
+        "entries": [
           658,
           659,
           660,
@@ -6383,7 +6383,7 @@
       },
       {
         "name": "minecraft:flowers",
-        "values": [
+        "entries": [
           195,
           196,
           197,
@@ -6408,14 +6408,14 @@
       },
       {
         "name": "c:bows",
-        "values": [
+        "entries": [
           1137,
           756
         ]
       },
       {
         "name": "minecraft:planks",
-        "values": [
+        "entries": [
           23,
           24,
           25,
@@ -6429,7 +6429,7 @@
       },
       {
         "name": "minecraft:boats",
-        "values": [
+        "entries": [
           732,
           734,
           736,
@@ -6448,14 +6448,14 @@
       },
       {
         "name": "minecraft:fox_food",
-        "values": [
+        "entries": [
           1159,
           1160
         ]
       },
       {
         "name": "minecraft:rails",
-        "values": [
+        "entries": [
           721,
           719,
           720,
@@ -6464,14 +6464,14 @@
       },
       {
         "name": "minecraft:diamond_ores",
-        "values": [
+        "entries": [
           62,
           63
         ]
       },
       {
         "name": "c:water_buckets",
-        "values": [
+        "entries": [
           875,
           873,
           871,
@@ -6483,19 +6483,19 @@
       },
       {
         "name": "c:yellow_dyes",
-        "values": [
+        "entries": [
           904
         ]
       },
       {
         "name": "c:empty_buckets",
-        "values": [
+        "entries": [
           864
         ]
       },
       {
         "name": "c:shulker_boxes",
-        "values": [
+        "entries": [
           498,
           510,
           511,
@@ -6517,7 +6517,7 @@
       },
       {
         "name": "minecraft:leaves",
-        "values": [
+        "entries": [
           156,
           153,
           154,
@@ -6531,7 +6531,7 @@
       },
       {
         "name": "minecraft:walls",
-        "values": [
+        "entries": [
           373,
           374,
           375,
@@ -6558,7 +6558,7 @@
       },
       {
         "name": "c:glass_blocks",
-        "values": [
+        "entries": [
           165,
           454,
           462,
@@ -6581,7 +6581,7 @@
       },
       {
         "name": "minecraft:fence_gates",
-        "values": [
+        "entries": [
           712,
           710,
           714,
@@ -6595,13 +6595,13 @@
       },
       {
         "name": "c:cyan_dyes",
-        "values": [
+        "entries": [
           909
         ]
       },
       {
         "name": "minecraft:wooden_pressure_plates",
-        "values": [
+        "entries": [
           673,
           674,
           675,
@@ -6615,7 +6615,7 @@
       },
       {
         "name": "minecraft:acacia_logs",
-        "values": [
+        "entries": [
           113,
           147,
           126,
@@ -6624,7 +6624,7 @@
       },
       {
         "name": "minecraft:candles",
-        "values": [
+        "entries": [
           1184,
           1185,
           1186,
@@ -6646,7 +6646,7 @@
       },
       {
         "name": "minecraft:piglin_loved",
-        "values": [
+        "entries": [
           54,
           64,
           55,
@@ -6676,7 +6676,7 @@
       },
       {
         "name": "minecraft:music_discs",
-        "values": [
+        "entries": [
           1117,
           1118,
           1119,
@@ -6696,7 +6696,7 @@
       },
       {
         "name": "minecraft:tall_flowers",
-        "values": [
+        "entries": [
           441,
           442,
           444,
@@ -6705,25 +6705,25 @@
       },
       {
         "name": "c:quartz",
-        "values": [
+        "entries": [
           763
         ]
       },
       {
         "name": "c:blue_dyes",
-        "values": [
+        "entries": [
           911
         ]
       },
       {
         "name": "c:copper_ingots",
-        "values": [
+        "entries": [
           768
         ]
       },
       {
         "name": "c:swords",
-        "values": [
+        "entries": [
           793,
           783,
           773,
@@ -6734,21 +6734,21 @@
       },
       {
         "name": "minecraft:sand",
-        "values": [
+        "entries": [
           44,
           46
         ]
       },
       {
         "name": "minecraft:copper_ores",
-        "values": [
+        "entries": [
           52,
           53
         ]
       },
       {
         "name": "minecraft:gold_ores",
-        "values": [
+        "entries": [
           54,
           64,
           55
@@ -6756,7 +6756,7 @@
       },
       {
         "name": "minecraft:freeze_immune_wearables",
-        "values": [
+        "entries": [
           815,
           814,
           813,
@@ -6766,7 +6766,7 @@
       },
       {
         "name": "minecraft:logs_that_burn",
-        "values": [
+        "entries": [
           115,
           149,
           128,
@@ -6799,7 +6799,7 @@
       },
       {
         "name": "minecraft:completes_find_tree_tutorial",
-        "values": [
+        "entries": [
           115,
           149,
           128,
@@ -6851,7 +6851,7 @@
       },
       {
         "name": "minecraft:dirt",
-        "values": [
+        "entries": [
           15,
           14,
           17,
@@ -6865,7 +6865,7 @@
       },
       {
         "name": "c:ores",
-        "values": [
+        "entries": [
           50,
           51,
           52,
@@ -6888,13 +6888,13 @@
       },
       {
         "name": "c:shields",
-        "values": [
+        "entries": [
           1111
         ]
       },
       {
         "name": "minecraft:pickaxes",
-        "values": [
+        "entries": [
           795,
           780,
           785,
@@ -6905,7 +6905,7 @@
       },
       {
         "name": "minecraft:cluster_max_harvestables",
-        "values": [
+        "entries": [
           795,
           785,
           790,
@@ -6921,7 +6921,7 @@
     "tags": [
       {
         "name": "minecraft:axolotl_always_hostiles",
-        "values": [
+        "entries": [
           23,
           46,
           25
@@ -6929,7 +6929,7 @@
       },
       {
         "name": "minecraft:freeze_immune_entity_types",
-        "values": [
+        "entries": [
           97,
           76,
           91,
@@ -6938,7 +6938,7 @@
       },
       {
         "name": "minecraft:dismounts_underwater",
-        "values": [
+        "entries": [
           10,
           15,
           21,
@@ -6955,7 +6955,7 @@
       },
       {
         "name": "minecraft:impact_projectiles",
-        "values": [
+        "entries": [
           3,
           94,
           92,
@@ -6969,20 +6969,20 @@
       },
       {
         "name": "minecraft:beehive_inhabitors",
-        "values": [
+        "entries": [
           6
         ]
       },
       {
         "name": "c:boats",
-        "values": [
+        "entries": [
           9,
           13
         ]
       },
       {
         "name": "minecraft:skeletons",
-        "values": [
+        "entries": [
           86,
           97,
           114
@@ -6990,14 +6990,14 @@
       },
       {
         "name": "minecraft:arrows",
-        "values": [
+        "entries": [
           3,
           94
         ]
       },
       {
         "name": "minecraft:freeze_hurts_extra_types",
-        "values": [
+        "entries": [
           98,
           7,
           62
@@ -7005,21 +7005,21 @@
       },
       {
         "name": "minecraft:frog_food",
-        "values": [
+        "entries": [
           88,
           62
         ]
       },
       {
         "name": "c:bosses",
-        "values": [
+        "entries": [
           27,
           113
         ]
       },
       {
         "name": "minecraft:fall_damage_immune",
-        "values": [
+        "entries": [
           53,
           91,
           83,
@@ -7039,7 +7039,7 @@
       },
       {
         "name": "c:minecarts",
-        "values": [
+        "entries": [
           64,
           102,
           14,
@@ -7051,7 +7051,7 @@
       },
       {
         "name": "minecraft:raiders",
-        "values": [
+        "entries": [
           31,
           75,
           80,
@@ -7062,7 +7062,7 @@
       },
       {
         "name": "minecraft:powder_snow_walkable_mobs",
-        "values": [
+        "entries": [
           79,
           30,
           85,
@@ -7071,7 +7071,7 @@
       },
       {
         "name": "minecraft:axolotl_hunt_targets",
-        "values": [
+        "entries": [
           105,
           78,
           81,
@@ -7088,13 +7088,13 @@
     "tags": [
       {
         "name": "minecraft:pattern_item/piglin",
-        "values": [
+        "entries": [
           40
         ]
       },
       {
         "name": "minecraft:no_item_required",
-        "values": [
+        "entries": [
           1,
           2,
           3,
@@ -7133,31 +7133,31 @@
       },
       {
         "name": "minecraft:pattern_item/flower",
-        "values": [
+        "entries": [
           38
         ]
       },
       {
         "name": "minecraft:pattern_item/creeper",
-        "values": [
+        "entries": [
           36
         ]
       },
       {
         "name": "minecraft:pattern_item/globe",
-        "values": [
+        "entries": [
           35
         ]
       },
       {
         "name": "minecraft:pattern_item/mojang",
-        "values": [
+        "entries": [
           39
         ]
       },
       {
         "name": "minecraft:pattern_item/skull",
-        "values": [
+        "entries": [
           37
         ]
       }
@@ -7168,28 +7168,28 @@
     "tags": [
       {
         "name": "minecraft:lava",
-        "values": [
+        "entries": [
           4,
           3
         ]
       },
       {
         "name": "minecraft:water",
-        "values": [
+        "entries": [
           2,
           1
         ]
       },
       {
         "name": "c:water",
-        "values": [
+        "entries": [
           2,
           1
         ]
       },
       {
         "name": "c:lava",
-        "values": [
+        "entries": [
           4,
           3
         ]
@@ -7201,7 +7201,7 @@
     "tags": [
       {
         "name": "minecraft:screaming_goat_horns",
-        "values": [
+        "entries": [
           4,
           5,
           6,
@@ -7210,7 +7210,7 @@
       },
       {
         "name": "minecraft:goat_horns",
-        "values": [
+        "entries": [
           0,
           1,
           2,
@@ -7223,7 +7223,7 @@
       },
       {
         "name": "minecraft:regular_goat_horns",
-        "values": [
+        "entries": [
           0,
           1,
           2,

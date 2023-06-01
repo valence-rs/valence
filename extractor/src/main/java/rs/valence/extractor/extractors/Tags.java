@@ -60,7 +60,7 @@ public class Tags implements Main.Extractor {
                 var raw_ids = tag.getValue();
 
                 tagJson.addProperty("name", ident);
-                tagJson.add("values", raw_ids);
+                tagJson.add("entries", raw_ids);
                 tagGroupTagsJson.add(tagJson);
             }
 
