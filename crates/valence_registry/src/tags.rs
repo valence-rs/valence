@@ -43,6 +43,15 @@ impl<'a> TagsRegistry<'a> {
     }
 }
 
+impl Default for TagsRegistry<'_> {
+    fn default() -> Self {
+        Self {
+            registries: Default::default(),
+            cached_packet: Default::default(),
+        }
+    }
+}
+
 pub(crate) fn init_tags_registry(mut tags: ResMut<TagsRegistry<'static>>) {
     let registries =
         serde_json::from_str::<Vec<Registry>>(include_str!("../../../extracted/tags.json"))
@@ -60,15 +69,6 @@ pub(crate) fn cache_tags_packet(server: Res<Server>, tags: ResMut<TagsRegistry<'
             PacketWriter::new(&mut bytes, server.compression_threshold(), &mut scratch);
         writer.write_packet(&packet);
         tags.cached_packet = bytes;
-    }
-}
-
-impl Default for TagsRegistry<'_> {
-    fn default() -> Self {
-        Self {
-            registries: Default::default(),
-            cached_packet: Default::default(),
-        }
     }
 }
 
