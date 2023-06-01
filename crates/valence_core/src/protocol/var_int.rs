@@ -2,12 +2,13 @@ use std::io::{Read, Write};
 
 use anyhow::bail;
 use byteorder::ReadBytesExt;
+use serde::Deserialize;
 use thiserror::Error;
 
 use crate::protocol::{Decode, Encode};
 
 /// An `i32` encoded with variable length.
-#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Deserialize)]
 #[repr(transparent)]
 pub struct VarInt(pub i32);
 

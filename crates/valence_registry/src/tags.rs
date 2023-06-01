@@ -4,6 +4,7 @@ use bevy_ecs::prelude::*;
 use serde::Deserialize;
 use valence_core::ident::Ident;
 use valence_core::protocol::encode::{PacketWriter, WritePacket};
+use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 use valence_core::Server;
 
@@ -28,7 +29,7 @@ pub struct Registry<'a> {
 #[derive(Debug, Deserialize, Clone, PartialEq, Eq, Encode, Decode)]
 pub struct TagEntry<'a> {
     pub name: Ident<Cow<'a, str>>,
-    pub entries: Vec<u64>,
+    pub entries: Vec<VarInt>,
 }
 
 impl<'a> TagsRegistry<'a> {
