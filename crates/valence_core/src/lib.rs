@@ -149,6 +149,15 @@ pub struct Server {
     compression_threshold: Option<u32>,
 }
 
+impl Default for Server {
+    fn default() -> Self {
+        Self {
+            current_tick: 0,
+            compression_threshold: None,
+        }
+    }
+}
+
 impl Server {
     /// Returns the number of ticks that have elapsed since the server began.
     pub fn current_tick(&self) -> i64 {
