@@ -13,7 +13,7 @@ pub struct SynchronizeTagsS2c<'a> {
     pub registries: Cow<'a, [Registry<'a>]>,
 }
 
-#[derive(Debug, Resource)]
+#[derive(Debug, Resource, Default)]
 pub struct TagsRegistry<'a> {
     pub registries: Vec<Registry<'a>>,
     cached_packet: Vec<u8>,
@@ -43,20 +43,11 @@ impl<'a> TagsRegistry<'a> {
     }
 }
 
-impl Default for TagsRegistry<'_> {
-    fn default() -> Self {
-        Self {
-            registries: Default::default(),
-            cached_packet: Default::default(),
-        }
-    }
-}
-
 pub(crate) fn init_tags_registry(mut tags: ResMut<TagsRegistry<'static>>) {
     let registries =
         serde_json::from_str::<Vec<Registry>>(include_str!("../../../extracted/tags.json"))
             .expect("tags.json is invalid");
-    tags.registries = registries.into();
+    tags.registries = registries;
 }
 
 pub(crate) fn cache_tags_packet(server: Res<Server>, tags: ResMut<TagsRegistry<'static>>) {
