@@ -142,20 +142,11 @@ impl Default for CoreSettings {
 }
 
 /// Contains global server state accessible as a [`Resource`].
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct Server {
     /// Incremented on every tick.
     current_tick: i64,
     compression_threshold: Option<u32>,
-}
-
-impl Default for Server {
-    fn default() -> Self {
-        Self {
-            current_tick: 0,
-            compression_threshold: None,
-        }
-    }
 }
 
 impl Server {
