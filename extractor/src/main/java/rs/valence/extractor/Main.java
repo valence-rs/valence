@@ -74,9 +74,9 @@ public class Main implements ModInitializer {
         }
 
         ServerLifecycleEvents.SERVER_STARTING.register(server -> {
-            LOGGER.info("Server starting, Extracting registry codec...");
+            LOGGER.info("Server starting, Running startup extractors...");
+            // TODO: make `Codec` implement `Extractor`
             var codecExtractor = new Codec(server);
-
             try {
                 var out = outputDirectory.resolve(codecExtractor.fileName());
                 var compound = codecExtractor.extract();
@@ -90,6 +90,22 @@ public class Main implements ModInitializer {
                 LOGGER.info("Wrote " + out.toAbsolutePath());
             } catch (Exception e) {
                 LOGGER.error("Extractor for \"" + codecExtractor.fileName() + "\" failed.", e);
+            }
+
+            var startupExtractors = new Extractor[]{
+                new Tags(server),
+            };
+
+            for (var ext : startupExtractors) {
+                try {
+                    var out = outputDirectory.resolve(ext.fileName());
+                    var fileWriter = new FileWriter(out.toFile(), StandardCharsets.UTF_8);
+                    gson.toJson(ext.extract(), fileWriter);
+                    fileWriter.close();
+                    LOGGER.info("Wrote " + out.toAbsolutePath());
+                } catch (Exception e) {
+                    LOGGER.error("Extractor for \"" + ext.fileName() + "\" failed.", e);
+                }
             }
 
             LOGGER.info("Done.");

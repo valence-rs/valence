@@ -142,7 +142,7 @@ impl Default for CoreSettings {
 }
 
 /// Contains global server state accessible as a [`Resource`].
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct Server {
     /// Incremented on every tick.
     current_tick: i64,

@@ -1372,26 +1372,3 @@ pub mod map {
         }
     }
 }
-
-// TODO: Move this to valence_registry?
-pub mod synchronize_tags {
-    use super::*;
-
-    #[derive(Clone, Debug, Encode, Decode, Packet)]
-    #[packet(id = packet_id::SYNCHRONIZE_TAGS_S2C)]
-    pub struct SynchronizeTagsS2c<'a> {
-        pub tags: Vec<TagGroup<'a>>,
-    }
-
-    #[derive(Clone, PartialEq, Eq, Debug, Encode, Decode)]
-    pub struct TagGroup<'a> {
-        pub kind: Ident<Cow<'a, str>>,
-        pub tags: Vec<Tag<'a>>,
-    }
-
-    #[derive(Clone, PartialEq, Eq, Debug, Encode, Decode)]
-    pub struct Tag<'a> {
-        pub name: Ident<Cow<'a, str>>,
-        pub entries: Vec<VarInt>,
-    }
-}
