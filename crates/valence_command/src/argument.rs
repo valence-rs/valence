@@ -1,15 +1,20 @@
 use std::borrow::Cow;
 use std::mem::MaybeUninit;
 
+use valence_block::{BlockKind, PropName, PropValue};
 use valence_core::packet::s2c::play::command_tree::{Parser, StringArg};
 use valence_core::translation_key::{
-    ARGUMENT_ANGLE_INVALID, ARGUMENT_DOUBLE_BIG, ARGUMENT_DOUBLE_LOW, ARGUMENT_FLOAT_BIG,
-    ARGUMENT_FLOAT_LOW, ARGUMENT_INTEGER_BIG, ARGUMENT_INTEGER_LOW, ARGUMENT_LONG_BIG,
-    ARGUMENT_LONG_LOW, ARGUMENT_POS_MIXED, COMMAND_EXPECTED_SEPARATOR, PARSING_BOOL_EXPECTED,
-    PARSING_BOOL_INVALID, PARSING_DOUBLE_EXPECTED, PARSING_DOUBLE_INVALID, PARSING_FLOAT_EXPECTED,
-    PARSING_FLOAT_INVALID, PARSING_INT_EXPECTED, PARSING_INT_INVALID, PARSING_LONG_EXPECTED,
-    PARSING_LONG_INVALID, PARSING_QUOTE_EXPECTED_END,
+    ARGUMENT_ANGLE_INVALID, ARGUMENT_BLOCK_ID_INVALID, ARGUMENT_BLOCK_PROPERTY_DUPLICATE,
+    ARGUMENT_BLOCK_PROPERTY_INVALID, ARGUMENT_BLOCK_PROPERTY_NOVALUE,
+    ARGUMENT_BLOCK_PROPERTY_UNCLOSED, ARGUMENT_BLOCK_PROPERTY_UNKNOWN, ARGUMENT_DOUBLE_BIG,
+    ARGUMENT_DOUBLE_LOW, ARGUMENT_FLOAT_BIG, ARGUMENT_FLOAT_LOW, ARGUMENT_INTEGER_BIG,
+    ARGUMENT_INTEGER_LOW, ARGUMENT_LONG_BIG, ARGUMENT_LONG_LOW,
+    ARGUMENT_POS_MIXED, COMMAND_EXPECTED_SEPARATOR, PARSING_BOOL_EXPECTED, PARSING_BOOL_INVALID,
+    PARSING_DOUBLE_EXPECTED, PARSING_DOUBLE_INVALID, PARSING_FLOAT_EXPECTED, PARSING_FLOAT_INVALID,
+    PARSING_INT_EXPECTED, PARSING_INT_INVALID, PARSING_LONG_EXPECTED, PARSING_LONG_INVALID,
+    PARSING_QUOTE_EXPECTED_END,
 };
+use valence_nbt::Compound;
 
 use crate::parser::{
     NoParsingBuild, Parsable, ParsingBuild, ParsingError, ParsingPurpose, ParsingResult,
@@ -700,6 +705,262 @@ impl<'a, const C: usize, T: Parsable<'a> + Sized> Parsable<'a> for VectorA<C, T>
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct BlockPredicate<'a> {
+    pub kind: BlockPredicateKind<'a>,
+    pub states: Vec<(PropName, PropValue)>,
+    pub tags: Option<Compound>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum BlockPredicateKind<'a> {
+    Tag(&'a str),
+    Kind(BlockKind),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum BlockError<'a> {
+    Kind(&'a str),
+    PropInvalid {
+        kind: &'a str,
+        name: &'a str,
+        value: &'a str,
+    },
+    PropDuplicate {
+        kind: &'a str,
+        name: &'a str,
+    },
+    PropNoValue {
+        kind: &'a str,
+        name: &'a str,
+    },
+    PropUnknown {
+        kind: &'a str,
+        name: &'a str,
+    },
+    PropUnclosed,
+}
+
+impl<'a> ParsingBuild<ParsingError> for BlockError<'a> {
+    fn build(self) -> ParsingError {
+        match self {
+            Self::Kind(kind) => {
+                ParsingError::translate(ARGUMENT_BLOCK_ID_INVALID, vec![kind.to_string().into()])
+            }
+            Self::PropInvalid { kind, name, value } => ParsingError::translate(
+                ARGUMENT_BLOCK_PROPERTY_INVALID,
+                vec![
+                    kind.to_string().into(),
+                    value.to_string().into(),
+                    name.to_string().into(),
+                ],
+            ),
+            Self::PropDuplicate { kind, name } => ParsingError::translate(
+                ARGUMENT_BLOCK_PROPERTY_DUPLICATE,
+                vec![name.to_string().into(), kind.to_string().into()],
+            ),
+            Self::PropNoValue { kind, name } => ParsingError::translate(
+                ARGUMENT_BLOCK_PROPERTY_NOVALUE,
+                vec![name.to_string().into(), kind.to_string().into()],
+            ),
+            Self::PropUnknown { kind, name } => ParsingError::translate(
+                ARGUMENT_BLOCK_PROPERTY_UNKNOWN,
+                vec![kind.to_string().into(), name.to_string().into()],
+            ),
+            Self::PropUnclosed => ParsingError::translate(ARGUMENT_BLOCK_PROPERTY_UNCLOSED, vec![]),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum BlockSuggestions {
+    BlockKind,
+    PropName,
+    PropValue,
+    StateTagBegin,
+    TagBegin,
+    EqualSign,
+    StateEnd,
+    TagEnd,
+}
+
+macro_rules! bp_names {
+    ($n:ident, $i:ident) => {
+        #[ctor::ctor]
+        static $n: [Suggestion<'static>; $i::ALL.len()] =
+            { $i::ALL.map(|v| Suggestion::new_str(v.to_str())) };
+    };
+}
+
+bp_names!(BLOCK_KINDS, BlockKind);
+bp_names!(PROP_NAMES, PropName);
+bp_names!(PROP_VALUES, PropValue);
+
+const STATE_TAG_BEGIN: &'static [Suggestion<'static>] =
+    &[Suggestion::new_str("["), Suggestion::new_str("{")];
+
+const TAG_BEGIN: &'static [Suggestion<'static>] = &[Suggestion::new_str("{")];
+
+const EQ_SIGN: &'static [Suggestion<'static>] = &[Suggestion::new_str("=")];
+
+const TAG_END: &'static [Suggestion<'static>] =
+    &[Suggestion::new_str(","), Suggestion::new_str("}")];
+
+const STATE_END: &'static [Suggestion<'static>] =
+    &[Suggestion::new_str(","), Suggestion::new_str("]")];
+
+impl<'a> ParsingBuild<ParsingSuggestions<'a>> for BlockSuggestions {
+    fn build(self) -> ParsingSuggestions<'a> {
+        match self {
+            Self::BlockKind => ParsingSuggestions::Borrowed(BLOCK_KINDS.as_slice()),
+            Self::PropName => ParsingSuggestions::Borrowed(PROP_NAMES.as_slice()),
+            Self::PropValue => ParsingSuggestions::Borrowed(PROP_VALUES.as_slice()),
+            Self::StateTagBegin => ParsingSuggestions::Borrowed(STATE_TAG_BEGIN),
+            Self::TagBegin => ParsingSuggestions::Borrowed(TAG_BEGIN),
+            Self::EqualSign => ParsingSuggestions::Borrowed(EQ_SIGN),
+            Self::TagEnd => ParsingSuggestions::Borrowed(TAG_END),
+            Self::StateEnd => ParsingSuggestions::Borrowed(STATE_END),
+        }
+    }
+}
+
+impl<'a> Parsable<'a> for BlockPredicate<'a> {
+    type Data = ();
+
+    type Error = BlockError<'a>;
+
+    type Suggestions = BlockSuggestions;
+
+    fn parse(
+        _data: Option<&Self::Data>,
+        reader: &mut StrReader<'a>,
+        purpose: ParsingPurpose,
+    ) -> ParsingResult<'a, Self> {
+        let mut begin = reader.cursor();
+
+        let kind = if reader.peek_char() == Some('#') {
+            reader.next_char();
+            BlockPredicateKind::Tag(reader.read_ident_str())
+        } else {
+            let kind_str = reader.read_ident_str();
+            BlockPredicateKind::Kind(match BlockKind::from_str(kind_str) {
+                Some(kind) => kind,
+                None => {
+                    return ParsingResult {
+                        suggestions: Some((begin..reader.cursor(), BlockSuggestions::BlockKind)),
+                        result: Err((begin..reader.cursor(), BlockError::Kind(kind_str))),
+                    }
+                }
+            })
+        };
+
+        let kind_str = unsafe { reader.str.get_unchecked(begin..reader.cursor()) };
+
+        let mut states = vec![];
+        if reader.skip_char('[') {
+            if !reader.skip_char(']') {
+                loop {
+                    begin = reader.cursor();
+                    let prop_name_str = reader.read_unquoted_str();
+                    let prop_name = match PropName::from_str(prop_name_str) {
+                        Some(n) => n,
+                        None => {
+                            return ParsingResult {
+                                suggestions: Some((
+                                    begin..reader.cursor(),
+                                    BlockSuggestions::PropName,
+                                )),
+                                result: Err((
+                                    begin..reader.cursor(),
+                                    BlockError::PropUnknown {
+                                        kind: kind_str,
+                                        name: prop_name_str,
+                                    },
+                                )),
+                            }
+                        }
+                    };
+                    reader.skip_char(' ');
+                    begin = reader.cursor();
+                    if !reader.skip_char('=') {
+                        return ParsingResult {
+                            suggestions: Some((
+                                begin..reader.cursor(),
+                                BlockSuggestions::EqualSign,
+                            )),
+                            result: Err((
+                                begin..reader.cursor(),
+                                BlockError::PropNoValue {
+                                    kind: kind_str,
+                                    name: prop_name_str,
+                                },
+                            )),
+                        };
+                    }
+                    reader.skip_char(' ');
+                    begin = reader.cursor();
+                    let prop_value_str = reader.read_unquoted_str();
+                    let prop_value = match PropValue::from_str(prop_value_str) {
+                        Some(v) => v,
+                        None => {
+                            return ParsingResult {
+                                suggestions: Some((
+                                    begin..reader.cursor(),
+                                    BlockSuggestions::PropValue,
+                                )),
+                                result: Err((
+                                    begin..reader.cursor(),
+                                    BlockError::PropInvalid {
+                                        kind: kind_str,
+                                        name: prop_name_str,
+                                        value: prop_value_str,
+                                    },
+                                )),
+                            }
+                        }
+                    };
+
+                    if let ParsingPurpose::Reading = purpose {
+                        states.push((prop_name, prop_value));
+                    }
+
+                    reader.skip_char(' ');
+
+                    begin = reader.cursor();
+
+                    match reader.next_char() {
+                        Some(',') => {}
+                        Some(']') => {
+                            break;
+                        }
+                        _ => {
+                            return ParsingResult {
+                                suggestions: Some((
+                                    begin..reader.cursor(),
+                                    BlockSuggestions::StateEnd,
+                                )),
+                                result: Err((begin..reader.cursor(), BlockError::PropUnclosed)),
+                            }
+                        }
+                    };
+                }
+            }
+        }
+
+        ParsingResult {
+            suggestions: None,
+            result: Ok(match purpose {
+                ParsingPurpose::Reading => Some(Self {
+                    kind,
+                    states,
+                    tags: None,
+                }),
+                ParsingPurpose::Suggestion => None,
+            }),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -883,5 +1144,24 @@ mod tests {
                 result: Err((3..6, VectorAError::MixedPos)),
             }
         );
+    }
+
+    #[test]
+    fn block_predicate_test() {
+        assert_eq!(
+            BlockPredicate::parse(
+                None,
+                &mut StrReader::new("chest[facing =north]"),
+                ParsingPurpose::Reading
+            ),
+            ParsingResult {
+                suggestions: None,
+                result: Ok(Some(BlockPredicate {
+                    kind: BlockPredicateKind::Kind(BlockKind::Chest),
+                    states: vec![(PropName::Facing, PropValue::North)],
+                    tags: None
+                }))
+            }
+        )
     }
 }

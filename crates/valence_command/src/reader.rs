@@ -159,6 +159,13 @@ impl<'a> StrReader<'a> {
         })
     }
 
+    pub fn read_ident_str(&mut self) -> &'a str {
+        self.read_str_filtered(|ch| match ch {
+            '0'..='9' | 'A'..='Z' | 'a'..='z' | '_' | '-' | '.' | '+' | ':' => StrFilter::Continue,
+            _ => StrFilter::EndExclude,
+        })
+    }
+
     pub fn read_started_quoted_str(&mut self) -> Option<String> {
         self.read_escaped_str_filtered(|ch| match ch {
             '"' | '\'' => StrFilter::EndInclude,
@@ -202,6 +209,15 @@ impl<'a> StrReader<'a> {
 
     pub fn to_end(&mut self) {
         self.cursor = self.str.len();
+    }
+
+    pub fn skip_char(&mut self, ch: char) -> bool {
+        if self.peek_char() == Some(ch) {
+            self.next_char();
+            true
+        } else {
+            false
+        }
     }
 }
 
