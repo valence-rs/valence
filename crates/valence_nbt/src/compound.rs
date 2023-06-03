@@ -4,7 +4,6 @@ use std::hash::Hash;
 use std::iter::FusedIterator;
 use std::ops::{Index, IndexMut};
 
-use crate::to_binary_writer::written_size;
 use crate::Value;
 
 /// A map type with [`String`] keys and [`Value`] values.
@@ -20,19 +19,6 @@ type Map = std::collections::BTreeMap<String, Value>;
 type Map = indexmap::IndexMap<String, Value>;
 
 impl Compound {
-    /// Returns the number of bytes that will be written when
-    /// [`to_binary_writer`] is called with this compound and root name.
-    ///
-    /// If [`to_binary_writer`] results in `Ok`, the exact number of bytes
-    /// reported by this function will have been written. If the result is
-    /// `Err`, then the reported count will be greater than or equal to the
-    /// number of bytes that have actually been written.
-    ///
-    /// [`to_binary_writer`]: crate::to_binary_writer()
-    pub fn written_size(&self, root_name: &str) -> usize {
-        written_size(self, root_name)
-    }
-
     /// Inserts all items from `other` into `self` recursively.
     ///
     /// # Example

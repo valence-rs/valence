@@ -18,25 +18,16 @@
 )]
 
 pub use compound::Compound;
-pub use error::Error;
-pub use from_binary_slice::from_binary_slice;
 pub use tag::Tag;
-pub use to_binary_writer::to_binary_writer;
 pub use value::{List, Value};
 
+#[cfg(feature = "binary")]
+pub mod binary;
 pub mod compound;
-mod error;
-mod from_binary_slice;
-mod modified_utf8;
+#[cfg(feature = "snbt")]
 pub mod snbt;
-mod to_binary_writer;
-pub mod value;
-
 mod tag;
-#[cfg(test)]
-mod tests;
-
-type Result<T> = std::result::Result<T, Error>;
+pub mod value;
 
 /// A convenience macro for constructing [`Compound`]s.
 ///

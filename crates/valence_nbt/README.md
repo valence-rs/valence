@@ -11,7 +11,7 @@ Encode NBT data to its binary form. We are using the [`compound!`] macro to
 conveniently construct [`Compound`] values.
 
 ```rust
-use valence_nbt::{compound, to_binary_writer, List};
+use valence_nbt::{compound, Compound, List};
 
 let c = compound! {
     "byte" => 5_i8,
@@ -25,13 +25,13 @@ let c = compound! {
 
 let mut buf = vec![];
 
-to_binary_writer(&mut buf, &c, "").unwrap();
+c.to_binary(&mut buf, "").unwrap();
 ```
 
 Decode NBT data from its binary form.
 
 ```rust
-use valence_nbt::{compound, from_binary_slice};
+use valence_nbt::{compound, Compound};
 
 let some_bytes = [10, 0, 0, 3, 0, 3, 105, 110, 116, 0, 0, 222, 173, 0];
 
@@ -39,7 +39,7 @@ let expected_value = compound! {
     "int" => 0xdead
 };
 
-let (nbt, root_name) = from_binary_slice(&mut some_bytes.as_slice()).unwrap();
+let (nbt, root_name) = Compound::from_binary(&mut some_bytes.as_slice()).unwrap();
 
 assert_eq!(nbt, expected_value);
 assert_eq!(root_name, "");

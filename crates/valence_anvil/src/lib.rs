@@ -56,7 +56,7 @@ pub enum ReadChunkError {
     #[error(transparent)]
     Io(#[from] io::Error),
     #[error(transparent)]
-    Nbt(#[from] valence_nbt::Error),
+    Nbt(#[from] valence_nbt::binary::Error),
     #[error("invalid chunk sector offset")]
     BadSectorOffset,
     #[error("invalid chunk size")]
@@ -180,7 +180,7 @@ impl AnvilWorld {
             b => return Err(ReadChunkError::UnknownCompressionScheme(b)),
         };
 
-        let (data, _) = valence_nbt::from_binary_slice(&mut nbt_slice)?;
+        let (data, _) = Compound::from_binary(&mut nbt_slice)?;
 
         if !nbt_slice.is_empty() {
             return Err(ReadChunkError::IncompleteNbtRead);

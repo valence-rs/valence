@@ -2,7 +2,9 @@ use std::error::Error as StdError;
 use std::fmt::{Display, Formatter};
 use std::io;
 
-/// Errors that can occur when encoding or decoding.
+pub type Result<T> = std::result::Result<T, Error>;
+
+/// Errors that can occur when encoding or decoding binary NBT.
 #[derive(Debug)]
 pub struct Error {
     /// Box this to keep the size of `Result<T, Error>` small.

@@ -1,5 +1,5 @@
 use crate::tag::Tag;
-use crate::{compound, from_binary_slice, to_binary_writer, Compound, List, Value};
+use crate::{compound, Compound, List, Value};
 
 const ROOT_NAME: &str = "The root name‽";
 
@@ -9,11 +9,11 @@ fn round_trip() {
 
     let compound = example_compound();
 
-    to_binary_writer(&mut buf, &compound, ROOT_NAME).unwrap();
+    compound.to_binary(&mut buf, ROOT_NAME).unwrap();
 
     println!("{buf:?}");
 
-    let (decoded, root_name) = from_binary_slice(&mut buf.as_slice()).unwrap();
+    let (decoded, root_name) = Compound::from_binary(&mut buf.as_slice()).unwrap();
 
     assert_eq!(root_name, ROOT_NAME);
     assert_eq!(compound, decoded);
@@ -28,7 +28,7 @@ fn check_min_sizes() {
         let dbg = format!("{min_val:?}");
         let mut buf = vec![];
 
-        to_binary_writer(&mut buf, &compound!("" => min_val), "").unwrap();
+        compound!("" => min_val).to_binary(&mut buf, "").unwrap();
 
         assert_eq!(
             expected_size,
@@ -65,7 +65,7 @@ fn deeply_nested_compound_decode() {
     buf.push(Tag::End as u8); // End root compound
 
     // Should not overflow the stack
-    let _ = from_binary_slice(&mut buf.as_slice());
+    let _ = Compound::from_binary(&mut buf.as_slice());
 }
 
 #[test]
@@ -84,7 +84,7 @@ fn deeply_nested_list_decode() {
     buf.push(Tag::End as u8); // End root compound
 
     // Should not overflow the stack
-    let _ = from_binary_slice(&mut buf.as_slice());
+    let _ = Compound::from_binary(&mut buf.as_slice());
 }
 
 #[test]
@@ -92,7 +92,7 @@ fn correct_length() {
     let c = example_compound();
 
     let mut buf = vec![];
-    to_binary_writer(&mut buf, &c, "abc").unwrap();
+    c.to_binary(&mut buf, "abc").unwrap();
 
     assert_eq!(c.written_size("abc"), buf.len());
 }

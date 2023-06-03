@@ -765,12 +765,12 @@ impl<'a> Decode<'a> for Uuid {
 
 impl Encode for Compound {
     fn encode(&self, w: impl Write) -> Result<()> {
-        Ok(valence_nbt::to_binary_writer(w, self, "")?)
+        Ok(self.to_binary(w, "")?)
     }
 }
 
 impl Decode<'_> for Compound {
     fn decode(r: &mut &[u8]) -> Result<Self> {
-        Ok(valence_nbt::from_binary_slice(r)?.0)
+        Ok(Self::from_binary(r)?.0)
     }
 }
