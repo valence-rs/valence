@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::mem::MaybeUninit;
 
 use valence_block::{BlockKind, PropName, PropValue};
-use valence_core::packet::s2c::play::command_tree::{Parser, StringArg};
+use valence_core::protocol::packet::command::{Parser, StringArg};
 use valence_core::translation_key::{
     ARGUMENT_ANGLE_INVALID, ARGUMENT_BLOCK_ID_INVALID, ARGUMENT_BLOCK_PROPERTY_DUPLICATE,
     ARGUMENT_BLOCK_PROPERTY_INVALID, ARGUMENT_BLOCK_PROPERTY_NOVALUE,
