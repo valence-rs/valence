@@ -5,9 +5,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use rand::seq::SliceRandom;
 use rand::Rng;
-use valence::packet::s2c::play::TitleFadeS2c;
 use valence::prelude::*;
-use valence::sound::{Sound, SoundCategory};
+use valence::protocol::packet::sound::{Sound, SoundCategory};
 
 const START_POS: BlockPos = BlockPos::new(0, 100, 0);
 const VIEW_DIST: u8 = 10;
@@ -179,15 +178,8 @@ fn manage_blocks(mut clients: Query<(&mut Client, &Position, &mut GameState, &mu
                     pitch,
                 );
 
-                client.set_title(
-                    "",
-                    state.score.to_string().color(Color::LIGHT_PURPLE).bold(),
-                    TitleFadeS2c {
-                        fade_in: 0,
-                        stay: 7,
-                        fade_out: 4,
-                    },
-                );
+                client.set_title("");
+                client.set_subtitle(state.score.to_string().color(Color::LIGHT_PURPLE).bold());
             }
         }
     }

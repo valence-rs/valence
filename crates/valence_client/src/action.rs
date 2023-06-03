@@ -1,13 +1,14 @@
 use valence_core::block_pos::BlockPos;
 use valence_core::direction::Direction;
-use valence_core::packet::c2s::play::player_action::Action;
-use valence_core::packet::c2s::play::PlayerActionC2s;
+use valence_core::protocol::var_int::VarInt;
+use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 
 use super::*;
 use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
+use crate::packet::{PlayerAction, PlayerActionC2s};
 
 pub(super) fn build(app: &mut App) {
-    app.add_event::<Digging>()
+    app.add_event::<DiggingEvent>()
         .add_system(
             handle_player_action
                 .in_schedule(EventLoopSchedule)
@@ -17,7 +18,7 @@ pub(super) fn build(app: &mut App) {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct Digging {
+pub struct DiggingEvent {
     pub client: Entity,
     pub position: BlockPos,
     pub direction: Direction,
@@ -47,7 +48,7 @@ impl ActionSequence {
 fn handle_player_action(
     mut clients: Query<&mut ActionSequence>,
     mut packets: EventReader<PacketEvent>,
-    mut digging_events: EventWriter<Digging>,
+    mut digging_events: EventWriter<DiggingEvent>,
 ) {
     for packet in packets.iter() {
         if let Some(pkt) = packet.decode::<PlayerActionC2s>() {
@@ -59,28 +60,28 @@ fn handle_player_action(
             // TODO: check that blocks are being broken at the appropriate speeds.
 
             match pkt.action {
-                Action::StartDestroyBlock => digging_events.send(Digging {
+                PlayerAction::StartDestroyBlock => digging_events.send(DiggingEvent {
                     client: packet.client,
                     position: pkt.position,
                     direction: pkt.direction,
                     state: DiggingState::Start,
                 }),
-                Action::AbortDestroyBlock => digging_events.send(Digging {
+                PlayerAction::AbortDestroyBlock => digging_events.send(DiggingEvent {
                     client: packet.client,
                     position: pkt.position,
                     direction: pkt.direction,
                     state: DiggingState::Abort,
                 }),
-                Action::StopDestroyBlock => digging_events.send(Digging {
+                PlayerAction::StopDestroyBlock => digging_events.send(DiggingEvent {
                     client: packet.client,
                     position: pkt.position,
                     direction: pkt.direction,
                     state: DiggingState::Stop,
                 }),
-                Action::DropAllItems => {}
-                Action::DropItem => {}
-                Action::ReleaseUseItem => todo!(), // TODO: release use item.
-                Action::SwapItemWithOffhand => {}
+                PlayerAction::DropAllItems => {}
+                PlayerAction::DropItem => {}
+                PlayerAction::ReleaseUseItem => {}
+                PlayerAction::SwapItemWithOffhand => {}
             }
         }
     }
@@ -98,4 +99,10 @@ fn acknowledge_player_actions(
             action_seq.0 = 0;
         }
     }
+}
+
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::PLAYER_ACTION_RESPONSE_S2C)]
+pub struct PlayerActionResponseS2c {
+    pub sequence: VarInt,
 }

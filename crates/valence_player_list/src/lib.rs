@@ -16,22 +16,26 @@
     unreachable_pub,
     clippy::dbg_macro
 )]
+#![allow(clippy::type_complexity)]
+
+pub mod packet;
 
 use std::borrow::Cow;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+use packet::{PlayerListActions, PlayerListHeaderS2c, PlayerListS2c};
 use uuid::Uuid;
 use valence_client::{Client, Ping, Properties, Username};
 use valence_core::despawn::Despawned;
 use valence_core::game_mode::GameMode;
-use valence_core::packet::encode::{PacketWriter, WritePacket};
-use valence_core::packet::s2c::play::player_list::{Actions, Entry, PlayerListS2c};
-use valence_core::packet::s2c::play::{PlayerListHeaderS2c, PlayerRemoveS2c};
+use valence_core::protocol::encode::{PacketWriter, WritePacket};
 use valence_core::text::Text;
 use valence_core::uuid::UniqueId;
 use valence_core::Server;
 use valence_instance::WriteUpdatePacketsToInstancesSet;
+
+use crate::packet::PlayerRemoveS2c;
 
 pub struct PlayerListPlugin;
 
@@ -189,7 +193,6 @@ fn add_new_clients_to_player_list(
     }
 }
 
-#[allow(clippy::type_complexity)]
 fn init_player_list_for_clients(
     mut clients: Query<&mut Client, (Added<Client>, Without<Despawned>)>,
     player_list: Res<PlayerList>,
@@ -208,7 +211,7 @@ fn init_player_list_for_clients(
 ) {
     if player_list.manage_clients {
         for mut client in &mut clients {
-            let actions = Actions::new()
+            let actions = PlayerListActions::new()
                 .with_add_player(true)
                 .with_update_game_mode(true)
                 .with_update_listed(true)
@@ -218,15 +221,17 @@ fn init_player_list_for_clients(
             let entries: Vec<_> = entries
                 .iter()
                 .map(
-                    |(uuid, username, props, game_mode, ping, display_name, listed)| Entry {
-                        player_uuid: uuid.0,
-                        username: &username.0,
-                        properties: Cow::Borrowed(&props.0),
-                        chat_data: None,
-                        listed: listed.0,
-                        ping: ping.0,
-                        game_mode: *game_mode,
-                        display_name: display_name.0.as_ref().map(Cow::Borrowed),
+                    |(uuid, username, props, game_mode, ping, display_name, listed)| {
+                        packet::PlayerListEntry {
+                            player_uuid: uuid.0,
+                            username: &username.0,
+                            properties: Cow::Borrowed(&props.0),
+                            chat_data: None,
+                            listed: listed.0,
+                            ping: ping.0,
+                            game_mode: *game_mode,
+                            display_name: display_name.0.as_ref().map(Cow::Borrowed),
+                        }
                     },
                 )
                 .collect();
@@ -277,7 +282,6 @@ fn remove_despawned_entries(
     }
 }
 
-#[allow(clippy::type_complexity)]
 fn update_entries(
     entries: Query<
         (
@@ -314,7 +318,7 @@ fn update_entries(
     );
 
     for (uuid, username, props, game_mode, ping, display_name, listed) in &entries {
-        let mut actions = Actions::new();
+        let mut actions = PlayerListActions::new();
 
         // Did a change occur that would force us to overwrite the entry? This also adds
         // new entries.
@@ -356,7 +360,7 @@ fn update_entries(
             debug_assert_ne!(u8::from(actions), 0);
         }
 
-        let entry = Entry {
+        let entry = packet::PlayerListEntry {
             player_uuid: uuid.0,
             username: &username.0,
             properties: (&props.0).into(),

@@ -1,13 +1,15 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use valence_core::packet::c2s::play::player_interact_entity::EntityInteraction;
-use valence_core::packet::c2s::play::PlayerInteractEntityC2s;
+use glam::Vec3;
+use valence_core::hand::Hand;
+use valence_core::protocol::var_int::VarInt;
+use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 use valence_entity::EntityManager;
 
 use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
 
 pub(super) fn build(app: &mut App) {
-    app.add_event::<InteractEntity>().add_system(
+    app.add_event::<InteractEntityEvent>().add_system(
         handle_interact_entity
             .in_schedule(EventLoopSchedule)
             .in_base_set(EventLoopSet::PreUpdate),
@@ -15,7 +17,7 @@ pub(super) fn build(app: &mut App) {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct InteractEntity {
+pub struct InteractEntityEvent {
     pub client: Entity,
     /// The entity being interacted with.
     pub entity: Entity,
@@ -25,10 +27,17 @@ pub struct InteractEntity {
     pub interact: EntityInteraction,
 }
 
+#[derive(Copy, Clone, PartialEq, Debug, Encode, Decode)]
+pub enum EntityInteraction {
+    Interact(Hand),
+    Attack,
+    InteractAt { target: Vec3, hand: Hand },
+}
+
 fn handle_interact_entity(
     mut packets: EventReader<PacketEvent>,
     entities: Res<EntityManager>,
-    mut events: EventWriter<InteractEntity>,
+    mut events: EventWriter<InteractEntityEvent>,
 ) {
     for packet in packets.iter() {
         if let Some(pkt) = packet.decode::<PlayerInteractEntityC2s>() {
@@ -37,7 +46,7 @@ fn handle_interact_entity(
             // within some configurable tolerance level.
 
             if let Some(entity) = entities.get_by_id(pkt.entity_id.0) {
-                events.send(InteractEntity {
+                events.send(InteractEntityEvent {
                     client: packet.client,
                     entity,
                     sneaking: pkt.sneaking,
@@ -46,4 +55,12 @@ fn handle_interact_entity(
             }
         }
     }
+}
+
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::PLAYER_INTERACT_ENTITY_C2S)]
+pub struct PlayerInteractEntityC2s {
+    pub entity_id: VarInt,
+    pub interact: EntityInteraction,
+    pub sneaking: bool,
 }

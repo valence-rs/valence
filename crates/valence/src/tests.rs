@@ -8,11 +8,10 @@ use bevy_ecs::schedule::{LogLevel, ScheduleBuildSettings};
 use bytes::{Buf, BufMut, BytesMut};
 use uuid::Uuid;
 use valence_client::ClientBundleArgs;
-use valence_core::packet::decode::{decode_packet, PacketDecoder};
-use valence_core::packet::encode::PacketEncoder;
-use valence_core::packet::s2c::play::S2cPlayPacket;
-use valence_core::packet::var_int::VarInt;
-use valence_core::packet::Packet;
+use valence_core::protocol::decode::{PacketDecoder, PacketFrame};
+use valence_core::protocol::encode::PacketEncoder;
+use valence_core::protocol::var_int::VarInt;
+use valence_core::protocol::{Encode, Packet};
 use valence_core::{ident, CoreSettings, Server};
 use valence_entity::Location;
 use valence_network::{ConnectionMode, NetworkSettings};
@@ -117,7 +116,7 @@ impl MockClientConnection {
             .push_back(ReceivedPacket {
                 timestamp: Instant::now(),
                 id,
-                data: bytes.freeze(),
+                body: bytes.freeze(),
             });
     }
 
@@ -151,7 +150,6 @@ struct MockClientHelper {
     conn: MockClientConnection,
     dec: PacketDecoder,
     scratch: BytesMut,
-    collected_frames: Vec<BytesMut>,
 }
 
 impl MockClientHelper {
@@ -160,38 +158,39 @@ impl MockClientHelper {
             conn,
             dec: PacketDecoder::new(),
             scratch: BytesMut::new(),
-            collected_frames: vec![],
         }
     }
 
     /// Inject a packet to be treated as a packet inbound to the server. Panics
     /// if the packet cannot be sent.
-    fn send<'a>(&mut self, packet: &impl Packet<'a>) {
+    #[track_caller]
+    fn send<P>(&mut self, packet: &P)
+    where
+        P: Packet + Encode,
+    {
         packet
-            .encode_packet((&mut self.scratch).writer())
+            .encode_with_id((&mut self.scratch).writer())
             .expect("failed to encode packet");
 
         self.conn.inject_recv(self.scratch.split());
     }
 
     /// Collect all packets that have been sent to the client.
-    fn collect_sent(&mut self) -> Vec<S2cPlayPacket> {
+    #[track_caller]
+    fn collect_sent(&mut self) -> PacketFrames {
         self.dec.queue_bytes(self.conn.take_sent());
 
-        self.collected_frames.clear();
+        let mut res = vec![];
 
         while let Some(frame) = self
             .dec
             .try_next_packet()
             .expect("failed to decode packet frame")
         {
-            self.collected_frames.push(frame);
+            res.push(frame);
         }
 
-        self.collected_frames
-            .iter()
-            .map(|frame| decode_packet(frame).expect("failed to decode packet"))
-            .collect()
+        PacketFrames(res)
     }
 
     fn clear_sent(&mut self) {
@@ -199,35 +198,86 @@ impl MockClientHelper {
     }
 }
 
-macro_rules! assert_packet_order {
-    ($sent_packets:ident, $($packets:pat),+) => {{
-        let sent_packets: &Vec<valence_core::packet::s2c::play::S2cPlayPacket> = &$sent_packets;
-        let positions = [
-            $((sent_packets.iter().position(|p| matches!(p, $packets))),)*
-        ];
-        assert!(positions.windows(2).all(|w: &[Option<usize>]| w[0] < w[1]));
-    }};
+struct PacketFrames(Vec<PacketFrame>);
+
+impl PacketFrames {
+    #[track_caller]
+    fn assert_count<P: Packet>(&self, expected_count: usize) {
+        let actual_count = self.0.iter().filter(|f| f.id == P::ID).count();
+
+        assert_eq!(
+            expected_count,
+            actual_count,
+            "unexpected packet count for {} (expected {expected_count}, got {actual_count})",
+            P::NAME
+        );
+    }
+
+    #[track_caller]
+    fn assert_order<L: PacketList>(&self) {
+        let positions: Vec<_> = self
+            .0
+            .iter()
+            .filter_map(|f| L::packets().iter().position(|(id, _)| f.id == *id))
+            .collect();
+
+        // TODO: replace with slice::is_sorted.
+        let is_sorted = positions.windows(2).all(|w| w[0] <= w[1]);
+
+        assert!(
+            is_sorted,
+            "packets out of order (expected {:?}, got {:?})",
+            L::packets(),
+            self.debug::<L>()
+        );
+    }
+
+    fn debug<L: PacketList>(&self) -> impl std::fmt::Debug {
+        self.0
+            .iter()
+            .map(|f| {
+                L::packets()
+                    .iter()
+                    .find(|(id, _)| f.id == *id)
+                    .cloned()
+                    .unwrap_or((f.id, "<ignored>"))
+            })
+            .collect::<Vec<_>>()
+    }
 }
 
-macro_rules! assert_packet_count {
-    ($sent_packets:ident, $count:tt, $packet:pat) => {{
-        let sent_packets: &Vec<valence_core::packet::s2c::play::S2cPlayPacket> = &$sent_packets;
-        let count = sent_packets.iter().filter(|p| matches!(p, $packet)).count();
-        assert_eq!(
-            count,
-            $count,
-            "expected {} {} packets, got {}\nPackets actually found:\n[\n\t{}\n]\n",
-            $count,
-            stringify!($packet),
-            count,
-            sent_packets
-                .iter()
-                .map(|p| format!("{:?}", p))
-                .collect::<Vec<_>>()
-                .join(",\n\t")
-        );
-    }};
+trait PacketList {
+    fn packets() -> &'static [(i32, &'static str)];
 }
+
+macro_rules! impl_packet_list {
+    ($($ty:ident),*) => {
+        impl<$($ty: Packet,)*> PacketList for ($($ty,)*) {
+            fn packets() -> &'static [(i32, &'static str)] {
+                &[
+                    $(
+                        (
+                            $ty::ID,
+                            $ty::NAME
+                        ),
+                    )*
+                ]
+            }
+        }
+    }
+}
+
+impl_packet_list!(A);
+impl_packet_list!(A, B);
+impl_packet_list!(A, B, C);
+impl_packet_list!(A, B, C, D);
+impl_packet_list!(A, B, C, D, E);
+impl_packet_list!(A, B, C, D, E, F);
+impl_packet_list!(A, B, C, D, E, F, G);
+impl_packet_list!(A, B, C, D, E, F, G, H);
+impl_packet_list!(A, B, C, D, E, F, G, H, I);
+impl_packet_list!(A, B, C, D, E, F, G, H, I, J);
+impl_packet_list!(A, B, C, D, E, F, G, H, I, J, K);
 
 mod client;
 mod example;

@@ -1,3 +1,5 @@
+use std::ops::Add;
+
 use glam::DVec3;
 
 /// An axis-aligned bounding box. `min` is expected to be <= `max`
@@ -34,5 +36,33 @@ impl Aabb {
                 z: bottom.z + size.z / 2.0,
             },
         }
+    }
+
+    pub fn intersects(&self, second: Aabb) -> bool {
+        self.max.x >= second.min.x
+            && second.max.x >= self.min.x
+            && self.max.y >= second.min.y
+            && second.max.y >= self.min.y
+            && self.max.z >= second.min.z
+            && second.max.z >= self.min.z
+    }
+}
+
+impl Add<DVec3> for Aabb {
+    type Output = Aabb;
+
+    fn add(self, rhs: DVec3) -> Self::Output {
+        Self {
+            min: self.min + rhs,
+            max: self.max + rhs,
+        }
+    }
+}
+
+impl Add<Aabb> for DVec3 {
+    type Output = Aabb;
+
+    fn add(self, rhs: Aabb) -> Self::Output {
+        rhs + self
     }
 }

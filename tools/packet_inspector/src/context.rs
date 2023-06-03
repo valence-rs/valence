@@ -7,15 +7,13 @@ use owo_colors::{OwoColorize, Style};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
-use valence_core::packet::c2s::handshake::HandshakeC2s;
-use valence_core::packet::c2s::login::{LoginHelloC2s, LoginKeyC2s};
-use valence_core::packet::c2s::play::C2sPlayPacket;
-use valence_core::packet::c2s::status::{QueryPingC2s, QueryRequestC2s};
-use valence_core::packet::decode::PacketDecoder;
-use valence_core::packet::s2c::login::{LoginSuccessS2c, S2cLoginPacket};
-use valence_core::packet::s2c::play::S2cPlayPacket;
-use valence_core::packet::s2c::status::{QueryPongS2c, QueryResponseS2c};
+use valence::network::packet::{
+    HandshakeC2s, LoginHelloC2s, LoginKeyC2s, LoginSuccessS2c, QueryPingC2s, QueryPongS2c,
+    QueryRequestC2s, QueryResponseS2c,
+};
+use valence::protocol::decode::PacketDecoder;
 
+use crate::packet_groups::{C2sPlayPacket, S2cLoginPacket, S2cPlayPacket};
 use crate::packet_widget::{systemtime_strftime, PacketDirection};
 use crate::MetaPacket;
 
@@ -115,9 +113,9 @@ impl Packet {
             ($packet:ident) => {
                 match dec.try_next_packet() {
                     Ok(Some(frame)) => {
-                        if let Ok(pkt) = <$packet as valence_core::packet::Packet>::decode_packet(
-                            &mut &frame[..],
-                        ) {
+                        if let Ok(pkt) =
+                            <$packet as valence::protocol::Packet>::decode_packet(&mut &frame[..])
+                        {
                             if formatted {
                                 format!("{pkt:#?}")
                             } else {
@@ -194,8 +192,8 @@ impl Context {
 
     pub fn clear(&self) {
         self.last_packet.store(0, Ordering::Relaxed);
-        *self.selected_packet.write().expect("Poisoned RwLock") = None;
-        self.packets.write().expect("Poisoned RwLock").clear();
+        *self.selected_packet.write().unwrap() = None;
+        self.packets.write().unwrap().clear();
         if let ContextMode::Gui(ctx) = &self.mode {
             ctx.request_repaint();
         }
@@ -205,7 +203,7 @@ impl Context {
         match &self.mode {
             ContextMode::Gui(ctx) => {
                 packet.id = self.last_packet.fetch_add(1, Ordering::Relaxed);
-                self.packets.write().expect("Poisoned RwLock").push(packet);
+                self.packets.write().unwrap().push(packet);
                 ctx.request_repaint();
             }
             ContextMode::Cli(logger) => {
@@ -250,14 +248,14 @@ impl Context {
     }
 
     pub fn set_selected_packets(&self, packets: BTreeMap<MetaPacket, bool>) {
-        *self.visible_packets.write().expect("Poisoned RwLock") = packets;
+        *self.visible_packets.write().unwrap() = packets;
     }
 
     pub fn is_packet_hidden(&self, index: usize) -> bool {
-        let packets = self.packets.read().expect("Poisoned RwLock");
+        let packets = self.packets.read().unwrap();
         let packet = packets.get(index).expect("Packet not found");
 
-        let visible_packets = self.visible_packets.read().expect("Poisoned RwLock");
+        let visible_packets = self.visible_packets.read().unwrap();
 
         let meta_packet: MetaPacket = (*packet).clone().into();
 
@@ -267,7 +265,7 @@ impl Context {
             }
         }
 
-        let filter = self.filter.read().expect("Poisoned RwLock");
+        let filter = self.filter.read().unwrap();
         let filter = filter.as_str();
         if !filter.is_empty()
             && packet
@@ -282,7 +280,7 @@ impl Context {
     }
 
     pub fn select_previous_packet(&self) {
-        let mut selected_packet = self.selected_packet.write().expect("Poisoned RwLock");
+        let mut selected_packet = self.selected_packet.write().unwrap();
         if let Some(idx) = *selected_packet {
             if idx > 0 {
                 let mut new_index = idx - 1;
@@ -296,7 +294,7 @@ impl Context {
                 *selected_packet = Some(new_index);
             }
         } else {
-            let packets = self.packets.read().expect("Poisoned RwLock");
+            let packets = self.packets.read().unwrap();
             if !packets.is_empty() {
                 *selected_packet = Some(0);
             }
@@ -304,12 +302,12 @@ impl Context {
     }
 
     pub fn select_next_packet(&self) {
-        let mut selected_packet = self.selected_packet.write().expect("Poisoned RwLock");
+        let mut selected_packet = self.selected_packet.write().unwrap();
         if let Some(idx) = *selected_packet {
-            if idx < self.packets.read().expect("Poisoned RwLock").len() - 1 {
+            if idx < self.packets.read().unwrap().len() - 1 {
                 let mut new_index = idx + 1;
                 while self.is_packet_hidden(new_index) {
-                    if new_index == self.packets.read().expect("Poisoned RwLock").len() - 1 {
+                    if new_index == self.packets.read().unwrap().len() - 1 {
                         new_index = idx;
                         break;
                     }
@@ -319,7 +317,7 @@ impl Context {
                 *selected_packet = Some(new_index);
             }
         } else {
-            let packets = self.packets.read().expect("Poisoned RwLock");
+            let packets = self.packets.read().unwrap();
             if !packets.is_empty() {
                 *selected_packet = Some(1);
             }
@@ -327,19 +325,19 @@ impl Context {
     }
 
     pub fn set_selected_packet(&self, idx: usize) {
-        *self.selected_packet.write().expect("Poisoned RwLock") = Some(idx);
+        *self.selected_packet.write().unwrap() = Some(idx);
     }
 
     pub fn set_filter(&self, filter: String) {
         *self.filter.write().expect("Posisoned RwLock") = filter;
-        *self.selected_packet.write().expect("Poisoned RwLock") = None;
+        *self.selected_packet.write().unwrap() = None;
     }
 
     pub fn save(&self, path: PathBuf) -> Result<(), std::io::Error> {
         let packets = self
             .packets
             .read()
-            .expect("Poisoned RwLock")
+            .unwrap()
             .iter()
             .map(|packet| {
                 format!(

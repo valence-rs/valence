@@ -17,6 +17,9 @@
     clippy::dbg_macro
 )]
 
+pub mod hitbox;
+pub mod packet;
+
 use std::num::Wrapping;
 use std::ops::Range;
 
@@ -29,13 +32,12 @@ use tracing::warn;
 use uuid::Uuid;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::despawn::Despawned;
-use valence_core::packet::var_int::VarInt;
-use valence_core::packet::{Decode, Encode};
+use valence_core::protocol::var_int::VarInt;
+use valence_core::protocol::{Decode, Encode};
 use valence_core::uuid::UniqueId;
 use valence_core::DEFAULT_TPS;
 
 include!(concat!(env!("OUT_DIR"), "/entity.rs"));
-
 pub struct EntityPlugin;
 
 /// When new Minecraft entities are initialized and added to
@@ -402,7 +404,7 @@ pub struct PacketByteRange(pub Range<usize>);
 /// Cache for all the tracked data of an entity. Used for the
 /// [`EntityTrackerUpdateS2c`][packet] packet.
 ///
-/// [packet]: valence_core::packet::s2c::play::EntityTrackerUpdateS2c
+/// [packet]: crate::packet::EntityTrackerUpdateS2c
 #[derive(Component, Default, Debug)]
 pub struct TrackedData {
     init_data: Vec<u8>,
@@ -417,7 +419,7 @@ impl TrackedData {
     /// [`EntityTrackerUpdateS2c`][packet] packet. This is used when the entity
     /// enters the view of a client.
     ///
-    /// [packet]: valence_core::packet::s2c::play::EntityTrackerUpdateS2c
+    /// [packet]: crate::packet::EntityTrackerUpdateS2c
     pub fn init_data(&self) -> Option<&[u8]> {
         if self.init_data.len() > 1 {
             Some(&self.init_data)
@@ -430,7 +432,7 @@ impl TrackedData {
     /// [`EntityTrackerUpdateS2c`][packet] packet. This is used when tracked
     /// data is changed and the client is already in view of the entity.
     ///
-    /// [packet]: valence_core::packet::s2c::play::EntityTrackerUpdateS2c
+    /// [packet]: crate::packet::EntityTrackerUpdateS2c
     pub fn update_data(&self) -> Option<&[u8]> {
         if self.update_data.len() > 1 {
             Some(&self.update_data)

@@ -1,11 +1,13 @@
-#[doc = include_str!("../README.md")]
+#![doc = include_str!("../README.md")]
+#![allow(clippy::type_complexity)]
+
 pub mod event;
+pub mod packet;
 
 use std::borrow::Cow;
 use std::io::Write;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use anyhow::Context;
 use bevy_app::{CoreSet, Plugin};
 use bevy_ecs::prelude::{Bundle, Component, Entity};
 use bevy_ecs::query::{Added, Changed, Or, With};
@@ -14,18 +16,15 @@ use bevy_ecs::system::{Commands, Query, SystemParam};
 pub use bevy_hierarchy;
 use bevy_hierarchy::{Children, Parent};
 use event::{handle_advancement_tab_change, AdvancementTabChange};
+use packet::SelectAdvancementTabS2c;
 use rustc_hash::FxHashMap;
 use valence_client::{Client, FlushPacketsSet, SpawnClientsSet};
 use valence_core::ident::Ident;
 use valence_core::item::ItemStack;
-use valence_core::packet::encode::WritePacket;
-use valence_core::packet::raw::RawBytes;
-use valence_core::packet::s2c::play::advancement_update::GenericAdvancementUpdateS2c;
-use valence_core::packet::s2c::play::{
-    advancement_update as protocol, AdvancementUpdateS2c, SelectAdvancementTabS2c,
-};
-use valence_core::packet::var_int::VarInt;
-use valence_core::packet::{Encode, Packet};
+use valence_core::protocol::encode::WritePacket;
+use valence_core::protocol::raw::RawBytes;
+use valence_core::protocol::var_int::VarInt;
+use valence_core::protocol::{packet_id, Encode, Packet};
 use valence_core::text::Text;
 
 pub struct AdvancementPlugin;
@@ -81,7 +80,6 @@ fn add_advancement_update_component_to_new_clients(
 }
 
 #[derive(SystemParam, Debug)]
-#[allow(clippy::type_complexity)]
 struct UpdateAdvancementCachedBytesQuery<'w, 's> {
     advancement_id_query: Query<'w, 's, &'static Advancement>,
     criteria_query: Query<'w, 's, &'static AdvancementCriteria>,
@@ -102,7 +100,7 @@ impl<'w, 's> UpdateAdvancementCachedBytesQuery<'w, 's> {
             criteria_query,
         } = self;
 
-        let mut pkt = protocol::Advancement {
+        let mut pkt = packet::Advancement {
             parent_id: None,
             display_data: None,
             criteria: vec![],
@@ -115,7 +113,7 @@ impl<'w, 's> UpdateAdvancementCachedBytesQuery<'w, 's> {
         }
 
         if let Some(a_display) = a_display {
-            pkt.display_data = Some(protocol::AdvancementDisplay {
+            pkt.display_data = Some(packet::AdvancementDisplay {
                 title: Cow::Borrowed(&a_display.title),
                 description: Cow::Borrowed(&a_display.description),
                 icon: &a_display.icon,
@@ -140,7 +138,7 @@ impl<'w, 's> UpdateAdvancementCachedBytesQuery<'w, 's> {
                 let c_identifier = criteria_query.get(*requirement)?;
                 requirements_p.push(c_identifier.0.as_str());
             }
-            pkt.requirements.push(protocol::AdvancementRequirements {
+            pkt.requirements.push(packet::AdvancementRequirements {
                 requirement: requirements_p,
             });
         }
@@ -149,7 +147,6 @@ impl<'w, 's> UpdateAdvancementCachedBytesQuery<'w, 's> {
     }
 }
 
-#[allow(clippy::type_complexity)]
 fn update_advancement_cached_bytes(
     mut query: Query<
         (
@@ -215,10 +212,11 @@ impl<'w, 's, 'a> Encode for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
             remove_advancements,
             progress,
             force_tab_update: _,
+            reset,
         } = &self.client_update;
 
-        let mut pkt = GenericAdvancementUpdateS2c {
-            reset: false,
+        let mut pkt = packet::GenericAdvancementUpdateS2c {
+            reset: *reset,
             advancement_mapping: vec![],
             identifiers: vec![],
             progress_mapping: vec![],
@@ -250,7 +248,7 @@ impl<'w, 's, 'a> Encode for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
             let mut c_progresses_p = vec![];
             for (c, c_progress) in c_progresses {
                 let c_identifier = criteria_query.get(c)?;
-                c_progresses_p.push(protocol::AdvancementCriteria {
+                c_progresses_p.push(packet::AdvancementCriteria {
                     criterion_identifier: c_identifier.0.borrowed(),
                     criterion_progress: c_progress,
                 });
@@ -263,27 +261,9 @@ impl<'w, 's, 'a> Encode for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
     }
 }
 
-impl<'w, 's, 'a, 'b> Packet<'b> for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
-    const PACKET_ID: i32 = AdvancementUpdateS2c::PACKET_ID;
-
-    fn packet_id(&self) -> i32 {
-        Self::PACKET_ID
-    }
-
-    fn packet_name(&self) -> &str {
-        "AdvancementUpdateEncodeS2c"
-    }
-
-    fn encode_packet(&self, mut w: impl Write) -> anyhow::Result<()> {
-        VarInt(Self::PACKET_ID)
-            .encode(&mut w)
-            .context("failed to encode packet ID")?;
-        self.encode(w)
-    }
-
-    fn decode_packet(_r: &mut &'b [u8]) -> anyhow::Result<Self> {
-        panic!("Packet can not be decoded")
-    }
+impl<'w, 's, 'a> Packet for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
+    const ID: i32 = packet_id::ADVANCEMENT_UPDATE_S2C;
+    const NAME: &'static str = "AdvancementUpdateEncodeS2c";
 }
 
 #[allow(clippy::type_complexity)]
@@ -313,11 +293,18 @@ fn send_advancement_update_packet(
         if advancement_client_update.new_advancements.is_empty()
             && advancement_client_update.progress.is_empty()
             && advancement_client_update.remove_advancements.is_empty()
+            && !advancement_client_update.reset
         {
             continue;
         }
 
-        let advancement_client_update = std::mem::take(advancement_client_update.as_mut());
+        let advancement_client_update = std::mem::replace(
+            advancement_client_update.as_mut(),
+            AdvancementClientUpdate {
+                reset: false,
+                ..Default::default()
+            },
+        );
 
         client.write_packet(&AdvancementUpdateEncodeS2c {
             queries: &update_single_query,
@@ -403,7 +390,7 @@ pub enum ForceTabUpdate {
     Spec(Entity),
 }
 
-#[derive(Component, Default, Debug)]
+#[derive(Component, Debug)]
 pub struct AdvancementClientUpdate {
     /// Which advancement's descriptions send to client
     pub new_advancements: Vec<Entity>,
@@ -414,6 +401,22 @@ pub struct AdvancementClientUpdate {
     pub progress: Vec<(Entity, Option<i64>)>,
     /// Forces client to open a tab
     pub force_tab_update: ForceTabUpdate,
+    /// Defines if other advancements should be removed.
+    /// Also with this flag, client will not show a toast for advancements,
+    /// which are completed. When the packet is sent, turns to false
+    pub reset: bool,
+}
+
+impl Default for AdvancementClientUpdate {
+    fn default() -> Self {
+        Self {
+            new_advancements: vec![],
+            remove_advancements: vec![],
+            progress: vec![],
+            force_tab_update: ForceTabUpdate::default(),
+            reset: true,
+        }
+    }
 }
 
 impl AdvancementClientUpdate {

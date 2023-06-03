@@ -3,14 +3,16 @@ use std::hint::black_box;
 
 use criterion::Criterion;
 use valence::nbt::{compound, List};
-use valence::packet::array::LengthPrefixedArray;
-use valence::packet::byte_angle::ByteAngle;
-use valence::packet::decode::{decode_packet, PacketDecoder};
-use valence::packet::encode::{encode_packet, encode_packet_compressed, PacketEncoder};
-use valence::packet::s2c::play::{ChunkDataS2c, EntitySpawnS2c, PlayerListHeaderS2c};
-use valence::packet::var_int::VarInt;
 use valence::prelude::*;
+use valence::protocol::array::LengthPrefixedArray;
+use valence::protocol::byte_angle::ByteAngle;
+use valence::protocol::decode::PacketDecoder;
+use valence::protocol::encode::{encode_packet, encode_packet_compressed, PacketEncoder};
+use valence::protocol::var_int::VarInt;
 use valence::text::TextFormat;
+use valence_entity::packet::EntitySpawnS2c;
+use valence_instance::packet::ChunkDataS2c;
+use valence_player_list::packet::PlayerListHeaderS2c;
 
 pub fn packet(c: &mut Criterion) {
     let mut encoder = PacketEncoder::new();
@@ -135,7 +137,12 @@ pub fn packet(c: &mut Criterion) {
             let decoder = black_box(&mut decoder);
 
             decoder.queue_slice(&packet_buf);
-            decode_packet::<ChunkDataS2c>(&decoder.try_next_packet().unwrap().unwrap()).unwrap();
+            decoder
+                .try_next_packet()
+                .unwrap()
+                .unwrap()
+                .decode::<ChunkDataS2c>()
+                .unwrap();
 
             black_box(decoder);
         });
@@ -149,7 +156,11 @@ pub fn packet(c: &mut Criterion) {
             let decoder = black_box(&mut decoder);
 
             decoder.queue_slice(&packet_buf);
-            decode_packet::<PlayerListHeaderS2c>(&decoder.try_next_packet().unwrap().unwrap())
+            decoder
+                .try_next_packet()
+                .unwrap()
+                .unwrap()
+                .decode::<PlayerListHeaderS2c>()
                 .unwrap();
 
             black_box(decoder);
@@ -164,7 +175,12 @@ pub fn packet(c: &mut Criterion) {
             let decoder = black_box(&mut decoder);
 
             decoder.queue_slice(&packet_buf);
-            decode_packet::<EntitySpawnS2c>(&decoder.try_next_packet().unwrap().unwrap()).unwrap();
+            decoder
+                .try_next_packet()
+                .unwrap()
+                .unwrap()
+                .decode::<EntitySpawnS2c>()
+                .unwrap();
 
             black_box(decoder);
         });
@@ -182,7 +198,12 @@ pub fn packet(c: &mut Criterion) {
             let decoder = black_box(&mut decoder);
 
             decoder.queue_slice(&packet_buf);
-            decode_packet::<ChunkDataS2c>(&decoder.try_next_packet().unwrap().unwrap()).unwrap();
+            decoder
+                .try_next_packet()
+                .unwrap()
+                .unwrap()
+                .decode::<ChunkDataS2c>()
+                .unwrap();
 
             black_box(decoder);
         });
@@ -202,7 +223,11 @@ pub fn packet(c: &mut Criterion) {
             let decoder = black_box(&mut decoder);
 
             decoder.queue_slice(&packet_buf);
-            decode_packet::<PlayerListHeaderS2c>(&decoder.try_next_packet().unwrap().unwrap())
+            decoder
+                .try_next_packet()
+                .unwrap()
+                .unwrap()
+                .decode::<PlayerListHeaderS2c>()
                 .unwrap();
 
             black_box(decoder);
@@ -217,7 +242,12 @@ pub fn packet(c: &mut Criterion) {
             let decoder = black_box(&mut decoder);
 
             decoder.queue_slice(&packet_buf);
-            decode_packet::<EntitySpawnS2c>(&decoder.try_next_packet().unwrap().unwrap()).unwrap();
+            decoder
+                .try_next_packet()
+                .unwrap()
+                .unwrap()
+                .decode::<EntitySpawnS2c>()
+                .unwrap();
 
             black_box(decoder);
         });

@@ -4,8 +4,8 @@ use bevy_app::App;
 use bevy_ecs::world::EntityMut;
 use valence_client::ViewDistance;
 use valence_core::chunk_pos::ChunkView;
-use valence_core::packet::s2c::play::{ChunkDataS2c, S2cPlayPacket, UnloadChunkS2c};
 use valence_entity::Position;
+use valence_instance::packet::{ChunkDataS2c, UnloadChunkS2c};
 use valence_instance::Chunk;
 
 use super::*;
@@ -38,8 +38,9 @@ fn client_chunk_view_change() {
 
     let mut loaded_chunks = BTreeSet::new();
 
-    for pkt in client_helper.collect_sent() {
-        if let S2cPlayPacket::ChunkDataS2c(ChunkDataS2c { pos, .. }) = pkt {
+    for f in client_helper.collect_sent().0 {
+        if f.id == ChunkDataS2c::ID {
+            let ChunkDataS2c { pos, .. } = f.decode::<ChunkDataS2c>().unwrap();
             assert!(loaded_chunks.insert(pos), "({pos:?})");
         }
     }
@@ -57,12 +58,14 @@ fn client_chunk_view_change() {
     app.update();
     let client = app.world.entity_mut(client_ent);
 
-    for pkt in client_helper.collect_sent() {
-        match pkt {
-            S2cPlayPacket::ChunkDataS2c(ChunkDataS2c { pos, .. }) => {
+    for f in client_helper.collect_sent().0 {
+        match f.id {
+            ChunkDataS2c::ID => {
+                let ChunkDataS2c { pos, .. } = f.decode().unwrap();
                 assert!(loaded_chunks.insert(pos), "({pos:?})");
             }
-            S2cPlayPacket::UnloadChunkS2c(UnloadChunkS2c { pos }) => {
+            UnloadChunkS2c::ID => {
+                let UnloadChunkS2c { pos } = f.decode().unwrap();
                 assert!(loaded_chunks.remove(&pos), "({pos:?})");
             }
             _ => {}
