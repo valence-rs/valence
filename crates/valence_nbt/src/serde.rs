@@ -92,7 +92,7 @@ mod tests {
                 d: vec![],
             },
             baz: "🤨".into(),
-            quux: vec![3.14, f32::MAX, f32::MIN],
+            quux: vec![std::f32::consts::PI, f32::MAX, f32::MIN],
         }
     }
 
@@ -107,7 +107,7 @@ mod tests {
             },
             "baz" => "🤨",
             "quux" => List::Float(vec![
-                3.14_f32,
+                std::f32::consts::PI,
                 f32::MAX,
                 f32::MIN,
             ]),
@@ -125,7 +125,7 @@ mod tests {
             },
             "baz": "🤨",
             "quux": [
-                3.14_f32,
+                std::f32::consts::PI,
                 f32::MAX,
                 f32::MIN,
             ]
