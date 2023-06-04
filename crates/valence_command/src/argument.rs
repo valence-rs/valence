@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 
 use valence_block::{BlockKind, BlockState, PropName, PropValue};
@@ -1008,12 +1009,12 @@ impl<'a> BrigadierArgument<'a> for BlockPredicate<'a> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Block {
+pub struct BlockStateArgument {
     pub state: BlockState,
     pub tags: Option<Compound>,
 }
 
-impl<'a> Parsable<'a> for Block {
+impl<'a> Parsable<'a> for BlockStateArgument {
     type Data = ();
 
     type Error = BlockError<'a>;
@@ -1051,9 +1052,75 @@ impl<'a> Parsable<'a> for Block {
         ParsingResult {
             suggestions: None,
             result: Ok(match purpose {
-                ParsingPurpose::Reading => Some(Block { state, tags: None }),
+                ParsingPurpose::Reading => Some(Self { state, tags: None }),
                 ParsingPurpose::Suggestion => None,
             }),
+        }
+    }
+}
+
+impl<'a> BrigadierArgument<'a> for BlockStateArgument {
+    fn parser(_data: Option<&Self::Data>) -> Parser<'a> {
+        Parser::BlockState
+    }
+}
+
+// TODO remove this comment in future
+/// CEnums are:
+/// - color
+/// - dimension
+/// - entity_anchor
+/// - gamemode
+/// - heightmap
+/// - operation
+/// - swizzle (?)
+/// - template mirror
+/// - template rotation
+pub trait CEnum {
+    const SUGGESTIONS: &'static [Suggestion<'static>];
+
+    fn error() -> ParsingError;
+
+    fn from_str(str: &str) -> Option<Self>;
+}
+
+pub struct CEnumError<E>(PhantomData<E>);
+
+impl<E: CEnum> ParsingBuild<ParsingError> for CEnumError<E> {
+    fn build(self) -> ParsingError {
+        E::error()
+    }
+}
+
+pub struct CEnumSuggestions<E>(PhantomData<E>);
+
+impl<'a, E: CEnum> ParsingBuild<ParsingSuggestions<'a>> for CEnumSuggestions<E> {
+    fn build(self) -> ParsingSuggestions<'a> {
+        ParsingSuggestions::Borrowed(E::SUGGESTIONS)
+    }
+}
+
+impl<'a, E: CEnum + 'a> Parsable<'a> for E {
+    type Data = ();
+
+    type Error = CEnumError<E>;
+
+    type Suggestions = CEnumSuggestions<E>;
+
+    fn parse(
+        data: Option<&Self::Data>,
+        reader: &mut StrReader<'a>,
+        purpose: ParsingPurpose,
+    ) -> ParsingResult<Self, Self::Suggestions, Self::Error> {
+        let begin = reader.cursor();
+        let str = reader.read_unquoted_str();
+
+        ParsingResult {
+            suggestions: Some((begin..reader.cursor(), CEnumSuggestions(PhantomData))),
+            result: match E::from_str(str) {
+                Some(e) => Ok(Some(e)),
+                None => Err((begin..reader.cursor(), CEnumError(PhantomData)))
+            }
         }
     }
 }
@@ -1279,14 +1346,14 @@ mod tests {
     #[test]
     fn block_test() {
         assert_eq!(
-            Block::parse(
+            BlockStateArgument::parse(
                 None,
                 &mut StrReader::new("oak_slab[waterlogged = true]"),
                 ParsingPurpose::Reading
             ),
             ParsingResult {
                 suggestions: None,
-                result: Ok(Some(Block {
+                result: Ok(Some(BlockStateArgument {
                     state: BlockState::OAK_SLAB.set(PropName::Waterlogged, PropValue::True),
                     tags: None,
                 }))
