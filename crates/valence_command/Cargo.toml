@@ -14,3 +14,5 @@ valence_nbt.workspace = true
 valence_entity.workspace = true
 valence_instance.workspace = true
 ctor.workspace = true
+casey.workspace = true
+paste.workspace = true

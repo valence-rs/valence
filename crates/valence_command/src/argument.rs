@@ -3,6 +3,7 @@ use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 
 use valence_block::{BlockKind, BlockState, PropName, PropValue};
+use valence_core::game_mode::GameMode;
 use valence_core::protocol::packet::command::{Parser, StringArg};
 use valence_core::translation_key::{
     ARGUMENT_ANGLE_INVALID, ARGUMENT_BLOCK_ID_INVALID, ARGUMENT_BLOCK_PROPERTY_DUPLICATE,
@@ -13,7 +14,7 @@ use valence_core::translation_key::{
     COMMAND_EXPECTED_SEPARATOR, PARSING_BOOL_EXPECTED, PARSING_BOOL_INVALID,
     PARSING_DOUBLE_EXPECTED, PARSING_DOUBLE_INVALID, PARSING_FLOAT_EXPECTED, PARSING_FLOAT_INVALID,
     PARSING_INT_EXPECTED, PARSING_INT_INVALID, PARSING_LONG_EXPECTED, PARSING_LONG_INVALID,
-    PARSING_QUOTE_EXPECTED_END,
+    PARSING_QUOTE_EXPECTED_END, ARGUMENT_GAMEMODE_INVALID,
 };
 use valence_nbt::Compound;
 
@@ -1065,8 +1066,9 @@ impl<'a> BrigadierArgument<'a> for BlockStateArgument {
     }
 }
 
-// TODO remove this comment in future
-/// CEnums are:
+/// Represent any enum that has no fields in its variants.
+///
+/// Brigadier's CEnums are:
 /// - color
 /// - dimension
 /// - entity_anchor
@@ -1076,22 +1078,24 @@ impl<'a> BrigadierArgument<'a> for BlockStateArgument {
 /// - swizzle (?)
 /// - template mirror
 /// - template rotation
-pub trait CEnum {
+pub trait CEnum: Sized {
     const SUGGESTIONS: &'static [Suggestion<'static>];
 
-    fn error() -> ParsingError;
+    fn error(str: &str) -> ParsingError;
 
     fn from_str(str: &str) -> Option<Self>;
 }
 
-pub struct CEnumError<E>(PhantomData<E>);
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct CEnumError<'a, E>(&'a str, PhantomData<E>);
 
-impl<E: CEnum> ParsingBuild<ParsingError> for CEnumError<E> {
+impl<'a, E: CEnum> ParsingBuild<ParsingError> for CEnumError<'a, E> {
     fn build(self) -> ParsingError {
-        E::error()
+        E::error(self.0)
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CEnumSuggestions<E>(PhantomData<E>);
 
 impl<'a, E: CEnum> ParsingBuild<ParsingSuggestions<'a>> for CEnumSuggestions<E> {
@@ -1103,14 +1107,14 @@ impl<'a, E: CEnum> ParsingBuild<ParsingSuggestions<'a>> for CEnumSuggestions<E> 
 impl<'a, E: CEnum + 'a> Parsable<'a> for E {
     type Data = ();
 
-    type Error = CEnumError<E>;
+    type Error = CEnumError<'a, E>;
 
     type Suggestions = CEnumSuggestions<E>;
 
     fn parse(
-        data: Option<&Self::Data>,
+        _data: Option<&Self::Data>,
         reader: &mut StrReader<'a>,
-        purpose: ParsingPurpose,
+        _purpose: ParsingPurpose,
     ) -> ParsingResult<Self, Self::Suggestions, Self::Error> {
         let begin = reader.cursor();
         let str = reader.read_unquoted_str();
@@ -1119,9 +1123,45 @@ impl<'a, E: CEnum + 'a> Parsable<'a> for E {
             suggestions: Some((begin..reader.cursor(), CEnumSuggestions(PhantomData))),
             result: match E::from_str(str) {
                 Some(e) => Ok(Some(e)),
-                None => Err((begin..reader.cursor(), CEnumError(PhantomData)))
+                None => Err((begin..reader.cursor(), CEnumError(str, PhantomData))),
+            },
+        }
+    }
+}
+
+macro_rules! cenum {
+    ($name: ty; $error: expr => {
+        $($val: ident$(,)?)*
+    }) => {
+        impl CEnum for $name {
+            const SUGGESTIONS: &'static [Suggestion<'static>] = &[
+                $(Suggestion::new_str(casey::lower!(stringify!($val))),)*
+            ];
+
+            fn error(str: &str) -> ParsingError {
+                ParsingError::translate($error, vec![str.to_string().into()])
+            }
+
+            fn from_str(str: &str) -> Option<Self> {
+                match str {
+                    $(casey::lower!(stringify!($val)) => Some(Self::$val),)*
+                    _ => None,
+                }
             }
         }
+    }
+}
+
+cenum!(GameMode; ARGUMENT_GAMEMODE_INVALID => {
+    Survival,
+    Creative,
+    Adventure,
+    Spectator,
+});
+
+impl<'a> BrigadierArgument<'a> for GameMode {
+    fn parser(_data: Option<&Self::Data>) -> Parser<'a> {
+        Parser::GameMode
     }
 }
 
@@ -1359,5 +1399,20 @@ mod tests {
                 }))
             }
         )
+    }
+
+    #[test]
+    fn cenum_test() {
+        assert_eq!(
+            GameMode::parse(
+                None,
+                &mut StrReader::new("survival"),
+                ParsingPurpose::Reading
+            ),
+            ParsingResult {
+                suggestions: Some((0..8, CEnumSuggestions(PhantomData))),
+                result: Ok(Some(GameMode::Survival))
+            }
+        );
     }
 }
