@@ -4,11 +4,15 @@ use std::hash::Hash;
 use std::iter::FusedIterator;
 use std::ops::{Index, IndexMut};
 
-use crate::to_binary_writer::written_size;
 use crate::Value;
 
 /// A map type with [`String`] keys and [`Value`] values.
 #[derive(Clone, PartialEq, Default)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(transparent)
+)]
 pub struct Compound {
     map: Map,
 }
@@ -18,74 +22,6 @@ type Map = std::collections::BTreeMap<String, Value>;
 
 #[cfg(feature = "preserve_order")]
 type Map = indexmap::IndexMap<String, Value>;
-
-impl Compound {
-    /// Returns the number of bytes that will be written when
-    /// [`to_binary_writer`] is called with this compound and root name.
-    ///
-    /// If [`to_binary_writer`] results in `Ok`, the exact number of bytes
-    /// reported by this function will have been written. If the result is
-    /// `Err`, then the reported count will be greater than or equal to the
-    /// number of bytes that have actually been written.
-    ///
-    /// [`to_binary_writer`]: crate::to_binary_writer()
-    pub fn written_size(&self, root_name: &str) -> usize {
-        written_size(self, root_name)
-    }
-
-    /// Inserts all items from `other` into `self` recursively.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use valence_nbt::compound;
-    ///
-    /// let mut this = compound! {
-    ///     "foo" => 10,
-    ///     "bar" => compound! {
-    ///         "baz" => 20,
-    ///     }
-    /// };
-    ///
-    /// let other = compound! {
-    ///     "foo" => 15,
-    ///     "bar" => compound! {
-    ///         "quux" => "hello",
-    ///     }
-    /// };
-    ///
-    /// this.merge(other);
-    ///
-    /// assert_eq!(
-    ///     this,
-    ///     compound! {
-    ///         "foo" => 15,
-    ///         "bar" => compound! {
-    ///             "baz" => 20,
-    ///             "quux" => "hello",
-    ///         }
-    ///     }
-    /// );
-    /// ```
-    pub fn merge(&mut self, other: Compound) {
-        for (k, v) in other {
-            match (self.entry(k), v) {
-                (Entry::Occupied(mut oe), Value::Compound(other)) => {
-                    if let Value::Compound(this) = oe.get_mut() {
-                        // Insert compound recursively.
-                        this.merge(other);
-                    }
-                }
-                (Entry::Occupied(mut oe), value) => {
-                    oe.insert(value);
-                }
-                (Entry::Vacant(ve), value) => {
-                    ve.insert(value);
-                }
-            }
-        }
-    }
-}
 
 impl fmt::Debug for Compound {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -258,6 +194,59 @@ impl Compound {
             }
         }
         true
+    }
+
+    /// Inserts all items from `other` into `self` recursively.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use valence_nbt::compound;
+    ///
+    /// let mut this = compound! {
+    ///     "foo" => 10,
+    ///     "bar" => compound! {
+    ///         "baz" => 20,
+    ///     }
+    /// };
+    ///
+    /// let other = compound! {
+    ///     "foo" => 15,
+    ///     "bar" => compound! {
+    ///         "quux" => "hello",
+    ///     }
+    /// };
+    ///
+    /// this.merge(other);
+    ///
+    /// assert_eq!(
+    ///     this,
+    ///     compound! {
+    ///         "foo" => 15,
+    ///         "bar" => compound! {
+    ///             "baz" => 20,
+    ///             "quux" => "hello",
+    ///         }
+    ///     }
+    /// );
+    /// ```
+    pub fn merge(&mut self, other: Compound) {
+        for (k, v) in other {
+            match (self.entry(k), v) {
+                (Entry::Occupied(mut oe), Value::Compound(other)) => {
+                    if let Value::Compound(this) = oe.get_mut() {
+                        // Insert compound recursively.
+                        this.merge(other);
+                    }
+                }
+                (Entry::Occupied(mut oe), value) => {
+                    oe.insert(value);
+                }
+                (Entry::Vacant(ve), value) => {
+                    ve.insert(value);
+                }
+            }
+        }
     }
 }
 
@@ -520,3 +509,23 @@ pub struct ValuesMut<'a> {
 }
 
 impl_iterator_traits!((ValuesMut<'a>) => &'a mut Value);
+
+#[cfg(test)]
+mod tests {
+    #[cfg(feature = "preserve_order")]
+    #[test]
+    fn compound_preserves_order() {
+        use super::*;
+
+        let letters = ["g", "b", "d", "e", "h", "z", "m", "a", "q"];
+
+        let mut c = Compound::new();
+        for l in letters {
+            c.insert(l, 0_i8);
+        }
+
+        for (k, l) in c.keys().zip(letters) {
+            assert_eq!(k, l);
+        }
+    }
+}

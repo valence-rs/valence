@@ -1,77 +1,88 @@
 use std::io::Write;
+use std::slice;
 
 use byteorder::{BigEndian, WriteBytesExt};
 
+use super::{modified_utf8, Error, Result};
 use crate::tag::Tag;
-use crate::{modified_utf8, Compound, Error, List, Result, Value};
+use crate::{Compound, List, Value};
 
-/// Encodes uncompressed NBT binary data to the provided writer.
-///
-/// Only compounds are permitted at the top level. This is why the function
-/// accepts a [`Compound`] reference rather than a [`Value`].
-///
-/// Additionally, the root compound can be given a name. Typically the empty
-/// string `""` is used.
-pub fn to_binary_writer<W: Write>(writer: W, compound: &Compound, root_name: &str) -> Result<()> {
-    let mut state = EncodeState { writer };
+impl Compound {
+    /// Encodes uncompressed NBT binary data to the provided writer.
+    ///
+    /// Only compounds are permitted at the top level. This is why the function
+    /// accepts a [`Compound`] reference rather than a [`Value`].
+    ///
+    /// Additionally, the root compound can be given a name. Typically the empty
+    /// string `""` is used.
+    pub fn to_binary<W: Write>(&self, writer: W, root_name: &str) -> Result<()> {
+        let mut state = EncodeState { writer };
 
-    state.write_tag(Tag::Compound)?;
-    state.write_string(root_name)?;
-    state.write_compound(compound)?;
+        state.write_tag(Tag::Compound)?;
+        state.write_string(root_name)?;
+        state.write_compound(self)?;
 
-    Ok(())
-}
+        Ok(())
+    }
 
-pub(crate) fn written_size(compound: &Compound, root_name: &str) -> usize {
-    fn value_size(val: &Value) -> usize {
-        match val {
-            Value::Byte(_) => 1,
-            Value::Short(_) => 2,
-            Value::Int(_) => 4,
-            Value::Long(_) => 8,
-            Value::Float(_) => 4,
-            Value::Double(_) => 8,
-            Value::ByteArray(ba) => 4 + ba.len(),
-            Value::String(s) => string_size(s),
-            Value::List(l) => list_size(l),
-            Value::Compound(c) => compound_size(c),
-            Value::IntArray(ia) => 4 + ia.len() * 4,
-            Value::LongArray(la) => 4 + la.len() * 8,
+    /// Returns the number of bytes that will be written when
+    /// [`Compound::to_binary`] is called with this compound and root name.
+    ///
+    /// If `to_binary` results in `Ok`, the exact number of bytes
+    /// reported by this function will have been written. If the result is
+    /// `Err`, then the reported count will be greater than or equal to the
+    /// number of bytes that have actually been written.
+    pub fn written_size(&self, root_name: &str) -> usize {
+        fn value_size(val: &Value) -> usize {
+            match val {
+                Value::Byte(_) => 1,
+                Value::Short(_) => 2,
+                Value::Int(_) => 4,
+                Value::Long(_) => 8,
+                Value::Float(_) => 4,
+                Value::Double(_) => 8,
+                Value::ByteArray(ba) => 4 + ba.len(),
+                Value::String(s) => string_size(s),
+                Value::List(l) => list_size(l),
+                Value::Compound(c) => compound_size(c),
+                Value::IntArray(ia) => 4 + ia.len() * 4,
+                Value::LongArray(la) => 4 + la.len() * 8,
+            }
         }
+
+        fn list_size(l: &List) -> usize {
+            let elems_size = match l {
+                List::End => 0,
+                List::Byte(b) => b.len(),
+                List::Short(s) => s.len() * 2,
+                List::Int(i) => i.len() * 4,
+                List::Long(l) => l.len() * 8,
+                List::Float(f) => f.len() * 4,
+                List::Double(d) => d.len() * 8,
+                List::ByteArray(ba) => ba.iter().map(|b| 4 + b.len()).sum(),
+                List::String(s) => s.iter().map(|s| string_size(s)).sum(),
+                List::List(l) => l.iter().map(list_size).sum(),
+                List::Compound(c) => c.iter().map(compound_size).sum(),
+                List::IntArray(i) => i.iter().map(|i| 4 + i.len() * 4).sum(),
+                List::LongArray(l) => l.iter().map(|l| 4 + l.len() * 8).sum(),
+            };
+
+            1 + 4 + elems_size
+        }
+
+        fn string_size(s: &str) -> usize {
+            2 + modified_utf8::encoded_len(s)
+        }
+
+        fn compound_size(c: &Compound) -> usize {
+            c.iter()
+                .map(|(k, v)| 1 + string_size(k) + value_size(v))
+                .sum::<usize>()
+                + 1
+        }
+
+        1 + string_size(root_name) + compound_size(self)
     }
-
-    fn list_size(l: &List) -> usize {
-        let elems_size = match l {
-            List::End => 0,
-            List::Byte(b) => b.len(),
-            List::Short(s) => s.len() * 2,
-            List::Int(i) => i.len() * 4,
-            List::Long(l) => l.len() * 8,
-            List::Float(f) => f.len() * 4,
-            List::Double(d) => d.len() * 8,
-            List::ByteArray(ba) => ba.iter().map(|b| 4 + b.len()).sum(),
-            List::String(s) => s.iter().map(|s| string_size(s)).sum(),
-            List::List(l) => l.iter().map(list_size).sum(),
-            List::Compound(c) => c.iter().map(compound_size).sum(),
-            List::IntArray(i) => i.iter().map(|i| 4 + i.len() * 4).sum(),
-            List::LongArray(l) => l.iter().map(|l| 4 + l.len() * 8).sum(),
-        };
-
-        1 + 4 + elems_size
-    }
-
-    fn string_size(s: &str) -> usize {
-        2 + modified_utf8::encoded_len(s)
-    }
-
-    fn compound_size(c: &Compound) -> usize {
-        c.iter()
-            .map(|(k, v)| 1 + string_size(k) + value_size(v))
-            .sum::<usize>()
-            + 1
-    }
-
-    1 + string_size(root_name) + compound_size(compound)
 }
 
 struct EncodeState<W> {
@@ -136,7 +147,7 @@ impl<W: Write> EncodeState<W> {
         }
 
         // SAFETY: i8 has the same layout as u8.
-        let bytes: &[u8] = unsafe { std::mem::transmute(bytes) };
+        let bytes = unsafe { slice::from_raw_parts(bytes.as_ptr() as *const u8, bytes.len()) };
 
         Ok(self.writer.write_all(bytes)?)
     }
@@ -187,7 +198,7 @@ impl<W: Write> EncodeState<W> {
                 }
 
                 // SAFETY: i8 has the same layout as u8.
-                let bytes: &[u8] = unsafe { std::mem::transmute(bl.as_slice()) };
+                let bytes = unsafe { slice::from_raw_parts(bl.as_ptr() as *const u8, bl.len()) };
 
                 Ok(self.writer.write_all(bytes)?)
             }
