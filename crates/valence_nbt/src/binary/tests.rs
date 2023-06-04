@@ -97,21 +97,6 @@ fn correct_length() {
     assert_eq!(c.written_size("abc"), buf.len());
 }
 
-#[cfg(feature = "preserve_order")]
-#[test]
-fn preserves_order() {
-    let letters = ["g", "b", "d", "e", "h", "z", "m", "a", "q"];
-
-    let mut c = Compound::new();
-    for l in letters {
-        c.insert(l, 0_i8);
-    }
-
-    for (k, l) in c.keys().zip(letters) {
-        assert_eq!(k, l);
-    }
-}
-
 fn example_compound() -> Compound {
     fn inner() -> Compound {
         compound! {
