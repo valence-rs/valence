@@ -8,6 +8,11 @@ use crate::Value;
 
 /// A map type with [`String`] keys and [`Value`] values.
 #[derive(Clone, PartialEq, Default)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(transparent)
+)]
 pub struct Compound {
     map: Map,
 }

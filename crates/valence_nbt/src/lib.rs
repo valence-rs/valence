@@ -24,6 +24,8 @@ pub use value::{List, Value};
 #[cfg(feature = "binary")]
 pub mod binary;
 pub mod compound;
+#[cfg(feature = "serde")]
+mod serde;
 #[cfg(feature = "snbt")]
 pub mod snbt;
 mod tag;
