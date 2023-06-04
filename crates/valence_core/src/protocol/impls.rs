@@ -540,10 +540,9 @@ impl<'a> Decode<'a> for &'a [u8] {
 impl<'a> Decode<'a> for &'a [i8] {
     fn decode(r: &mut &'a [u8]) -> Result<Self> {
         let bytes = <&[u8]>::decode(r)?;
-        
+
         // SAFETY: i8 and u8 have the same layout.
-        let bytes =
-            unsafe { slice::from_raw_parts(bytes.as_ptr() as *const i8, bytes.len()) };
+        let bytes = unsafe { slice::from_raw_parts(bytes.as_ptr() as *const i8, bytes.len()) };
 
         Ok(bytes)
     }
