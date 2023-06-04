@@ -1,4 +1,5 @@
 use std::io::Write;
+use std::slice;
 
 use byteorder::{BigEndian, WriteBytesExt};
 
@@ -146,7 +147,7 @@ impl<W: Write> EncodeState<W> {
         }
 
         // SAFETY: i8 has the same layout as u8.
-        let bytes: &[u8] = unsafe { std::mem::transmute(bytes) };
+        let bytes = unsafe { slice::from_raw_parts(bytes.as_ptr() as *const u8, bytes.len()) };
 
         Ok(self.writer.write_all(bytes)?)
     }
@@ -197,7 +198,7 @@ impl<W: Write> EncodeState<W> {
                 }
 
                 // SAFETY: i8 has the same layout as u8.
-                let bytes: &[u8] = unsafe { std::mem::transmute(bl.as_slice()) };
+                let bytes = unsafe { slice::from_raw_parts(bl.as_ptr() as *const u8, bl.len()) };
 
                 Ok(self.writer.write_all(bytes)?)
             }

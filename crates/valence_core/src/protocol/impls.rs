@@ -1,5 +1,6 @@
 //! [`Encode`] and [`Decode`] impls on foreign types.
 
+use core::slice;
 use std::borrow::Cow;
 use std::collections::{BTreeSet, HashSet};
 use std::hash::{BuildHasher, Hash};
@@ -27,8 +28,8 @@ impl Encode for bool {
 
     fn encode_slice(slice: &[bool], mut w: impl Write) -> Result<()> {
         // SAFETY: Bools have the same layout as u8.
+        let bytes = unsafe { slice::from_raw_parts(slice.as_ptr() as *const u8, slice.len()) };
         // Bools are guaranteed to have the correct bit pattern.
-        let bytes: &[u8] = unsafe { mem::transmute(slice) };
         Ok(w.write_all(bytes)?)
     }
 }
@@ -64,7 +65,7 @@ impl Encode for i8 {
 
     fn encode_slice(slice: &[i8], mut w: impl Write) -> Result<()> {
         // SAFETY: i8 has the same layout as u8.
-        let bytes: &[u8] = unsafe { mem::transmute(slice) };
+        let bytes = unsafe { slice::from_raw_parts(slice.as_ptr() as *const u8, slice.len()) };
         Ok(w.write_all(bytes)?)
     }
 }
@@ -471,7 +472,6 @@ impl<const N: usize, T: Encode> Encode for [T; N] {
 impl<'a, const N: usize, T: Decode<'a>> Decode<'a> for [T; N] {
     fn decode(r: &mut &'a [u8]) -> Result<Self> {
         // TODO: rewrite using std::array::try_from_fn when stabilized?
-        // TODO: specialization for [f64; 3] improved performance.
 
         let mut data: [MaybeUninit<T>; N] = unsafe { MaybeUninit::uninit().assume_init() };
 
@@ -539,9 +539,13 @@ impl<'a> Decode<'a> for &'a [u8] {
 
 impl<'a> Decode<'a> for &'a [i8] {
     fn decode(r: &mut &'a [u8]) -> Result<Self> {
-        let unsigned_bytes = <&[u8]>::decode(r)?;
-        let signed_bytes: &[i8] = unsafe { mem::transmute(unsigned_bytes) };
-        Ok(signed_bytes)
+        let bytes = <&[u8]>::decode(r)?;
+        
+        // SAFETY: i8 and u8 have the same layout.
+        let bytes =
+            unsafe { slice::from_raw_parts(bytes.as_ptr() as *const i8, bytes.len()) };
+
+        Ok(bytes)
     }
 }
 
