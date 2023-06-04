@@ -192,14 +192,12 @@ impl<'a> StrReader<'a> {
     }
 
     pub fn remaining_str(&self) -> &'a str {
-        // SAFETY
-        // cursor is always valid
+        // SAFETY: cursor is always valid
         unsafe { self.str.get_unchecked(self.cursor..) }
     }
 
     pub fn used_str(&self) -> &'a str {
-        // SAFETY
-        // cursor is always valid
+        // SAFETY: cursor is always valid
         unsafe { self.str.get_unchecked(..self.cursor) }
     }
 

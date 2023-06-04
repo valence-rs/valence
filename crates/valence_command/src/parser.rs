@@ -3,6 +3,7 @@ use std::ops::Range;
 
 use valence_core::text::Text;
 
+use crate::parsing_ret_err;
 use crate::reader::StrReader;
 
 #[derive(Clone, Debug)]
@@ -39,9 +40,74 @@ impl<'a> From<String> for Suggestion<'a> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct ParsingResult<'a, T: Parsable<'a>> {
-    pub suggestions: Option<(Range<usize>, T::Suggestions)>,
-    pub result: Result<Option<T>, (Range<usize>, T::Error)>,
+pub struct ParsingResult<T, S, E> {
+    pub suggestions: Option<(Range<usize>, S)>,
+    pub result: Result<Option<T>, (Range<usize>, E)>,
+}
+
+impl<T, S, E> ParsingResult<T, S, E> {
+    pub const fn ok() -> Self {
+        Self {
+            suggestions: None,
+            result: Ok(None)
+        }
+    }
+
+    pub fn map_suggestion<S1>(self, func: impl FnOnce(S) -> S1) -> ParsingResult<T, S1, E> {
+        ParsingResult {
+            suggestions: self.suggestions.map(|(pos, s)| (pos, func(s))),
+            result: self.result,
+        }
+    }
+
+    pub fn map_ok<T1>(self, func: impl FnOnce(T) -> T1) -> ParsingResult<T1, S, E> {
+        ParsingResult {
+            suggestions: self.suggestions,
+            result: self.result.map(|v| v.map(func)),
+        }
+    }
+
+    pub fn map_err<E1>(self, func: impl FnOnce(E) -> E1) -> ParsingResult<T, S, E1> {
+        ParsingResult {
+            suggestions: self.suggestions,
+            result: self.result.map_err(|(pos, e)| (pos, func(e))),
+        }
+    }
+
+    pub fn zip<T1>(
+        self,
+        func: impl FnOnce() -> ParsingResult<T1, S, E>,
+    ) -> ParsingResult<(T, T1), S, E> {
+        let res = parsing_ret_err!(self);
+
+        let other = func();
+
+        ParsingResult {
+            suggestions: other.suggestions,
+            // SAFETY: parsing_ret_err! ensures that result is Ok
+            result: other
+                .result
+                .map(|v| match (v, unsafe { res.result.unwrap_unchecked() }) {
+                    (Some(v), Some(o)) => Some((o, v)),
+                    _ => None,
+                }),
+        }
+    }
+}
+
+/// Macro ensures that returned result contains no Error
+#[macro_export]
+macro_rules! parsing_ret_err {
+    ($res:expr) => {{
+        let res = $res;
+        if let Err(err) = res.result {
+            return $crate::parser::ParsingResult {
+                suggestions: res.suggestions,
+                result: Err(err),
+            };
+        }
+        res
+    }};
 }
 
 pub trait ParsingBuild<T> {
@@ -92,7 +158,7 @@ pub trait Parsable<'a>: 'a + Sized {
 
     type Suggestions: 'a + ParsingBuild<ParsingSuggestions<'a>> + Sized;
 
-    type Data: 'a;
+    type Data: 'a + ?Sized;
 
     /// The result can depend on `purpose` value:
     /// - [`ParsingPurpose::Suggestion`]
@@ -110,7 +176,7 @@ pub trait Parsable<'a>: 'a + Sized {
         data: Option<&Self::Data>,
         reader: &mut StrReader<'a>,
         purpose: ParsingPurpose,
-    ) -> ParsingResult<'a, Self>;
+    ) -> ParsingResult<Self, Self::Suggestions, Self::Error>;
 }
 
 impl<'a> ParsingBuild<ParsingSuggestions<'a>> for () {
@@ -131,5 +197,36 @@ pub enum NoParsingBuild {}
 impl<T> ParsingBuild<T> for NoParsingBuild {
     fn build(self) -> T {
         unreachable!()
+    }
+}
+
+#[macro_export]
+macro_rules! parsing_token {
+    ($reader:expr, $token:expr, $error:expr, $suggestions:expr$(,)?) => {{
+        let begin = $reader.cursor();
+        if !$reader.skip_char($token) {
+            return $crate::parser::ParsingResult {
+                suggestions: Some((begin..$reader.cursor(), $suggestions)),
+                result: Err((begin..$reader.cursor(), $error)),
+            };
+        }
+    }};
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parsing_ret_err;
+
+    #[test]
+    fn ret_err() {
+        fn func() -> ParsingResult<(), (), i32> {
+            parsing_ret_err!(ParsingResult::<(), (), _> {
+                suggestions: None,
+                result: Err((0..0, 0))
+            });
+            unreachable!()
+        }
+        assert!(func().result.is_err());
     }
 }
