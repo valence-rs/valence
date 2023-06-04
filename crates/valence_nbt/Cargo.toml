@@ -14,7 +14,7 @@ binary = ["dep:byteorder", "dep:cesu8"]
 snbt = []
 # When enabled, the order of fields in compounds are preserved.
 preserve_order = ["dep:indexmap"]
-serde = ["dep:serde", "dep:thiserror", "indexmap/serde"]
+serde = ["dep:serde", "dep:thiserror", "indexmap?/serde"]
 
 [dependencies]
 byteorder = { workspace = true, optional = true }
