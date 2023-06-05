@@ -19,6 +19,11 @@ impl GameMode {
     /// 2. Adventure
     /// 3. Spectator
     pub fn to_index(self) -> usize {
-        self as usize
+        match self {
+            Self::Survival => 0,
+            Self::Creative => 1,
+            Self::Adventure => 2,
+            Self::Spectator => 3,
+        }
     }
 }

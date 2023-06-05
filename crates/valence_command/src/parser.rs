@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::ops::Range;
 
+use valence_core::protocol::packet::command::Parser;
 use valence_core::text::Text;
 
 use crate::parsing_ret_err;
@@ -49,7 +50,7 @@ impl<T, S, E> ParsingResult<T, S, E> {
     pub const fn ok() -> Self {
         Self {
             suggestions: None,
-            result: Ok(None)
+            result: Ok(None),
         }
     }
 
@@ -84,13 +85,11 @@ impl<T, S, E> ParsingResult<T, S, E> {
 
         ParsingResult {
             suggestions: other.suggestions,
-            // SAFETY: parsing_ret_err! ensures that result is Ok
-            result: other
-                .result
-                .map(|v| match (v, unsafe { res.result.unwrap_unchecked() }) {
-                    (Some(v), Some(o)) => Some((o, v)),
-                    _ => None,
-                }),
+            // parsing_ret_err! ensures that result is Ok
+            result: other.result.map(|v| match (v, res.result) {
+                (Some(v), Ok(Some(o))) => Some((o, v)),
+                _ => None,
+            }),
         }
     }
 }
@@ -185,6 +184,12 @@ impl<'a> ParsingBuild<ParsingSuggestions<'a>> for () {
     }
 }
 
+impl ParsingBuild<ParsingError> for () {
+    fn build(self) -> ParsingError {
+        ParsingError::text("error")
+    }
+}
+
 // TODO change to never type (!), when it stabilizes
 
 /// Indicates any [ParsingBuild] that can not occur.
@@ -202,7 +207,7 @@ impl<T> ParsingBuild<T> for NoParsingBuild {
 
 #[macro_export]
 macro_rules! parsing_token {
-    ($reader:expr, $token:expr, $error:expr, $suggestions:expr$(,)?) => {{
+    ($reader:expr, $token:expr, $error:expr, $suggestions:expr $(,)?) => {{
         let begin = $reader.cursor();
         if !$reader.skip_char($token) {
             return $crate::parser::ParsingResult {
@@ -211,6 +216,10 @@ macro_rules! parsing_token {
             };
         }
     }};
+}
+
+pub trait BrigadierArgument<'a>: Parsable<'a> {
+    fn parser(data: Option<&Self::Data>) -> Parser<'a>;
 }
 
 #[cfg(test)]

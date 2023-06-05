@@ -2,7 +2,7 @@ use std::str::{Chars, FromStr};
 
 #[derive(Clone, Copy, Debug)]
 pub struct StrReader<'a> {
-    pub str: &'a str,
+    str: &'a str,
     cursor: usize,
 }
 
@@ -23,6 +23,10 @@ pub enum StrFilter {
 impl<'a> StrReader<'a> {
     pub const fn new(str: &'a str) -> Self {
         Self { str, cursor: 0 }
+    }
+
+    pub fn str(&self) -> &'a str {
+        self.str
     }
 
     /// # Safety
@@ -84,6 +88,7 @@ impl<'a> StrReader<'a> {
 
         let end = self.skip_str_filtered(filter);
 
+        // SAFETY: begin and end are valid cursors
         unsafe { self.str.get_unchecked(begin..end) }
     }
 
@@ -159,11 +164,22 @@ impl<'a> StrReader<'a> {
         })
     }
 
-    pub fn read_ident_str(&mut self) -> &'a str {
-        self.read_str_filtered(|ch| match ch {
-            '0'..='9' | 'A'..='Z' | 'a'..='z' | '_' | '-' | '.' | '+' | ':' => StrFilter::Continue,
+    pub fn read_ident_str(&mut self) -> (Option<&'a str>, &'a str) {
+        let mut left = false;
+        let result = self.read_str_filtered(|ch| match ch {
+            '0'..='9' | 'A'..='Z' | 'a'..='z' | '_' | '-' | '.' | '+' => StrFilter::Continue,
+            ':' => {
+                left = true;
+                StrFilter::EndInclude
+            }
             _ => StrFilter::EndExclude,
-        })
+        });
+
+        if left {
+            (Some(result), self.read_unquoted_str())
+        } else {
+            (None, result)
+        }
     }
 
     pub fn read_started_quoted_str(&mut self) -> Option<String> {
