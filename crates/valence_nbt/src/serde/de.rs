@@ -1,7 +1,9 @@
 use std::{fmt, slice};
 
-use serde::de::value::{MapAccessDeserializer, MapDeserializer, SeqAccessDeserializer};
-use serde::de::{self, IntoDeserializer, SeqAccess, Visitor};
+use serde::de::value::{
+    EnumAccessDeserializer, MapAccessDeserializer, MapDeserializer, SeqAccessDeserializer,
+};
+use serde::de::{self, EnumAccess, IntoDeserializer, SeqAccess, VariantAccess, Visitor};
 use serde::{forward_to_deserialize_any, Deserialize, Deserializer};
 
 use super::Error;
@@ -288,10 +290,32 @@ impl<'de> Deserializer<'de> for Value {
         }
     }
 
+    fn deserialize_option<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_some(self)
+    }
+
+    fn deserialize_enum<V>(
+        self,
+        _name: &'static str,
+        _variants: &'static [&'static str],
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        match self {
+            Value::String(s) => visitor.visit_enum(s.into_deserializer()), // Unit variant.
+            other => other.deserialize_any(visitor),
+        }
+    }
+
     forward_to_deserialize_any! {
         i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
-        bytes byte_buf option unit unit_struct newtype_struct seq tuple
-        tuple_struct map struct enum identifier ignored_any
+        bytes byte_buf unit unit_struct newtype_struct seq tuple
+        tuple_struct map struct identifier ignored_any
     }
 }
 

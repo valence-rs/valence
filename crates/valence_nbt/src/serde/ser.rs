@@ -324,11 +324,11 @@ impl Serializer for ValueSerializer {
         unsupported!("none")
     }
 
-    fn serialize_some<T: ?Sized>(self, _value: &T) -> Result<Self::Ok, Self::Error>
+    fn serialize_some<T: ?Sized>(self, value: &T) -> Result<Self::Ok, Self::Error>
     where
         T: Serialize,
     {
-        unsupported!("some")
+        value.serialize(self)
     }
 
     fn serialize_unit(self) -> Result<Self::Ok, Self::Error> {
@@ -343,9 +343,9 @@ impl Serializer for ValueSerializer {
         self,
         _name: &'static str,
         _variant_index: u32,
-        _variant: &'static str,
+        variant: &'static str,
     ) -> Result<Self::Ok, Self::Error> {
-        unsupported!("unit variant")
+        Ok(Value::String(variant.into()))
     }
 
     fn serialize_newtype_struct<T: ?Sized>(
