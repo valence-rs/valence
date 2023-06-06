@@ -14,7 +14,7 @@ use valence_core::translation_key::{
 };
 
 use crate::parser::{
-    BrigadierArgument, NoParsingBuild, Parsable, ParsingBuild, ParsingError, ParsingPurpose,
+    BrigadierArgument, NoParsingBuild, Parse, ParsingBuild, ParsingError, ParsingPurpose,
     ParsingResult, ParsingSuggestions, Suggestion,
 };
 use crate::parsing_error;
@@ -40,16 +40,16 @@ impl<'a> ParsingBuild<ParsingError> for BoolParsingError<'a> {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BoolSuggestions;
 
-const BOOL_SUGGESTIONS: &'static [Suggestion<'static>] =
+const BOOL_SUGGESTIONS: &[Suggestion<'static>] =
     &[Suggestion::new_str("true"), Suggestion::new_str("false")];
 
 impl<'a> ParsingBuild<ParsingSuggestions<'a>> for BoolSuggestions {
     fn build(self) -> ParsingSuggestions<'a> {
-        ParsingSuggestions::Borrowed(&BOOL_SUGGESTIONS)
+        ParsingSuggestions::Borrowed(BOOL_SUGGESTIONS)
     }
 }
 
-impl<'a> Parsable<'a> for bool {
+impl<'a> Parse<'a> for bool {
     type Error = BoolParsingError<'a>;
 
     type Suggestions = BoolSuggestions;
@@ -74,7 +74,7 @@ impl<'a> Parsable<'a> for bool {
 
         ParsingResult {
             suggestions: Some((pos.clone(), BoolSuggestions)),
-            result: result.map(|v| Some(v)).map_err(|err| (pos, err)),
+            result: result.map(Some).map_err(|err| (pos, err)),
         }
     }
 }
@@ -112,7 +112,7 @@ macro_rules! num_impl {
             }
         }
 
-        impl<'a> Parsable<'a> for $ty {
+        impl<'a> Parse<'a> for $ty {
             type Error = $error_n<'a>;
 
             type Suggestions = NoParsingBuild;
@@ -123,7 +123,7 @@ macro_rules! num_impl {
                 data: Option<&Self::Data>,
                 reader: &mut StrReader<'a>,
                 _purpose: ParsingPurpose,
-            ) -> ParsingResult< Self, Self::Suggestions, Self::Error> {
+            ) -> ParsingResult<Self, Self::Suggestions, Self::Error> {
                 let begin = reader.cursor();
 
                 let num_str = reader.read_num_str();
@@ -193,7 +193,7 @@ num_impl!(
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SingleWordString<'a>(pub &'a str);
 
-impl<'a> Parsable<'a> for SingleWordString<'a> {
+impl<'a> Parse<'a> for SingleWordString<'a> {
     type Data = ();
 
     type Error = NoParsingBuild;
@@ -223,7 +223,7 @@ parsing_error!(UnclosedQuoteError = PARSING_QUOTE_EXPECTED_END);
 #[derive(Clone, Debug, PartialEq)]
 pub struct QuotableString<'a>(pub Cow<'a, str>);
 
-impl<'a> Parsable<'a> for QuotableString<'a> {
+impl<'a> Parse<'a> for QuotableString<'a> {
     type Data = ();
 
     type Error = UnclosedQuoteError;
@@ -250,7 +250,7 @@ impl<'a> Parsable<'a> for QuotableString<'a> {
                     reader
                         .read_started_quoted_str()
                         .map(|v| Some(Self(Cow::Owned(v))))
-                        .ok_or_else(|| UnclosedQuoteError)
+                        .ok_or(UnclosedQuoteError)
                 } else {
                     Ok(Some(Self(Cow::Borrowed(reader.read_unquoted_str()))))
                 }
@@ -279,7 +279,7 @@ impl<'a> Parsable<'a> for QuotableString<'a> {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GreedyString<'a>(pub &'a str);
 
-impl<'a> Parsable<'a> for GreedyString<'a> {
+impl<'a> Parse<'a> for GreedyString<'a> {
     type Data = ();
 
     type Error = NoParsingBuild;
@@ -327,7 +327,7 @@ impl<E> From<E> for ArrayError<E> {
     }
 }
 
-impl<'a, const C: usize, T: Parsable<'a>> Parsable<'a> for [T; C]
+impl<'a, const C: usize, T: Parse<'a>> Parse<'a> for [T; C]
 where
     T::Data: Sized,
 {

@@ -1,10 +1,11 @@
 use valence_core::protocol::packet::command::Parser;
 use valence_core::translation_key::{
-    ARGUMENT_ANGLE_INVALID, ARGUMENT_POS_MIXED, COMMAND_EXPECTED_SEPARATOR,
+    ARGUMENTS_SWIZZLE_INVALID, ARGUMENT_ANGLE_INVALID, ARGUMENT_POS_MIXED,
+    COMMAND_EXPECTED_SEPARATOR,
 };
 
 use crate::parser::{
-    BrigadierArgument, Parsable, ParsingBuild, ParsingError, ParsingPurpose, ParsingResult,
+    BrigadierArgument, Parse, ParsingBuild, ParsingError, ParsingPurpose, ParsingResult,
     ParsingSuggestions, Suggestion,
 };
 use crate::parsing_error;
@@ -37,7 +38,7 @@ pub struct RelativeValueSuggestion<'a>(&'a str);
 
 impl<'a> ParsingBuild<ParsingSuggestions<'a>> for RelativeValueSuggestion<'a> {
     fn build(self) -> ParsingSuggestions<'a> {
-        ParsingSuggestions::Owned(if self.0.starts_with("~") {
+        ParsingSuggestions::Owned(if self.0.starts_with('~') {
             vec![self.0.into(), self.0.get('~'.len_utf8()..).unwrap().into()]
         } else {
             vec![
@@ -54,7 +55,7 @@ impl<'a> ParsingBuild<ParsingSuggestions<'a>> for RelativeValueSuggestion<'a> {
     }
 }
 
-impl<'a, T: Parsable<'a>> Parsable<'a> for RelativeValue<T> {
+impl<'a, T: Parse<'a>> Parse<'a> for RelativeValue<T> {
     type Data = T::Data;
 
     type Error = RelativeValueError<T::Error>;
@@ -129,7 +130,7 @@ parsing_error!(AngleError {
     Invalid = ARGUMENT_ANGLE_INVALID,
 });
 
-impl<'a> Parsable<'a> for Angle {
+impl<'a> Parse<'a> for Angle {
     type Data = ();
 
     type Error = AngleError;
@@ -144,18 +145,15 @@ impl<'a> Parsable<'a> for Angle {
         let result = RelativeValue::parse(Some(&(Some(-180.0), Some(180.0))), reader, purpose);
         ParsingResult {
             suggestions: result.suggestions,
-            result: result
-                .result
-                .map(|v| v.map(|v| Self(v)))
-                .map_err(|(pos, err)| {
-                    (
-                        pos,
-                        match err {
-                            RelativeValueError::MixedPos => AngleError::MixedPos,
-                            RelativeValueError::Value(_) => AngleError::Invalid,
-                        },
-                    )
-                }),
+            result: result.result.map(|v| v.map(Self)).map_err(|(pos, err)| {
+                (
+                    pos,
+                    match err {
+                        RelativeValueError::MixedPos => AngleError::MixedPos,
+                        RelativeValueError::Value(_) => AngleError::Invalid,
+                    },
+                )
+            }),
         }
     }
 }
@@ -179,7 +177,7 @@ pub enum VectorASuggestions<'a> {
     Absolute(&'a str),
 }
 
-const EVERYTHING_SUGGESTIONS: &'static [Suggestion<'static>] =
+const EVERYTHING_SUGGESTIONS: &[Suggestion<'static>] =
     &[Suggestion::new_str("~"), Suggestion::new_str("^")];
 
 impl<'a> ParsingBuild<ParsingSuggestions<'a>> for VectorASuggestions<'a> {
@@ -229,7 +227,7 @@ impl<E> From<E> for VectorAError<E> {
     }
 }
 
-impl<'a, const C: usize, T: Parsable<'a> + Sized> Parsable<'a> for VectorA<C, T>
+impl<'a, const C: usize, T: Parse<'a> + Sized> Parse<'a> for VectorA<C, T>
 where
     T::Data: Sized,
 {
@@ -248,7 +246,7 @@ where
             #[repr(transparent)]
             struct CaretValue<T>(T);
 
-            impl<'a, T: Parsable<'a> + Sized> Parsable<'a> for CaretValue<T> {
+            impl<'a, T: Parse<'a> + Sized> Parse<'a> for CaretValue<T> {
                 type Data = T::Data;
 
                 type Error = VectorAError<T::Error>;
@@ -353,6 +351,98 @@ pub type Vec2Argument = [RelativeValue<f64>; 2];
 impl<'a> BrigadierArgument<'a> for Vec2Argument {
     fn parser(_data: Option<&Self::Data>) -> Parser<'a> {
         Parser::Vec2
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Swizzle([bool; 3]);
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SwizzleError;
+
+impl ParsingBuild<ParsingError> for SwizzleError {
+    fn build(self) -> ParsingError {
+        ParsingError::translate(ARGUMENTS_SWIZZLE_INVALID, vec![])
+    }
+}
+
+const SX: Suggestion<'static> = Suggestion::new_str("x");
+const SY: Suggestion<'static> = Suggestion::new_str("y");
+const SZ: Suggestion<'static> = Suggestion::new_str("z");
+
+const S0: &[Suggestion<'static>] = &[SX, SY, SZ];
+const S1: &[Suggestion<'static>] = &[SY, SZ];
+const S2: &[Suggestion<'static>] = &[SX, SZ];
+const S3: &[Suggestion<'static>] = &[SZ];
+const S4: &[Suggestion<'static>] = &[SX, SY];
+const S5: &[Suggestion<'static>] = &[SY];
+const S6: &[Suggestion<'static>] = &[SX];
+const S7: &[Suggestion<'static>] = &[];
+
+const SWIZZLE_SUGGESTIONS: &[&[Suggestion<'static>]] = &[S0, S1, S2, S3, S4, S5, S6, S7];
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SwizzleSuggestions([bool; 3]);
+
+impl<'a> ParsingBuild<ParsingSuggestions<'a>> for SwizzleSuggestions {
+    fn build(self) -> ParsingSuggestions<'a> {
+        ParsingSuggestions::Borrowed(
+            SWIZZLE_SUGGESTIONS
+                [self.0[0] as usize + self.0[1] as usize * 2 + self.0[2] as usize * 4],
+        )
+    }
+}
+
+impl<'a> Parse<'a> for Swizzle {
+    type Data = ();
+
+    type Error = SwizzleError;
+
+    type Suggestions = SwizzleSuggestions;
+
+    fn parse(
+        _data: Option<&Self::Data>,
+        reader: &mut StrReader<'a>,
+        _purpose: ParsingPurpose,
+    ) -> ParsingResult<Self, Self::Suggestions, Self::Error> {
+        let mut result = [false; 3];
+
+        loop {
+            let begin = reader.cursor();
+
+            macro_rules! err {
+                () => {{
+                    return ParsingResult {
+                        suggestions: Some((begin..reader.cursor(), SwizzleSuggestions(result))),
+                        result: Err((begin..reader.cursor(), SwizzleError)),
+                    };
+                }};
+            }
+
+            let ch = reader.peek_char();
+            let i = match ch {
+                Some('x') => 0,
+                Some('y') => 1,
+                Some('z') => 2,
+                Some(' ') | None => {
+                    break;
+                }
+                Some(_) => err!(),
+            };
+
+            reader.next_char();
+
+            if result[i] {
+                err!();
+            }
+
+            result[i] = true;
+        }
+
+        ParsingResult {
+            suggestions: Some((reader.cursor()..reader.cursor(), SwizzleSuggestions(result))),
+            result: Ok(Some(Self(result))),
+        }
     }
 }
 

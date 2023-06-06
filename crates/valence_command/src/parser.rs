@@ -152,7 +152,7 @@ macro_rules! parsing_error {
     }
 }
 
-pub trait Parsable<'a>: 'a + Sized {
+pub trait Parse<'a>: 'a + Sized {
     type Error: 'a + ParsingBuild<ParsingError> + Sized;
 
     type Suggestions: 'a + ParsingBuild<ParsingSuggestions<'a>> + Sized;
@@ -218,7 +218,7 @@ macro_rules! parsing_token {
     }};
 }
 
-pub trait BrigadierArgument<'a>: Parsable<'a> {
+pub trait BrigadierArgument<'a>: Parse<'a> {
     fn parser(data: Option<&Self::Data>) -> Parser<'a>;
 }
 

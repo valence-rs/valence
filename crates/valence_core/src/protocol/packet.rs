@@ -912,6 +912,7 @@ pub mod command {
         ResourceKey { registry: Ident<Cow<'a, str>> },
         TemplateMirror,
         TemplateRotation,
+        Heightmap,
         Uuid,
     }
 
@@ -1148,7 +1149,8 @@ pub mod command {
                 }
                 Parser::TemplateMirror => 45u8.encode(&mut w)?,
                 Parser::TemplateRotation => 46u8.encode(&mut w)?,
-                Parser::Uuid => 47u8.encode(&mut w)?,
+                Parser::Heightmap => 47u8.encode(&mut w)?,
+                Parser::Uuid => 48u8.encode(&mut w)?,
             }
 
             Ok(())

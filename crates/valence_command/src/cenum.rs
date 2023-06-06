@@ -2,10 +2,13 @@ use std::marker::PhantomData;
 
 use valence_core::game_mode::GameMode;
 use valence_core::protocol::packet::command::Parser;
-use valence_core::translation_key::{ARGUMENT_COLOR_INVALID, ARGUMENT_GAMEMODE_INVALID};
+use valence_core::translation_key::{
+    ARGUMENT_ANCHOR_INVALID, ARGUMENT_COLOR_INVALID, ARGUMENT_ENUM_INVALID,
+    ARGUMENT_GAMEMODE_INVALID, ARGUMENTS_OPERATION_INVALID,
+};
 
 use crate::parser::{
-    BrigadierArgument, Parsable, ParsingBuild, ParsingError, ParsingPurpose, ParsingResult,
+    BrigadierArgument, Parse, ParsingBuild, ParsingError, ParsingPurpose, ParsingResult,
     ParsingSuggestions, Suggestion,
 };
 use crate::reader::StrReader;
@@ -19,7 +22,6 @@ use crate::reader::StrReader;
 /// - gamemode
 /// - heightmap
 /// - operation
-/// - swizzle (?)
 /// - template mirror
 /// - template rotation
 pub trait CEnum: Sized {
@@ -48,7 +50,7 @@ impl<'a, E: CEnum> ParsingBuild<ParsingSuggestions<'a>> for CEnumSuggestions<E> 
     }
 }
 
-impl<'a, E: CEnum + 'a> Parsable<'a> for E {
+impl<'a, E: CEnum + 'a> Parse<'a> for E {
     type Data = ();
 
     type Error = CEnumError<'a, E>;
@@ -77,9 +79,16 @@ macro_rules! cenum {
     ($name: ty; $error: expr => {
         $($val: ident$(,)?)*
     }) => {
+        cenum!($name; $error => {
+            $($val = casey::snake!(stringify!($val)),)*
+        });
+    };
+    ($name: ty; $error: expr => {
+        $($val: ident = $s: expr$(,)?)*
+    }) => {
         impl CEnum for $name {
             const SUGGESTIONS: &'static [Suggestion<'static>] = &[
-                $(Suggestion::new_str(casey::snake!(stringify!($val))),)*
+                $(Suggestion::new_str($s),)*
             ];
 
             fn error(str: &str) -> ParsingError {
@@ -88,7 +97,7 @@ macro_rules! cenum {
 
             fn from_str(str: &str) -> Option<Self> {
                 match str {
-                    $(casey::snake!(stringify!($val)) => Some(Self::$val),)*
+                    $($s => Some(Self::$val),)*
                     _ => None,
                 }
             }
@@ -149,6 +158,124 @@ cenum!(ColorArgument; ARGUMENT_COLOR_INVALID => {
     White,
     Reset,
 });
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum EntityAnchor {
+    Eyes,
+    Feet,
+}
+
+cenum!(EntityAnchor; ARGUMENT_ANCHOR_INVALID => {
+    Eyes,
+    Feet,
+});
+
+impl<'a> BrigadierArgument<'a> for EntityAnchor {
+    fn parser(_data: Option<&Self::Data>) -> Parser<'a> {
+        Parser::EntityAnchor
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Heightmap {
+    WorldSurface,
+    MotionBlocking,
+    MotionBlockingNoLeaves,
+    OceanFloor,
+}
+
+cenum!(Heightmap; ARGUMENT_ENUM_INVALID => {
+    WorldSurface,
+    MotionBlocking,
+    MotionBlockingNoLeaves,
+    OceanFloor,
+});
+
+impl<'a> BrigadierArgument<'a> for Heightmap {
+    fn parser(data: Option<&Self::Data>) -> Parser<'a> {
+        Parser::Heightmap
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Operation {
+    /// =
+    Eq,
+    /// +=
+    Add,
+    /// -=
+    Sub,
+    /// *=
+    Mul,
+    /// /=
+    Div,
+    /// %=
+    Mod,
+    /// ><
+    Swap,
+    /// <
+    Min,
+    /// >
+    Max,
+}
+
+cenum!(Operation; ARGUMENTS_OPERATION_INVALID => {
+    Eq = "=",
+    Add = "+=",
+    Sub = "-=",
+    Mul = "*=",
+    Div = "/=",
+    Mod = "%=",
+    Swap = "><",
+    Min = "<",
+    Max = ">"
+});
+
+impl<'a> BrigadierArgument<'a> for Operation {
+    fn parser(_data: Option<&Self::Data>) -> Parser<'a> {
+        Parser::Operation
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum TemplateMirror {
+    None,
+    FrontBack,
+    LeftRight,
+}
+
+cenum!(TemplateMirror; ARGUMENT_ENUM_INVALID => {
+    None,
+    FrontBack,
+    LeftRight,
+});
+
+impl<'a> BrigadierArgument<'a> for TemplateMirror {
+    fn parser(_data: Option<&Self::Data>) -> Parser<'a> {
+        Parser::TemplateMirror
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum TemplateRotation {
+    None,
+    Clockwise90,
+    CounterClockwise90,
+    Clockwise180
+}
+
+cenum!(TemplateRotation; ARGUMENT_ENUM_INVALID => {
+    None = "none",
+    Clockwise90 = "clockwise_90",
+    CounterClockwise90 = "counterclockwise_90",
+    Clockwise180 = "180",
+});
+
+impl<'a> BrigadierArgument<'a> for TemplateRotation {
+    fn parser(_data: Option<&Self::Data>) -> Parser<'a> {
+        Parser::TemplateRotation
+    }
+}
 
 #[cfg(test)]
 mod tests {

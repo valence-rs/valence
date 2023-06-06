@@ -17,7 +17,7 @@ macro_rules! parsable_json {
                 }
             }
 
-            impl<'a> $crate::parser::Parsable<'a> for $ty {
+            impl<'a> $crate::parser::Parse<'a> for $ty {
                 type Data = ();
 
                 type Suggestions = $crate::parser::NoParsingBuild;
@@ -75,7 +75,7 @@ mod tests {
     use valence_core::text::{Color, TextFormat};
 
     use super::*;
-    use crate::parser::{Parsable, ParsingPurpose};
+    use crate::parser::{Parse, ParsingPurpose};
     use crate::reader::StrReader;
 
     #[test]

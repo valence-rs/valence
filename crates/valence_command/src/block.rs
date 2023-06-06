@@ -8,7 +8,7 @@ use valence_core::translation_key::{
 use valence_nbt::Compound;
 
 use crate::parser::{
-    BrigadierArgument, Parsable, ParsingBuild, ParsingError, ParsingPurpose, ParsingResult,
+    BrigadierArgument, Parse, ParsingBuild, ParsingError, ParsingPurpose, ParsingResult,
     ParsingSuggestions, Suggestion,
 };
 use crate::reader::StrReader;
@@ -105,18 +105,16 @@ bp_names!(BLOCK_KINDS, BlockKind);
 bp_names!(PROP_NAMES, PropName);
 bp_names!(PROP_VALUES, PropValue);
 
-const STATE_TAG_BEGIN: &'static [Suggestion<'static>] =
+const STATE_TAG_BEGIN: &[Suggestion<'static>] =
     &[Suggestion::new_str("["), Suggestion::new_str("{")];
 
-const TAG_BEGIN: &'static [Suggestion<'static>] = &[Suggestion::new_str("{")];
+const TAG_BEGIN: &[Suggestion<'static>] = &[Suggestion::new_str("{")];
 
-const EQ_SIGN: &'static [Suggestion<'static>] = &[Suggestion::new_str("=")];
+const EQ_SIGN: &[Suggestion<'static>] = &[Suggestion::new_str("=")];
 
-const TAG_END: &'static [Suggestion<'static>] =
-    &[Suggestion::new_str(","), Suggestion::new_str("}")];
+const TAG_END: &[Suggestion<'static>] = &[Suggestion::new_str(","), Suggestion::new_str("}")];
 
-const STATE_END: &'static [Suggestion<'static>] =
-    &[Suggestion::new_str(","), Suggestion::new_str("]")];
+const STATE_END: &[Suggestion<'static>] = &[Suggestion::new_str(","), Suggestion::new_str("]")];
 
 impl<'a> ParsingBuild<ParsingSuggestions<'a>> for BlockSuggestions {
     fn build(self) -> ParsingSuggestions<'a> {
@@ -133,7 +131,7 @@ impl<'a> ParsingBuild<ParsingSuggestions<'a>> for BlockSuggestions {
     }
 }
 
-impl<'a> Parsable<'a> for BlockPredicate<'a> {
+impl<'a> Parse<'a> for BlockPredicate<'a> {
     type Data = ();
 
     type Error = BlockError<'a>;
@@ -197,48 +195,46 @@ fn read_block_props<'a>(
     kind_str: &'a str,
     mut func: impl FnMut(PropName, PropValue) -> ParsingResult<(), BlockSuggestions, BlockError<'a>>,
 ) -> ParsingResult<(), BlockSuggestions, BlockError<'a>> {
-    if reader.skip_char('[') {
-        if !reader.skip_char(']') {
-            loop {
-                let res = <(PropName, PropValue)>::parse(Some(&kind_str), reader, purpose);
+    if reader.skip_char('[') && !reader.skip_char(']') {
+        loop {
+            let res = <(PropName, PropValue)>::parse(Some(&kind_str), reader, purpose);
 
-                match (res.result, purpose) {
-                    (Ok(Some((name, value))), ParsingPurpose::Reading) => {
-                        parsing_ret_err!(func(name, value));
-                    }
-                    (Ok(None), ParsingPurpose::Reading) => unreachable!(),
-                    (Ok(_), ParsingPurpose::Suggestion) => {}
-                    (Err(err), _) => {
-                        return ParsingResult {
-                            suggestions: res.suggestions,
-                            result: Err(err),
-                        };
+            match (res.result, purpose) {
+                (Ok(Some((name, value))), ParsingPurpose::Reading) => {
+                    parsing_ret_err!(func(name, value));
+                }
+                (Ok(None), ParsingPurpose::Reading) => unreachable!(),
+                (Ok(_), ParsingPurpose::Suggestion) => {}
+                (Err(err), _) => {
+                    return ParsingResult {
+                        suggestions: res.suggestions,
+                        result: Err(err),
+                    };
+                }
+            }
+
+            reader.skip_char(' ');
+
+            let begin = reader.cursor();
+
+            match reader.next_char() {
+                Some(',') => {}
+                Some(']') => {
+                    break;
+                }
+                _ => {
+                    return ParsingResult {
+                        suggestions: Some((begin..reader.cursor(), BlockSuggestions::StateEnd)),
+                        result: Err((begin..reader.cursor(), BlockError::PropUnclosed)),
                     }
                 }
-
-                reader.skip_char(' ');
-
-                let begin = reader.cursor();
-
-                match reader.next_char() {
-                    Some(',') => {}
-                    Some(']') => {
-                        break;
-                    }
-                    _ => {
-                        return ParsingResult {
-                            suggestions: Some((begin..reader.cursor(), BlockSuggestions::StateEnd)),
-                            result: Err((begin..reader.cursor(), BlockError::PropUnclosed)),
-                        }
-                    }
-                };
-            }
+            };
         }
     }
     ParsingResult::ok()
 }
 
-impl<'a> Parsable<'a> for (PropName, PropValue) {
+impl<'a> Parse<'a> for (PropName, PropValue) {
     type Data = &'a str;
 
     type Error = BlockError<'a>;
@@ -317,7 +313,7 @@ pub struct BlockStateArgument {
     pub tags: Option<Compound>,
 }
 
-impl<'a> Parsable<'a> for BlockStateArgument {
+impl<'a> Parse<'a> for BlockStateArgument {
     type Data = ();
 
     type Error = BlockError<'a>;
