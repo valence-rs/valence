@@ -607,6 +607,7 @@ fn update_player_inventories(
             // state ID here because the client doesn't actually acknowledge the
             // state_id change for this packet specifically. See #304.
 
+            debug!("sending cursor item update");
             client.write_packet(&ScreenHandlerSlotUpdateS2c {
                 window_id: -1,
                 state_id: VarInt(inv_state.state_id.0),
@@ -627,7 +628,7 @@ fn update_open_inventories(
         Entity,
         &mut Client,
         &mut ClientInventoryState,
-        &CursorItem,
+        Ref<CursorItem>,
         &mut OpenInventory,
     )>,
     mut inventories: Query<&mut Inventory>,
@@ -692,6 +693,7 @@ fn update_open_inventories(
 
                     for (i, slot) in inventory.slots.iter().enumerate() {
                         if (changed_filtered >> i) & 1 == 1 {
+                            debug!("sending slot update for slot {}", i);
                             client.write_packet(&ScreenHandlerSlotUpdateS2c {
                                 window_id: inv_state.window_id as i8,
                                 state_id: VarInt(inv_state.state_id.0),
@@ -706,8 +708,23 @@ fn update_open_inventories(
 
         open_inventory.client_changed = 0;
         inv_state.slots_changed = 0;
-        inv_state.client_updated_cursor_item = false;
         inventory.changed = 0;
+
+        if cursor_item.is_changed() && !inv_state.client_updated_cursor_item {
+            // Contrary to what you might think, we actually don't want to increment the
+            // state ID here because the client doesn't actually acknowledge the
+            // state_id change for this packet specifically. See #304.
+
+            debug!("sending cursor item update");
+            client.write_packet(&ScreenHandlerSlotUpdateS2c {
+                window_id: -1,
+                state_id: VarInt(inv_state.state_id.0),
+                slot_idx: -1,
+                slot_data: Cow::Borrowed(&cursor_item.0),
+            });
+        }
+
+        inv_state.client_updated_cursor_item = false;
     }
 }
 

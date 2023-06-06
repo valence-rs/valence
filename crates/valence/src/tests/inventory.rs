@@ -340,6 +340,48 @@ fn test_should_modify_open_inventory_server_side() {
 }
 
 #[test]
+fn test_should_modify_cursor_item_open_inventory_server_side() {
+    let mut app = App::new();
+    let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+    let inventory_ent = set_up_open_inventory(&mut app, client_ent);
+
+    // Process a tick to get past the "on join" logic.
+    app.update();
+    client_helper.clear_sent();
+
+    // Modify the cursor item.
+    let mut cursor_item = app
+        .world
+        .get_mut::<CursorItem>(client_ent)
+        .expect("could not find inventory for client");
+    cursor_item.0 = Some(ItemStack::new(ItemKind::IronIngot, 3, None));
+
+    app.update();
+
+    // Make assertions
+    let sent_packets = client_helper.collect_sent();
+
+    // because the cursor item was modified server side, the client needs to be
+    // updated with the change.
+    sent_packets.assert_count::<ScreenHandlerSlotUpdateS2c>(1);
+    for pkt in sent_packets.0 {
+        if let Ok(pkt) = pkt.decode::<ScreenHandlerSlotUpdateS2c>() {
+            assert_eq!(pkt.window_id, -1);
+            assert_eq!(pkt.slot_idx, -1);
+        }
+    }
+
+    let cursor_item = app
+        .world
+        .get_mut::<CursorItem>(client_ent)
+        .expect("could not find inventory for client");
+    assert_eq!(
+        cursor_item.0,
+        Some(ItemStack::new(ItemKind::IronIngot, 3, None))
+    );
+}
+
+#[test]
 fn test_should_sync_entire_open_inventory() {
     let mut app = App::new();
     let (client_ent, mut client_helper) = scenario_single_client(&mut app);
