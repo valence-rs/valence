@@ -25,6 +25,7 @@ use std::ops::Range;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+use menu::OpenMenu;
 use packet::{
     ClickMode, ClickSlotC2s, CloseHandledScreenC2s, CloseScreenS2c, CreativeInventoryActionC2s,
     InventoryS2c, OpenScreenS2c, ScreenHandlerSlotUpdateS2c, SlotChange, UpdateSelectedSlotC2s,
@@ -40,6 +41,7 @@ use valence_core::protocol::encode::WritePacket;
 use valence_core::protocol::var_int::VarInt;
 use valence_core::text::Text;
 
+pub mod menu;
 pub mod packet;
 mod validate;
 
@@ -65,7 +67,8 @@ impl Plugin for InventoryPlugin {
         .add_systems(
             (
                 handle_update_selected_slot,
-                handle_click_slot,
+                emit_events_from_packets,
+                handle_click_slot.after(emit_events_from_packets),
                 handle_creative_inventory_action,
                 handle_close_handled_screen,
                 handle_player_actions,
@@ -332,11 +335,11 @@ pub struct ClientInventoryState {
     state_id: Wrapping<i32>,
     /// Tracks what slots have been changed by this client in this tick, so we
     /// don't need to send updates for them.
-    slots_changed: u64,
+    pub(crate) slots_changed: u64,
     /// Whether the client has updated the cursor item in this tick. This is not
     /// on the `CursorItem` component to make maintaining accurate change
     /// detection for end users easier.
-    client_updated_cursor_item: bool,
+    pub(crate) client_updated_cursor_item: bool,
     // TODO: make this a separate modifiable component.
     held_item_slot: u16,
 }
@@ -604,6 +607,7 @@ fn update_player_inventories(
             // state ID here because the client doesn't actually acknowledge the
             // state_id change for this packet specifically. See #304.
 
+            debug!("sending cursor item update");
             client.write_packet(&ScreenHandlerSlotUpdateS2c {
                 window_id: -1,
                 state_id: VarInt(inv_state.state_id.0),
@@ -624,7 +628,7 @@ fn update_open_inventories(
         Entity,
         &mut Client,
         &mut ClientInventoryState,
-        &CursorItem,
+        Ref<CursorItem>,
         &mut OpenInventory,
     )>,
     mut inventories: Query<&mut Inventory>,
@@ -689,6 +693,7 @@ fn update_open_inventories(
 
                     for (i, slot) in inventory.slots.iter().enumerate() {
                         if (changed_filtered >> i) & 1 == 1 {
+                            debug!("sending slot update for slot {}", i);
                             client.write_packet(&ScreenHandlerSlotUpdateS2c {
                                 window_id: inv_state.window_id as i8,
                                 state_id: VarInt(inv_state.state_id.0),
@@ -703,8 +708,23 @@ fn update_open_inventories(
 
         open_inventory.client_changed = 0;
         inv_state.slots_changed = 0;
-        inv_state.client_updated_cursor_item = false;
         inventory.changed = 0;
+
+        if cursor_item.is_changed() && !inv_state.client_updated_cursor_item {
+            // Contrary to what you might think, we actually don't want to increment the
+            // state ID here because the client doesn't actually acknowledge the
+            // state_id change for this packet specifically. See #304.
+
+            debug!("sending cursor item update");
+            client.write_packet(&ScreenHandlerSlotUpdateS2c {
+                window_id: -1,
+                state_id: VarInt(inv_state.state_id.0),
+                slot_idx: -1,
+                slot_data: Cow::Borrowed(&cursor_item.0),
+            });
+        }
+
+        inv_state.client_updated_cursor_item = false;
     }
 }
 
@@ -754,7 +774,7 @@ pub struct DropItemStack {
     pub stack: ItemStack,
 }
 
-fn handle_click_slot(
+fn emit_events_from_packets(
     mut packets: EventReader<PacketEvent>,
     mut clients: Query<(
         &mut Client,
@@ -969,22 +989,6 @@ fn handle_click_slot(
 
                     continue;
                 }
-
-                cursor_item.set_if_neq(CursorItem(pkt.carried_item.clone()));
-
-                for slot in pkt.slot_changes.clone() {
-                    if (0i16..target_inventory.slot_count() as i16).contains(&slot.idx) {
-                        // The client is interacting with a slot in the target inventory.
-                        target_inventory.set_slot(slot.idx as u16, slot.item);
-                        open_inventory.client_changed |= 1 << slot.idx;
-                    } else {
-                        // The client is interacting with a slot in their own inventory.
-                        let slot_id =
-                            convert_to_player_slot_id(target_inventory.kind, slot.idx as u16);
-                        client_inv.set_slot(slot_id, slot.item);
-                        inv_state.slots_changed |= 1 << slot_id;
-                    }
-                }
             } else {
                 // The client is interacting with their own inventory.
 
@@ -1004,23 +1008,6 @@ fn handle_click_slot(
 
                     continue;
                 }
-
-                cursor_item.set_if_neq(CursorItem(pkt.carried_item.clone()));
-                inv_state.client_updated_cursor_item = true;
-
-                for slot in pkt.slot_changes.clone() {
-                    if (0i16..client_inv.slot_count() as i16).contains(&slot.idx) {
-                        client_inv.set_slot(slot.idx as u16, slot.item);
-                        inv_state.slots_changed |= 1 << slot.idx;
-                    } else {
-                        // The client is trying to interact with a slot that does not exist,
-                        // ignore.
-                        warn!(
-                            "Client attempted to interact with slot {} which does not exist",
-                            slot.idx
-                        );
-                    }
-                }
             }
 
             click_slot_events.send(ClickSlot {
@@ -1033,6 +1020,75 @@ fn handle_click_slot(
                 slot_changes: pkt.slot_changes,
                 carried_item: pkt.carried_item,
             });
+        }
+    }
+}
+
+fn handle_click_slot(
+    mut click_slots: EventReader<ClickSlot>,
+    mut clients: Query<(
+        &mut Client,
+        &mut Inventory,
+        &mut ClientInventoryState,
+        Option<&mut OpenInventory>,
+        &mut CursorItem,
+    )>,
+    mut inventories: Query<&mut Inventory, Without<Client>>,
+) {
+    for click in click_slots.iter() {
+        // The player is clicking a slot in an inventory.
+        let Ok((
+            mut client,
+            mut client_inv,
+            mut inv_state,
+            open_inventory,
+            mut cursor_item
+        )) = clients.get_mut(click.client) else {
+            // The client does not exist, ignore.
+            continue;
+        };
+
+        if let Some(mut open_inventory) = open_inventory {
+            // The player is interacting with an inventory that is open.
+
+            let Ok(mut target_inventory) = inventories.get_mut(open_inventory.entity) else {
+                    // The inventory does not exist, ignore.
+                    continue;
+                };
+
+            cursor_item.set_if_neq(CursorItem(click.carried_item.clone()));
+            inv_state.client_updated_cursor_item = true;
+
+            for slot in click.slot_changes.clone() {
+                if (0i16..target_inventory.slot_count() as i16).contains(&slot.idx) {
+                    // The client is interacting with a slot in the target inventory.
+                    target_inventory.set_slot(slot.idx as u16, slot.item);
+                    open_inventory.client_changed |= 1 << slot.idx;
+                } else {
+                    // The client is interacting with a slot in their own inventory.
+                    let slot_id = convert_to_player_slot_id(target_inventory.kind, slot.idx as u16);
+                    client_inv.set_slot(slot_id, slot.item);
+                    inv_state.slots_changed |= 1 << slot_id;
+                }
+            }
+        } else {
+            // The client is interacting with their own inventory.
+            cursor_item.set_if_neq(CursorItem(click.carried_item.clone()));
+            inv_state.client_updated_cursor_item = true;
+
+            for slot in click.slot_changes.clone() {
+                if (0i16..client_inv.slot_count() as i16).contains(&slot.idx) {
+                    client_inv.set_slot(slot.idx as u16, slot.item);
+                    inv_state.slots_changed |= 1 << slot.idx;
+                } else {
+                    // The client is trying to interact with a slot that does not exist,
+                    // ignore.
+                    warn!(
+                        "Client attempted to interact with slot {} which does not exist",
+                        slot.idx
+                    );
+                }
+            }
         }
     }
 }
