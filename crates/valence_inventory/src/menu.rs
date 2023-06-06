@@ -27,7 +27,8 @@ impl Plugin for InventoryMenuPlugin {
             handle_click_slot
                 .in_schedule(EventLoopSchedule)
                 .in_base_set(CoreSet::PreUpdate),
-        );
+        )
+        .add_event::<MenuClickEvent>();
     }
 }
 
@@ -50,6 +51,7 @@ fn handle_click_slot(
         With<OpenMenu>,
     >,
     mut inventories: Query<&mut Inventory, (Without<Client>, With<InventoryMenu>)>,
+    mut menu_clicks: EventWriter<MenuClickEvent>,
 ) {
     for click in clicks.iter() {
         if click.mode != ClickMode::Click {
@@ -62,6 +64,9 @@ fn handle_click_slot(
             let Ok(mut target) = inventories.get_mut(open_inv.entity) else {
                 continue;
             };
+            if click.slot_id < 0 || click.slot_id >= (target.slot_count() as i16) {
+                continue;
+            }
             println!("reset clicked slot");
             target.set_slot(click.slot_id as u16, click.carried_item.clone());
             inv_state.slots_changed &= !(1 << click.slot_id);
@@ -75,6 +80,19 @@ fn handle_click_slot(
             println!("clearing cursor item");
             cursor_item.0 = None;
             inv_state.client_updated_cursor_item = false;
+
+            menu_clicks.send(MenuClickEvent {
+                client: click.client,
+                slot_id: click.slot_id as u16,
+                button: click.button,
+            });
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MenuClickEvent {
+    pub client: Entity,
+    pub slot_id: u16,
+    pub button: i8,
 }
