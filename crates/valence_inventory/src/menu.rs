@@ -11,7 +11,7 @@ use valence_core::protocol::encode::WritePacket;
 use valence_core::text::Text;
 
 use crate::packet::{
-    ClickSlotC2s, InventoryS2c, OpenScreenS2c, ScreenHandlerSlotUpdateS2c, WindowType,
+    ClickMode, ClickSlotC2s, InventoryS2c, OpenScreenS2c, ScreenHandlerSlotUpdateS2c, WindowType,
 };
 use crate::{
     validate, ClickSlot, ClientInventoryState, CursorItem, DropItemStack, Inventory, InventoryKind,
@@ -52,6 +52,9 @@ fn handle_click_slot(
     mut inventories: Query<&mut Inventory, (Without<Client>, With<InventoryMenu>)>,
 ) {
     for click in clicks.iter() {
+        if click.mode != ClickMode::Click {
+            continue;
+        }
         println!("menu click: {:?}", click);
         if let Ok((mut client, mut inv, mut inv_state, mut cursor_item, open_inv)) =
             clients.get_mut(click.client)
