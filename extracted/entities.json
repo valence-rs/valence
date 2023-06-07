@@ -21,7 +21,7 @@
         "name": "item",
         "index": 8,
         "type": "item_stack",
-        "default_value": "1 air"
+        "default_value": "0 air"
       }
     ]
   },
@@ -997,7 +997,7 @@
         "name": "item",
         "index": 8,
         "type": "item_stack",
-        "default_value": "1 air"
+        "default_value": "0 air"
       }
     ],
     "default_bounding_box": {
@@ -1048,7 +1048,7 @@
         "name": "item",
         "index": 8,
         "type": "item_stack",
-        "default_value": "1 air"
+        "default_value": "0 air"
       },
       {
         "name": "shooter_entity_id",
@@ -1436,7 +1436,7 @@
         "name": "item",
         "index": 22,
         "type": "item_stack",
-        "default_value": "1 air"
+        "default_value": "0 air"
       },
       {
         "name": "item_display",
@@ -1460,7 +1460,7 @@
         "name": "stack",
         "index": 8,
         "type": "item_stack",
-        "default_value": "1 air"
+        "default_value": "0 air"
       }
     ],
     "default_bounding_box": {
@@ -1478,7 +1478,7 @@
         "name": "item_stack",
         "index": 8,
         "type": "item_stack",
-        "default_value": "1 air"
+        "default_value": "0 air"
       },
       {
         "name": "rotation",
@@ -1528,7 +1528,7 @@
         "name": "health",
         "index": 9,
         "type": "float",
-        "default_value": 20.0
+        "default_value": 6.0
       },
       {
         "name": "potion_swirls_color",
@@ -2448,7 +2448,7 @@
         "name": "item",
         "index": 8,
         "type": "item_stack",
-        "default_value": "1 air"
+        "default_value": "0 air"
       }
     ]
   },
@@ -2863,7 +2863,7 @@
         "type": "villager_data",
         "default_value": {
           "type": "plains",
-          "profession": "none",
+          "profession": "butcher",
           "level": 1
         }
       }
