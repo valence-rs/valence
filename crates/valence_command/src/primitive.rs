@@ -1,5 +1,3 @@
-//! Parse and Argument implementation for primitive types and str
-
 use std::borrow::Cow;
 use std::mem::MaybeUninit;
 
@@ -86,7 +84,7 @@ impl<'a> BrigadierArgument<'a> for bool {
 }
 
 macro_rules! num_impl {
-    ($($ty:ty, $error_n:ident, $parser: ident, $too_big:expr, $too_low:expr, $expected:expr, $invalid:expr,)*) => {
+    ($($ty:ty, $int: expr, $error_n:ident, $parser: ident, $too_big:expr, $too_low:expr, $expected:expr, $invalid:expr,)*) => {
         $(#[derive(Clone, Copy, Debug, PartialEq)]
         pub enum $error_n<'a> {
             TooBig(&'a str, $ty),
@@ -126,7 +124,11 @@ macro_rules! num_impl {
             ) -> ParsingResult<Self, Self::Suggestions, Self::Error> {
                 let begin = reader.cursor();
 
-                let num_str = reader.read_num_str();
+                let num_str = if $int {
+                    reader.read_int_str()
+                } else {
+                    reader.read_float_str().0
+                };
 
                 let result = match (num_str.parse::<Self>(), data) {
                     (Ok(i), Some((Some(min), _))) if *min > i => {
@@ -161,6 +163,7 @@ macro_rules! num_impl {
 
 num_impl!(
     i32,
+    true,
     I32Error,
     Integer,
     ARGUMENT_INTEGER_BIG,
@@ -168,6 +171,7 @@ num_impl!(
     PARSING_INT_EXPECTED,
     PARSING_INT_INVALID,
     i64,
+    true,
     I64Error,
     Long,
     ARGUMENT_LONG_BIG,
@@ -175,6 +179,7 @@ num_impl!(
     PARSING_LONG_EXPECTED,
     PARSING_LONG_INVALID,
     f32,
+    false,
     F32Error,
     Float,
     ARGUMENT_FLOAT_BIG,
@@ -182,6 +187,7 @@ num_impl!(
     PARSING_FLOAT_EXPECTED,
     PARSING_FLOAT_INVALID,
     f64,
+    false,
     F64Error,
     Double,
     ARGUMENT_DOUBLE_BIG,

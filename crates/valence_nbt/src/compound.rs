@@ -180,6 +180,23 @@ impl Compound {
 
     /// Checks if merging self compound with other compound will give any
     /// results.
+    /// 
+    /// ```rust
+    /// use valence_nbt::compound;
+    /// 
+    /// let a = compound! {
+    ///     "a" => 0,
+    ///     "b" => "str",
+    /// };
+    /// 
+    /// assert!(a.contains_compound(&compound! {
+    ///     "a" => 0,
+    /// }));
+    /// 
+    /// assert!(!a.contains_compound(&compound! {
+    ///     "a" => 1,
+    /// }));
+    /// ```
     pub fn contains_compound(&self, other: &Compound) -> bool {
         for (name, value) in self.iter() {
             if let Some(other_value) = other.get(name) {

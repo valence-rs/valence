@@ -47,6 +47,14 @@ impl<'a> StrReader<'a> {
         self.chars().next()
     }
 
+    pub fn peek_offset_char(&self, offset: usize) -> Option<char> {
+        let mut iter = self.chars();
+        for _ in 0..offset {
+            iter.next();
+        }
+        iter.next()
+    }
+
     pub fn next_char(&mut self) -> Option<char> {
         let ch = self.peek_char();
         if let Some(ch) = ch {
@@ -164,6 +172,13 @@ impl<'a> StrReader<'a> {
         })
     }
 
+    pub fn read_delimitted_str(&mut self) -> &'a str {
+        self.read_str_filtered(|ch| match ch {
+            ' ' => StrFilter::EndExclude,
+            _ => StrFilter::Continue,
+        })
+    }
+
     pub fn read_ident_str(&mut self) -> (Option<&'a str>, &'a str) {
         let mut left = false;
         let result = self.read_str_filtered(|ch| match ch {
@@ -196,15 +211,57 @@ impl<'a> StrReader<'a> {
         })
     }
 
-    pub fn read_num_str(&mut self) -> &'a str {
-        self.read_str_filtered(|ch| match ch {
-            '0'..='9' | '+' | '-' | 'e' | '.' => StrFilter::Continue,
+    pub fn read_int_str(&mut self) -> &'a str {
+        let begin = self.cursor();
+        if let Some('+') | Some('-') = self.peek_char() {
+            self.next_char();
+        }
+        let end = self.skip_str_filtered(|ch| match ch {
+            '0'..='9' => StrFilter::Continue,
             _ => StrFilter::EndExclude,
-        })
+        });
+        unsafe { self.str.get_unchecked(begin..end) }
     }
 
-    pub fn read_num<T: FromStr>(&mut self) -> Result<T, <T as FromStr>::Err> {
-        self.read_num_str().parse()
+    pub fn read_float_str(&mut self) -> (&'a str, bool) {
+        let begin = self.cursor();
+        if let Some('+') | Some('-') = self.peek_char() {
+            self.next_char();
+        }
+        let mut fp = false;
+
+        loop {
+            let ch = self.peek_char();
+            match ch {
+                Some('0'..='9') => {
+                    self.next_char();
+                }
+                Some('.') if fp => {
+                    break;
+                }
+                Some('.') => {
+                    fp = true;
+                    if !matches!(self.peek_offset_char(1), Some('0'..='9')) {
+                        break;
+                    }
+                    self.next_char();
+                    self.next_char();
+                }
+                _ => {
+                    break;
+                }
+            }
+        }
+
+        (unsafe { self.str.get_unchecked(begin..self.cursor()) }, fp)
+    }
+
+    pub fn read_int<T: FromStr>(&mut self) -> Result<T, <T as FromStr>::Err> {
+        self.read_int_str().parse()
+    }
+
+    pub fn read_float<T: FromStr>(&mut self) -> Result<T, <T as FromStr>::Err> {
+        self.read_float_str().0.parse()
     }
 
     pub fn remaining_str(&self) -> &'a str {
@@ -231,6 +288,12 @@ impl<'a> StrReader<'a> {
             true
         } else {
             false
+        }
+    }
+
+    pub fn skip_next_chars(&mut self, count: usize) {
+        for _ in 0..count {
+            self.next_char();
         }
     }
 }

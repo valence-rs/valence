@@ -99,10 +99,10 @@ impl<T, S, E> ParsingResult<T, S, E> {
 macro_rules! parsing_ret_err {
     ($res:expr) => {{
         let res = $res;
-        if let Err(err) = res.result {
+        if let Err((err_pos, err)) = res.result {
             return $crate::parser::ParsingResult {
                 suggestions: res.suggestions,
-                result: Err(err),
+                result: Err((err_pos, err.into())),
             };
         }
         res

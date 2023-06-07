@@ -63,7 +63,7 @@ impl<'a, E: CEnum + 'a> Parse<'a> for E {
         _purpose: ParsingPurpose,
     ) -> ParsingResult<Self, Self::Suggestions, Self::Error> {
         let begin = reader.cursor();
-        let str = reader.read_unquoted_str();
+        let str = reader.read_delimitted_str();
 
         ParsingResult {
             suggestions: Some((begin..reader.cursor(), CEnumSuggestions(PhantomData))),
@@ -192,7 +192,7 @@ cenum!(Heightmap; ARGUMENT_ENUM_INVALID => {
 });
 
 impl<'a> BrigadierArgument<'a> for Heightmap {
-    fn parser(data: Option<&Self::Data>) -> Parser<'a> {
+    fn parser(_data: Option<&Self::Data>) -> Parser<'a> {
         Parser::Heightmap
     }
 }
