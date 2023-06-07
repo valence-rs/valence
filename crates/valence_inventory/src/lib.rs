@@ -337,15 +337,9 @@ pub struct ClientInventoryState {
     /// on the `CursorItem` component to make maintaining accurate change
     /// detection for end users easier.
     client_updated_cursor_item: bool,
-    // TODO: make this a separate modifiable component.
-    held_item_slot: u16,
 }
 
 impl ClientInventoryState {
-    pub fn held_item_slot(&self) -> u16 {
-        self.held_item_slot
-    }
-
     #[doc(hidden)]
     pub fn window_id(&self) -> u8 {
         self.window_id
@@ -354,6 +348,20 @@ impl ClientInventoryState {
     #[doc(hidden)]
     pub fn state_id(&self) -> Wrapping<i32> {
         self.state_id
+    }
+}
+
+/// Indicates which hotbar slot the player is currently holding.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
+pub struct HeldItem {
+    held_item_slot: u16,
+}
+
+impl HeldItem {
+    /// The slot ID of the currently held item, in the range 36-44 inclusive.
+    /// This value is safe to use on the player's inventory directly.
+    pub fn slot(&self) -> u16 {
+        self.held_item_slot
     }
 }
 
@@ -533,6 +541,8 @@ fn init_new_client_inventories(clients: Query<Entity, Added<Client>>, mut comman
                 state_id: Wrapping(0),
                 slots_changed: 0,
                 client_updated_cursor_item: false,
+            },
+            HeldItem {
                 // First slot of the hotbar.
                 held_item_slot: 36,
             },
@@ -1039,43 +1049,42 @@ fn handle_click_slot(
 
 fn handle_player_actions(
     mut packets: EventReader<PacketEvent>,
-    mut clients: Query<(&mut Inventory, &mut ClientInventoryState)>,
+    mut clients: Query<(&mut Inventory, &mut ClientInventoryState, &HeldItem)>,
     mut drop_item_stack_events: EventWriter<DropItemStack>,
 ) {
     for packet in packets.iter() {
         if let Some(pkt) = packet.decode::<PlayerActionC2s>() {
             match pkt.action {
                 PlayerAction::DropAllItems => {
-                    if let Ok((mut inv, mut inv_state)) = clients.get_mut(packet.client) {
-                        if let Some(stack) = inv.replace_slot(inv_state.held_item_slot, None) {
-                            inv_state.slots_changed |= 1 << inv_state.held_item_slot;
+                    if let Ok((mut inv, mut inv_state, &held)) = clients.get_mut(packet.client) {
+                        if let Some(stack) = inv.replace_slot(held.slot(), None) {
+                            inv_state.slots_changed |= 1 << held.slot();
 
                             drop_item_stack_events.send(DropItemStack {
                                 client: packet.client,
-                                from_slot: Some(inv_state.held_item_slot),
+                                from_slot: Some(held.slot()),
                                 stack,
                             });
                         }
                     }
                 }
                 PlayerAction::DropItem => {
-                    if let Ok((mut inv, mut inv_state)) = clients.get_mut(packet.client) {
-                        if let Some(mut stack) = inv.replace_slot(inv_state.held_item_slot(), None)
-                        {
+                    if let Ok((mut inv, mut inv_state, held)) = clients.get_mut(packet.client) {
+                        if let Some(mut stack) = inv.replace_slot(held.slot(), None) {
                             if stack.count() > 1 {
                                 inv.set_slot(
-                                    inv_state.held_item_slot(),
+                                    held.slot(),
                                     stack.clone().with_count(stack.count() - 1),
                                 );
 
                                 stack.set_count(1);
                             }
 
-                            inv_state.slots_changed |= 1 << inv_state.held_item_slot();
+                            inv_state.slots_changed |= 1 << held.slot();
 
                             drop_item_stack_events.send(DropItemStack {
                                 client: packet.client,
-                                from_slot: Some(inv_state.held_item_slot()),
+                                from_slot: Some(held.slot()),
                                 stack,
                             })
                         }
@@ -1169,14 +1178,17 @@ pub struct UpdateSelectedSlot {
 
 fn handle_update_selected_slot(
     mut packets: EventReader<PacketEvent>,
-    mut clients: Query<&mut ClientInventoryState>,
+    mut clients: Query<&mut HeldItem>,
     mut events: EventWriter<UpdateSelectedSlot>,
 ) {
     for packet in packets.iter() {
         if let Some(pkt) = packet.decode::<UpdateSelectedSlotC2s>() {
-            if let Ok(mut inv_state) = clients.get_mut(packet.client) {
-                // TODO: validate this.
-                inv_state.held_item_slot = convert_hotbar_slot_id(pkt.slot as u16);
+            if let Ok(mut held) = clients.get_mut(packet.client) {
+                if pkt.slot < 0 || pkt.slot > 8 {
+                    // The client is trying to interact with a slot that does not exist, ignore.
+                    continue;
+                }
+                held.held_item_slot = convert_hotbar_slot_id(pkt.slot as u16);
 
                 events.send(UpdateSelectedSlot {
                     client: packet.client,
