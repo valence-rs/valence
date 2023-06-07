@@ -398,6 +398,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::reader::StrCursor;
 
     #[test]
     fn bool_test() {
@@ -406,7 +407,7 @@ mod tests {
         assert_eq!(
             bool::parse(None, &mut reader, ParsingPurpose::Reading),
             ParsingResult {
-                suggestions: Some((0..4, BoolSuggestions)),
+                suggestions: Some((StrCursor::new_range("", "true"), BoolSuggestions)),
                 result: Ok(Some(true))
             }
         );
@@ -416,7 +417,7 @@ mod tests {
         assert_eq!(
             bool::parse(None, &mut reader, ParsingPurpose::Reading),
             ParsingResult {
-                suggestions: Some((5..10, BoolSuggestions)),
+                suggestions: Some((StrCursor::new_range("true ", "false"), BoolSuggestions)),
                 result: Ok(Some(false)),
             }
         );
@@ -426,8 +427,11 @@ mod tests {
         assert_eq!(
             bool::parse(None, &mut reader, ParsingPurpose::Reading),
             ParsingResult {
-                suggestions: Some((11..14, BoolSuggestions)),
-                result: Err((11..14, BoolParsingError::Invalid("bad"))),
+                suggestions: Some((StrCursor::new_range("true false ", "bad"), BoolSuggestions)),
+                result: Err((
+                    StrCursor::new_range("true false ", "bad"),
+                    BoolParsingError::Invalid("bad")
+                )),
             }
         );
     }
@@ -454,13 +458,14 @@ mod tests {
             ),
             ParsingResult {
                 suggestions: None,
-                result: Err((3..5, I32Error::TooLow("30", 40)))
+                result: Err((
+                    StrCursor::new_range("10 ", "30"),
+                    I32Error::TooLow("30", 40)
+                ))
             }
         );
 
-        unsafe { reader.set_cursor(5) };
-
-        assert_eq!(reader.next_char(), Some(' '));
+        let mut reader = StrReader::new("40.0 50.0");
 
         assert_eq!(
             f32::parse(None, &mut reader, ParsingPurpose::Reading),
@@ -480,7 +485,10 @@ mod tests {
             ),
             ParsingResult {
                 suggestions: None,
-                result: Err((11..15, F32Error::TooBig("50.0", 40.0)))
+                result: Err((
+                    StrCursor::new_range("40.0 ", "50.0"),
+                    F32Error::TooBig("50.0", 40.0)
+                ))
             }
         );
     }
@@ -513,7 +521,10 @@ mod tests {
             QuotableString::parse(None, &mut reader, ParsingPurpose::Reading),
             ParsingResult {
                 suggestions: None,
-                result: Err((14..18, UnclosedQuoteError)),
+                result: Err((
+                    StrCursor::new_range(r#"aba "aba aba" "#, "\"aba"),
+                    UnclosedQuoteError
+                )),
             }
         );
     }

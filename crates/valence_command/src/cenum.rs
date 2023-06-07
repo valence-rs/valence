@@ -3,8 +3,8 @@ use std::marker::PhantomData;
 use valence_core::game_mode::GameMode;
 use valence_core::protocol::packet::command::Parser;
 use valence_core::translation_key::{
-    ARGUMENT_ANCHOR_INVALID, ARGUMENT_COLOR_INVALID, ARGUMENT_ENUM_INVALID,
-    ARGUMENT_GAMEMODE_INVALID, ARGUMENTS_OPERATION_INVALID,
+    ARGUMENTS_OPERATION_INVALID, ARGUMENT_ANCHOR_INVALID, ARGUMENT_COLOR_INVALID,
+    ARGUMENT_ENUM_INVALID, ARGUMENT_GAMEMODE_INVALID,
 };
 
 use crate::parser::{
@@ -261,7 +261,7 @@ pub enum TemplateRotation {
     None,
     Clockwise90,
     CounterClockwise90,
-    Clockwise180
+    Clockwise180,
 }
 
 cenum!(TemplateRotation; ARGUMENT_ENUM_INVALID => {
@@ -280,6 +280,7 @@ impl<'a> BrigadierArgument<'a> for TemplateRotation {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::reader::StrCursor;
 
     #[test]
     fn cenum_test() {
@@ -290,7 +291,10 @@ mod tests {
                 ParsingPurpose::Reading
             ),
             ParsingResult {
-                suggestions: Some((0..8, CEnumSuggestions(PhantomData))),
+                suggestions: Some((
+                    StrCursor::new_range("", "survival"),
+                    CEnumSuggestions(PhantomData)
+                )),
                 result: Ok(Some(GameMode::Survival))
             }
         );
@@ -302,7 +306,10 @@ mod tests {
                 ParsingPurpose::Reading
             ),
             ParsingResult {
-                suggestions: Some((0..11, CEnumSuggestions(PhantomData))),
+                suggestions: Some((
+                    StrCursor::new_range("", "dark_purple"),
+                    CEnumSuggestions(PhantomData)
+                )),
                 result: Ok(Some(ColorArgument::DarkPurple)),
             }
         );

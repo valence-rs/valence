@@ -4,5 +4,5 @@ pub mod json;
 pub mod parser;
 pub mod pos;
 pub mod primitive;
-pub mod reader;
 pub mod range;
+pub mod reader;

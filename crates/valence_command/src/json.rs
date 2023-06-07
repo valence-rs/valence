@@ -38,7 +38,7 @@ macro_rules! parsable_json {
                     };
 
                     let begin = reader.cursor();
-                    unsafe { reader.set_cursor(begin + stream.byte_offset()) };
+                    unsafe { reader.move_cursor_right(stream.byte_offset()) };
 
                     $crate::parser::ParsingResult {
                         suggestions: std::option::Option::None,
@@ -46,7 +46,7 @@ macro_rules! parsable_json {
                             (
                                 begin..reader.cursor(),
                                 [<$ty JsonError>] (
-                                    reader.str().get(begin..reader.cursor()).unwrap()
+                                    reader.str().get(begin.bytes..reader.cursor().bytes).unwrap()
                                 ),
                             )
                         }),

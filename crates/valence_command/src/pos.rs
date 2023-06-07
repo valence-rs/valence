@@ -113,7 +113,10 @@ impl<'a, T: Parse<'a>> Parse<'a> for RelativeValue<T> {
                 RelativeValueSuggestion(
                     reader
                         .str()
-                        .get(begin + if result.is_err() { 1 } else { 0 }..reader.cursor())
+                        .get(
+                            begin.bytes + if result.is_err() { 1 } else { 0 }
+                                ..reader.cursor().bytes,
+                        )
                         .unwrap(),
                 ),
             )),
@@ -449,13 +452,17 @@ impl<'a> Parse<'a> for Swizzle {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::reader::StrCursor;
 
     #[test]
     fn relative_value_test() {
         assert_eq!(
             RelativeValue::parse(None, &mut StrReader::new("~32"), ParsingPurpose::Reading),
             ParsingResult {
-                suggestions: Some((0..3, RelativeValueSuggestion("~32"))),
+                suggestions: Some((
+                    StrCursor::new_range("", "~32"),
+                    RelativeValueSuggestion("~32")
+                )),
                 result: Ok(Some(RelativeValue::Relative(32))),
             }
         );
@@ -463,7 +470,10 @@ mod tests {
         assert_eq!(
             RelativeValue::parse(None, &mut StrReader::new("42"), ParsingPurpose::Reading),
             ParsingResult {
-                suggestions: Some((0..2, RelativeValueSuggestion("42"))),
+                suggestions: Some((
+                    StrCursor::new_range("", "42"),
+                    RelativeValueSuggestion("42")
+                )),
                 result: Ok(Some(RelativeValue::Absolute(42))),
             }
         );
@@ -506,8 +516,11 @@ mod tests {
                 ParsingPurpose::Reading
             ),
             ParsingResult {
-                suggestions: Some((3..6, VectorASuggestions::Absolute("32"))),
-                result: Err((3..6, VectorAError::MixedPos)),
+                suggestions: Some((
+                    StrCursor::new_range("32 ", "^32"),
+                    VectorASuggestions::Absolute("32")
+                )),
+                result: Err((StrCursor::new_range("32 ", "^32"), VectorAError::MixedPos)),
             }
         );
     }

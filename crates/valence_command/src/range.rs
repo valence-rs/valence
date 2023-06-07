@@ -3,11 +3,11 @@ use valence_core::translation_key::{
     ARGUMENT_RANGE_EMPTY, ARGUMENT_RANGE_INTS, ARGUMENT_RANGE_SWAPPED,
 };
 
+use crate::p_try;
 use crate::parser::{
     BrigadierArgument, NoParsingBuild, Parse, ParsingBuild, ParsingError, ParsingPurpose,
     ParsingResult,
 };
-use crate::parsing_ret_err;
 use crate::reader::StrReader;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -57,9 +57,7 @@ macro_rules! inclusive_range_impl {
             ) -> ParsingResult<Self, Self::Suggestions, Self::Error> {
                 macro_rules! read {
                     () => {
-                        parsing_ret_err!(<$ty>::parse(data, reader, purpose))
-                            .result
-                            .unwrap()
+                        p_try!(<$ty>::parse(data, reader, purpose)).1
                     };
                 }
 

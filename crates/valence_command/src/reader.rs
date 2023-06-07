@@ -1,9 +1,52 @@
+use std::ops::{Add, AddAssign};
 use std::str::{Chars, FromStr};
+
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
+pub struct StrCursor {
+    pub bytes: usize,
+    pub chars: usize,
+}
+
+impl StrCursor {
+    pub const fn new(bytes: usize, chars: usize) -> Self {
+        Self { bytes, chars }
+    }
+
+    #[cfg(test)]
+    pub fn new_str(str: &str) -> Self {
+        Self::new(str.len(), str.chars().count())
+    }
+
+    #[cfg(test)]
+    pub fn new_range(begin: &str, taken: &str) -> std::ops::Range<Self> {
+        let l = Self::new_str(begin);
+        let mut r = Self::new_str(taken);
+        r.bytes += l.bytes;
+        r.chars += l.chars;
+        l..r
+    }
+}
+
+impl Add<char> for StrCursor {
+    type Output = Self;
+
+    fn add(mut self, rhs: char) -> Self::Output {
+        self += rhs;
+        self
+    }
+}
+
+impl AddAssign<char> for StrCursor {
+    fn add_assign(&mut self, rhs: char) {
+        self.bytes += rhs.len_utf8();
+        self.chars += 1;
+    }
+}
 
 #[derive(Clone, Copy, Debug)]
 pub struct StrReader<'a> {
     str: &'a str,
-    cursor: usize,
+    cursor: StrCursor,
 }
 
 impl<'a> From<&'a str> for StrReader<'a> {
@@ -22,7 +65,10 @@ pub enum StrFilter {
 
 impl<'a> StrReader<'a> {
     pub const fn new(str: &'a str) -> Self {
-        Self { str, cursor: 0 }
+        Self {
+            str,
+            cursor: StrCursor::new(0, 0),
+        }
     }
 
     pub fn str(&self) -> &'a str {
@@ -31,11 +77,21 @@ impl<'a> StrReader<'a> {
 
     /// # Safety
     /// Given cursor should be valid
-    pub unsafe fn set_cursor(&mut self, cursor: usize) {
+    pub unsafe fn set_cursor(&mut self, cursor: StrCursor) {
         self.cursor = cursor;
     }
 
-    pub fn cursor(&self) -> usize {
+    /// # Safety
+    /// Given bytes should be valid for current cursor
+    pub unsafe fn move_cursor_right(&mut self, bytes: usize) {
+        let new_bytes = self.cursor.bytes + bytes;
+        self.cursor.chars += unsafe { self.str.get_unchecked(self.cursor.bytes..new_bytes) }
+            .chars()
+            .count();
+        self.cursor.bytes = new_bytes;
+    }
+
+    pub fn cursor(&self) -> StrCursor {
         self.cursor
     }
 
@@ -58,29 +114,29 @@ impl<'a> StrReader<'a> {
     pub fn next_char(&mut self) -> Option<char> {
         let ch = self.peek_char();
         if let Some(ch) = ch {
-            self.cursor += ch.len_utf8();
+            self.cursor += ch;
         }
 
         ch
     }
 
-    pub fn skip_str_filtered(&mut self, mut filter: impl FnMut(char) -> StrFilter) -> usize {
+    pub fn skip_str_filtered(&mut self, mut filter: impl FnMut(char) -> StrFilter) -> StrCursor {
         loop {
             match self.peek_char() {
                 Some(ch) => match filter(ch) {
                     StrFilter::Continue => {
-                        self.cursor += ch.len_utf8();
+                        self.cursor += ch;
                     }
                     StrFilter::EndExclude => {
                         break self.cursor;
                     }
                     StrFilter::EndStrInclude => {
-                        self.cursor += ch.len_utf8();
+                        self.cursor += ch;
                         break self.cursor;
                     }
                     StrFilter::EndInclude => {
                         let end = self.cursor;
-                        self.cursor += ch.len_utf8();
+                        self.cursor += ch;
                         break end;
                     }
                 },
@@ -97,7 +153,7 @@ impl<'a> StrReader<'a> {
         let end = self.skip_str_filtered(filter);
 
         // SAFETY: begin and end are valid cursors
-        unsafe { self.str.get_unchecked(begin..end) }
+        unsafe { self.str.get_unchecked(begin.bytes..end.bytes) }
     }
 
     pub fn skip_escaped_str_filtered(&mut self, mut filter: impl FnMut(char) -> StrFilter) -> bool {
@@ -133,20 +189,20 @@ impl<'a> StrReader<'a> {
                 Some(ch) => {
                     if ch == '\\' && !skip_next {
                         skip_next = true;
-                        self.cursor += ch.len_utf8();
+                        self.cursor += ch;
                     } else {
                         match filter(ch) {
                             StrFilter::Continue => {
-                                self.cursor += ch.len_utf8();
+                                self.cursor += ch;
                                 result.push(ch);
                             }
                             StrFilter::EndStrInclude => {
-                                self.cursor += ch.len_utf8();
+                                self.cursor += ch;
                                 result.push(ch);
                                 break;
                             }
                             StrFilter::EndInclude => {
-                                self.cursor += ch.len_utf8();
+                                self.cursor += ch;
                                 break;
                             }
                             StrFilter::EndExclude => {
@@ -220,7 +276,7 @@ impl<'a> StrReader<'a> {
             '0'..='9' => StrFilter::Continue,
             _ => StrFilter::EndExclude,
         });
-        unsafe { self.str.get_unchecked(begin..end) }
+        unsafe { self.str.get_unchecked(begin.bytes..end.bytes) }
     }
 
     pub fn read_float_str(&mut self) -> (&'a str, bool) {
@@ -244,8 +300,7 @@ impl<'a> StrReader<'a> {
                     if !matches!(self.peek_offset_char(1), Some('0'..='9')) {
                         break;
                     }
-                    self.next_char();
-                    self.next_char();
+                    self.skip_next_chars(2);
                 }
                 _ => {
                     break;
@@ -253,7 +308,11 @@ impl<'a> StrReader<'a> {
             }
         }
 
-        (unsafe { self.str.get_unchecked(begin..self.cursor()) }, fp)
+        (
+            // SAFETY: cursors are always valid
+            unsafe { self.str.get_unchecked(begin.bytes..self.cursor().bytes) },
+            fp,
+        )
     }
 
     pub fn read_int<T: FromStr>(&mut self) -> Result<T, <T as FromStr>::Err> {
@@ -266,20 +325,21 @@ impl<'a> StrReader<'a> {
 
     pub fn remaining_str(&self) -> &'a str {
         // SAFETY: cursor is always valid
-        unsafe { self.str.get_unchecked(self.cursor..) }
+        unsafe { self.str.get_unchecked(self.cursor.bytes..) }
     }
 
     pub fn used_str(&self) -> &'a str {
         // SAFETY: cursor is always valid
-        unsafe { self.str.get_unchecked(..self.cursor) }
+        unsafe { self.str.get_unchecked(..self.cursor.bytes) }
     }
 
     pub fn is_ended(&self) -> bool {
-        self.cursor == self.str.len()
+        self.cursor.bytes == self.str.len()
     }
 
     pub fn to_end(&mut self) {
-        self.cursor = self.str.len();
+        // SAFETY: cursor is always valid
+        unsafe { self.move_cursor_right(self.str.len() - self.cursor.bytes) }
     }
 
     pub fn skip_char(&mut self, ch: char) -> bool {

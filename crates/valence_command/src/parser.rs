@@ -4,8 +4,8 @@ use std::ops::Range;
 use valence_core::protocol::packet::command::Parser;
 use valence_core::text::Text;
 
-use crate::parsing_ret_err;
-use crate::reader::StrReader;
+use crate::p_try;
+use crate::reader::{StrCursor, StrReader};
 
 #[derive(Clone, Debug)]
 pub struct Suggestion<'a> {
@@ -42,8 +42,8 @@ impl<'a> From<String> for Suggestion<'a> {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ParsingResult<T, S, E> {
-    pub suggestions: Option<(Range<usize>, S)>,
-    pub result: Result<Option<T>, (Range<usize>, E)>,
+    pub suggestions: Option<(Range<StrCursor>, S)>,
+    pub result: Result<Option<T>, (Range<StrCursor>, E)>,
 }
 
 impl<T, S, E> ParsingResult<T, S, E> {
@@ -79,33 +79,38 @@ impl<T, S, E> ParsingResult<T, S, E> {
         self,
         func: impl FnOnce() -> ParsingResult<T1, S, E>,
     ) -> ParsingResult<(T, T1), S, E> {
-        let res = parsing_ret_err!(self);
+        let (_, value) = p_try!(self);
 
         let other = func();
 
         ParsingResult {
             suggestions: other.suggestions,
-            // parsing_ret_err! ensures that result is Ok
-            result: other.result.map(|v| match (v, res.result) {
-                (Some(v), Ok(Some(o))) => Some((o, v)),
+            result: other.result.map(|v| match (v, value) {
+                (Some(v), Some(o)) => Some((o, v)),
                 _ => None,
             }),
         }
     }
 }
 
-/// Macro ensures that returned result contains no Error
+// TODO: Implement [`Try`] trait when it stabilizes.
+
+/// The equivalent of `?` operator in rust.
+///
+/// Returns: [`(Option<(Range<StrCursor>, S)>, Option<T>)`]
 #[macro_export]
-macro_rules! parsing_ret_err {
+macro_rules! p_try {
     ($res:expr) => {{
         let res = $res;
-        if let Err((err_pos, err)) = res.result {
-            return $crate::parser::ParsingResult {
-                suggestions: res.suggestions,
-                result: Err((err_pos, err.into())),
-            };
+        match res.result {
+            Ok(value) => (res.suggestions, value),
+            Err((err_pos, err)) => {
+                return $crate::parser::ParsingResult {
+                    suggestions: res.suggestions,
+                    result: Err((err_pos, err.into())),
+                };
+            }
         }
-        res
     }};
 }
 
@@ -225,14 +230,14 @@ pub trait BrigadierArgument<'a>: Parse<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parsing_ret_err;
+    use crate::p_try;
 
     #[test]
-    fn ret_err() {
+    fn p_try_test() {
         fn func() -> ParsingResult<(), (), i32> {
-            parsing_ret_err!(ParsingResult::<(), (), _> {
+            p_try!(ParsingResult::<(), (), _> {
                 suggestions: None,
-                result: Err((0..0, 0))
+                result: Err((StrCursor::new_range("", ""), 0))
             });
             unreachable!()
         }

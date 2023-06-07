@@ -12,7 +12,7 @@ use crate::parser::{
     ParsingSuggestions, Suggestion,
 };
 use crate::reader::StrReader;
-use crate::{parsing_ret_err, parsing_token};
+use crate::{p_try, parsing_token};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct BlockPredicate<'a> {
@@ -162,10 +162,13 @@ impl<'a> Parse<'a> for BlockPredicate<'a> {
             })
         };
 
-        let kind_str = reader.str().get(begin..reader.cursor()).unwrap();
+        let kind_str = reader
+            .str()
+            .get(begin.bytes..reader.cursor().bytes)
+            .unwrap();
 
         let mut states = vec![];
-        parsing_ret_err!(read_block_props(
+        p_try!(read_block_props(
             reader,
             purpose,
             kind_str,
@@ -201,7 +204,7 @@ fn read_block_props<'a>(
 
             match (res.result, purpose) {
                 (Ok(Some((name, value))), ParsingPurpose::Reading) => {
-                    parsing_ret_err!(func(name, value));
+                    p_try!(func(name, value));
                 }
                 (Ok(None), ParsingPurpose::Reading) => unreachable!(),
                 (Ok(_), ParsingPurpose::Suggestion) => {}
@@ -329,7 +332,10 @@ impl<'a> Parse<'a> for BlockStateArgument {
 
         let kind = reader.read_ident_str().1;
 
-        let kind_str = reader.str().get(begin..reader.cursor()).unwrap();
+        let kind_str = reader
+            .str()
+            .get(begin.bytes..reader.cursor().bytes)
+            .unwrap();
 
         let mut state = BlockState::from_kind(match BlockKind::from_str(kind) {
             Some(o) => o,
@@ -341,7 +347,7 @@ impl<'a> Parse<'a> for BlockStateArgument {
             }
         });
 
-        parsing_ret_err!(read_block_props(
+        p_try!(read_block_props(
             reader,
             purpose,
             kind_str,
@@ -370,6 +376,7 @@ impl<'a> BrigadierArgument<'a> for BlockStateArgument {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::reader::StrCursor;
 
     #[test]
     fn block_predicate_test() {
@@ -392,9 +399,12 @@ mod tests {
         assert_eq!(
             BlockPredicate::parse(None, &mut StrReader::new("chest["), ParsingPurpose::Reading,),
             ParsingResult {
-                suggestions: Some((6..6, BlockSuggestions::PropName)),
+                suggestions: Some((
+                    StrCursor::new_range("chest[", ""),
+                    BlockSuggestions::PropName
+                )),
                 result: Err((
-                    6..6,
+                    StrCursor::new_range("chest[", ""),
                     BlockError::PropUnknown {
                         kind: "chest",
                         name: ""
