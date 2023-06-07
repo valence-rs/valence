@@ -1,6 +1,6 @@
 #![allow(clippy::type_complexity)]
 
-use valence::inventory::ClientInventoryState;
+use valence::inventory::HeldItem;
 use valence::prelude::*;
 use valence_client::interact_block::InteractBlockEvent;
 
@@ -109,14 +109,14 @@ fn digging_survival_mode(
 }
 
 fn place_blocks(
-    mut clients: Query<(&mut Inventory, &GameMode, &ClientInventoryState)>,
+    mut clients: Query<(&mut Inventory, &GameMode, &HeldItem)>,
     mut instances: Query<&mut Instance>,
     mut events: EventReader<InteractBlockEvent>,
 ) {
     let mut instance = instances.single_mut();
 
     for event in events.iter() {
-        let Ok((mut inventory, game_mode, inv_state)) = clients.get_mut(event.client) else {
+        let Ok((mut inventory, game_mode, held)) = clients.get_mut(event.client) else {
             continue;
         };
         if event.hand != Hand::Main {
@@ -124,7 +124,7 @@ fn place_blocks(
         }
 
         // get the held item
-        let slot_id = inv_state.held_item_slot();
+        let slot_id = held.slot();
         let Some(stack) = inventory.slot(slot_id) else {
             // no item in the slot
             continue;

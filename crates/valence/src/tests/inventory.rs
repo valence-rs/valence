@@ -6,8 +6,8 @@ use valence_inventory::packet::{
     OpenScreenS2c, ScreenHandlerSlotUpdateS2c, SlotChange, UpdateSelectedSlotC2s,
 };
 use valence_inventory::{
-    convert_to_player_slot_id, ClientInventoryState, CursorItem, DropItemStack, Inventory,
-    InventoryKind, OpenInventory,
+    convert_to_player_slot_id, ClientInventoryState, CursorItem, DropItemStack, HeldItem,
+    Inventory, InventoryKind, OpenInventory,
 };
 
 use super::*;
@@ -474,12 +474,12 @@ fn test_should_handle_set_held_item() {
     app.update();
 
     // Make assertions
-    let inv_state = app
+    let held = app
         .world
-        .get::<ClientInventoryState>(client_ent)
+        .get::<HeldItem>(client_ent)
         .expect("could not find client");
 
-    assert_eq!(inv_state.held_item_slot(), 40);
+    assert_eq!(held.slot(), 40);
 }
 
 #[test]
@@ -602,11 +602,11 @@ mod dropping_items {
         app.update();
 
         // Make assertions
-        let inv_state = app
+        let held = app
             .world
-            .get::<ClientInventoryState>(client_ent)
+            .get::<HeldItem>(client_ent)
             .expect("could not find client");
-        assert_eq!(inv_state.held_item_slot(), 36);
+        assert_eq!(held.slot(), 36);
         let inventory = app
             .world
             .get::<Inventory>(client_ent)
