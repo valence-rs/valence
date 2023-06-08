@@ -6,8 +6,9 @@ use crate::value::Value;
 
 const EOF: char = '\0';
 
+/// An implementation of an NBT path
 pub struct NbtPath {
-    string: String,
+    source: String,
     nodes: Vec<NbtPathNode>,
 }
 
@@ -15,7 +16,7 @@ pub struct NbtPath {
 pub enum NbtPathNode {
     RootCompoundTag {
         span: (usize, usize),
-        compound: Option<Compound>,
+        compound: Compound,
     },
     NamedTag {
         span: (usize, usize),
@@ -24,7 +25,7 @@ pub enum NbtPathNode {
     NamedCompoundTag {
         span: (usize, usize),
         name: String,
-        compound: Option<Compound>,
+        compound: Compound,
     },
     ElementOfList {
         span: (usize, usize),
@@ -38,7 +39,7 @@ pub enum NbtPathNode {
     CompoundElementsOfList {
         span: (usize, usize),
         list_name: String,
-        compound: Option<Compound>,
+        compound: Compound,
     },
     ElementsOfSubList {
         span: (usize, usize),
@@ -51,6 +52,31 @@ pub enum NbtPathNode {
 impl TryFrom<String> for NbtPath {
     type Error = String;
 
+    /// Convert a valid `String` into a `NbtPath`.
+    /// See [the format](https://minecraft.fandom.com/wiki/NBT_path_format) of an NBT Path.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use valence_nbt::path::{NbtPath, NbtPathNode};
+    ///
+    /// let nbt_path = NbtPath::try_from("{foo:1225l}.bar".to_string()).unwrap();
+    ///
+    /// assert_eq!(
+    ///     nbt_path.nodes,
+    ///     vec![
+    ///         NbtPathNode::RootCompoundTag {
+    ///             span: (0, 11),
+    ///             compound: Some(compound!("foo" => 1225i64)),
+    ///         },
+    ///         NbtPathNode::NamedTag {
+    ///             span: (12, 15),
+    ///             name: "bar".to_string(),
+    ///         }
+    ///     ]
+    /// );
+    /// ```     
+
     fn try_from(value: String) -> Result<Self, Self::Error> {
         let mut nbt_parser = NbtPathParser {
             string: &value,
@@ -59,7 +85,7 @@ impl TryFrom<String> for NbtPath {
         };
         let nodes: Vec<NbtPathNode> = nbt_parser.parse()?;
         Ok(Self {
-            string: value,
+            source: value,
             nodes,
         })
     }
@@ -72,6 +98,11 @@ struct NbtPathParser<'a> {
 }
 
 impl NbtPathParser<'_> {
+    fn skip_whitespace(&mut self) {
+        while self.peek_char().is_ascii_whitespace() {
+            self.bump();
+        }
+    }
     fn bump(&mut self) -> char {
         let next = self.chars.next();
         if next.is_none() {
@@ -96,11 +127,12 @@ impl NbtPathParser<'_> {
 
         match self.peek_char() {
             '{' => {
+                let span_start = self.peek_char_index();
                 let root_compound = self.compound()?;
-                let end = self.peek_char_index();
+                let span_end = self.peek_char_index();
                 nodes.push(NbtPathNode::RootCompoundTag {
-                    span: (root_compound.0, end),
-                    compound: root_compound.1,
+                    span: (span_start, span_end),
+                    compound: root_compound,
                 });
 
                 let peek = self.peek_char();
@@ -122,47 +154,132 @@ impl NbtPathParser<'_> {
             _ => (),
         }
         loop {
-            let (span_start, name) = match self.peek_char() {
+            let span_start = self.peek_char_index();
+            let name = match self.peek_char() {
                 EOF => break,
-                '"' => self.quoted_name(),
+                '"' => self.quoted_string(),
                 _ => self.unquoted_name(),
             }?;
-            if matches!(self.peek_char(), EOF | '.') {
-                nodes.push(NbtPathNode::NamedTag {
-                    span: (span_start, self.peek_char_index()),
-                    name,
-                });
-                self.bump();
-                continue;
-            }
             let node = match self.peek_char() {
                 '{' => {
-                    let compound = self.compound()?.1;
+                    let compound = self.compound()?;
                     NbtPathNode::NamedCompoundTag {
                         span: (span_start, self.peek_char_index()),
                         name,
                         compound,
                     }
                 }
-                _ => todo!(),
+                '[' => {
+                    let (indexes, compound) = self.array_index()?;
+                    let thing: Result<NbtPathNode, String> = match (indexes.len(), compound) {
+                        (0, None) => Err(format!(
+                            "I don't think it's possible to reach this error. (Index: {})",
+                            self.index
+                        )),
+                        (1, None) => {
+                            if indexes[0] == None {
+                                Ok(NbtPathNode::AllElementsOfList {
+                                    span: (span_start, self.peek_char_index()),
+                                    list_name: name,
+                                })
+                            } else {
+                                Ok(NbtPathNode::ElementOfList {
+                                    span: (span_start, self.peek_char_index()),
+                                    list_name: name,
+                                    index: indexes[0].unwrap(),
+                                })
+                            }
+                        }
+                        (0, compound) => Ok(NbtPathNode::CompoundElementsOfList {
+                            span: (span_start, self.peek_char_index()),
+                            list_name: name,
+                            compound: compound.unwrap(),
+                        }),
+                        (_, compound) => Ok(NbtPathNode::ElementsOfSubList {
+                            span: (span_start, self.peek_char_index()),
+                            list_name: name,
+                            indexes,
+                            compound,
+                        }),
+                    };
+                    thing?
+                }
+                _ => NbtPathNode::NamedTag {
+                    span: (span_start, self.peek_char_index()),
+                    name,
+                },
             };
+
             nodes.push(node);
+            if matches!(self.peek_char(), EOF | '.') {
+                self.bump();
+            }
         }
         Ok(nodes)
     }
-    fn compound(&mut self) -> Result<(usize, Option<Compound>), String> {
+    fn array_index(&mut self) -> Result<(Vec<Option<i32>>, Option<Compound>), String> {
+        let mut indexes: Vec<Option<i32>> = vec![];
+        let mut compound: Option<Compound> = None;
+
+        while self.peek_char() == '[' {
+            self.bump();
+            if self.peek_char() == '{' {
+                compound = Some(self.compound()?);
+                if self.peek_char() != ']' {
+                    return Err(format!(
+                        "Expected closing ']' for compound element indexing of list. (Index: {})",
+                        self.peek_char_index()
+                    ));
+                }
+                self.bump();
+                break;
+            } else {
+                indexes.push(self.index_num()?);
+                if self.peek_char() != ']' {
+                    return Err(format!(
+                        "Expected closing ']' for index int list. (Index: {})",
+                        self.peek_char_index()
+                    ));
+                }
+                self.bump();
+            }
+        }
+        Ok((indexes, compound))
+    }
+    fn index_num(&mut self) -> Result<Option<i32>, String> {
+        if self.peek_char() == ']' {
+            return Ok(None);
+        }
+
+        let start = self.peek_char_index();
+        if self.peek_char() == '-' {
+            self.bump();
+        }
+
+        while let '0'..='9' = self.peek_char() {
+            self.bump();
+        }
+
+        let end = self.peek_char_index();
+        let num_string = &self.string[start..end];
+        Ok(Some(parse_or_error::<i32>(num_string, self.index)?))
+    }
+    fn compound(&mut self) -> Result<Compound, String> {
         // bump past the starting curly bracket
         self.bump();
-
-        let span_start = self.index;
 
         // if there's already a closing bracket, it's just an empty compound
         if self.peek_char() == '}' {
             self.bump();
-            return Ok((span_start, None));
+            return Ok(compound!());
         }
         // get the label
-        let label: String = self.unquoted_name()?.1;
+        let label: String = if self.peek_char() == '"' {
+            self.quoted_string()
+        } else {
+            self.unquoted_name()
+        }?;
+
         if self.peek_char() != ':' {
             return Err(format!(
                 "Expected symbol ':' in compound, but found {}. (Index: {})",
@@ -172,7 +289,7 @@ impl NbtPathParser<'_> {
         }
         self.bump();
         // get the value
-        let value: Value = self.value()?.1;
+        let value: Value = self.value()?;
 
         // bump past the ending closing curly bracket
         if self.peek_char() != '}' {
@@ -185,15 +302,14 @@ impl NbtPathParser<'_> {
         self.bump();
 
         let compound = compound!(label => value);
-        Ok((span_start, Some(compound)))
+        Ok(compound)
     }
-    fn value(&mut self) -> Result<(usize, Value), String> {
-        let span_start = self.peek_char_index();
+    fn value(&mut self) -> Result<Value, String> {
         loop {
             match self.peek_char() {
                 '"' => {
-                    let value = self.quoted_name()?.1;
-                    return Ok((span_start, Value::String(value)));
+                    let value = self.quoted_string()?;
+                    return Ok(Value::String(value));
                 }
                 '0'..='9' | '-' => {
                     return self.number();
@@ -203,7 +319,7 @@ impl NbtPathParser<'_> {
             }
         }
     }
-    fn number(&mut self) -> Result<(usize, Value), String> {
+    fn number(&mut self) -> Result<Value, String> {
         let mut is_decimal = false;
         let num_start = self.peek_char_index();
         self.bump();
@@ -225,43 +341,58 @@ impl NbtPathParser<'_> {
 
         if is_decimal && !matches!(type_indicator, 'f' | 'F') {
             let num = parse_or_error::<f64>(num_string, self.index)?;
-            return Ok((num_start, Value::Double(num)));
+            return Ok(Value::Double(num));
         }
 
         match type_indicator {
             'b' | 'B' => {
                 self.bump();
                 let num = parse_or_error::<i8>(num_string, self.index)?;
-                return Ok((num_start, Value::Byte(num)));
+                Ok(Value::Byte(num))
             }
             's' | 'S' => {
                 self.bump();
                 let num = parse_or_error::<i16>(num_string, self.index)?;
-                return Ok((num_start, Value::Short(num)));
+                Ok(Value::Short(num))
             }
             'l' | 'L' => {
                 self.bump();
                 let num = parse_or_error::<i64>(num_string, self.index)?;
-                return Ok((num_start, Value::Long(num)));
+                Ok(Value::Long(num))
             }
             'f' | 'F' => {
                 self.bump();
                 let num = parse_or_error::<f32>(num_string, self.index)?;
-                return Ok((num_start, Value::Float(num)));
+                Ok(Value::Float(num))
             }
 
             _ => {
                 let num = parse_or_error::<i32>(num_string, self.index)?;
-                return Ok((num_start, Value::Int(num)));
+                Ok(Value::Int(num))
             }
         }
     }
-    fn quoted_name(&mut self) -> Result<(usize, String), String> {
+    fn quoted_string(&mut self) -> Result<String, String> {
         self.bump();
-        let span_start = self.index;
+        let mut name = String::new();
         loop {
-            println!("next: {}", self.peek_char_index());
             match self.peek_char() {
+                // maybe escape sequence
+                '\\' => {
+                    self.bump();
+                    match self.peek_char() {
+                        '\\' | '"' => name.push(self.bump()),
+                        'n' => {
+                            self.bump();
+                            name.push('\n');
+                        }
+                        't' => {
+                            self.bump();
+                            name.push('\t');
+                        }
+                        _ => name.push('\\'),
+                    }
+                }
                 EOF => {
                     return Err(format!(
                         "Expected a quoted named tag terminated by a second \", but reached EOF. \
@@ -271,17 +402,14 @@ impl NbtPathParser<'_> {
                 }
                 '"' => break,
                 _ => {
-                    self.bump();
-                    println!("index {}", self.index);
+                    name.push(self.bump());
                 }
             }
         }
         self.bump();
-        let span_end = self.peek_char_index();
-        let name = self.string[(span_start + 1)..(span_end - 1)].to_owned();
-        Ok((span_start, name))
+        Ok(name)
     }
-    fn unquoted_name(&mut self) -> Result<(usize, String), String> {
+    fn unquoted_name(&mut self) -> Result<String, String> {
         let span_start = self.peek_char_index();
         loop {
             match self.peek_char() {
@@ -298,7 +426,7 @@ impl NbtPathParser<'_> {
             ));
         }
         let name = self.string[span_start..span_end].to_owned();
-        Ok((span_start, name))
+        Ok(name)
     }
 }
 
@@ -321,29 +449,35 @@ mod nbt_path_tests {
     use crate::path::{NbtPath, NbtPathNode};
 
     #[test]
-    fn named_tag() {
-        let name = NbtPath::try_from("hello".to_string()).unwrap();
+    fn path1() {
+        let name = NbtPath::try_from("{foo:\"bar\"}".to_string()).unwrap();
         assert_eq!(
             name.nodes[0],
-            NbtPathNode::NamedTag {
-                span: (0, 5),
-                name: "hello".to_string()
+            NbtPathNode::RootCompoundTag {
+                span: (0, 11),
+                compound: compound!("foo" => "bar"),
             }
         );
     }
     #[test]
-    fn escaped_named_tag() {
-        let name = NbtPath::try_from("\"@(#hello >\"".to_string()).unwrap();
+    fn path2() {
+        let name = NbtPath::try_from("{foo:1225l}.bar".to_string()).unwrap();
         assert_eq!(
-            name.nodes[0],
-            NbtPathNode::NamedTag {
-                span: (0, 12),
-                name: "@(#hello >".to_string()
-            }
+            name.nodes,
+            vec![
+                NbtPathNode::RootCompoundTag {
+                    span: (0, 11),
+                    compound: compound!("foo" => 1225i64),
+                },
+                NbtPathNode::NamedTag {
+                    span: (12, 15),
+                    name: "bar".to_string(),
+                }
+            ]
         );
     }
     #[test]
-    fn name_then_name() {
+    fn path3() {
         let path = NbtPath::try_from("foo.bar.baz".to_string()).unwrap();
         assert_eq!(
             path.nodes,
@@ -364,25 +498,49 @@ mod nbt_path_tests {
         );
     }
     #[test]
-    fn empty_root_then_named_tag() {
-        let nbt_path = NbtPath::try_from("{help:-432.40f}.foo{bar:5b}.baz".to_string()).unwrap();
+    fn path4() {
+        let nbt_path = NbtPath::try_from("{foo:-432.40f}.bar{baz:5b}.qux".to_string()).unwrap();
         assert_eq!(
             nbt_path.nodes,
             vec![
                 NbtPathNode::RootCompoundTag {
-                    span: (0, 15),
-                    compound: Some(compound!("help" => -432.40f32)),
+                    span: (0, 14),
+                    compound: compound!("foo" => -432.40f32),
                 },
                 NbtPathNode::NamedCompoundTag {
-                    span: (16, 27),
-                    name: "foo".to_string(),
-                    compound: Some(compound!("bar" => 5i8)),
+                    span: (15, 26),
+                    name: "bar".to_string(),
+                    compound: compound!("baz" => 5i8),
                 },
                 NbtPathNode::NamedTag {
-                    span: (28, 31),
-                    name: "baz".to_string(),
+                    span: (27, 30),
+                    name: "qux".to_string(),
                 }
             ]
+        );
+    }
+    #[test]
+    fn path5() {
+        let nbt_path = NbtPath::try_from("\"aa\\n\"".to_string()).unwrap();
+        assert_eq!(
+            nbt_path.nodes,
+            vec![NbtPathNode::NamedTag {
+                span: (0, 6),
+                name: "aa\n".to_string(),
+            },]
+        );
+    }
+    #[test]
+    fn path6() {
+        let nbt_path = NbtPath::try_from("foo[-1][{\"guacamole\":920S}]".to_string()).unwrap();
+        assert_eq!(
+            nbt_path.nodes,
+            vec![NbtPathNode::ElementsOfSubList {
+                span: (0, 27),
+                list_name: "foo".to_string(),
+                indexes: vec![Some(-1)],
+                compound: Some(compound!("guacamole" => 920i16)),
+            },]
         );
     }
 }
