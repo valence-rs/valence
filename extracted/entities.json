@@ -21,7 +21,7 @@
         "name": "item",
         "index": 8,
         "type": "item_stack",
-        "default_value": "0 air"
+        "default_value": "1 air"
       }
     ]
   },
@@ -997,7 +997,7 @@
         "name": "item",
         "index": 8,
         "type": "item_stack",
-        "default_value": "0 air"
+        "default_value": "1 air"
       }
     ],
     "default_bounding_box": {
@@ -1048,7 +1048,7 @@
         "name": "item",
         "index": 8,
         "type": "item_stack",
-        "default_value": "0 air"
+        "default_value": "1 air"
       },
       {
         "name": "shooter_entity_id",
@@ -1436,7 +1436,7 @@
         "name": "item",
         "index": 22,
         "type": "item_stack",
-        "default_value": "0 air"
+        "default_value": "1 air"
       },
       {
         "name": "item_display",
@@ -1460,7 +1460,7 @@
         "name": "stack",
         "index": 8,
         "type": "item_stack",
-        "default_value": "0 air"
+        "default_value": "1 air"
       }
     ],
     "default_bounding_box": {
@@ -1478,7 +1478,7 @@
         "name": "item_stack",
         "index": 8,
         "type": "item_stack",
-        "default_value": "0 air"
+        "default_value": "1 air"
       },
       {
         "name": "rotation",
@@ -2448,7 +2448,7 @@
         "name": "item",
         "index": 8,
         "type": "item_stack",
-        "default_value": "0 air"
+        "default_value": "1 air"
       }
     ]
   },
