@@ -120,6 +120,23 @@ pub mod prelude {
 /// [`DefaultPlugins`] obeys Cargo feature flags. Users may exert control over
 /// this plugin group by disabling `default-features` in their `Cargo.toml` and
 /// enabling only those features that they wish to use.
+///
+/// Currently, the following features are available:
+/// - [`CorePlugin`]
+/// - [`valence_registry::RegistryPlugin`]
+/// - [`valence_biome::BiomePlugin`]
+/// - [`valence_dimension::DimensionPlugin`]
+/// - [`valence_entity::EntityPlugin`]
+/// - [`valence_entity::hitbox::HitboxPlugin`]
+/// - [`valence_instance::InstancePlugin`]
+/// - [`valence_client::ClientPlugin`]
+/// - [`valence_network::NetworkPlugin`] (requires the `network` feature)
+/// - [`valence_player_list::PlayerListPlugin`] (requires the `player_list`
+///   feature)
+/// - [`valence_inventory::InventoryPlugin`] (requires the `inventory` feature)
+/// - [`valence_advancement::AdvancementPlugin`] (requires the `advancement`
+///   feature)
+/// - [...] (requires the `anvil` feature)
 pub struct DefaultPlugins;
 
 impl PluginGroup for DefaultPlugins {

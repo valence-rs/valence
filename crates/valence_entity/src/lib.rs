@@ -401,6 +401,11 @@ pub struct ObjectData(pub i32);
 #[derive(Component, Default, Debug)]
 pub struct PacketByteRange(pub Range<usize>);
 
+/// The layer the entity is on.
+/// The entity will only be show to clients on the same layer.
+#[derive(Component, Copy, Clone, PartialEq, Eq, Debug)]
+pub struct Layer(pub u8);
+
 /// Cache for all the tracked data of an entity. Used for the
 /// [`EntityTrackerUpdateS2c`][packet] packet.
 ///

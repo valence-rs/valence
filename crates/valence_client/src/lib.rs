@@ -644,6 +644,40 @@ pub struct IsDebug(pub bool);
 #[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
 pub struct IsFlat(pub bool);
 
+#[derive(Component, Debug)]
+pub struct ClientLayerMask(pub u64);
+
+impl Default for ClientLayerMask {
+    fn default() -> Self {
+        Self(0)
+    }
+}
+
+impl ClientLayerMask {
+    pub fn set(&mut self, layer: u8, enabled: bool) {
+        if enabled {
+            self.0 |= 1 << layer;
+        } else {
+            self.0 &= !(1 << layer);
+        }
+    }
+
+    pub fn get(&self, layer: u8) -> bool {
+        self.0 & (1 << layer) != 0
+    }
+
+    /// Return a [`Vec`] of all enabled layers.
+    pub fn get_all(&self) -> Vec<u8> {
+        let mut layers = Vec::new();
+        for layer in 0..64 {
+            if self.get(layer) {
+                layers.push(layer);
+            }
+        }
+        layers
+    }
+}
+
 /// A system for adding [`Despawned`] components to disconnected clients. This
 /// works by listening for removed [`Client`] components.
 pub fn despawn_disconnected_clients(
@@ -875,13 +909,14 @@ fn read_data_in_old_view(
         &OldPosition,
         &OldViewDistance,
         Option<&PacketByteRange>,
+        Option<&ClientLayerMask>
     )>,
     instances: Query<&Instance>,
     entities: Query<(EntityInitQuery, &OldPosition)>,
     entity_ids: Query<&EntityId>,
 ) {
     clients.par_iter_mut().for_each_mut(
-        |(mut client, mut remove_buf, loc, old_loc, pos, old_pos, old_view_dist, byte_range)| {
+        |(mut client, mut remove_buf, loc, old_loc, pos, old_pos, old_view_dist, byte_range, client_layer_mask)| {
             let Ok(instance) = instances.get(old_loc.get()) else {
                 return;
             };
@@ -931,6 +966,16 @@ fn read_data_in_old_view(
                                 remove_buf.push(entity_id.get());
                             }
                         }
+                    }
+
+                    // Using the layer mask we gonna send the right ranges of bytes to the client from the layer packet buffer.
+                    if let Some(client_layer_mask) = client_layer_mask {
+                        // Send all the ranges that the client is interested in.
+                        client_layer_mask.get_all().iter().for_each(|layer| {
+                            if let Some(byte_range) = &cell.layers_byte_range.get(layer) {
+                                client.write_packet_bytes(&cell.layers_packet_buf[byte_range.start..byte_range.end]);
+                            }
+                        });
                     }
 
                     // Send all data in the chunk's packet buffer to this client. This will update
