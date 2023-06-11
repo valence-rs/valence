@@ -75,6 +75,7 @@ impl<'a, E: CEnum + 'a> Parse<'a> for E {
     }
 }
 
+#[macro_export]
 macro_rules! cenum {
     ($name: ty; $error: expr => {
         $($val: ident$(,)?)*
@@ -86,13 +87,13 @@ macro_rules! cenum {
     ($name: ty; $error: expr => {
         $($val: ident = $s: expr$(,)?)*
     }) => {
-        impl CEnum for $name {
-            const SUGGESTIONS: &'static [Suggestion<'static>] = &[
-                $(Suggestion::new_str($s),)*
+        impl $crate::cenum::CEnum for $name {
+            const SUGGESTIONS: &'static [$crate::parser::Suggestion<'static>] = &[
+                $($crate::parser::Suggestion::new_str($s),)*
             ];
 
-            fn error(str: &str) -> ParsingError {
-                ParsingError::translate($error, vec![str.to_string().into()])
+            fn error(str: &str) -> $crate::parser::ParsingError {
+                $crate::parser::ParsingError::translate($error, vec![str.to_string().into()])
             }
 
             fn from_str(str: &str) -> Option<Self> {

@@ -10,7 +10,7 @@ use crate::parser::{
 };
 use crate::reader::StrReader;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct InclusiveRange<T> {
     pub min: Option<T>,
     pub max: Option<T>,

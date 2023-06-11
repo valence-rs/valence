@@ -10,7 +10,7 @@ use crate::reader::{StrCursor, StrReader};
 #[derive(Clone, Debug)]
 pub struct Suggestion<'a> {
     pub message: Cow<'a, str>,
-    pub tooltip: Option<Text>,
+    pub tooltip: Option<Cow<'a, Text>>,
 }
 
 impl<'a> Suggestion<'a> {
@@ -106,7 +106,7 @@ macro_rules! p_try {
             Ok(value) => (res.suggestions, value),
             Err((err_pos, err)) => {
                 return $crate::parser::ParsingResult {
-                    suggestions: res.suggestions,
+                    suggestions: res.suggestions.map(|(pos, sug)| (pos, sug.into())),
                     result: Err((err_pos, err.into())),
                 };
             }

@@ -235,6 +235,13 @@ impl<'a> StrReader<'a> {
         })
     }
 
+    pub fn read_resource_location_str(&mut self) -> &'a str {
+        self.read_str_filtered(|ch| match ch {
+            '0'..='9' | 'a'..='z' | '_' | ':' | '/' | '.' | '-' => StrFilter::Continue,
+            _ => StrFilter::EndExclude,
+        })
+    }
+
     pub fn read_ident_str(&mut self) -> (Option<&'a str>, &'a str) {
         let mut left = false;
         let result = self.read_str_filtered(|ch| match ch {
