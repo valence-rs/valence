@@ -33,9 +33,9 @@ use valence_core::ident::Ident;
 
 pub struct RegistryPlugin;
 
-/// The [`SystemSet`] where the [`RegistryCodec`] and [`TagsRegistry`] caches
-/// are rebuilt. Systems that modify the registry codec or tags registry should
-/// run _before_ this.
+/// The [`SystemSet`] where the [`RegistryCodec`](codec::RegistryCodec) and
+/// [`TagsRegistry`](tags::TagsRegistry) caches are rebuilt. Systems that modify
+/// the registry codec or tags registry should run _before_ this.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct RegistrySet;
 
