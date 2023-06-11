@@ -3,8 +3,8 @@
 use std::path::PathBuf;
 
 use valence::prelude::*;
-use valence_client::misc::InteractBlock;
-use valence_inventory::ClientInventoryState;
+use valence_client::interact_block::InteractBlockEvent;
+use valence_inventory::HeldItem;
 use valence_nbt::compound;
 use valence_schem::Schematic;
 
@@ -42,25 +42,20 @@ struct Origin(BlockPos);
 struct Clipboard(Schematic);
 
 fn first_pos(
-    mut clients: Query<(
-        &mut Client,
-        &Inventory,
-        Option<&mut FirstPos>,
-        &ClientInventoryState,
-    )>,
-    mut block_breaks: EventReader<Digging>,
+    mut clients: Query<(&mut Client, &Inventory, Option<&mut FirstPos>, &HeldItem)>,
+    mut block_breaks: EventReader<DiggingEvent>,
     mut commands: Commands,
 ) {
-    for Digging {
+    for DiggingEvent {
         client: entity,
         position,
         ..
     } in block_breaks.iter()
     {
-        let Ok((mut client, inv, pos, inv_state)) = clients.get_mut(*entity) else {
+        let Ok((mut client, inv, pos, held_item)) = clients.get_mut(*entity) else {
             continue;
         };
-        let slot = inv.slot(inv_state.held_item_slot());
+        let slot = inv.slot(held_item.slot());
         if matches!(slot, Some(ItemStack {item, ..}) if *item == ItemKind::WoodenAxe) {
             let changed = !matches!(pos.map(|pos| pos.0), Some(pos) if pos == *position);
             if changed {
@@ -75,16 +70,11 @@ fn first_pos(
 }
 
 fn second_pos(
-    mut clients: Query<(
-        &mut Client,
-        &Inventory,
-        Option<&mut SecondPos>,
-        &ClientInventoryState,
-    )>,
-    mut interacts: EventReader<InteractBlock>,
+    mut clients: Query<(&mut Client, &Inventory, Option<&mut SecondPos>, &HeldItem)>,
+    mut interacts: EventReader<InteractBlockEvent>,
     mut commands: Commands,
 ) {
-    for InteractBlock {
+    for InteractBlockEvent {
         client: entity,
         hand,
         position,
@@ -92,10 +82,10 @@ fn second_pos(
     } in interacts.iter()
     {
         if *hand == Hand::Main {
-            let Ok((mut client, inv, pos, inv_state)) = clients.get_mut(*entity) else {
+            let Ok((mut client, inv, pos, held_item)) = clients.get_mut(*entity) else {
                 continue;
             };
-            let slot = inv.slot(inv_state.held_item_slot());
+            let slot = inv.slot(held_item.slot());
             if matches!(slot, Some(ItemStack {item, ..}) if *item == ItemKind::WoodenAxe) {
                 let changed = !matches!(pos.map(|pos| pos.0), Some(pos) if pos == *position);
                 if changed {
@@ -111,16 +101,11 @@ fn second_pos(
 }
 
 fn origin(
-    mut clients: Query<(
-        &mut Client,
-        &Inventory,
-        Option<&mut Origin>,
-        &ClientInventoryState,
-    )>,
-    mut interacts: EventReader<InteractBlock>,
+    mut clients: Query<(&mut Client, &Inventory, Option<&mut Origin>, &HeldItem)>,
+    mut interacts: EventReader<InteractBlockEvent>,
     mut commands: Commands,
 ) {
-    for InteractBlock {
+    for InteractBlockEvent {
         client: entity,
         hand,
         position,
@@ -128,10 +113,10 @@ fn origin(
     } in interacts.iter()
     {
         if *hand == Hand::Main {
-            let Ok((mut client, inv, pos, inv_state)) = clients.get_mut(*entity) else {
+            let Ok((mut client, inv, pos, held_item)) = clients.get_mut(*entity) else {
                 continue;
             };
-            let slot = inv.slot(inv_state.held_item_slot());
+            let slot = inv.slot(held_item.slot());
             if matches!(slot, Some(ItemStack {item, ..}) if *item == ItemKind::Stick) {
                 let changed = !matches!(pos.map(|pos| pos.0), Some(pos) if pos == *position);
                 if changed {
@@ -154,18 +139,18 @@ fn copy_schem(
         Option<&FirstPos>,
         Option<&SecondPos>,
         Option<&Origin>,
-        &ClientInventoryState,
+        &HeldItem,
         &Position,
         &Location,
         &Username,
     )>,
     instances: Query<&Instance>,
-    mut interacts: EventReader<InteractBlock>,
+    mut interacts: EventReader<InteractBlockEvent>,
     biome_registry: Res<BiomeRegistry>,
     biomes: Query<&Biome>,
     mut commands: Commands,
 ) {
-    for InteractBlock {
+    for InteractBlockEvent {
         client: entity,
         hand,
         ..
@@ -174,10 +159,10 @@ fn copy_schem(
         if *hand != Hand::Main {
             continue;
         }
-        let Ok((mut client, inv, pos1, pos2, origin, inv_state, &Position(pos), &Location(instance), Username(username))) = clients.get_mut(*entity) else {
+        let Ok((mut client, inv, pos1, pos2, origin, held_item, &Position(pos), &Location(instance), Username(username))) = clients.get_mut(*entity) else {
             continue;
         };
-        let slot = inv.slot(inv_state.held_item_slot());
+        let slot = inv.slot(held_item.slot());
         if matches!(slot, Some(ItemStack {item, ..}) if *item == ItemKind::Paper) {
             let Some((FirstPos(pos1), SecondPos(pos2))) = pos1.zip(pos2) else {
                 client.send_message("Specify both positions first");
@@ -206,12 +191,12 @@ fn paste_schem(
         &Inventory,
         Option<&Clipboard>,
         &Location,
-        &ClientInventoryState,
+        &HeldItem,
         &Position,
     )>,
-    mut interacts: EventReader<InteractBlock>,
+    mut interacts: EventReader<InteractBlockEvent>,
 ) {
-    for InteractBlock {
+    for InteractBlockEvent {
         client: entity,
         hand,
         ..
@@ -220,13 +205,13 @@ fn paste_schem(
         if *hand != Hand::Main {
             continue;
         }
-        let Ok((mut client, inv, clipboard, &Location(instance), inv_state, &Position(position))) = clients.get_mut(*entity) else {
+        let Ok((mut client, inv, clipboard, &Location(instance), held_item, &Position(position))) = clients.get_mut(*entity) else {
             continue;
         };
         let Ok(mut instance) = instances.get_mut(instance) else {
             continue;
         };
-        let slot = inv.slot(inv_state.held_item_slot());
+        let slot = inv.slot(held_item.slot());
         if matches!(slot, Some(ItemStack {item, ..}) if *item == ItemKind::Feather) {
             let Some(Clipboard(schematic)) = clipboard else {
                 client.send_message("Copy something to clipboard first!");
@@ -247,12 +232,12 @@ fn save_schem(
         &mut Client,
         &Inventory,
         Option<&Clipboard>,
-        &ClientInventoryState,
+        &HeldItem,
         &Username,
     )>,
-    mut interacts: EventReader<InteractBlock>,
+    mut interacts: EventReader<InteractBlockEvent>,
 ) {
-    for InteractBlock {
+    for InteractBlockEvent {
         client: entity,
         hand,
         ..
@@ -261,10 +246,10 @@ fn save_schem(
         if *hand != Hand::Main {
             continue;
         }
-        let Ok((mut client, inv, clipboard, inv_state, Username(username))) = clients.get_mut(*entity) else {
+        let Ok((mut client, inv, clipboard, held_item, Username(username))) = clients.get_mut(*entity) else {
             continue;
         };
-        let slot = inv.slot(inv_state.held_item_slot());
+        let slot = inv.slot(held_item.slot());
         if matches!(slot, Some(ItemStack {item, ..}) if *item == ItemKind::MusicDiscStal) {
             let Some(Clipboard(schematic)) = clipboard else {
                 client.send_message("Copy something to clipboard first!");
@@ -278,21 +263,21 @@ fn save_schem(
 }
 
 fn place_blocks(
-    clients: Query<(&Inventory, &ClientInventoryState), With<Client>>,
+    clients: Query<(&Inventory, &HeldItem), With<Client>>,
     mut instances: Query<&mut Instance>,
-    mut events: EventReader<InteractBlock>,
+    mut events: EventReader<InteractBlockEvent>,
 ) {
     let mut instance = instances.single_mut();
 
     for event in events.iter() {
-        let Ok((inventory, inv_state)) = clients.get(event.client) else {
+        let Ok((inventory, held_item)) = clients.get(event.client) else {
             continue;
         };
         if event.hand != Hand::Main {
             continue;
         }
 
-        let Some(stack) = inventory.slot(inv_state.held_item_slot()) else {
+        let Some(stack) = inventory.slot(held_item.slot()) else {
             continue;
         };
 
@@ -307,20 +292,20 @@ fn place_blocks(
 
 fn break_blocks(
     mut instances: Query<&mut Instance>,
-    inventories: Query<(&Inventory, &ClientInventoryState)>,
-    mut events: EventReader<Digging>,
+    inventories: Query<(&Inventory, &HeldItem)>,
+    mut events: EventReader<DiggingEvent>,
 ) {
     let mut instance = instances.single_mut();
 
-    for Digging {
+    for DiggingEvent {
         client, position, ..
     } in events.iter()
     {
-        let Ok((inv, inv_state)) = inventories.get(*client) else {
+        let Ok((inv, held_item)) = inventories.get(*client) else {
             continue;
         };
 
-        let slot = inv.slot(inv_state.held_item_slot());
+        let slot = inv.slot(held_item.slot());
         if !matches!(slot, Some(ItemStack {item, ..}) if *item == ItemKind::WoodenAxe) {
             instance.set_block(*position, BlockState::AIR);
         }

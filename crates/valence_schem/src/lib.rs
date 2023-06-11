@@ -34,8 +34,8 @@ use valence_block::{BlockEntityKind, BlockState, ParseBlockStateError};
 use valence_core::block_pos::BlockPos;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::ident::Ident;
-use valence_core::packet::var_int::{VarInt, VarIntDecodeError};
-use valence_core::packet::Encode;
+use valence_core::protocol::var_int::{VarInt, VarIntDecodeError};
+use valence_core::protocol::Encode;
 use valence_instance::{Block as ValenceBlock, Instance};
 use valence_nbt::{compound, Compound, List, Value};
 
@@ -93,7 +93,7 @@ pub enum LoadSchematicError {
     Io(#[from] io::Error),
 
     #[error(transparent)]
-    Nbt(#[from] valence_nbt::Error),
+    Nbt(#[from] valence_nbt::binary::Error),
 
     #[error("missing schematic")]
     MissingSchematic,
@@ -230,7 +230,7 @@ pub enum SaveSchematicError {
     Io(#[from] io::Error),
 
     #[error(transparent)]
-    Nbt(#[from] valence_nbt::Error),
+    Nbt(#[from] valence_nbt::binary::Error),
 }
 
 impl Schematic {
@@ -241,7 +241,7 @@ impl Schematic {
         let mut z = GzDecoder::new(BufReader::new(file));
         z.read_to_end(&mut buf)?;
 
-        let root = valence_nbt::from_binary_slice(&mut buf.as_slice())?.0;
+        let root = Compound::from_binary(&mut buf.as_slice())?.0;
         Self::deserialize(&root)
     }
 
@@ -760,7 +760,7 @@ impl Schematic {
         let nbt = self.serialize();
         let file = File::create(path)?;
         let mut z = GzEncoder::new(file, Compression::best());
-        valence_nbt::to_binary_writer(&mut z, &nbt, "")?;
+        nbt.to_binary(&mut z, "")?;
         z.flush()?;
         Ok(())
     }
