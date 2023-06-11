@@ -144,17 +144,21 @@ impl<'a, I: RegistryIdx, V> Index<Ident<&'a str>> for Registry<I, V> {
     type Output = V;
 
     fn index(&self, index: Ident<&'a str>) -> &Self::Output {
-        self.items
-            .get(index.as_str())
-            .unwrap_or_else(|| panic!("missing registry item with name '{index}'"))
+        if let Some(item) = self.items.get(index.as_str()) {
+            item
+        } else {
+            panic!("missing registry item with name '{index}'")
+        }
     }
 }
 
 impl<'a, I: RegistryIdx, V> IndexMut<Ident<&'a str>> for Registry<I, V> {
     fn index_mut(&mut self, index: Ident<&'a str>) -> &mut Self::Output {
-        self.items
-            .get_mut(index.as_str())
-            .unwrap_or_else(|| panic!("missing registry item with name '{index}'"))
+        if let Some(item) = self.items.get_mut(index.as_str()) {
+            item
+        } else {
+            panic!("missing registry item with name '{index}'")
+        }
     }
 }
 
