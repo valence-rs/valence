@@ -85,7 +85,7 @@ valence_dimension.path = "crates/valence_dimension"
 valence_entity.path = "crates/valence_entity"
 valence_instance.path = "crates/valence_instance"
 valence_inventory.path = "crates/valence_inventory"
-valence_nbt = { path = "crates/valence_nbt" }
+valence_nbt = { path = "crates/valence_nbt", features = ["uuid"] }
 valence_network.path = "crates/valence_network"
 valence_player_list.path = "crates/valence_player_list"
 valence_registry.path = "crates/valence_registry"

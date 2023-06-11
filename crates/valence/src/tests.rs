@@ -4,15 +4,16 @@ use std::time::Instant;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use bevy_ecs::schedule::{LogLevel, ScheduleBuildSettings};
 use bytes::{Buf, BufMut, BytesMut};
 use uuid::Uuid;
+use valence_biome::BiomeRegistry;
 use valence_client::ClientBundleArgs;
 use valence_core::protocol::decode::{PacketDecoder, PacketFrame};
 use valence_core::protocol::encode::PacketEncoder;
 use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::{Encode, Packet};
 use valence_core::{ident, CoreSettings, Server};
+use valence_dimension::DimensionTypeRegistry;
 use valence_entity::Location;
 use valence_network::{ConnectionMode, NetworkSettings};
 
@@ -37,23 +38,23 @@ fn scenario_single_client(app: &mut App) -> (Entity, MockClientHelper) {
 
     app.add_plugins(DefaultPlugins);
 
-    let server = app.world.resource::<Server>();
-    let instance = Instance::new_unit_testing(ident!("overworld"), server);
+    app.update(); // Initialize plugins.
+
+    let instance = Instance::new(
+        ident!("overworld"),
+        app.world.resource::<DimensionTypeRegistry>(),
+        app.world.resource::<BiomeRegistry>(),
+        app.world.resource::<Server>(),
+    );
+
     let instance_ent = app.world.spawn(instance).id();
+
     let (client, client_helper) = create_mock_client();
 
     let client_ent = app.world.spawn(client).id();
 
     // Set initial location.
     app.world.get_mut::<Location>(client_ent).unwrap().0 = instance_ent;
-
-    // Print warnings if there are ambiguities in the schedule.
-    app.edit_schedule(CoreSchedule::Main, |schedule| {
-        schedule.set_build_settings(ScheduleBuildSettings {
-            ambiguity_detection: LogLevel::Warn,
-            ..Default::default()
-        });
-    });
 
     (client_ent, client_helper)
 }

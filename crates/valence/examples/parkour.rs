@@ -57,8 +57,8 @@ fn init_clients(
         Added<Client>,
     >,
     server: Res<Server>,
-    dimensions: Query<&DimensionType>,
-    biomes: Query<&Biome>,
+    dimensions: Res<DimensionTypeRegistry>,
+    biomes: Res<BiomeRegistry>,
     mut commands: Commands,
 ) {
     for (entity, mut client, mut loc, mut is_flat, mut game_mode) in clients.iter_mut() {

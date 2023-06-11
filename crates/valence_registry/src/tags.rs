@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 
+use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use serde::Deserialize;
 use valence_core::ident::Ident;
@@ -7,6 +8,14 @@ use valence_core::protocol::encode::{PacketWriter, WritePacket};
 use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 use valence_core::Server;
+
+use crate::RegistrySet;
+
+pub(super) fn build(app: &mut App) {
+    app.init_resource::<TagsRegistry>()
+        .add_startup_system(init_tags_registry)
+        .add_system(cache_tags_packet.in_set(RegistrySet));
+}
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 #[packet(id = packet_id::SYNCHRONIZE_TAGS_S2C)]
@@ -32,8 +41,8 @@ pub struct TagEntry {
     pub entries: Vec<VarInt>,
 }
 
-impl<'a> TagsRegistry {
-    pub(crate) fn build_synchronize_tags(&'a self) -> SynchronizeTagsS2c<'a> {
+impl TagsRegistry {
+    fn build_synchronize_tags(&self) -> SynchronizeTagsS2c {
         SynchronizeTagsS2c {
             registries: Cow::Borrowed(&self.registries),
         }
@@ -44,7 +53,7 @@ impl<'a> TagsRegistry {
     }
 }
 
-pub(crate) fn init_tags_registry(mut tags: ResMut<TagsRegistry>) {
+pub fn init_tags_registry(mut tags: ResMut<TagsRegistry>) {
     let registries =
         serde_json::from_str::<Vec<Registry>>(include_str!("../../../extracted/tags.json"))
             .expect("tags.json is invalid");

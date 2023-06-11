@@ -31,7 +31,7 @@ pub use chunk_entry::*;
 use glam::{DVec3, Vec3};
 use num_integer::div_ceil;
 use rustc_hash::FxHashMap;
-use valence_biome::Biome;
+use valence_biome::BiomeRegistry;
 use valence_core::block_pos::BlockPos;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::despawn::Despawned;
@@ -44,7 +44,7 @@ use valence_core::protocol::packet::sound::{PlaySoundS2c, Sound, SoundCategory};
 use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::{Encode, Packet};
 use valence_core::Server;
-use valence_dimension::DimensionType;
+use valence_dimension::DimensionTypeRegistry;
 use valence_entity::packet::{
     EntityAnimationS2c, EntityPositionS2c, EntitySetHeadYawS2c, EntityStatusS2c,
     EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, MoveRelativeS2c, RotateAndMoveRelativeS2c,
@@ -432,40 +432,33 @@ pub struct InstanceInfo {
 #[derive(Debug)]
 pub struct PartitionCell {
     /// The chunk in this cell.
-    #[doc(hidden)]
     pub chunk: Option<Chunk<true>>,
     /// If `chunk` went from `Some` to `None` this tick.
-    #[doc(hidden)]
     pub chunk_removed: bool,
     /// Minecraft entities in this cell.
-    #[doc(hidden)]
     pub entities: BTreeSet<Entity>,
     /// Minecraft entities that have entered the chunk this tick, paired with
     /// the cell position in this instance they came from.
-    #[doc(hidden)]
     pub incoming: Vec<(Entity, Option<ChunkPos>)>,
     /// Minecraft entities that have left the chunk this tick, paired with the
     /// cell position in this world they arrived at.
-    #[doc(hidden)]
     pub outgoing: Vec<(Entity, Option<ChunkPos>)>,
     /// A cache of packets to send to all clients that are in view of this cell
     /// at the end of the tick.
-    #[doc(hidden)]
     pub packet_buf: Vec<u8>,
 }
 
 impl Instance {
+    #[track_caller]
     pub fn new(
         dimension_type_name: impl Into<Ident<String>>,
-        dimensions: &Query<&DimensionType>,
-        biomes: &Query<&Biome>,
+        dimensions: &DimensionTypeRegistry,
+        biomes: &BiomeRegistry,
         server: &Server,
     ) -> Self {
         let dimension_type_name = dimension_type_name.into();
 
-        let Some(dim) = dimensions.iter().find(|d| d.name == dimension_type_name) else {
-            panic!("missing dimension type with name \"{dimension_type_name}\"")
-        };
+        let dim = &dimensions[dimension_type_name.as_str_ident()];
 
         assert!(dim.height > 0, "invalid dimension height of {}", dim.height);
 
@@ -491,28 +484,6 @@ impl Instance {
                     light_section_count
                 ]
                 .into(),
-            },
-            packet_buf: vec![],
-            scratch: vec![],
-        }
-    }
-
-    /// TODO: Temporary hack for unit testing. Do not use!
-    #[doc(hidden)]
-    pub fn new_unit_testing(
-        dimension_type_name: impl Into<Ident<String>>,
-        server: &Server,
-    ) -> Self {
-        Self {
-            partition: FxHashMap::default(),
-            info: InstanceInfo {
-                dimension_type_name: dimension_type_name.into(),
-                section_count: 24,
-                min_y: -64,
-                biome_registry_len: 1,
-                compression_threshold: server.compression_threshold(),
-                filler_sky_light_mask: vec![].into(),
-                filler_sky_light_arrays: vec![].into(),
             },
             packet_buf: vec![],
             scratch: vec![],
