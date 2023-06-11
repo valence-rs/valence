@@ -61,7 +61,7 @@ use valence_entity::packet::{
 use valence_entity::player::PlayerEntityBundle;
 use valence_entity::{
     ClearEntityChangesSet, EntityId, EntityKind, EntityStatus, HeadYaw, Location, Look, ObjectData,
-    OldLocation, OldPosition, OnGround, PacketByteRange, Position, TrackedData, Velocity,
+    OldLocation, OldPosition, OnGround, PacketByteRange, Position, TrackedData, Velocity, Layer,
 };
 use valence_instance::packet::{
     ChunkLoadDistanceS2c, ChunkRenderDistanceCenterS2c, UnloadChunkS2c,
@@ -137,7 +137,8 @@ impl Plugin for ClientPlugin {
             FlushPacketsSet.in_base_set(CoreSet::PostUpdate),
             ClearInstanceChangesSet.after(FlushPacketsSet),
         ))
-        .add_system(flush_packets.in_set(FlushPacketsSet));
+        .add_system(flush_packets.in_set(FlushPacketsSet))
+        .add_system(update_client_layer_mask.in_set(UpdateClientsSet));
 
         event_loop::build(app);
         movement::build(app);
@@ -644,6 +645,7 @@ pub struct IsDebug(pub bool);
 #[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
 pub struct IsFlat(pub bool);
 
+/// Mask that determines which layers the client will see.
 #[derive(Component, Debug, Clone, PartialEq, Eq, Default)]
 pub struct ClientLayerMask(pub u64);
 
@@ -673,6 +675,52 @@ impl ClientLayerMask {
             }
         }
         layers
+    }
+
+    /// Return a [`Vec`] of all remove layers.
+    pub fn get_remove(&self, old_mask: &OldClientLayerMask) -> Vec<u8> {
+        let mut layers = Vec::new();
+        for layer in 0..64 {
+            if !self.get(layer) && old_mask.get(layer) {
+                layers.push(layer);
+            }
+        }
+        layers
+    }
+
+    /// Return a [`Vec`] of all new layers
+    pub fn get_new(&self, old_mask: &OldClientLayerMask) -> Vec<u8> {
+        let mut layers = Vec::new();
+        for layer in 0..64 {
+            if self.get(layer) && !old_mask.get(layer) {
+                layers.push(layer);
+            }
+        }
+        layers
+    }
+}
+
+#[derive(Component, Debug, Clone, PartialEq, Eq, Default)]
+pub struct OldClientLayerMask(u64);
+
+impl OldClientLayerMask {
+    fn get(&self, layer: u8) -> bool {
+        self.0 & (1 << layer) != 0
+    }
+}
+
+#[derive(Bundle, Default)]
+pub struct ClientLayerMaskBundle {
+    mask: ClientLayerMask,
+    old_mask: OldClientLayerMask,
+}
+
+impl ClientLayerMaskBundle {
+    pub fn new(layers: Vec<u8>) -> Self {
+        Self {
+            mask: ClientLayerMask(layers.iter().fold(0, |mask, layer| mask | (1 << layer))),
+            old_mask: OldClientLayerMask(0),
+        }
     }
 }
 
@@ -908,10 +956,11 @@ fn read_data_in_old_view(
         &OldViewDistance,
         Option<&PacketByteRange>,
         Option<&ClientLayerMask>,
+        Option<&OldClientLayerMask>
     )>,
     instances: Query<&Instance>,
-    entities: Query<(EntityInitQuery, &OldPosition)>,
-    entity_ids: Query<&EntityId>,
+    entities: Query<(EntityInitQuery, &OldPosition, Option<&Layer>)>,
+    entity_ids: Query<(&EntityId, Option<&Layer>)>,
 ) {
     clients.par_iter_mut().for_each_mut(
         |(
@@ -924,6 +973,7 @@ fn read_data_in_old_view(
             old_view_dist,
             byte_range,
             client_layer_mask,
+            old_client_layer_mask,
         )| {
             let Ok(instance) = instances.get(old_loc.get()) else {
                 return;
@@ -955,12 +1005,32 @@ fn read_data_in_old_view(
                         if src_pos.map_or(true, |p| !view.contains(p)) {
                             // The incoming entity originated from outside the view distance, so it
                             // must be spawned.
-                            if let Ok((entity, old_pos)) = entities.get(id) {
+                            if let Ok((entity, old_pos, layer)) = entities.get(id) {
                                 // Notice we are spawning the entity at its old position rather than
                                 // the current position. This is because the client could also
                                 // receive update packets for this entity this tick, which may
                                 // include a relative entity movement.
-                                entity.write_init_packets(old_pos.get(), &mut client.enc);
+                                // We only spawn the entity if it is in a layer that the client is
+                                if let (Some(client_layer_mask), Some(layer)) = (client_layer_mask, layer) {
+                                    if client_layer_mask.get(layer.0) {entity.write_init_packets(old_pos.get(), &mut client.enc);}
+                                }
+                                else {
+                                    entity.write_init_packets(old_pos.get(), &mut client.enc);
+                                }
+                            }
+                        }
+                    }
+
+                    // Send entity spawn packets for entities that are in an entered layer and already in the client's view.
+                    for &(id, src_pos) in &cell.incoming {
+                        if src_pos.map_or(false, |p| view.contains(p)) {
+                            // The incoming entity originated from inside the view distance, so it
+                            // must be spawned.
+                            if let Ok((entity, old_pos, layer)) = entities.get(id) {
+                                // We only spawn the entity that are in an entered layer.
+                                if let (Some(client_layer_mask), Some(old_layer_mask), Some(layer)) = (client_layer_mask, old_client_layer_mask, layer) {
+                                    if client_layer_mask.get_new(old_layer_mask).contains(&layer.0) {entity.write_init_packets(old_pos.get(), &mut client.enc);}
+                                }
                             }
                         }
                     }
@@ -969,9 +1039,38 @@ fn read_data_in_old_view(
                     for &(id, dest_pos) in &cell.outgoing {
                         if dest_pos.map_or(true, |p| !view.contains(p)) {
                             // The outgoing entity moved outside the view distance, so it must be
-                            // despawned.
-                            if let Ok(entity_id) = entity_ids.get(id) {
-                                remove_buf.push(entity_id.get());
+                            // despawned if it was in the client's layer mask.
+                            if let Ok((entity_id, layer)) = entity_ids.get(id) {
+                                if let Some(client_layer_mask) = client_layer_mask {
+                                    if let Some(layer) = layer {
+                                        if client_layer_mask.get(layer.0) {
+                                            remove_buf.push(entity_id.get());
+
+                                        }
+                                    }
+                                    else {
+                                        remove_buf.push(entity_id.get());
+
+                                    }
+                                }
+                                else {
+                                    remove_buf.push(entity_id.get());
+                                }
+                            }
+                        }
+                    }
+
+                    // Send entity despawn packets for entities that are in an exited layer and still in the client's view.
+                    for &(id, dest_pos) in &cell.outgoing {
+                        if dest_pos.map_or(false, |p| view.contains(p)) {
+                            // The outgoing entity moved inside the view distance, so it must be
+                            // despawned if it was in the client's layer mask.
+                            if let Ok((entity_id, layer)) = entity_ids.get(id) {
+                                if let (Some(client_layer_mask), Some(old_layer_mask), Some(layer)) = (client_layer_mask, old_client_layer_mask, layer) {
+                                    if client_layer_mask.get_remove(old_layer_mask).contains(&layer.0) {
+                                        remove_buf.push(entity_id.get());
+                                    }
+                                }
                             }
                         }
                     }
@@ -988,7 +1087,8 @@ fn read_data_in_old_view(
                     // entities in the cell, spawn or update the chunk in the cell, or send any
                     // other packet data that was added here by users.
                     match byte_range {
-                        Some(byte_range) if pos == new_chunk_pos && loc == old_loc => {
+                        Some(byte_range)
+                            if pos == new_chunk_pos && loc == old_loc => {
                             // Skip range of bytes for the client's own entity.
                             client.write_packet_bytes(&cell.packet_buf[..byte_range.0.start]);
                             client.write_packet_bytes(&cell.packet_buf[byte_range.0.end..]);
@@ -1244,5 +1344,13 @@ fn update_tracked_data(mut clients: Query<(&mut Client, &TrackedData)>) {
                 metadata: update_data.into(),
             });
         }
+    }
+}
+
+fn update_client_layer_mask(
+    mut layer_mask: Query<(&ClientLayerMask, &mut OldClientLayerMask), Changed<ClientLayerMask>>,
+) {
+    for (layer_mask, mut old_layer_mask) in &mut layer_mask {
+        old_layer_mask.0 = layer_mask.0;
     }
 }
