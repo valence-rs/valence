@@ -1,4 +1,4 @@
-use heck::ToPascalCase;
+use heck::ToShoutySnakeCase;
 use proc_macro2::TokenStream;
 use quote::quote;
 use serde::Deserialize;
@@ -21,15 +21,14 @@ pub fn build() -> anyhow::Result<TokenStream> {
     for packet in packets {
         let stripped_name = packet.name.strip_suffix("Packet").unwrap_or(&packet.name);
 
-        let name_ident = ident(stripped_name.to_pascal_case());
+        let name_ident = ident(stripped_name.to_shouty_snake_case());
         let id = packet.id;
 
-        let doc = format!("Side: {}\nState: {}", packet.side, packet.state);
+        let doc = format!("Side: {}\n\nState: {}", packet.side, packet.state);
 
         consts.extend([quote! {
             #[doc = #doc]
-            #[allow(non_upper_case_globals)]
-            pub(crate) const #name_ident: i32 = #id;
+            pub const #name_ident: i32 = #id;
         }]);
     }
 

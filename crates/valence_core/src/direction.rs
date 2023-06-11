@@ -1,6 +1,6 @@
 use bevy_ecs::prelude::*;
 
-use crate::packet::{Decode, Encode};
+use crate::protocol::{Decode, Encode};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Component)]
 pub enum Direction {

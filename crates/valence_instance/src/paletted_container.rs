@@ -3,8 +3,8 @@ use std::io::Write;
 
 use arrayvec::ArrayVec;
 use num_integer::div_ceil;
-use valence_core::packet::var_int::VarInt;
-use valence_core::packet::Encode;
+use valence_core::protocol::var_int::VarInt;
+use valence_core::protocol::Encode;
 
 use crate::bit_width;
 

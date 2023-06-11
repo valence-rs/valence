@@ -19,6 +19,7 @@
 mod config;
 mod context;
 mod hex_viewer;
+pub mod packet_groups;
 mod packet_widget;
 mod state;
 mod syntax_highlighting;
@@ -45,18 +46,15 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Semaphore;
 use tokio::task::JoinHandle;
 use tracing_subscriber::filter::LevelFilter;
-use valence_core::packet::c2s::handshake::handshake::NextState;
-use valence_core::packet::c2s::handshake::HandshakeC2s;
-use valence_core::packet::c2s::login::{LoginHelloC2s, LoginKeyC2s};
-use valence_core::packet::c2s::play::C2sPlayPacket;
-use valence_core::packet::c2s::status::{QueryPingC2s, QueryRequestC2s};
-use valence_core::packet::decode::PacketDecoder;
-use valence_core::packet::encode::PacketEncoder;
-use valence_core::packet::s2c::login::{LoginSuccessS2c, S2cLoginPacket};
-use valence_core::packet::s2c::play::S2cPlayPacket;
-use valence_core::packet::s2c::status::{QueryPongS2c, QueryResponseS2c};
+use valence::network::packet::{
+    HandshakeC2s, HandshakeNextState, LoginHelloC2s, LoginKeyC2s, LoginSuccessS2c, QueryPingC2s,
+    QueryPongS2c, QueryRequestC2s, QueryResponseS2c,
+};
+use valence::protocol::decode::PacketDecoder;
+use valence::protocol::encode::PacketEncoder;
 
 use crate::context::{ContextMode, Stage};
+use crate::packet_groups::{C2sPlayPacket, S2cLoginPacket, S2cPlayPacket};
 use crate::packet_widget::PacketDirection;
 use crate::state::State;
 
@@ -226,7 +224,7 @@ async fn handle_connection(
     let handshake: HandshakeC2s = c2s.rw_packet(Stage::HandshakeC2s).await?;
 
     match handshake.next_state {
-        NextState::Status => {
+        HandshakeNextState::Status => {
             c2s.rw_packet::<QueryRequestC2s>(Stage::QueryRequestC2s)
                 .await?;
             s2c.rw_packet::<QueryResponseS2c>(Stage::QueryResponseS2c)
@@ -236,7 +234,7 @@ async fn handle_connection(
 
             Ok(())
         }
-        NextState::Login => {
+        HandshakeNextState::Login => {
             c2s.rw_packet::<LoginHelloC2s>(Stage::LoginHelloC2s).await?;
 
             match s2c
@@ -274,7 +272,7 @@ async fn handle_connection(
                 S2cLoginPacket::LoginSuccessS2c(_) => {}
                 S2cLoginPacket::LoginDisconnectS2c(_) => return Ok(()),
                 S2cLoginPacket::LoginQueryRequestS2c(_) => {
-                    bail!("got login plugin request. Don't know how to proceed.")
+                    bail!("Got login plugin request. Don't know how to proceed.")
                 }
             }
 
@@ -826,8 +824,8 @@ impl eframe::App for GuiApp {
                 ui.horizontal(|ui| {
                     ui.heading("Packets");
 
-                    let count = self.context.packet_count.read().expect("Poisoned RwLock");
-                    let total = self.context.packets.read().expect("Poisoned RwLock").len();
+                    let count = self.context.packet_count.read().unwrap();
+                    let total = self.context.packets.read().unwrap().len();
 
                     let all_selected = self.selected_packets.values().all(|v| *v);
 
@@ -861,7 +859,7 @@ impl eframe::App for GuiApp {
                     .auto_shrink([false, false])
                     .stick_to_bottom(true)
                     .show(ui, |ui| {
-                        let mut f = self.context.packets.write().expect("Poisoned RwLock");
+                        let mut f = self.context.packets.write().unwrap();
 
                         let f: Vec<&mut Packet> = f
                             .iter_mut()
@@ -916,15 +914,11 @@ impl eframe::App for GuiApp {
                             })
                             .collect();
 
-                        *self.context.packet_count.write().expect("Poisoned RwLock") = f.len();
+                        *self.context.packet_count.write().unwrap() = f.len();
 
                         for packet in f {
                             {
-                                let selected = self
-                                    .context
-                                    .selected_packet
-                                    .read()
-                                    .expect("Poisoned RwLock");
+                                let selected = self.context.selected_packet.read().unwrap();
                                 if let Some(idx) = *selected {
                                     if idx == packet.id {
                                         packet.selected(true);

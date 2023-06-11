@@ -11,7 +11,7 @@ use serde::de::Error as _;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 
-use crate::packet::{Decode, Encode};
+use crate::protocol::{Decode, Encode};
 
 #[doc(hidden)]
 pub mod __private {
@@ -129,6 +129,12 @@ impl<S> Ident<S> {
         self.as_str()
             .split_once(':')
             .expect("invalid resource identifier")
+    }
+}
+
+impl<'a> Ident<Cow<'a, str>> {
+    pub fn borrowed(&self) -> Ident<Cow<str>> {
+        Ident::new_unchecked(Cow::Borrowed(self.as_str()))
     }
 }
 

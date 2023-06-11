@@ -5,9 +5,9 @@ use bytes::BytesMut;
 use time::OffsetDateTime;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use valence_core::packet::decode::{decode_packet, PacketDecoder};
-use valence_core::packet::encode::PacketEncoder;
-use valence_core::packet::Packet as ValencePacket;
+use valence::protocol::decode::{decode_packet, PacketDecoder};
+use valence::protocol::encode::PacketEncoder;
+use valence::protocol::Packet as ValencePacket;
 
 use crate::context::{Context, Packet, Stage};
 use crate::packet_widget::PacketDirection;

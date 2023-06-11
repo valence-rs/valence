@@ -19,6 +19,7 @@
 
 mod byte_channel;
 mod connect;
+pub mod packet;
 mod packet_io;
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};

@@ -1,9 +1,8 @@
 use anyhow::{bail, ensure};
 use valence_core::item::ItemStack;
-use valence_core::packet::c2s::play::click_slot::ClickMode;
-use valence_core::packet::c2s::play::ClickSlotC2s;
 
 use super::{CursorItem, Inventory, InventoryWindow, PLAYER_INVENTORY_MAIN_SLOTS_COUNT};
+use crate::packet::{ClickMode, ClickSlotC2s};
 
 /// Validates a click slot packet enforcing that all fields are valid.
 pub(super) fn validate_click_slot_packet(
@@ -358,10 +357,10 @@ fn calculate_net_item_delta(
 #[cfg(test)]
 mod tests {
     use valence_core::item::{ItemKind, ItemStack};
-    use valence_core::packet::c2s::play::click_slot::Slot;
-    use valence_core::packet::var_int::VarInt;
+    use valence_core::protocol::var_int::VarInt;
 
     use super::*;
+    use crate::packet::SlotChange;
     use crate::InventoryKind;
 
     #[test]
@@ -373,15 +372,15 @@ mod tests {
             button: 2,
             mode: ClickMode::Drag,
             slot_changes: vec![
-                Slot {
+                SlotChange {
                     idx: 4,
                     item: Some(ItemStack::new(ItemKind::Diamond, 21, None)),
                 },
-                Slot {
+                SlotChange {
                     idx: 3,
                     item: Some(ItemStack::new(ItemKind::Diamond, 21, None)),
                 },
-                Slot {
+                SlotChange {
                     idx: 5,
                     item: Some(ItemStack::new(ItemKind::Diamond, 21, None)),
                 },
@@ -409,19 +408,19 @@ mod tests {
             button: 2,
             mode: ClickMode::Click,
             slot_changes: vec![
-                Slot {
+                SlotChange {
                     idx: 2,
                     item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
                 },
-                Slot {
+                SlotChange {
                     idx: 3,
                     item: Some(ItemStack::new(ItemKind::IronIngot, 2, None)),
                 },
-                Slot {
+                SlotChange {
                     idx: 4,
                     item: Some(ItemStack::new(ItemKind::GoldIngot, 2, None)),
                 },
-                Slot {
+                SlotChange {
                     idx: 5,
                     item: Some(ItemStack::new(ItemKind::Emerald, 2, None)),
                 },
@@ -452,7 +451,7 @@ mod tests {
             mode: ClickMode::Click,
             state_id: VarInt(0),
             slot_idx: 0,
-            slot_changes: vec![Slot { idx: 0, item: None }],
+            slot_changes: vec![SlotChange { idx: 0, item: None }],
             carried_item: inventory.slot(0).cloned(),
         };
 
@@ -473,7 +472,7 @@ mod tests {
             mode: ClickMode::Click,
             state_id: VarInt(0),
             slot_idx: 0,
-            slot_changes: vec![Slot {
+            slot_changes: vec![SlotChange {
                 idx: 0,
                 item: Some(ItemStack::new(ItemKind::Diamond, 20, None)),
             }],
@@ -485,7 +484,7 @@ mod tests {
             mode: ClickMode::Click,
             state_id: VarInt(0),
             slot_idx: 0,
-            slot_changes: vec![Slot {
+            slot_changes: vec![SlotChange {
                 idx: 0,
                 item: Some(ItemStack::new(ItemKind::Diamond, 30, None)),
             }],
@@ -511,7 +510,7 @@ mod tests {
             mode: ClickMode::Click,
             state_id: VarInt(0),
             slot_idx: 0,
-            slot_changes: vec![Slot {
+            slot_changes: vec![SlotChange {
                 idx: 0,
                 item: Some(ItemStack::new(ItemKind::Diamond, 64, None)),
             }],
@@ -534,7 +533,7 @@ mod tests {
             mode: ClickMode::Click,
             state_id: VarInt(0),
             slot_idx: 0,
-            slot_changes: vec![Slot {
+            slot_changes: vec![SlotChange {
                 idx: 0,
                 item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
             }],
@@ -558,7 +557,7 @@ mod tests {
             mode: ClickMode::Click,
             state_id: VarInt(0),
             slot_idx: 0,
-            slot_changes: vec![Slot {
+            slot_changes: vec![SlotChange {
                 idx: 0,
                 item: Some(ItemStack::new(ItemKind::Diamond, 22, None)),
             }],
@@ -570,7 +569,7 @@ mod tests {
             mode: ClickMode::Click,
             state_id: VarInt(0),
             slot_idx: 0,
-            slot_changes: vec![Slot {
+            slot_changes: vec![SlotChange {
                 idx: 0,
                 item: Some(ItemStack::new(ItemKind::Diamond, 32, None)),
             }],
@@ -583,11 +582,11 @@ mod tests {
             state_id: VarInt(0),
             slot_idx: 0,
             slot_changes: vec![
-                Slot {
+                SlotChange {
                     idx: 0,
                     item: Some(ItemStack::new(ItemKind::Diamond, 22, None)),
                 },
-                Slot {
+                SlotChange {
                     idx: 1,
                     item: Some(ItemStack::new(ItemKind::Diamond, 22, None)),
                 },
@@ -621,8 +620,8 @@ mod tests {
                 state_id: VarInt(0),
                 slot_idx: 9,
                 slot_changes: vec![
-                    Slot { idx: 9, item: None },
-                    Slot {
+                    SlotChange { idx: 9, item: None },
+                    SlotChange {
                         idx: 36,
                         item: Some(ItemStack::new(ItemKind::GoldIngot, 2, None)),
                     },
@@ -636,8 +635,8 @@ mod tests {
                 state_id: VarInt(0),
                 slot_idx: 9,
                 slot_changes: vec![
-                    Slot { idx: 9, item: None },
-                    Slot {
+                    SlotChange { idx: 9, item: None },
+                    SlotChange {
                         idx: 36,
                         item: Some(ItemStack::new(ItemKind::GoldIngot, 2, None)),
                     },
@@ -650,7 +649,7 @@ mod tests {
                 mode: ClickMode::Click,
                 state_id: VarInt(0),
                 slot_idx: 9,
-                slot_changes: vec![Slot { idx: 9, item: None }],
+                slot_changes: vec![SlotChange { idx: 9, item: None }],
                 carried_item: Some(ItemStack::new(ItemKind::GoldIngot, 2, None)),
             },
             ClickSlotC2s {
@@ -659,7 +658,7 @@ mod tests {
                 mode: ClickMode::DropKey,
                 state_id: VarInt(0),
                 slot_idx: 9,
-                slot_changes: vec![Slot {
+                slot_changes: vec![SlotChange {
                     idx: 9,
                     item: Some(ItemStack::new(ItemKind::GoldIngot, 1, None)),
                 }],
@@ -688,15 +687,15 @@ mod tests {
             button: 0,
             mode: ClickMode::ShiftClick,
             slot_changes: vec![
-                Slot {
+                SlotChange {
                     idx: 37,
                     item: Some(ItemStack::new(ItemKind::Diamond, 32, None)),
                 },
-                Slot {
+                SlotChange {
                     idx: 36,
                     item: Some(ItemStack::new(ItemKind::Diamond, 64, None)),
                 },
-                Slot { idx: 9, item: None },
+                SlotChange { idx: 9, item: None },
             ],
             carried_item: None,
         };
@@ -717,7 +716,7 @@ mod tests {
             slot_idx: 9,
             button: 0,
             mode: ClickMode::Click,
-            slot_changes: vec![Slot { idx: 9, item: None }],
+            slot_changes: vec![SlotChange { idx: 9, item: None }],
             carried_item: Some(ItemStack::new(ItemKind::Apple, 100, None)),
         };
 
@@ -736,7 +735,7 @@ mod tests {
             slot_idx: 9,
             button: 0,
             mode: ClickMode::Click,
-            slot_changes: vec![Slot {
+            slot_changes: vec![SlotChange {
                 idx: 9,
                 item: Some(ItemStack::new(ItemKind::Apple, 64, None)),
             }],

@@ -1,7 +1,7 @@
 #![allow(clippy::type_complexity)]
 
-use valence::client::misc::Respawn;
 use valence::prelude::*;
+use valence_client::status::RequestRespawnEvent;
 
 const SPAWN_Y: i32 = 64;
 
@@ -76,7 +76,7 @@ fn squat_and_die(mut clients: Query<&mut Client>, mut events: EventReader<Sneaki
 
 fn necromancy(
     mut clients: Query<(&mut Position, &mut Look, &mut Location)>,
-    mut events: EventReader<Respawn>,
+    mut events: EventReader<RequestRespawnEvent>,
     instances: Query<Entity, With<Instance>>,
 ) {
     for event in events.iter() {

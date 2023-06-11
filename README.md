@@ -102,8 +102,9 @@ View the latest documentation by running `cargo d --open` in your project.
 # Contributing
 
 Contributions are welcome! Please
-see [CONTRIBUTING.md](https://github.com/valence-rs/valence/blob/main/CONTRIBUTING.md). You can also
-join [the Discord](https://discord.gg/8Fqqy9XrYb) to discuss the project and ask questions.
+see [CONTRIBUTING.md](https://github.com/valence-rs/valence/blob/main/CONTRIBUTING.md). You can
+join [Discord](https://discord.gg/8Fqqy9XrYb) or [GitHub Discussions](https://github.com/valence-rs/valence/discussions)
+to discuss the project and ask questions.
 
 # License
 

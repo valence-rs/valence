@@ -152,7 +152,7 @@ impl LifeBoard {
     }
 }
 
-fn toggle_cell_on_dig(mut events: EventReader<Digging>, mut board: ResMut<LifeBoard>) {
+fn toggle_cell_on_dig(mut events: EventReader<DiggingEvent>, mut board: ResMut<LifeBoard>) {
     for event in events.iter() {
         if event.state == DiggingState::Start {
             let (x, z) = (event.position.x, event.position.z);

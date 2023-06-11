@@ -25,6 +25,10 @@ use tracing::error;
 use valence_core::ident::Ident;
 use valence_nbt::{compound, Compound, List, Value};
 
+mod tags;
+
+pub use tags::*;
+
 pub struct RegistryPlugin;
 
 /// The [`SystemSet`] where the [`RegistryCodec`] cache is rebuilt. Systems that
@@ -35,8 +39,11 @@ pub struct RegistryCodecSet;
 impl Plugin for RegistryPlugin {
     fn build(&self, app: &mut bevy_app::App) {
         app.init_resource::<RegistryCodec>()
+            .init_resource::<TagsRegistry>()
             .configure_set(RegistryCodecSet.in_base_set(CoreSet::PostUpdate))
-            .add_system(cache_registry_codec.in_set(RegistryCodecSet));
+            .add_startup_system(init_tags_registry.in_set(RegistryCodecSet))
+            .add_system(cache_registry_codec.in_set(RegistryCodecSet))
+            .add_system(cache_tags_packet.in_set(RegistryCodecSet));
     }
 }
 
@@ -106,7 +113,7 @@ impl RegistryCodec {
 impl Default for RegistryCodec {
     fn default() -> Self {
         let codec = include_bytes!("../../../extracted/registry_codec_1.19.4.dat");
-        let compound = valence_nbt::from_binary_slice(&mut codec.as_slice())
+        let compound = Compound::from_binary(&mut codec.as_slice())
             .expect("failed to decode vanilla registry codec")
             .0;
 

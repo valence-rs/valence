@@ -21,8 +21,8 @@ use proc_macro::TokenStream as StdTokenStream;
 use proc_macro2::TokenStream;
 use quote::ToTokens;
 use syn::{
-    parse_quote, Attribute, Error, GenericParam, Generics, Lifetime, LifetimeDef, Lit, Meta,
-    Result, Variant,
+    parse_quote, Attribute, GenericParam, Generics, Lifetime, LifetimeParam, LitInt, Result,
+    Variant,
 };
 
 mod decode;
@@ -30,7 +30,7 @@ mod encode;
 mod ident;
 mod packet;
 
-#[proc_macro_derive(Encode, attributes(tag))]
+#[proc_macro_derive(Encode, attributes(packet))]
 pub fn derive_encode(item: StdTokenStream) -> StdTokenStream {
     match encode::derive_encode(item.into()) {
         Ok(tokens) => tokens.into(),
@@ -38,7 +38,7 @@ pub fn derive_encode(item: StdTokenStream) -> StdTokenStream {
     }
 }
 
-#[proc_macro_derive(Decode, attributes(tag))]
+#[proc_macro_derive(Decode, attributes(packet))]
 pub fn derive_decode(item: StdTokenStream) -> StdTokenStream {
     match decode::derive_decode(item.into()) {
         Ok(tokens) => tokens.into(),
@@ -46,7 +46,7 @@ pub fn derive_decode(item: StdTokenStream) -> StdTokenStream {
     }
 }
 
-#[proc_macro_derive(Packet, attributes(packet_id))]
+#[proc_macro_derive(Packet, attributes(packet))]
 pub fn derive_packet(item: StdTokenStream) -> StdTokenStream {
     match packet::derive_packet(item.into()) {
         Ok(tokens) => tokens.into(),
@@ -69,7 +69,7 @@ fn pair_variants_with_discriminants(
     variants
         .into_iter()
         .map(|v| {
-            if let Some(i) = find_tag_attr(&v.attrs)? {
+            if let Some(i) = parse_tag_attr(&v.attrs)? {
                 discriminant = i;
             }
 
@@ -80,19 +80,21 @@ fn pair_variants_with_discriminants(
         .collect::<Result<_>>()
 }
 
-fn find_tag_attr(attrs: &[Attribute]) -> Result<Option<i32>> {
+fn parse_tag_attr(attrs: &[Attribute]) -> Result<Option<i32>> {
     for attr in attrs {
-        if let Meta::NameValue(nv) = attr.parse_meta()? {
-            if nv.path.is_ident("tag") {
-                let span = nv.lit.span();
-                return match nv.lit {
-                    Lit::Int(lit) => Ok(Some(lit.base10_parse::<i32>()?)),
-                    _ => Err(Error::new(
-                        span,
-                        "discriminant value must be an integer literal",
-                    )),
-                };
-            }
+        if attr.path().is_ident("packet") {
+            let mut res = 0;
+
+            attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("tag") {
+                    res = meta.value()?.parse::<LitInt>()?.base10_parse::<i32>()?;
+                    Ok(())
+                } else {
+                    Err(meta.error("unrecognized argument"))
+                }
+            })?;
+
+            return Ok(Some(res));
         }
     }
 
@@ -115,7 +117,7 @@ fn decode_split_for_impl(
     if generics.lifetimes().next().is_none() {
         generics
             .params
-            .push(GenericParam::Lifetime(LifetimeDef::new(lifetime)));
+            .push(GenericParam::Lifetime(LifetimeParam::new(lifetime)));
 
         impl_generics = generics.split_for_impl().0.to_token_stream();
     }
