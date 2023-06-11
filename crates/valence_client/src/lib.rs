@@ -644,14 +644,8 @@ pub struct IsDebug(pub bool);
 #[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
 pub struct IsFlat(pub bool);
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Clone, PartialEq, Eq, Default)]
 pub struct ClientLayerMask(pub u64);
-
-impl Default for ClientLayerMask {
-    fn default() -> Self {
-        Self(0)
-    }
-}
 
 impl ClientLayerMask {
     pub fn set(&mut self, layer: u8, enabled: bool) {
@@ -660,6 +654,10 @@ impl ClientLayerMask {
         } else {
             self.0 &= !(1 << layer);
         }
+    }
+
+    pub fn toggle(&mut self, layer: u8) {
+        self.0 ^= 1 << layer;
     }
 
     pub fn get(&self, layer: u8) -> bool {
@@ -909,14 +907,24 @@ fn read_data_in_old_view(
         &OldPosition,
         &OldViewDistance,
         Option<&PacketByteRange>,
-        Option<&ClientLayerMask>
+        Option<&ClientLayerMask>,
     )>,
     instances: Query<&Instance>,
     entities: Query<(EntityInitQuery, &OldPosition)>,
     entity_ids: Query<&EntityId>,
 ) {
     clients.par_iter_mut().for_each_mut(
-        |(mut client, mut remove_buf, loc, old_loc, pos, old_pos, old_view_dist, byte_range, client_layer_mask)| {
+        |(
+            mut client,
+            mut remove_buf,
+            loc,
+            old_loc,
+            pos,
+            old_pos,
+            old_view_dist,
+            byte_range,
+            client_layer_mask,
+        )| {
             let Ok(instance) = instances.get(old_loc.get()) else {
                 return;
             };
@@ -968,13 +976,11 @@ fn read_data_in_old_view(
                         }
                     }
 
-                    // Using the layer mask we gonna send the right ranges of bytes to the client from the layer packet buffer.
+                    // Using the layer mask we gonna send the right layers buffers of bytes to the
+                    // client
                     if let Some(client_layer_mask) = client_layer_mask {
-                        // Send all the ranges that the client is interested in.
                         client_layer_mask.get_all().iter().for_each(|layer| {
-                            if let Some(byte_range) = &cell.layers_byte_range.get(layer) {
-                                client.write_packet_bytes(&cell.layers_packet_buf[byte_range.start..byte_range.end]);
-                            }
+                            client.write_packet_bytes(&cell.layers_packet_buf[*layer as usize][..]);
                         });
                     }
 

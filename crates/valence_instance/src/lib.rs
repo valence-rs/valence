@@ -19,10 +19,9 @@
 
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
-use std::collections::{BTreeSet, HashMap};
+use std::collections::BTreeSet;
 use std::iter::FusedIterator;
 use std::mem;
-use std::ops::Range;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
@@ -52,9 +51,9 @@ use valence_entity::packet::{
     RotateS2c,
 };
 use valence_entity::{
-    EntityAnimations, EntityId, EntityKind, EntityStatuses, HeadYaw, InitEntitiesSet, Location,
-    Look, OldLocation, OldPosition, OnGround, PacketByteRange, Position, TrackedData,
-    UpdateTrackedDataSet, Velocity, Layer,
+    EntityAnimations, EntityId, EntityKind, EntityStatuses, HeadYaw, InitEntitiesSet, Layer,
+    Location, Look, OldLocation, OldPosition, OnGround, PacketByteRange, Position, TrackedData,
+    UpdateTrackedDataSet, Velocity,
 };
 
 mod chunk;
@@ -164,8 +163,7 @@ fn update_entity_cell_positions(
                             incoming: vec![(entity, None)],
                             outgoing: vec![],
                             packet_buf: vec![],
-                            layers_packet_buf: vec![],
-                            layers_byte_range: HashMap::new(),
+                            layers_packet_buf: [0; 64].map(|_| vec![]),
                         });
                     }
                 }
@@ -198,8 +196,7 @@ fn update_entity_cell_positions(
                             incoming: vec![(entity, Some(old_pos))],
                             outgoing: vec![],
                             packet_buf: vec![],
-                            layers_packet_buf: vec![],
-                            layers_byte_range: HashMap::new(),
+                            layers_packet_buf: [0; 64].map(|_| vec![]),
                         });
                     }
                 }
@@ -244,25 +241,22 @@ fn write_update_packets_to_instances(
                     .get_mut(entity)
                     .expect("missing entity in partition cell");
 
-                let mut buf = if Some(entity.layer).is_some() { &mut cell.layers_packet_buf } else { &mut cell.packet_buf };
+                let mut buf = if let Some(layer) = entity.layer {
+                    &mut cell.layers_packet_buf[layer.0 as usize]
+                } else {
+                    &mut cell.packet_buf
+                };
 
                 let start = buf.len();
 
-                let writer = PacketWriter::new(
-                    &mut buf,
-                    server.compression_threshold(),
-                    &mut scratch_2,
-                );
+                let writer =
+                    PacketWriter::new(&mut buf, server.compression_threshold(), &mut scratch_2);
 
                 entity.write_update_packets(writer);
 
                 let end = buf.len();
 
-                if let Some(&layer) = entity.layer {
-                    cell.layers_byte_range.insert(layer.0, start..end);
-                } else {
-                    entity.packet_byte_range.0 = start..end;                    
-                }
+                entity.packet_byte_range.0 = start..end;
             }
         }
     }
@@ -383,6 +377,7 @@ fn clear_instance_changes(mut instances: Query<&mut Instance>) {
     for mut instance in &mut instances {
         instance.partition.retain(|_, cell| {
             cell.packet_buf.clear();
+            cell.layers_packet_buf = [0; 64].map(|_| Vec::new());
             cell.chunk_removed = false;
             cell.incoming.clear();
             cell.outgoing.clear();
@@ -466,10 +461,7 @@ pub struct PartitionCell {
     pub packet_buf: Vec<u8>,
     /// A cache for packets that are layer specifics.
     #[doc(hidden)]
-    pub layers_packet_buf: Vec<u8>,
-    /// The buffer part that are specific to a layer.
-    #[doc(hidden)]
-    pub layers_byte_range: HashMap<u8, Range<usize>>
+    pub layers_packet_buf: [Vec<u8>; 64],
 }
 
 impl Instance {

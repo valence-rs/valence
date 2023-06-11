@@ -104,8 +104,7 @@ impl<'a> VacantChunkEntry<'a> {
             incoming: vec![],
             outgoing: vec![],
             packet_buf: vec![],
-            layers_packet_buf: vec![],
-            layers_byte_range: HashMap::new(),
+            layers_packet_buf: [0; 64].map(|_| vec![])
         });
 
         debug_assert!(cell.chunk.is_none());
