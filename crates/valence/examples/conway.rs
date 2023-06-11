@@ -24,7 +24,6 @@ pub fn main() {
 
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_startup_system(setup_biomes.before(setup))
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_systems((
@@ -37,19 +36,16 @@ pub fn main() {
         .run();
 }
 
-// TODO: this is a hack.
-fn setup_biomes(mut biomes: Query<&mut Biome>) {
-    for mut biome in &mut biomes {
-        biome.grass_color = Some(0x00ff00);
-    }
-}
-
 fn setup(
     mut commands: Commands,
     server: Res<Server>,
-    dimensions: Query<&DimensionType>,
-    biomes: Query<&Biome>,
+    dimensions: ResMut<DimensionTypeRegistry>,
+    mut biomes: ResMut<BiomeRegistry>,
 ) {
+    for (_, _, biome) in biomes.iter_mut() {
+        biome.effects.grass_color = Some(0x00ff00);
+    }
+
     let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     for z in -10..10 {

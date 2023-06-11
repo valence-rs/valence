@@ -21,8 +21,8 @@ pub fn idle_update(c: &mut Criterion) {
 
 fn setup(
     mut commands: Commands,
-    dimensions: Query<&DimensionType>,
-    biomes: Query<&Biome>,
+    dimensions: Res<DimensionTypeRegistry>,
+    biomes: Res<BiomeRegistry>,
     server: Res<Server>,
 ) {
     let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);

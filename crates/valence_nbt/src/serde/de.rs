@@ -1,9 +1,7 @@
 use std::{fmt, slice};
 
-use serde::de::value::{
-    EnumAccessDeserializer, MapAccessDeserializer, MapDeserializer, SeqAccessDeserializer,
-};
-use serde::de::{self, EnumAccess, IntoDeserializer, SeqAccess, VariantAccess, Visitor};
+use serde::de::value::{MapAccessDeserializer, MapDeserializer, SeqAccessDeserializer};
+use serde::de::{self, IntoDeserializer, SeqAccess, Visitor};
 use serde::{forward_to_deserialize_any, Deserialize, Deserializer};
 
 use super::Error;

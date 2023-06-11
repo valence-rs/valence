@@ -16,8 +16,8 @@ pub fn main() {
 
 fn setup(
     mut commands: Commands,
-    dimensions: Query<&DimensionType>,
-    biomes: Query<&Biome>,
+    dimensions: Res<DimensionTypeRegistry>,
+    biomes: Res<BiomeRegistry>,
     biome_reg: Res<BiomeRegistry>,
     server: Res<Server>,
 ) {

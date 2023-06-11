@@ -19,3 +19,4 @@ valence_core.workspace = true
 valence_dimension.workspace = true
 valence_entity.workspace = true
 valence_nbt.workspace = true
+valence_registry.workspace = true
