@@ -80,8 +80,8 @@ pub fn main() {
 
 fn setup(
     mut commands: Commands,
-    dimensions: Query<&DimensionType>,
-    biomes: Query<&Biome>,
+    dimensions: Res<DimensionTypeRegistry>,
+    biomes: Res<BiomeRegistry>,
     server: Res<Server>,
 ) {
     let instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);

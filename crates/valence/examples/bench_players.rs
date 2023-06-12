@@ -57,8 +57,8 @@ fn print_tick_time(
 fn setup(
     mut commands: Commands,
     server: Res<Server>,
-    dimensions: Query<&DimensionType>,
-    biomes: Query<&Biome>,
+    dimensions: Res<DimensionTypeRegistry>,
+    biomes: Res<BiomeRegistry>,
 ) {
     let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 

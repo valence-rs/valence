@@ -67,7 +67,9 @@ use valence_instance::packet::{
     ChunkLoadDistanceS2c, ChunkRenderDistanceCenterS2c, UnloadChunkS2c,
 };
 use valence_instance::{ClearInstanceChangesSet, Instance, WriteUpdatePacketsToInstancesSet};
-use valence_registry::{RegistryCodec, RegistryCodecSet, TagsRegistry};
+use valence_registry::codec::RegistryCodec;
+use valence_registry::tags::TagsRegistry;
+use valence_registry::RegistrySet;
 
 pub mod action;
 pub mod chat;
@@ -112,7 +114,7 @@ impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             (
-                initial_join.after(RegistryCodecSet),
+                initial_join.after(RegistrySet),
                 update_chunk_load_dist,
                 read_data_in_old_view
                     .after(WriteUpdatePacketsToInstancesSet)

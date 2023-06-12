@@ -22,8 +22,8 @@ pub fn build_app(app: &mut App) {
 fn setup(
     mut commands: Commands,
     server: Res<Server>,
-    biomes: Query<&Biome>,
-    dimensions: Query<&DimensionType>,
+    biomes: Res<BiomeRegistry>,
+    dimensions: Res<DimensionTypeRegistry>,
 ) {
     let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
