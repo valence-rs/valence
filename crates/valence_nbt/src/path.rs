@@ -6,12 +6,17 @@ use crate::value::Value;
 
 const EOF: char = '\0';
 
-/// An implementation of an NBT path
+/// An implementation of an NBT path containing the source `String`, and a
+/// vector of [NbtPathNode]
 pub struct NbtPath {
-    source: String,
-    nodes: Vec<NbtPathNode>,
+    pub source: String,
+    pub nodes: Vec<NbtPathNode>,
 }
 
+/// Representation of the various kinds of possible NBT path nodes.
+///
+/// All list index related nodes were condensed into enum member ListIndex, but
+/// otherwise each enum member matches what is specified on [here](https://minecraft.fandom.com/wiki/NBT_path_format).
 #[derive(Debug, PartialEq)]
 pub enum NbtPathNode {
     RootCompoundTag {
@@ -29,11 +34,18 @@ pub enum NbtPathNode {
     },
     ListIndex {
         span: (usize, usize),
-        list_name: String,
+        name: String,
         indexes: Vec<IndexType>,
     },
 }
 
+/// Types of ways you can index into a list.
+///
+/// All: \[\]
+///
+/// Num: \[-1\], \[5\], \[21\]
+///
+/// Compound: \[{}\], \[{foo:"bar"}\], \["baz":53l\]
 #[derive(Debug, PartialEq)]
 pub enum IndexType {
     All,
@@ -44,7 +56,8 @@ pub enum IndexType {
 impl TryFrom<String> for NbtPath {
     type Error = String;
 
-    /// Convert a valid `String` into a `NbtPath`.
+    /// Convert a valid `String` into a [NbtPath].
+    ///
     /// See [the format](https://minecraft.fandom.com/wiki/NBT_path_format) of an NBT Path.
     ///
     /// # Example
@@ -83,9 +96,9 @@ impl TryFrom<String> for NbtPath {
     }
 }
 
-struct NbtPathParser<'a> {
-    string: &'a String,
-    chars: CharIndices<'a>,
+struct NbtPathParser<'src> {
+    string: &'src String,
+    chars: CharIndices<'src>,
     index: usize,
 }
 
@@ -95,6 +108,7 @@ impl NbtPathParser<'_> {
             self.bump();
         }
     }
+
     fn bump(&mut self) -> char {
         let next = self.chars.next();
         if next.is_none() {
@@ -104,9 +118,11 @@ impl NbtPathParser<'_> {
         self.index = next.0;
         next.1
     }
+
     fn peek_char(&mut self) -> char {
         self.chars.clone().next().unwrap_or((0, EOF)).1
     }
+
     fn peek_char_index(&mut self) -> usize {
         self.chars
             .clone()
@@ -114,6 +130,7 @@ impl NbtPathParser<'_> {
             .unwrap_or((self.string.len(), EOF))
             .0
     }
+
     fn parse(&mut self) -> Result<Vec<NbtPathNode>, String> {
         let mut nodes = Vec::new();
 
@@ -166,7 +183,7 @@ impl NbtPathParser<'_> {
                     let span_end = self.peek_char_index();
                     NbtPathNode::ListIndex {
                         span: (span_start, span_end),
-                        list_name: name,
+                        name,
                         indexes,
                     }
                 }
@@ -183,6 +200,7 @@ impl NbtPathParser<'_> {
         }
         Ok(nodes)
     }
+
     fn list_indexings(&mut self) -> Result<Vec<IndexType>, String> {
         let mut indexes: Vec<IndexType> = vec![];
         while self.peek_char() == '[' {
@@ -210,6 +228,7 @@ impl NbtPathParser<'_> {
         }
         Ok(indexes)
     }
+
     fn index_num(&mut self) -> Result<i32, String> {
         if self.peek_char() == ']' {
             return Err(format!(
@@ -229,8 +248,9 @@ impl NbtPathParser<'_> {
 
         let end = self.peek_char_index();
         let num_string = &self.string[start..end];
-        parse_or_error::<i32>(num_string, self.index)
+        parse_num::<i32>(num_string, self.index)
     }
+
     fn compound(&mut self) -> Result<Compound, String> {
         // bump past the starting curly bracket
         self.bump();
@@ -272,6 +292,7 @@ impl NbtPathParser<'_> {
         let compound = compound!(label => value);
         Ok(compound)
     }
+
     fn value(&mut self) -> Result<Value, String> {
         loop {
             match self.peek_char() {
@@ -287,6 +308,7 @@ impl NbtPathParser<'_> {
             }
         }
     }
+
     fn number(&mut self) -> Result<Value, String> {
         let mut is_decimal = false;
         let num_start = self.peek_char_index();
@@ -308,37 +330,38 @@ impl NbtPathParser<'_> {
         let type_indicator = self.peek_char();
 
         if is_decimal && !matches!(type_indicator, 'f' | 'F') {
-            let num = parse_or_error::<f64>(num_string, self.index)?;
+            let num = parse_num::<f64>(num_string, self.index)?;
             return Ok(Value::Double(num));
         }
 
         match type_indicator {
             'b' | 'B' => {
                 self.bump();
-                let num = parse_or_error::<i8>(num_string, self.index)?;
+                let num = parse_num::<i8>(num_string, self.index)?;
                 Ok(Value::Byte(num))
             }
             's' | 'S' => {
                 self.bump();
-                let num = parse_or_error::<i16>(num_string, self.index)?;
+                let num = parse_num::<i16>(num_string, self.index)?;
                 Ok(Value::Short(num))
             }
             'l' | 'L' => {
                 self.bump();
-                let num = parse_or_error::<i64>(num_string, self.index)?;
+                let num = parse_num::<i64>(num_string, self.index)?;
                 Ok(Value::Long(num))
             }
             'f' | 'F' => {
                 self.bump();
-                let num = parse_or_error::<f32>(num_string, self.index)?;
+                let num = parse_num::<f32>(num_string, self.index)?;
                 Ok(Value::Float(num))
             }
             _ => {
-                let num = parse_or_error::<i32>(num_string, self.index)?;
+                let num = parse_num::<i32>(num_string, self.index)?;
                 Ok(Value::Int(num))
             }
         }
     }
+
     fn quoted_string(&mut self) -> Result<String, String> {
         self.bump();
         let mut name = String::new();
@@ -376,6 +399,7 @@ impl NbtPathParser<'_> {
         self.bump();
         Ok(name)
     }
+
     fn unquoted_name(&mut self) -> Result<String, String> {
         let span_start = self.peek_char_index();
         // Consume the whole name
@@ -395,7 +419,7 @@ impl NbtPathParser<'_> {
     }
 }
 
-fn parse_or_error<T: std::str::FromStr>(string: &str, index: usize) -> Result<T, String> {
+fn parse_num<T: std::str::FromStr>(string: &str, index: usize) -> Result<T, String> {
     let parsed = string.parse::<T>();
     match parsed {
         Err(_) => Err(format!(
@@ -424,6 +448,7 @@ mod nbt_path_tests {
             }
         );
     }
+
     #[test]
     fn path2() {
         let name = NbtPath::try_from("{foo:1225l}.bar".to_string()).unwrap();
@@ -441,6 +466,7 @@ mod nbt_path_tests {
             ]
         );
     }
+
     #[test]
     fn path3() {
         let path = NbtPath::try_from("foo.bar.baz".to_string()).unwrap();
@@ -462,6 +488,7 @@ mod nbt_path_tests {
             ]
         );
     }
+
     #[test]
     fn path4() {
         let nbt_path = NbtPath::try_from("{foo:-432.40f}.bar{baz:5b}.qux".to_string()).unwrap();
@@ -484,6 +511,7 @@ mod nbt_path_tests {
             ]
         );
     }
+
     #[test]
     fn path5() {
         let nbt_path = NbtPath::try_from("\"aa\\n\"".to_string()).unwrap();
@@ -495,6 +523,7 @@ mod nbt_path_tests {
             },]
         );
     }
+
     #[test]
     fn path6() {
         let nbt_path =
@@ -503,7 +532,7 @@ mod nbt_path_tests {
             nbt_path.nodes,
             vec![NbtPathNode::ListIndex {
                 span: (0, 34),
-                list_name: "foo".to_string(),
+                name: "foo".to_string(),
                 indexes: vec![
                     IndexType::Num(-1),
                     IndexType::Compound(compound!("guacamole" => 920i16)),
@@ -511,5 +540,67 @@ mod nbt_path_tests {
                 ],
             },]
         );
+    }
+
+    #[test]
+    fn path7() {
+        let nbt_path =
+            NbtPath::try_from("{ }.all.the{}.different[-1].parts[{are: \"here\"}][]".to_string())
+                .unwrap();
+        assert_eq!(
+            nbt_path.nodes,
+            vec![
+                NbtPathNode::RootCompoundTag {
+                    span: (0, 3),
+                    compound: compound!(),
+                },
+                NbtPathNode::NamedTag {
+                    span: (4, 7),
+                    name: "all".to_string()
+                },
+                NbtPathNode::NamedCompoundTag {
+                    span: (8, 13),
+                    name: "the".to_string(),
+                    compound: compound!(),
+                },
+                NbtPathNode::ListIndex {
+                    span: (14, 27),
+                    name: "different".to_string(),
+                    indexes: vec![IndexType::Num(-1)],
+                },
+                NbtPathNode::ListIndex {
+                    span: (28, 50),
+                    name: "parts".to_string(),
+                    indexes: vec![
+                        IndexType::Compound(compound!("are" => "here")),
+                        IndexType::All
+                    ],
+                },
+            ]
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn path8() {
+        NbtPath::try_from("foo.bar{]".to_string()).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn path9() {
+        NbtPath::try_from("[]".to_string()).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn path10() {
+        NbtPath::try_from("{}.{}".to_string()).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn path11() {
+        NbtPath::try_from("{:5}".to_string()).unwrap();
     }
 }
