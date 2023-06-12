@@ -10,7 +10,7 @@ use crate::reader::{StrCursor, StrReader};
 #[derive(Clone, Debug)]
 pub struct Suggestion<'a> {
     pub message: Cow<'a, str>,
-    pub tooltip: Option<Cow<'a, Text>>,
+    pub tooltip: Option<Text>,
 }
 
 impl<'a> Suggestion<'a> {

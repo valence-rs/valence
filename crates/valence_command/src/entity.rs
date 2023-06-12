@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::num::NonZeroI32;
 
 use valence_core::game_mode::GameMode;
+use valence_core::text::Text;
 use valence_core::translation_key::{
     ARGUMENT_ENTITY_OPTIONS_INAPPLICABLE, ARGUMENT_ENTITY_OPTIONS_LIMIT_TOOSMALL,
     ARGUMENT_ENTITY_OPTIONS_SORT_IRREVERSIBLE, ARGUMENT_ENTITY_OPTIONS_UNKNOWN,
@@ -274,10 +275,48 @@ impl From<EntitySelectorFlagSuggestions<CEnumSuggestions<GameMode>>> for EntityS
     }
 }
 
+#[ctor::ctor]
+static PROP_NAMES: [Suggestion<'static>; 21] = {
+    macro_rules! els {
+        ($($f: expr,)*) => {
+            [$(Suggestion {
+                message: Cow::Borrowed(concat!($f, "=")),
+                tooltip: Some(Text::translate(
+                    Cow::Borrowed(concat!("argument.entity.options.", $f, ".description")),
+                    vec![],
+                )),
+            },)*]
+        }
+    }
+
+    els!(
+        "x",
+        "y",
+        "z",
+        "distance",
+        "dx",
+        "dy",
+        "dz",
+        "x_rotation",
+        "y_rotation",
+        "scores",
+        "tag",
+        "team",
+        "name",
+        "type",
+        "predicate",
+        "nbt",
+        "level",
+        "gamemode",
+        "advancements",
+        "limit",
+        "sort",
+    )
+};
+
 impl<'a> ParsingBuild<ParsingSuggestions<'a>> for EntitySelectorSuggestions {
     fn build(self) -> ParsingSuggestions<'a> {
         const NEXT: &[Suggestion<'static>] = &[Suggestion::new_str(","), Suggestion::new_str("]")];
-        const PROP_NAMES: &[Suggestion<'static>] = &[];
         const SELECTORS: &[Suggestion<'static>] = &[
             Suggestion::new_str("p"),
             Suggestion::new_str("r"),
@@ -290,7 +329,7 @@ impl<'a> ParsingBuild<ParsingSuggestions<'a>> for EntitySelectorSuggestions {
         const OPTION_END: &[Suggestion<'static>] = &[Suggestion::new_str("}")];
         match self {
             Self::Next => ParsingSuggestions::Borrowed(NEXT),
-            Self::Name => ParsingSuggestions::Borrowed(PROP_NAMES),
+            Self::Name => ParsingSuggestions::Borrowed(PROP_NAMES.as_slice()),
             Self::Selector => ParsingSuggestions::Borrowed(SELECTORS),
             Self::EqSign => ParsingSuggestions::Borrowed(EQ_SIGN),
             Self::OptionEnter => ParsingSuggestions::Borrowed(OPTION_ENTER),

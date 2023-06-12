@@ -31,3 +31,6 @@ impl<'a> BrigadierArgument<'a> for ResourceLocation<'a> {
         Parser::ResourceLocation
     }
 }
+
+// resource, resource_key, resource_tag, resource_tag_or_key should be
+// implemented when registry system will be fully implemented.

@@ -395,6 +395,26 @@ where
     }
 }
 
+// a.k.a Literal
+impl<'a> Parse<'a> for &'a str {
+    type Data = ();
+
+    type Error = NoParsingBuild;
+
+    type Suggestions = NoParsingBuild;
+
+    fn parse(
+        _data: Option<&Self::Data>,
+        reader: &mut StrReader<'a>,
+        _purpose: ParsingPurpose,
+    ) -> ParsingResult<Self, Self::Suggestions, Self::Error> {
+        ParsingResult {
+            suggestions: None,
+            result: Ok(Some(reader.read_unquoted_str())),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
