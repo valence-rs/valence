@@ -111,8 +111,8 @@ fn test_portal_tp_boundary() {
     frames.assert_count::<WorldBorderInitializeS2c>(1);
 }
 
-fn prepare(mut app: &mut App) -> (MockClientHelper, Entity) {
-    let (_, mut client_helper) = scenario_single_client(&mut app);
+fn prepare(app: &mut App) -> (MockClientHelper, Entity) {
+    let (_, mut client_helper) = scenario_single_client(app);
 
     // Process a tick to get past the "on join" logic.
     app.update();
@@ -135,5 +135,5 @@ fn prepare(mut app: &mut App) -> (MockClientHelper, Entity) {
     }
 
     client_helper.clear_sent();
-    return (client_helper, instance_ent);
+    (client_helper, instance_ent)
 }
