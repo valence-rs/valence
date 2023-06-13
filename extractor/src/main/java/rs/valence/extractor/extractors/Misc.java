@@ -4,14 +4,22 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EntityStatuses;
+import net.minecraft.entity.EntityType;
 import net.minecraft.entity.data.TrackedDataHandler;
 import net.minecraft.entity.data.TrackedDataHandlerRegistry;
+import net.minecraft.entity.decoration.painting.PaintingVariant;
+import net.minecraft.entity.passive.CatVariant;
+import net.minecraft.entity.passive.FrogVariant;
 import net.minecraft.entity.passive.SnifferEntity;
+import net.minecraft.entity.passive.SnifferEntity.State;
 import net.minecraft.network.packet.s2c.play.EntityAnimationS2CPacket;
+import net.minecraft.particle.ParticleType;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.math.Direction;
+import net.minecraft.village.VillagerProfession;
+import net.minecraft.village.VillagerType;
 import rs.valence.extractor.Main;
-
+import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.Locale;
 

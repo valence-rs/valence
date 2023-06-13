@@ -1,6 +1,7 @@
 package rs.valence.extractor;
 
 import com.mojang.authlib.GameProfile;
+import java.lang.reflect.Field;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.data.DataTracker;
 import net.minecraft.entity.player.PlayerEntity;
