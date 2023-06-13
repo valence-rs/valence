@@ -330,10 +330,9 @@ impl Client {
 
     /// Kills the client and shows `message` on the death screen. If an entity
     /// killed the player, you should supply it as `killer`.
-    pub fn kill(&mut self, killer: Option<EntityId>, message: impl Into<Text>) {
+    pub fn kill(&mut self, message: impl Into<Text>) {
         self.write_packet(&DeathMessageS2c {
             player_id: VarInt(0),
-            entity_id: killer.map(|id| id.get()).unwrap_or(-1),
             message: message.into().into(),
         });
     }
@@ -786,6 +785,7 @@ fn respawn(
             is_flat: is_flat.0,
             copy_metadata: true,
             last_death_location,
+            portal_cooldown: VarInt(0), // TODO
         });
     }
 }
