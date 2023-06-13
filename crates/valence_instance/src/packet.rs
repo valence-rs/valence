@@ -95,7 +95,6 @@ pub struct ChunkDataS2c<'a> {
     pub heightmaps: Cow<'a, Compound>,
     pub blocks_and_biomes: &'a [u8],
     pub block_entities: Cow<'a, [ChunkDataBlockEntity<'a>]>,
-    pub trust_edges: bool,
     pub sky_light_mask: Cow<'a, [u64]>,
     pub block_light_mask: Cow<'a, [u64]>,
     pub empty_sky_light_mask: Cow<'a, [u64]>,
@@ -116,7 +115,6 @@ pub struct ChunkDataBlockEntity<'a> {
 #[packet(id = packet_id::CHUNK_DELTA_UPDATE_S2C)]
 pub struct ChunkDeltaUpdateS2c<'a> {
     pub chunk_section_position: i64,
-    pub invert_trust_edges: bool,
     pub blocks: Cow<'a, [VarLong]>,
 }
 
@@ -144,7 +142,6 @@ pub struct ChunkRenderDistanceCenterS2c {
 pub struct LightUpdateS2c {
     pub chunk_x: VarInt,
     pub chunk_z: VarInt,
-    pub trust_edges: bool,
     pub sky_light_mask: Vec<u64>,
     pub block_light_mask: Vec<u64>,
     pub empty_sky_light_mask: Vec<u64>,
