@@ -34,7 +34,7 @@ use packet::{
     PlayerRespawnS2c, PlayerSpawnPositionS2c, PlayerSpawnS2c,
 };
 use rand::Rng;
-use tracing::warn;
+use tracing::{debug, warn};
 use uuid::Uuid;
 use valence_biome::BiomeRegistry;
 use valence_core::block_pos::BlockPos;
@@ -60,8 +60,9 @@ use valence_entity::packet::{
 };
 use valence_entity::player::PlayerEntityBundle;
 use valence_entity::{
-    ClearEntityChangesSet, EntityId, EntityKind, EntityStatus, HeadYaw, Location, Look, ObjectData,
-    OldLocation, OldPosition, OnGround, PacketByteRange, Position, TrackedData, Velocity, Layer,
+    ClearEntityChangesSet, EntityId, EntityKind, EntityStatus, HeadYaw, Layer, Location, Look,
+    ObjectData, OldLocation, OldPosition, OnGround, PacketByteRange, Position, TrackedData,
+    Velocity,
 };
 use valence_instance::packet::{
     ChunkLoadDistanceS2c, ChunkRenderDistanceCenterS2c, UnloadChunkS2c,
@@ -122,6 +123,7 @@ impl Plugin for ClientPlugin {
                 remove_entities.after(update_view),
                 update_spawn_position.after(update_view),
                 update_old_view_dist.after(update_view),
+                update_client_layer_mask.after(update_old_view_dist),
                 update_game_mode,
                 update_tracked_data.after(WriteUpdatePacketsToInstancesSet),
                 init_tracked_data.after(WriteUpdatePacketsToInstancesSet),
@@ -137,8 +139,7 @@ impl Plugin for ClientPlugin {
             FlushPacketsSet.in_base_set(CoreSet::PostUpdate),
             ClearInstanceChangesSet.after(FlushPacketsSet),
         ))
-        .add_system(flush_packets.in_set(FlushPacketsSet))
-        .add_system(update_client_layer_mask.in_set(UpdateClientsSet));
+        .add_system(flush_packets.in_set(FlushPacketsSet));
 
         event_loop::build(app);
         movement::build(app);
@@ -956,7 +957,7 @@ fn read_data_in_old_view(
         &OldViewDistance,
         Option<&PacketByteRange>,
         Option<&ClientLayerMask>,
-        Option<&OldClientLayerMask>
+        Option<&OldClientLayerMask>,
     )>,
     instances: Query<&Instance>,
     entities: Query<(EntityInitQuery, &OldPosition, Option<&Layer>)>,
@@ -1011,25 +1012,14 @@ fn read_data_in_old_view(
                                 // receive update packets for this entity this tick, which may
                                 // include a relative entity movement.
                                 // We only spawn the entity if it is in a layer that the client is
-                                if let (Some(client_layer_mask), Some(layer)) = (client_layer_mask, layer) {
-                                    if client_layer_mask.get(layer.0) {entity.write_init_packets(old_pos.get(), &mut client.enc);}
-                                }
-                                else {
+                                if let (Some(client_layer_mask), Some(layer)) =
+                                    (client_layer_mask, layer)
+                                {
+                                    if client_layer_mask.get(layer.0) {
+                                        entity.write_init_packets(old_pos.get(), &mut client.enc);
+                                    }
+                                } else {
                                     entity.write_init_packets(old_pos.get(), &mut client.enc);
-                                }
-                            }
-                        }
-                    }
-
-                    // Send entity spawn packets for entities that are in an entered layer and already in the client's view.
-                    for &(id, src_pos) in &cell.incoming {
-                        if src_pos.map_or(false, |p| view.contains(p)) {
-                            // The incoming entity originated from inside the view distance, so it
-                            // must be spawned.
-                            if let Ok((entity, old_pos, layer)) = entities.get(id) {
-                                // We only spawn the entity that are in an entered layer.
-                                if let (Some(client_layer_mask), Some(old_layer_mask), Some(layer)) = (client_layer_mask, old_client_layer_mask, layer) {
-                                    if client_layer_mask.get_new(old_layer_mask).contains(&layer.0) {entity.write_init_packets(old_pos.get(), &mut client.enc);}
                                 }
                             }
                         }
@@ -1045,31 +1035,12 @@ fn read_data_in_old_view(
                                     if let Some(layer) = layer {
                                         if client_layer_mask.get(layer.0) {
                                             remove_buf.push(entity_id.get());
-
                                         }
-                                    }
-                                    else {
+                                    } else {
                                         remove_buf.push(entity_id.get());
-
                                     }
-                                }
-                                else {
+                                } else {
                                     remove_buf.push(entity_id.get());
-                                }
-                            }
-                        }
-                    }
-
-                    // Send entity despawn packets for entities that are in an exited layer and still in the client's view.
-                    for &(id, dest_pos) in &cell.outgoing {
-                        if dest_pos.map_or(false, |p| view.contains(p)) {
-                            // The outgoing entity moved inside the view distance, so it must be
-                            // despawned if it was in the client's layer mask.
-                            if let Ok((entity_id, layer)) = entity_ids.get(id) {
-                                if let (Some(client_layer_mask), Some(old_layer_mask), Some(layer)) = (client_layer_mask, old_client_layer_mask, layer) {
-                                    if client_layer_mask.get_remove(old_layer_mask).contains(&layer.0) {
-                                        remove_buf.push(entity_id.get());
-                                    }
                                 }
                             }
                         }
@@ -1087,8 +1058,7 @@ fn read_data_in_old_view(
                     // entities in the cell, spawn or update the chunk in the cell, or send any
                     // other packet data that was added here by users.
                     match byte_range {
-                        Some(byte_range)
-                            if pos == new_chunk_pos && loc == old_loc => {
+                        Some(byte_range) if pos == new_chunk_pos && loc == old_loc => {
                             // Skip range of bytes for the client's own entity.
                             client.write_packet_bytes(&cell.packet_buf[..byte_range.0.start]);
                             client.write_packet_bytes(&cell.packet_buf[byte_range.0.end..]);
@@ -1099,6 +1069,41 @@ fn read_data_in_old_view(
                     }
                 }
             });
+
+            // Send entity spawn packets for entities that are in an entered layer and
+            // already in the client's view.
+            for (entity_init_item, &old_pos, layer) in entities.iter() {
+                if view.contains(old_pos.chunk_pos()) {
+                    if let (Some(client_layer_mask), Some(old_layer_mask), Some(layer)) =
+                        (client_layer_mask, old_client_layer_mask, layer)
+                    {
+                        if client_layer_mask.get_new(old_layer_mask).contains(&layer.0) {
+                            entity_init_item.write_init_packets(old_pos.get(), &mut client.enc);
+                        }
+                    }
+                }
+            }
+
+            // Send entity despawn packets for entities that are in an exited layer and
+            // still in the client's view.
+            for (entity_init_item, &old_pos, layer) in entities.iter() {
+                if view.contains(old_pos.chunk_pos()) {
+                    if let (Some(client_layer_mask), Some(old_layer_mask), Some(layer)) =
+                        (client_layer_mask, old_client_layer_mask, layer)
+                    {
+                        // if client_layer_mask.0.ne(&old_layer_mask.0) {debug!("client_layer_mask:
+                        // {:?}, old_client_layer_mask: {:?}, layer: {:?}", client_layer_mask,
+                        // old_client_layer_mask, layer);}
+                        if client_layer_mask
+                            .get_remove(old_layer_mask)
+                            .contains(&layer.0)
+                        {
+                            // debug!("removing entity: {:?}", entity_init_item.entity_id.get());
+                            remove_buf.push(entity_init_item.entity_id.get());
+                        }
+                    }
+                }
+            }
         },
     );
 }
