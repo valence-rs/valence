@@ -1,0 +1,136 @@
+use bevy_app::App;
+use valence_client::world_border::{
+    SetWorldBorderSizeEvent, WorldBorderBundle, WorldBorderCenter, WorldBorderPortalTpBoundary,
+    WorldBorderWarnBlocks, WorldBorderWarnTime,
+};
+use valence_entity::Location;
+use valence_instance::packet::{
+    WorldBorderCenterChangedS2c, WorldBorderInitializeS2c, WorldBorderSizeChangedS2c,
+    WorldBorderWarningBlocksChangedS2c, WorldBorderWarningTimeChangedS2c,
+};
+use valence_instance::Instance;
+use valence_registry::{Entity, Mut};
+
+use super::{scenario_single_client, MockClientHelper, create_mock_client};
+
+
+#[test]
+fn test_intialize_on_join() {
+    let mut app = App::new();
+    let (_, instance_ent) = prepare(&mut app);
+
+    let (client, mut client_helper) = create_mock_client();
+    let client_ent = app.world.spawn(client).id();
+
+    app.world.get_mut::<Location>(client_ent).unwrap().0 = instance_ent;
+    app.update();
+
+    client_helper.collect_sent().assert_count::<WorldBorderInitializeS2c>(1);
+}
+
+#[test]
+fn test_resizing() {
+    let mut app = App::new();
+    let (mut client_helper, instance_ent) = prepare(&mut app);
+
+    app.world.send_event(SetWorldBorderSizeEvent {
+        new_diameter: 20.0,
+        speed: 0,
+        instance: instance_ent,
+    });
+
+    app.update();
+    let frames = client_helper.collect_sent();
+    frames.assert_count::<WorldBorderSizeChangedS2c>(1);
+}
+
+#[test]
+fn test_center() {
+    let mut app = App::new();
+    let (mut client_helper, instance_ent) = prepare(&mut app);
+
+    let mut ins_mut = app.world.entity_mut(instance_ent);
+    let mut center: Mut<WorldBorderCenter> = ins_mut
+        .get_mut()
+        .expect("Expect world border to be present!");
+    center.0 = [10.0, 10.0].into();
+
+    app.update();
+    let frames = client_helper.collect_sent();
+    frames.assert_count::<WorldBorderCenterChangedS2c>(1);
+}
+
+#[test]
+fn test_warn_time() {
+    let mut app = App::new();
+    let (mut client_helper, instance_ent) = prepare(&mut app);
+
+    let mut ins_mut = app.world.entity_mut(instance_ent);
+    let mut wt: Mut<WorldBorderWarnTime> = ins_mut
+        .get_mut()
+        .expect("Expect world border to be present!");
+    wt.0 = 100;
+    app.update();
+
+    let frames = client_helper.collect_sent();
+    frames.assert_count::<WorldBorderWarningTimeChangedS2c>(1);
+}
+
+#[test]
+fn test_warn_blocks() {
+    let mut app = App::new();
+    let (mut client_helper, instance_ent) = prepare(&mut app);
+
+    let mut ins_mut = app.world.entity_mut(instance_ent);
+    let mut wb: Mut<WorldBorderWarnBlocks> = ins_mut
+        .get_mut()
+        .expect("Expect world border to be present!");
+    wb.0 = 100;
+    app.update();
+
+    let frames = client_helper.collect_sent();
+    frames.assert_count::<WorldBorderWarningBlocksChangedS2c>(1);
+}
+
+#[test]
+fn test_portal_tp_boundary() {
+    let mut app = App::new();
+    let (mut client_helper, instance_ent) = prepare(&mut app);
+
+    let mut ins_mut = app.world.entity_mut(instance_ent);
+    let mut tp: Mut<WorldBorderPortalTpBoundary> = ins_mut
+        .get_mut()
+        .expect("Expect world border to be present!");
+    tp.0 = 100;
+    app.update();
+
+    let frames = client_helper.collect_sent();
+    frames.assert_count::<WorldBorderInitializeS2c>(1);
+}
+
+fn prepare(mut app: &mut App) -> (MockClientHelper, Entity) {
+    let (_, mut client_helper) = scenario_single_client(&mut app);
+
+    // Process a tick to get past the "on join" logic.
+    app.update();
+    client_helper.clear_sent();
+
+    // Get the instance entity.
+    let instance_ent = app
+        .world
+        .iter_entities()
+        .find(|e| e.contains::<Instance>())
+        .expect("could not find instance")
+        .id();
+
+    // Insert a the world border bundle to the instance.
+    app.world
+        .entity_mut(instance_ent)
+        .insert(WorldBorderBundle::new([0.0, 0.0], 10.0));
+    for _ in 0..2 {
+        app.update();
+    }
+
+    client_helper.clear_sent();
+    return (client_helper, instance_ent);
+}

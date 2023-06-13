@@ -90,6 +90,7 @@ pub mod status;
 pub mod teleport;
 pub mod title;
 pub mod weather;
+pub mod world_border;
 
 pub struct ClientPlugin;
 
@@ -150,6 +151,7 @@ impl Plugin for ClientPlugin {
         action::build(app);
         teleport::build(app);
         weather::build(app);
+        world_border::build(app);
         chat::build(app);
         custom_payload::build(app);
         hand_swing::build(app);
