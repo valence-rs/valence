@@ -1,7 +1,44 @@
-// Things to update:
-// - use system clock as reference time instead of server tick [done]
-// - Update portal tp boundary wont send packet to update because there is no
-//   packet to specifically to update it. Maybe use InitializeWorldBorderS2c?
+//! # World border 
+//! This module contains Components and Systems needed to handle world border.
+//! 
+//! The world border is the current edge of a Minecraft dimension. It appears as a series of animated, diagonal, narrow stripes.
+//! For more information, refer to the [wiki](https://minecraft.fandom.com/wiki/World_border)
+//! 
+//! ## Enable world border per instance
+//! By default, world border is not enabled. It can be enabled by inserting the [`WorldBorderBundle`] bundle into a [`Instance`].
+//! Use [`WorldBorderBundle::default()`] to use Minecraft Vanilla border default
+//! ```
+//! commands
+//!     .entity(instance_entity)
+//!     .insert(WorldBorderBundle::new([0.0, 0.0], 10.0));
+//! ```
+//! 
+//! 
+//! ## Modify world border diameter
+//! World border diameter can be changed using [`SetWorldBorderSizeEvent`]. 
+//! Setting speed to 0 will move the border to `new_diameter` immediately, otherwise
+//! it will interpolate to `new_diameter` over `speed` milliseconds.
+//! ```
+//! fn change_diameter(event_writer: EventWriter<SetWorldBorderSizeEvent>) {
+//!     event_writer.send(SetWorldBorderSizeEvent {
+//!         instance: entity,
+//!         new_diameter: diameter,
+//!         speed,
+//!     })
+//! }
+//! ```
+//! 
+//! You can also modify the [`MovingWorldBorder`] if you want more control. But it is not recommended.
+//! 
+//! ## Querying world border diameter
+//! World border diameter can be read by querying [`WorldBorderDiameter::diameter()`]. 
+//! Note: If you want to modify the diameter size, do not modify the value directly! Use [`SetWorldBorderSizeEvent`] instead. 
+//! 
+//! ## Access other world border properties.
+//! Access to the rest of the world border properties is fairly straight forward by querying their respective component.
+//! [`WorldBorderBundle`] contains references for all properties of world border and their respective component
+//! 
+#![allow(clippy::type_complexity)]
 
 use glam::DVec2;
 use valence_core::protocol::var_long::VarLong;
@@ -50,6 +87,8 @@ pub(crate) fn build(app: &mut App) {
     .add_system(handle_border_for_player.in_set(UpdateWorldBorderPerClientSet));
 }
 
+/// A bundle contains necessary component to enable world border.
+/// This struct implements [`Default`] trait that returns a bundle using Minecraft Vanilla defaults.
 #[derive(Bundle)]
 pub struct WorldBorderBundle {
     pub center: WorldBorderCenter,
@@ -61,6 +100,7 @@ pub struct WorldBorderBundle {
 }
 
 impl WorldBorderBundle {
+    /// Create a new world border with specified center and diameter
     pub fn new(center: impl Into<DVec2>, diameter: f64) -> Self {
         Self {
             center: WorldBorderCenter(center.into()),
@@ -125,9 +165,13 @@ impl MovingWorldBorder {
     }
 }
 
+/// An event for controlling world border diameter. Please refer to the module documentation for example usage.
 pub struct SetWorldBorderSizeEvent {
+    /// The instance to change border size. Note that this instance must contain the [`WorldBorderBundle`] bundle
     pub instance: Entity,
+    /// The new diameter of the world border
     pub new_diameter: f64,
+    /// How long the border takes to reach it new_diameter in millisecond. Set to 0 to move immediately.
     pub speed: i64,
 }
 
@@ -142,7 +186,7 @@ fn handle_wb_size_change(
         speed,
     } in events.iter()
     {
-        let Ok((entity, diameter, mwb_opt)) = instances.get_mut(instance.clone()) else {
+        let Ok((entity, diameter, mwb_opt)) = instances.get_mut(*instance) else {
             continue;
         };
 
