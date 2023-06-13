@@ -725,6 +725,7 @@ fn initial_join(
             is_debug: q.is_debug.0,
             is_flat: q.is_flat.0,
             last_death_location,
+            portal_cooldown: VarInt(0), // TODO.
         });
 
         q.client.enc.append_bytes(tags.sync_tags_packet());

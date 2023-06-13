@@ -28,7 +28,6 @@ pub fn packet(c: &mut Criterion) {
         }),
         blocks_and_biomes: BLOCKS_AND_BIOMES.as_slice(),
         block_entities: Cow::Borrowed(&[]),
-        trust_edges: false,
         sky_light_mask: Cow::Borrowed(&[]),
         block_light_mask: Cow::Borrowed(&[]),
         empty_sky_light_mask: Cow::Borrowed(&[]),

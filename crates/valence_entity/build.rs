@@ -170,7 +170,7 @@ impl Value {
                 quote!(None)
             }
             Value::ItemStack(stack) => {
-                assert_eq!(stack, "1 air");
+                assert_eq!(stack, "0 air");
                 quote!(valence_core::item::ItemStack::default())
             }
             Value::Boolean(b) => quote!(#b),

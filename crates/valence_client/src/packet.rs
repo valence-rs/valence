@@ -324,6 +324,7 @@ pub struct GameJoinS2c<'a> {
     pub is_debug: bool,
     pub is_flat: bool,
     pub last_death_location: Option<GlobalPos<'a>>,
+    pub portal_cooldown: VarInt,
 }
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
