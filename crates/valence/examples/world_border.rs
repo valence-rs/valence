@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use valence::client::chat::ChatMessageEvent;
 use valence::client::despawn_disconnected_clients;
 use valence::client::world_border::{
@@ -81,7 +83,7 @@ fn border_controls(
                 event_writer.send(SetWorldBorderSizeEvent {
                     instance: entity,
                     new_diameter: diameter.diameter() + value,
-                    speed,
+                    duration: Duration::from_millis(speed as u64),
                 })
             }
             "center" => {

@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use bevy_app::App;
 use valence_client::world_border::{
     SetWorldBorderSizeEvent, WorldBorderBundle, WorldBorderCenter, WorldBorderPortalTpBoundary,
@@ -11,8 +13,7 @@ use valence_instance::packet::{
 use valence_instance::Instance;
 use valence_registry::{Entity, Mut};
 
-use super::{scenario_single_client, MockClientHelper, create_mock_client};
-
+use super::{create_mock_client, scenario_single_client, MockClientHelper};
 
 #[test]
 fn test_intialize_on_join() {
@@ -25,7 +26,9 @@ fn test_intialize_on_join() {
     app.world.get_mut::<Location>(client_ent).unwrap().0 = instance_ent;
     app.update();
 
-    client_helper.collect_sent().assert_count::<WorldBorderInitializeS2c>(1);
+    client_helper
+        .collect_sent()
+        .assert_count::<WorldBorderInitializeS2c>(1);
 }
 
 #[test]
@@ -35,7 +38,7 @@ fn test_resizing() {
 
     app.world.send_event(SetWorldBorderSizeEvent {
         new_diameter: 20.0,
-        speed: 0,
+        duration: Duration::ZERO,
         instance: instance_ent,
     });
 

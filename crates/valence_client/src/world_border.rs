@@ -1,44 +1,54 @@
-//! # World border 
+//! # World border
 //! This module contains Components and Systems needed to handle world border.
-//! 
-//! The world border is the current edge of a Minecraft dimension. It appears as a series of animated, diagonal, narrow stripes.
-//! For more information, refer to the [wiki](https://minecraft.fandom.com/wiki/World_border)
-//! 
+//!
+//! The world border is the current edge of a Minecraft dimension. It appears as
+//! a series of animated, diagonal, narrow stripes. For more information, refer to the [wiki](https://minecraft.fandom.com/wiki/World_border)
+//!
 //! ## Enable world border per instance
-//! By default, world border is not enabled. It can be enabled by inserting the [`WorldBorderBundle`] bundle into a [`Instance`].
+//! By default, world border is not enabled. It can be enabled by inserting the
+//! [`WorldBorderBundle`] bundle into a [`Instance`].
 //! Use [`WorldBorderBundle::default()`] to use Minecraft Vanilla border default
 //! ```
 //! commands
 //!     .entity(instance_entity)
 //!     .insert(WorldBorderBundle::new([0.0, 0.0], 10.0));
 //! ```
-//! 
-//! 
+//!
+//!
 //! ## Modify world border diameter
-//! World border diameter can be changed using [`SetWorldBorderSizeEvent`]. 
-//! Setting speed to 0 will move the border to `new_diameter` immediately, otherwise
-//! it will interpolate to `new_diameter` over `speed` milliseconds.
+//! World border diameter can be changed using [`SetWorldBorderSizeEvent`].
+//! Setting duration to 0 will move the border to `new_diameter` immediately,
+//! otherwise it will interpolate to `new_diameter` over `duration` time.
 //! ```
-//! fn change_diameter(event_writer: EventWriter<SetWorldBorderSizeEvent>) {
+//! fn change_diameter(
+//!     event_writer: EventWriter<SetWorldBorderSizeEvent>,
+//!     diameter: f64,
+//!     duration: Duration,
+//! ) {
 //!     event_writer.send(SetWorldBorderSizeEvent {
 //!         instance: entity,
 //!         new_diameter: diameter,
-//!         speed,
+//!         duration,
 //!     })
 //! }
 //! ```
-//! 
-//! You can also modify the [`MovingWorldBorder`] if you want more control. But it is not recommended.
-//! 
+//!
+//! You can also modify the [`MovingWorldBorder`] if you want more control. But
+//! it is not recommended.
+//!
 //! ## Querying world border diameter
-//! World border diameter can be read by querying [`WorldBorderDiameter::diameter()`]. 
-//! Note: If you want to modify the diameter size, do not modify the value directly! Use [`SetWorldBorderSizeEvent`] instead. 
-//! 
+//! World border diameter can be read by querying
+//! [`WorldBorderDiameter::diameter()`]. Note: If you want to modify the
+//! diameter size, do not modify the value directly! Use
+//! [`SetWorldBorderSizeEvent`] instead.
+//!
 //! ## Access other world border properties.
-//! Access to the rest of the world border properties is fairly straight forward by querying their respective component.
-//! [`WorldBorderBundle`] contains references for all properties of world border and their respective component
-//! 
+//! Access to the rest of the world border properties is fairly straight forward
+//! by querying their respective component. [`WorldBorderBundle`] contains
+//! references for all properties of world border and their respective component
 #![allow(clippy::type_complexity)]
+
+use std::time::Duration;
 
 use glam::DVec2;
 use valence_core::protocol::var_long::VarLong;
@@ -88,7 +98,8 @@ pub(crate) fn build(app: &mut App) {
 }
 
 /// A bundle contains necessary component to enable world border.
-/// This struct implements [`Default`] trait that returns a bundle using Minecraft Vanilla defaults.
+/// This struct implements [`Default`] trait that returns a bundle using
+/// Minecraft Vanilla defaults.
 #[derive(Bundle)]
 pub struct WorldBorderBundle {
     pub center: WorldBorderCenter,
@@ -111,7 +122,7 @@ impl WorldBorderBundle {
             moving: MovingWorldBorder {
                 old_diameter: diameter,
                 new_diameter: diameter,
-                speed: 0,
+                duration: 0,
                 timestamp: Instant::now(),
             },
         }
@@ -136,6 +147,10 @@ pub struct WorldBorderWarnBlocks(pub i32);
 #[derive(Component)]
 pub struct WorldBorderPortalTpBoundary(pub i32);
 
+/// World border diameter can be read by querying
+/// [`WorldBorderDiameter::diameter()`]. If you want to modify the diameter
+/// size, do not modify the value directly! Use [`SetWorldBorderSizeEvent`]
+/// instead.
 #[derive(Component)]
 pub struct WorldBorderDiameter(f64);
 
@@ -145,34 +160,56 @@ impl WorldBorderDiameter {
     }
 }
 
+/// This component represents the `Set Border Lerp Size` packet with timestamp.
+/// It is used for actually lerping the world border diamater.
+/// If you need to set the diameter, it is much better to use the
+/// [`SetWorldBorderSizeEvent`] event
 #[derive(Component)]
 pub struct MovingWorldBorder {
     pub old_diameter: f64,
     pub new_diameter: f64,
-    pub speed: i64,
+    /// equivalent to `speed` on wiki.vg
+    pub duration: i64,
     pub timestamp: Instant,
 }
 
 impl MovingWorldBorder {
     pub fn current_diameter(&self) -> f64 {
-        let t = self.current_speed() as f64 / self.speed as f64;
+        let t = self.current_duration() as f64 / self.duration as f64;
         lerp(self.new_diameter, self.old_diameter, t)
     }
 
-    pub fn current_speed(&self) -> i64 {
-        let speed = self.speed - self.timestamp.elapsed().as_millis() as i64;
+    pub fn current_duration(&self) -> i64 {
+        let speed = self.duration - self.timestamp.elapsed().as_millis() as i64;
         speed.max(0)
     }
 }
 
-/// An event for controlling world border diameter. Please refer to the module documentation for example usage.
+/// An event for controlling world border diameter.
+/// Setting duration to 0 will move the border to `new_diameter` immediately,
+/// otherwise it will interpolate to `new_diameter` over `duration` time.
+/// ```
+/// fn change_diameter(
+///     event_writer: EventWriter<SetWorldBorderSizeEvent>,
+///     diameter: f64,
+///     duration: Duration,
+/// ) {
+///     event_writer.send(SetWorldBorderSizeEvent {
+///         instance: entity,
+///         new_diameter: diameter,
+///         duration,
+///     })
+/// }
+/// ```
 pub struct SetWorldBorderSizeEvent {
-    /// The instance to change border size. Note that this instance must contain the [`WorldBorderBundle`] bundle
+    /// The instance to change border size. Note that this instance must contain
+    /// the [`WorldBorderBundle`] bundle
     pub instance: Entity,
     /// The new diameter of the world border
     pub new_diameter: f64,
-    /// How long the border takes to reach it new_diameter in millisecond. Set to 0 to move immediately.
-    pub speed: i64,
+    /// How long the border takes to reach it new_diameter in millisecond. Set
+    /// to 0 to move immediately.
+    pub duration: Duration,
 }
 
 fn handle_wb_size_change(
@@ -183,7 +220,7 @@ fn handle_wb_size_change(
     for SetWorldBorderSizeEvent {
         instance,
         new_diameter,
-        speed,
+        duration,
     } in events.iter()
     {
         let Ok((entity, diameter, mwb_opt)) = instances.get_mut(*instance) else {
@@ -193,14 +230,14 @@ fn handle_wb_size_change(
         if let Some(mut mvb) = mwb_opt {
             mvb.new_diameter = *new_diameter;
             mvb.old_diameter = diameter.diameter();
-            mvb.speed = *speed;
+            mvb.duration = duration.as_millis() as i64;
             mvb.timestamp = Instant::now();
         } else {
             // This might be delayed by 1 tick
             commands.entity(entity).insert(MovingWorldBorder {
                 new_diameter: *new_diameter,
                 old_diameter: diameter.diameter(),
-                speed: *speed,
+                duration: duration.as_millis() as i64,
                 timestamp: Instant::now(),
             });
         }
@@ -224,7 +261,7 @@ fn handle_border_for_player(
     for (mut client, location) in clients.iter_mut() {
         if let Ok((c, wt, wb, diameter, ptb, wbl)) = wbs.get(location.0) {
             let (new_diameter, speed) = if let Some(lerping) = wbl {
-                (lerping.new_diameter, lerping.current_speed())
+                (lerping.new_diameter, lerping.current_duration())
             } else {
                 (diameter.0, 0)
             };
@@ -247,7 +284,7 @@ fn handle_diameter_change(
     mut wbs: Query<(&mut Instance, &MovingWorldBorder), Changed<MovingWorldBorder>>,
 ) {
     for (mut ins, lerping) in wbs.iter_mut() {
-        if lerping.speed == 0 {
+        if lerping.duration == 0 {
             ins.write_packet(&WorldBorderSizeChangedS2c {
                 diameter: lerping.new_diameter,
             })
@@ -255,7 +292,7 @@ fn handle_diameter_change(
             ins.write_packet(&WorldBorderInterpolateSizeS2c {
                 old_diameter: lerping.current_diameter(),
                 new_diameter: lerping.new_diameter,
-                speed: VarLong(lerping.current_speed()),
+                speed: VarLong(lerping.current_duration()),
             });
         }
     }
@@ -313,7 +350,7 @@ fn handle_portal_teleport_bounary_change(
 ) {
     for (mut ins, c, wt, wb, diameter, ptb, wbl) in wbs.iter_mut() {
         let (new_diameter, speed) = if let Some(lerping) = wbl {
-            (lerping.new_diameter, lerping.current_speed())
+            (lerping.new_diameter, lerping.current_duration())
         } else {
             (diameter.0, 0)
         };
