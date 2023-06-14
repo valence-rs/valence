@@ -34,7 +34,7 @@ use packet::{
     PlayerRespawnS2c, PlayerSpawnPositionS2c, PlayerSpawnS2c,
 };
 use rand::Rng;
-use tracing::{debug, warn};
+use tracing::{warn};
 use uuid::Uuid;
 use valence_biome::BiomeRegistry;
 use valence_core::block_pos::BlockPos;
