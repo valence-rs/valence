@@ -1,11 +1,11 @@
 use std::time::Duration;
 
+use bevy_app::App;
 use valence::client::chat::ChatMessageEvent;
 use valence::client::despawn_disconnected_clients;
-use valence::client::world_border::{
-    SetWorldBorderSizeEvent, WorldBorderBundle, WorldBorderCenter, WorldBorderDiameter,
-};
+use valence::inventory::HeldItem;
 use valence::prelude::*;
+use valence::world_border::*;
 
 const SPAWN_Y: i32 = 64;
 
@@ -17,6 +17,8 @@ fn main() {
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_system(despawn_disconnected_clients)
+        .add_system(border_center_avg)
+        .add_system(border_expand)
         .add_system(border_controls)
         .run();
 }
@@ -37,28 +39,84 @@ fn setup(
 
     for z in -25..25 {
         for x in -25..25 {
-            instance.set_block([x, SPAWN_Y, z], BlockState::GRASS_BLOCK);
+            instance.set_block([x, SPAWN_Y, z], BlockState::MOSSY_COBBLESTONE);
         }
     }
 
     commands
         .spawn(instance)
-        .insert(WorldBorderBundle::new([0.0, 0.0], 10.0));
+        .insert(WorldBorderBundle::new([0.0, 0.0], 1.0));
 }
 
 fn init_clients(
-    mut clients: Query<(&mut Client, &mut Location, &mut Position), Added<Client>>,
+    mut clients: Query<
+        (
+            &mut Client,
+            &mut Location,
+            &mut Position,
+            &mut Inventory,
+            &HeldItem,
+        ),
+        Added<Client>,
+    >,
     instances: Query<Entity, With<Instance>>,
 ) {
-    for (mut client, mut loc, mut pos) in &mut clients {
+    for (mut client, mut loc, mut pos, mut inv, main_slot) in &mut clients {
         loc.0 = instances.single();
         pos.set([0.5, SPAWN_Y as f64 + 1.0, 0.5]);
-        client.send_message("Border control: ");
-        client.send_message("- Modify size: add <amount(can be negative)> <time(ms)>");
-        client.send_message("- Change center: center <x> <z>");
+        let pickaxe = Some(ItemStack::new(ItemKind::WoodenPickaxe, 1, None));
+        inv.set_slot(main_slot.slot(), pickaxe);
+        client.send_message("Break block to increase border size!");
     }
 }
 
+fn border_center_avg(
+    clients: Query<(&Location, &Position)>,
+    mut instances: Query<(Entity, &mut WorldBorderCenter), With<Instance>>,
+) {
+    for (entity, mut center) in instances.iter_mut() {
+        let new_center = {
+            let (count, x, z) = clients
+                .iter()
+                .filter(|(loc, _)| loc.0 == entity)
+                .fold((0, 0.0, 0.0), |(count, x, z), (_, pos)| {
+                    (count + 1, x + pos.0.x, z + pos.0.z)
+                });
+
+            DVec2 {
+                x: x / count.max(1) as f64,
+                y: z / count.max(1) as f64,
+            }
+        };
+
+        center.0 = new_center;
+    }
+}
+
+fn border_expand(
+    mut events: EventReader<DiggingEvent>,
+    clients: Query<&Location, With<Client>>,
+    wbs: Query<&WorldBorderDiameter, With<Instance>>,
+    mut event_writer: EventWriter<SetWorldBorderSizeEvent>,
+) {
+    for digging in events.iter().filter(|d| d.state == DiggingState::Stop) {
+        let Ok(loc) = clients.get(digging.client) else {
+            continue;
+        };
+
+        let Ok(size) = wbs.get(loc.0) else {
+            continue;
+        };
+
+        event_writer.send(SetWorldBorderSizeEvent {
+            instance: loc.0,
+            new_diameter: size.get() + 1.0,
+            duration: Duration::from_secs(1),
+        });
+    }
+}
+
+// Not needed for this demo, but useful for debugging
 fn border_controls(
     mut events: EventReader<ChatMessageEvent>,
     mut instances: Query<(Entity, &WorldBorderDiameter, &mut WorldBorderCenter), With<Instance>>,
@@ -67,7 +125,7 @@ fn border_controls(
     for x in events.iter() {
         let parts: Vec<&str> = x.message.split(' ').collect();
         match parts[0] {
-            "resize" => {
+            "add" => {
                 let Ok(value) = parts[1].parse::<f64>() else {
                     return;
                 };
@@ -82,7 +140,7 @@ fn border_controls(
 
                 event_writer.send(SetWorldBorderSizeEvent {
                     instance: entity,
-                    new_diameter: diameter.diameter() + value,
+                    new_diameter: diameter.get() + value,
                     duration: Duration::from_millis(speed as u64),
                 })
             }

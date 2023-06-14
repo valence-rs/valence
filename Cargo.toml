@@ -89,7 +89,9 @@ valence_nbt = { path = "crates/valence_nbt", features = ["uuid"] }
 valence_network.path = "crates/valence_network"
 valence_player_list.path = "crates/valence_player_list"
 valence_registry.path = "crates/valence_registry"
+valence_world_border.path = "crates/valence_world_border"
 valence.path = "crates/valence"
+
 zip = "0.6.3"
 
 [profile.dev.package."*"]

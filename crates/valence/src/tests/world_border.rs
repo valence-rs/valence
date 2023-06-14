@@ -1,17 +1,11 @@
 use std::time::Duration;
 
 use bevy_app::App;
-use valence_client::world_border::{
-    SetWorldBorderSizeEvent, WorldBorderBundle, WorldBorderCenter, WorldBorderPortalTpBoundary,
-    WorldBorderWarnBlocks, WorldBorderWarnTime,
-};
 use valence_entity::Location;
-use valence_instance::packet::{
-    WorldBorderCenterChangedS2c, WorldBorderInitializeS2c, WorldBorderSizeChangedS2c,
-    WorldBorderWarningBlocksChangedS2c, WorldBorderWarningTimeChangedS2c,
-};
 use valence_instance::Instance;
 use valence_registry::{Entity, Mut};
+use valence_world_border::packet::*;
+use valence_world_border::*;
 
 use super::{create_mock_client, scenario_single_client, MockClientHelper};
 

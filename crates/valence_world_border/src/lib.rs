@@ -48,15 +48,20 @@
 //! references for all properties of world border and their respective component
 #![allow(clippy::type_complexity)]
 
-use std::time::Duration;
+pub mod packet;
 
+use std::time::{Duration, Instant};
+
+use bevy_app::{App, CoreSet, Plugin};
 use glam::DVec2;
+use packet::*;
+use valence_client::{Client, FlushPacketsSet};
+use valence_core::protocol::encode::WritePacket;
+use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::var_long::VarLong;
 use valence_entity::Location;
-use valence_instance::packet::*;
-use valence_registry::{Component, Query};
-
-use crate::*;
+use valence_instance::{Instance, WriteUpdatePacketsToInstancesSet};
+use valence_registry::*;
 
 // https://minecraft.fandom.com/wiki/World_border
 pub const DEFAULT_PORTAL_LIMIT: i32 = 29999984;
@@ -70,31 +75,35 @@ pub struct UpdateWorldBorderPerInstanceSet;
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct UpdateWorldBorderPerClientSet;
 
-pub(crate) fn build(app: &mut App) {
-    app.configure_set(
-        UpdateWorldBorderPerInstanceSet
-            .in_base_set(CoreSet::PostUpdate)
-            .before(WriteUpdatePacketsToInstancesSet),
-    )
-    .configure_set(
-        UpdateWorldBorderPerClientSet
-            .in_base_set(CoreSet::PostUpdate)
-            .before(FlushPacketsSet),
-    )
-    .add_event::<SetWorldBorderSizeEvent>()
-    .add_systems(
-        (
-            handle_wb_size_change.before(handle_diameter_change),
-            handle_diameter_change,
-            handle_lerp_transition,
-            handle_center_change,
-            handle_warn_time_change,
-            handle_warn_blocks_change,
-            handle_portal_teleport_bounary_change,
+pub struct WorldBorderPlugin;
+
+impl Plugin for WorldBorderPlugin {
+    fn build(&self, app: &mut App) {
+        app.configure_set(
+            UpdateWorldBorderPerInstanceSet
+                .in_base_set(CoreSet::PostUpdate)
+                .before(WriteUpdatePacketsToInstancesSet),
         )
-            .in_set(UpdateWorldBorderPerInstanceSet),
-    )
-    .add_system(handle_border_for_player.in_set(UpdateWorldBorderPerClientSet));
+        .configure_set(
+            UpdateWorldBorderPerClientSet
+                .in_base_set(CoreSet::PostUpdate)
+                .before(FlushPacketsSet),
+        )
+        .add_event::<SetWorldBorderSizeEvent>()
+        .add_systems(
+            (
+                handle_wb_size_change.before(handle_diameter_change),
+                handle_diameter_change,
+                handle_lerp_transition,
+                handle_center_change,
+                handle_warn_time_change,
+                handle_warn_blocks_change,
+                handle_portal_teleport_bounary_change,
+            )
+                .in_set(UpdateWorldBorderPerInstanceSet),
+        )
+        .add_system(handle_border_for_player.in_set(UpdateWorldBorderPerClientSet));
+    }
 }
 
 /// A bundle contains necessary component to enable world border.
@@ -147,7 +156,7 @@ pub struct WorldBorderWarnBlocks(pub i32);
 #[derive(Component)]
 pub struct WorldBorderPortalTpBoundary(pub i32);
 
-/// World border diameter can be read by querying
+/// The world border diameter can be read by calling
 /// [`WorldBorderDiameter::diameter()`]. If you want to modify the diameter
 /// size, do not modify the value directly! Use [`SetWorldBorderSizeEvent`]
 /// instead.
@@ -155,13 +164,13 @@ pub struct WorldBorderPortalTpBoundary(pub i32);
 pub struct WorldBorderDiameter(f64);
 
 impl WorldBorderDiameter {
-    pub fn diameter(&self) -> f64 {
+    pub fn get(&self) -> f64 {
         self.0
     }
 }
 
 /// This component represents the `Set Border Lerp Size` packet with timestamp.
-/// It is used for actually lerping the world border diamater.
+/// It is used for actually lerping the world border diameter.
 /// If you need to set the diameter, it is much better to use the
 /// [`SetWorldBorderSizeEvent`] event
 #[derive(Component)]
@@ -175,8 +184,12 @@ pub struct MovingWorldBorder {
 
 impl MovingWorldBorder {
     pub fn current_diameter(&self) -> f64 {
-        let t = self.current_duration() as f64 / self.duration as f64;
-        lerp(self.new_diameter, self.old_diameter, t)
+        if self.duration == 0 {
+            self.new_diameter
+        } else {
+            let t = self.current_duration() as f64 / self.duration as f64;
+            lerp(self.new_diameter, self.old_diameter, t)
+        }
     }
 
     pub fn current_duration(&self) -> i64 {
@@ -214,8 +227,7 @@ pub struct SetWorldBorderSizeEvent {
 
 fn handle_wb_size_change(
     mut events: EventReader<SetWorldBorderSizeEvent>,
-    mut instances: Query<(Entity, &WorldBorderDiameter, Option<&mut MovingWorldBorder>)>,
-    mut commands: Commands,
+    mut instances: Query<(&WorldBorderDiameter, Option<&mut MovingWorldBorder>)>,
 ) {
     for SetWorldBorderSizeEvent {
         instance,
@@ -223,23 +235,15 @@ fn handle_wb_size_change(
         duration,
     } in events.iter()
     {
-        let Ok((entity, diameter, mwb_opt)) = instances.get_mut(*instance) else {
+        let Ok((diameter, mwb_opt)) = instances.get_mut(*instance) else {
             continue;
         };
 
         if let Some(mut mvb) = mwb_opt {
             mvb.new_diameter = *new_diameter;
-            mvb.old_diameter = diameter.diameter();
+            mvb.old_diameter = diameter.get();
             mvb.duration = duration.as_millis() as i64;
             mvb.timestamp = Instant::now();
-        } else {
-            // This might be delayed by 1 tick
-            commands.entity(entity).insert(MovingWorldBorder {
-                new_diameter: *new_diameter,
-                old_diameter: diameter.diameter(),
-                duration: duration.as_millis() as i64,
-                timestamp: Instant::now(),
-            });
         }
     }
 }
@@ -338,15 +342,18 @@ fn handle_warn_blocks_change(
 }
 
 fn handle_portal_teleport_bounary_change(
-    mut wbs: Query<(
-        &mut Instance,
-        &WorldBorderCenter,
-        &WorldBorderWarnTime,
-        &WorldBorderWarnBlocks,
-        &WorldBorderDiameter,
-        &WorldBorderPortalTpBoundary,
-        Option<&MovingWorldBorder>,
-    )>,
+    mut wbs: Query<
+        (
+            &mut Instance,
+            &WorldBorderCenter,
+            &WorldBorderWarnTime,
+            &WorldBorderWarnBlocks,
+            &WorldBorderDiameter,
+            &WorldBorderPortalTpBoundary,
+            Option<&MovingWorldBorder>,
+        ),
+        Changed<WorldBorderPortalTpBoundary>,
+    >,
 ) {
     for (mut ins, c, wt, wb, diameter, ptb, wbl) in wbs.iter_mut() {
         let (new_diameter, speed) = if let Some(lerping) = wbl {
