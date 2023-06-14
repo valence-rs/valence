@@ -357,7 +357,6 @@ impl Chunk<true> {
 
                         writer.write_packet(&ChunkDeltaUpdateS2c {
                             chunk_section_position,
-                            invert_trust_edges: false,
                             blocks: Cow::Borrowed(&sect.section_updates),
                         });
                     }
@@ -457,7 +456,6 @@ impl Chunk<true> {
                 heightmaps: Cow::Owned(heightmaps),
                 blocks_and_biomes: scratch,
                 block_entities: Cow::Borrowed(&block_entities),
-                trust_edges: true,
                 sky_light_mask: Cow::Borrowed(&info.filler_sky_light_mask),
                 block_light_mask: Cow::Borrowed(&[]),
                 empty_sky_light_mask: Cow::Borrowed(&[]),

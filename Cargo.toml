@@ -4,7 +4,7 @@ exclude = ["rust-mc-bot", "tools/stresser", "tools/packet_inspector"]
 resolver = "2"
 
 [workspace.package]
-version = "0.2.0-dev+mc.1.19.4"
+version = "0.2.0-dev+mc.1.20.1"
 edition = "2021"
 repository = "https://github.com/valence-rs/valence"
 documentation = "https://docs.rs/valence/"

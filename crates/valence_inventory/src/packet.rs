@@ -395,11 +395,18 @@ pub mod synchronize_recipes {
             ingredient: Ingredient,
             result: Option<ItemStack>,
         },
-        Smithing {
+        SmithingTransform {
             recipe_id: Ident<Cow<'a, str>>,
+            template: Ingredient,
             base: Ingredient,
             addition: Ingredient,
             result: Option<ItemStack>,
+        },
+        SmithingTrim {
+            recipe_id: Ident<Cow<'a, str>>,
+            template: Ingredient,
+            base: Ingredient,
+            addition: Ingredient,
         },
     }
 
@@ -600,17 +607,31 @@ pub mod synchronize_recipes {
                     ingredient.encode(&mut w)?;
                     result.encode(w)
                 }
-                Recipe::Smithing {
+                Recipe::SmithingTransform {
                     recipe_id,
+                    template,
                     base,
                     addition,
                     result,
                 } => {
-                    "smithing".encode(&mut w)?;
+                    "smithing_transform".encode(&mut w)?;
                     recipe_id.encode(&mut w)?;
+                    template.encode(&mut w)?;
                     base.encode(&mut w)?;
                     addition.encode(&mut w)?;
-                    result.encode(w)
+                    result.encode(&mut w)
+                }
+                Recipe::SmithingTrim {
+                    recipe_id,
+                    template,
+                    base,
+                    addition,
+                } => {
+                    "smithing_trim".encode(&mut w)?;
+                    recipe_id.encode(&mut w)?;
+                    template.encode(&mut w)?;
+                    base.encode(&mut w)?;
+                    addition.encode(&mut w)
                 }
             }
         }
@@ -690,11 +711,18 @@ pub mod synchronize_recipes {
                     ingredient: Decode::decode(r)?,
                     result: Decode::decode(r)?,
                 },
-                "minecraft:smithing" => Self::Smithing {
+                "minecraft:smithing_transform" => Self::SmithingTransform {
                     recipe_id: Decode::decode(r)?,
+                    template: Decode::decode(r)?,
                     base: Decode::decode(r)?,
                     addition: Decode::decode(r)?,
                     result: Decode::decode(r)?,
+                },
+                "minecraft:smithing_trim" => Self::SmithingTrim {
+                    recipe_id: Decode::decode(r)?,
+                    template: Decode::decode(r)?,
+                    base: Decode::decode(r)?,
+                    addition: Decode::decode(r)?,
                 },
                 other => Self::CraftingSpecial {
                     kind: match other {

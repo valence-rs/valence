@@ -3,6 +3,10 @@ package rs.valence.extractor.extractors;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.mojang.datafixers.util.Pair;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.item.FoodComponent;
+import net.minecraft.item.Item;
 import net.minecraft.registry.Registries;
 import rs.valence.extractor.Main;
 
