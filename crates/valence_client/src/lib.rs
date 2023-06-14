@@ -34,7 +34,7 @@ use packet::{
     PlayerRespawnS2c, PlayerSpawnPositionS2c, PlayerSpawnS2c,
 };
 use rand::Rng;
-use tracing::{warn};
+use tracing::warn;
 use uuid::Uuid;
 use valence_biome::BiomeRegistry;
 use valence_core::block_pos::BlockPos;
@@ -647,10 +647,16 @@ pub struct IsDebug(pub bool);
 pub struct IsFlat(pub bool);
 
 /// Mask that determines which layers the client will see.
+/// Used in conjunction with [`Layer`] components.
+/// The mask is a 64-bit integer, with each bit corresponding to a layer.
+/// The first bit corresponds to layer 0, the second to layer 1, and so on.
+/// If a bit is set, the client will see the corresponding layer.
+/// Example: `0b101` will make the client see layers 0 and 2, but not layer 1.
 #[derive(Component, Debug, Clone, PartialEq, Eq, Default)]
 pub struct ClientLayerMask(pub u64);
 
 impl ClientLayerMask {
+    /// Set the visibility of the given layer.
     pub fn set(&mut self, layer: u8, enabled: bool) {
         if enabled {
             self.0 |= 1 << layer;
@@ -659,15 +665,17 @@ impl ClientLayerMask {
         }
     }
 
+    /// Toggle the visibility of the given layer.
     pub fn toggle(&mut self, layer: u8) {
         self.0 ^= 1 << layer;
     }
 
+    /// Return whether the given layer is visible.
     pub fn get(&self, layer: u8) -> bool {
         self.0 & (1 << layer) != 0
     }
 
-    /// Return a [`Vec`] of all enabled layers.
+    /// Return a [`Vec`] of all visible layers.
     pub fn get_all(&self) -> Vec<u8> {
         let mut layers = Vec::new();
         for layer in 0..64 {
@@ -679,7 +687,7 @@ impl ClientLayerMask {
     }
 
     /// Return a [`Vec`] of all remove layers.
-    pub fn get_remove(&self, old_mask: &OldClientLayerMask) -> Vec<u8> {
+    pub(crate) fn get_remove(&self, old_mask: &OldClientLayerMask) -> Vec<u8> {
         let mut layers = Vec::new();
         for layer in 0..64 {
             if !self.get(layer) && old_mask.get(layer) {
@@ -690,7 +698,7 @@ impl ClientLayerMask {
     }
 
     /// Return a [`Vec`] of all new layers
-    pub fn get_new(&self, old_mask: &OldClientLayerMask) -> Vec<u8> {
+    pub(crate) fn get_new(&self, old_mask: &OldClientLayerMask) -> Vec<u8> {
         let mut layers = Vec::new();
         for layer in 0..64 {
             if self.get(layer) && !old_mask.get(layer) {
