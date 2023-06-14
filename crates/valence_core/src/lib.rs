@@ -59,11 +59,11 @@ pub mod __private {
 extern crate self as valence_core;
 
 /// The Minecraft protocol version this library currently targets.
-pub const PROTOCOL_VERSION: i32 = 762;
+pub const PROTOCOL_VERSION: i32 = 763;
 
 /// The stringified name of the Minecraft version this library currently
 /// targets.
-pub const MINECRAFT_VERSION: &str = "1.19.4";
+pub const MINECRAFT_VERSION: &str = "1.20.1";
 
 /// Minecraft's standard ticks per second (TPS).
 pub const DEFAULT_TPS: NonZeroU32 = match NonZeroU32::new(20) {

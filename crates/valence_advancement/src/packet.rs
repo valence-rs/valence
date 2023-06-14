@@ -25,6 +25,7 @@ pub struct Advancement<'a, I> {
     pub display_data: Option<AdvancementDisplay<'a, I>>,
     pub criteria: Vec<(Ident<Cow<'a, str>>, ())>,
     pub requirements: Vec<AdvancementRequirements<'a>>,
+    pub sends_telemetry_data: bool,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Encode, Decode)]

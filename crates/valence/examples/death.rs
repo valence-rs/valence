@@ -68,7 +68,7 @@ fn squat_and_die(mut clients: Query<&mut Client>, mut events: EventReader<Sneaki
     for event in events.iter() {
         if event.state == SneakState::Start {
             if let Ok(mut client) = clients.get_mut(event.client) {
-                client.kill(None, "Squatted too hard.");
+                client.kill("Squatted too hard.");
             }
         }
     }

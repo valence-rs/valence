@@ -3,6 +3,7 @@ package rs.valence.extractor.extractors;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import net.minecraft.network.NetworkSide;
 import net.minecraft.network.NetworkState;
 import rs.valence.extractor.Main;

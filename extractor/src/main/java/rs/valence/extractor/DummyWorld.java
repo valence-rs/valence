@@ -31,7 +31,7 @@ import net.minecraft.world.entity.EntityLookup;
 import net.minecraft.world.event.GameEvent;
 import net.minecraft.world.tick.QueryableTickScheduler;
 import org.jetbrains.annotations.Nullable;
-
+import java.lang.reflect.Field;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -159,7 +159,7 @@ public class DummyWorld extends World {
 
     @Override
     public FeatureSet getEnabledFeatures() {
-        return FeatureSet.of(FeatureFlags.VANILLA, FeatureFlags.BUNDLE, FeatureFlags.UPDATE_1_20);
+        return FeatureSet.of(FeatureFlags.VANILLA, FeatureFlags.BUNDLE);
     }
 
     @Override
