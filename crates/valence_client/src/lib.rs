@@ -1080,13 +1080,13 @@ fn read_data_in_old_view(
 
             // Send entity spawn packets for entities that are in an entered layer and
             // already in the client's view.
-            for (entity_init_item, &old_pos, layer) in entities.iter() {
+            for (entity, &old_pos, layer) in entities.iter() {
                 if view.contains(old_pos.chunk_pos()) {
-                    if let (Some(client_layer_mask), Some(old_layer_mask), Some(layer)) =
+                    if let (Some(layer_mask), Some(old_layer_mask), Some(layer)) =
                         (client_layer_mask, old_client_layer_mask, layer)
                     {
-                        if client_layer_mask.get_new(old_layer_mask).contains(&layer.0) {
-                            entity_init_item.write_init_packets(old_pos.get(), &mut client.enc);
+                        if layer_mask.get_new(old_layer_mask).contains(&layer.0) {
+                            entity.write_init_packets(old_pos.get(), &mut client.enc);
                         }
                     }
                 }

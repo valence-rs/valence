@@ -241,7 +241,7 @@ fn write_update_packets_to_instances(
                     .get_mut(entity)
                     .expect("missing entity in partition cell");
 
-                let mut buf = if let Some(layer) = entity.layer {
+                let buf = if let Some(layer) = entity.layer {
                     &mut cell.layers_packet_buf[layer.0 as usize]
                 } else {
                     &mut cell.packet_buf
@@ -250,7 +250,7 @@ fn write_update_packets_to_instances(
                 let start = buf.len();
 
                 let writer =
-                    PacketWriter::new(&mut buf, server.compression_threshold(), &mut scratch_2);
+                    PacketWriter::new(buf, server.compression_threshold(), &mut scratch_2);
 
                 entity.write_update_packets(writer);
 

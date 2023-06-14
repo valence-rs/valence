@@ -403,8 +403,9 @@ pub struct PacketByteRange(pub Range<usize>);
 
 /// The layer the entity is on.  
 /// The entity will only be visible to clients on the same layer.  
-/// Used in conjunction with the [`ClientLayerMask`] component.  
-/// Example: you have `Layer(0)` on a cow, it will only be visible to clients with `ClientLayerMask` that have the first bit set to 1.
+/// Used in conjunction with the `ClientLayerMask` component.  
+/// Example: you have `Layer(0)` on a cow, it will only be visible to clients
+/// with `ClientLayerMask` that have the first bit set to 1.
 #[derive(Component, Copy, Clone, PartialEq, Eq, Debug)]
 pub struct Layer(pub u8);
 
