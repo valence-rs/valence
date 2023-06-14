@@ -24,6 +24,7 @@ import net.minecraft.registry.entry.RegistryEntryList;
 import net.minecraft.registry.SerializableRegistries;
 
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.HashMap;
 import java.util.stream.Collectors;
 

@@ -105,6 +105,7 @@ impl<'w, 's> UpdateAdvancementCachedBytesQuery<'w, 's> {
             display_data: None,
             criteria: vec![],
             requirements: vec![],
+            sends_telemetry_data: false,
         };
 
         if let Some(a_parent) = a_parent {
