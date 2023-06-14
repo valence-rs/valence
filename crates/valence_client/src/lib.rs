@@ -1127,12 +1127,13 @@ fn update_view(
             &OldPosition,
             &ViewDistance,
             &OldViewDistance,
+            Option<&ClientLayerMask>,
         ),
         Or<(Changed<Location>, Changed<Position>, Changed<ViewDistance>)>,
     >,
     instances: Query<&Instance>,
-    entities: Query<(EntityInitQuery, &Position)>,
-    entity_ids: Query<&EntityId>,
+    entities: Query<(EntityInitQuery, &Position, Option<&Layer>)>,
+    entity_ids: Query<(&EntityId, Option<&Layer>)>,
 ) {
     clients.par_iter_mut().for_each_mut(
         |(
@@ -1146,6 +1147,7 @@ fn update_view(
             old_pos,
             view_dist,
             old_view_dist,
+            client_layer_mask,
         )| {
             // TODO: cache chunk pos?
             let view = ChunkView::new(ChunkPos::from_dvec3(pos.0), view_dist.0);
@@ -1178,8 +1180,16 @@ fn update_view(
                             for &id in &cell.entities {
                                 // Skip client's own entity.
                                 if id != entity {
-                                    if let Ok(entity_id) = entity_ids.get(id) {
-                                        remove_buf.push(entity_id.get());
+                                    if let Ok((entity_id, layer)) = entity_ids.get(id) {
+                                        if let (Some(layer_mask), Some(layer)) =
+                                            (client_layer_mask, layer)
+                                        {
+                                            if layer_mask.get_all().contains(&layer.0) {
+                                                remove_buf.push(entity_id.get());
+                                            }
+                                        } else {
+                                            remove_buf.push(entity_id.get());
+                                        }
                                     }
                                 }
                             }
@@ -1207,8 +1217,17 @@ fn update_view(
                             for &id in &cell.entities {
                                 // Skip client's own entity.
                                 if id != entity {
-                                    if let Ok((entity, pos)) = entities.get(id) {
-                                        entity.write_init_packets(pos.get(), &mut client.enc);
+                                    if let Ok((entity, pos, layer)) = entities.get(id) {
+                                        if let (Some(layer_mask), Some(layer)) =
+                                            (client_layer_mask, layer)
+                                        {
+                                            if layer_mask.get_all().contains(&layer.0) {
+                                                entity
+                                                    .write_init_packets(pos.get(), &mut client.enc);
+                                            }
+                                        } else {
+                                            entity.write_init_packets(pos.get(), &mut client.enc);
+                                        }
                                     }
                                 }
                             }
@@ -1233,8 +1252,16 @@ fn update_view(
 
                             // Unload all the entities in the cell.
                             for &id in &cell.entities {
-                                if let Ok(entity_id) = entity_ids.get(id) {
-                                    remove_buf.push(entity_id.get());
+                                if let Ok((entity_id, layer)) = entity_ids.get(id) {
+                                    if let (Some(layer_mask), Some(layer)) =
+                                        (client_layer_mask, layer)
+                                    {
+                                        if layer_mask.get_all().contains(&layer.0) {
+                                            remove_buf.push(entity_id.get());
+                                        }
+                                    } else {
+                                        remove_buf.push(entity_id.get());
+                                    }
                                 }
                             }
                         }
@@ -1256,8 +1283,16 @@ fn update_view(
 
                             // Load all the entities in this cell.
                             for &id in &cell.entities {
-                                if let Ok((entity, pos)) = entities.get(id) {
-                                    entity.write_init_packets(pos.get(), &mut client.enc);
+                                if let Ok((entity, pos, layer)) = entities.get(id) {
+                                    if let (Some(layer_mask), Some(layer)) =
+                                        (client_layer_mask, layer)
+                                    {
+                                        if layer_mask.get_all().contains(&layer.0) {
+                                            entity.write_init_packets(pos.get(), &mut client.enc);
+                                        }
+                                    } else {
+                                        entity.write_init_packets(pos.get(), &mut client.enc);
+                                    }
                                 }
                             }
                         }
