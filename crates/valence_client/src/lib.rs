@@ -107,8 +107,10 @@ pub struct FlushPacketsSet;
 
 pub struct SpawnClientsSet;
 
+/// The system set where various facets of the client are updated. Systems that
+/// modify chunks should run _before_ this.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
-struct UpdateClientsSet;
+pub struct UpdateClientsSet;
 
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {

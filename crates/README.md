@@ -10,7 +10,7 @@ Ignoring transitive dependencies and `valence_core`, the dependency graph can be
 
 ```mermaid
 graph TD
-  network --> client
+  	network --> client
 	client --> instance
 	biome --> registry
 	dimension --> registry
@@ -19,7 +19,7 @@ graph TD
 	instance --> entity
 	player_list --> client
 	inventory --> client
-	anvil --> instance
+	anvil --> client
 	entity --> block
 	advancement --> client
 ```
