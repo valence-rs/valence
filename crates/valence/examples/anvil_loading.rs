@@ -107,6 +107,7 @@ fn handle_chunk_loads(
     }
 }
 
+// Display the number of loaded chunks in the action bar of all clients.
 fn display_loaded_chunk_count(mut instances: Query<&mut Instance>, mut last_count: Local<usize>) {
     let mut inst = instances.single_mut();
 

@@ -90,9 +90,9 @@ impl AnvilLevel {
     }
 
     /// Forces a chunk to be loaded at a specific position in this world. This
-    /// will bypass [`AnvilWorld::ignored_chunks`].
+    /// will bypass [`AnvilLevel::ignored_chunks`].
     /// Note that the chunk will be unloaded next tick unless it has been added
-    /// to [`AnvilWorld::ignored_chunks`] or it is in view of a client.
+    /// to [`AnvilLevel::ignored_chunks`] or it is in view of a client.
     ///
     /// This has no effect if a chunk at the position is already present.
     pub fn force_chunk_load(&mut self, pos: ChunkPos) {
