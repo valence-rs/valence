@@ -18,7 +18,7 @@
 //! ## Modify world border diameter
 //! World border diameter can be changed using [`SetWorldBorderSizeEvent`].
 //! Setting duration to 0 will move the border to `new_diameter` immediately,
-//! otherwise it will interpolate to `new_diameter` over `duration` time.
+//! otherwise, it will interpolate to `new_diameter` over `duration` time.
 //! ```
 //! fn change_diameter(
 //!     event_writer: EventWriter<SetWorldBorderSizeEvent>,
@@ -38,15 +38,32 @@
 //!
 //! ## Querying world border diameter
 //! World border diameter can be read by querying
-//! [`WorldBorderDiameter::diameter()`]. Note: If you want to modify the
+//! [`WorldBorderDiameter::get()`]. Note: If you want to modify the
 //! diameter size, do not modify the value directly! Use
 //! [`SetWorldBorderSizeEvent`] instead.
 //!
 //! ## Access other world border properties.
-//! Access to the rest of the world border properties is fairly straight forward
+//! Access to the rest of the world border properties is fairly straightforward
 //! by querying their respective component. [`WorldBorderBundle`] contains
-//! references for all properties of world border and their respective component
+//! references for all properties of the world border and their respective component
 #![allow(clippy::type_complexity)]
+#![deny(
+    rustdoc::broken_intra_doc_links,
+    rustdoc::private_intra_doc_links,
+    rustdoc::missing_crate_level_docs,
+    rustdoc::invalid_codeblock_attributes,
+    rustdoc::invalid_rust_codeblocks,
+    rustdoc::bare_urls,
+    rustdoc::invalid_html_tags
+)]
+#![warn(
+    trivial_casts,
+    trivial_numeric_casts,
+    unused_lifetimes,
+    unused_import_braces,
+    unreachable_pub,
+    clippy::dbg_macro
+)]
 
 pub mod packet;
 
@@ -157,7 +174,7 @@ pub struct WorldBorderWarnBlocks(pub i32);
 pub struct WorldBorderPortalTpBoundary(pub i32);
 
 /// The world border diameter can be read by calling
-/// [`WorldBorderDiameter::diameter()`]. If you want to modify the diameter
+/// [`WorldBorderDiameter::get()`]. If you want to modify the diameter
 /// size, do not modify the value directly! Use [`SetWorldBorderSizeEvent`]
 /// instead.
 #[derive(Component)]
