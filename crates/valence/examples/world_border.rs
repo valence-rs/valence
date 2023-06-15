@@ -1,11 +1,12 @@
 use std::time::Duration;
 
 use bevy_app::App;
-use valence::client::chat::ChatMessageEvent;
 use valence::client::despawn_disconnected_clients;
+use valence::client::message::ChatMessageEvent;
 use valence::inventory::HeldItem;
 use valence::prelude::*;
 use valence::world_border::*;
+use valence_client::message::SendMessage;
 
 const SPAWN_Y: i32 = 64;
 
@@ -66,7 +67,7 @@ fn init_clients(
         pos.set([0.5, SPAWN_Y as f64 + 1.0, 0.5]);
         let pickaxe = Some(ItemStack::new(ItemKind::WoodenPickaxe, 1, None));
         inv.set_slot(main_slot.slot(), pickaxe);
-        client.send_message("Break block to increase border size!");
+        client.send_chat_message("Break block to increase border size!");
     }
 }
 

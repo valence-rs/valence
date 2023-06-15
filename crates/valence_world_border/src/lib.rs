@@ -45,7 +45,8 @@
 //! ## Access other world border properties.
 //! Access to the rest of the world border properties is fairly straightforward
 //! by querying their respective component. [`WorldBorderBundle`] contains
-//! references for all properties of the world border and their respective component
+//! references for all properties of the world border and their respective
+//! component
 #![allow(clippy::type_complexity)]
 #![deny(
     rustdoc::broken_intra_doc_links,
