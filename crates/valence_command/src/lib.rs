@@ -3,6 +3,7 @@
 pub mod block;
 pub mod cenum;
 pub mod entity;
+pub mod item;
 pub mod json;
 pub mod parse_util;
 pub mod parser;

@@ -183,6 +183,34 @@ pub trait Parse<'a>: 'a + Sized {
     ) -> ParsingResult<Self, Self::Suggestions, Self::Error>;
 }
 
+// pub trait ParsingSuggestions2<'a> {
+//     type Param: ReadOnlySystemParam;
+
+//     fn build(self, param: &Self::Param) -> Cow<'a, [Suggestion<'a>]>;
+// }
+
+// pub trait Argument<'a> {
+//     type Value: 'a;
+
+//     type Error: ParsingBuild<ParsingError> + 'a;
+
+//     type Suggestions: ParsingSuggestions2<'a> + Default + 'a;
+
+//     fn parse(
+//         &self,
+//         reader: &mut StrReader<'a>,
+//         suggestion: &mut Self::Suggestions,
+//     ) -> Result<Self::Value, Self::Error>;
+
+//     fn suggestion(
+//         &self,
+//         reader: &mut StrReader<'a>,
+//         suggestion: &mut Self::Suggestions,
+//     ) -> Result<(), Self::Error> {
+//         self.parse(reader, suggestion).map(|_| ())
+//     }
+// }
+
 impl<'a> ParsingBuild<ParsingSuggestions<'a>> for () {
     fn build(self) -> ParsingSuggestions<'a> {
         Cow::Borrowed(&[])

@@ -1,5 +1,3 @@
-//! Some things related to parsing that don't implement [`Parse`]
-
 use crate::p_try;
 use crate::parser::ParsingResult;
 use crate::reader::StrReader;
