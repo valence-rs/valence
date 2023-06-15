@@ -36,7 +36,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         .iter()
         .map(|item| {
             let id = &item.id;
-            let name = ident(item.name.to_pascal_case());
+            let name = ident(item.name.replace('.', "_").to_pascal_case());
 
             quote! {
                 #id => Some(Self::#name),
@@ -48,7 +48,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         .iter()
         .map(|item| {
             let id = &item.id;
-            let name = ident(item.name.to_pascal_case());
+            let name = ident(item.name.replace('.', "_").to_pascal_case());
 
             quote! {
                 Self::#name => #id,
@@ -60,7 +60,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         .iter()
         .map(|item| {
             let str_name = &item.name;
-            let name = ident(str_name.to_pascal_case());
+            let name = ident(str_name.replace('.', "_").to_pascal_case());
             quote! {
                 #str_name => Some(Self::#name),
             }
@@ -71,7 +71,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         .iter()
         .map(|item| {
             let str_name = &item.name;
-            let name = ident(str_name.to_pascal_case());
+            let name = ident(str_name.replace('.', "_").to_pascal_case());
             quote! {
                 Self::#name => #str_name,
             }
@@ -81,7 +81,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
     let item_kind_to_translation_key_arms = items
         .iter()
         .map(|item| {
-            let name = ident(item.name.to_pascal_case());
+            let name = ident(item.name.replace('.', "_").to_pascal_case());
             let translation_key = &item.translation_key;
             quote! {
                 Self::#name => #translation_key,
@@ -91,13 +91,13 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
     let item_kind_variants = items
         .iter()
-        .map(|item| ident(item.name.to_pascal_case()))
+        .map(|item| ident(item.name.replace('.', "_").to_pascal_case()))
         .collect::<Vec<_>>();
 
     let item_kind_to_max_stack_arms = items
         .iter()
         .map(|item| {
-            let name = ident(item.name.to_pascal_case());
+            let name = ident(item.name.replace('.', "_").to_pascal_case());
             let max_stack = item.max_stack;
 
             quote! {
@@ -110,7 +110,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         .iter()
         .map(|item| match &item.food {
             Some(food_component) => {
-                let name = ident(item.name.to_pascal_case());
+                let name = ident(item.name.replace('.', "_").to_pascal_case());
                 let hunger = food_component.hunger;
                 let saturation = food_component.saturation;
                 let always_edible = food_component.always_edible;
@@ -136,7 +136,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         .iter()
         .filter(|item| item.max_durability != 0)
         .map(|item| {
-            let name = ident(item.name.to_pascal_case());
+            let name = ident(item.name.replace('.', "_").to_pascal_case());
             let max_durability = item.max_durability;
 
             quote! {
@@ -149,7 +149,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         .iter()
         .filter(|item| item.enchantability != 0)
         .map(|item| {
-            let name = ident(item.name.to_pascal_case());
+            let name = ident(item.name.replace('.', "_").to_pascal_case());
             let ench = item.enchantability;
 
             quote! {
@@ -162,7 +162,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         .iter()
         .filter(|item| item.fireproof)
         .map(|item| {
-            let name = ident(item.name.to_pascal_case());
+            let name = ident(item.name.replace('.', "_").to_pascal_case());
 
             quote! {
                 Self::#name => true,

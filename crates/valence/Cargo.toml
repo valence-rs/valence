@@ -11,11 +11,13 @@ keywords = ["minecraft", "gamedev", "server", "ecs"]
 categories = ["game-engines"]
 
 [features]
-default = ["network", "player_list", "inventory", "anvil"]
+default = ["network", "player_list", "inventory", "anvil", "advancement", "world_border"]
 network = ["dep:valence_network"]
 player_list = ["dep:valence_player_list"]
 inventory = ["dep:valence_inventory"]
 anvil = ["dep:valence_anvil"]
+advancement = ["dep:valence_advancement"]
+world_border = ["dep:valence_world_border"]
 
 [dependencies]
 bevy_app.workspace = true
@@ -35,6 +37,9 @@ valence_network = { workspace = true, optional = true }
 valence_player_list = { workspace = true, optional = true }
 valence_inventory = { workspace = true, optional = true }
 valence_anvil = { workspace = true, optional = true }
+valence_advancement = { workspace = true, optional = true }
+valence_world_border = { workspace = true, optional = true }
+
 
 [dev-dependencies]
 anyhow.workspace = true

@@ -4,8 +4,11 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+bevy_app.workspace = true
+bevy_ecs.workspace = true
+indexmap.workspace = true
+serde_json.workspace = true
+serde.workspace = true
 tracing.workspace = true
 valence_core.workspace = true
 valence_nbt.workspace = true
-bevy_ecs.workspace = true
-bevy_app.workspace = true

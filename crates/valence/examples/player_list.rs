@@ -3,6 +3,7 @@
 use rand::Rng;
 use valence::player_list::{DisplayName, PlayerListEntryBundle};
 use valence::prelude::*;
+use valence_client::message::SendMessage;
 use valence_client::Ping;
 
 const SPAWN_Y: i32 = 64;
@@ -27,8 +28,8 @@ fn main() {
 fn setup(
     mut commands: Commands,
     server: Res<Server>,
-    dimensions: Query<&DimensionType>,
-    biomes: Query<&Biome>,
+    dimensions: Res<DimensionTypeRegistry>,
+    biomes: Res<BiomeRegistry>,
 ) {
     let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
@@ -62,7 +63,7 @@ fn init_clients(
         loc.0 = instances.single();
         *game_mode = GameMode::Creative;
 
-        client.send_message(
+        client.send_chat_message(
             "Please open your player list (tab key)."
                 .italic()
                 .color(Color::WHITE),

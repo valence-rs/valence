@@ -28,11 +28,11 @@ pub mod game_mode;
 pub mod hand;
 pub mod ident;
 pub mod item;
-pub mod packet;
+pub mod particle;
 pub mod player_textures;
 pub mod property;
+pub mod protocol;
 pub mod scratch;
-pub mod sound;
 pub mod text;
 pub mod translation_key;
 pub mod uuid;
@@ -51,19 +51,19 @@ use crate::despawn::despawn_marked_entities;
 pub mod __private {
     pub use anyhow::{anyhow, bail, ensure, Context, Result};
 
-    pub use crate::packet::var_int::VarInt;
-    pub use crate::packet::{Decode, Encode, Packet};
+    pub use crate::protocol::var_int::VarInt;
+    pub use crate::protocol::{Decode, Encode, Packet};
 }
 
 // Needed to make proc macros work.
 extern crate self as valence_core;
 
 /// The Minecraft protocol version this library currently targets.
-pub const PROTOCOL_VERSION: i32 = 762;
+pub const PROTOCOL_VERSION: i32 = 763;
 
 /// The stringified name of the Minecraft version this library currently
 /// targets.
-pub const MINECRAFT_VERSION: &str = "1.19.4";
+pub const MINECRAFT_VERSION: &str = "1.20.1";
 
 /// Minecraft's standard ticks per second (TPS).
 pub const DEFAULT_TPS: NonZeroU32 = match NonZeroU32::new(20) {
@@ -142,7 +142,7 @@ impl Default for CoreSettings {
 }
 
 /// Contains global server state accessible as a [`Resource`].
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct Server {
     /// Incremented on every tick.
     current_tick: i64,

@@ -4,8 +4,10 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+anyhow.workspace = true
 bevy_app.workspace = true
 bevy_ecs.workspace = true
+bitfield-struct.workspace = true
 valence_core.workspace = true
 valence_client.workspace = true
 valence_instance.workspace = true

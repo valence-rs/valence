@@ -5,9 +5,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use rand::seq::SliceRandom;
 use rand::Rng;
-use valence::packet::s2c::play::TitleFadeS2c;
 use valence::prelude::*;
-use valence::sound::{Sound, SoundCategory};
+use valence::protocol::packet::sound::{Sound, SoundCategory};
+use valence_client::message::SendMessage;
 
 const START_POS: BlockPos = BlockPos::new(0, 100, 0);
 const VIEW_DIST: u8 = 10;
@@ -58,8 +58,8 @@ fn init_clients(
         Added<Client>,
     >,
     server: Res<Server>,
-    dimensions: Query<&DimensionType>,
-    biomes: Query<&Biome>,
+    dimensions: Res<DimensionTypeRegistry>,
+    biomes: Res<BiomeRegistry>,
     mut commands: Commands,
 ) {
     for (entity, mut client, mut loc, mut is_flat, mut game_mode) in clients.iter_mut() {
@@ -67,7 +67,7 @@ fn init_clients(
         is_flat.0 = true;
         *game_mode = GameMode::Adventure;
 
-        client.send_message("Welcome to epic infinite parkour game!".italic());
+        client.send_chat_message("Welcome to epic infinite parkour game!".italic());
 
         let state = GameState {
             blocks: VecDeque::new(),
@@ -97,7 +97,7 @@ fn reset_clients(
 
         if out_of_bounds || state.is_added() {
             if out_of_bounds && !state.is_added() {
-                client.send_message(
+                client.send_chat_message(
                     "Your score was ".italic()
                         + state
                             .score
@@ -179,15 +179,8 @@ fn manage_blocks(mut clients: Query<(&mut Client, &Position, &mut GameState, &mu
                     pitch,
                 );
 
-                client.set_title(
-                    "",
-                    state.score.to_string().color(Color::LIGHT_PURPLE).bold(),
-                    TitleFadeS2c {
-                        fade_in: 0,
-                        stay: 7,
-                        fade_out: 4,
-                    },
-                );
+                client.set_title("");
+                client.set_subtitle(state.score.to_string().color(Color::LIGHT_PURPLE).bold());
             }
         }
     }

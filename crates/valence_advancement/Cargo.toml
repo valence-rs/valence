@@ -1,0 +1,13 @@
+[package]
+name = "valence_advancement"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+valence_core.workspace = true
+valence_client.workspace = true
+bevy_app.workspace = true
+bevy_ecs.workspace = true
+bevy_hierarchy.workspace = true
+rustc-hash.workspace = true
+anyhow.workspace = true

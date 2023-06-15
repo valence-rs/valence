@@ -1,7 +1,7 @@
 use glam::DVec3;
 
 use crate::block_pos::BlockPos;
-use crate::packet::{Decode, Encode};
+use crate::protocol::{Decode, Encode};
 
 /// The X and Z position of a chunk.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash, Debug, Encode, Decode)]

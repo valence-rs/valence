@@ -29,6 +29,10 @@ use bevy_ecs::query::WorldQuery;
 use bevy_ecs::system::Command;
 use bytes::{Bytes, BytesMut};
 use glam::{DVec3, Vec3};
+use packet::{
+    DeathMessageS2c, DisconnectS2c, GameEventKind, GameJoinS2c, GameStateChangeS2c,
+    PlayerRespawnS2c, PlayerSpawnPositionS2c, PlayerSpawnS2c,
+};
 use rand::Rng;
 use tracing::warn;
 use uuid::Uuid;
@@ -38,45 +42,53 @@ use valence_core::chunk_pos::{ChunkPos, ChunkView};
 use valence_core::despawn::Despawned;
 use valence_core::game_mode::GameMode;
 use valence_core::ident::Ident;
-use valence_core::packet::byte_angle::ByteAngle;
-use valence_core::packet::encode::{PacketEncoder, WritePacket};
-use valence_core::packet::global_pos::GlobalPos;
-use valence_core::packet::s2c::play::game_state_change::GameEventKind;
-use valence_core::packet::s2c::play::particle::Particle;
-use valence_core::packet::s2c::play::player_position_look::Flags as PlayerPositionLookFlags;
-use valence_core::packet::s2c::play::{
-    ChunkLoadDistanceS2c, ChunkRenderDistanceCenterS2c, CustomPayloadS2c, DeathMessageS2c,
-    DisconnectS2c, EntitiesDestroyS2c, EntitySetHeadYawS2c, EntitySpawnS2c, EntityStatusS2c,
-    EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, ExperienceOrbSpawnS2c, GameJoinS2c,
-    GameMessageS2c, GameStateChangeS2c, KeepAliveS2c, OverlayMessageS2c, ParticleS2c, PlaySoundS2c,
-    PlayerActionResponseS2c, PlayerPositionLookS2c, PlayerRespawnS2c, PlayerSpawnPositionS2c,
-    PlayerSpawnS2c, ResourcePackSendS2c, SubtitleS2c, TitleFadeS2c, TitleS2c, UnloadChunkS2c,
-};
-use valence_core::packet::var_int::VarInt;
-use valence_core::packet::Packet;
+use valence_core::particle::{Particle, ParticleS2c};
 use valence_core::property::Property;
+use valence_core::protocol::byte_angle::ByteAngle;
+use valence_core::protocol::encode::{PacketEncoder, WritePacket};
+use valence_core::protocol::global_pos::GlobalPos;
+use valence_core::protocol::packet::sound::{PlaySoundS2c, Sound, SoundCategory};
+use valence_core::protocol::var_int::VarInt;
+use valence_core::protocol::{Encode, Packet};
 use valence_core::scratch::ScratchBuf;
-use valence_core::sound::{Sound, SoundCategory};
 use valence_core::text::Text;
 use valence_core::uuid::UniqueId;
 use valence_core::Server;
+use valence_entity::packet::{
+    EntitiesDestroyS2c, EntitySetHeadYawS2c, EntitySpawnS2c, EntityStatusS2c,
+    EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, ExperienceOrbSpawnS2c,
+};
 use valence_entity::player::PlayerEntityBundle;
 use valence_entity::{
     ClearEntityChangesSet, EntityId, EntityKind, EntityStatus, HeadYaw, Location, Look, ObjectData,
     OldLocation, OldPosition, OnGround, PacketByteRange, Position, TrackedData, Velocity,
 };
+use valence_instance::packet::{
+    ChunkLoadDistanceS2c, ChunkRenderDistanceCenterS2c, UnloadChunkS2c,
+};
 use valence_instance::{ClearInstanceChangesSet, Instance, WriteUpdatePacketsToInstancesSet};
-use valence_registry::{RegistryCodec, RegistryCodecSet};
+use valence_registry::codec::RegistryCodec;
+use valence_registry::tags::TagsRegistry;
+use valence_registry::RegistrySet;
 
 pub mod action;
 pub mod command;
+pub mod custom_payload;
 pub mod event_loop;
+pub mod hand_swing;
+pub mod interact_block;
 pub mod interact_entity;
+pub mod interact_item;
 pub mod keepalive;
-pub mod misc;
+pub mod message;
 pub mod movement;
+pub mod op_level;
+pub mod packet;
+pub mod resource_pack;
 pub mod settings;
+pub mod status;
 pub mod teleport;
+pub mod title;
 pub mod weather;
 
 pub struct ClientPlugin;
@@ -95,14 +107,16 @@ pub struct FlushPacketsSet;
 
 pub struct SpawnClientsSet;
 
+/// The system set where various facets of the client are updated. Systems that
+/// modify chunks should run _before_ this.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
-struct UpdateClientsSet;
+pub struct UpdateClientsSet;
 
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             (
-                initial_join.after(RegistryCodecSet),
+                initial_join.after(RegistrySet),
                 update_chunk_load_dist,
                 read_data_in_old_view
                     .after(WriteUpdatePacketsToInstancesSet)
@@ -115,7 +129,6 @@ impl Plugin for ClientPlugin {
                 update_game_mode,
                 update_tracked_data.after(WriteUpdatePacketsToInstancesSet),
                 init_tracked_data.after(WriteUpdatePacketsToInstancesSet),
-                update_op_level,
             )
                 .in_set(UpdateClientsSet),
         )
@@ -136,10 +149,17 @@ impl Plugin for ClientPlugin {
         keepalive::build(app);
         interact_entity::build(app);
         settings::build(app);
-        misc::build(app);
         action::build(app);
         teleport::build(app);
         weather::build(app);
+        message::build(app);
+        custom_payload::build(app);
+        hand_swing::build(app);
+        interact_block::build(app);
+        interact_item::build(app);
+        op_level::build(app);
+        resource_pack::build(app);
+        status::build(app);
     }
 }
 
@@ -156,7 +176,7 @@ pub struct ClientBundle {
     pub properties: Properties,
     pub respawn_pos: RespawnPosition,
     pub game_mode: GameMode,
-    pub op_level: OpLevel,
+    pub op_level: op_level::OpLevel,
     pub action_sequence: action::ActionSequence,
     pub view_distance: ViewDistance,
     pub old_view_distance: OldViewDistance,
@@ -189,7 +209,7 @@ impl ClientBundle {
             properties: Properties(args.properties),
             respawn_pos: RespawnPosition::default(),
             game_mode: GameMode::default(),
-            op_level: OpLevel::default(),
+            op_level: op_level::OpLevel::default(),
             action_sequence: action::ActionSequence::default(),
             view_distance: ViewDistance::default(),
             old_view_distance: OldViewDistance(2),
@@ -261,7 +281,7 @@ pub struct ReceivedPacket {
     /// This packet's ID.
     pub id: i32,
     /// The content of the packet, excluding the leading varint packet ID.
-    pub data: Bytes,
+    pub body: Bytes,
 }
 
 impl Drop for Client {
@@ -273,7 +293,10 @@ impl Drop for Client {
 /// Writes packets into this client's packet buffer. The buffer is flushed at
 /// the end of the tick.
 impl WritePacket for Client {
-    fn write_packet<'a>(&mut self, packet: &impl Packet<'a>) {
+    fn write_packet<P>(&mut self, packet: &P)
+    where
+        P: Packet + Encode,
+    {
         self.enc.write_packet(packet)
     }
 
@@ -307,28 +330,11 @@ impl Client {
         }
     }
 
-    /// Sends a system message to the player which is visible in the chat. The
-    /// message is only visible to this client.
-    pub fn send_message(&mut self, msg: impl Into<Text>) {
-        self.write_packet(&GameMessageS2c {
-            chat: msg.into().into(),
-            overlay: false,
-        });
-    }
-
-    pub fn send_custom_payload(&mut self, channel: Ident<&str>, data: &[u8]) {
-        self.write_packet(&CustomPayloadS2c {
-            channel: channel.into(),
-            data: data.into(),
-        });
-    }
-
     /// Kills the client and shows `message` on the death screen. If an entity
     /// killed the player, you should supply it as `killer`.
-    pub fn kill(&mut self, killer: Option<EntityId>, message: impl Into<Text>) {
+    pub fn kill(&mut self, message: impl Into<Text>) {
         self.write_packet(&DeathMessageS2c {
             player_id: VarInt(0),
-            entity_id: killer.map(|id| id.get()).unwrap_or(-1),
             message: message.into().into(),
         });
     }
@@ -338,69 +344,6 @@ impl Client {
         self.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::WinGame,
             value: if show_credits { 1.0 } else { 0.0 },
-        });
-    }
-
-    /// Requests that the client download and enable a resource pack.
-    ///
-    /// # Arguments
-    /// * `url` - The URL of the resource pack file.
-    /// * `hash` - The SHA-1 hash of the resource pack file. Any value other
-    ///   than a 40-character hexadecimal string is ignored by the client.
-    /// * `forced` - Whether a client should be kicked from the server upon
-    ///   declining the pack (this is enforced client-side)
-    /// * `prompt_message` - A message to be displayed with the resource pack
-    ///   dialog.
-    pub fn set_resource_pack(
-        &mut self,
-        url: &str,
-        hash: &str,
-        forced: bool,
-        prompt_message: Option<Text>,
-    ) {
-        self.write_packet(&ResourcePackSendS2c {
-            url,
-            hash,
-            forced,
-            prompt_message: prompt_message.map(|t| t.into()),
-        });
-    }
-
-    /// Sets the title this client sees.
-    ///
-    /// A title is a large piece of text displayed in the center of the screen
-    /// which may also include a subtitle underneath it. The title can be
-    /// configured to fade in and out using the [`TitleFadeS2c`]
-    /// struct.
-    pub fn set_title(
-        &mut self,
-        title: impl Into<Text>,
-        subtitle: impl Into<Text>,
-        animation: impl Into<Option<TitleFadeS2c>>,
-    ) {
-        let title = title.into().into();
-        let subtitle = subtitle.into();
-
-        self.write_packet(&TitleS2c { title_text: title });
-
-        if !subtitle.is_empty() {
-            self.write_packet(&SubtitleS2c {
-                subtitle_text: subtitle.into(),
-            });
-        }
-
-        if let Some(anim) = animation.into() {
-            self.write_packet(&anim);
-        }
-    }
-
-    /// Sets the action bar for this client.
-    ///
-    /// The action bar is a small piece of text displayed at the bottom of the
-    /// screen, above the hotbar.
-    pub fn set_action_bar(&mut self, text: impl Into<Text>) {
-        self.write_packet(&OverlayMessageS2c {
-            action_bar_text: text.into().into(),
         });
     }
 
@@ -600,20 +543,6 @@ pub struct RespawnPosition {
     pub yaw: f32,
 }
 
-#[derive(Component, Clone, PartialEq, Eq, Default, Debug)]
-pub struct OpLevel(u8);
-
-impl OpLevel {
-    pub fn get(&self) -> u8 {
-        self.0
-    }
-
-    /// Sets the op level. Value is clamped to `0..=3`.
-    pub fn set(&mut self, lvl: u8) {
-        self.0 = lvl.min(3);
-    }
-}
-
 #[derive(Component, Clone, PartialEq, Eq, Debug)]
 pub struct ViewDistance(u8);
 
@@ -759,6 +688,7 @@ struct ClientJoinQuery {
 
 fn initial_join(
     codec: Res<RegistryCodec>,
+    tags: Res<TagsRegistry>,
     mut clients: Query<ClientJoinQuery, Added<Client>>,
     instances: Query<&Instance>,
     mut commands: Commands,
@@ -803,7 +733,10 @@ fn initial_join(
             is_debug: q.is_debug.0,
             is_flat: q.is_flat.0,
             last_death_location,
+            portal_cooldown: VarInt(0), // TODO.
         });
+
+        q.client.enc.append_bytes(tags.sync_tags_packet());
 
         /*
         // TODO: enable all the features?
@@ -861,6 +794,7 @@ fn respawn(
             is_flat: is_flat.0,
             copy_metadata: true,
             last_death_location,
+            portal_cooldown: VarInt(0), // TODO
         });
     }
 }
@@ -1273,14 +1207,5 @@ fn update_tracked_data(mut clients: Query<(&mut Client, &TrackedData)>) {
                 metadata: update_data.into(),
             });
         }
-    }
-}
-
-fn update_op_level(mut clients: Query<(&mut Client, &OpLevel), Changed<OpLevel>>) {
-    for (mut client, lvl) in &mut clients {
-        client.write_packet(&EntityStatusS2c {
-            entity_id: 0,
-            entity_status: 24 + lvl.0,
-        });
     }
 }

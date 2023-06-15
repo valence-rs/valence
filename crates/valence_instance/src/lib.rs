@@ -31,26 +31,25 @@ pub use chunk_entry::*;
 use glam::{DVec3, Vec3};
 use num_integer::div_ceil;
 use rustc_hash::FxHashMap;
-use valence_biome::Biome;
+use valence_biome::BiomeRegistry;
 use valence_core::block_pos::BlockPos;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::despawn::Despawned;
 use valence_core::ident::Ident;
-use valence_core::packet::array::LengthPrefixedArray;
-use valence_core::packet::byte_angle::ByteAngle;
-use valence_core::packet::encode::{PacketWriter, WritePacket};
-use valence_core::packet::s2c::play::particle::Particle;
-use valence_core::packet::s2c::play::{
-    EntityAnimationS2c, EntityPositionS2c, EntitySetHeadYawS2c, EntityStatusS2c,
-    EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, MoveRelative, OverlayMessageS2c, ParticleS2c,
-    PlaySoundS2c, Rotate, RotateAndMoveRelative,
-};
-use valence_core::packet::var_int::VarInt;
-use valence_core::packet::Packet;
-use valence_core::sound::{Sound, SoundCategory};
-use valence_core::text::Text;
+use valence_core::particle::{Particle, ParticleS2c};
+use valence_core::protocol::array::LengthPrefixedArray;
+use valence_core::protocol::byte_angle::ByteAngle;
+use valence_core::protocol::encode::{PacketWriter, WritePacket};
+use valence_core::protocol::packet::sound::{PlaySoundS2c, Sound, SoundCategory};
+use valence_core::protocol::var_int::VarInt;
+use valence_core::protocol::{Encode, Packet};
 use valence_core::Server;
-use valence_dimension::DimensionType;
+use valence_dimension::DimensionTypeRegistry;
+use valence_entity::packet::{
+    EntityAnimationS2c, EntityPositionS2c, EntitySetHeadYawS2c, EntityStatusS2c,
+    EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, MoveRelativeS2c, RotateAndMoveRelativeS2c,
+    RotateS2c,
+};
 use valence_entity::{
     EntityAnimations, EntityId, EntityKind, EntityStatuses, HeadYaw, InitEntitiesSet, Location,
     Look, OldLocation, OldPosition, OnGround, PacketByteRange, Position, TrackedData,
@@ -59,12 +58,14 @@ use valence_entity::{
 
 mod chunk;
 mod chunk_entry;
+pub mod packet;
 mod paletted_container;
 
 pub struct InstancePlugin;
 
 /// When Minecraft entity changes are written to the packet buffers of chunks.
-/// Systems that read from the packet buffer of chunks should run _after_ this.
+/// Systems that modify entites should run _before_ this. Systems that read from
+/// the packet buffer of chunks should run _after_ this.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct WriteUpdatePacketsToInstancesSet;
 
@@ -286,7 +287,7 @@ impl UpdateEntityQueryItem<'_> {
         let changed_position = self.pos.0 != self.old_pos.get();
 
         if changed_position && !needs_teleport && self.look.is_changed() {
-            writer.write_packet(&RotateAndMoveRelative {
+            writer.write_packet(&RotateAndMoveRelativeS2c {
                 entity_id,
                 delta: (position_delta * 4096.0).to_array().map(|v| v as i16),
                 yaw: ByteAngle::from_degrees(self.look.yaw),
@@ -295,7 +296,7 @@ impl UpdateEntityQueryItem<'_> {
             });
         } else {
             if changed_position && !needs_teleport {
-                writer.write_packet(&MoveRelative {
+                writer.write_packet(&MoveRelativeS2c {
                     entity_id,
                     delta: (position_delta * 4096.0).to_array().map(|v| v as i16),
                     on_ground: self.on_ground.0,
@@ -303,7 +304,7 @@ impl UpdateEntityQueryItem<'_> {
             }
 
             if self.look.is_changed() {
-                writer.write_packet(&Rotate {
+                writer.write_packet(&RotateS2c {
                     entity_id,
                     yaw: ByteAngle::from_degrees(self.look.yaw),
                     pitch: ByteAngle::from_degrees(self.look.pitch),
@@ -432,40 +433,33 @@ pub struct InstanceInfo {
 #[derive(Debug)]
 pub struct PartitionCell {
     /// The chunk in this cell.
-    #[doc(hidden)]
     pub chunk: Option<Chunk<true>>,
     /// If `chunk` went from `Some` to `None` this tick.
-    #[doc(hidden)]
     pub chunk_removed: bool,
     /// Minecraft entities in this cell.
-    #[doc(hidden)]
     pub entities: BTreeSet<Entity>,
     /// Minecraft entities that have entered the chunk this tick, paired with
     /// the cell position in this instance they came from.
-    #[doc(hidden)]
     pub incoming: Vec<(Entity, Option<ChunkPos>)>,
     /// Minecraft entities that have left the chunk this tick, paired with the
     /// cell position in this world they arrived at.
-    #[doc(hidden)]
     pub outgoing: Vec<(Entity, Option<ChunkPos>)>,
     /// A cache of packets to send to all clients that are in view of this cell
     /// at the end of the tick.
-    #[doc(hidden)]
     pub packet_buf: Vec<u8>,
 }
 
 impl Instance {
+    #[track_caller]
     pub fn new(
         dimension_type_name: impl Into<Ident<String>>,
-        dimensions: &Query<&DimensionType>,
-        biomes: &Query<&Biome>,
+        dimensions: &DimensionTypeRegistry,
+        biomes: &BiomeRegistry,
         server: &Server,
     ) -> Self {
         let dimension_type_name = dimension_type_name.into();
 
-        let Some(dim) = dimensions.iter().find(|d| d.name == dimension_type_name) else {
-            panic!("missing dimension type with name \"{dimension_type_name}\"")
-        };
+        let dim = &dimensions[dimension_type_name.as_str_ident()];
 
         assert!(dim.height > 0, "invalid dimension height of {}", dim.height);
 
@@ -491,28 +485,6 @@ impl Instance {
                     light_section_count
                 ]
                 .into(),
-            },
-            packet_buf: vec![],
-            scratch: vec![],
-        }
-    }
-
-    /// TODO: Temporary hack for unit testing. Do not use!
-    #[doc(hidden)]
-    pub fn new_unit_testing(
-        dimension_type_name: impl Into<Ident<String>>,
-        server: &Server,
-    ) -> Self {
-        Self {
-            partition: FxHashMap::default(),
-            info: InstanceInfo {
-                dimension_type_name: dimension_type_name.into(),
-                section_count: 24,
-                min_y: -64,
-                biome_registry_len: 1,
-                compression_threshold: server.compression_threshold(),
-                filler_sky_light_mask: vec![].into(),
-                filler_sky_light_arrays: vec![].into(),
             },
             packet_buf: vec![],
             scratch: vec![],
@@ -700,41 +672,14 @@ impl Instance {
         ))
     }
 
-    /// Writes a packet into the global packet buffer of this instance. All
-    /// clients in the instance will receive the packet.
-    ///
-    /// This is more efficient than sending the packet to each client
-    /// individually.
-    pub fn write_packet<'a, P>(&mut self, pkt: &P)
-    where
-        P: Packet<'a>,
-    {
-        PacketWriter::new(
-            &mut self.packet_buf,
-            self.info.compression_threshold,
-            &mut self.scratch,
-        )
-        .write_packet(pkt);
-    }
-
-    /// Writes arbitrary packet data into the global packet buffer of this
-    /// instance. All clients in the instance will receive the packet data.
-    ///
-    /// The packet data must be properly compressed for the current compression
-    /// threshold but never encrypted. Don't use this function unless you know
-    /// what you're doing. Consider using [`Self::write_packet`] instead.
-    pub fn write_packet_bytes(&mut self, bytes: &[u8]) {
-        self.packet_buf.extend_from_slice(bytes)
-    }
-
     /// Writes a packet to all clients in view of `pos` in this instance. Has no
     /// effect if there is no chunk at `pos`.
     ///
     /// This is more efficient than sending the packet to each client
     /// individually.
-    pub fn write_packet_at<'a, P>(&mut self, pkt: &P, pos: impl Into<ChunkPos>)
+    pub fn write_packet_at<P>(&mut self, pkt: &P, pos: impl Into<ChunkPos>)
     where
-        P: Packet<'a>,
+        P: Packet + Encode,
     {
         let pos = pos.into();
         if let Some(cell) = self.partition.get_mut(&pos) {
@@ -816,12 +761,30 @@ impl Instance {
             ChunkPos::from_dvec3(position),
         );
     }
+}
 
-    /// Sets the action bar text of all players in the instance.
-    pub fn set_action_bar(&mut self, text: impl Into<Text>) {
-        self.write_packet(&OverlayMessageS2c {
-            action_bar_text: text.into().into(),
-        });
+/// Writing packets to the instance writes to the instance's global packet
+/// buffer. All clients in the instance will receive the packet at the end of
+/// the tick.
+///
+/// This is more efficient than sending the packet to each client individually.
+impl WritePacket for Instance {
+    #[inline]
+    fn write_packet<P>(&mut self, packet: &P)
+    where
+        P: Packet + Encode,
+    {
+        PacketWriter::new(
+            &mut self.packet_buf,
+            self.info.compression_threshold,
+            &mut self.scratch,
+        )
+        .write_packet(packet)
+    }
+
+    #[inline]
+    fn write_packet_bytes(&mut self, bytes: &[u8]) {
+        self.packet_buf.extend_from_slice(bytes)
     }
 }
 

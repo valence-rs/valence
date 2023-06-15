@@ -27,8 +27,8 @@ use anyhow::Context;
 use valence_core::ident;
 use valence_core::ident::Ident;
 use valence_core::item::ItemKind;
-use valence_core::packet::var_int::VarInt;
-use valence_core::packet::{Decode, Encode};
+use valence_core::protocol::var_int::VarInt;
+use valence_core::protocol::{Decode, Encode};
 
 include!(concat!(env!("OUT_DIR"), "/block.rs"));
 

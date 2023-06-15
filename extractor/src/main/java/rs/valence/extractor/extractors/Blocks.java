@@ -4,8 +4,13 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.registry.Registries;
+import net.minecraft.state.property.Property;
+import net.minecraft.block.Block;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.entity.BlockEntityType;
 import net.minecraft.item.VerticallyAttachableBlockItem;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
 import net.minecraft.world.EmptyBlockView;
 import rs.valence.extractor.Main;
 import rs.valence.extractor.mixin.ExposeWallBlock;
@@ -69,7 +74,7 @@ public class Blocks implements Main.Extractor {
                 stateJson.addProperty("id", id);
                 stateJson.addProperty("luminance", state.getLuminance());
                 stateJson.addProperty("opaque", state.isOpaque());
-                stateJson.addProperty("replaceable", state.getMaterial().isReplaceable());
+                stateJson.addProperty("replaceable", state.isReplaceable());
 
                 if (block.getDefaultState().equals(state)) {
                     blockJson.addProperty("default_state_id", id);

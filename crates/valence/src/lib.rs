@@ -26,6 +26,8 @@ use bevy_app::{PluginGroup, PluginGroupBuilder};
 #[cfg(test)]
 mod tests;
 
+#[cfg(feature = "advancement")]
+pub use valence_advancement as advancement;
 #[cfg(feature = "anvil")]
 pub use valence_anvil as anvil;
 pub use valence_core::*;
@@ -35,6 +37,8 @@ pub use valence_inventory as inventory;
 pub use valence_network as network;
 #[cfg(feature = "player_list")]
 pub use valence_player_list as player_list;
+#[cfg(feature = "world_border")]
+pub use valence_world_border as world_border;
 pub use {
     bevy_app as app, bevy_ecs as ecs, glam, valence_biome as biome, valence_block as block,
     valence_client as client, valence_dimension as dimension, valence_entity as entity,
@@ -64,10 +68,11 @@ pub mod prelude {
     pub use client::command::*;
     pub use client::event_loop::{EventLoopSchedule, EventLoopSet};
     pub use client::interact_entity::*;
+    pub use client::title::SetTitle as _;
     pub use client::{
-        despawn_disconnected_clients, Client, RespawnPosition, DeathLocation, HasRespawnScreen,
-        HashedSeed, Ip, IsDebug, IsFlat, IsHardcore, OldView, OldViewDistance, OpLevel,
-        PrevGameMode, Properties, ReducedDebugInfo, Username, View, ViewDistance,
+        despawn_disconnected_clients, Client, CompassPos, DeathLocation, HasRespawnScreen,
+        HashedSeed, Ip, IsDebug, IsFlat, IsHardcore, OldView, OldViewDistance, PrevGameMode,
+        Properties, ReducedDebugInfo, Username, View, ViewDistance,
     };
     pub use despawn::Despawned;
     pub use dimension::{DimensionType, DimensionTypeRegistry};
@@ -93,13 +98,19 @@ pub mod prelude {
         ErasedNetworkCallbacks, NetworkCallbacks, NetworkSettings, NewClientInfo,
         SharedNetworkState,
     };
-    pub use packet::s2c::play::particle::Particle;
+    pub use particle::Particle;
     #[cfg(feature = "player_list")]
     pub use player_list::{PlayerList, PlayerListEntry};
     pub use text::{Color, Text, TextFormat};
+    #[cfg(feature = "advancement")]
+    pub use valence_advancement::{
+        event::AdvancementTabChange, Advancement, AdvancementBundle, AdvancementClientUpdate,
+        AdvancementCriteria, AdvancementDisplay, AdvancementFrameType, AdvancementRequirements,
+    };
     pub use valence_core::ident; // Export the `ident!` macro.
     pub use valence_core::uuid::UniqueId;
     pub use valence_core::{translation_key, CoreSettings, Server};
+    pub use valence_entity::hitbox::{Hitbox, HitboxShape};
 
     pub use super::DefaultPlugins;
     use super::*;
@@ -122,6 +133,7 @@ impl PluginGroup for DefaultPlugins {
             .add(valence_biome::BiomePlugin)
             .add(valence_dimension::DimensionPlugin)
             .add(valence_entity::EntityPlugin)
+            .add(valence_entity::hitbox::HitboxPlugin)
             .add(valence_instance::InstancePlugin)
             .add(valence_client::ClientPlugin);
 
@@ -142,7 +154,19 @@ impl PluginGroup for DefaultPlugins {
 
         #[cfg(feature = "anvil")]
         {
-            // No plugin... yet.
+            group = group.add(valence_anvil::AnvilPlugin);
+        }
+
+        #[cfg(feature = "advancement")]
+        {
+            group = group
+                .add(valence_advancement::AdvancementPlugin)
+                .add(valence_advancement::bevy_hierarchy::HierarchyPlugin);
+        }
+
+        #[cfg(feature = "world_border")]
+        {
+            group = group.add(valence_world_border::WorldBorderPlugin);
         }
 
         group

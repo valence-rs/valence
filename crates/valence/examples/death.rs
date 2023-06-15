@@ -1,7 +1,8 @@
 #![allow(clippy::type_complexity)]
 
-use valence::client::misc::Respawn;
 use valence::prelude::*;
+use valence_client::message::SendMessage;
+use valence_client::status::RequestRespawnEvent;
 
 const SPAWN_Y: i32 = 64;
 
@@ -19,8 +20,8 @@ pub fn main() {
 fn setup(
     mut commands: Commands,
     server: Res<Server>,
-    dimensions: Query<&DimensionType>,
-    biomes: Query<&Biome>,
+    dimensions: Res<DimensionTypeRegistry>,
+    biomes: Res<BiomeRegistry>,
 ) {
     for block in [BlockState::GRASS_BLOCK, BlockState::DEEPSLATE, BlockState::MAGMA_BLOCK] {
         let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
@@ -49,7 +50,7 @@ fn init_clients(
         loc.0 = instances.iter().next().unwrap();
         pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
 
-        client.send_message(
+        client.send_chat_message(
             "Welcome to Valence! Sneak to die in the game (but not in real life).".italic(),
         );
     }
@@ -59,15 +60,15 @@ fn squat_and_die(mut clients: Query<&mut Client>, mut events: EventReader<Sneaki
     for event in events.iter() {
         if event.state == SneakState::Start {
             if let Ok(mut client) = clients.get_mut(event.client) {
-                client.kill(None, "Squatted too hard.");
+                client.kill("Squatted too hard.");
             }
         }
     }
 }
 
 fn necromancy(
-    mut clients: Query<(&mut Location, &mut RespawnPosition)>,
-    mut events: EventReader<Respawn>,
+    mut clients: Query<(&mut Position, &mut Look, &mut Location)>,
+    mut events: EventReader<RequestRespawnEvent>,
     instances: Query<Entity, With<Instance>>,
 ) {
     for event in events.iter() {

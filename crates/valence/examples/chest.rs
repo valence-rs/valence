@@ -1,7 +1,7 @@
 #![allow(clippy::type_complexity)]
 
-use valence::client::misc::InteractBlock;
 use valence::prelude::*;
+use valence_client::interact_block::InteractBlockEvent;
 
 const SPAWN_Y: i32 = 64;
 const CHEST_POS: [i32; 3] = [0, SPAWN_Y + 1, 3];
@@ -21,8 +21,8 @@ pub fn main() {
 fn setup(
     mut commands: Commands,
     server: Res<Server>,
-    dimensions: Query<&DimensionType>,
-    biomes: Query<&Biome>,
+    dimensions: Res<DimensionTypeRegistry>,
+    biomes: Res<BiomeRegistry>,
 ) {
     let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
@@ -78,7 +78,7 @@ fn toggle_gamemode_on_sneak(mut clients: Query<&mut GameMode>, mut events: Event
 fn open_chest(
     mut commands: Commands,
     inventories: Query<Entity, (With<Inventory>, Without<Client>)>,
-    mut events: EventReader<InteractBlock>,
+    mut events: EventReader<InteractBlockEvent>,
 ) {
     for event in events.iter() {
         if event.position != CHEST_POS.into() {

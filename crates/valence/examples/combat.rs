@@ -32,8 +32,8 @@ pub fn main() {
 fn setup(
     mut commands: Commands,
     server: Res<Server>,
-    dimensions: Query<&DimensionType>,
-    biomes: Query<&Biome>,
+    dimensions: Res<DimensionTypeRegistry>,
+    biomes: Res<BiomeRegistry>,
 ) {
     let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
@@ -96,7 +96,7 @@ fn handle_combat_events(
     server: Res<Server>,
     mut clients: Query<CombatQuery>,
     mut sprinting: EventReader<Sprinting>,
-    mut interact_entity: EventReader<InteractEntity>,
+    mut interact_entity: EventReader<InteractEntityEvent>,
 ) {
     for &Sprinting { client, state } in sprinting.iter() {
         if let Ok(mut client) = clients.get_mut(client) {
@@ -104,7 +104,7 @@ fn handle_combat_events(
         }
     }
 
-    for &InteractEntity {
+    for &InteractEntityEvent {
         client: attacker_client,
         entity: victim_client,
         ..
