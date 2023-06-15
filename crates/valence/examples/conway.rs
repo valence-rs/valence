@@ -3,6 +3,7 @@
 use std::mem;
 
 use valence::prelude::*;
+use valence_client::message::SendMessage;
 
 const BOARD_MIN_X: i32 = -30;
 const BOARD_MAX_X: i32 = 30;
@@ -74,8 +75,8 @@ fn init_clients(
     instances: Query<Entity, With<Instance>>,
 ) {
     for (mut client, mut loc, mut pos) in &mut clients {
-        client.send_message("Welcome to Conway's game of life in Minecraft!".italic());
-        client.send_message(
+        client.send_chat_message("Welcome to Conway's game of life in Minecraft!".italic());
+        client.send_chat_message(
             "Sneak to toggle running the simulation and the left mouse button to bring blocks to \
              life."
                 .italic(),

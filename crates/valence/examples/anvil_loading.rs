@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use clap::Parser;
 use valence::prelude::*;
 use valence_anvil::{AnvilLevel, ChunkLoadEvent, ChunkLoadStatus};
+use valence_client::message::SendMessage;
 
 const SPAWN_POS: DVec3 = DVec3::new(0.0, 256.0, 0.0);
 
@@ -36,7 +37,8 @@ pub fn main() {
         .insert_resource(cli)
         .add_startup_system(setup)
         .add_system(despawn_disconnected_clients)
-        .add_systems((init_clients, handle_chunk_load_events).chain())
+        .add_systems((init_clients, handle_chunk_loads).chain())
+        .add_system(display_loaded_chunk_count)
         .run();
 }
 
@@ -48,7 +50,19 @@ fn setup(
     cli: Res<Cli>,
 ) {
     let instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
-    let level = AnvilLevel::new(&cli.path, &biomes);
+    let mut level = AnvilLevel::new(&cli.path, &biomes);
+
+    // Force a 16x16 area of chunks around the origin to be loaded at all times,
+    // similar to spawn chunks in vanilla. This isn't necessary, but it is done to
+    // demonstrate that it is possible.
+    for z in -8..8 {
+        for x in -8..8 {
+            let pos = ChunkPos::new(x, z);
+
+            level.ignored_chunks.insert(pos);
+            level.force_chunk_load(pos);
+        }
+    }
 
     commands.spawn((instance, level));
 }
@@ -65,7 +79,7 @@ fn init_clients(
     }
 }
 
-fn handle_chunk_load_events(
+fn handle_chunk_loads(
     mut events: EventReader<ChunkLoadEvent>,
     mut instances: Query<&mut Instance, With<AnvilLevel>>,
 ) {
@@ -77,8 +91,9 @@ fn handle_chunk_load_events(
                 // The chunk was inserted into the world. Nothing for us to do.
             }
             ChunkLoadStatus::Empty => {
-                // There's no chunk here so let's insert an empty chunk.
-                inst.insert_chunk(event.pos, Chunk::new(0));
+                // There's no chunk here so let's insert an empty chunk. If we were doing
+                // terrain generation we would prepare that here.
+                inst.insert_chunk(event.pos, Chunk::default());
             }
             ChunkLoadStatus::Failed(e) => {
                 // Something went wrong.
@@ -86,8 +101,21 @@ fn handle_chunk_load_events(
                     "failed to load chunk at ({}, {}): {e:#}",
                     event.pos.x, event.pos.z
                 );
-                inst.insert_chunk(event.pos, Chunk::new(0));
+                inst.insert_chunk(event.pos, Chunk::default());
             }
         }
+    }
+}
+
+fn display_loaded_chunk_count(mut instances: Query<&mut Instance>, mut last_count: Local<usize>) {
+    let mut inst = instances.single_mut();
+
+    let cnt = inst.chunks().count();
+
+    if *last_count != cnt {
+        *last_count = cnt;
+        inst.send_action_bar_message(
+            "Chunk Count: ".into_text() + (cnt as i32).color(Color::LIGHT_PURPLE),
+        );
     }
 }

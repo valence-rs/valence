@@ -4,6 +4,7 @@ use bevy_app::App;
 use bevy_ecs::prelude::Entity;
 use rand::Rng;
 use valence::prelude::*;
+use valence_client::message::SendMessage;
 use valence_entity::entity::NameVisible;
 use valence_entity::hoglin::HoglinEntityBundle;
 use valence_entity::pig::PigEntityBundle;
@@ -53,7 +54,7 @@ fn init_clients(
         loc.0 = instances.single();
         pos.set([0.5, 65.0, 0.5]);
         *game_mode = GameMode::Creative;
-        client.send_message("To spawn an entity, press shift. F3 + B to activate hitboxes");
+        client.send_chat_message("To spawn an entity, press shift. F3 + B to activate hitboxes");
     }
 }
 

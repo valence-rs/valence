@@ -2,8 +2,8 @@
 
 use valence::nbt::{compound, List};
 use valence::prelude::*;
-use valence_client::chat::ChatMessageEvent;
 use valence_client::interact_block::InteractBlockEvent;
+use valence_client::message::ChatMessageEvent;
 
 const FLOOR_Y: i32 = 64;
 const SIGN_POS: [i32; 3] = [3, FLOOR_Y + 1, 2];

@@ -22,7 +22,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
 use std::io::{ErrorKind, Read, Seek, SeekFrom};
 use std::num::NonZeroUsize;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::thread;
 
 use anyhow::{bail, ensure};
@@ -34,10 +34,10 @@ use flume::{Receiver, Sender};
 use lru::LruCache;
 use tracing::warn;
 use valence_biome::{BiomeId, BiomeRegistry};
-use valence_client::{Client, OldView, OldViewDistance, UpdateClientsSet, View, ViewDistance};
-use valence_core::chunk_pos::{ChunkPos, ChunkView};
+use valence_client::{Client, OldView, UpdateClientsSet, View};
+use valence_core::chunk_pos::ChunkPos;
 use valence_core::ident::Ident;
-use valence_entity::{Location, OldLocation, OldPosition, Position};
+use valence_entity::{Location, OldLocation};
 use valence_instance::{Chunk, Instance};
 use valence_nbt::Compound;
 
@@ -52,7 +52,7 @@ pub struct AnvilLevel {
     ///
     /// This set is empty by default, but you can modify it at any time.
     pub ignored_chunks: HashSet<ChunkPos>,
-    /// Chunks that need to be loaded. Chunks without a priority have already
+    /// Chunks that need to be loaded. Chunks with `None` priority have already
     /// been sent to the anvil thread.
     pending: HashMap<ChunkPos, Option<Priority>>,
     /// Sender for the chunk worker thread.
@@ -86,6 +86,27 @@ impl AnvilLevel {
             pending: HashMap::new(),
             sender: pending_sender,
             receiver: finished_receiver,
+        }
+    }
+
+    /// Forces a chunk to be loaded at a specific position in this world. This
+    /// will bypass [`AnvilWorld::ignored_chunks`].
+    /// Note that the chunk will be unloaded next tick unless it has been added
+    /// to [`AnvilWorld::ignored_chunks`] or it is in view of a client.
+    ///
+    /// This has no effect if a chunk at the position is already present.
+    pub fn force_chunk_load(&mut self, pos: ChunkPos) {
+        match self.pending.entry(pos) {
+            Entry::Occupied(oe) => {
+                // If the chunk is already scheduled to load but hasn't been sent to the chunk
+                // worker yet, then give it the highest priority.
+                if let Some(priority) = oe.into_mut() {
+                    *priority = 0;
+                }
+            }
+            Entry::Vacant(ve) => {
+                ve.insert(Some(0));
+            }
         }
     }
 }
@@ -251,17 +272,15 @@ pub struct AnvilPlugin;
 
 impl Plugin for AnvilPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<ChunkLoadEvent>().add_systems(
-            (
-                init_anvil,
-                remove_unviewed_chunks,
-                update_client_views,
-                send_recv_chunks,
-            )
-                .chain()
-                .in_base_set(CoreSet::PostUpdate)
-                .before(UpdateClientsSet),
-        );
+        app.add_event::<ChunkLoadEvent>()
+            .add_event::<ChunkUnloadEvent>()
+            .add_system(remove_unviewed_chunks.in_base_set(CoreSet::PreUpdate))
+            .add_systems(
+                (init_anvil, update_client_views, send_recv_chunks)
+                    .chain()
+                    .in_base_set(CoreSet::PostUpdate)
+                    .before(UpdateClientsSet),
+            );
     }
 }
 
@@ -274,9 +293,26 @@ fn init_anvil(mut query: Query<(&mut AnvilLevel, &Instance), Added<AnvilLevel>>)
     }
 }
 
-fn remove_unviewed_chunks(mut instances: Query<&mut Instance, With<AnvilLevel>>) {
-    for mut inst in &mut instances {
-        inst.retain_chunks(|_, chunk| chunk.is_viewed_mut());
+/// Removes all chunks no longer viewed by clients.
+///
+/// This needs to run in `PreUpdate` where the chunk viewer counts have been
+/// updated from the previous tick.
+fn remove_unviewed_chunks(
+    mut instances: Query<(Entity, &mut Instance, &AnvilLevel)>,
+    mut unload_events: EventWriter<ChunkUnloadEvent>,
+) {
+    for (entity, mut inst, anvil) in &mut instances {
+        inst.retain_chunks(|pos, chunk| {
+            if chunk.is_viewed_mut() || anvil.ignored_chunks.contains(&pos) {
+                true
+            } else {
+                unload_events.send(ChunkUnloadEvent {
+                    instance: entity,
+                    pos,
+                });
+                false
+            }
+        });
     }
 }
 
@@ -326,10 +362,14 @@ fn send_recv_chunks(
     mut to_send: Local<Vec<(Priority, ChunkPos)>>,
     mut load_events: EventWriter<ChunkLoadEvent>,
 ) {
-    for (entity, mut inst, mut anvil) in &mut instances {
+    for (entity, mut inst, anvil) in &mut instances {
+        let anvil = anvil.into_inner();
+
         // Insert the chunks that are finished loading into the instance and send load
         // events.
         for (pos, res) in anvil.receiver.drain() {
+            anvil.pending.remove(&pos);
+
             let status = match res {
                 Ok(Some((chunk, AnvilChunk { data, timestamp }))) => {
                     inst.insert_chunk(pos, chunk);
@@ -369,27 +409,27 @@ fn anvil_worker(mut state: ChunkWorkerState) {
 
         let _ = state.sender.send((pos, res));
     }
-}
 
-fn get_chunk(
-    pos: ChunkPos,
-    state: &mut ChunkWorkerState,
-) -> anyhow::Result<Option<(Chunk, AnvilChunk)>> {
-    let Some(anvil_chunk) = state.get_chunk(pos)? else {
-        return Ok(None);
-    };
+    fn get_chunk(
+        pos: ChunkPos,
+        state: &mut ChunkWorkerState,
+    ) -> anyhow::Result<Option<(Chunk, AnvilChunk)>> {
+        let Some(anvil_chunk) = state.get_chunk(pos)? else {
+            return Ok(None);
+        };
 
-    let mut chunk = Chunk::new(state.section_count);
-    // TODO: account for min_y correctly.
-    parse_chunk::parse_chunk(&anvil_chunk.data, &mut chunk, 4, |biome| {
-        state
-            .biome_to_id
-            .get(biome.as_str())
-            .copied()
-            .unwrap_or_default()
-    })?;
+        let mut chunk = Chunk::new(state.section_count);
+        // TODO: account for min_y correctly.
+        parse_chunk::parse_chunk(&anvil_chunk.data, &mut chunk, 4, |biome| {
+            state
+                .biome_to_id
+                .get(biome.as_str())
+                .copied()
+                .unwrap_or_default()
+        })?;
 
-    Ok(Some((chunk, anvil_chunk)))
+        Ok(Some((chunk, anvil_chunk)))
+    }
 }
 
 /// An event sent by `valence_anvil` after an attempt to load a chunk is made.
@@ -404,7 +444,7 @@ pub struct ChunkLoadEvent {
 
 #[derive(Debug)]
 pub enum ChunkLoadStatus {
-    /// A new chunk was successfully loaded.
+    /// A new chunk was successfully loaded and inserted into the instance.
     Success {
         /// The raw chunk data of the new chunk.
         data: Compound,
@@ -417,4 +457,13 @@ pub enum ChunkLoadStatus {
     Empty,
     /// An attempt was made to load the chunk, but something went wrong.
     Failed(anyhow::Error),
+}
+
+/// An event sent by `valence_anvil` when a chunk is unloaded from an instance.
+#[derive(Debug)]
+pub struct ChunkUnloadEvent {
+    /// The [`Instance`] where the chunk was unloaded.
+    pub instance: Entity,
+    /// The position of the chunk that was unloaded.
+    pub pos: ChunkPos,
 }
