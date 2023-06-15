@@ -3,6 +3,7 @@
 use valence::inventory::HeldItem;
 use valence::prelude::*;
 use valence_client::interact_block::InteractBlockEvent;
+use valence_client::message::SendMessage;
 
 const SPAWN_Y: i32 = 64;
 
@@ -55,7 +56,7 @@ fn init_clients(
         loc.0 = instances.single();
         pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
 
-        client.send_message("Welcome to Valence! Build something cool.".italic());
+        client.send_chat_message("Welcome to Valence! Build something cool.".italic());
     }
 }
 

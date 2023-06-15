@@ -72,7 +72,6 @@ use valence_registry::tags::TagsRegistry;
 use valence_registry::RegistrySet;
 
 pub mod action;
-pub mod chat;
 pub mod command;
 pub mod custom_payload;
 pub mod event_loop;
@@ -81,6 +80,7 @@ pub mod interact_block;
 pub mod interact_entity;
 pub mod interact_item;
 pub mod keepalive;
+pub mod message;
 pub mod movement;
 pub mod op_level;
 pub mod packet;
@@ -107,8 +107,10 @@ pub struct FlushPacketsSet;
 
 pub struct SpawnClientsSet;
 
+/// The system set where various facets of the client are updated. Systems that
+/// modify chunks should run _before_ this.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
-struct UpdateClientsSet;
+pub struct UpdateClientsSet;
 
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
@@ -150,7 +152,7 @@ impl Plugin for ClientPlugin {
         action::build(app);
         teleport::build(app);
         weather::build(app);
-        chat::build(app);
+        message::build(app);
         custom_payload::build(app);
         hand_swing::build(app);
         interact_block::build(app);

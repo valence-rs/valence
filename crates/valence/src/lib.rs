@@ -154,7 +154,7 @@ impl PluginGroup for DefaultPlugins {
 
         #[cfg(feature = "anvil")]
         {
-            // No plugin... yet.
+            group = group.add(valence_anvil::AnvilPlugin);
         }
 
         #[cfg(feature = "advancement")]

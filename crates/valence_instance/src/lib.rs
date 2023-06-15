@@ -64,7 +64,8 @@ mod paletted_container;
 pub struct InstancePlugin;
 
 /// When Minecraft entity changes are written to the packet buffers of chunks.
-/// Systems that read from the packet buffer of chunks should run _after_ this.
+/// Systems that modify entites should run _before_ this. Systems that read from
+/// the packet buffer of chunks should run _after_ this.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct WriteUpdatePacketsToInstancesSet;
 
