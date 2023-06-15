@@ -37,6 +37,8 @@ pub use valence_inventory as inventory;
 pub use valence_network as network;
 #[cfg(feature = "player_list")]
 pub use valence_player_list as player_list;
+#[cfg(feature = "world_border")]
+pub use valence_world_border as world_border;
 pub use {
     bevy_app as app, bevy_ecs as ecs, glam, valence_biome as biome, valence_block as block,
     valence_client as client, valence_dimension as dimension, valence_entity as entity,
@@ -160,6 +162,11 @@ impl PluginGroup for DefaultPlugins {
             group = group
                 .add(valence_advancement::AdvancementPlugin)
                 .add(valence_advancement::bevy_hierarchy::HierarchyPlugin);
+        }
+
+        #[cfg(feature = "world_border")]
+        {
+            group = group.add(valence_world_border::WorldBorderPlugin);
         }
 
         group
