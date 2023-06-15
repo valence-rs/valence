@@ -58,8 +58,10 @@ pub struct AnvilLevel {
     /// Sender for the chunk worker thread.
     sender: Sender<ChunkPos>,
     /// Receiver for the chunk worker thread.
-    receiver: Receiver<(ChunkPos, anyhow::Result<Option<(Chunk, AnvilChunk)>>)>,
+    receiver: Receiver<(ChunkPos, WorkerResult)>,
 }
+
+type WorkerResult = anyhow::Result<Option<(Chunk, AnvilChunk)>>;
 
 impl AnvilLevel {
     pub fn new(world_root: impl Into<PathBuf>, biomes: &BiomeRegistry) -> Self {
@@ -128,7 +130,7 @@ struct ChunkWorkerState {
     /// Path to the "region" subdirectory in the world root.
     region_root: PathBuf,
     /// Sender of finished chunks.
-    sender: Sender<(ChunkPos, anyhow::Result<Option<(Chunk, AnvilChunk)>>)>,
+    sender: Sender<(ChunkPos, WorkerResult)>,
     /// Receiver of pending chunks.
     receiver: Receiver<ChunkPos>,
     /// Scratch buffer for decompression.
@@ -250,6 +252,7 @@ struct AnvilChunk {
 /// X and Z positions of a region.
 type RegionPos = (i32, i32);
 
+#[allow(clippy::large_enum_variant)] // We're not moving this around.
 #[derive(Debug)]
 enum RegionEntry {
     /// There is a region file loaded here.
@@ -410,10 +413,7 @@ fn anvil_worker(mut state: ChunkWorkerState) {
         let _ = state.sender.send((pos, res));
     }
 
-    fn get_chunk(
-        pos: ChunkPos,
-        state: &mut ChunkWorkerState,
-    ) -> anyhow::Result<Option<(Chunk, AnvilChunk)>> {
+    fn get_chunk(pos: ChunkPos, state: &mut ChunkWorkerState) -> WorkerResult {
         let Some(anvil_chunk) = state.get_chunk(pos)? else {
             return Ok(None);
         };
