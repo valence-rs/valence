@@ -22,4 +22,5 @@ graph TD
 	anvil --> client
 	entity --> block
 	advancement --> client
+	world_border --> client
 ```
