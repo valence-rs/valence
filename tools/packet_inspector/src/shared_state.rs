@@ -21,16 +21,11 @@ impl PacketFilter {
     }
 
     pub fn get(&self, packet: &Packet) -> Option<bool> {
-        if let Some(v) = self
-            .inner
+        self.inner
             .iter()
             .find(|(k, _)| k.id == packet.id && k.side == packet.side && k.state == packet.state)
             .map(|(_, v)| v)
-        {
-            Some(*v)
-        } else {
-            None
-        }
+            .copied()
     }
 
     pub fn insert(&mut self, packet: Packet, value: bool) {

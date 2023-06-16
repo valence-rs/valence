@@ -41,10 +41,7 @@ impl View for PacketList {
 fn handle_keyboard_input(state: &mut SharedState, ui: &mut Ui) {
     if ui.input(|i| i.key_pressed(egui::Key::ArrowUp)) {
         // select previous packet
-        let index = match state.selected_packet {
-            Some(index) => index,
-            None => 1, // 1, so previous goes to 0
-        };
+        let index = state.selected_packet.unwrap_or(1);
 
         let packets = state.packets.read().unwrap();
         let filtered_packets = packets
@@ -61,10 +58,7 @@ fn handle_keyboard_input(state: &mut SharedState, ui: &mut Ui) {
 
     if ui.input(|i| i.key_pressed(egui::Key::ArrowDown)) {
         // select next packet
-        let index = match state.selected_packet {
-            Some(index) => index,
-            None => 0, // 0, so next goes to 1
-        };
+        let index = state.selected_packet.unwrap_or(0);
 
         let packets = state.packets.read().unwrap();
         let filtered_packets = packets

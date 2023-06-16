@@ -27,7 +27,7 @@ impl View for HexView {
         };
 
         let bytes = &packets[packet_index].data.as_ref().unwrap();
-        let mut file = &bytes.clone()[..];
+        let mut file = &(*bytes).clone()[..];
 
         egui::Grid::new("hex_grid")
             .spacing([4.0, 1.5])

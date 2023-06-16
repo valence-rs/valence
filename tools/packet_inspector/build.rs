@@ -94,63 +94,61 @@ fn write_packets(packets: &Vec<Packet>) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn write_transformer(packets: &Vec<Packet>) -> anyhow::Result<()> {
+fn write_transformer(packets: &[Packet]) -> anyhow::Result<()> {
     // HashMap<side, HashMap<state, Vec<name>>>
     let grouped_packets = HashMap::<String, HashMap<String, Vec<String>>>::new();
 
-    let mut grouped_packets = packets
-        .into_iter()
-        .fold(grouped_packets, |mut acc, packet| {
-            let side = match packet.side.as_str() {
-                "serverbound" => "Serverbound".to_string(),
-                "clientbound" => "Clientbound".to_string(),
-                _ => panic!("Invalid side"),
-            };
+    let mut grouped_packets = packets.iter().fold(grouped_packets, |mut acc, packet| {
+        let side = match packet.side.as_str() {
+            "serverbound" => "Serverbound".to_string(),
+            "clientbound" => "Clientbound".to_string(),
+            _ => panic!("Invalid side"),
+        };
 
-            let state = match packet.state.as_str() {
-                "handshaking" => "Handshaking".to_string(),
-                "status" => "Status".to_string(),
-                "login" => "Login".to_string(),
-                "play" => "Play".to_string(),
-                _ => panic!("Invalid state"),
-            };
+        let state = match packet.state.as_str() {
+            "handshaking" => "Handshaking".to_string(),
+            "status" => "Status".to_string(),
+            "login" => "Login".to_string(),
+            "play" => "Play".to_string(),
+            _ => panic!("Invalid state"),
+        };
 
-            let name = packet
-                .name
-                .strip_suffix("Packet")
-                .unwrap_or(&packet.name)
-                .to_string();
+        let name = packet
+            .name
+            .strip_suffix("Packet")
+            .unwrap_or(&packet.name)
+            .to_string();
 
-            // lowercase the last character of name
-            let name = {
-                let mut chars = name.chars();
-                let last_char = chars.next_back().unwrap();
-                let last_char = last_char.to_lowercase().to_string();
-                let mut name = chars.collect::<String>();
-                name.push_str(&last_char);
-                name
-            };
+        // lowercase the last character of name
+        let name = {
+            let mut chars = name.chars();
+            let last_char = chars.next_back().unwrap();
+            let last_char = last_char.to_lowercase().to_string();
+            let mut name = chars.collect::<String>();
+            name.push_str(&last_char);
+            name
+        };
 
-            // if the packet is clientbound, but the name does not ends with S2c, add it
-            let name = if side == "Clientbound" && !name.ends_with("S2c") {
-                format!("{}S2c", name)
-            } else {
-                name
-            };
+        // if the packet is clientbound, but the name does not ends with S2c, add it
+        let name = if side == "Clientbound" && !name.ends_with("S2c") {
+            format!("{}S2c", name)
+        } else {
+            name
+        };
 
-            // same for serverbound
-            let name = if side == "Serverbound" && !name.ends_with("C2s") {
-                format!("{}C2s", name)
-            } else {
-                name
-            };
+        // same for serverbound
+        let name = if side == "Serverbound" && !name.ends_with("C2s") {
+            format!("{}C2s", name)
+        } else {
+            name
+        };
 
-            let state_map = acc.entry(side).or_insert_with(HashMap::new);
-            let id_map = state_map.entry(state).or_insert_with(Vec::new);
-            id_map.push(name);
+        let state_map = acc.entry(side).or_insert_with(HashMap::new);
+        let id_map = state_map.entry(state).or_insert_with(Vec::new);
+        id_map.push(name);
 
-            acc
-        });
+        acc
+    });
 
     let mut generated = TokenStream::new();
 
@@ -160,7 +158,7 @@ fn write_transformer(packets: &Vec<Packet>) -> anyhow::Result<()> {
             let mut match_arms = TokenStream::new();
 
             for name in id_map.iter_mut() {
-                let name = syn::parse_str::<syn::Ident>(&name).unwrap();
+                let name = syn::parse_str::<syn::Ident>(name).unwrap();
 
                 match_arms.extend(quote! {
                     #name::ID => {
@@ -169,7 +167,7 @@ fn write_transformer(packets: &Vec<Packet>) -> anyhow::Result<()> {
                 });
             }
 
-            let state = syn::parse_str::<syn::Ident>(&state).unwrap();
+            let state = syn::parse_str::<syn::Ident>(state).unwrap();
 
             side_arms.extend(quote! {
                 PacketState::#state => match packet.id {
@@ -185,7 +183,7 @@ fn write_transformer(packets: &Vec<Packet>) -> anyhow::Result<()> {
             });
         }
 
-        let side = syn::parse_str::<syn::Ident>(&side).unwrap();
+        let side = syn::parse_str::<syn::Ident>(side).unwrap();
 
         generated.extend(quote! {
             PacketSide::#side => match packet.state {
