@@ -7,7 +7,6 @@ use valence_core::protocol::packet::chat::{ChatMessageC2s, GameMessageS2c};
 use valence_core::text::Text;
 
 use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
-use crate::Client;
 
 pub(super) fn build(app: &mut App) {
     app.add_event::<ChatMessageEvent>().add_system(
@@ -17,22 +16,34 @@ pub(super) fn build(app: &mut App) {
     );
 }
 
-#[derive(Clone, Debug)]
-pub struct ChatMessageEvent {
-    pub client: Entity,
-    pub message: Box<str>,
-    pub timestamp: u64,
+pub trait SendMessage {
+    /// Sends a system message visible in the chat.
+    fn send_chat_message(&mut self, msg: impl Into<Text>);
+    /// Displays a message in the player's action bar (text above the hotbar).
+    fn send_action_bar_message(&mut self, msg: impl Into<Text>);
 }
 
-impl Client {
-    /// Sends a system message to the player which is visible in the chat. The
-    /// message is only visible to this client.
-    pub fn send_message(&mut self, msg: impl Into<Text>) {
+impl<T: WritePacket> SendMessage for T {
+    fn send_chat_message(&mut self, msg: impl Into<Text>) {
         self.write_packet(&GameMessageS2c {
             chat: msg.into().into(),
             overlay: false,
         });
     }
+
+    fn send_action_bar_message(&mut self, msg: impl Into<Text>) {
+        self.write_packet(&GameMessageS2c {
+            chat: msg.into().into(),
+            overlay: true,
+        });
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ChatMessageEvent {
+    pub client: Entity,
+    pub message: Box<str>,
+    pub timestamp: u64,
 }
 
 pub fn handle_chat_message(

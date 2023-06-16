@@ -3,6 +3,7 @@
 use std::mem;
 
 use valence::prelude::*;
+use valence_client::message::SendMessage;
 
 const BOARD_MIN_X: i32 = -30;
 const BOARD_MAX_X: i32 = 30;
@@ -24,7 +25,6 @@ pub fn main() {
 
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_startup_system(setup_biomes.before(setup))
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_systems((
@@ -37,19 +37,16 @@ pub fn main() {
         .run();
 }
 
-// TODO: this is a hack.
-fn setup_biomes(mut biomes: Query<&mut Biome>) {
-    for mut biome in &mut biomes {
-        biome.grass_color = Some(0x00ff00);
-    }
-}
-
 fn setup(
     mut commands: Commands,
     server: Res<Server>,
-    dimensions: Query<&DimensionType>,
-    biomes: Query<&Biome>,
+    dimensions: ResMut<DimensionTypeRegistry>,
+    mut biomes: ResMut<BiomeRegistry>,
 ) {
+    for (_, _, biome) in biomes.iter_mut() {
+        biome.effects.grass_color = Some(0x00ff00);
+    }
+
     let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     for z in -10..10 {
@@ -78,8 +75,8 @@ fn init_clients(
     instances: Query<Entity, With<Instance>>,
 ) {
     for (mut client, mut loc, mut pos) in &mut clients {
-        client.send_message("Welcome to Conway's game of life in Minecraft!".italic());
-        client.send_message(
+        client.send_chat_message("Welcome to Conway's game of life in Minecraft!".italic());
+        client.send_chat_message(
             "Sneak to toggle running the simulation and the left mouse button to bring blocks to \
              life."
                 .italic(),

@@ -10,7 +10,7 @@ mod var_long;
 
 criterion_group! {
     benches,
-    anvil::load,
+    // anvil::load,
     block::block,
     decode_array::decode_array,
     idle::idle_update,

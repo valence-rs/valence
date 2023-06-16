@@ -179,6 +179,7 @@ pub enum UpdatePlayerAbilitiesC2s {
 #[packet(id = packet_id::UPDATE_SIGN_C2S)]
 pub struct UpdateSignC2s<'a> {
     pub position: BlockPos,
+    pub is_front_text: bool,
     pub lines: [&'a str; 4],
 }
 
@@ -249,8 +250,6 @@ pub mod structure_block {
 #[packet(id = packet_id::DEATH_MESSAGE_S2C)]
 pub struct DeathMessageS2c<'a> {
     pub player_id: VarInt,
-    /// Killer's entity ID, -1 if no killer
-    pub entity_id: i32,
     pub message: Cow<'a, Text>,
 }
 
@@ -286,7 +285,6 @@ pub struct EnterCombatS2c;
 #[packet(id = packet_id::END_COMBAT_S2C)]
 pub struct EndCombatS2c {
     pub duration: VarInt,
-    pub entity_id: i32,
 }
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
@@ -324,6 +322,7 @@ pub struct GameJoinS2c<'a> {
     pub is_debug: bool,
     pub is_flat: bool,
     pub last_death_location: Option<GlobalPos<'a>>,
+    pub portal_cooldown: VarInt,
 }
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
@@ -388,6 +387,7 @@ pub struct PlayerRespawnS2c<'a> {
     pub is_flat: bool,
     pub copy_metadata: bool,
     pub last_death_location: Option<GlobalPos<'a>>,
+    pub portal_cooldown: VarInt,
 }
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]

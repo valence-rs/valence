@@ -70,10 +70,11 @@ use valence_instance::packet::{
     ChunkLoadDistanceS2c, ChunkRenderDistanceCenterS2c, UnloadChunkS2c,
 };
 use valence_instance::{ClearInstanceChangesSet, Instance, WriteUpdatePacketsToInstancesSet};
-use valence_registry::{RegistryCodec, RegistryCodecSet};
+use valence_registry::codec::RegistryCodec;
+use valence_registry::tags::TagsRegistry;
+use valence_registry::RegistrySet;
 
 pub mod action;
-pub mod chat;
 pub mod command;
 pub mod custom_payload;
 pub mod event_loop;
@@ -83,6 +84,7 @@ pub mod interact_entity;
 pub mod interact_item;
 pub mod keepalive;
 pub mod layer;
+pub mod message;
 pub mod movement;
 pub mod op_level;
 pub mod packet;
@@ -109,14 +111,16 @@ pub struct FlushPacketsSet;
 
 pub struct SpawnClientsSet;
 
+/// The system set where various facets of the client are updated. Systems that
+/// modify chunks should run _before_ this.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
-struct UpdateClientsSet;
+pub struct UpdateClientsSet;
 
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             (
-                initial_join.after(RegistryCodecSet),
+                initial_join.after(RegistrySet),
                 update_chunk_load_dist,
                 update_layer_view
                     .after(WriteUpdatePacketsToInstancesSet)
@@ -153,7 +157,7 @@ impl Plugin for ClientPlugin {
         action::build(app);
         teleport::build(app);
         weather::build(app);
-        chat::build(app);
+        message::build(app);
         custom_payload::build(app);
         hand_swing::build(app);
         interact_block::build(app);
@@ -334,10 +338,9 @@ impl Client {
 
     /// Kills the client and shows `message` on the death screen. If an entity
     /// killed the player, you should supply it as `killer`.
-    pub fn kill(&mut self, killer: Option<EntityId>, message: impl Into<Text>) {
+    pub fn kill(&mut self, message: impl Into<Text>) {
         self.write_packet(&DeathMessageS2c {
             player_id: VarInt(0),
-            entity_id: killer.map(|id| id.get()).unwrap_or(-1),
             message: message.into().into(),
         });
     }
@@ -684,6 +687,7 @@ struct ClientJoinQuery {
 
 fn initial_join(
     codec: Res<RegistryCodec>,
+    tags: Res<TagsRegistry>,
     mut clients: Query<ClientJoinQuery, Added<Client>>,
     instances: Query<&Instance>,
     mut commands: Commands,
@@ -728,7 +732,10 @@ fn initial_join(
             is_debug: q.is_debug.0,
             is_flat: q.is_flat.0,
             last_death_location,
+            portal_cooldown: VarInt(0), // TODO.
         });
+
+        q.client.enc.append_bytes(tags.sync_tags_packet());
 
         /*
         // TODO: enable all the features?
@@ -786,6 +793,7 @@ fn respawn(
             is_flat: is_flat.0,
             copy_metadata: true,
             last_death_location,
+            portal_cooldown: VarInt(0), // TODO
         });
     }
 }

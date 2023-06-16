@@ -10,52 +10,6 @@ use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 use valence_nbt::Compound;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::WORLD_BORDER_CENTER_CHANGED_S2C)]
-pub struct WorldBorderCenterChangedS2c {
-    pub x_pos: f64,
-    pub z_pos: f64,
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::WORLD_BORDER_INITIALIZE_S2C)]
-pub struct WorldBorderInitializeS2c {
-    pub x: f64,
-    pub z: f64,
-    pub old_diameter: f64,
-    pub new_diameter: f64,
-    pub speed: VarLong,
-    pub portal_teleport_boundary: VarInt,
-    pub warning_blocks: VarInt,
-    pub warning_time: VarInt,
-}
-
-#[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::WORLD_BORDER_INTERPOLATE_SIZE_S2C)]
-pub struct WorldBorderInterpolateSizeS2c {
-    pub old_diameter: f64,
-    pub new_diameter: f64,
-    pub speed: VarLong,
-}
-
-#[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::WORLD_BORDER_SIZE_CHANGED_S2C)]
-pub struct WorldBorderSizeChangedS2c {
-    pub diameter: f64,
-}
-
-#[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::WORLD_BORDER_WARNING_BLOCKS_CHANGED_S2C)]
-pub struct WorldBorderWarningBlocksChangedS2c {
-    pub warning_blocks: VarInt,
-}
-
-#[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::WORLD_BORDER_WARNING_TIME_CHANGED_S2C)]
-pub struct WorldBorderWarningTimeChangedS2c {
-    pub warning_time: VarInt,
-}
-
-#[derive(Clone, Debug, Encode, Decode, Packet)]
 #[packet(id = packet_id::WORLD_EVENT_S2C)]
 pub struct WorldEventS2c {
     pub event: i32,
@@ -95,7 +49,6 @@ pub struct ChunkDataS2c<'a> {
     pub heightmaps: Cow<'a, Compound>,
     pub blocks_and_biomes: &'a [u8],
     pub block_entities: Cow<'a, [ChunkDataBlockEntity<'a>]>,
-    pub trust_edges: bool,
     pub sky_light_mask: Cow<'a, [u64]>,
     pub block_light_mask: Cow<'a, [u64]>,
     pub empty_sky_light_mask: Cow<'a, [u64]>,
@@ -116,7 +69,6 @@ pub struct ChunkDataBlockEntity<'a> {
 #[packet(id = packet_id::CHUNK_DELTA_UPDATE_S2C)]
 pub struct ChunkDeltaUpdateS2c<'a> {
     pub chunk_section_position: i64,
-    pub invert_trust_edges: bool,
     pub blocks: Cow<'a, [VarLong]>,
 }
 
@@ -144,7 +96,6 @@ pub struct ChunkRenderDistanceCenterS2c {
 pub struct LightUpdateS2c {
     pub chunk_x: VarInt,
     pub chunk_z: VarInt,
-    pub trust_edges: bool,
     pub sky_light_mask: Vec<u64>,
     pub block_light_mask: Vec<u64>,
     pub empty_sky_light_mask: Vec<u64>,

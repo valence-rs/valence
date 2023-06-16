@@ -3,6 +3,7 @@
 use valence::entity::player::PlayerEntityBundle;
 use valence::entity::sheep::SheepEntityBundle;
 use valence::prelude::*;
+use valence_client::message::SendMessage;
 use valence_client::resource_pack::{ResourcePackStatus, ResourcePackStatusEvent};
 
 const SPAWN_Y: i32 = 64;
@@ -21,8 +22,8 @@ pub fn main() {
 fn setup(
     mut commands: Commands,
     server: Res<Server>,
-    dimensions: Query<&DimensionType>,
-    biomes: Query<&Biome>,
+    dimensions: Res<DimensionTypeRegistry>,
+    biomes: Res<BiomeRegistry>,
 ) {
     let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
@@ -57,7 +58,7 @@ fn init_clients(
     for (entity, uuid, mut client, mut game_mode) in &mut clients {
         *game_mode = GameMode::Creative;
 
-        client.send_message("Hit the sheep to prompt for the resource pack.".italic());
+        client.send_chat_message("Hit the sheep to prompt for the resource pack.".italic());
 
         commands.entity(entity).insert(PlayerEntityBundle {
             location: Location(instances.single()),
@@ -91,17 +92,18 @@ fn on_resource_pack_status(
         if let Ok(mut client) = clients.get_mut(event.client) {
             match event.status {
                 ResourcePackStatus::Accepted => {
-                    client.send_message("Resource pack accepted.".color(Color::GREEN));
+                    client.send_chat_message("Resource pack accepted.".color(Color::GREEN));
                 }
                 ResourcePackStatus::Declined => {
-                    client.send_message("Resource pack declined.".color(Color::RED));
+                    client.send_chat_message("Resource pack declined.".color(Color::RED));
                 }
                 ResourcePackStatus::FailedDownload => {
-                    client.send_message("Resource pack failed to download.".color(Color::RED));
+                    client.send_chat_message("Resource pack failed to download.".color(Color::RED));
                 }
                 ResourcePackStatus::SuccessfullyLoaded => {
-                    client
-                        .send_message("Resource pack successfully downloaded.".color(Color::BLUE));
+                    client.send_chat_message(
+                        "Resource pack successfully downloaded.".color(Color::BLUE),
+                    );
                 }
             }
         };

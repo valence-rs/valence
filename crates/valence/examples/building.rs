@@ -1,8 +1,9 @@
 #![allow(clippy::type_complexity)]
 
-use valence::inventory::ClientInventoryState;
+use valence::inventory::HeldItem;
 use valence::prelude::*;
 use valence_client::interact_block::InteractBlockEvent;
+use valence_client::message::SendMessage;
 
 const SPAWN_Y: i32 = 64;
 
@@ -26,8 +27,8 @@ pub fn main() {
 fn setup(
     mut commands: Commands,
     server: Res<Server>,
-    dimensions: Query<&DimensionType>,
-    biomes: Query<&Biome>,
+    dimensions: Res<DimensionTypeRegistry>,
+    biomes: Res<BiomeRegistry>,
 ) {
     let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
@@ -55,7 +56,7 @@ fn init_clients(
         loc.0 = instances.single();
         pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
 
-        client.send_message("Welcome to Valence! Build something cool.".italic());
+        client.send_chat_message("Welcome to Valence! Build something cool.".italic());
     }
 }
 
@@ -109,14 +110,14 @@ fn digging_survival_mode(
 }
 
 fn place_blocks(
-    mut clients: Query<(&mut Inventory, &GameMode, &ClientInventoryState)>,
+    mut clients: Query<(&mut Inventory, &GameMode, &HeldItem)>,
     mut instances: Query<&mut Instance>,
     mut events: EventReader<InteractBlockEvent>,
 ) {
     let mut instance = instances.single_mut();
 
     for event in events.iter() {
-        let Ok((mut inventory, game_mode, inv_state)) = clients.get_mut(event.client) else {
+        let Ok((mut inventory, game_mode, held)) = clients.get_mut(event.client) else {
             continue;
         };
         if event.hand != Hand::Main {
@@ -124,7 +125,7 @@ fn place_blocks(
         }
 
         // get the held item
-        let slot_id = inv_state.held_item_slot();
+        let slot_id = held.slot();
         let Some(stack) = inventory.slot(slot_id) else {
             // no item in the slot
             continue;
