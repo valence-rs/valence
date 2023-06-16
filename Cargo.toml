@@ -91,6 +91,7 @@ valence_network.path = "crates/valence_network"
 valence_player_list.path = "crates/valence_player_list"
 valence_registry.path = "crates/valence_registry"
 valence_world_border.path = "crates/valence_world_border"
+valence_world_time.path = "crates/valence_world_time"
 valence.path = "crates/valence"
 
 zip = "0.6.3"
