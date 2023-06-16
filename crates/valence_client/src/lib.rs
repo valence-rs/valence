@@ -119,10 +119,9 @@ impl Plugin for ClientPlugin {
                 initial_join.after(RegistryCodecSet),
                 update_chunk_load_dist,
                 update_layer_view
-                .after(WriteUpdatePacketsToInstancesSet)
-                .after(update_chunk_load_dist),
-                read_data_in_old_view
-                    .after(update_layer_view),
+                    .after(WriteUpdatePacketsToInstancesSet)
+                    .after(update_chunk_load_dist),
+                read_data_in_old_view.after(update_layer_view),
                 update_view.after(initial_join).after(read_data_in_old_view),
                 respawn.after(update_view),
                 remove_entities.after(update_view),
@@ -974,7 +973,9 @@ fn read_data_in_old_view(
                     // client
                     if let Some(client_layer_set) = client_layer_set {
                         client_layer_set.0.iter().for_each(|layer| {
-                            client.write_packet_bytes(&cell.layers_packet_buf[*layer as usize][..]);
+                            if let Some(index) = cell.layers_packet_buf_indices.get(layer) {
+                                client.write_packet_bytes(&cell.layers_packet_buf[*index][..]);
+                            }
                         });
                     }
 
@@ -1008,13 +1009,7 @@ fn update_layer_view(
     entities: Query<(EntityInitQuery, &OldPosition, Option<&Layer>)>,
 ) {
     clients.par_iter_mut().for_each_mut(
-        |(
-            mut client,
-            mut remove_buf,
-            old_pos,
-            old_view_dist,
-            client_layer_set,
-        )| {
+        |(mut client, mut remove_buf, old_pos, old_view_dist, client_layer_set)| {
             // TODO: cache the chunk position?
             let old_chunk_pos = old_pos.chunk_pos();
 

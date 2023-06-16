@@ -13,6 +13,7 @@ num-integer.workspace = true
 parking_lot.workspace = true
 rand.workspace = true
 rustc-hash.workspace = true
+tracing.workspace = true
 valence_biome.workspace = true
 valence_block.workspace = true
 valence_core.workspace = true

@@ -6,12 +6,17 @@ use bevy_ecs::prelude::*;
 use crate::FlushPacketsSet;
 
 pub(super) fn build(app: &mut App) {
-    app.add_system(
-        update_old_client_layer_set.in_set(FlushPacketsSet),
-    );
+    app.add_system(update_old_client_layer_set.in_set(FlushPacketsSet));
 }
 
-/// A component that represents a layers that an client is on.
+/// A component that represents the layers that an client is on.
+/// This is used to determine which entity to send to a client.
+///
+/// Usage: `ClientLayerSet::new(vec![0, 2])`
+///
+/// This will create a new `ClientLayerSet` with layers 0 and 2.
+/// The entity that are on layer 0 and 2 will be sent to the client.
+/// as well as the entity that don't have a `Layer` component.
 #[derive(Component, Default, Debug)]
 pub struct ClientLayerSet(pub HashSet<u8>, HashSet<u8>);
 
@@ -38,6 +43,10 @@ impl ClientLayerSet {
         } else {
             self.0.insert(layer)
         }
+    }
+
+    pub fn clear(&mut self) {
+        self.0.clear();
     }
 
     pub fn update(&mut self) {

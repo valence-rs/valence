@@ -104,7 +104,8 @@ impl<'a> VacantChunkEntry<'a> {
             incoming: vec![],
             outgoing: vec![],
             packet_buf: vec![],
-            layers_packet_buf: [0; 64].map(|_| vec![]),
+            layers_packet_buf: vec![],
+            layers_packet_buf_indices: FxHashMap::default(),
         });
 
         debug_assert!(cell.chunk.is_none());
