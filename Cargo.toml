@@ -1,6 +1,6 @@
 [workspace]
 members = ["crates/*", "tools/*"]
-exclude = ["rust-mc-bot", "tools/stresser", "tools/packet_inspector"]
+exclude = ["rust-mc-bot", "tools/stresser"]
 resolver = "2"
 
 [workspace.package]
@@ -19,7 +19,9 @@ async-trait = "0.1.60"
 atty = "0.2.14"
 base64 = "0.21.0"
 bevy_app = { version = "0.10.1", default-features = false }
-bevy_ecs = { version = "0.10.1", default-features = false, features = ["trace"] }
+bevy_ecs = { version = "0.10.1", default-features = false, features = [
+    "trace",
+] }
 bevy_hierarchy = { version = "0.10.1", default-features = false }
 bevy_mod_debugdump = "0.7.0"
 bitfield-struct = "0.3.1"
@@ -30,9 +32,10 @@ cfb8 = "0.8.1"
 clap = { version = "4.0.30", features = ["derive"] }
 criterion = "0.4.0"
 directories = "5.0.0"
-eframe = { version = "0.21.0", default-features = false }
-egui = "0.21.0"
-enum-map = "2.4.2"
+eframe = { version = "0.22.0", default-features = false }
+egui = "0.22.0"
+egui_dock = "0.6"
+enum-map = "2.5.0"
 flate2 = "1.0.24"
 flume = "0.10.14"
 fs_extra = "1.2.0"
@@ -40,6 +43,7 @@ glam = "0.23.0"
 heck = "0.4.0"
 hmac = "0.12.1"
 indexmap = "1.9.3"
+itertools = "0.10.5"
 lru = "0.10.0"
 noise = "0.8.2"
 num = "0.4.0"
