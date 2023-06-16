@@ -90,6 +90,7 @@ pub mod status;
 pub mod teleport;
 pub mod title;
 pub mod weather;
+pub mod time;
 
 pub struct ClientPlugin;
 
