@@ -1,4 +1,5 @@
 use bevy_ecs::prelude::Component;
+use valence_client::Client;
 use valence_core::{protocol::{Decode, Encode}, text::Text, uuid::UniqueId};
 use bitfield_struct::bitfield;
 
@@ -7,12 +8,17 @@ pub mod packet;
 pub struct BossBar {
     pub id: UniqueId,
     pub title: BossBarTitle,
+    pub health: BossBarHealth,
     pub style: BossBarStyle,
     pub flags: BossBarFlags,
+    pub viewers: BossBarViewers,
 }
 
 #[derive(Component)]
 pub struct BossBarTitle(pub Text);
+
+#[derive(Component)]
+pub struct BossBarHealth(pub f32);
 
 #[derive(Component)]
 pub struct BossBarStyle {
@@ -51,4 +57,4 @@ pub struct BossBarFlags {
 }
 
 #[derive(Component)]
-pub struct BossBarViewers(pub Vec<u128>);
+pub struct BossBarViewers(pub Vec<Client>);
