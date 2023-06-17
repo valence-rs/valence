@@ -44,6 +44,7 @@ use valence_core::chunk_pos::{ChunkPos, ChunkView};
 use valence_core::despawn::Despawned;
 use valence_core::game_mode::GameMode;
 use valence_core::ident::Ident;
+use valence_core::layer::{Layer, LayerType};
 use valence_core::particle::{Particle, ParticleS2c};
 use valence_core::property::Property;
 use valence_core::protocol::byte_angle::ByteAngle;
@@ -62,9 +63,8 @@ use valence_entity::packet::{
 };
 use valence_entity::player::PlayerEntityBundle;
 use valence_entity::{
-    ClearEntityChangesSet, EntityId, EntityKind, EntityStatus, HeadYaw, Layer, Location, Look,
-    ObjectData, OldLocation, OldPosition, OnGround, PacketByteRange, Position, TrackedData,
-    Velocity,
+    ClearEntityChangesSet, EntityId, EntityKind, EntityStatus, HeadYaw, Location, Look, ObjectData,
+    OldLocation, OldPosition, OnGround, PacketByteRange, Position, TrackedData, Velocity,
 };
 use valence_instance::packet::{
     ChunkLoadDistanceS2c, ChunkRenderDistanceCenterS2c, UnloadChunkS2c,
@@ -946,7 +946,7 @@ fn read_data_in_old_view(
                                 if let (Some(client_layer_set), Some(layer)) =
                                     (client_layer_set, layer)
                                 {
-                                    if client_layer_set.get(layer.0) {
+                                    if client_layer_set.contains(&layer.0) {
                                         entity.write_init_packets(old_pos.get(), &mut client.enc);
                                     }
                                 } else {
@@ -964,7 +964,7 @@ fn read_data_in_old_view(
                             if let Ok((entity_id, layer)) = entity_ids.get(id) {
                                 if let Some(client_layer_set) = client_layer_set {
                                     if let Some(layer) = layer {
-                                        if client_layer_set.get(layer.0) {
+                                        if client_layer_set.contains(&layer.0) {
                                             remove_buf.push(entity_id.get());
                                         }
                                     } else {
@@ -980,7 +980,7 @@ fn read_data_in_old_view(
                     // Using the layer mask we gonna send the right layers buffers of bytes to the
                     // client
                     if let Some(client_layer_set) = client_layer_set {
-                        client_layer_set.0.iter().for_each(|layer| {
+                        client_layer_set.layers.iter().for_each(|layer| {
                             if let Some(index) = cell.layers_packet_buf_indices.get(layer) {
                                 client.write_packet_bytes(&cell.layers_packet_buf[*index][..]);
                             }
@@ -1029,8 +1029,8 @@ fn update_layer_view(
                 if view.contains(old_pos.chunk_pos()) {
                     if let (Some(client_layer_set), Some(layer)) = (client_layer_set, layer) {
                         if client_layer_set
-                            .get_added()
-                            .collect::<HashSet<&u8>>()
+                            .added()
+                            .collect::<HashSet<&LayerType>>()
                             .contains(&layer.0)
                         {
                             entity.write_init_packets(old_pos.get(), &mut client.enc);
@@ -1048,8 +1048,8 @@ fn update_layer_view(
                         // {:?}, old_client_layer_mask: {:?}, layer: {:?}", client_layer_mask,
                         // old_client_layer_mask, layer);}
                         if client_layer_set
-                            .get_removed()
-                            .collect::<HashSet<&u8>>()
+                            .removed()
+                            .collect::<HashSet<&LayerType>>()
                             .contains(&layer.0)
                         {
                             // debug!("removing entity: {:?}", entity_init_item.entity_id.get());
@@ -1138,7 +1138,7 @@ fn update_view(
                                         if let (Some(client_layer_set), Some(layer)) =
                                             (client_layer_set, layer)
                                         {
-                                            if client_layer_set.0.contains(&layer.0) {
+                                            if client_layer_set.contains(&layer.0) {
                                                 info!("removing entity: {:?}", entity_id.get());
                                                 remove_buf.push(entity_id.get());
                                             }
@@ -1176,7 +1176,7 @@ fn update_view(
                                         if let (Some(layer_mask), Some(layer)) =
                                             (client_layer_set, layer)
                                         {
-                                            if layer_mask.0.contains(&layer.0) {
+                                            if layer_mask.contains(&layer.0) {
                                                 entity
                                                     .write_init_packets(pos.get(), &mut client.enc);
                                             }
@@ -1211,7 +1211,7 @@ fn update_view(
                                     if let (Some(layer_mask), Some(layer)) =
                                         (client_layer_set, layer)
                                     {
-                                        if layer_mask.0.contains(&layer.0) {
+                                        if layer_mask.contains(&layer.0) {
                                             remove_buf.push(entity_id.get());
                                         }
                                     } else {
@@ -1242,7 +1242,7 @@ fn update_view(
                                     if let (Some(layer_mask), Some(layer)) =
                                         (client_layer_set, layer)
                                     {
-                                        if layer_mask.0.contains(&layer.0) {
+                                        if layer_mask.contains(&layer.0) {
                                             entity.write_init_packets(pos.get(), &mut client.enc);
                                         }
                                     } else {

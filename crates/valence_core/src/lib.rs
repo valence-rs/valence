@@ -28,6 +28,7 @@ pub mod game_mode;
 pub mod hand;
 pub mod ident;
 pub mod item;
+pub mod layer;
 pub mod particle;
 pub mod player_textures;
 pub mod property;

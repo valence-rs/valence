@@ -36,6 +36,7 @@ use valence_core::block_pos::BlockPos;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::despawn::Despawned;
 use valence_core::ident::Ident;
+use valence_core::layer::{Layer, LayerType};
 use valence_core::particle::{Particle, ParticleS2c};
 use valence_core::protocol::array::LengthPrefixedArray;
 use valence_core::protocol::byte_angle::ByteAngle;
@@ -51,8 +52,8 @@ use valence_entity::packet::{
     RotateS2c,
 };
 use valence_entity::{
-    EntityAnimations, EntityId, EntityKind, EntityStatuses, HeadYaw, InitEntitiesSet, Layer,
-    Location, Look, OldLocation, OldPosition, OnGround, PacketByteRange, Position, TrackedData,
+    EntityAnimations, EntityId, EntityKind, EntityStatuses, HeadYaw, InitEntitiesSet, Location,
+    Look, OldLocation, OldPosition, OnGround, PacketByteRange, Position, TrackedData,
     UpdateTrackedDataSet, Velocity,
 };
 
@@ -474,7 +475,7 @@ pub struct PartitionCell {
     pub layers_packet_buf: Vec<Vec<u8>>,
     /// Mapping from layer to index in `layers_packet_buf`.
     #[doc(hidden)]
-    pub layers_packet_buf_indices: FxHashMap<u8, usize>,
+    pub layers_packet_buf_indices: FxHashMap<LayerType, usize>,
 }
 
 impl Instance {

@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+use valence_core::layer::LayerType;
 
 use crate::FlushPacketsSet;
 
@@ -12,53 +13,59 @@ pub(super) fn build(app: &mut App) {
 /// A component that represents the layers that an client is on.
 /// This is used to determine which entity to send to a client.
 ///
-/// Usage: `ClientLayerSet::new(vec![0, 2])`
+/// Usage: `ClientLayerSet::new(vec![1, 2])`
 ///
-/// This will create a new `ClientLayerSet` with layers 0 and 2.
-/// The entity that are on layer 0 and 2 will be sent to the client.
+/// This will create a new `ClientLayerSet` with layers 1 and 2.
+/// The entity that are on layer 1 and 2 will be sent to the client.
 /// as well as the entity that don't have a `Layer` component.
 #[derive(Component, Default, Debug)]
-pub struct ClientLayerSet(pub HashSet<u8>, HashSet<u8>);
+pub struct ClientLayerSet {
+    pub layers: HashSet<LayerType>,
+    old_layers: HashSet<LayerType>,
+}
 
 impl ClientLayerSet {
-    pub fn new(layers: Vec<u8>) -> Self {
-        Self(layers.into_iter().collect(), HashSet::new())
-    }
-
-    pub fn set(&mut self, layer: u8, visibility: bool) -> bool {
-        if visibility {
-            self.0.insert(layer)
-        } else {
-            self.0.remove(&layer)
+    pub fn new(layers: Vec<LayerType>) -> Self {
+        Self {
+            layers: layers.into_iter().collect(),
+            old_layers: HashSet::new(),
         }
     }
 
-    pub fn get(&self, layer: u8) -> bool {
-        self.0.contains(&layer)
+    pub fn set(&mut self, layer: LayerType, visibility: bool) -> bool {
+        if visibility {
+            self.layers.insert(layer)
+        } else {
+            self.layers.remove(&layer)
+        }
     }
 
-    pub fn toggle(&mut self, layer: u8) -> bool {
-        if self.0.contains(&layer) {
-            self.0.remove(&layer)
+    pub fn contains(&self, layer: &LayerType) -> bool {
+        self.layers.contains(layer)
+    }
+
+    pub fn toggle(&mut self, layer: LayerType) -> bool {
+        if self.layers.contains(&layer) {
+            self.layers.remove(&layer)
         } else {
-            self.0.insert(layer)
+            self.layers.insert(layer)
         }
     }
 
     pub fn clear(&mut self) {
-        self.0.clear();
+        self.layers.clear();
     }
 
-    pub fn update(&mut self) {
-        self.1 = self.0.clone();
+    pub(crate) fn update(&mut self) {
+        self.old_layers = self.layers.clone();
     }
 
-    pub fn get_added(&self) -> impl Iterator<Item = &u8> {
-        self.0.difference(&self.1)
+    pub fn added(&self) -> impl Iterator<Item = &LayerType> {
+        self.layers.difference(&self.old_layers)
     }
 
-    pub fn get_removed(&self) -> impl Iterator<Item = &u8> {
-        self.1.difference(&self.0)
+    pub fn removed(&self) -> impl Iterator<Item = &LayerType> {
+        self.old_layers.difference(&self.layers)
     }
 }
 
