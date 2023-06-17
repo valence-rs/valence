@@ -1,5 +1,5 @@
 use bevy_app::Plugin;
-use bevy_ecs::{system::Query, query::{Added, Changed}};
+use bevy_ecs::{system::Query, query::{Added, Changed}, removal_detection::RemovedComponents};
 use components::{BossBarViewers, BossBarTitle, BossBarHealth, BossBarStyle, BossBarFlags};
 use packet::{BossBarS2c, BossBarAction};
 use valence_client::Client;
@@ -14,12 +14,13 @@ impl Plugin for BossBarPlugin {
 
     fn build(&self, app: &mut bevy_app::App) {
         app
-        .add_system(remove_despawned_boss_bars_from_viewers)
         .add_system(handle_boss_bar_title_update)
         .add_system(handle_boss_bar_health_update)
         .add_system(handle_boss_bar_style_update)
         .add_system(handle_boss_bar_flags_update)
-        .add_system(handle_boss_bar_viewers_update);
+        .add_system(handle_boss_bar_viewers_update)
+        .add_system(handle_boss_bar_despawn)
+        .add_system(handle_client_disconnection);
     }
 
 }
@@ -112,11 +113,12 @@ fn handle_boss_bar_viewers_update(mut boss_bars: Query<(&UniqueId, &BossBarTitle
         }
 
         for removed_viewer in removed_viewers {
-            let mut client = clients.get_mut(removed_viewer).unwrap();
-            client.write_packet(&BossBarS2c {
-                id: id.0,
-                action: BossBarAction::Remove,
-            });
+            if let Ok(mut client) = clients.get_mut(removed_viewer) {
+                client.write_packet(&BossBarS2c {
+                    id: id.0,
+                    action: BossBarAction::Remove,
+                });
+            }
         }
 
         viewers.last_viewers = viewers.current_viewers.clone();
@@ -124,7 +126,7 @@ fn handle_boss_bar_viewers_update(mut boss_bars: Query<(&UniqueId, &BossBarTitle
 }
 
 /// System that sends a bossbar remove packet to all viewers of a boss bar that has been despawned.
-fn remove_despawned_boss_bars_from_viewers(mut boss_bars: Query<(&UniqueId, &mut BossBarViewers), Added<Despawned>>, mut clients: Query<&mut Client>) {
+fn handle_boss_bar_despawn(mut boss_bars: Query<(&UniqueId, &mut BossBarViewers), Added<Despawned>>, mut clients: Query<&mut Client>) {
     for boss_bar in boss_bars.iter_mut() {
         let (id, mut viewers) = boss_bar;
 
@@ -134,6 +136,18 @@ fn remove_despawned_boss_bars_from_viewers(mut boss_bars: Query<(&UniqueId, &mut
                 id: id.0,
                 action: BossBarAction::Remove,
             });
+        }
+    }
+}
+
+/// System that removes a client from the viewers of its boss bars when it disconnects.
+fn handle_client_disconnection(
+    mut disconnected_clients: RemovedComponents<Client>,
+    mut boss_bars: Query<&mut BossBarViewers>,
+) {
+    for entity in disconnected_clients.iter() {
+        for mut boss_bar in boss_bars.iter_mut() {
+            boss_bar.current_viewers.retain(|viewer| *viewer != entity);
         }
     }
 }
