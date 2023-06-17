@@ -1,25 +1,18 @@
-mod tri_checkbox;
+#![cfg_attr(
+    all(not(debug_assertions), feature = "gui"),
+    windows_subsystem = "windows"
+)]
 
-mod app;
-mod shared_state;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let native_options = eframe::NativeOptions {
-        initial_window_size: Some(egui::Vec2::new(1024.0, 768.0)),
-        decorated: true,
-        ..Default::default()
-    };
-
-    eframe::run_native(
-        "Valence Packet Inspector",
-        native_options,
-        Box::new(move |cc| {
-            let gui_app = app::GuiApp::new(cc);
-
-            Box::new(gui_app)
-        }),
-    )?;
-
-    Ok(())
+#[cfg(any(
+    all(not(feature = "gui"), not(feature = "cli")),
+    all(feature = "gui", feature = "cli")
+))]
+fn main() {
+    panic!("Invalid features; select either \"cli\" or \"gui\"");
 }
+
+#[cfg(all(not(feature = "cli"), feature = "gui"))]
+include!("./main_gui.rs");
+
+#[cfg(all(not(feature = "gui"), feature = "cli"))]
+include!("./main_cli.rs");

@@ -6,8 +6,17 @@ description = "A simple Minecraft proxy for inspecting packets."
 
 [features]
 default = ["gui"]
-gui = ["syntect", "serde"]
-cli = []
+gui = [
+    "image",
+    "syntect",
+    "serde",
+    "egui",
+    "eframe",
+    "egui_dock",
+    "itertools",
+    "enum-map",
+]
+cli = ["clap"]
 
 [dependencies]
 anyhow = { workspace = true }
@@ -18,21 +27,22 @@ tokio = { workspace = true, features = ["full"] }
 tracing = { workspace = true }
 valence = { workspace = true }
 time = { workspace = true, features = ["local-offset"] }
-
+image = { workspace = true, optional = true }
 tracing-subscriber = { workspace = true }
-egui = { workspace = true }
-eframe = { workspace = true, features = ["persistence", "wgpu"] }
-egui_dock = { workspace = true, features = ["serde"] }
-itertools = { workspace = true }
-enum-map = { workspace = true, features = ["serde"] }
+egui = { workspace = true, optional = true }
+eframe = { workspace = true, optional = true, features = [
+    "persistence",
+    "wgpu",
+] }
+egui_dock = { workspace = true, optional = true, features = ["serde"] }
+itertools = { workspace = true, optional = true }
+enum-map = { workspace = true, optional = true, features = ["serde"] }
 syntect = { workspace = true, default-features = false, optional = true, features = [
     "default-fancy",
 ] }
+serde = { workspace = true, optional = true, features = ["derive"] }
+clap = { workspace = true, optional = true, features = ["derive"] }
 
-[dependencies.serde]
-workspace = true
-features = ["derive"]
-optional = true
 
 [build-dependencies]
 syn = "2.0.18"
