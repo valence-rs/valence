@@ -24,7 +24,7 @@ impl BossBarBundle {
                 division,
             },
             flags,
-            viewers: BossBarViewers(Vec::new()),
+            viewers: BossBarViewers::new(),
         }
     }
 
@@ -73,4 +73,18 @@ pub struct BossBarFlags {
 }
 
 #[derive(Component)]
-pub struct BossBarViewers(pub Vec<Entity>);
+pub struct BossBarViewers {
+    pub current_viewers: Vec<Entity>,
+    pub last_viewers: Vec<Entity>,
+}
+
+impl BossBarViewers {
+
+    pub fn new() -> BossBarViewers {
+        BossBarViewers {
+            current_viewers: Vec::new(),
+            last_viewers: Vec::new(),
+        }
+    }
+
+}
