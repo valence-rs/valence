@@ -51,6 +51,7 @@ pub enum Event {
 pub struct SharedState {
     pub listener_addr: String,
     pub server_addr: String,
+    pub autostart: bool,
     pub packet_filter: PacketFilter,
     #[serde(skip)]
     pub is_listening: bool,
@@ -73,6 +74,7 @@ impl Default for SharedState {
         Self {
             listener_addr: "127.0.0.1:25566".to_string(),
             server_addr: "127.0.0.1:25565".to_string(),
+            autostart: false,
             is_listening: false,
             packet_filter: PacketFilter::new(),
             selected_packet: None,

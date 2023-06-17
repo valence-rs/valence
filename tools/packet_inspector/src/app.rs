@@ -1,4 +1,7 @@
-use std::sync::{Arc, RwLock};
+use std::{
+    net::SocketAddr,
+    sync::{Arc, RwLock},
+};
 
 use egui_dock::{DockArea, NodeIndex, Style, Tree};
 use packet_inspector::Proxy;
@@ -84,10 +87,16 @@ impl GuiApp {
             }
         }
 
+        let autostart = shared_state.autostart;
         let shared_state = Arc::new(RwLock::new(shared_state));
 
         // Event Handling
         handle_events(shared_state.clone());
+
+        if autostart {
+            let state = shared_state.read().unwrap();
+            state.send_event(Event::StartListening);
+        }
 
         // Consumer thread
 
@@ -137,12 +146,19 @@ fn handle_events(state: Arc<RwLock<SharedState>>) {
                         continue;
                     }
 
-                    let listener_addr = w_state.listener_addr.clone();
-                    let server_addr = w_state.server_addr.clone();
+                    let Ok(listener_addr) = w_state.listener_addr.parse::<SocketAddr>() else {
+                        w_state.is_listening = false;
+                        continue;
+                    };
+                    let Ok(server_addr) = w_state.server_addr.parse::<SocketAddr>() else {
+                        w_state.is_listening = false;
+                        continue;
+                    };
+
                     let state = state.clone();
 
                     proxy_thread = Some(tokio::spawn(async move {
-                        let proxy = Proxy::new(listener_addr.parse()?, server_addr.parse()?);
+                        let proxy = Proxy::new(listener_addr, server_addr);
                         let receiver = proxy.subscribe();
 
                         tokio::spawn(async move {

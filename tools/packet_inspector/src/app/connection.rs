@@ -21,17 +21,24 @@ impl View for Connection {
             ui.text_edit_singleline(&mut state.listener_addr.clone());
             ui.label("Server Address");
             ui.text_edit_singleline(&mut state.server_addr.clone());
-            if ui.button("Stop Listening").clicked() {
-                state.send_event(Event::StopListening);
-            }
+
+            ui.horizontal(|ui| {
+                if ui.button("Stop Listening").clicked() {
+                    state.send_event(Event::StopListening);
+                }
+                ui.checkbox(&mut state.autostart, "Autostart");
+            });
         } else {
             ui.label("Listener Address");
             ui.text_edit_singleline(&mut state.listener_addr);
             ui.label("Server Address");
             ui.text_edit_singleline(&mut state.server_addr);
-            if ui.button("Start Listening").clicked() {
-                state.send_event(Event::StartListening);
-            }
+            ui.horizontal(|ui| {
+                if ui.button("Start Listening").clicked() {
+                    state.send_event(Event::StartListening);
+                }
+                ui.checkbox(&mut state.autostart, "Autostart");
+            });
         }
     }
 }
