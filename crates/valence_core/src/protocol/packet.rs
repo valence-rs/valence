@@ -916,8 +916,9 @@ pub mod command {
         Uuid,
     }
 
-    #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
+    #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Default)]
     pub enum StringArg {
+        #[default]
         SingleWord,
         QuotablePhrase,
         GreedyPhrase,

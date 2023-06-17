@@ -1,14 +1,4 @@
-#![doc = include_str!("../README.md")]
-
-pub mod block;
-pub mod cenum;
-pub mod entity;
-pub mod item;
-pub mod json;
-pub mod parse_util;
-pub mod parser;
-pub mod pos;
-pub mod primitive;
-pub mod range;
+pub mod num;
+pub mod parse;
 pub mod reader;
-pub mod resource;
+pub mod string;

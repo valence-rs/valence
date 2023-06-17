@@ -1,29 +1,16 @@
-use std::ops::{Add, AddAssign};
-use std::str::{Chars, FromStr};
+use std::ops::{Add, AddAssign, Range};
+use std::str::Chars;
 
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct StrCursor {
-    pub bytes: usize,
-    pub chars: usize,
+    bytes: usize,
+    chars: usize,
 }
 
-impl StrCursor {
-    pub const fn new(bytes: usize, chars: usize) -> Self {
-        Self { bytes, chars }
-    }
-
-    #[cfg(test)]
-    pub fn new_str(str: &str) -> Self {
-        Self::new(str.len(), str.chars().count())
-    }
-
-    #[cfg(test)]
-    pub fn new_range(begin: &str, taken: &str) -> std::ops::Range<Self> {
-        let l = Self::new_str(begin);
-        let mut r = Self::new_str(taken);
-        r.bytes += l.bytes;
-        r.chars += l.chars;
-        l..r
+impl AddAssign<char> for StrCursor {
+    fn add_assign(&mut self, rhs: char) {
+        self.bytes += rhs.len_utf8();
+        self.chars += 1;
     }
 }
 
@@ -36,298 +23,105 @@ impl Add<char> for StrCursor {
     }
 }
 
-impl AddAssign<char> for StrCursor {
-    fn add_assign(&mut self, rhs: char) {
-        self.bytes += rhs.len_utf8();
-        self.chars += 1;
+impl StrCursor {
+    pub fn chars(&self) -> usize {
+        self.chars
+    }
+
+    pub fn bytes(&self) -> usize {
+        self.bytes
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
+pub struct StrSpan {
+    begin: StrCursor,
+    end: StrCursor,
+}
+
+impl StrSpan {
+    pub const fn new(begin: StrCursor, end: StrCursor) -> Self {
+        debug_assert!(begin.bytes <= end.bytes);
+        Self { begin, end }
+    }
+
+    pub fn join(self, other: Self) -> Self {
+        Self::new(self.begin, other.end)
+    }
+}
+
+impl From<Range<StrCursor>> for StrSpan {
+    fn from(value: Range<StrCursor>) -> Self {
+        Self::new(value.start, value.end)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct StrLocated<T> {
+    pub span: StrSpan,
+    pub object: T,
+}
+
+impl<T> StrLocated<T> {
+    pub const fn new(span: StrSpan, object: T) -> Self {
+        Self { span, object }
+    }
+
+    pub fn map<T1>(self, func: impl FnOnce(T) -> T1) -> StrLocated<T1> {
+        StrLocated {
+            span: self.span,
+            object: func(self.object),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct StrReader<'a> {
     str: &'a str,
     cursor: StrCursor,
 }
 
-impl<'a> From<&'a str> for StrReader<'a> {
-    fn from(value: &'a str) -> Self {
-        StrReader::new(value)
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum StrFilter {
+pub enum StrReaderFilter {
+    /// Reader continues read
     Continue,
-    EndStrInclude,
-    EndInclude,
-    EndExclude,
+    /// Reader includes char and stops read
+    IncludeStr,
+    /// Reader moves cursor but does not include char and stops read
+    IncludeCursor,
+    /// Reader does not neither move cursor nor include char in str and then
+    /// stops read
+    Exclude,
 }
 
 impl<'a> StrReader<'a> {
     pub const fn new(str: &'a str) -> Self {
         Self {
             str,
-            cursor: StrCursor::new(0, 0),
+            cursor: StrCursor { bytes: 0, chars: 0 },
         }
     }
 
-    pub fn str(&self) -> &'a str {
-        self.str
-    }
-
-    /// # Safety
-    /// Given cursor should be valid
-    pub unsafe fn set_cursor(&mut self, cursor: StrCursor) {
-        self.cursor = cursor;
-    }
-
-    /// # Safety
-    /// Given bytes should be valid for current cursor
-    pub unsafe fn move_cursor_right(&mut self, bytes: usize) {
-        let new_bytes = self.cursor.bytes + bytes;
-        self.cursor.chars += unsafe { self.str.get_unchecked(self.cursor.bytes..new_bytes) }
-            .chars()
-            .count();
-        self.cursor.bytes = new_bytes;
-    }
-
-    pub fn cursor(&self) -> StrCursor {
+    /// Returns valid cursor
+    pub const fn cursor(&self) -> StrCursor {
         self.cursor
     }
 
-    fn chars(&self) -> Chars<'a> {
-        self.remaining_str().chars()
+    pub fn to_end(&mut self) {
+        self.cursor.chars += self.chars().count();
+        self.cursor.bytes = self.str.len();
     }
 
-    pub fn peek_char(&self) -> Option<char> {
-        self.chars().next()
+    /// # Safety
+    /// Span should be valid
+    pub unsafe fn get_str(&self, span: impl Into<StrSpan>) -> &'a str {
+        let span = span.into();
+        // SAFETY: function accepts only valid spans
+        unsafe { self.str.get_unchecked(span.begin.bytes..span.end.bytes) }
     }
 
-    pub fn peek_offset_char(&self, offset: usize) -> Option<char> {
-        let mut iter = self.chars();
-        for _ in 0..offset {
-            iter.next();
-        }
-        iter.next()
-    }
-
-    pub fn next_char(&mut self) -> Option<char> {
-        let ch = self.peek_char();
-        if let Some(ch) = ch {
-            self.cursor += ch;
-        }
-
-        ch
-    }
-
-    pub fn skip_str_filtered(&mut self, mut filter: impl FnMut(char) -> StrFilter) -> StrCursor {
-        loop {
-            match self.peek_char() {
-                Some(ch) => match filter(ch) {
-                    StrFilter::Continue => {
-                        self.cursor += ch;
-                    }
-                    StrFilter::EndExclude => {
-                        break self.cursor;
-                    }
-                    StrFilter::EndStrInclude => {
-                        self.cursor += ch;
-                        break self.cursor;
-                    }
-                    StrFilter::EndInclude => {
-                        let end = self.cursor;
-                        self.cursor += ch;
-                        break end;
-                    }
-                },
-                None => {
-                    break self.cursor;
-                }
-            }
-        }
-    }
-
-    pub fn read_str_filtered(&mut self, filter: impl FnMut(char) -> StrFilter) -> &'a str {
-        let begin = self.cursor();
-
-        let end = self.skip_str_filtered(filter);
-
-        // SAFETY: begin and end are valid cursors
-        unsafe { self.str.get_unchecked(begin.bytes..end.bytes) }
-    }
-
-    pub fn skip_escaped_str_filtered(&mut self, mut filter: impl FnMut(char) -> StrFilter) -> bool {
-        let mut skip_next = false;
-        let mut ended = false;
-        self.skip_str_filtered(|ch| {
-            if ch == '\\' {
-                skip_next = true;
-                StrFilter::Continue
-            } else if !skip_next {
-                let filter = filter(ch);
-                if filter != StrFilter::Continue {
-                    ended = true;
-                }
-                filter
-            } else {
-                skip_next = false;
-                StrFilter::Continue
-            }
-        });
-        ended
-    }
-
-    pub fn read_escaped_str_filtered(
-        &mut self,
-        mut filter: impl FnMut(char) -> StrFilter,
-    ) -> Option<String> {
-        let mut result = String::new();
-        let mut skip_next = false;
-
-        loop {
-            match self.peek_char() {
-                Some(ch) => {
-                    if ch == '\\' && !skip_next {
-                        skip_next = true;
-                        self.cursor += ch;
-                    } else {
-                        match filter(ch) {
-                            StrFilter::Continue => {
-                                self.cursor += ch;
-                                result.push(ch);
-                            }
-                            StrFilter::EndStrInclude => {
-                                self.cursor += ch;
-                                result.push(ch);
-                                break;
-                            }
-                            StrFilter::EndInclude => {
-                                self.cursor += ch;
-                                break;
-                            }
-                            StrFilter::EndExclude => {
-                                break;
-                            }
-                        }
-                        skip_next = false;
-                    }
-                }
-                None => {
-                    return None;
-                }
-            }
-        }
-
-        Some(result)
-    }
-
-    pub fn read_unquoted_str(&mut self) -> &'a str {
-        self.read_str_filtered(|ch| match ch {
-            '0'..='9' | 'A'..='Z' | 'a'..='z' | '_' | '-' | '.' | '+' => StrFilter::Continue,
-            _ => StrFilter::EndExclude,
-        })
-    }
-
-    pub fn read_delimitted_str(&mut self) -> &'a str {
-        self.read_str_filtered(|ch| match ch {
-            ' ' => StrFilter::EndExclude,
-            _ => StrFilter::Continue,
-        })
-    }
-
-    pub fn read_resource_location_str(&mut self) -> &'a str {
-        self.read_str_filtered(|ch| match ch {
-            '0'..='9' | 'a'..='z' | '_' | ':' | '/' | '.' | '-' => StrFilter::Continue,
-            _ => StrFilter::EndExclude,
-        })
-    }
-
-    pub fn read_ident_str(&mut self) -> (Option<&'a str>, &'a str) {
-        let mut left = false;
-        let result = self.read_str_filtered(|ch| match ch {
-            '0'..='9' | 'A'..='Z' | 'a'..='z' | '_' | '-' | '.' | '+' => StrFilter::Continue,
-            ':' => {
-                left = true;
-                StrFilter::EndInclude
-            }
-            _ => StrFilter::EndExclude,
-        });
-
-        if left {
-            (Some(result), self.read_unquoted_str())
-        } else {
-            (None, result)
-        }
-    }
-
-    pub fn read_started_quoted_str(&mut self) -> Option<String> {
-        self.read_escaped_str_filtered(|ch| match ch {
-            '"' | '\'' => StrFilter::EndInclude,
-            _ => StrFilter::Continue,
-        })
-    }
-
-    pub fn skip_started_quoted_str(&mut self) -> bool {
-        self.skip_escaped_str_filtered(|ch| match ch {
-            '"' | '\'' => StrFilter::EndInclude,
-            _ => StrFilter::Continue,
-        })
-    }
-
-    pub fn read_int_str(&mut self) -> &'a str {
-        let begin = self.cursor();
-        if let Some('+') | Some('-') = self.peek_char() {
-            self.next_char();
-        }
-        let end = self.skip_str_filtered(|ch| match ch {
-            '0'..='9' => StrFilter::Continue,
-            _ => StrFilter::EndExclude,
-        });
-        unsafe { self.str.get_unchecked(begin.bytes..end.bytes) }
-    }
-
-    pub fn read_float_str(&mut self) -> (&'a str, bool) {
-        let begin = self.cursor();
-        if let Some('+') | Some('-') = self.peek_char() {
-            self.next_char();
-        }
-        let mut fp = false;
-
-        loop {
-            let ch = self.peek_char();
-            match ch {
-                Some('0'..='9') => {
-                    self.next_char();
-                }
-                Some('.') if fp => {
-                    break;
-                }
-                Some('.') => {
-                    fp = true;
-                    if !matches!(self.peek_offset_char(1), Some('0'..='9')) {
-                        break;
-                    }
-                    self.skip_next_chars(2);
-                }
-                _ => {
-                    break;
-                }
-            }
-        }
-
-        (
-            // SAFETY: cursors are always valid
-            unsafe { self.str.get_unchecked(begin.bytes..self.cursor().bytes) },
-            fp,
-        )
-    }
-
-    pub fn read_int<T: FromStr>(&mut self) -> Result<T, <T as FromStr>::Err> {
-        self.read_int_str().parse()
-    }
-
-    pub fn read_float<T: FromStr>(&mut self) -> Result<T, <T as FromStr>::Err> {
-        self.read_float_str().0.parse()
+    pub const fn str(&self) -> &'a str {
+        self.str
     }
 
     pub fn remaining_str(&self) -> &'a str {
@@ -340,16 +134,23 @@ impl<'a> StrReader<'a> {
         unsafe { self.str.get_unchecked(..self.cursor.bytes) }
     }
 
-    pub fn is_ended(&self) -> bool {
-        self.cursor.bytes == self.str.len()
+    pub fn chars(&self) -> Chars {
+        self.remaining_str().chars()
     }
 
-    pub fn to_end(&mut self) {
-        // SAFETY: cursor is always valid
-        unsafe { self.move_cursor_right(self.str.len() - self.cursor.bytes) }
+    pub fn peek_char(&self) -> Option<char> {
+        self.chars().next()
     }
 
-    pub fn skip_char(&mut self, ch: char) -> bool {
+    pub fn next_char(&mut self) -> Option<char> {
+        let ch = self.peek_char();
+        if let Some(ch) = ch {
+            self.cursor += ch;
+        }
+        ch
+    }
+
+    pub fn skip(&mut self, ch: char) -> bool {
         if self.peek_char() == Some(ch) {
             self.next_char();
             true
@@ -358,10 +159,168 @@ impl<'a> StrReader<'a> {
         }
     }
 
-    pub fn skip_next_chars(&mut self, count: usize) {
-        for _ in 0..count {
-            self.next_char();
+    pub fn located<T>(&mut self, func: impl FnOnce(&mut Self) -> T) -> StrLocated<T> {
+        let begin = self.cursor();
+        let res = func(self);
+        StrLocated::new(StrSpan::new(begin, self.cursor()), res)
+    }
+
+    pub fn err_located<T, E>(
+        &mut self,
+        func: impl FnOnce(&mut Self) -> Result<T, E>,
+    ) -> Result<T, StrLocated<E>> {
+        let begin = self.cursor();
+        let res = func(self);
+        res.map_err(|e| StrLocated::new(StrSpan::new(begin, self.cursor()), e))
+    }
+
+    pub fn span_err_located<T, E>(
+        &mut self,
+        span: &mut StrSpan,
+        func: impl FnOnce(&mut Self) -> Result<T, E>,
+    ) -> Result<T, StrLocated<E>> {
+        let begin = self.cursor();
+        let res = func(self);
+        *span = StrSpan::new(begin, self.cursor());
+        res.map_err(|e| StrLocated::new(StrSpan::new(begin, self.cursor()), e))
+    }
+
+    /// Skips string using given filter.
+    /// ### Returns
+    /// The end of string
+    pub fn skip_str(&mut self, mut filter: impl FnMut(char) -> StrReaderFilter) -> StrCursor {
+        loop {
+            let ch = self.peek_char();
+            match ch {
+                Some(ch) => match filter(ch) {
+                    StrReaderFilter::Continue => {
+                        self.cursor += ch;
+                    }
+                    StrReaderFilter::IncludeStr => {
+                        self.cursor += ch;
+                        break self.cursor;
+                    }
+                    StrReaderFilter::IncludeCursor => {
+                        let end = self.cursor;
+                        self.cursor += ch;
+                        break end;
+                    }
+                    StrReaderFilter::Exclude => break self.cursor,
+                },
+                None => break self.cursor(),
+            }
         }
+    }
+
+    pub fn read_str(&mut self, filter: impl FnMut(char) -> StrReaderFilter) -> &'a str {
+        let begin = self.cursor();
+        let end = self.skip_str(filter);
+        // SAFETY: begin and end are valid cursors
+        unsafe { self.get_str(begin..end) }
+    }
+
+    pub fn skip_escaped_str(
+        &mut self,
+        mut filter: impl FnMut(char) -> StrReaderFilter,
+        mut chars: impl FnMut(char),
+    ) -> bool {
+        let mut next = false;
+        let mut last = false;
+        self.skip_str(|ch| match (ch, next) {
+            ('\\', false) => {
+                next = true;
+                StrReaderFilter::Continue
+            }
+            (ch, true) => {
+                chars(ch);
+                StrReaderFilter::Continue
+            }
+            (ch, false) => {
+                let filter_r = filter(ch);
+                if let StrReaderFilter::Continue | StrReaderFilter::IncludeStr = filter_r {
+                    chars(ch);
+                }
+                if filter_r != StrReaderFilter::Continue {
+                    last = true;
+                }
+                filter_r
+            }
+        });
+        last
+    }
+
+    pub fn read_escaped_str(
+        &mut self,
+        filter: impl FnMut(char) -> StrReaderFilter,
+    ) -> Option<String> {
+        let mut result = String::new();
+        match self.skip_escaped_str(filter, |ch| result.push(ch)) {
+            true => Some(result),
+            false => None,
+        }
+    }
+
+    pub fn read_unquoted_str(&mut self) -> &'a str {
+        self.read_str(|ch| match ch {
+            '0'..='9' | 'A'..='Z' | 'a'..='z' | '_' | '-' | '.' | '+' => StrReaderFilter::Continue,
+            _ => StrReaderFilter::Exclude,
+        })
+    }
+
+    pub fn read_delimitted_str(&mut self) -> &'a str {
+        self.read_str(|ch| match ch {
+            ' ' => StrReaderFilter::Exclude,
+            _ => StrReaderFilter::Continue,
+        })
+    }
+
+    pub fn read_resource_location_str(&mut self) -> &'a str {
+        self.read_str(|ch| match ch {
+            '0'..='9' | 'a'..='z' | '_' | ':' | '/' | '.' | '-' => StrReaderFilter::Continue,
+            _ => StrReaderFilter::Exclude,
+        })
+    }
+
+    pub fn read_ident_str(&mut self) -> (Option<&'a str>, &'a str) {
+        let mut left = false;
+        let result = self.read_str(|ch| match ch {
+            '0'..='9' | 'A'..='Z' | 'a'..='z' | '_' | '-' | '.' | '+' => StrReaderFilter::Continue,
+            ':' => {
+                left = true;
+                StrReaderFilter::IncludeCursor
+            }
+            _ => StrReaderFilter::Exclude,
+        });
+
+        if left {
+            (Some(result), self.read_unquoted_str())
+        } else {
+            (None, result)
+        }
+    }
+
+    pub fn read_started_quoted_str(&mut self) -> Option<String> {
+        self.read_escaped_str(|ch| match ch {
+            '"' | '\'' => StrReaderFilter::IncludeCursor,
+            _ => StrReaderFilter::Continue,
+        })
+    }
+
+    pub fn skip_started_quoted_str(&mut self) -> bool {
+        self.skip_escaped_str(
+            |ch| match ch {
+                '"' | '\'' => StrReaderFilter::IncludeCursor,
+                _ => StrReaderFilter::Continue,
+            },
+            |_| {},
+        )
+    }
+
+    pub fn read_num_str(&mut self) -> &'a str {
+        self.read_str(|ch| match ch {
+            '0'..='9' | '+' | '-' | 'e' | '.' => StrReaderFilter::Continue,
+            _ => StrReaderFilter::Exclude,
+        })
     }
 }
 
@@ -370,49 +329,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn read_filtered_test() {
-        let mut reader = StrReader::new(r#"aaa "32" "64"#);
-
+    pub fn reader_test() {
+        assert_eq!(StrReader::new("hello n").read_unquoted_str(), "hello");
         assert_eq!(
-            reader.read_str_filtered(|ch| match ch {
-                ' ' => StrFilter::EndExclude,
-                _ => StrFilter::Continue,
-            }),
-            "aaa"
+            StrReader::new("minecraft:stick n").read_ident_str(),
+            (Some("minecraft"), "stick")
         );
-
-        assert_eq!(reader.next_char(), Some(' '));
-        assert_eq!(reader.next_char(), Some('"'));
-
         assert_eq!(
-            reader.read_escaped_str_filtered(|ch| match ch {
-                '"' => StrFilter::EndInclude,
-                _ => StrFilter::Continue,
-            }),
-            Some("32".to_string())
+            StrReader::new(r#"hello" n"#).read_started_quoted_str(),
+            Some("hello".to_string())
         );
-
-        assert_eq!(reader.next_char(), Some(' '));
-        assert_eq!(reader.next_char(), Some('"'));
-
-        assert_eq!(
-            reader.read_escaped_str_filtered(|ch| match ch {
-                '"' => StrFilter::EndExclude,
-                _ => StrFilter::Continue,
-            }),
-            None
-        );
-    }
-
-    #[test]
-    fn skip_filtered_str() {
-        let mut reader = StrReader::new(r#"a thing""#);
-
-        assert!(reader.skip_escaped_str_filtered(|ch| match ch {
-            '"' => StrFilter::EndInclude,
-            _ => StrFilter::Continue,
-        }));
-
-        assert!(reader.is_ended())
     }
 }
