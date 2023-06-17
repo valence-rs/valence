@@ -169,6 +169,11 @@ impl PluginGroup for DefaultPlugins {
             group = group.add(valence_world_border::WorldBorderPlugin);
         }
 
+        #[cfg(feature = "boss_bar")]
+        {
+            group = group.add(valence_boss_bar::BossBarPlugin);
+        }
+
         group
     }
 }

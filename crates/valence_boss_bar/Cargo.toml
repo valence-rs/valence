@@ -1,10 +1,11 @@
 [package]
 name = "valence_boss_bar"
 description = "Boss bar API for Valence"
-version = "0.1.0"
-edition = "2021"
 readme = "README.md"
 keywords = ["minecraft", "bossbar", "api"]
+documentation.workspace = true
+version.workspace = true
+edition.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
