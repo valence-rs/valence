@@ -28,9 +28,10 @@
 //!     for time in instances.iter_mut() {
 //!         // Set the value directly
 //!         time.time_of_day = time.time_of_day / 24000 * 24000 + 13000;
-//! 
+//!
 //!         // Or, use utility method
-//!         time.time_of_day.set_current_day_time(DayPhase::Night.into());
+//!         time.time_of_day
+//!             .set_current_day_time(DayPhase::Night.into());
 //!     }
 //! }
 //! ```
@@ -74,7 +75,7 @@ pub mod packet;
 
 use bevy_app::{CoreSet, Plugin};
 use packet::WorldTimeUpdateS2c;
-use valence_client::{FlushPacketsSet, Client};
+use valence_client::{Client, FlushPacketsSet};
 use valence_core::protocol::encode::WritePacket;
 use valence_core::Server;
 use valence_entity::Location;
@@ -117,8 +118,6 @@ impl Plugin for WorldTimePlugin {
     }
 }
 
-
-
 /// Base component for storing world time information
 #[derive(Component)]
 pub struct WorldTime {
@@ -141,7 +140,7 @@ impl Default for WorldTime {
 impl WorldTime {
     /// This function ensure that adding time will not resulting in
     /// time_of_day flipping sign.
-    /// Note: If the resulting calculation set time_of_day to 0, then 
+    /// Note: If the resulting calculation set time_of_day to 0, then
     /// the client will start advancing time.
     pub fn add_time(&mut self, amount: i64) {
         let client_ticking = self.client_time_ticking();
@@ -243,7 +242,8 @@ impl Into<i64> for MoonPhase {
     }
 }
 
-/// This component will advance the `time_of_day` field of [`WorldTime`] `speed` per tick
+/// This component will advance the `time_of_day` field of [`WorldTime`] `speed`
+/// per tick
 #[derive(Component)]
 pub struct LinearTimeTicking {
     pub speed: i64,
@@ -255,7 +255,8 @@ impl Default for LinearTimeTicking {
     }
 }
 
-/// This component will advance the `world_age` field of [`WorldTime`] `speed` per tick
+/// This component will advance the `world_age` field of [`WorldTime`] `speed`
+/// per tick
 #[derive(Component)]
 pub struct LinearWorldAging {
     pub speed: i64,
@@ -267,7 +268,8 @@ impl Default for LinearWorldAging {
     }
 }
 
-/// This component will broadcast world time information every `broadcast_rate` ticks
+/// This component will broadcast world time information every `broadcast_rate`
+/// ticks
 #[derive(Component)]
 pub struct IntervalTimeBroadcast {
     pub broadcast_rate: i64,
