@@ -285,4 +285,3 @@ mod example;
 mod inventory;
 mod weather;
 mod world_border;
-mod boss_bar;

@@ -32,12 +32,11 @@ fn prepare(app: &mut App) -> (MockClientHelper, Entity) {
         .id();
 
     // Insert a boss bar to the instance.
-    app.world
-        .entity_mut(instance_ent)
-        .insert(BossBar::new(Text::text(""),
-                                    BossBarColor::Red,
-                                    BossBarDivision::SixNotches,
-                                    BossBarFlags::new()));
+    app.world.entity_mut(instance_ent).insert(
+            BossBar::new(Text::text(""),
+                BossBarColor::Red,
+                BossBarDivision::SixNotches,
+                BossBarFlags::new()));
     
     for _ in 0..2 {
         app.update();
