@@ -85,11 +85,26 @@ fn draw_packet_list(ui: &mut Ui, state: &mut SharedState, packet_state: PacketSt
         .filter(|(p, _)| p.state == packet_state && p.name.to_lowercase().contains(&search))
         .count();
 
+    let count_enabled = state
+        .packet_filter
+        .iter_mut()
+        .filter(|(p, enabled)| {
+            p.state == packet_state && p.name.to_lowercase().contains(&search) && **enabled
+        })
+        .count();
+
+    let all = state
+        .packet_filter
+        .iter_mut()
+        .filter(|(p, _)| p.state == packet_state)
+        .count();
+
     if count == 0 {
         return 0;
     }
 
     let mut checkbox = get_checkbox_state(state, packet_state);
+    let previous_state = checkbox.clone();
     if TriCheckbox::new(&mut checkbox, RichText::new(title).heading().strong())
         .ui(ui)
         .changed()
@@ -97,12 +112,18 @@ fn draw_packet_list(ui: &mut Ui, state: &mut SharedState, packet_state: PacketSt
         for (_, enabled) in state
             .packet_filter
             .iter_mut()
-            .filter(|(p, _)| p.state == packet_state)
+            .filter(|(p, _)| p.state == packet_state && p.name.to_lowercase().contains(&search))
         {
-            if checkbox == TriCheckboxState::Partial {
+            if previous_state == TriCheckboxState::Partial && count < all {
+                *enabled = count > count_enabled;
                 continue;
             }
-            *enabled = checkbox == TriCheckboxState::Enabled;
+
+            match checkbox {
+                TriCheckboxState::Enabled => *enabled = true,
+                TriCheckboxState::Disabled => *enabled = false,
+                TriCheckboxState::Partial => unreachable!(),
+            }
         }
     }
 
