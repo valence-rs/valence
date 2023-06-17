@@ -2,6 +2,7 @@ use bevy_ecs::prelude::{Component, Entity, Bundle};
 use valence_core::{uuid::UniqueId, text::Text, protocol::{Encode, Decode}};
 use bitfield_struct::bitfield;
 
+/// The bundle of components that make up a boss bar.
 #[derive(Bundle)]
 pub struct BossBarBundle {
     pub id: UniqueId,
@@ -30,18 +31,22 @@ impl BossBarBundle {
 
 }
 
+/// The title of a boss bar.
 #[derive(Component, Clone)]
 pub struct BossBarTitle(pub Text);
 
+/// The health of a boss bar.
 #[derive(Component)]
 pub struct BossBarHealth(pub f32);
 
+/// The style of a boss bar. This includes the color and division of the boss bar.
 #[derive(Component)]
 pub struct BossBarStyle {
     pub color: BossBarColor,
     pub division: BossBarDivision,
 }
 
+/// The color of a boss bar.
 #[derive(Component, Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
 pub enum BossBarColor {
     Pink,
@@ -53,6 +58,7 @@ pub enum BossBarColor {
     White,
 }
 
+/// The division of a boss bar.
 #[derive(Component, Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
 pub enum BossBarDivision {
     NoDivision,
@@ -62,6 +68,7 @@ pub enum BossBarDivision {
     TwentyNotches,
 }
 
+/// The flags of a boss bar (darken sky, dragon bar, create fog).
 #[bitfield(u8)]
 #[derive(Component, PartialEq, Eq, Encode, Decode)]
 pub struct BossBarFlags {
@@ -72,9 +79,12 @@ pub struct BossBarFlags {
     _pad: u8,
 }
 
+/// The viewers of a boss bar.
 #[derive(Component)]
 pub struct BossBarViewers {
+    /// The current viewers of the boss bar. It is the list that should be updated.
     pub current_viewers: Vec<Entity>,
+    /// The viewers of the last tick in order to determine which viewers have been added and removed.
     pub last_viewers: Vec<Entity>,
 }
 

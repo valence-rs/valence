@@ -10,11 +10,14 @@ fn test_intialize_on_join() {
     let mut app = App::new();
     let (client_ent, mut client_helper, instance_ent) = prepare(&mut app);
 
+    // Fetch the boss bar component
     let mut boss_bar = app.world.get_mut::<BossBarViewers>(instance_ent).unwrap();
+    // Add our mock client to the viewers list
     boss_bar.current_viewers.push(client_ent);
 
     app.update();
 
+    // Check if a boss bar packet was sent
     let frames = client_helper.collect_sent();
     frames.assert_count::<BossBarS2c>(1);
 }
@@ -24,15 +27,19 @@ fn test_despawn() {
     let mut app = App::new();
     let (client_ent, mut client_helper, instance_ent) = prepare(&mut app);
 
+    // Fetch the boss bar component
     let mut boss_bar = app.world.get_mut::<BossBarViewers>(instance_ent).unwrap();
+    // Add our mock client to the viewers list
     boss_bar.current_viewers.push(client_ent);
 
     app.update();
 
+    // Despawn the boss bar
     app.world.entity_mut(instance_ent).insert(Despawned);
 
     app.update();
 
+    // Check if a boss bar packet was sent in addition to the ADD packet, which should be a Remove packet
     let frames = client_helper.collect_sent();
     frames.assert_count::<BossBarS2c>(2);
 }
@@ -42,15 +49,19 @@ fn test_title_update() {
     let mut app = App::new();
     let (client_ent, mut client_helper, instance_ent) = prepare(&mut app);
 
+    // Fetch the boss bar component
     let mut boss_bar = app.world.get_mut::<BossBarViewers>(instance_ent).unwrap();
+    // Add our mock client to the viewers list
     boss_bar.current_viewers.push(client_ent);
 
     app.update();
 
+    // Update the title
     app.world.entity_mut(instance_ent).insert(BossBarTitle(Text::text("Test 2")));
 
     app.update();
 
+    // Check if a boss bar packet was sent in addition to the ADD packet, which should be an UpdateTitle packet
     let frames = client_helper.collect_sent();
     frames.assert_count::<BossBarS2c>(2);
 }
@@ -60,15 +71,19 @@ fn test_health_update() {
     let mut app = App::new();
     let (client_ent, mut client_helper, instance_ent) = prepare(&mut app);
 
+    // Fetch the boss bar component
     let mut boss_bar = app.world.get_mut::<BossBarViewers>(instance_ent).unwrap();
+    // Add our mock client to the viewers list
     boss_bar.current_viewers.push(client_ent);
 
     app.update();
 
+    // Update the health
     app.world.entity_mut(instance_ent).insert(BossBarHealth(0.5));
 
     app.update();
 
+    // Check if a boss bar packet was sent in addition to the ADD packet, which should be an UpdateHealth packet
     let frames = client_helper.collect_sent();
     frames.assert_count::<BossBarS2c>(2);
 }
@@ -78,17 +93,21 @@ fn test_style_update() {
     let mut app = App::new();
     let (client_ent, mut client_helper, instance_ent) = prepare(&mut app);
 
+    // Fetch the boss bar component
     let mut boss_bar = app.world.get_mut::<BossBarViewers>(instance_ent).unwrap();
+    // Add our mock client to the viewers list
     boss_bar.current_viewers.push(client_ent);
 
     app.update();
 
+    // Update the style
     app.world.entity_mut(instance_ent).insert(BossBarStyle{
         color: BossBarColor::Red, division: BossBarDivision::TenNotches
     });
 
     app.update();
 
+    // Check if a boss bar packet was sent in addition to the ADD packet, which should be an UpdateStyle packet
     let frames = client_helper.collect_sent();
     frames.assert_count::<BossBarS2c>(2);
 }
@@ -98,17 +117,21 @@ fn test_flags_update() {
     let mut app = App::new();
     let (client_ent, mut client_helper, instance_ent) = prepare(&mut app);
 
+    // Fetch the boss bar component
     let mut boss_bar = app.world.get_mut::<BossBarViewers>(instance_ent).unwrap();
+    // Add our mock client to the viewers list
     boss_bar.current_viewers.push(client_ent);
 
     app.update();
 
+    // Update the flags
     let mut new_flags = BossBarFlags::new();
     new_flags.set_create_fog(true);
     app.world.entity_mut(instance_ent).insert(new_flags);
 
     app.update();
 
+    // Check if a boss bar packet was sent in addition to the ADD packet, which should be an UpdateFlags packet
     let frames = client_helper.collect_sent();
     frames.assert_count::<BossBarS2c>(2);
 }

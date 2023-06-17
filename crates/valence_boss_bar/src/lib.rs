@@ -24,6 +24,7 @@ impl Plugin for BossBarPlugin {
 
 }
 
+/// System that sends a bossbar update title packet to all viewers of a boss bar that has had its title updated.
 fn handle_boss_bar_title_update(mut boss_bars: Query<(&UniqueId, &BossBarTitle, &mut BossBarViewers), Changed<BossBarTitle>>, mut clients: Query<&mut Client>) {
     for (id, title, mut viewers) in boss_bars.iter_mut() {
         for viewer in viewers.current_viewers.iter_mut() {
@@ -36,6 +37,7 @@ fn handle_boss_bar_title_update(mut boss_bars: Query<(&UniqueId, &BossBarTitle, 
     }
 }
 
+/// System that sends a bossbar update health packet to all viewers of a boss bar that has had its health updated.
 fn handle_boss_bar_health_update(mut boss_bars: Query<(&UniqueId, &BossBarHealth, &mut BossBarViewers), Changed<BossBarHealth>>, mut clients: Query<&mut Client>) {
     for (id, health, mut viewers) in boss_bars.iter_mut() {
         for viewer in viewers.current_viewers.iter_mut() {
@@ -48,6 +50,7 @@ fn handle_boss_bar_health_update(mut boss_bars: Query<(&UniqueId, &BossBarHealth
     }
 }
 
+/// System that sends a bossbar update style packet to all viewers of a boss bar that has had its style updated.
 fn handle_boss_bar_style_update(mut boss_bars: Query<(&UniqueId, &BossBarStyle, &mut BossBarViewers), Changed<BossBarStyle>>, mut clients: Query<&mut Client>) {
     for (id, style, mut viewers) in boss_bars.iter_mut() {
         for viewer in viewers.current_viewers.iter_mut() {
@@ -60,6 +63,7 @@ fn handle_boss_bar_style_update(mut boss_bars: Query<(&UniqueId, &BossBarStyle, 
     }
 }
 
+/// System that sends a bossbar update flags packet to all viewers of a boss bar that has had its flags updated.
 fn handle_boss_bar_flags_update(mut boss_bars: Query<(&UniqueId, &BossBarFlags, &mut BossBarViewers), Changed<BossBarFlags>>, mut clients: Query<&mut Client>) {
     for (id, flags, mut viewers) in boss_bars.iter_mut() {
         for viewer in viewers.current_viewers.iter_mut() {
@@ -72,6 +76,7 @@ fn handle_boss_bar_flags_update(mut boss_bars: Query<(&UniqueId, &BossBarFlags, 
     }
 }
 
+/// System that sends a bossbar add/remove packet to all viewers of a boss bar that just have been added/removed.
 fn handle_boss_bar_viewers_update(mut boss_bars: Query<(&UniqueId, &BossBarTitle, &BossBarHealth, &BossBarStyle, &BossBarFlags, &mut BossBarViewers), Changed<BossBarViewers>>, mut clients: Query<&mut Client>) {
     for (id, title, health, style, flags, mut viewers) in boss_bars.iter_mut() {
         let previous_viewers = &viewers.last_viewers;
@@ -118,6 +123,7 @@ fn handle_boss_bar_viewers_update(mut boss_bars: Query<(&UniqueId, &BossBarTitle
     }
 }
 
+/// System that sends a bossbar remove packet to all viewers of a boss bar that has been despawned.
 fn remove_despawned_boss_bars_from_viewers(mut boss_bars: Query<(&UniqueId, &mut BossBarViewers), Added<Despawned>>, mut clients: Query<&mut Client>) {
     for boss_bar in boss_bars.iter_mut() {
         let (id, mut viewers) = boss_bar;
