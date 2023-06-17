@@ -5,7 +5,8 @@ use std::{net::SocketAddr, sync::OnceLock};
 
 use tokio::net::TcpStream;
 
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 use valence::network::packet::{
     HandshakeC2s, HandshakeNextState, LoginCompressionS2c, LoginSuccessS2c,
@@ -19,7 +20,7 @@ pub use packet_registry::Packet;
 pub use crate::packet_registry::PacketSide;
 pub use crate::packet_registry::PacketState;
 
-static PACKET_REGISTRY: OnceLock<Arc<PacketRegistry>> = OnceLock::new();
+static PACKET_REGISTRY: OnceLock<Arc<RwLock<PacketRegistry>>> = OnceLock::new();
 
 include!(concat!(env!("OUT_DIR"), "/packets.rs"));
 
@@ -33,7 +34,7 @@ impl Proxy {
         PACKET_REGISTRY.get_or_init(|| {
             let registry = PacketRegistry::new();
             registry.register_all(&STD_PACKETS);
-            Arc::new(registry)
+            Arc::new(RwLock::new(registry))
         });
 
         Proxy {
@@ -42,8 +43,8 @@ impl Proxy {
         }
     }
 
-    pub fn subscribe(&self) -> flume::Receiver<Packet> {
-        PACKET_REGISTRY.get().unwrap().subscribe()
+    pub async fn subscribe(&self) -> flume::Receiver<Packet> {
+        PACKET_REGISTRY.get().unwrap().read().await.subscribe()
     }
 
     pub async fn run(&self) -> anyhow::Result<()> {
@@ -75,32 +76,37 @@ impl Proxy {
         let (mut server_reader, mut server_writer) = server.split();
 
         let current_state_inner = Arc::new(RwLock::new(PacketState::Handshaking));
-        let threshold_inner = Arc::new(RwLock::new(None));
+        let threshold_inner: Arc<RwLock<Option<u32>>> = Arc::new(RwLock::new(None));
 
         let current_state = current_state_inner.clone();
         let threshold = threshold_inner.clone();
+        let registry = PACKET_REGISTRY.get().unwrap().clone();
         let c2s = tokio::spawn(async move {
             loop {
-                client_reader.set_compression(*threshold.read().unwrap());
-                server_writer.set_compression(*threshold.read().unwrap());
+                let threashold = *threshold.read().await;
+                client_reader.set_compression(threashold);
+                server_writer.set_compression(threashold);
                 // client to server handling
                 let packet = client_reader.recv_packet_raw().await?;
 
                 let state = {
-                    let state = current_state.read().unwrap();
+                    let state = current_state.read().await;
                     *state
                 };
 
-                PACKET_REGISTRY.get().unwrap().process(
-                    crate::packet_registry::PacketSide::Serverbound,
-                    state,
-                    *threshold.read().unwrap(),
-                    &packet,
-                )?;
+                let registry = registry.write().await;
+                registry
+                    .process(
+                        crate::packet_registry::PacketSide::Serverbound,
+                        state,
+                        threashold,
+                        &packet,
+                    )
+                    .await?;
 
                 if state == PacketState::Handshaking {
                     if let Some(handshake) = extrapolate_packet::<HandshakeC2s>(&packet) {
-                        *current_state.write().unwrap() = match handshake.next_state {
+                        *current_state.write().await = match handshake.next_state {
                             HandshakeNextState::Status => PacketState::Status,
                             HandshakeNextState::Login => PacketState::Login,
                         };
@@ -116,36 +122,42 @@ impl Proxy {
 
         let current_state = current_state_inner.clone();
         let threshold = threshold_inner.clone();
+        let registry = PACKET_REGISTRY.get().unwrap().clone();
         let s2c = tokio::spawn(async move {
             loop {
-                server_reader.set_compression(*threshold.read().unwrap());
-                client_writer.set_compression(*threshold.read().unwrap());
+                let threashold_value = *threshold.read().await;
+                server_reader.set_compression(threashold_value);
+                client_writer.set_compression(threashold_value);
                 // server to client handling
                 let packet = server_reader.recv_packet_raw().await?;
 
                 let state = {
-                    let state = current_state.read().unwrap();
+                    let state = current_state.read().await;
                     *state
                 };
 
                 if state == PacketState::Login {
                     if let Some(compression) = extrapolate_packet::<LoginCompressionS2c>(&packet) {
                         if compression.threshold.0 >= 0 {
-                            *threshold.write().unwrap() = Some(compression.threshold.0 as u32);
+                            *threshold.write().await = Some(compression.threshold.0 as u32);
                         }
                     };
 
                     if extrapolate_packet::<LoginSuccessS2c>(&packet).is_some() {
-                        *current_state.write().unwrap() = PacketState::Play;
+                        *current_state.write().await = PacketState::Play;
                     };
                 }
 
-                PACKET_REGISTRY.get().unwrap().process(
-                    crate::packet_registry::PacketSide::Clientbound,
-                    state,
-                    *threshold.read().unwrap(),
-                    &packet,
-                )?;
+                registry
+                    .write()
+                    .await
+                    .process(
+                        crate::packet_registry::PacketSide::Clientbound,
+                        state,
+                        threashold_value,
+                        &packet,
+                    )
+                    .await?;
 
                 client_writer.send_packet_raw(&packet).await?;
             }
