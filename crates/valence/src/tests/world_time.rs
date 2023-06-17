@@ -14,7 +14,7 @@ fn test_world_time_add() {
     time.add_time(10);
 
     assert_eq!(10, time.time_of_day);
-    assert_eq!(true, time.client_time_ticking());
+    assert!(time.client_time_ticking());
 
     time.set_client_time_ticking(false);
     assert_eq!(-10, time.time_of_day);
@@ -63,7 +63,7 @@ fn test_change_tracking_broadcast() {
     let mut app = App::new();
     let (client, mut client_helper) = scenario_single_client(&mut app);
     let loc: &Location = app.world.entity(client).get().unwrap();
-    let ins_ent = loc.0.clone();
+    let ins_ent = loc.0;
 
     app.world
         .entity_mut(ins_ent)
@@ -86,7 +86,7 @@ fn test_time_ticking() {
     let mut app = App::new();
     let (client, _) = scenario_single_client(&mut app);
     let loc: &Location = app.world.entity(client).get().unwrap();
-    let ins_ent = loc.0.clone();
+    let ins_ent = loc.0;
 
     app.world.entity_mut(ins_ent).insert((
         WorldTime::default(),
