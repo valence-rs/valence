@@ -8,7 +8,6 @@ import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.data.DataTracker;
 import net.minecraft.entity.data.TrackedData;
-import net.minecraft.entity.data.TrackedDataHandler;
 import net.minecraft.entity.data.TrackedDataHandlerRegistry;
 import net.minecraft.entity.passive.CatVariant;
 import net.minecraft.entity.passive.FrogVariant;
@@ -18,9 +17,7 @@ import net.minecraft.particle.ParticleEffect;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Box;
 import net.minecraft.util.math.EulerAngle;
 import net.minecraft.util.math.GlobalPos;
 import net.minecraft.village.VillagerData;
@@ -33,10 +30,8 @@ import rs.valence.extractor.DummyPlayerEntity;
 import rs.valence.extractor.DummyWorld;
 import rs.valence.extractor.Main;
 import rs.valence.extractor.Main.Pair;
-import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.util.*;
-import java.util.Map.Entry;
 
 public class Entities implements Main.Extractor {
     public Entities() {
