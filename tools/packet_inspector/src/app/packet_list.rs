@@ -29,12 +29,8 @@ impl View for PacketList {
             draw_packet_counter(state, ui);
             draw_clear_button(state, ui);
         });
-        egui::ScrollArea::vertical()
-            .auto_shrink([false, false])
-            .stick_to_bottom(true)
-            .show(ui, |ui| {
-                draw_packet_list(state, ui);
-            });
+
+        draw_packet_list(state, ui);
     }
 }
 
@@ -53,6 +49,7 @@ fn handle_keyboard_input(state: &mut SharedState, ui: &mut Ui) {
 
         if let Some(&prev_index) = filtered_packets.last() {
             state.selected_packet = Some(prev_index);
+            state.update_scroll = true;
         }
     }
 
@@ -70,6 +67,7 @@ fn handle_keyboard_input(state: &mut SharedState, ui: &mut Ui) {
 
         if let Some(&next_index) = filtered_packets.first() {
             state.selected_packet = Some(next_index);
+            state.update_scroll = true;
         }
     }
 }
@@ -95,25 +93,37 @@ fn draw_clear_button(state: &mut SharedState, ui: &mut Ui) {
 
 fn draw_packet_list(state: &mut SharedState, ui: &mut Ui) {
     let packets = state.packets.read().unwrap();
-    for (i, packet) in packets.iter().enumerate() {
-        if let Some(filtered) = state.packet_filter.get(packet) {
-            if !filtered {
-                continue;
-            }
-        }
+    egui::ScrollArea::vertical()
+        .auto_shrink([false, false])
+        .stick_to_bottom(!state.update_scroll)
+        .show(ui, |ui| {
+            for (i, packet) in packets.iter().enumerate() {
+                if let Some(filtered) = state.packet_filter.get(packet) {
+                    if !filtered {
+                        continue;
+                    }
+                }
 
-        let selected = {
-            if let Some(selected) = state.selected_packet {
-                selected == i
-            } else {
-                false
-            }
-        };
+                let selected = {
+                    if let Some(selected) = state.selected_packet {
+                        selected == i
+                    } else {
+                        false
+                    }
+                };
 
-        if draw_packet_widget(ui, packet, selected).clicked() {
-            state.selected_packet = Some(i);
-        }
-    }
+                let widget = draw_packet_widget(ui, packet, selected);
+
+                if state.update_scroll && state.selected_packet == Some(i) {
+                    state.update_scroll = false;
+                    ui.scroll_to_rect(widget.rect, None);
+                }
+
+                if widget.clicked() {
+                    state.selected_packet = Some(i);
+                }
+            }
+        });
 }
 
 fn draw_packet_widget(ui: &mut Ui, packet: &Packet, selected: bool) -> Response {
@@ -123,7 +133,7 @@ fn draw_packet_widget(ui: &mut Ui, packet: &Packet, selected: bool) -> Response 
             y: 24.0,
         },
         Sense::click(),
-    );
+    ); // this should give me a new rect inside the scroll area... no?
 
     let fill = match selected /*packet.selected*/ {
         true => Rgba::from_rgba_premultiplied(0.3, 0.3, 0.3, 0.4),

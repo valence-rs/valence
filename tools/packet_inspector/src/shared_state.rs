@@ -59,6 +59,8 @@ pub struct SharedState {
     #[serde(skip)]
     pub selected_packet: Option<usize>,
     #[serde(skip)]
+    pub update_scroll: bool,
+    #[serde(skip)]
     pub packets: RwLock<Vec<Packet>>,
     #[serde(skip)]
     pub(super) receiver: Option<flume::Receiver<Event>>,
@@ -80,6 +82,7 @@ impl Default for SharedState {
             packet_search: String::new(),
             packet_filter: PacketFilter::new(),
             selected_packet: None,
+            update_scroll: false,
             packets: RwLock::new(Vec::new()),
             receiver: Some(receiver),
             sender: Some(sender),
