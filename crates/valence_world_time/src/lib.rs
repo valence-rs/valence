@@ -70,14 +70,16 @@
 //! }
 //! ```
 
+pub mod packet;
+
 use bevy_app::{CoreSet, Plugin};
+use packet::WorldTimeUpdateS2c;
+use valence_client::{FlushPacketsSet, Client};
 use valence_core::protocol::encode::WritePacket;
 use valence_core::Server;
 use valence_entity::Location;
-use valence_instance::packet::WorldTimeUpdateS2c;
 use valence_instance::{Instance, WriteUpdatePacketsToInstancesSet};
 use valence_registry::*;
-use crate::{Client, FlushPacketsSet};
 
 pub const DAY_LENGTH: i64 = 24000;
 
@@ -138,10 +140,16 @@ impl Default for WorldTime {
 
 impl WorldTime {
     /// This function ensure that adding time will not resulting in
-    /// time_of_day flipping sign
+    /// time_of_day flipping sign.
+    /// Note: If the resulting calculation set time_of_day to 0, then 
+    /// the client will start advancing time.
     pub fn add_time(&mut self, amount: i64) {
         let client_ticking = self.client_time_ticking();
-        self.time_of_day = self.time_of_day.wrapping_add(amount);
+        self.time_of_day = self.time_of_day.abs().wrapping_add(amount);
+        if self.time_of_day < 0 {
+            self.time_of_day = self.time_of_day + i64::MAX + 1;
+        }
+
         self.set_client_time_ticking(client_ticking);
     }
 
@@ -267,6 +275,13 @@ pub struct IntervalTimeBroadcast {
 }
 
 impl IntervalTimeBroadcast {
+    pub fn new(broadcast_rate: i64) -> Self {
+        Self {
+            broadcast_rate,
+            last_broadcast: 0,
+        }
+    }
+
     pub fn last_broadcast(&self) -> i64 {
         self.last_broadcast
     }
@@ -274,10 +289,7 @@ impl IntervalTimeBroadcast {
 
 impl Default for IntervalTimeBroadcast {
     fn default() -> Self {
-        Self {
-            broadcast_rate: 20,
-            last_broadcast: 0,
-        }
+        Self::new(20)
     }
 }
 
