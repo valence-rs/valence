@@ -18,7 +18,7 @@ impl<'a> Parse<'a> for SingleWordString<'a> {
     type Suggestions = ();
 
     fn parse(
-        _data: Self::Data,
+        _data: &Self::Data,
         _suggestions: &mut Self::Suggestions,
         _query: &Self::Query,
         reader: &mut StrReader<'a>,
@@ -44,14 +44,14 @@ impl<'a> Parse<'a> for QuotablePhraseString<'a> {
     type Suggestions = ();
 
     fn parse(
-        _data: Self::Data,
+        _data: &Self::Data,
         _suggestions: &mut Self::Suggestions,
         _query: &Self::Query,
         reader: &mut StrReader<'a>,
     ) -> ParseResult<Self> {
         reader
             .err_located(|reader| {
-                if reader.skip('"') {
+                if reader.skip_char('"') {
                     match reader.read_started_quoted_str() {
                         Some(str) => Ok(Cow::Owned(str)),
                         None => Err(Text::translate(PARSING_QUOTE_EXPECTED_END, vec![])),
@@ -64,13 +64,13 @@ impl<'a> Parse<'a> for QuotablePhraseString<'a> {
     }
 
     fn skip(
-        _data: Self::Data,
+        _data: &Self::Data,
         _suggestions: &mut Self::Suggestions,
         _query: &Self::Query,
         reader: &mut StrReader<'a>,
     ) -> ParseResult<()> {
         reader.err_located(|reader| {
-            if reader.skip('"') {
+            if reader.skip_char('"') {
                 match reader.skip_started_quoted_str() {
                     true => Ok(()),
                     false => Err(Text::translate(PARSING_QUOTE_EXPECTED_END, vec![])),
@@ -100,7 +100,7 @@ impl<'a> Parse<'a> for GreedyString<'a> {
     type Suggestions = ();
 
     fn parse(
-        _data: Self::Data,
+        _data: &Self::Data,
         _suggestions: &mut Self::Suggestions,
         _query: &Self::Query,
         reader: &mut StrReader<'a>,
@@ -125,34 +125,34 @@ impl<'a> Parse<'a> for Cow<'a, str> {
     type Suggestions = ();
 
     fn parse(
-        data: Self::Data,
+        data: &Self::Data,
         _suggestions: &mut Self::Suggestions,
         _query: &Self::Query,
         reader: &mut StrReader<'a>,
     ) -> ParseResult<Self> {
         match data {
             StringArg::SingleWord => {
-                SingleWordString::parse((), &mut (), &(), reader).map(|v| Cow::Borrowed(v.0))
+                SingleWordString::parse(&(), &mut (), &(), reader).map(|v| Cow::Borrowed(v.0))
             }
             StringArg::GreedyPhrase => {
-                GreedyString::parse((), &mut (), &(), reader).map(|v| Cow::Borrowed(v.0))
+                GreedyString::parse(&(), &mut (), &(), reader).map(|v| Cow::Borrowed(v.0))
             }
             StringArg::QuotablePhrase => {
-                QuotablePhraseString::parse((), &mut (), &(), reader).map(|v| v.0)
+                QuotablePhraseString::parse(&(), &mut (), &(), reader).map(|v| v.0)
             }
         }
     }
 
     fn skip(
-        data: Self::Data,
+        data: &Self::Data,
         _suggestions: &mut Self::Suggestions,
         _query: &Self::Query,
         reader: &mut StrReader<'a>,
     ) -> ParseResult<()> {
         match data {
-            StringArg::SingleWord => SingleWordString::skip((), &mut (), &(), reader),
-            StringArg::GreedyPhrase => GreedyString::skip((), &mut (), &(), reader),
-            StringArg::QuotablePhrase => QuotablePhraseString::skip((), &mut (), &(), reader),
+            StringArg::SingleWord => SingleWordString::skip(&(), &mut (), &(), reader),
+            StringArg::GreedyPhrase => GreedyString::skip(&(), &mut (), &(), reader),
+            StringArg::QuotablePhrase => QuotablePhraseString::skip(&(), &mut (), &(), reader),
         }
     }
 }
@@ -171,7 +171,7 @@ impl<'a> Parse<'a> for IdentRef<'a> {
     type Suggestions = ();
 
     fn parse(
-        _data: Self::Data,
+        _data: &Self::Data,
         _suggestions: &mut Self::Suggestions,
         _query: &Self::Query,
         reader: &mut StrReader<'a>,

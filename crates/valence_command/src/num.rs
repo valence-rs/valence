@@ -19,7 +19,7 @@ impl<'a> Parse<'a> for bool {
     type Suggestions = StrSpan;
 
     fn parse(
-        _data: Self::Data,
+        _data: &Self::Data,
         suggestions: &mut Self::Suggestions,
         _query: &Self::Query,
         reader: &mut StrReader<'a>,
@@ -35,6 +35,7 @@ impl<'a> Parse<'a> for bool {
     }
 
     fn suggestions(
+        _data: &Self::Data,
         _result: &ParseResult<()>,
         suggestions: &Self::Suggestions,
         _query: &Self::Query,
@@ -78,17 +79,17 @@ macro_rules! impl_num {
     ) => {
 
         paste::paste! {
-            pub fn [<parse_ $ty>](bounds: NumberBounds<$ty>, reader: &mut StrReader) -> Result<$ty, NumberParseError> {
+            pub fn [<parse_ $ty>](bounds: &NumberBounds<$ty>, reader: &mut StrReader) -> Result<$ty, NumberParseError> {
                 let num = reader.read_num_str().parse().map_err(|_| NumberParseError::Invalid)?;
                 match bounds {
                     NumberBounds {
                         min: Some(min),
                         max: _
-                    } if min > num => Err(NumberParseError::Low),
+                    } if *min > num => Err(NumberParseError::Low),
                     NumberBounds {
                         min: _,
                         max: Some(max)
-                    } if max < num => Err(NumberParseError::Big),
+                    } if *max < num => Err(NumberParseError::Big),
                     _ => Ok(num),
                 }
             }
@@ -102,7 +103,7 @@ macro_rules! impl_num {
             type Suggestions = ();
 
             fn parse(
-                data: Self::Data,
+                data: &Self::Data,
                 _suggestions: &mut Self::Suggestions,
                 _query: &Self::Query,
                 reader: &mut StrReader<'a>,
@@ -190,7 +191,7 @@ mod tests {
     fn num_tests() {
         assert_eq!(
             i32::parse(
-                NumberBounds::default(),
+                &NumberBounds::default(),
                 &mut (),
                 &(),
                 &mut StrReader::new("64")

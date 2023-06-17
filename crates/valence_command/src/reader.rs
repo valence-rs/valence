@@ -24,6 +24,10 @@ impl Add<char> for StrCursor {
 }
 
 impl StrCursor {
+    pub const fn start() -> Self {
+        Self { bytes: 0, chars: 0 }
+    }
+
     pub fn chars(&self) -> usize {
         self.chars
     }
@@ -47,6 +51,13 @@ impl StrSpan {
 
     pub fn join(self, other: Self) -> Self {
         Self::new(self.begin, other.end)
+    }
+
+    pub const fn start() -> Self {
+        Self {
+            begin: StrCursor::start(),
+            end: StrCursor::start(),
+        }
     }
 }
 
@@ -150,7 +161,7 @@ impl<'a> StrReader<'a> {
         ch
     }
 
-    pub fn skip(&mut self, ch: char) -> bool {
+    pub fn skip_char(&mut self, ch: char) -> bool {
         if self.peek_char() == Some(ch) {
             self.next_char();
             true
