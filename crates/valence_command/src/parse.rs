@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use bevy_ecs::query::ReadOnlyWorldQuery;
+use bevy_ecs::system::ReadOnlySystemParam;
 use valence_core::protocol::packet::command::Parser;
 use valence_core::text::Text;
 
@@ -35,7 +35,7 @@ pub type ParseSuggestions<'a> = Cow<'a, [Suggestion<'a>]>;
 pub trait Parse<'a>: Sized + 'a {
     type Data: Default;
 
-    type Query: ReadOnlyWorldQuery;
+    type Query: ReadOnlySystemParam;
 
     type Suggestions: Default + 'a;
 
