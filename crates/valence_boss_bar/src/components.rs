@@ -1,9 +1,9 @@
-use bevy_ecs::prelude::{Component, Entity};
+use bevy_ecs::prelude::{Component, Entity, Bundle};
 use valence_core::{uuid::UniqueId, text::Text, protocol::{Encode, Decode}};
 use bitfield_struct::bitfield;
 
-#[derive(Component)]
-pub struct BossBar {
+#[derive(Bundle)]
+pub struct BossBarBundle {
     pub id: UniqueId,
     pub title: BossBarTitle,
     pub health: BossBarHealth,
@@ -12,10 +12,10 @@ pub struct BossBar {
     pub viewers: BossBarViewers,
 }
 
-impl BossBar {
+impl BossBarBundle {
 
-    pub fn new(title: Text, color: BossBarColor, division: BossBarDivision, flags: BossBarFlags) -> BossBar {
-        BossBar {
+    pub fn new(title: Text, color: BossBarColor, division: BossBarDivision, flags: BossBarFlags) -> BossBarBundle {
+        BossBarBundle {
             id: UniqueId::default(),
             title: BossBarTitle(title),
             health: BossBarHealth(1.0),
@@ -26,31 +26,6 @@ impl BossBar {
             flags,
             viewers: BossBarViewers(Vec::new()),
         }
-    }
-
-    pub fn update_health(&mut self, health: f32) {
-        self.health.0 = health;
-    }
-
-    pub fn update_title(&mut self, title: Text) {
-        self.title.0 = title;
-    }
-
-    pub fn update_style(&mut self, color: BossBarColor, division: BossBarDivision) {
-        self.style.color = color;
-        self.style.division = division;
-    }
-
-    pub fn update_flags(&mut self, flags: BossBarFlags) {
-        self.flags = flags;
-    }
-
-    pub fn add_client(&mut self, entity: Entity) {
-        self.viewers.0.push(entity);
-    }
-
-    pub fn remove_client(&mut self, entity: Entity) {
-        self.viewers.0.retain(|e| *e != entity);
     }
 
 }

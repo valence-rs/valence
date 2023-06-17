@@ -1,7 +1,7 @@
 use uuid::Uuid;
 use valence_core::{protocol::{Encode, Decode, Packet, packet_id}, text::Text};
 
-use crate::components::{BossBarColor, BossBarDivision, BossBarFlags, BossBar};
+use crate::components::{BossBarColor, BossBarDivision, BossBarFlags, BossBarBundle};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 #[packet(id = packet_id::BOSS_BAR_S2C)]
@@ -26,7 +26,7 @@ pub enum BossBarAction {
     UpdateFlags(BossBarFlags),
 }
 
-impl BossBar {
+impl BossBarBundle {
 
     pub fn generate_add_packet(&self) -> BossBarS2c {
         BossBarS2c {
