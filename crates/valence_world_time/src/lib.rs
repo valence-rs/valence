@@ -39,17 +39,17 @@
 //! ## Advacing the world time
 //! Time of day and world age can be ticked individually using
 //! [`LinearTimeTicking`] and [`LinearWorldAging`] respectively.
-//! Note: If these component don't meet your requirements
-//! (eg: you need time increment follow a sine wave ~~for some reason~~)
-//! You can create your own ticking component by modify the respective
-//! fields
+//! If these components don't meet your requirements
+//! (eg: you need time increment follow a sine wave ~~for some reason~~),
+//! you can tick the time yourself by modifying the respective
+//! fields on [`WorldTime`].
 //!
 //! ## Prevent client from automatically update WorldTime
 //! *(mimics `/gamerule doDaylightCycle false`)*
 //!
 //! By default, client will continue to update world time if the server
 //! doesn't send packet to sync time between client and server.
-//! Unfortunately, this can be disabled by setting `stop_client_time`
+//! This can be disabled by setting `stop_client_time`
 //! of [`WorldTime`] component to true.
 //!
 //! Here is an example of mimicing `/gamerule doDaylightCycle <value>`:
@@ -142,7 +142,8 @@ pub struct WorldTime {
     /// The amount of time in game tick the current world has passed
     pub world_age: i64,
     /// The time of day is based on the timestamp modulo 24000.
-    /// 0 is sunrise, 6000 is noon, 12000 is sunset, and 18000 is midnight.
+    /// Use the [`DayPhase`] enum to easily handle common time 
+    /// of day events without the need to look up information in the wiki.
     pub time_of_day: i64,
 }
 
@@ -181,6 +182,8 @@ impl WorldTime {
     }
 
     /// Set the time part of `time_of_day`
+    /// Use the [`DayPhase`] enum to easily handle common time 
+    /// of day events without the need to look up information in the wiki.
     pub fn set_current_day_time(&mut self, time: i64) {
         self.time_of_day = self.day() * DAY_LENGTH + time % DAY_LENGTH;
     }
@@ -251,7 +254,7 @@ impl From<MoonPhase> for i64 {
     }
 }
 
-/// This component will advance the `time_of_day` field of [`WorldTime`] `speed`
+/// This component will advance the `time_of_day` field of [`WorldTime`] at `speed`
 /// per tick
 #[derive(Component)]
 pub struct LinearTimeTicking {
@@ -264,7 +267,7 @@ impl Default for LinearTimeTicking {
     }
 }
 
-/// This component will advance the `world_age` field of [`WorldTime`] `speed`
+/// This component will advance the `world_age` field of [`WorldTime`] at `speed`
 /// per tick
 #[derive(Component)]
 pub struct LinearWorldAging {

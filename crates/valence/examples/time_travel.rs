@@ -40,7 +40,8 @@ fn setup(
         }
     }
 
-    commands.spawn(instance).insert((
+    commands.spawn((
+        instance,
         WorldTime {
             time_of_day: -1,
             ..Default::default()
@@ -105,5 +106,3 @@ fn handle_display_time(
         ));
     }
 }
-
-// Add more systems here!
