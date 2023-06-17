@@ -357,7 +357,9 @@ fn handle_linear_time_ticking(
     mut instances: Query<(&mut WorldTime, &LinearTimeTicking), With<Instance>>,
 ) {
     for (mut time, ltr) in instances.iter_mut() {
-        time.add_time(ltr.speed);
+        if ltr.speed != 0 {
+            time.add_time(ltr.speed);
+        }
     }
 }
 
@@ -365,6 +367,8 @@ fn handle_linear_world_aging(
     mut instances: Query<(&mut WorldTime, &LinearWorldAging), With<Instance>>,
 ) {
     for (mut time, lwa) in instances.iter_mut() {
-        time.world_age += lwa.speed;
+        if lwa.speed != 0 {
+            time.world_age += lwa.speed;
+        }
     }
 }

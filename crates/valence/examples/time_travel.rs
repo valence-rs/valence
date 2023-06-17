@@ -41,7 +41,10 @@ fn setup(
     }
 
     commands.spawn(instance).insert((
-        WorldTime::default(),
+        WorldTime {
+            time_of_day: -1,
+            ..Default::default()
+        },
         ChangeTrackingTimeBroadcast,
         LinearTimeTicking { speed: 1 },
     ));
