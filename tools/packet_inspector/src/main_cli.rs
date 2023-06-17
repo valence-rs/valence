@@ -7,7 +7,9 @@ use tracing::Level;
 #[derive(Parser, Clone, Debug)]
 #[clap(author, version, about)]
 struct CliArgs {
+    /// The socket address to listen for connections on. This is the address clients should connect to
     listener_addr: SocketAddr,
+    /// The socket address the proxy will connect to. This is the address of the server
     server_addr: SocketAddr,
 }
 
