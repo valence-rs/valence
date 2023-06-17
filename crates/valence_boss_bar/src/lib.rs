@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use bevy_app::Plugin;
 use bevy_ecs::{system::Query, query::{Added, Changed}, removal_detection::RemovedComponents};
 use components::{BossBarViewers, BossBarTitle, BossBarHealth, BossBarStyle, BossBarFlags};
@@ -71,7 +73,7 @@ fn handle_boss_bar_flags_update(mut boss_bars: Query<(&UniqueId, &BossBarFlags, 
             let mut client = clients.get_mut(*viewer).unwrap();
             client.write_packet(&BossBarS2c {
                 id: id.0,
-                action: BossBarAction::UpdateFlags(flags.clone()),
+                action: BossBarAction::UpdateFlags(*flags),
             });
         }
     }
@@ -107,7 +109,7 @@ fn handle_boss_bar_viewers_update(mut boss_bars: Query<(&UniqueId, &BossBarTitle
                     health: health.0,
                     color: style.color,
                     division: style.division,
-                    flags: flags.clone(),
+                    flags: *flags,
                 },
             });
         }

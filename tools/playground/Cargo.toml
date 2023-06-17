@@ -11,3 +11,4 @@ tracing-subscriber.workspace = true
 tracing.workspace = true
 valence_core.workspace = true
 valence.workspace = true
+valence_boss_bar.workspace = true

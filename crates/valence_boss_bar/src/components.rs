@@ -25,7 +25,7 @@ impl BossBarBundle {
                 division,
             },
             flags,
-            viewers: BossBarViewers::new(),
+            viewers: BossBarViewers::default(),
         }
     }
 
@@ -80,21 +80,10 @@ pub struct BossBarFlags {
 }
 
 /// The viewers of a boss bar.
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct BossBarViewers {
     /// The current viewers of the boss bar. It is the list that should be updated.
     pub current_viewers: Vec<Entity>,
     /// The viewers of the last tick in order to determine which viewers have been added and removed.
     pub last_viewers: Vec<Entity>,
-}
-
-impl BossBarViewers {
-
-    pub fn new() -> BossBarViewers {
-        BossBarViewers {
-            current_viewers: Vec::new(),
-            last_viewers: Vec::new(),
-        }
-    }
-
 }
