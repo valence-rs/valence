@@ -142,7 +142,7 @@ pub struct WorldTime {
     /// The amount of time in game tick the current world has passed
     pub world_age: i64,
     /// The time of day is based on the timestamp modulo 24000.
-    /// Use the [`DayPhase`] enum to easily handle common time 
+    /// Use the [`DayPhase`] enum to easily handle common time
     /// of day events without the need to look up information in the wiki.
     pub time_of_day: i64,
 }
@@ -182,7 +182,7 @@ impl WorldTime {
     }
 
     /// Set the time part of `time_of_day`
-    /// Use the [`DayPhase`] enum to easily handle common time 
+    /// Use the [`DayPhase`] enum to easily handle common time
     /// of day events without the need to look up information in the wiki.
     pub fn set_current_day_time(&mut self, time: i64) {
         self.time_of_day = self.day() * DAY_LENGTH + time % DAY_LENGTH;
@@ -254,8 +254,8 @@ impl From<MoonPhase> for i64 {
     }
 }
 
-/// This component will advance the `time_of_day` field of [`WorldTime`] at `speed`
-/// per tick
+/// This component will advance the `time_of_day` field of [`WorldTime`] at
+/// `speed` per tick
 #[derive(Component)]
 pub struct LinearTimeTicking {
     pub speed: i64,
@@ -267,8 +267,8 @@ impl Default for LinearTimeTicking {
     }
 }
 
-/// This component will advance the `world_age` field of [`WorldTime`] at `speed`
-/// per tick
+/// This component will advance the `world_age` field of [`WorldTime`] at
+/// `speed` per tick
 #[derive(Component)]
 pub struct LinearWorldAging {
     pub speed: i64,
