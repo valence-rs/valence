@@ -137,22 +137,13 @@ impl Plugin for WorldTimePlugin {
 }
 
 /// Base component for storing world time information
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct WorldTime {
     /// The amount of time in game tick the current world has passed
     pub world_age: i64,
     /// The time of day is based on the timestamp modulo 24000.
     /// 0 is sunrise, 6000 is noon, 12000 is sunset, and 18000 is midnight.
     pub time_of_day: i64,
-}
-
-impl Default for WorldTime {
-    fn default() -> Self {
-        Self {
-            world_age: 0,
-            time_of_day: 0,
-        }
-    }
 }
 
 impl WorldTime {
@@ -236,13 +227,13 @@ pub enum DayPhase {
     Sunrise = 23000,
 }
 
-impl Into<i64> for DayPhase {
-    fn into(self) -> i64 {
-        self as i64
+impl From<DayPhase> for i64 {
+    fn from(value: DayPhase) -> Self {
+        value as Self
     }
 }
 
-/// Reference: https://minecraft.fandom.com/wiki/Daylight_cycle#Moon_phases
+/// Reference: <https://minecraft.fandom.com/wiki/Daylight_cycle#Moon_phases>
 pub enum MoonPhase {
     FullMoon = 0,
     WaningGibbous = 1,
@@ -254,9 +245,9 @@ pub enum MoonPhase {
     WaxingGibbous = 7,
 }
 
-impl Into<i64> for MoonPhase {
-    fn into(self) -> i64 {
-        self as i64
+impl From<MoonPhase> for i64 {
+    fn from(value: MoonPhase) -> Self {
+        value as Self
     }
 }
 
