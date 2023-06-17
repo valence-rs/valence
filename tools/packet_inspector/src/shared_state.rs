@@ -53,6 +53,7 @@ pub struct SharedState {
     pub server_addr: String,
     pub autostart: bool,
     pub packet_filter: PacketFilter,
+    pub packet_search: String,
     #[serde(skip)]
     pub is_listening: bool,
     #[serde(skip)]
@@ -76,6 +77,7 @@ impl Default for SharedState {
             server_addr: "127.0.0.1:25565".to_string(),
             autostart: false,
             is_listening: false,
+            packet_search: String::new(),
             packet_filter: PacketFilter::new(),
             selected_packet: None,
             packets: RwLock::new(Vec::new()),

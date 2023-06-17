@@ -20,13 +20,29 @@ impl Tab for Filter {
 
 impl View for Filter {
     fn ui(&mut self, ui: &mut egui::Ui, state: &mut SharedState) {
-        draw_packet_list(ui, state, PacketState::Handshaking);
-        ui.separator();
-        draw_packet_list(ui, state, PacketState::Status);
-        ui.separator();
-        draw_packet_list(ui, state, PacketState::Login);
-        ui.separator();
-        draw_packet_list(ui, state, PacketState::Play);
+        ui.horizontal(|ui| {
+            ui.label("Search:");
+            if ui.button("x").clicked() {
+                state.packet_search.clear();
+            }
+            ui.text_edit_singleline(&mut state.packet_search);
+        });
+
+        egui::ScrollArea::vertical()
+            .auto_shrink([false, false])
+            .stick_to_bottom(false)
+            .show(ui, |ui| {
+                if draw_packet_list(ui, state, PacketState::Handshaking) > 0 {
+                    ui.separator();
+                }
+                if draw_packet_list(ui, state, PacketState::Status) > 0 {
+                    ui.separator();
+                }
+                if draw_packet_list(ui, state, PacketState::Login) > 0 {
+                    ui.separator();
+                }
+                draw_packet_list(ui, state, PacketState::Play);
+            });
     }
 }
 
@@ -53,13 +69,25 @@ fn get_checkbox_state(state: &SharedState, packet_state: PacketState) -> TriChec
     }
 }
 
-fn draw_packet_list(ui: &mut Ui, state: &mut SharedState, packet_state: PacketState) {
+fn draw_packet_list(ui: &mut Ui, state: &mut SharedState, packet_state: PacketState) -> usize {
     let title = match packet_state {
         PacketState::Handshaking => "Handshaking",
         PacketState::Status => "Status",
         PacketState::Login => "Login",
         PacketState::Play => "Play",
     };
+
+    let search = state.packet_search.to_lowercase();
+
+    let count = state
+        .packet_filter
+        .iter_mut()
+        .filter(|(p, _)| p.state == packet_state && p.name.to_lowercase().contains(&search))
+        .count();
+
+    if count == 0 {
+        return 0;
+    }
 
     let mut checkbox = get_checkbox_state(state, packet_state);
     if TriCheckbox::new(&mut checkbox, RichText::new(title).heading().strong())
@@ -81,9 +109,11 @@ fn draw_packet_list(ui: &mut Ui, state: &mut SharedState, packet_state: PacketSt
     for (p, enabled) in state
         .packet_filter
         .iter_mut()
-        .filter(|(p, _)| p.state == packet_state)
+        .filter(|(p, _)| p.state == packet_state && p.name.to_lowercase().contains(&search))
         .sorted_by(|(a, _), (b, _)| a.id.cmp(&b.id))
     {
         ui.checkbox(enabled, format!("[0x{:0>2X}] {}", p.id, p.name));
     }
+
+    return count;
 }
