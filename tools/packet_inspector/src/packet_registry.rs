@@ -60,7 +60,7 @@ impl PacketRegistry {
             .clone()
     }
 
-    pub fn process(
+    pub async fn process(
         &self,
         side: PacketSide,
         state: PacketState,
@@ -77,7 +77,7 @@ impl PacketRegistry {
         p.timestamp = Some(time);
 
         // store in received_packets
-        self.sender.send(p)?;
+        self.sender.send_async(p).await?;
 
         Ok(())
     }
