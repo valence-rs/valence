@@ -120,7 +120,10 @@ fn draw_packet_list(ui: &mut Ui, state: &mut SharedState, packet_state: PacketSt
         .packet_filter
         .iter_mut()
         .filter(|(p, _)| p.state == packet_state && p.name.to_lowercase().contains(&search))
-        .sorted_by(|(a, _), (b, _)| a.id.cmp(&b.id))
+        .sorted_by(|(a, _), (b, _)| {
+            a.id.cmp(&b.id)
+                .then((a.side as usize).cmp(&(b.side as usize)))
+        })
     {
         ui.checkbox(enabled, format!("[0x{:0>2X}] {}", p.id, p.name));
     }
