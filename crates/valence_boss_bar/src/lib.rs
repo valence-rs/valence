@@ -34,8 +34,8 @@ fn handle_boss_bar_title_update(
     mut boss_bars: Query<(&UniqueId, &BossBarTitle, &mut BossBarViewers), Changed<BossBarTitle>>,
     mut clients: Query<&mut Client>,
 ) {
-    for (id, title, mut viewers) in boss_bars.iter_mut() {
-        for viewer in viewers.current_viewers.iter_mut() {
+    for (id, title, mut boss_bar_viewers) in boss_bars.iter_mut() {
+        for viewer in boss_bar_viewers.viewers.iter_mut() {
             let mut client = clients.get_mut(*viewer).unwrap();
             client.write_packet(&BossBarS2c {
                 id: id.0,
@@ -51,8 +51,8 @@ fn handle_boss_bar_health_update(
     mut boss_bars: Query<(&UniqueId, &BossBarHealth, &mut BossBarViewers), Changed<BossBarHealth>>,
     mut clients: Query<&mut Client>,
 ) {
-    for (id, health, mut viewers) in boss_bars.iter_mut() {
-        for viewer in viewers.current_viewers.iter_mut() {
+    for (id, health, mut boss_bar_viewers) in boss_bars.iter_mut() {
+        for viewer in boss_bar_viewers.viewers.iter_mut() {
             let mut client = clients.get_mut(*viewer).unwrap();
             client.write_packet(&BossBarS2c {
                 id: id.0,
@@ -68,8 +68,8 @@ fn handle_boss_bar_style_update(
     mut boss_bars: Query<(&UniqueId, &BossBarStyle, &mut BossBarViewers), Changed<BossBarStyle>>,
     mut clients: Query<&mut Client>,
 ) {
-    for (id, style, mut viewers) in boss_bars.iter_mut() {
-        for viewer in viewers.current_viewers.iter_mut() {
+    for (id, style, mut boss_bar_viewers) in boss_bars.iter_mut() {
+        for viewer in boss_bar_viewers.viewers.iter_mut() {
             let mut client = clients.get_mut(*viewer).unwrap();
             client.write_packet(&BossBarS2c {
                 id: id.0,
@@ -85,8 +85,8 @@ fn handle_boss_bar_flags_update(
     mut boss_bars: Query<(&UniqueId, &BossBarFlags, &mut BossBarViewers), Changed<BossBarFlags>>,
     mut clients: Query<&mut Client>,
 ) {
-    for (id, flags, mut viewers) in boss_bars.iter_mut() {
-        for viewer in viewers.current_viewers.iter_mut() {
+    for (id, flags, mut boss_bar_viewers) in boss_bars.iter_mut() {
+        for viewer in boss_bar_viewers.viewers.iter_mut() {
             let mut client = clients.get_mut(*viewer).unwrap();
             client.write_packet(&BossBarS2c {
                 id: id.0,
@@ -112,20 +112,20 @@ fn handle_boss_bar_viewers_update(
     >,
     mut clients: Query<&mut Client>,
 ) {
-    for (id, title, health, style, flags, mut viewers) in boss_bars.iter_mut() {
-        let previous_viewers = &viewers.last_viewers;
-        let current_viewers = &viewers.current_viewers;
+    for (id, title, health, style, flags, mut boss_bar_viewers) in boss_bars.iter_mut() {
+        let old_viewers = &boss_bar_viewers.old_viewers;
+        let current_viewers = &boss_bar_viewers.viewers;
 
         let mut added_viewers = Vec::new();
         let mut removed_viewers = Vec::new();
 
-        for viewer in viewers.current_viewers.iter() {
-            if !previous_viewers.contains(viewer) {
+        for viewer in current_viewers.iter() {
+            if !old_viewers.contains(viewer) {
                 added_viewers.push(*viewer);
             }
         }
 
-        for viewer in previous_viewers.iter() {
+        for viewer in old_viewers.iter() {
             if !current_viewers.contains(viewer) {
                 removed_viewers.push(*viewer);
             }
@@ -154,7 +154,7 @@ fn handle_boss_bar_viewers_update(
             }
         }
 
-        viewers.last_viewers = viewers.current_viewers.clone();
+        boss_bar_viewers.old_viewers = boss_bar_viewers.viewers.clone();
     }
 }
 
@@ -167,7 +167,7 @@ fn handle_boss_bar_despawn(
     for boss_bar in boss_bars.iter_mut() {
         let (id, mut viewers) = boss_bar;
 
-        for viewer in viewers.current_viewers.iter_mut() {
+        for viewer in viewers.viewers.iter_mut() {
             let mut client = clients.get_mut(*viewer).unwrap();
             client.write_packet(&BossBarS2c {
                 id: id.0,
@@ -181,11 +181,11 @@ fn handle_boss_bar_despawn(
 /// disconnects.
 fn handle_client_disconnection(
     mut disconnected_clients: RemovedComponents<Client>,
-    mut boss_bars: Query<&mut BossBarViewers>,
+    mut boss_bars_viewers: Query<&mut BossBarViewers>,
 ) {
     for entity in disconnected_clients.iter() {
-        for mut boss_bar in boss_bars.iter_mut() {
-            boss_bar.current_viewers.retain(|viewer| *viewer != entity);
+        for mut boss_bar_viewers in boss_bars_viewers.iter_mut() {
+            boss_bar_viewers.viewers.retain(|viewer| *viewer != entity);
         }
     }
 }
