@@ -70,7 +70,11 @@ impl View for TextView {
 
         if self.last_packet_id != Some(packet_index) {
             self.last_packet_id = Some(packet_index);
-            self.packet_str = utils::packet_to_string(&packets[packet_index]);
+
+            self.packet_str = match utils::packet_to_string(&packets[packet_index]) {
+                Ok(str) => str,
+                Err(err) => format!("Error: {}", err),
+            };
         }
 
         code_view_ui(ui, &self.packet_str);
