@@ -31,7 +31,6 @@ import net.minecraft.world.entity.EntityLookup;
 import net.minecraft.world.event.GameEvent;
 import net.minecraft.world.tick.QueryableTickScheduler;
 import org.jetbrains.annotations.Nullable;
-import java.lang.reflect.Field;
 import java.util.List;
 import java.util.function.Supplier;
 

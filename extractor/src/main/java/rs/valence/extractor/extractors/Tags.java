@@ -4,16 +4,9 @@ import com.mojang.datafixers.util.Pair;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import net.minecraft.entity.SpawnGroup;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.collection.Weighted;
-import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
 import net.minecraft.registry.RegistryKey;
-import net.minecraft.registry.RegistryKeys;
-import net.minecraft.registry.RegistryWrapper;
-import net.minecraft.registry.BuiltinRegistries;
-import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.server.MinecraftServer;
 import rs.valence.extractor.Main;
 import net.minecraft.registry.tag.TagKey;
@@ -24,7 +17,6 @@ import net.minecraft.registry.entry.RegistryEntryList;
 import net.minecraft.registry.SerializableRegistries;
 
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.HashMap;
 import java.util.stream.Collectors;
 
