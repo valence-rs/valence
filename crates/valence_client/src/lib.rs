@@ -18,7 +18,6 @@
 )]
 
 use std::borrow::Cow;
-use std::collections::HashSet;
 use std::fmt;
 use std::net::IpAddr;
 use std::ops::Deref;
@@ -44,7 +43,7 @@ use valence_core::chunk_pos::{ChunkPos, ChunkView};
 use valence_core::despawn::Despawned;
 use valence_core::game_mode::GameMode;
 use valence_core::ident::Ident;
-use valence_core::layer::{Layer, LayerType};
+use valence_core::layer::Layer;
 use valence_core::particle::{Particle, ParticleS2c};
 use valence_core::property::Property;
 use valence_core::protocol::byte_angle::ByteAngle;
@@ -962,12 +961,10 @@ fn read_data_in_old_view(
                             // The outgoing entity moved outside the view distance, so it must be
                             // despawned if it was in the client's layer mask.
                             if let Ok((entity_id, layer)) = entity_ids.get(id) {
-                                if let Some(client_layer_set) = client_layer_set {
-                                    if let Some(layer) = layer {
-                                        if client_layer_set.contains(&layer.0) {
-                                            remove_buf.push(entity_id.get());
-                                        }
-                                    } else {
+                                if let (Some(client_layer_set), Some(layer)) =
+                                    (client_layer_set, layer)
+                                {
+                                    if client_layer_set.contains(&layer.0) {
                                         remove_buf.push(entity_id.get());
                                     }
                                 } else {
@@ -981,8 +978,8 @@ fn read_data_in_old_view(
                     // client
                     if let Some(client_layer_set) = client_layer_set {
                         client_layer_set.layers.iter().for_each(|layer| {
-                            if let Some(index) = cell.layers_packet_buf_indices.get(layer) {
-                                client.write_packet_bytes(&cell.layers_packet_buf[*index][..]);
+                            if let Some(packet_buf) = cell.layers_packet_buf.get(layer) {
+                                client.write_packet_bytes(&packet_buf[..]);
                             }
                         });
                     }
@@ -1012,9 +1009,9 @@ fn update_layer_view(
         &mut EntityRemoveBuf,
         &OldPosition,
         &OldViewDistance,
-        Option<&ClientLayerSet>,
+        &ClientLayerSet,
     )>,
-    entities: Query<(EntityInitQuery, &OldPosition, Option<&Layer>)>,
+    entities: Query<(EntityInitQuery, &OldPosition, &Layer)>,
 ) {
     clients.par_iter_mut().for_each_mut(
         |(mut client, mut remove_buf, old_pos, old_view_dist, client_layer_set)| {
@@ -1026,36 +1023,20 @@ fn update_layer_view(
             // Send entity spawn packets for entities that are in an entered layer and
             // already in the client's view.
             for (entity, &old_pos, layer) in entities.iter() {
-                if view.contains(old_pos.chunk_pos()) {
-                    if let (Some(client_layer_set), Some(layer)) = (client_layer_set, layer) {
-                        if client_layer_set
-                            .added()
-                            .collect::<HashSet<&LayerType>>()
-                            .contains(&layer.0)
-                        {
-                            entity.write_init_packets(old_pos.get(), &mut client.enc);
-                        }
-                    }
+                if view.contains(old_pos.chunk_pos())
+                    && client_layer_set.added().any(|l| l == &layer.0)
+                {
+                    entity.write_init_packets(old_pos.get(), &mut client.enc);
                 }
             }
 
             // Send entity despawn packets for entities that are in an exited layer and
             // still in the client's view.
             for (entity_init_item, &old_pos, layer) in entities.iter() {
-                if view.contains(old_pos.chunk_pos()) {
-                    if let (Some(client_layer_set), Some(layer)) = (client_layer_set, layer) {
-                        // if client_layer_mask.0.ne(&old_layer_mask.0) {debug!("client_layer_mask:
-                        // {:?}, old_client_layer_mask: {:?}, layer: {:?}", client_layer_mask,
-                        // old_client_layer_mask, layer);}
-                        if client_layer_set
-                            .removed()
-                            .collect::<HashSet<&LayerType>>()
-                            .contains(&layer.0)
-                        {
-                            // debug!("removing entity: {:?}", entity_init_item.entity_id.get());
-                            remove_buf.push(entity_init_item.entity_id.get());
-                        }
-                    }
+                if view.contains(old_pos.chunk_pos())
+                    && client_layer_set.removed().any(|l| l == &layer.0)
+                {
+                    remove_buf.push(entity_init_item.entity_id.get());
                 }
             }
         },

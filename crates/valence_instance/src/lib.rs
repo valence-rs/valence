@@ -165,8 +165,7 @@ fn update_entity_cell_positions(
                             incoming: vec![(entity, None)],
                             outgoing: vec![],
                             packet_buf: vec![],
-                            layers_packet_buf: vec![],
-                            layers_packet_buf_indices: FxHashMap::default(),
+                            layers_packet_buf: FxHashMap::default(),
                         });
                     }
                 }
@@ -199,8 +198,7 @@ fn update_entity_cell_positions(
                             incoming: vec![(entity, Some(old_pos))],
                             outgoing: vec![],
                             packet_buf: vec![],
-                            layers_packet_buf: vec![],
-                            layers_packet_buf_indices: FxHashMap::default(),
+                            layers_packet_buf: FxHashMap::default(),
                         });
                     }
                 }
@@ -246,20 +244,7 @@ fn write_update_packets_to_instances(
                     .expect("missing entity in partition cell");
 
                 let buf = if let Some(layer) = entity.layer {
-                    let index = cell
-                        .layers_packet_buf_indices
-                        .entry(layer.0)
-                        .or_insert_with(|| {
-                            cell.layers_packet_buf.push(vec![]);
-                            cell.layers_packet_buf.len() - 1
-                        });
-                    // info!(
-                    //     "index: {} for layer {}, vec len {}",
-                    //     index,
-                    //     layer.0,
-                    //     cell.layers_packet_buf.len()
-                    // );
-                    &mut cell.layers_packet_buf[*index]
+                    cell.layers_packet_buf.entry(layer.0).or_insert(vec![])
                 } else {
                     &mut cell.packet_buf
                 };
@@ -394,7 +379,6 @@ fn clear_instance_changes(mut instances: Query<&mut Instance>) {
         instance.partition.retain(|_, cell| {
             cell.packet_buf.clear();
             cell.layers_packet_buf.clear();
-            cell.layers_packet_buf_indices.clear();
             cell.chunk_removed = false;
             cell.incoming.clear();
             cell.outgoing.clear();
@@ -472,10 +456,7 @@ pub struct PartitionCell {
     pub packet_buf: Vec<u8>,
     /// A cache for packets that are layer specifics.
     #[doc(hidden)]
-    pub layers_packet_buf: Vec<Vec<u8>>,
-    /// Mapping from layer to index in `layers_packet_buf`.
-    #[doc(hidden)]
-    pub layers_packet_buf_indices: FxHashMap<LayerType, usize>,
+    pub layers_packet_buf: FxHashMap<LayerType, Vec<u8>>,
 }
 
 impl Instance {
