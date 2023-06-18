@@ -139,8 +139,6 @@ mod test {
         let mut fixed_time = FixedTick::new(1);
         fixed_time.tick();
         assert!(fixed_time.expend().is_ok());
-        assert!(fixed_time.expend().is_ok());
-        assert!(fixed_time.expend().is_ok());
         assert!(fixed_time.expend().is_err());
     }
 }

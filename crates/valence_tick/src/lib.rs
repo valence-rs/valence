@@ -8,7 +8,6 @@ use fixed_tickstep::{run_fixed_update_schedule, FixedTick};
 pub use tick::*;
 
 use bevy_ecs::system::ResMut;
-use flume::{Receiver, Sender};
 
 pub mod prelude {
     //! The Bevy Time Prelude.
@@ -37,22 +36,6 @@ impl Plugin for TickSystem {
             .add_system(tick_system.in_set(TickSystem))
             .add_system(run_fixed_update_schedule.in_base_set(CoreSet::FixedUpdate));
     }
-}
-
-/// Channel resource used to receive time from render world
-#[derive(Resource)]
-pub struct TickReceiver(pub Receiver<usize>);
-
-/// Channel resource used to send time from render world
-#[derive(Resource)]
-pub struct TickSender(pub Sender<usize>);
-
-/// Creates channels used for sending time between render world and app world
-pub fn create_time_channels() -> (TickSender, TickReceiver) {
-    // bound the channel to 2 since when pipelined the render phase can finish before
-    // the time system runs.
-    let (s, r) = flume::bounded::<usize>(2);
-    (TickSender(s), TickReceiver(r))
 }
 
 /// The system used to update the [`Time`] used by app logic. If there is a render world the time is sent from
