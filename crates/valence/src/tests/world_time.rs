@@ -36,7 +36,10 @@ fn test_world_time_modifications() {
 
     time.set_day(0);
     time.wrap_to_next_moon_phase(MoonPhase::NewMoon);
-    assert_eq!(4 * DAY_LENGTH + DayPhase::Night as u64, time.time_of_day as u64)
+    assert_eq!(
+        4 * DAY_LENGTH + DayPhase::Night as u64,
+        time.time_of_day as u64
+    )
 }
 
 #[test]
