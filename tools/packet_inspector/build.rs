@@ -162,7 +162,7 @@ fn write_transformer(packets: &[Packet]) -> anyhow::Result<()> {
 
                 match_arms.extend(quote! {
                     #name::ID => {
-                        format!("{:#?}", #name::decode(&mut data).unwrap())
+                        Ok(format!("{:#?}", #name::decode(&mut data)))
                     }
                 });
             }
@@ -172,14 +172,14 @@ fn write_transformer(packets: &[Packet]) -> anyhow::Result<()> {
             side_arms.extend(quote! {
                 PacketState::#state => match packet.id {
                     #match_arms
-                    _ => NOT_AVAILABLE.to_string(),
+                    _ => Ok(NOT_AVAILABLE.to_string()),
                 },
             });
         }
 
         if side == "Clientbound" {
             side_arms.extend(quote! {
-                _ => NOT_AVAILABLE.to_string(),
+                _ => Ok(NOT_AVAILABLE.to_string()),
             });
         }
 
@@ -196,7 +196,7 @@ fn write_transformer(packets: &[Packet]) -> anyhow::Result<()> {
     let generated = quote! {
         const NOT_AVAILABLE: &str = "Not yet implemented";
 
-        pub fn packet_to_string(packet: &ProxyPacket) -> String {
+        pub fn packet_to_string(packet: &ProxyPacket) -> Result<String, Box<dyn std::error::Error>> {
             let bytes = packet.data.as_ref().unwrap();
             let mut data = &bytes.clone()[..];
 

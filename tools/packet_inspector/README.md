@@ -1,4 +1,6 @@
-# What's This?
+# Packet Inspector
+
+![packet inspector screenshot](https://raw.githubusercontent.com/valence-rs/valence/main/assets/packet-inspector.png)
 
 The packet inspector is a Minecraft proxy for viewing the contents of packets as
 they are sent/received. It uses Valence's protocol facilities to display packet
