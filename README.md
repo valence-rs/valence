@@ -39,7 +39,7 @@ Valence aims to be the following:
 * **Intuitive**. An API that is easy to use and difficult to misuse. Extensive documentation and examples are important.
 * **Efficient**. Optimal use of system resources with multiple CPU cores in mind. Valence uses very little memory and
   can
-  support [thousands](https://cdn.discordapp.com/attachments/998132822864834613/1051100042519380028/2022-12-10_03.30.09.png)
+  support [thousands](https://raw.githubusercontent.com/valence-rs/valence/main/assets/many-players.png)
   of players at the same time without lag (assuming you have the bandwidth).
 * **Up to date**. Targets the most recent stable version of Minecraft. Support for multiple versions at once is not
   planned. However, you can use a proxy with [ViaBackwards](https://www.spigotmc.org/resources/viabackwards.27448/) to
