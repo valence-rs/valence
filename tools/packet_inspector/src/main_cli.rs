@@ -22,7 +22,7 @@ async fn main() -> anyhow::Result<()> {
     let args = CliArgs::parse();
 
     let proxy = Proxy::new(args.listener_addr, args.server_addr);
-    let receiver = proxy.subscribe();
+    let receiver = proxy.subscribe().await;
 
     tokio::spawn(async move {
         proxy.run().await?;
