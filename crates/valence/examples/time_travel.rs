@@ -93,16 +93,10 @@ fn handle_adjust_speed(
     }
 }
 
-fn handle_display_time(
-    mut clients: Query<&mut Client>,
-    instances: Query<(&WorldTime, &LinearTimeTicking), With<Instance>>,
-) {
-    for mut client in clients.iter_mut() {
-        let (time, ltt) = instances.single();
-
-        client.send_action_bar_message(format!(
-            "Time: {} / {} per tick",
-            time.time_of_day, ltt.speed
-        ));
-    }
+fn handle_display_time(mut instances: Query<(&mut Instance, &WorldTime, &LinearTimeTicking)>) {
+    let (mut inst, time, ltt) = instances.single_mut();
+    inst.send_action_bar_message(format!(
+        "Time: {} / {} per tick",
+        time.time_of_day, ltt.speed
+    ));
 }

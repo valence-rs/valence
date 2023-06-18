@@ -17,7 +17,7 @@ graph TD
 	instance --> biome
 	instance --> dimension
 	instance --> entity
-	instance --> world_time
+	world_time --> instance
 	player_list --> client
 	inventory --> client
 	anvil --> client

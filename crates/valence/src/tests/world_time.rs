@@ -29,14 +29,14 @@ fn test_world_time_modifications() {
 
     time.set_day(3);
     time.set_current_day_time(12000);
-    assert_eq!(3 * DAY_LENGTH + 12000, time.time_of_day);
+    assert_eq!(3 * DAY_LENGTH + 12000, time.time_of_day as u64);
 
     time.warp_to_next_day_phase(DayPhase::Day);
-    assert_eq!(4 * DAY_LENGTH, time.time_of_day);
+    assert_eq!(4 * DAY_LENGTH, time.time_of_day as u64);
 
     time.set_day(0);
     time.wrap_to_next_moon_phase(MoonPhase::NewMoon);
-    assert_eq!(4 * DAY_LENGTH + DayPhase::Night as i64, time.time_of_day)
+    assert_eq!(4 * DAY_LENGTH + DayPhase::Night as u64, time.time_of_day as u64)
 }
 
 #[test]

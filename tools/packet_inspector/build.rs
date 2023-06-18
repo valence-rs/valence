@@ -1,4 +1,7 @@
-use std::{collections::HashMap, env, fs, path::Path, process::Command};
+use std::collections::HashMap;
+use std::path::Path;
+use std::process::Command;
+use std::{env, fs};
 
 use anyhow::Context;
 use proc_macro2::TokenStream;
@@ -70,7 +73,8 @@ fn write_packets(packets: &Vec<Packet>) -> anyhow::Result<()> {
             _ => unreachable!(),
         };
 
-        // const STD_PACKETS = [PacketSide::Client(PacketState::Handshaking(Packet{..})), ..];
+        // const STD_PACKETS =
+        // [PacketSide::Client(PacketState::Handshaking(Packet{..})), ..];
         p.push(quote! {
             crate::packet_registry::Packet {
                 id: #id,

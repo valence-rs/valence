@@ -3,15 +3,13 @@
 //! broadcast information about the time of day and world age of a instance.
 //!
 //! ## Enable world time
-//! To control world time of an instance, simply insert the [`WorldTime`]
-//! component. We also need to broadcast world time updates to clients. The
+//! To control world time of an instance, simply insert the [`WorldTimeBundle`]
+//! bundle. We also need to broadcast world time updates to clients. The
 //! [`IntervalTimeBroadcast::default()`] provides configuration to mimic
 //! vanilla behavior:
 //! ```
 //! fn enable(mut commands: Commands, instance: Entity) {
-//!     commands
-//!         .entity(instance)
-//!         .insert((WorldTime::deafault(), IntervalTimeBroadcast::default()));
+//!     commands.entity(instance).insert(WorldTimeBundle::default());
 //! }
 //! ```
 //!
@@ -49,7 +47,7 @@
 //!
 //! By default, client will continue to update world time if the server
 //! doesn't send packet to sync time between client and server.
-//! This can be disabled by setting `stop_client_time`
+//! This can be toggled by using [`WorldTime::set_client_time_ticking()`]
 //! of [`WorldTime`] component to true.
 //!
 //! Here is an example of mimicing `/gamerule doDaylightCycle <value>`:
@@ -100,7 +98,7 @@ use valence_entity::Location;
 use valence_instance::{Instance, WriteUpdatePacketsToInstancesSet};
 use valence_registry::*;
 
-pub const DAY_LENGTH: i64 = 24000;
+pub const DAY_LENGTH: u64 = 24000;
 
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct CalculateWorldTimeSet;
@@ -136,12 +134,22 @@ impl Plugin for WorldTimePlugin {
     }
 }
 
+#[derive(Bundle, Default, Debug)]
+pub struct WorldTimeBundle {
+    pub world_time: WorldTime,
+    pub linear_time_ticking: LinearTimeTicking,
+    pub linear_world_aging: LinearWorldAging,
+    pub interval_time_broadcast: IntervalTimeBroadcast,
+    pub change_tracking_time_broadcast: ChangeTrackingTimeBroadcast,
+}
+
 /// Base component for storing world time information
-#[derive(Component, Default)]
+#[derive(Component, Default, Debug)]
 pub struct WorldTime {
-    /// The amount of time in game tick the current world has passed
+    /// The total number of game ticks that have passed in the current world.
     pub world_age: i64,
-    /// The time of day is based on the timestamp modulo 24000.
+    /// Set the time part of `time_of_day`.
+    ///
     /// Use the [`DayPhase`] enum to easily handle common time
     /// of day events without the need to look up information in the wiki.
     pub time_of_day: i64,
@@ -162,12 +170,12 @@ impl WorldTime {
         self.set_client_time_ticking(client_ticking);
     }
 
-    /// If the client advance world time without server update
+    /// If the client advances world time locally without server updates.
     pub fn client_time_ticking(&self) -> bool {
-        !self.time_of_day.is_negative()
+        self.time_of_day >= 0
     }
 
-    /// Set will the client advance world time without server update
+    /// Sets if the client advances world time locally without server updates.
     pub fn set_client_time_ticking(&mut self, val: bool) {
         self.time_of_day = if val {
             self.time_of_day.abs()
@@ -177,40 +185,44 @@ impl WorldTime {
     }
 
     /// Get the time part of `time_of_day`
-    pub fn current_day_time(&self) -> i64 {
-        self.time_of_day % DAY_LENGTH
+    pub fn current_day_time(&self) -> u64 {
+        self.time_of_day as u64 % DAY_LENGTH
     }
 
     /// Set the time part of `time_of_day`
     /// Use the [`DayPhase`] enum to easily handle common time
     /// of day events without the need to look up information in the wiki.
-    pub fn set_current_day_time(&mut self, time: i64) {
-        self.time_of_day = self.day() * DAY_LENGTH + time % DAY_LENGTH;
+    pub fn set_current_day_time(&mut self, time: u64) {
+        let client_ticking = self.client_time_ticking();
+        self.time_of_day = (self.day() * DAY_LENGTH + time % DAY_LENGTH) as i64;
+        self.set_client_time_ticking(client_ticking);
     }
 
     /// Get the current day part of `time_of_day`
-    pub fn day(&self) -> i64 {
-        self.time_of_day / DAY_LENGTH
+    pub fn day(&self) -> u64 {
+        self.time_of_day as u64 / DAY_LENGTH
     }
 
     /// Set the current day `time_of_day`
-    pub fn set_day(&mut self, day: i64) {
-        self.time_of_day = day * DAY_LENGTH + self.current_day_time();
+    pub fn set_day(&mut self, day: u64) {
+        let client_ticking = self.client_time_ticking();
+        self.time_of_day = (day * DAY_LENGTH + self.current_day_time()) as i64;
+        self.set_client_time_ticking(client_ticking);
     }
 
     /// Set the time_of_day to the next specified [`DayPhase`]
     pub fn warp_to_next_day_phase(&mut self, phase: DayPhase) {
-        let phase_num: i64 = phase.into();
+        let phase_num: u64 = phase.into();
         if self.current_day_time() >= phase_num {
             self.set_day(self.day() + 1);
         }
 
-        self.set_current_day_time(phase_num)
+        self.set_current_day_time(phase_num);
     }
 
     /// Set the time_of_day to the next specified [`MoonPhase`]
     pub fn wrap_to_next_moon_phase(&mut self, phase: MoonPhase) {
-        let phase_no: i64 = phase.into();
+        let phase_no: u64 = phase.into();
         if self.day() % 8 >= phase_no {
             self.set_day(self.day() + 8 - (self.day() % 8))
         }
@@ -230,7 +242,7 @@ pub enum DayPhase {
     Sunrise = 23000,
 }
 
-impl From<DayPhase> for i64 {
+impl From<DayPhase> for u64 {
     fn from(value: DayPhase) -> Self {
         value as Self
     }
@@ -248,7 +260,7 @@ pub enum MoonPhase {
     WaxingGibbous = 7,
 }
 
-impl From<MoonPhase> for i64 {
+impl From<MoonPhase> for u64 {
     fn from(value: MoonPhase) -> Self {
         value as Self
     }
@@ -256,7 +268,7 @@ impl From<MoonPhase> for i64 {
 
 /// This component will advance the `time_of_day` field of [`WorldTime`] at
 /// `speed` per tick
-#[derive(Component)]
+#[derive(Component, Debug)]
 pub struct LinearTimeTicking {
     pub speed: i64,
 }
@@ -269,7 +281,7 @@ impl Default for LinearTimeTicking {
 
 /// This component will advance the `world_age` field of [`WorldTime`] at
 /// `speed` per tick
-#[derive(Component)]
+#[derive(Component, Debug)]
 pub struct LinearWorldAging {
     pub speed: i64,
 }
@@ -282,7 +294,7 @@ impl Default for LinearWorldAging {
 
 /// This component will broadcast world time information every `broadcast_rate`
 /// ticks
-#[derive(Component)]
+#[derive(Component, Debug)]
 pub struct IntervalTimeBroadcast {
     pub broadcast_rate: i64,
     last_broadcast: i64,
@@ -307,7 +319,7 @@ impl Default for IntervalTimeBroadcast {
     }
 }
 
-#[derive(Component)]
+#[derive(Component, Default, Debug)]
 pub struct ChangeTrackingTimeBroadcast;
 
 fn send_time_to_joined_players(
@@ -359,9 +371,9 @@ fn handle_interval_time_broadcast(
 fn handle_linear_time_ticking(
     mut instances: Query<(&mut WorldTime, &LinearTimeTicking), With<Instance>>,
 ) {
-    for (mut time, ltr) in instances.iter_mut() {
-        if ltr.speed != 0 {
-            time.add_time(ltr.speed);
+    for (mut time, ltt) in instances.iter_mut() {
+        if ltt.speed != 0 {
+            time.add_time(ltt.speed);
         }
     }
 }

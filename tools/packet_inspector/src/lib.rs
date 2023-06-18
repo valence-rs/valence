@@ -1,24 +1,21 @@
 mod packet_io;
 mod packet_registry;
 
-use std::{net::SocketAddr, sync::OnceLock};
+use std::net::SocketAddr;
+use std::sync::{Arc, OnceLock};
 
+pub use packet_registry::Packet;
 use tokio::net::TcpStream;
-
-use std::sync::Arc;
 use tokio::sync::RwLock;
-
 use valence::network::packet::{
     HandshakeC2s, HandshakeNextState, LoginCompressionS2c, LoginSuccessS2c,
 };
-use valence::protocol::{decode::PacketFrame, Decode, Packet as ValencePacket};
+use valence::protocol::decode::PacketFrame;
+use valence::protocol::{Decode, Packet as ValencePacket};
 
-use crate::{packet_io::PacketIo, packet_registry::PacketRegistry};
-
-pub use packet_registry::Packet;
-
-pub use crate::packet_registry::PacketSide;
-pub use crate::packet_registry::PacketState;
+use crate::packet_io::PacketIo;
+use crate::packet_registry::PacketRegistry;
+pub use crate::packet_registry::{PacketSide, PacketState};
 
 static PACKET_REGISTRY: OnceLock<Arc<RwLock<PacketRegistry>>> = OnceLock::new();
 

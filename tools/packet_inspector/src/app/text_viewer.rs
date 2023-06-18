@@ -37,6 +37,7 @@ mod utils {
     use valence::protocol::packet::sound::*;
     use valence::registry::tags::*;
     use valence::world_border::packet::*;
+    use valence::world_time::packet::*;
 
     include!(concat!(env!("OUT_DIR"), "/packet_to_string.rs"));
 }
