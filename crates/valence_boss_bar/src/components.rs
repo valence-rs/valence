@@ -1,6 +1,8 @@
-use bevy_ecs::prelude::{Component, Entity, Bundle};
-use valence_core::{uuid::UniqueId, text::Text, protocol::{Encode, Decode}};
+use bevy_ecs::prelude::{Bundle, Component, Entity};
 use bitfield_struct::bitfield;
+use valence_core::protocol::{Decode, Encode};
+use valence_core::text::Text;
+use valence_core::uuid::UniqueId;
 
 /// The bundle of components that make up a boss bar.
 #[derive(Bundle)]
@@ -14,21 +16,21 @@ pub struct BossBarBundle {
 }
 
 impl BossBarBundle {
-
-    pub fn new(title: Text, color: BossBarColor, division: BossBarDivision, flags: BossBarFlags) -> BossBarBundle {
+    pub fn new(
+        title: Text,
+        color: BossBarColor,
+        division: BossBarDivision,
+        flags: BossBarFlags,
+    ) -> BossBarBundle {
         BossBarBundle {
             id: UniqueId::default(),
             title: BossBarTitle(title),
             health: BossBarHealth(1.0),
-            style: BossBarStyle {
-                color,
-                division,
-            },
+            style: BossBarStyle { color, division },
             flags,
             viewers: BossBarViewers::default(),
         }
     }
-
 }
 
 /// The title of a boss bar.
@@ -39,7 +41,8 @@ pub struct BossBarTitle(pub Text);
 #[derive(Component)]
 pub struct BossBarHealth(pub f32);
 
-/// The style of a boss bar. This includes the color and division of the boss bar.
+/// The style of a boss bar. This includes the color and division of the boss
+/// bar.
 #[derive(Component)]
 pub struct BossBarStyle {
     pub color: BossBarColor,
@@ -82,8 +85,10 @@ pub struct BossBarFlags {
 /// The viewers of a boss bar.
 #[derive(Component, Default)]
 pub struct BossBarViewers {
-    /// The current viewers of the boss bar. It is the list that should be updated.
+    /// The current viewers of the boss bar. It is the list that should be
+    /// updated.
     pub current_viewers: Vec<Entity>,
-    /// The viewers of the last tick in order to determine which viewers have been added and removed.
+    /// The viewers of the last tick in order to determine which viewers have
+    /// been added and removed.
     pub last_viewers: Vec<Entity>,
 }

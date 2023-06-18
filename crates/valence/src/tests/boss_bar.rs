@@ -1,9 +1,14 @@
 use bevy_app::App;
 use bevy_ecs::entity::Entity;
-use valence_boss_bar::{components::{BossBarBundle, BossBarViewers, BossBarColor, BossBarDivision, BossBarFlags, BossBarTitle, BossBarHealth, BossBarStyle}, packet::BossBarS2c};
-use valence_core::{text::Text, despawn::Despawned};
+use valence_boss_bar::components::{
+    BossBarBundle, BossBarColor, BossBarDivision, BossBarFlags, BossBarHealth, BossBarStyle,
+    BossBarTitle, BossBarViewers,
+};
+use valence_boss_bar::packet::BossBarS2c;
+use valence_core::despawn::Despawned;
+use valence_core::text::Text;
 
-use super::{MockClientHelper, scenario_single_client};
+use super::{scenario_single_client, MockClientHelper};
 
 #[test]
 fn test_intialize_on_join() {
@@ -39,7 +44,8 @@ fn test_despawn() {
 
     app.update();
 
-    // Check if a boss bar packet was sent in addition to the ADD packet, which should be a Remove packet
+    // Check if a boss bar packet was sent in addition to the ADD packet, which
+    // should be a Remove packet
     let frames = client_helper.collect_sent();
     frames.assert_count::<BossBarS2c>(2);
 }
@@ -57,11 +63,14 @@ fn test_title_update() {
     app.update();
 
     // Update the title
-    app.world.entity_mut(instance_ent).insert(BossBarTitle(Text::text("Test 2")));
+    app.world
+        .entity_mut(instance_ent)
+        .insert(BossBarTitle(Text::text("Test 2")));
 
     app.update();
 
-    // Check if a boss bar packet was sent in addition to the ADD packet, which should be an UpdateTitle packet
+    // Check if a boss bar packet was sent in addition to the ADD packet, which
+    // should be an UpdateTitle packet
     let frames = client_helper.collect_sent();
     frames.assert_count::<BossBarS2c>(2);
 }
@@ -79,11 +88,14 @@ fn test_health_update() {
     app.update();
 
     // Update the health
-    app.world.entity_mut(instance_ent).insert(BossBarHealth(0.5));
+    app.world
+        .entity_mut(instance_ent)
+        .insert(BossBarHealth(0.5));
 
     app.update();
 
-    // Check if a boss bar packet was sent in addition to the ADD packet, which should be an UpdateHealth packet
+    // Check if a boss bar packet was sent in addition to the ADD packet, which
+    // should be an UpdateHealth packet
     let frames = client_helper.collect_sent();
     frames.assert_count::<BossBarS2c>(2);
 }
@@ -101,13 +113,15 @@ fn test_style_update() {
     app.update();
 
     // Update the style
-    app.world.entity_mut(instance_ent).insert(BossBarStyle{
-        color: BossBarColor::Red, division: BossBarDivision::TenNotches
+    app.world.entity_mut(instance_ent).insert(BossBarStyle {
+        color: BossBarColor::Red,
+        division: BossBarDivision::TenNotches,
     });
 
     app.update();
 
-    // Check if a boss bar packet was sent in addition to the ADD packet, which should be an UpdateStyle packet
+    // Check if a boss bar packet was sent in addition to the ADD packet, which
+    // should be an UpdateStyle packet
     let frames = client_helper.collect_sent();
     frames.assert_count::<BossBarS2c>(2);
 }
@@ -131,7 +145,8 @@ fn test_flags_update() {
 
     app.update();
 
-    // Check if a boss bar packet was sent in addition to the ADD packet, which should be an UpdateFlags packet
+    // Check if a boss bar packet was sent in addition to the ADD packet, which
+    // should be an UpdateFlags packet
     let frames = client_helper.collect_sent();
     frames.assert_count::<BossBarS2c>(2);
 }
@@ -144,8 +159,16 @@ fn prepare(app: &mut App) -> (Entity, MockClientHelper, Entity) {
     client_helper.clear_sent();
 
     // Insert a boss bar into the world
-    let boss_bar = app.world.spawn(BossBarBundle::new(Text::text("Test"), BossBarColor::Blue, BossBarDivision::SixNotches, BossBarFlags::new())).id();
-    
+    let boss_bar = app
+        .world
+        .spawn(BossBarBundle::new(
+            Text::text("Test"),
+            BossBarColor::Blue,
+            BossBarDivision::SixNotches,
+            BossBarFlags::new(),
+        ))
+        .id();
+
     for _ in 0..2 {
         app.update();
     }

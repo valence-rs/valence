@@ -1,5 +1,6 @@
 use uuid::Uuid;
-use valence_core::{protocol::{Encode, Decode, Packet, packet_id}, text::Text};
+use valence_core::protocol::{packet_id, Decode, Encode, Packet};
+use valence_core::text::Text;
 
 use crate::components::{BossBarColor, BossBarDivision, BossBarFlags};
 
