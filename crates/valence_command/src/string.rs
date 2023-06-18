@@ -5,7 +5,7 @@ use valence_core::text::Text;
 use valence_core::translation_key::PARSING_QUOTE_EXPECTED_END;
 
 use crate::parse::{BrigadierArgument, Parse, ParseResult};
-use crate::reader::StrReader;
+use crate::reader::{StrLocated, StrReader};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SingleWordString<'a>(pub &'a str);
@@ -15,11 +15,13 @@ impl<'a> Parse<'a> for SingleWordString<'a> {
 
     type Query = ();
 
+    type SuggestionsQuery = ();
+
     type Suggestions = ();
 
     fn parse(
         _data: &Self::Data,
-        _suggestions: &mut Self::Suggestions,
+        _suggestions: &mut StrLocated<Self::Suggestions>,
         _query: &Self::Query,
         reader: &mut StrReader<'a>,
     ) -> ParseResult<Self> {
@@ -41,11 +43,13 @@ impl<'a> Parse<'a> for QuotablePhraseString<'a> {
 
     type Query = ();
 
+    type SuggestionsQuery = ();
+
     type Suggestions = ();
 
     fn parse(
         _data: &Self::Data,
-        _suggestions: &mut Self::Suggestions,
+        _suggestions: &mut StrLocated<Self::Suggestions>,
         _query: &Self::Query,
         reader: &mut StrReader<'a>,
     ) -> ParseResult<Self> {
@@ -65,7 +69,7 @@ impl<'a> Parse<'a> for QuotablePhraseString<'a> {
 
     fn skip(
         _data: &Self::Data,
-        _suggestions: &mut Self::Suggestions,
+        _suggestions: &mut StrLocated<Self::Suggestions>,
         _query: &Self::Query,
         reader: &mut StrReader<'a>,
     ) -> ParseResult<()> {
@@ -97,11 +101,13 @@ impl<'a> Parse<'a> for GreedyString<'a> {
 
     type Query = ();
 
+    type SuggestionsQuery = ();
+
     type Suggestions = ();
 
     fn parse(
         _data: &Self::Data,
-        _suggestions: &mut Self::Suggestions,
+        _suggestions: &mut StrLocated<Self::Suggestions>,
         _query: &Self::Query,
         reader: &mut StrReader<'a>,
     ) -> ParseResult<Self> {
@@ -122,37 +128,47 @@ impl<'a> Parse<'a> for Cow<'a, str> {
 
     type Query = ();
 
+    type SuggestionsQuery = ();
+
     type Suggestions = ();
 
     fn parse(
         data: &Self::Data,
-        _suggestions: &mut Self::Suggestions,
+        _suggestions: &mut StrLocated<Self::Suggestions>,
         _query: &Self::Query,
         reader: &mut StrReader<'a>,
     ) -> ParseResult<Self> {
         match data {
             StringArg::SingleWord => {
-                SingleWordString::parse(&(), &mut (), &(), reader).map(|v| Cow::Borrowed(v.0))
+                SingleWordString::parse(&(), &mut Default::default(), &(), reader)
+                    .map(|v| Cow::Borrowed(v.0))
             }
             StringArg::GreedyPhrase => {
-                GreedyString::parse(&(), &mut (), &(), reader).map(|v| Cow::Borrowed(v.0))
+                GreedyString::parse(&(), &mut Default::default(), &(), reader)
+                    .map(|v| Cow::Borrowed(v.0))
             }
             StringArg::QuotablePhrase => {
-                QuotablePhraseString::parse(&(), &mut (), &(), reader).map(|v| v.0)
+                QuotablePhraseString::parse(&(), &mut Default::default(), &(), reader).map(|v| v.0)
             }
         }
     }
 
     fn skip(
         data: &Self::Data,
-        _suggestions: &mut Self::Suggestions,
+        _suggestions: &mut StrLocated<Self::Suggestions>,
         _query: &Self::Query,
         reader: &mut StrReader<'a>,
     ) -> ParseResult<()> {
         match data {
-            StringArg::SingleWord => SingleWordString::skip(&(), &mut (), &(), reader),
-            StringArg::GreedyPhrase => GreedyString::skip(&(), &mut (), &(), reader),
-            StringArg::QuotablePhrase => QuotablePhraseString::skip(&(), &mut (), &(), reader),
+            StringArg::SingleWord => {
+                SingleWordString::skip(&(), &mut Default::default(), &(), reader)
+            }
+            StringArg::GreedyPhrase => {
+                GreedyString::skip(&(), &mut Default::default(), &(), reader)
+            }
+            StringArg::QuotablePhrase => {
+                QuotablePhraseString::skip(&(), &mut Default::default(), &(), reader)
+            }
         }
     }
 }
@@ -168,11 +184,13 @@ impl<'a> Parse<'a> for IdentRef<'a> {
 
     type Query = ();
 
+    type SuggestionsQuery = ();
+
     type Suggestions = ();
 
     fn parse(
         _data: &Self::Data,
-        _suggestions: &mut Self::Suggestions,
+        _suggestions: &mut StrLocated<Self::Suggestions>,
         _query: &Self::Query,
         reader: &mut StrReader<'a>,
     ) -> ParseResult<Self> {
@@ -189,8 +207,8 @@ mod tests {
     #[test]
     fn single_word_test() {
         parse_test(
-            (),
-            &mut (),
+            &(),
+            &mut Default::default(),
             &(),
             &mut StrReader::new("hello world"),
             5,
@@ -198,8 +216,8 @@ mod tests {
         );
 
         parse_test(
-            StringArg::SingleWord,
-            &mut (),
+            &StringArg::SingleWord,
+            &mut Default::default(),
             &(),
             &mut StrReader::new("bye world"),
             3,
@@ -210,8 +228,8 @@ mod tests {
     #[test]
     fn quotable_phrase_test() {
         parse_test(
-            (),
-            &mut (),
+            &(),
+            &mut Default::default(),
             &(),
             &mut StrReader::new("without quotes"),
             7,
@@ -219,8 +237,8 @@ mod tests {
         );
 
         parse_test(
-            (),
-            &mut (),
+            &(),
+            &mut Default::default(),
             &(),
             &mut StrReader::new(r#""with quotes""#),
             13,
@@ -228,8 +246,8 @@ mod tests {
         );
 
         parse_test(
-            StringArg::QuotablePhrase,
-            &mut (),
+            &StringArg::QuotablePhrase,
+            &mut Default::default(),
             &(),
             &mut StrReader::new("hello world"),
             5,
@@ -237,8 +255,8 @@ mod tests {
         );
 
         parse_test(
-            StringArg::QuotablePhrase,
-            &mut (),
+            &StringArg::QuotablePhrase,
+            &mut Default::default(),
             &(),
             &mut StrReader::new(r#""hello world""#),
             13,
@@ -249,8 +267,8 @@ mod tests {
     #[test]
     fn greedy_test() {
         parse_test(
-            (),
-            &mut (),
+            &(),
+            &mut Default::default(),
             &(),
             &mut StrReader::new("1 2 3"),
             5,
@@ -258,8 +276,8 @@ mod tests {
         );
 
         parse_test(
-            StringArg::GreedyPhrase,
-            &mut (),
+            &StringArg::GreedyPhrase,
+            &mut Default::default(),
             &(),
             &mut StrReader::new("cyrillic фа"),
             11,

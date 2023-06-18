@@ -4,7 +4,7 @@ use bevy_ecs::system::ReadOnlySystemParam;
 use valence_core::protocol::packet::command::Parser;
 use valence_core::text::Text;
 
-use crate::reader::{StrLocated, StrReader, StrSpan};
+use crate::reader::{StrLocated, StrReader};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Suggestion<'a> {
@@ -43,11 +43,13 @@ pub trait Parse<'a>: Sized + 'a {
 
     type Query: ReadOnlySystemParam;
 
+    type SuggestionsQuery: ReadOnlySystemParam;
+
     type Suggestions: Default + 'a;
 
     fn parse(
         data: &Self::Data,
-        _suggestions: &mut Self::Suggestions,
+        _suggestions: &mut StrLocated<Self::Suggestions>,
         _query: &Self::Query,
         reader: &mut StrReader<'a>,
     ) -> ParseResult<Self>;
@@ -55,31 +57,23 @@ pub trait Parse<'a>: Sized + 'a {
     /// Do the same as [`Parse::parse`] but does not return parse object
     fn skip(
         data: &Self::Data,
-        _suggestions: &mut Self::Suggestions,
+        _suggestions: &mut StrLocated<Self::Suggestions>,
         _query: &Self::Query,
         reader: &mut StrReader<'a>,
     ) -> ParseResult<()> {
         Self::parse(data, _suggestions, _query, reader).map(|_| ())
     }
 
-    /// Returns the list of suggestions for given suggestions.
-    /// If the suggestions list is empty than it doesn't matter which span is
-    /// given.
-    ///
-    /// ### Default
-    /// Returns empty suggestion list
     fn suggestions(
-        _data: &Self::Data,
-        _result: &ParseResult<()>,
         _suggestions: &Self::Suggestions,
-        _query: &Self::Query,
-    ) -> StrLocated<ParseSuggestions<'a>> {
+        _query: &Self::SuggestionsQuery,
+    ) -> ParseSuggestions<'a> {
         no_suggestions()
     }
 }
 
-pub const fn no_suggestions<'a>() -> StrLocated<ParseSuggestions<'a>> {
-    StrLocated::new(StrSpan::start(), ParseSuggestions::Borrowed(&[]))
+pub const fn no_suggestions<'a>() -> ParseSuggestions<'a> {
+    ParseSuggestions::Borrowed(&[])
 }
 
 pub trait BrigadierArgument<'a>: Parse<'a> {
@@ -88,8 +82,8 @@ pub trait BrigadierArgument<'a>: Parse<'a> {
 
 #[cfg(test)]
 pub fn parse_test<'a, T: Parse<'a>>(
-    data: T::Data,
-    suggestions: &mut T::Suggestions,
+    data: &T::Data,
+    suggestions: &mut StrLocated<T::Suggestions>,
     query: &T::Query,
     reader: &mut StrReader<'a>,
     chars_read: usize,
@@ -109,7 +103,7 @@ pub fn parse_test<'a, T: Parse<'a>>(
         chars_read
     );
 
-    let mut skip_suggestions = T::Suggestions::default();
+    let mut skip_suggestions = Default::default();
     let skip_result = T::skip(&data, &mut skip_suggestions, query, &mut skip_reader);
 
     assert_eq!(result.map(|_| ()), skip_result);

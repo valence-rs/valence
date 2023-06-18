@@ -1,4 +1,4 @@
-use std::ops::{Add, AddAssign, Range};
+use std::ops::{Add, AddAssign, Range, Sub, SubAssign};
 use std::str::Chars;
 
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
@@ -19,6 +19,22 @@ impl Add<char> for StrCursor {
 
     fn add(mut self, rhs: char) -> Self::Output {
         self += rhs;
+        self
+    }
+}
+
+impl SubAssign<char> for StrCursor {
+    fn sub_assign(&mut self, rhs: char) {
+        self.bytes -= rhs.len_utf8();
+        self.chars -= 1;
+    }
+}
+
+impl Sub<char> for StrCursor {
+    type Output = Self;
+
+    fn sub(mut self, rhs: char) -> Self::Output {
+        self -= rhs;
         self
     }
 }
@@ -67,7 +83,7 @@ impl From<Range<StrCursor>> for StrSpan {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct StrLocated<T> {
     pub span: StrSpan,
     pub object: T,
@@ -190,10 +206,15 @@ impl<'a> StrReader<'a> {
         span: &mut StrSpan,
         func: impl FnOnce(&mut Self) -> Result<T, E>,
     ) -> Result<T, StrLocated<E>> {
+        self.span_located(span, func)
+            .map_err(|err| StrLocated::new(*span, err))
+    }
+
+    pub fn span_located<T>(&mut self, span: &mut StrSpan, func: impl FnOnce(&mut Self) -> T) -> T {
         let begin = self.cursor();
         let res = func(self);
         *span = StrSpan::new(begin, self.cursor());
-        res.map_err(|e| StrLocated::new(StrSpan::new(begin, self.cursor()), e))
+        res
     }
 
     /// Skips string using given filter.

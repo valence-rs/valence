@@ -16,34 +16,33 @@ impl<'a> Parse<'a> for bool {
 
     type Query = ();
 
-    type Suggestions = StrSpan;
+    type SuggestionsQuery = ();
+
+    type Suggestions = ();
 
     fn parse(
         _data: &Self::Data,
-        suggestions: &mut Self::Suggestions,
+        suggestions: &mut StrLocated<Self::Suggestions>,
         _query: &Self::Query,
         reader: &mut StrReader<'a>,
     ) -> ParseResult<Self> {
-        reader.span_err_located(suggestions, |reader| match reader.read_unquoted_str() {
-            "true" => Ok(true),
-            "false" => Ok(false),
-            o => Err(ParseError::translate(
-                PARSING_BOOL_INVALID,
-                vec![o.to_string().into()],
-            )),
+        reader.span_err_located(&mut suggestions.span, |reader| {
+            match reader.read_unquoted_str() {
+                "true" => Ok(true),
+                "false" => Ok(false),
+                o => Err(ParseError::translate(
+                    PARSING_BOOL_INVALID,
+                    vec![o.to_string().into()],
+                )),
+            }
         })
     }
 
-    fn suggestions(
-        _data: &Self::Data,
-        _result: &ParseResult<()>,
-        suggestions: &Self::Suggestions,
-        _query: &Self::Query,
-    ) -> StrLocated<ParseSuggestions<'a>> {
+    fn suggestions(_suggestions: &Self::Suggestions, _query: &Self::Query) -> ParseSuggestions<'a> {
         const SUGGESTIONS: &[Suggestion<'static>] =
             &[Suggestion::new_str("true"), Suggestion::new_str("false")];
 
-        StrLocated::new(*suggestions, ParseSuggestions::Borrowed(SUGGESTIONS))
+        ParseSuggestions::Borrowed(SUGGESTIONS)
     }
 }
 
@@ -100,11 +99,13 @@ macro_rules! impl_num {
 
             type Query = ();
 
+            type SuggestionsQuery = ();
+
             type Suggestions = ();
 
             fn parse(
                 data: &Self::Data,
-                _suggestions: &mut Self::Suggestions,
+                _suggestions: &mut StrLocated<Self::Suggestions>,
                 _query: &Self::Query,
                 reader: &mut StrReader<'a>,
             ) -> ParseResult<Self> {
@@ -192,7 +193,7 @@ mod tests {
         assert_eq!(
             i32::parse(
                 &NumberBounds::default(),
-                &mut (),
+                &mut Default::default(),
                 &(),
                 &mut StrReader::new("64")
             ),

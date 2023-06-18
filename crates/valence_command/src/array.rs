@@ -37,11 +37,13 @@ impl<'a, T: Parse<'a>, const L: usize> Parse<'a> for [T; L] {
 
     type Query = T::Query;
 
-    type Suggestions = (usize, T::Suggestions);
+    type SuggestionsQuery = T::SuggestionsQuery;
+
+    type Suggestions = T::Suggestions;
 
     fn parse(
         data: &Self::Data,
-        suggestions: &mut Self::Suggestions,
+        suggestions: &mut StrLocated<Self::Suggestions>,
         query: &Self::Query,
         reader: &mut StrReader<'a>,
     ) -> ParseResult<Self> {
@@ -51,8 +53,7 @@ impl<'a, T: Parse<'a>, const L: usize> Parse<'a> for [T; L] {
         // Data is the same length as result (L) so we will write something to each
         // value of result
         for (i, data) in data.0.iter().enumerate() {
-            suggestions.0 = i;
-            result[i].write(T::parse(data, &mut suggestions.1, query, reader)?);
+            result[i].write(T::parse(data, suggestions, query, reader)?);
             reader.err_located(|reader| {
                 if i != L - 1 && !reader.skip_char(' ') {
                     Err(ParseError::translate(PARSING_EXPECTED, vec![" ".into()]))
@@ -68,13 +69,12 @@ impl<'a, T: Parse<'a>, const L: usize> Parse<'a> for [T; L] {
 
     fn skip(
         data: &Self::Data,
-        suggestions: &mut Self::Suggestions,
+        suggestions: &mut StrLocated<Self::Suggestions>,
         query: &Self::Query,
         reader: &mut StrReader<'a>,
     ) -> ParseResult<()> {
         for (i, data) in data.0.iter().enumerate() {
-            suggestions.0 = i;
-            T::skip(data, &mut suggestions.1, query, reader)?;
+            T::skip(data, suggestions, query, reader)?;
             reader.err_located(|reader| {
                 if i != L - 1 && !reader.skip_char(' ') {
                     Err(ParseError::translate(PARSING_EXPECTED, vec![" ".into()]))
@@ -88,12 +88,10 @@ impl<'a, T: Parse<'a>, const L: usize> Parse<'a> for [T; L] {
     }
 
     fn suggestions(
-        data: &Self::Data,
-        result: &ParseResult<()>,
         suggestions: &Self::Suggestions,
-        query: &Self::Query,
-    ) -> StrLocated<ParseSuggestions<'a>> {
-        T::suggestions(&data.0[suggestions.0], result, &suggestions.1, query)
+        query: &Self::SuggestionsQuery,
+    ) -> ParseSuggestions<'a> {
+        T::suggestions(suggestions, query)
     }
 }
 
@@ -111,19 +109,22 @@ pub struct DynArrayData<D> {
 pub enum DynArraySuggestions<S> {
     #[default]
     None,
-    Delim,
+    Delim {
+        delim: Option<char>,
+        end: char,
+    },
     Inherit(S),
 }
 
 impl<'a, T: Parse<'a>> DynArray<T> {
     fn callback_skip(
         data: &DynArrayData<T::Data>,
-        suggestions: &mut DynArraySuggestions<T::Suggestions>,
+        suggestions: &mut StrLocated<DynArraySuggestions<T::Suggestions>>,
         query: &T::Query,
         reader: &mut StrReader<'a>,
         mut callback: impl FnMut(
             &T::Data,
-            &mut T::Suggestions,
+            &mut StrLocated<T::Suggestions>,
             &T::Query,
             &mut StrReader<'a>,
         ) -> ParseResult<()>,
@@ -139,9 +140,9 @@ impl<'a, T: Parse<'a>> DynArray<T> {
             Ok(())
         } else {
             loop {
-                let mut value_suggestions = T::Suggestions::default();
+                let mut value_suggestions = Default::default();
                 if let Err(err) = callback(inner_data, &mut value_suggestions, query, reader) {
-                    *suggestions = DynArraySuggestions::Inherit(value_suggestions);
+                    *suggestions = value_suggestions.map(DynArraySuggestions::Inherit);
                     break Err(err);
                 }
 
@@ -162,7 +163,10 @@ impl<'a, T: Parse<'a>> DynArray<T> {
                     }
                     Ok(false) => {}
                     Err(err) => {
-                        *suggestions = DynArraySuggestions::Delim;
+                        suggestions.object = DynArraySuggestions::Delim {
+                            end: data.end,
+                            delim: data.delim,
+                        };
                         return Err(err);
                     }
                 }
@@ -170,13 +174,13 @@ impl<'a, T: Parse<'a>> DynArray<T> {
                 reader.skip_char(' ');
             }
         }?;
-        *suggestions = DynArraySuggestions::None;
+        suggestions.object = DynArraySuggestions::None;
         Ok(())
     }
 
     pub fn parse(
         data: &DynArrayData<T::Data>,
-        suggestions: &mut DynArraySuggestions<T::Suggestions>,
+        suggestions: &mut StrLocated<DynArraySuggestions<T::Suggestions>>,
         query: &T::Query,
         reader: &mut StrReader<'a>,
         mut callback: impl FnMut(T),
@@ -195,7 +199,7 @@ impl<'a, T: Parse<'a>> DynArray<T> {
 
     pub fn skip(
         data: &DynArrayData<T::Data>,
-        suggestions: &mut DynArraySuggestions<T::Suggestions>,
+        suggestions: &mut StrLocated<DynArraySuggestions<T::Suggestions>>,
         query: &T::Query,
         reader: &mut StrReader<'a>,
     ) -> ParseResult<()> {
@@ -209,27 +213,19 @@ impl<'a, T: Parse<'a>> DynArray<T> {
     }
 
     pub fn suggestions(
-        data: &DynArrayData<T::Data>,
-        result: &ParseResult<()>,
-        suggestions: &mut DynArraySuggestions<T::Suggestions>,
-        query: &T::Query,
-    ) -> StrLocated<ParseSuggestions<'a>> {
-        match (suggestions, result) {
-            (DynArraySuggestions::None, _) => no_suggestions(),
-            (DynArraySuggestions::Delim, Err(StrLocated { span, .. })) => StrLocated::new(
-                *span,
+        suggestions: &DynArraySuggestions<T::Suggestions>,
+        query: &T::SuggestionsQuery,
+    ) -> ParseSuggestions<'a> {
+        match suggestions {
+            DynArraySuggestions::None => no_suggestions(),
+            DynArraySuggestions::Delim { delim, end } => {
                 // TODO: Really don't like heap allocation
-                ParseSuggestions::Owned(match data.delim {
-                    Some(delim) => vec![delim.to_string().into(), data.end.to_string().into()],
-                    None => vec![data.end.to_string().into()],
-                }),
-            ),
-            (DynArraySuggestions::Delim, Ok(_)) => {
-                unreachable!("Delim suggestions are only available when error occured")
+                ParseSuggestions::Owned(match delim {
+                    Some(delim) => vec![delim.to_string().into(), end.to_string().into()],
+                    None => vec![end.to_string().into()],
+                })
             }
-            (DynArraySuggestions::Inherit(inherit), result) => {
-                T::suggestions(&data.inner_data, result, inherit, query)
-            }
+            DynArraySuggestions::Inherit(inherit) => T::suggestions(inherit, query),
         }
     }
 }
@@ -244,7 +240,7 @@ mod tests {
     #[test]
     fn const_arr_test() {
         parse_test(
-            ArrayData::default(),
+            &ArrayData::default(),
             &mut Default::default(),
             &(),
             &mut StrReader::new("32 64 96 128"),
@@ -269,7 +265,8 @@ mod tests {
             |value| {
                 assert_eq!(Some(value), iter.next());
             },
-        ).unwrap();
+        )
+        .unwrap();
         assert_eq!(iter.next(), None);
     }
 }
