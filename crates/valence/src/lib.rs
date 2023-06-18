@@ -112,6 +112,9 @@ pub mod prelude {
     pub use valence_core::{translation_key, CoreSettings, Server};
     pub use valence_entity::hitbox::{Hitbox, HitboxShape};
 
+    #[cfg(feature = "tick")]
+    pub use valence_tick::prelude::*;
+
     pub use super::DefaultPlugins;
     use super::*;
 }

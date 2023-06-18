@@ -22,6 +22,7 @@ bevy_app = { version = "0.10.1", default-features = false }
 bevy_ecs = { version = "0.10.1", default-features = false, features = [
     "trace",
 ] }
+bevy_reflect = "0.10.1"
 bevy_hierarchy = { version = "0.10.1", default-features = false }
 bevy_mod_debugdump = "0.7.0"
 bitfield-struct = "0.3.1"
@@ -96,6 +97,7 @@ valence_network.path = "crates/valence_network"
 valence_player_list.path = "crates/valence_player_list"
 valence_registry.path = "crates/valence_registry"
 valence_world_border.path = "crates/valence_world_border"
+valence_tick.path = "crates/valence_tick"
 valence.path = "crates/valence"
 
 zip = "0.6.3"
