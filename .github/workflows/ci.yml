@@ -80,6 +80,27 @@ jobs:
       - name: Run valence_nbt tests without preserve_order feature
         run: cargo test -p valence_nbt --all-targets
 
+  extractor-tests:
+    strategy:
+      fail-fast: true
+      matrix:
+        platform: [windows-latest, macos-latest, ubuntu-latest]
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Java
+        uses: actions/setup-java@v2
+        with:
+          distribution: "zulu"
+          java-version: "17"
+
+      - name: Test Build
+        run: ./gradlew build
+        working-directory: extractor
+
   valence-docs:
     strategy:
       fail-fast: true
