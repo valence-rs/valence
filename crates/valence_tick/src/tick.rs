@@ -1,8 +1,7 @@
 use bevy_ecs::{reflect::ReflectResource, system::Resource};
 use bevy_reflect::{FromReflect, Reflect};
 
-/// A clock that tracks how much it has advanced (and how much real tick has elapsed) since
-/// its previous update and since its creation.
+/// A counter that tracks how many ticks has advanced
 #[derive(Resource, Reflect, FromReflect, Debug, Clone)]
 #[reflect(Resource)]
 pub struct Tick {
@@ -16,7 +15,7 @@ impl Default for Tick {
 }
 
 impl Tick {
-    /// Constructs a new `Tick` instance with a specific startup `Tick`.
+    /// Constructs a new `Tick` instance
     pub fn new() -> Self {
         Self {
             ..Default::default()
@@ -24,9 +23,6 @@ impl Tick {
     }
 
     /// Updates the internal tick measurements.
-    ///
-    /// Calling this method as part of your app will most likely result in inaccurate tickkeeping,
-    /// as the `Tick` resource is ordinarily managed by the [`TickPlugin`](crate::TickPlugin).
     pub fn update(&mut self) {
         self.update_with_tick(1);
     }
@@ -35,7 +31,7 @@ impl Tick {
         self.elapsed += tick;
     }
 
-    /// Returns how much tick has advanced since [`startup`](#method.startup), as [`Duration`].
+    /// Returns how many tick have advanced since [`startup`](#method.startup), as [`usize`].
     #[inline]
     pub fn elapsed(&self) -> usize {
         self.elapsed
