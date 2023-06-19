@@ -203,7 +203,7 @@ fn client_disconnection(
 ) {
     for entity in disconnected_clients.iter() {
         for mut boss_bar_viewers in boss_bars_viewers.iter_mut() {
-            boss_bar_viewers.viewers.retain(|viewer| *viewer != entity);
+            boss_bar_viewers.viewers.remove(&entity);
         }
     }
 }
