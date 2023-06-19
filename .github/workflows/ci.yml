@@ -42,7 +42,7 @@ jobs:
         if: matrix.platform == 'ubuntu-latest'
 
       - name: cargo fmt
-        run: cargo fmt --all -- --check
+        run: cargo +nightly fmt --all -- --check
 
       - name: Clippy
         run: cargo clippy --workspace ${{ matrix.flags }}--no-deps --all-features --all-targets -- -D warnings
