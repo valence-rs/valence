@@ -1,15 +1,14 @@
-use anyhow::ensure;
-use bytes::BufMut;
-use bytes::BytesMut;
 use std::io;
 use std::io::ErrorKind;
+
+use anyhow::ensure;
+use bytes::{BufMut, BytesMut};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use valence::__private::VarInt;
 use valence::protocol::decode::{PacketDecoder, PacketFrame};
 use valence::protocol::encode::PacketEncoder;
-use valence::protocol::Encode;
-use valence::protocol::MAX_PACKET_SIZE;
+use valence::protocol::{Encode, MAX_PACKET_SIZE};
 
 pub(crate) struct PacketIoReader {
     reader: tokio::io::ReadHalf<tokio::net::TcpStream>,
@@ -72,8 +71,10 @@ impl PacketIoWriter {
 
         if let Some(threshold) = self.threshold {
             if uncompressed_packet_length > threshold as usize {
-                use flate2::{bufread::ZlibEncoder, Compression};
                 use std::io::Read;
+
+                use flate2::bufread::ZlibEncoder;
+                use flate2::Compression;
 
                 let mut z = ZlibEncoder::new(&uncompressed_packet[..], Compression::new(4));
                 let mut compressed = Vec::new();
