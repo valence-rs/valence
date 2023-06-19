@@ -24,7 +24,7 @@ use bevy_app::CoreSet::PostUpdate;
 use bevy_app::Plugin;
 use bevy_ecs::prelude::Entity;
 use bevy_ecs::query::{Added, Changed, With};
-use bevy_ecs::schedule::IntoSystemConfigs;
+use bevy_ecs::schedule::{IntoSystemConfigs, IntoSystemConfig};
 use bevy_ecs::system::Query;
 use packet::{BossBarAction, BossBarS2c};
 use valence_client::{Client, FlushPacketsSet};
@@ -49,7 +49,7 @@ impl Plugin for BossBarPlugin {
                 boss_bar_flags_update,
                 boss_bar_viewers_update,
                 boss_bar_despawn,
-                client_disconnection,
+                client_disconnection.before(boss_bar_viewers_update),
             )
                 .before(FlushPacketsSet)
                 .in_base_set(PostUpdate),
