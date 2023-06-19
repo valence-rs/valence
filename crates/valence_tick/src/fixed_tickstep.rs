@@ -1,26 +1,3 @@
-//! Tools to run systems at a regular interval.
-//! This can be extremely useful for steady, frame-rate independent gameplay logic and physics.
-//!
-//! To run a system on a fixed tickstep, add it to the [`CoreSchedule::FixedUpdate`] [`Schedule`](bevy_ecs::schedule::Schedule).
-//! This schedules is run in the [`CoreSet::FixedUpdate`](bevy_app::CoreSet::FixedUpdate) near the start of each frame,
-//! via the [`run_fixed_update_schedule`] exclusive system.
-//!
-//! This schedule will be run a number of ticks each frame,
-//! equal to the accumulated divided by the period resource, rounded down,
-//! as tracked in the [`FixedTick`] resource.
-//! Unused tick will be carried over.
-//!
-//! This does not guarantee that the tick elapsed between executions is exact,
-//! and systems in this schedule can run 0, 1 or more ticks on any given frame.
-//!
-//! For example, a system with a fixed tickstep run criteria of 120 ticks per second will run
-//! two ticks during a ~16.667ms frame, once during a ~8.333ms frame, and once every two frames
-//! with ~4.167ms frames. However, the same criteria may not result in exactly 8.333ms passing
-//! between each execution.
-//!
-//! When using fixed tick steps, it is advised not to rely on [`Tick::delta`] or any of it's
-//! variants for game simulation, but rather use the value of [`FixedTick`] instead.
-
 use bevy_app::CoreSchedule;
 use bevy_ecs::{system::Resource, world::World};
 use thiserror::Error;
