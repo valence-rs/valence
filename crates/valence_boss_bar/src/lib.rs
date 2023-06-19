@@ -1,104 +1,128 @@
 #![allow(clippy::type_complexity)]
+#![deny(
+    rustdoc::broken_intra_doc_links,
+    rustdoc::private_intra_doc_links,
+    rustdoc::missing_crate_level_docs,
+    rustdoc::invalid_codeblock_attributes,
+    rustdoc::invalid_rust_codeblocks,
+    rustdoc::bare_urls,
+    rustdoc::invalid_html_tags
+)]
+#![warn(
+    trivial_casts,
+    trivial_numeric_casts,
+    unused_lifetimes,
+    unused_import_braces,
+    unreachable_pub,
+    clippy::dbg_macro
+)]
+
+use std::borrow::Cow;
 
 use bevy_app::Plugin;
 use bevy_ecs::query::{Added, Changed};
 use bevy_ecs::removal_detection::RemovedComponents;
 use bevy_ecs::system::Query;
-use components::{BossBarFlags, BossBarHealth, BossBarStyle, BossBarTitle, BossBarViewers};
 use packet::{BossBarAction, BossBarS2c};
 use valence_client::Client;
 use valence_core::despawn::Despawned;
 use valence_core::protocol::encode::WritePacket;
 use valence_core::uuid::UniqueId;
 
-pub mod components;
+mod components;
+pub use components::*;
+
 pub mod packet;
 
 pub struct BossBarPlugin;
 
 impl Plugin for BossBarPlugin {
     fn build(&self, app: &mut bevy_app::App) {
-        app.add_system(handle_boss_bar_title_update)
-            .add_system(handle_boss_bar_health_update)
-            .add_system(handle_boss_bar_style_update)
-            .add_system(handle_boss_bar_flags_update)
-            .add_system(handle_boss_bar_viewers_update)
-            .add_system(handle_boss_bar_despawn)
-            .add_system(handle_client_disconnection);
+        app.add_system(boss_bar_title_update)
+            .add_system(boss_bar_health_update)
+            .add_system(boss_bar_style_update)
+            .add_system(boss_bar_flags_update)
+            .add_system(boss_bar_viewers_update)
+            .add_system(boss_bar_despawn)
+            .add_system(client_disconnection);
     }
 }
 
 /// System that sends a bossbar update title packet to all viewers of a boss bar
 /// that has had its title updated.
-fn handle_boss_bar_title_update(
-    mut boss_bars: Query<(&UniqueId, &BossBarTitle, &mut BossBarViewers), Changed<BossBarTitle>>,
+fn boss_bar_title_update(
+    boss_bars: Query<(&UniqueId, &BossBarTitle, &BossBarViewers), Changed<BossBarTitle>>,
     mut clients: Query<&mut Client>,
 ) {
-    for (id, title, mut boss_bar_viewers) in boss_bars.iter_mut() {
-        for viewer in boss_bar_viewers.viewers.iter_mut() {
-            let mut client = clients.get_mut(*viewer).unwrap();
-            client.write_packet(&BossBarS2c {
-                id: id.0,
-                action: BossBarAction::UpdateTitle(title.0.clone()),
-            });
+    for (id, title, boss_bar_viewers) in boss_bars.iter() {
+        for viewer in boss_bar_viewers.viewers.iter() {
+            if let Ok(mut client) = clients.get_mut(*viewer) {
+                client.write_packet(&BossBarS2c {
+                    id: id.0,
+                    action: BossBarAction::UpdateTitle(Cow::Borrowed(&title.0)),
+                });
+            }
         }
     }
 }
 
 /// System that sends a bossbar update health packet to all viewers of a boss
 /// bar that has had its health updated.
-fn handle_boss_bar_health_update(
-    mut boss_bars: Query<(&UniqueId, &BossBarHealth, &mut BossBarViewers), Changed<BossBarHealth>>,
+fn boss_bar_health_update(
+    boss_bars: Query<(&UniqueId, &BossBarHealth, &BossBarViewers), Changed<BossBarHealth>>,
     mut clients: Query<&mut Client>,
 ) {
-    for (id, health, mut boss_bar_viewers) in boss_bars.iter_mut() {
-        for viewer in boss_bar_viewers.viewers.iter_mut() {
-            let mut client = clients.get_mut(*viewer).unwrap();
-            client.write_packet(&BossBarS2c {
-                id: id.0,
-                action: BossBarAction::UpdateHealth(health.0),
-            });
+    for (id, health, boss_bar_viewers) in boss_bars.iter() {
+        for viewer in boss_bar_viewers.viewers.iter() {
+            if let Ok(mut client) = clients.get_mut(*viewer) {
+                client.write_packet(&BossBarS2c {
+                    id: id.0,
+                    action: BossBarAction::UpdateHealth(health.0),
+                });
+            }
         }
     }
 }
 
 /// System that sends a bossbar update style packet to all viewers of a boss bar
 /// that has had its style updated.
-fn handle_boss_bar_style_update(
-    mut boss_bars: Query<(&UniqueId, &BossBarStyle, &mut BossBarViewers), Changed<BossBarStyle>>,
+fn boss_bar_style_update(
+    boss_bars: Query<(&UniqueId, &BossBarStyle, &BossBarViewers), Changed<BossBarStyle>>,
     mut clients: Query<&mut Client>,
 ) {
-    for (id, style, mut boss_bar_viewers) in boss_bars.iter_mut() {
-        for viewer in boss_bar_viewers.viewers.iter_mut() {
-            let mut client = clients.get_mut(*viewer).unwrap();
-            client.write_packet(&BossBarS2c {
-                id: id.0,
-                action: BossBarAction::UpdateStyle(style.color, style.division),
-            });
+    for (id, style, boss_bar_viewers) in boss_bars.iter() {
+        for viewer in boss_bar_viewers.viewers.iter() {
+            if let Ok(mut client) = clients.get_mut(*viewer) {
+                client.write_packet(&BossBarS2c {
+                    id: id.0,
+                    action: BossBarAction::UpdateStyle(style.color, style.division),
+                });
+            }
         }
     }
 }
 
 /// System that sends a bossbar update flags packet to all viewers of a boss bar
 /// that has had its flags updated.
-fn handle_boss_bar_flags_update(
-    mut boss_bars: Query<(&UniqueId, &BossBarFlags, &mut BossBarViewers), Changed<BossBarFlags>>,
+fn boss_bar_flags_update(
+    boss_bars: Query<(&UniqueId, &BossBarFlags, &BossBarViewers), Changed<BossBarFlags>>,
     mut clients: Query<&mut Client>,
 ) {
-    for (id, flags, mut boss_bar_viewers) in boss_bars.iter_mut() {
-        for viewer in boss_bar_viewers.viewers.iter_mut() {
-            let mut client = clients.get_mut(*viewer).unwrap();
-            client.write_packet(&BossBarS2c {
-                id: id.0,
-                action: BossBarAction::UpdateFlags(*flags),
-            });
+    for (id, flags, boss_bar_viewers) in boss_bars.iter() {
+        for viewer in boss_bar_viewers.viewers.iter() {
+            if let Ok(mut client) = clients.get_mut(*viewer) {
+                client.write_packet(&BossBarS2c {
+                    id: id.0,
+                    action: BossBarAction::UpdateFlags(*flags),
+                });
+            }
         }
     }
 }
 
 /// System that sends a bossbar add/remove packet to all viewers of a boss bar
 /// that just have been added/removed.
-fn handle_boss_bar_viewers_update(
+fn boss_bar_viewers_update(
     mut boss_bars: Query<
         (
             &UniqueId,
@@ -116,36 +140,22 @@ fn handle_boss_bar_viewers_update(
         let old_viewers = &boss_bar_viewers.old_viewers;
         let current_viewers = &boss_bar_viewers.viewers;
 
-        let mut added_viewers = Vec::new();
-        let mut removed_viewers = Vec::new();
-
-        for viewer in current_viewers.iter() {
-            if !old_viewers.contains(viewer) {
-                added_viewers.push(*viewer);
+        for &added_viewer in current_viewers.difference(&old_viewers) {
+            if let Ok(mut client) = clients.get_mut(added_viewer) {
+                client.write_packet(&BossBarS2c {
+                    id: id.0,
+                    action: BossBarAction::Add {
+                        title: Cow::Borrowed(&title.0),
+                        health: health.0,
+                        color: style.color,
+                        division: style.division,
+                        flags: *flags,
+                    },
+                });
             }
         }
 
-        for viewer in old_viewers.iter() {
-            if !current_viewers.contains(viewer) {
-                removed_viewers.push(*viewer);
-            }
-        }
-
-        for added_viewer in added_viewers {
-            let mut client = clients.get_mut(added_viewer).unwrap();
-            client.write_packet(&BossBarS2c {
-                id: id.0,
-                action: BossBarAction::Add {
-                    title: title.0.clone(),
-                    health: health.0,
-                    color: style.color,
-                    division: style.division,
-                    flags: *flags,
-                },
-            });
-        }
-
-        for removed_viewer in removed_viewers {
+        for &removed_viewer in old_viewers.difference(&current_viewers) {
             if let Ok(mut client) = clients.get_mut(removed_viewer) {
                 client.write_packet(&BossBarS2c {
                     id: id.0,
@@ -160,26 +170,25 @@ fn handle_boss_bar_viewers_update(
 
 /// System that sends a bossbar remove packet to all viewers of a boss bar that
 /// has been despawned.
-fn handle_boss_bar_despawn(
-    mut boss_bars: Query<(&UniqueId, &mut BossBarViewers), Added<Despawned>>,
+fn boss_bar_despawn(
+    mut boss_bars: Query<(&UniqueId, &BossBarViewers), Added<Despawned>>,
     mut clients: Query<&mut Client>,
 ) {
-    for boss_bar in boss_bars.iter_mut() {
-        let (id, mut viewers) = boss_bar;
-
-        for viewer in viewers.viewers.iter_mut() {
-            let mut client = clients.get_mut(*viewer).unwrap();
-            client.write_packet(&BossBarS2c {
-                id: id.0,
-                action: BossBarAction::Remove,
-            });
+    for (id, viewers) in boss_bars.iter_mut() {
+        for viewer in viewers.viewers.iter() {
+            if let Ok(mut client) = clients.get_mut(*viewer) {
+                client.write_packet(&BossBarS2c {
+                    id: id.0,
+                    action: BossBarAction::Remove,
+                });
+            }
         }
     }
 }
 
 /// System that removes a client from the viewers of its boss bars when it
 /// disconnects.
-fn handle_client_disconnection(
+fn client_disconnection(
     mut disconnected_clients: RemovedComponents<Client>,
     mut boss_bars_viewers: Query<&mut BossBarViewers>,
 ) {

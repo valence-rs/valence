@@ -1,6 +1,6 @@
 use bevy_app::App;
 use bevy_ecs::entity::Entity;
-use valence_boss_bar::components::{
+use valence_boss_bar::{
     BossBarBundle, BossBarColor, BossBarDivision, BossBarFlags, BossBarHealth, BossBarStyle,
     BossBarTitle, BossBarViewers,
 };
@@ -18,7 +18,7 @@ fn test_intialize_on_join() {
     // Fetch the boss bar component
     let mut boss_bar = app.world.get_mut::<BossBarViewers>(instance_ent).unwrap();
     // Add our mock client to the viewers list
-    boss_bar.viewers.push(client_ent);
+    assert!(boss_bar.viewers.insert(client_ent));
 
     app.update();
 
@@ -35,7 +35,7 @@ fn test_despawn() {
     // Fetch the boss bar component
     let mut boss_bar = app.world.get_mut::<BossBarViewers>(instance_ent).unwrap();
     // Add our mock client to the viewers list
-    boss_bar.viewers.push(client_ent);
+    assert!(boss_bar.viewers.insert(client_ent));
 
     app.update();
 
@@ -58,7 +58,7 @@ fn test_title_update() {
     // Fetch the boss bar component
     let mut boss_bar = app.world.get_mut::<BossBarViewers>(instance_ent).unwrap();
     // Add our mock client to the viewers list
-    boss_bar.viewers.push(client_ent);
+    assert!(boss_bar.viewers.insert(client_ent));
 
     app.update();
 
@@ -83,7 +83,7 @@ fn test_health_update() {
     // Fetch the boss bar component
     let mut boss_bar = app.world.get_mut::<BossBarViewers>(instance_ent).unwrap();
     // Add our mock client to the viewers list
-    boss_bar.viewers.push(client_ent);
+    assert!(boss_bar.viewers.insert(client_ent));
 
     app.update();
 
@@ -108,7 +108,7 @@ fn test_style_update() {
     // Fetch the boss bar component
     let mut boss_bar = app.world.get_mut::<BossBarViewers>(instance_ent).unwrap();
     // Add our mock client to the viewers list
-    boss_bar.viewers.push(client_ent);
+    assert!(boss_bar.viewers.insert(client_ent));
 
     app.update();
 
@@ -134,7 +134,7 @@ fn test_flags_update() {
     // Fetch the boss bar component
     let mut boss_bar = app.world.get_mut::<BossBarViewers>(instance_ent).unwrap();
     // Add our mock client to the viewers list
-    boss_bar.viewers.push(client_ent);
+    assert!(boss_bar.viewers.insert(client_ent));
 
     app.update();
 

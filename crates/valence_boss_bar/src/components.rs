@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use bevy_ecs::prelude::{Bundle, Component, Entity};
 use bitfield_struct::bitfield;
 use valence_core::protocol::{Decode, Encode};
@@ -87,8 +89,8 @@ pub struct BossBarFlags {
 pub struct BossBarViewers {
     /// The current viewers of the boss bar. It is the list that should be
     /// updated.
-    pub viewers: Vec<Entity>,
+    pub viewers: BTreeSet<Entity>,
     /// The viewers of the last tick in order to determine which viewers have
     /// been added and removed.
-    pub old_viewers: Vec<Entity>,
+    pub old_viewers: BTreeSet<Entity>,
 }
