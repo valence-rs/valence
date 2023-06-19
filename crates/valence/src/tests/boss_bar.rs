@@ -1,10 +1,10 @@
 use bevy_app::App;
 use bevy_ecs::entity::Entity;
+use valence_boss_bar::packet::BossBarS2c;
 use valence_boss_bar::{
     BossBarBundle, BossBarColor, BossBarDivision, BossBarFlags, BossBarHealth, BossBarStyle,
     BossBarTitle, BossBarViewers,
 };
-use valence_boss_bar::packet::BossBarS2c;
 use valence_core::despawn::Despawned;
 use valence_core::text::Text;
 

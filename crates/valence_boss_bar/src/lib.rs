@@ -140,7 +140,7 @@ fn boss_bar_viewers_update(
         let old_viewers = &boss_bar_viewers.old_viewers;
         let current_viewers = &boss_bar_viewers.viewers;
 
-        for &added_viewer in current_viewers.difference(&old_viewers) {
+        for &added_viewer in current_viewers.difference(old_viewers) {
             if let Ok(mut client) = clients.get_mut(added_viewer) {
                 client.write_packet(&BossBarS2c {
                     id: id.0,
@@ -155,7 +155,7 @@ fn boss_bar_viewers_update(
             }
         }
 
-        for &removed_viewer in old_viewers.difference(&current_viewers) {
+        for &removed_viewer in old_viewers.difference(current_viewers) {
             if let Ok(mut client) = clients.get_mut(removed_viewer) {
                 client.write_packet(&BossBarS2c {
                     id: id.0,
