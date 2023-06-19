@@ -9,5 +9,5 @@ A Minecraft client for testing server performance under heavy load. (Incomplete)
 cargo run --example bench_players
 
 # Run the stressor tool in tools/stresser
-cargo run -- --target 127.0.0.1:25565 --count 1000
+cargo run -p stresser -- --target 127.0.0.1:25565 --count 1000
 ```
