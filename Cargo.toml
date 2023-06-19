@@ -1,6 +1,6 @@
 [workspace]
 members = ["crates/*", "tools/*"]
-exclude = ["rust-mc-bot"]
+exclude = ["rust-mc-bot", "tools/stresser"]
 resolver = "2"
 
 [workspace.package]

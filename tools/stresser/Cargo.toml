@@ -10,6 +10,4 @@ anyhow.workspace = true
 clap.workspace = true
 tokio.workspace = true
 uuid = { workspace = true, features = ["v4"] }
-valence_network = { workspace = true, features = ["compression"] }
-valence_core = { workspace = true }
-valence_client = { workspace = true }
+valence_core = { workspace = true, features = ["compression"] }

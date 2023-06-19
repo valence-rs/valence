@@ -22,7 +22,6 @@ fn main() {
         .insert_resource(NetworkSettings {
             connection_mode: ConnectionMode::Offline,
             max_connections: 50_000,
-            max_players: 50_000,
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
