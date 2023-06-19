@@ -20,12 +20,14 @@
 
 use std::borrow::Cow;
 
+use bevy_app::CoreSet::PostUpdate;
 use bevy_app::Plugin;
-use bevy_ecs::query::{Added, Changed};
-use bevy_ecs::removal_detection::RemovedComponents;
+use bevy_ecs::prelude::Entity;
+use bevy_ecs::query::{Added, Changed, With};
+use bevy_ecs::schedule::IntoSystemConfigs;
 use bevy_ecs::system::Query;
 use packet::{BossBarAction, BossBarS2c};
-use valence_client::Client;
+use valence_client::{Client, FlushPacketsSet};
 use valence_core::despawn::Despawned;
 use valence_core::protocol::encode::WritePacket;
 use valence_core::uuid::UniqueId;
@@ -39,13 +41,19 @@ pub struct BossBarPlugin;
 
 impl Plugin for BossBarPlugin {
     fn build(&self, app: &mut bevy_app::App) {
-        app.add_system(boss_bar_title_update)
-            .add_system(boss_bar_health_update)
-            .add_system(boss_bar_style_update)
-            .add_system(boss_bar_flags_update)
-            .add_system(boss_bar_viewers_update)
-            .add_system(boss_bar_despawn)
-            .add_system(client_disconnection);
+        app.add_systems(
+            (
+                boss_bar_title_update,
+                boss_bar_health_update,
+                boss_bar_style_update,
+                boss_bar_flags_update,
+                boss_bar_viewers_update,
+                boss_bar_despawn,
+                client_disconnection,
+            )
+                .before(FlushPacketsSet)
+                .in_base_set(PostUpdate),
+        );
     }
 }
 
@@ -190,7 +198,7 @@ fn boss_bar_despawn(
 /// System that removes a client from the viewers of its boss bars when it
 /// disconnects.
 fn client_disconnection(
-    mut disconnected_clients: RemovedComponents<Client>,
+    disconnected_clients: Query<Entity, (With<Client>, Added<Despawned>)>,
     mut boss_bars_viewers: Query<&mut BossBarViewers>,
 ) {
     for entity in disconnected_clients.iter() {

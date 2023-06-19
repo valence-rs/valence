@@ -151,6 +151,36 @@ fn test_flags_update() {
     frames.assert_count::<BossBarS2c>(2);
 }
 
+#[test]
+fn test_client_disconnection() {
+    let mut app = App::new();
+    let (client_ent, mut client_helper, instance_ent) = prepare(&mut app);
+
+    // Fetch the boss bar component
+    let mut boss_bar = app.world.get_mut::<BossBarViewers>(instance_ent).unwrap();
+    // Add our mock client to the viewers list
+    assert!(boss_bar.viewers.insert(client_ent));
+
+    app.update();
+
+    // Remove the client from the world
+    app.world.entity_mut(client_ent).insert(Despawned);
+
+    app.update();
+
+    assert!(app
+        .world
+        .get_mut::<BossBarViewers>(instance_ent)
+        .unwrap()
+        .viewers
+        .is_empty());
+
+    // Check if a boss bar packet was sent in addition to the ADD packet, which
+    // should be a Remove packet
+    let frames = client_helper.collect_sent();
+    frames.assert_count::<BossBarS2c>(2);
+}
+
 fn prepare(app: &mut App) -> (Entity, MockClientHelper, Entity) {
     let (client_ent, mut client_helper) = scenario_single_client(app);
 
