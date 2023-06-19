@@ -92,5 +92,5 @@ pub struct BossBarViewers {
     pub viewers: BTreeSet<Entity>,
     /// The viewers of the last tick in order to determine which viewers have
     /// been added and removed.
-    pub old_viewers: BTreeSet<Entity>,
+    pub(crate) old_viewers: BTreeSet<Entity>,
 }
