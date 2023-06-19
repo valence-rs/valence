@@ -84,12 +84,6 @@ jobs:
       fail-fast: true
       matrix:
         platform: [windows-latest, macos-latest, ubuntu-latest]
-        style: [default]
-        rust:
-          - stable
-        include:
-          - style: default
-            flags: ""
 
     runs-on: ${{ matrix.platform }}
 
