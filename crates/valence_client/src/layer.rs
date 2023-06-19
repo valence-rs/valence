@@ -2,12 +2,16 @@ use std::collections::HashSet;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use valence_core::layer::LayerType;
+use valence_core::chunk_pos::ChunkView;
+use valence_core::layer::{Layer, LayerType};
+use valence_entity::{OldPosition, Position};
 
-use crate::FlushPacketsSet;
+use crate::{
+    read_data_in_old_view, Client, EntityInitQuery, EntityRemoveBuf, ViewDistance,
+};
 
 pub(super) fn build(app: &mut App) {
-    app.add_system(update_old_client_layer_set.in_set(FlushPacketsSet));
+    app.add_system(update_layer_view.before(read_data_in_old_view));
 }
 
 /// A component that represents the layers that an client is on.
@@ -71,10 +75,46 @@ impl ClientLayerSet {
     }
 }
 
-fn update_old_client_layer_set(mut client_layer_set: Query<&mut ClientLayerSet>) {
-    for mut client_layer_set in client_layer_set.iter_mut() {
-        client_layer_set.update();
-    }
+fn update_layer_view(
+    mut clients: Query<
+        (
+            &mut Client,
+            &mut EntityRemoveBuf,
+            &Position,
+            &ViewDistance,
+            &mut ClientLayerSet,
+        ),
+        Changed<ClientLayerSet>,
+    >,
+    entities: Query<(EntityInitQuery, &OldPosition, &Layer)>,
+) {
+    clients.par_iter_mut().for_each_mut(
+        |(mut client, mut remove_buf, pos, view_dist, mut client_layer_set)| {
+            let view = ChunkView::new(pos.chunk_pos(), view_dist.0);
+
+            // Send entity spawn packets for entities that are in an entered layer and
+            // already in the client's view.
+            for (entity_init, &old_pos, layer) in entities.iter() {
+                if view.contains(old_pos.chunk_pos())
+                    && client_layer_set.added().any(|l| l == &layer.0)
+                {
+                    entity_init.write_init_packets(old_pos.get(), &mut client.enc);
+                }
+            }
+
+            // Send entity despawn packets for entities that are in an exited layer and
+            // still in the client's view.
+            for (entity_init, &old_pos, layer) in entities.iter() {
+                if view.contains(old_pos.chunk_pos())
+                    && client_layer_set.removed().any(|l| l == &layer.0)
+                {
+                    remove_buf.push(entity_init.entity_id.get());
+                }
+            }
+
+            client_layer_set.update();
+        },
+    );
 }
 
 #[cfg(test)]

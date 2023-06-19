@@ -121,10 +121,9 @@ impl Plugin for ClientPlugin {
             (
                 initial_join.after(RegistrySet),
                 update_chunk_load_dist,
-                update_layer_view
+                read_data_in_old_view
                     .after(WriteUpdatePacketsToInstancesSet)
                     .after(update_chunk_load_dist),
-                read_data_in_old_view.after(update_layer_view),
                 update_view.after(initial_join).after(read_data_in_old_view),
                 respawn.after(update_view),
                 remove_entities.after(update_view),
@@ -999,46 +998,6 @@ fn read_data_in_old_view(
                     }
                 }
             });
-        },
-    );
-}
-
-fn update_layer_view(
-    mut clients: Query<(
-        &mut Client,
-        &mut EntityRemoveBuf,
-        &OldPosition,
-        &OldViewDistance,
-        &ClientLayerSet,
-    )>,
-    entities: Query<(EntityInitQuery, &OldPosition, &Layer)>,
-) {
-    clients.par_iter_mut().for_each_mut(
-        |(mut client, mut remove_buf, old_pos, old_view_dist, client_layer_set)| {
-            // TODO: cache the chunk position?
-            let old_chunk_pos = old_pos.chunk_pos();
-
-            let view = ChunkView::new(old_chunk_pos, old_view_dist.0);
-
-            // Send entity spawn packets for entities that are in an entered layer and
-            // already in the client's view.
-            for (entity, &old_pos, layer) in entities.iter() {
-                if view.contains(old_pos.chunk_pos())
-                    && client_layer_set.added().any(|l| l == &layer.0)
-                {
-                    entity.write_init_packets(old_pos.get(), &mut client.enc);
-                }
-            }
-
-            // Send entity despawn packets for entities that are in an exited layer and
-            // still in the client's view.
-            for (entity_init_item, &old_pos, layer) in entities.iter() {
-                if view.contains(old_pos.chunk_pos())
-                    && client_layer_set.removed().any(|l| l == &layer.0)
-                {
-                    remove_buf.push(entity_init_item.entity_id.get());
-                }
-            }
         },
     );
 }
