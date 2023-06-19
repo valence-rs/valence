@@ -6,9 +6,7 @@ use valence_core::chunk_pos::ChunkView;
 use valence_core::layer::{Layer, LayerType};
 use valence_entity::{OldPosition, Position};
 
-use crate::{
-    read_data_in_old_view, Client, EntityInitQuery, EntityRemoveBuf, ViewDistance,
-};
+use crate::{read_data_in_old_view, Client, EntityInitQuery, EntityRemoveBuf, ViewDistance};
 
 pub(super) fn build(app: &mut App) {
     app.add_system(update_layer_view.before(read_data_in_old_view));

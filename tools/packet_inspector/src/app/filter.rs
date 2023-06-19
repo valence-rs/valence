@@ -128,5 +128,5 @@ fn draw_packet_list(ui: &mut Ui, state: &mut SharedState, packet_state: PacketSt
         ui.checkbox(enabled, format!("[0x{:0>2X}] {}", p.id, p.name));
     }
 
-    return count;
+    count
 }
