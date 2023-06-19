@@ -6,8 +6,7 @@ use bytes::{BufMut, BytesMut};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use valence::__private::VarInt;
-use valence::protocol::decode::PacketDecoder;
-use valence::protocol::decode::PacketFrame;
+use valence::protocol::decode::{PacketDecoder, PacketFrame};
 use valence::protocol::encode::PacketEncoder;
 use valence::protocol::{Encode, MAX_PACKET_SIZE};
 
