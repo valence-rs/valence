@@ -1,7 +1,5 @@
-use std::{
-    hash::{Hash, Hasher},
-    sync::RwLock,
-};
+use std::hash::{Hash, Hasher};
+use std::sync::RwLock;
 
 use bytes::Bytes;
 use time::OffsetDateTime;
