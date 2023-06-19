@@ -37,6 +37,8 @@ pub use valence_inventory as inventory;
 pub use valence_network as network;
 #[cfg(feature = "player_list")]
 pub use valence_player_list as player_list;
+#[cfg(feature = "tick")]
+pub use valence_tick as tick;
 #[cfg(feature = "world_border")]
 pub use valence_world_border as world_border;
 pub use {
@@ -113,7 +115,7 @@ pub mod prelude {
     pub use valence_entity::hitbox::{Hitbox, HitboxShape};
 
     #[cfg(feature = "tick")]
-    pub use valence_tick::prelude::*;
+    pub use valence_tick::{fixed_tickstep::FixedTick, Tick, TickSystem};
 
     pub use super::DefaultPlugins;
     use super::*;

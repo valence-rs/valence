@@ -7,12 +7,6 @@ pub use tick::*;
 
 use bevy_ecs::system::ResMut;
 
-pub mod prelude {
-    //! The Valence Tick Prelude.
-    #[doc(hidden)]
-    pub use crate::{fixed_tickstep::FixedTick, Tick, TickSystem};
-}
-
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 
