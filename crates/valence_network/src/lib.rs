@@ -114,6 +114,14 @@ fn build_plugin(app: &mut App) -> anyhow::Result<()> {
         tokio::spawn(do_accept_loop(shared.clone()));
     };
 
+    // System for starting the broadcast to lan loop.
+    let start_broadcast_to_lan_loop = move |shared: Res<SharedNetworkState>| {
+        let _guard = shared.0.tokio_handle.enter();
+
+        // TODO: Make MOTD Configurable.
+        tokio::spawn(do_broadcast_to_lan_loop(shared.clone(), "A Valence Server"));
+    };
+
     // System for spawning new clients.
     let spawn_new_clients = move |world: &mut World| {
         for _ in 0..shared.0.new_clients_recv.len() {
@@ -128,6 +136,13 @@ fn build_plugin(app: &mut App) -> anyhow::Result<()> {
     // run first.
     app.add_system(
         start_accept_loop
+            .in_schedule(CoreSchedule::Startup)
+            .in_base_set(StartupSet::PostStartup),
+    );
+
+    // TODO: Don't add this system if disabled.
+    app.add_system(
+        start_broadcast_to_lan_loop
             .in_schedule(CoreSchedule::Startup)
             .in_base_set(StartupSet::PostStartup),
     );
@@ -552,4 +567,40 @@ pub struct PlayerSampleEntry {
     pub name: String,
     /// The player UUID.
     pub id: Uuid,
+}
+
+async fn do_broadcast_to_lan_loop(shared: SharedNetworkState, motd: &str) {
+    loop {
+        let port = shared.0.address.port();
+
+        let Ok(local_addr): Result<SocketAddr, _> = "0.0.0.0:0".parse() else {
+            return;
+        };
+
+        // This weird IP is intentional. It's the multicast address for LAN games.
+        let Ok(server_addr): Result<SocketAddr, _> = "224.0.2.60:4445".parse() else {
+            return;
+        };
+
+        // connect to server_addr on Udp to send a text packet
+        let socket = match std::net::UdpSocket::bind(local_addr) {
+            Ok(s) => s,
+            Err(e) => {
+                println!("couldn't bind socket: {}", e);
+                return;
+            }
+        };
+
+        if socket.connect(server_addr).is_err() {
+            return;
+        }
+
+        let message = format!("[MOTD]{motd}[/MOTD][AD]{port}[/AD]");
+        if socket.send(message.as_bytes()).is_err() {
+            return;
+        }
+
+        // wait 1.5 seconds
+        tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+    }
 }
