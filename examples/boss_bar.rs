@@ -171,7 +171,7 @@ fn listen_messages(
             }
             _ => {
                 if let Ok(health) = message.parse::<f32>() {
-                    if health >= 0.0 && health <= 1.0 {
+                    if (0.0..=1.0).contains(&health) {
                         boss_bar_health.0 = health;
                     }
                 } else {
