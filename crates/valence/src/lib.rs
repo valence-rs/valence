@@ -30,6 +30,8 @@ mod tests;
 pub use valence_advancement as advancement;
 #[cfg(feature = "anvil")]
 pub use valence_anvil as anvil;
+#[cfg(feature = "boss_bar")]
+pub use valence_boss_bar as boss_bar;
 pub use valence_core::*;
 #[cfg(feature = "inventory")]
 pub use valence_inventory as inventory;
@@ -39,8 +41,6 @@ pub use valence_network as network;
 pub use valence_player_list as player_list;
 #[cfg(feature = "world_border")]
 pub use valence_world_border as world_border;
-#[cfg(feature = "boss_bar")]
-pub use valence_boss_bar as boss_bar;
 pub use {
     bevy_app as app, bevy_ecs as ecs, glam, valence_biome as biome, valence_block as block,
     valence_client as client, valence_dimension as dimension, valence_entity as entity,

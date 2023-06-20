@@ -1,7 +1,10 @@
 use rand::seq::SliceRandom;
 use valence::prelude::*;
-use valence_boss_bar::{BossBarViewers, BossBarColor, BossBarStyle, BossBarDivision, BossBarFlags, BossBarHealth, BossBarTitle, BossBarBundle};
-use valence_client::message::{SendMessage, ChatMessageEvent};
+use valence_boss_bar::{
+    BossBarBundle, BossBarColor, BossBarDivision, BossBarFlags, BossBarHealth, BossBarStyle,
+    BossBarTitle, BossBarViewers,
+};
+use valence_client::message::{ChatMessageEvent, SendMessage};
 
 const SPAWN_Y: i32 = 64;
 
@@ -37,13 +40,27 @@ fn setup(
         }
     }
 
-    commands.spawn(BossBarBundle::new(Text::text("Boss bar"), BossBarColor::Blue, BossBarDivision::TenNotches, BossBarFlags::new()));
+    commands.spawn(BossBarBundle::new(
+        Text::text("Boss bar"),
+        BossBarColor::Blue,
+        BossBarDivision::TenNotches,
+        BossBarFlags::new(),
+    ));
 
     commands.spawn(instance);
 }
 
 fn init_clients(
-    mut clients: Query<(Entity, &mut Client, &mut Location, &mut Position, &mut GameMode), Added<Client>>,
+    mut clients: Query<
+        (
+            Entity,
+            &mut Client,
+            &mut Location,
+            &mut Position,
+            &mut GameMode,
+        ),
+        Added<Client>,
+    >,
     mut boss_bar_viewers: Query<&mut BossBarViewers>,
     instances: Query<Entity, With<Instance>>,
 ) {
@@ -53,23 +70,60 @@ fn init_clients(
         pos.set([0.5, SPAWN_Y as f64 + 1.0, 0.5]);
         *game_mode = GameMode::Creative;
 
-        client.send_chat_message("Type 'view' to toggle bar display".on_click_suggest_command("view").on_hover_show_text("Type 'view'"));
-        client.send_chat_message("Type 'color' to set a random color".on_click_suggest_command("color").on_hover_show_text("Type 'color'"));
-        client.send_chat_message("Type 'division' to set a random division".on_click_suggest_command("division").on_hover_show_text("Type 'division'"));
-        client.send_chat_message("Type 'flags' to set random flags".on_click_suggest_command("flags").on_hover_show_text("Type 'flags'"));
-        client.send_chat_message("Type any string to set the title".on_click_suggest_command("title"));
-        client.send_chat_message("Type any number between 0 and 1 to set the health".on_click_suggest_command("health"));
+        client.send_chat_message(
+            "Type 'view' to toggle bar display"
+                .on_click_suggest_command("view")
+                .on_hover_show_text("Type 'view'"),
+        );
+        client.send_chat_message(
+            "Type 'color' to set a random color"
+                .on_click_suggest_command("color")
+                .on_hover_show_text("Type 'color'"),
+        );
+        client.send_chat_message(
+            "Type 'division' to set a random division"
+                .on_click_suggest_command("division")
+                .on_hover_show_text("Type 'division'"),
+        );
+        client.send_chat_message(
+            "Type 'flags' to set random flags"
+                .on_click_suggest_command("flags")
+                .on_hover_show_text("Type 'flags'"),
+        );
+        client.send_chat_message(
+            "Type any string to set the title".on_click_suggest_command("title"),
+        );
+        client.send_chat_message(
+            "Type any number between 0 and 1 to set the health".on_click_suggest_command("health"),
+        );
 
         boss_bar_viewers.viewers.insert(entity);
     }
 }
 
-fn listen_messages(mut message_events: EventReader<ChatMessageEvent>, mut boss_bar: Query<(&mut BossBarViewers, &mut BossBarStyle, &mut BossBarFlags, &mut BossBarHealth, &mut BossBarTitle)>) {
-    let (mut boss_bar_viewers, mut boss_bar_style, mut boss_bar_flags, mut boss_bar_health, mut boss_bar_title) = boss_bar.single_mut();
+fn listen_messages(
+    mut message_events: EventReader<ChatMessageEvent>,
+    mut boss_bar: Query<(
+        &mut BossBarViewers,
+        &mut BossBarStyle,
+        &mut BossBarFlags,
+        &mut BossBarHealth,
+        &mut BossBarTitle,
+    )>,
+) {
+    let (
+        mut boss_bar_viewers,
+        mut boss_bar_style,
+        mut boss_bar_flags,
+        mut boss_bar_health,
+        mut boss_bar_title,
+    ) = boss_bar.single_mut();
 
     let events: Vec<ChatMessageEvent> = message_events.iter().cloned().collect();
-    for ChatMessageEvent { client, message, .. } in events.iter() {
-
+    for ChatMessageEvent {
+        client, message, ..
+    } in events.iter()
+    {
         match message.as_ref() {
             "view" => {
                 if boss_bar_viewers.viewers.contains(client) {
@@ -77,7 +131,7 @@ fn listen_messages(mut message_events: EventReader<ChatMessageEvent>, mut boss_b
                 } else {
                     boss_bar_viewers.viewers.insert(*client);
                 }
-            },
+            }
             "color" => {
                 let mut colors = vec![
                     BossBarColor::Pink,
@@ -91,7 +145,7 @@ fn listen_messages(mut message_events: EventReader<ChatMessageEvent>, mut boss_b
                 let random_color = colors.choose(&mut rand::thread_rng()).unwrap();
 
                 boss_bar_style.color = *random_color;
-            },
+            }
             "division" => {
                 let mut divisions = vec![
                     BossBarDivision::NoDivision,
@@ -105,7 +159,7 @@ fn listen_messages(mut message_events: EventReader<ChatMessageEvent>, mut boss_b
                 let random_division = divisions.choose(&mut rand::thread_rng()).unwrap();
 
                 boss_bar_style.division = *random_division;
-            },
+            }
             "flags" => {
                 let darken_sky: bool = rand::random();
                 let dragon_bar: bool = rand::random();
