@@ -83,6 +83,8 @@ fn build_plugin(app: &mut App) -> anyhow::Result<()> {
         None => settings.tokio_handle.clone().unwrap(),
     };
 
+    let motd = settings.lan_broadcast_motd.clone();
+
     let shared = SharedNetworkState(Arc::new(SharedNetworkStateInner {
         callbacks: settings.callbacks.clone(),
         address: settings.address,
@@ -114,14 +116,6 @@ fn build_plugin(app: &mut App) -> anyhow::Result<()> {
         tokio::spawn(do_accept_loop(shared.clone()));
     };
 
-    // System for starting the broadcast to lan loop.
-    let start_broadcast_to_lan_loop = move |shared: Res<SharedNetworkState>| {
-        let _guard = shared.0.tokio_handle.enter();
-
-        // TODO: Make MOTD Configurable.
-        tokio::spawn(do_broadcast_to_lan_loop(shared.clone(), "A Valence Server"));
-    };
-
     // System for spawning new clients.
     let spawn_new_clients = move |world: &mut World| {
         for _ in 0..shared.0.new_clients_recv.len() {
@@ -132,17 +126,24 @@ fn build_plugin(app: &mut App) -> anyhow::Result<()> {
         }
     };
 
+    if let Some(motd) = motd {
+        // System for starting the broadcast to lan loop.
+        let start_broadcast_to_lan_loop = move |shared: Res<SharedNetworkState>| {
+            let _guard = shared.0.tokio_handle.enter();
+
+            tokio::spawn(do_broadcast_to_lan_loop(shared.clone(), motd.clone()));
+        };
+
+        app.add_system(
+            start_broadcast_to_lan_loop
+                .in_schedule(CoreSchedule::Startup)
+                .in_base_set(StartupSet::PostStartup),
+        );
+    }
     // Start accepting connections in `PostStartup` to allow user startup code to
     // run first.
     app.add_system(
         start_accept_loop
-            .in_schedule(CoreSchedule::Startup)
-            .in_base_set(StartupSet::PostStartup),
-    );
-
-    // TODO: Don't add this system if disabled.
-    app.add_system(
-        start_broadcast_to_lan_loop
             .in_schedule(CoreSchedule::Startup)
             .in_base_set(StartupSet::PostStartup),
     );
@@ -277,6 +278,15 @@ pub struct NetworkSettings {
     ///
     /// The default value is left unspecified and may change in future versions.
     pub outgoing_byte_limit: usize,
+
+    /// The message of the day that will be sent to LAN clients.
+    ///
+    /// If `None`, the server will not send broadcast for LAN discovery.
+    ///
+    /// # Default Value
+    ///
+    /// The default value is left unspecified and may change in future versions.
+    pub lan_broadcast_motd: Option<String>,
 }
 
 impl Default for NetworkSettings {
@@ -292,6 +302,7 @@ impl Default for NetworkSettings {
             },
             incoming_byte_limit: 2097152, // 2 MiB
             outgoing_byte_limit: 8388608, // 8 MiB
+            lan_broadcast_motd: None,
         }
     }
 }
@@ -569,7 +580,7 @@ pub struct PlayerSampleEntry {
     pub id: Uuid,
 }
 
-async fn do_broadcast_to_lan_loop(shared: SharedNetworkState, motd: &str) {
+async fn do_broadcast_to_lan_loop(shared: SharedNetworkState, motd: String) {
     loop {
         let port = shared.0.address.port();
 
