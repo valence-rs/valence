@@ -185,7 +185,7 @@ fn update_board(
 }
 
 fn pause_on_crouch(
-    mut events: EventReader<Sneaking>,
+    mut events: EventReader<SneakEvent>,
     mut board: ResMut<LifeBoard>,
     mut clients: Query<&mut Client>,
 ) {

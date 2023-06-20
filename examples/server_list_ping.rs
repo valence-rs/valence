@@ -40,7 +40,7 @@ impl NetworkCallbacks for MyCallbacks {
             }],
             description: "Your IP address is ".into_text()
                 + remote_addr.to_string().color(Color::GOLD),
-            favicon_png: include_bytes!("../../../assets/logo-64x64.png"),
+            favicon_png: include_bytes!("../assets/logo-64x64.png"),
         }
     }
 
