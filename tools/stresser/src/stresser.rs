@@ -5,16 +5,18 @@ use anyhow::bail;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use uuid::Uuid;
-use valence_core::packet::c2s::handshake::handshake::NextState;
-use valence_core::packet::c2s::handshake::{C2sHandshakePacket, HandshakeC2s};
-use valence_core::packet::c2s::login::LoginHelloC2s;
-use valence_core::packet::c2s::play::{KeepAliveC2s, PositionAndOnGround, TeleportConfirmC2s};
-use valence_core::packet::decode::{decode_packet, PacketDecoder};
-use valence_core::packet::encode::PacketEncoder;
-use valence_core::packet::s2c::login::S2cLoginPacket;
-use valence_core::packet::s2c::play::S2cPlayPacket;
-use valence_core::packet::var_int::VarInt;
+use valence_client::keepalive::{KeepAliveC2s, KeepAliveS2c};
+use valence_client::movement::PositionAndOnGroundC2s;
+use valence_client::teleport::{PlayerPositionLookS2c, TeleportConfirmC2s};
+use valence_core::protocol::decode::PacketDecoder;
+use valence_core::protocol::encode::PacketEncoder;
+use valence_core::protocol::var_int::VarInt;
+use valence_core::protocol::Packet;
 use valence_core::PROTOCOL_VERSION;
+use valence_network::packet::{
+    HandshakeC2s, HandshakeNextState, LoginCompressionS2c, LoginHelloC2s, LoginHelloS2c,
+    LoginSuccessS2c,
+};
 
 pub struct SessionParams<'a> {
     pub socket_addr: SocketAddr,
@@ -45,12 +47,12 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
 
     let server_addr_str = sock_addr.ip().to_string();
 
-    let handshake_pkt = C2sHandshakePacket::HandshakeC2s(HandshakeC2s {
+    let handshake_pkt = HandshakeC2s {
         protocol_version: VarInt(PROTOCOL_VERSION),
         server_address: &server_addr_str,
         server_port: sock_addr.port(),
-        next_state: NextState::Login,
-    });
+        next_state: HandshakeNextState::Login,
+    };
 
     enc.append_packet(&handshake_pkt)?;
 
@@ -79,25 +81,24 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
         dec.queue_bytes(read_buf);
 
         if let Ok(Some(frame)) = dec.try_next_packet() {
-            if let Ok(pkt) = decode_packet::<S2cLoginPacket>(&frame) {
-                match pkt {
-                    S2cLoginPacket::LoginCompressionS2c(p) => {
-                        let threshold = p.threshold.0 as u32;
+            match frame.id {
+                LoginCompressionS2c::ID => {
+                    let packet: LoginCompressionS2c = frame.decode()?;
+                    let threshold = packet.threshold.0 as u32;
 
-                        dec.set_compression(Some(threshold));
-                        enc.set_compression(Some(threshold));
-                    }
-
-                    S2cLoginPacket::LoginSuccessS2c(_) => {
-                        break;
-                    }
-
-                    S2cLoginPacket::LoginHelloS2c(_) => {
-                        bail!("encryption not implemented");
-                    }
-
-                    _ => (),
+                    dec.set_compression(Some(threshold));
+                    enc.set_compression(Some(threshold));
                 }
+
+                LoginSuccessS2c::ID => {
+                    break;
+                }
+
+                LoginHelloS2c::ID => {
+                    bail!("encryption not implemented");
+                }
+
+                _ => (),
             }
         }
     }
@@ -106,23 +107,25 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
 
     loop {
         while let Some(frame) = dec.try_next_packet()? {
-            match decode_packet(&frame)? {
-                S2cPlayPacket::KeepAliveS2c(p) => {
+            match frame.id {
+                KeepAliveS2c::ID => {
+                    let packet: KeepAliveS2c = frame.decode()?;
                     enc.clear();
 
-                    enc.append_packet(&KeepAliveC2s { id: p.id })?;
+                    enc.append_packet(&KeepAliveC2s { id: packet.id })?;
                     conn.write_all(&enc.take()).await?;
                 }
 
-                S2cPlayPacket::PlayerPositionLookS2c(p) => {
+                PlayerPositionLookS2c::ID => {
+                    let packet: PlayerPositionLookS2c = frame.decode()?;
                     enc.clear();
 
                     enc.append_packet(&TeleportConfirmC2s {
-                        teleport_id: p.teleport_id,
+                        teleport_id: packet.teleport_id,
                     })?;
 
-                    enc.append_packet(&PositionAndOnGround {
-                        position: p.position,
+                    enc.append_packet(&PositionAndOnGroundC2s {
+                        position: packet.position,
                         on_ground: true,
                     })?;
 

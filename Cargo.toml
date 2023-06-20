@@ -1,6 +1,83 @@
+[package]
+name = "valence"
+version.workspace = true
+edition.workspace = true
+description = "A framework for building Minecraft servers in Rust."
+documentation.workspace = true
+repository.workspace = true
+readme = "README.md"
+license.workspace = true
+keywords = ["minecraft", "gamedev", "server", "ecs"]
+categories = ["game-engines"]
+
+[features]
+default = [
+    "network",
+    "player_list",
+    "inventory",
+    "anvil",
+    "advancement",
+    "world_border",
+    "boss_bar",
+]
+network = ["dep:valence_network"]
+player_list = ["dep:valence_player_list"]
+inventory = ["dep:valence_inventory"]
+anvil = ["dep:valence_anvil"]
+advancement = ["dep:valence_advancement"]
+world_border = ["dep:valence_world_border"]
+boss_bar = ["dep:valence_boss_bar"]
+
+[dependencies]
+bevy_app.workspace = true
+bevy_ecs.workspace = true
+glam.workspace = true
+uuid.workspace = true
+valence_nbt.workspace = true
+valence_core.workspace = true
+valence_registry.workspace = true
+valence_block.workspace = true
+valence_biome.workspace = true
+valence_dimension.workspace = true
+valence_entity.workspace = true
+valence_instance.workspace = true
+valence_client.workspace = true
+valence_network = { workspace = true, optional = true }
+valence_player_list = { workspace = true, optional = true }
+valence_inventory = { workspace = true, optional = true }
+valence_anvil = { workspace = true, optional = true }
+valence_advancement = { workspace = true, optional = true }
+valence_world_border = { workspace = true, optional = true }
+valence_boss_bar = { workspace = true, optional = true }
+
+[dev-dependencies]
+anyhow.workspace = true
+bytes.workspace = true
+clap.workspace = true
+criterion.workspace = true
+flume.workspace = true
+noise.workspace = true              # For the terrain example.
+rand.workspace = true
+tracing-subscriber.workspace = true
+tracing.workspace = true
+
+[dev-dependencies.reqwest]
+workspace = true
+default-features = false
+features = ["rustls-tls", "blocking", "stream"]
+
+[[bench]]
+name = "main"
+harness = false
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.dev]
+opt-level = 1
+
 [workspace]
 members = ["crates/*", "tools/*"]
-exclude = ["rust-mc-bot", "tools/stresser"]
 resolver = "2"
 
 [workspace.package]
@@ -97,12 +174,5 @@ valence_player_list.path = "crates/valence_player_list"
 valence_registry.path = "crates/valence_registry"
 valence_world_border.path = "crates/valence_world_border"
 valence_boss_bar.path = "crates/valence_boss_bar"
-valence.path = "crates/valence"
-
+valence.path = "."
 zip = "0.6.3"
-
-[profile.dev.package."*"]
-opt-level = 3
-
-[profile.dev]
-opt-level = 1

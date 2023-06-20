@@ -17,7 +17,7 @@ Firstly, we should have a server running that we're going to be
 proxying/inspecting.
 
 ```sh
-cargo r -r --example conway
+cargo r -r --example game_of_life
 ```
 
 Next up, we need to run the proxy server, this can be done in 2 different ways,

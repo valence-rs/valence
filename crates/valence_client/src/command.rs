@@ -8,10 +8,10 @@ use valence_entity::{entity, Pose};
 use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
 
 pub(super) fn build(app: &mut App) {
-    app.add_event::<Sprinting>()
-        .add_event::<Sneaking>()
-        .add_event::<JumpWithHorse>()
-        .add_event::<LeaveBed>()
+    app.add_event::<SprintEvent>()
+        .add_event::<SneakEvent>()
+        .add_event::<JumpWithHorseEvent>()
+        .add_event::<LeaveBedEvent>()
         .add_system(
             handle_client_command
                 .in_schedule(EventLoopSchedule)
@@ -20,7 +20,7 @@ pub(super) fn build(app: &mut App) {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub struct Sprinting {
+pub struct SprintEvent {
     pub client: Entity,
     pub state: SprintState,
 }
@@ -32,7 +32,7 @@ pub enum SprintState {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub struct Sneaking {
+pub struct SneakEvent {
     pub client: Entity,
     pub state: SneakState,
 }
@@ -44,7 +44,7 @@ pub enum SneakState {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub struct JumpWithHorse {
+pub struct JumpWithHorseEvent {
     pub client: Entity,
     pub state: JumpWithHorseState,
 }
@@ -59,17 +59,17 @@ pub enum JumpWithHorseState {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub struct LeaveBed {
+pub struct LeaveBedEvent {
     pub client: Entity,
 }
 
 fn handle_client_command(
     mut packets: EventReader<PacketEvent>,
     mut clients: Query<(&mut entity::Pose, &mut Flags)>,
-    mut sprinting_events: EventWriter<Sprinting>,
-    mut sneaking_events: EventWriter<Sneaking>,
-    mut jump_with_horse_events: EventWriter<JumpWithHorse>,
-    mut leave_bed_events: EventWriter<LeaveBed>,
+    mut sprinting_events: EventWriter<SprintEvent>,
+    mut sneaking_events: EventWriter<SneakEvent>,
+    mut jump_with_horse_events: EventWriter<JumpWithHorseEvent>,
+    mut leave_bed_events: EventWriter<LeaveBedEvent>,
 ) {
     for packet in packets.iter() {
         if let Some(pkt) = packet.decode::<ClientCommandC2s>() {
@@ -80,7 +80,7 @@ fn handle_client_command(
                         flags.set_sneaking(true);
                     }
 
-                    sneaking_events.send(Sneaking {
+                    sneaking_events.send(SneakEvent {
                         client: packet.client,
                         state: SneakState::Start,
                     })
@@ -91,12 +91,12 @@ fn handle_client_command(
                         flags.set_sneaking(false);
                     }
 
-                    sneaking_events.send(Sneaking {
+                    sneaking_events.send(SneakEvent {
                         client: packet.client,
                         state: SneakState::Stop,
                     })
                 }
-                ClientCommand::LeaveBed => leave_bed_events.send(LeaveBed {
+                ClientCommand::LeaveBed => leave_bed_events.send(LeaveBedEvent {
                     client: packet.client,
                 }),
                 ClientCommand::StartSprinting => {
@@ -104,7 +104,7 @@ fn handle_client_command(
                         flags.set_sprinting(true);
                     }
 
-                    sprinting_events.send(Sprinting {
+                    sprinting_events.send(SprintEvent {
                         client: packet.client,
                         state: SprintState::Start,
                     });
@@ -114,21 +114,25 @@ fn handle_client_command(
                         flags.set_sprinting(false);
                     }
 
-                    sprinting_events.send(Sprinting {
+                    sprinting_events.send(SprintEvent {
                         client: packet.client,
                         state: SprintState::Stop,
                     })
                 }
-                ClientCommand::StartJumpWithHorse => jump_with_horse_events.send(JumpWithHorse {
-                    client: packet.client,
-                    state: JumpWithHorseState::Start {
-                        power: pkt.jump_boost.0 as u8,
-                    },
-                }),
-                ClientCommand::StopJumpWithHorse => jump_with_horse_events.send(JumpWithHorse {
-                    client: packet.client,
-                    state: JumpWithHorseState::Stop,
-                }),
+                ClientCommand::StartJumpWithHorse => {
+                    jump_with_horse_events.send(JumpWithHorseEvent {
+                        client: packet.client,
+                        state: JumpWithHorseState::Start {
+                            power: pkt.jump_boost.0 as u8,
+                        },
+                    })
+                }
+                ClientCommand::StopJumpWithHorse => {
+                    jump_with_horse_events.send(JumpWithHorseEvent {
+                        client: packet.client,
+                        state: JumpWithHorseState::Stop,
+                    })
+                }
                 ClientCommand::OpenHorseInventory => {} // TODO
                 ClientCommand::StartFlyingWithElytra => {
                     if let Ok((mut pose, _)) = clients.get_mut(packet.client) {

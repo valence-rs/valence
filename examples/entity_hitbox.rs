@@ -60,7 +60,7 @@ fn init_clients(
 
 fn spawn_entity(
     mut commands: Commands,
-    mut sneaking: EventReader<Sneaking>,
+    mut sneaking: EventReader<SneakEvent>,
     client_query: Query<(&Position, &Location)>,
 ) {
     for sneaking in sneaking.iter() {
