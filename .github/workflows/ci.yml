@@ -32,7 +32,7 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1.4.4
         with:
           toolchain: "nightly"
-          components: "clippy, rustfmt"
+          components: "rustfmt"
 
       - name: "Copy playground"
         run: cp tools/playground/src/playground.template.rs tools/playground/src/playground.rs
@@ -61,7 +61,7 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1.4.4
         with:
           toolchain: "stable"
-          components: "clippy, rustfmt"
+          components: "clippy"
 
       - name: "Copy playground"
         run: cp tools/playground/src/playground.template.rs tools/playground/src/playground.rs
