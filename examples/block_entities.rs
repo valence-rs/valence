@@ -11,6 +11,10 @@ const SKULL_POS: BlockPos = BlockPos::new(3, FLOOR_Y + 1, 3);
 
 pub fn main() {
     App::new()
+        .insert_resource(NetworkSettings {
+            connection_mode: ConnectionMode::Offline,
+            ..Default::default()
+        })
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
         .add_systems(
@@ -50,7 +54,15 @@ fn setup(
         Block {
             state: BlockState::OAK_SIGN.set(PropName::Rotation, PropValue::_4),
             nbt: Some(compound! {
-                "Text1" => "Type in chat:".color(Color::RED),
+                "front_text" => compound! {
+                    "messages" => List::String(vec![
+                        // All 4 lines are required, otherwise no text is displayed.
+                        serde_json::to_string(&"Type in chat:".color(Color::RED)).unwrap(),
+                        serde_json::to_string(&"".into_text()).unwrap(),
+                        serde_json::to_string(&"".into_text()).unwrap(),
+                        serde_json::to_string(&"".into_text()).unwrap()
+                    ]),
+                }
             }),
         },
     );
@@ -92,9 +104,16 @@ fn event_handler(
         };
 
         let nbt = instance.block_entity_mut(SIGN_POS).unwrap();
-
-        nbt.insert("Text2", message.to_string().color(Color::DARK_GREEN));
-        nbt.insert("Text3", format!("~{username}").italic());
+        nbt.merge(compound! {
+            "front_text" => compound! {
+                "messages" => List::String(vec![
+                    serde_json::to_string(&"Type in chat:".color(Color::RED)).unwrap(),
+                    serde_json::to_string(&message.to_string().color(Color::DARK_GREEN)).unwrap(),
+                    serde_json::to_string(&format!("~{}", username).italic()).unwrap(),
+                    serde_json::to_string(&"".into_text()).unwrap(),
+                ]),
+            },
+        });
     }
 
     for InteractBlockEvent {
