@@ -59,7 +59,10 @@ fn init_clients(
     }
 }
 
-fn toggle_gamemode_on_sneak(mut clients: Query<&mut GameMode>, mut events: EventReader<Sneaking>) {
+fn toggle_gamemode_on_sneak(
+    mut clients: Query<&mut GameMode>,
+    mut events: EventReader<SneakEvent>,
+) {
     for event in events.iter() {
         let Ok(mut mode) = clients.get_mut(event.client) else {
             continue;

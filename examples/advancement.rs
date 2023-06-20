@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 
+use valence::advancement::bevy_hierarchy::{BuildChildren, Children, Parent};
+use valence::advancement::ForceTabUpdate;
 use valence::prelude::*;
-use valence_advancement::bevy_hierarchy::{BuildChildren, Children, Parent};
-use valence_advancement::ForceTabUpdate;
-use valence_client::SpawnClientsSet;
 
 #[derive(Component)]
 struct RootCriteria;
@@ -29,13 +28,14 @@ fn main() {
         .init_resource::<ClientSave>()
         .add_startup_system(setup)
         .add_systems((
+            load_clients,
+            apply_system_buffers
+                .after(load_clients)
+                .before(init_advancements),
             init_clients,
             init_advancements,
             sneak,
             tab_change,
-            load_clients
-                .after(SpawnClientsSet)
-                .in_base_set(CoreSet::PreUpdate),
         ))
         .run();
 }
@@ -225,7 +225,7 @@ fn init_advancements(
 }
 
 fn sneak(
-    mut sneaking: EventReader<Sneaking>,
+    mut sneaking: EventReader<SneakEvent>,
     mut client: Query<(&mut AdvancementClientUpdate, &mut RootCriteriaDone)>,
     root_criteria: Query<Entity, With<RootCriteria>>,
     client_uuid: Query<&UniqueId>,

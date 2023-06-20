@@ -227,7 +227,7 @@ where appropriate.
 Unit tests help your contributions last! They ensure that your code works as expected and that it continues to work in
 the future.
 
-whole-server unit tests can be found in [`crates/valence/src/tests/`](crates/valence/src/tests).
+whole-server unit tests can be found in [`/src/tests/`](/src/tests).
 
 ## Naming Quantities
 

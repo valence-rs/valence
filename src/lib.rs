@@ -1,4 +1,4 @@
-#![doc = include_str!("../../../README.md")] // Points to the main project README.
+#![doc = include_str!("../README.md")] // Points to the main project README.
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/valence-rs/valence/main/assets/logo.svg",
     html_favicon_url = "https://raw.githubusercontent.com/valence-rs/valence/main/assets/logo.svg"
@@ -40,7 +40,7 @@ pub use valence_player_list as player_list;
 #[cfg(feature = "world_border")]
 pub use valence_world_border as world_border;
 pub use {
-    bevy_app as app, bevy_ecs as ecs, glam, valence_biome as biome, valence_block as block,
+    bevy_app, bevy_ecs, glam, valence_biome as biome, valence_block as block,
     valence_client as client, valence_dimension as dimension, valence_entity as entity,
     valence_instance as instance, valence_nbt as nbt, valence_registry as registry,
 };
@@ -58,62 +58,64 @@ pub use {
 /// ```
 pub mod prelude {
     pub use ::uuid::Uuid;
-    pub use app::prelude::*;
-    pub use bevy_ecs; // Needed for bevy_ecs proc macros to function correctly.
-    pub use biome::{Biome, BiomeId, BiomeRegistry};
-    pub use block::{BlockKind, BlockState, PropName, PropValue};
-    pub use block_pos::BlockPos;
-    pub use chunk_pos::{ChunkPos, ChunkView};
-    pub use client::action::*;
-    pub use client::command::*;
-    pub use client::event_loop::{EventLoopSchedule, EventLoopSet};
-    pub use client::interact_entity::*;
-    pub use client::title::SetTitle as _;
-    pub use client::{
-        despawn_disconnected_clients, Client, CompassPos, DeathLocation, HasRespawnScreen,
-        HashedSeed, Ip, IsDebug, IsFlat, IsHardcore, OldView, OldViewDistance, PrevGameMode,
-        Properties, ReducedDebugInfo, Username, View, ViewDistance,
-    };
-    pub use despawn::Despawned;
-    pub use dimension::{DimensionType, DimensionTypeRegistry};
-    pub use direction::Direction;
-    pub use ecs::prelude::*;
-    pub use entity::{
-        EntityAnimation, EntityKind, EntityManager, EntityStatus, HeadYaw, Location, Look,
-        OldLocation, OldPosition, Position,
-    };
-    pub use game_mode::GameMode;
+    pub use bevy_app::prelude::*;
+    pub use bevy_ecs; // Needed for bevy_ecs macros to function correctly.
+    pub use bevy_ecs::prelude::*;
     pub use glam::{DVec2, DVec3, Vec2, Vec3};
-    pub use hand::Hand;
     pub use ident::Ident;
-    pub use instance::{Block, BlockMut, BlockRef, Chunk, Instance};
-    #[cfg(feature = "inventory")]
-    pub use inventory::{
-        CursorItem, Inventory, InventoryKind, InventoryWindow, InventoryWindowMut, OpenInventory,
-    };
-    pub use item::{ItemKind, ItemStack};
-    pub use nbt::Compound;
-    #[cfg(feature = "network")]
-    pub use network::{
-        ErasedNetworkCallbacks, NetworkCallbacks, NetworkSettings, NewClientInfo,
-        SharedNetworkState,
-    };
-    pub use particle::Particle;
-    #[cfg(feature = "player_list")]
-    pub use player_list::{PlayerList, PlayerListEntry};
-    pub use text::{Color, Text, TextFormat};
     #[cfg(feature = "advancement")]
     pub use valence_advancement::{
         event::AdvancementTabChange, Advancement, AdvancementBundle, AdvancementClientUpdate,
         AdvancementCriteria, AdvancementDisplay, AdvancementFrameType, AdvancementRequirements,
     };
+    pub use valence_biome::{Biome, BiomeId, BiomeRegistry};
+    pub use valence_block::{BlockKind, BlockState, PropName, PropValue};
+    pub use valence_client::action::{DiggingEvent, DiggingState};
+    pub use valence_client::command::{
+        ClientCommand, JumpWithHorseEvent, JumpWithHorseState, LeaveBedEvent, SneakEvent,
+        SneakState, SprintEvent, SprintState,
+    };
+    pub use valence_client::event_loop::{EventLoopSchedule, EventLoopSet};
+    pub use valence_client::interact_entity::{EntityInteraction, InteractEntityEvent};
+    pub use valence_client::title::SetTitle as _;
+    pub use valence_client::{
+        despawn_disconnected_clients, Client, CompassPos, DeathLocation, HasRespawnScreen,
+        HashedSeed, Ip, IsDebug, IsFlat, IsHardcore, OldView, OldViewDistance, PrevGameMode,
+        Properties, ReducedDebugInfo, Username, View, ViewDistance,
+    };
+    pub use valence_core::block_pos::BlockPos;
+    pub use valence_core::chunk_pos::{ChunkPos, ChunkView};
+    pub use valence_core::despawn::Despawned;
+    pub use valence_core::direction::Direction;
+    pub use valence_core::game_mode::GameMode;
+    pub use valence_core::hand::Hand;
     pub use valence_core::ident; // Export the `ident!` macro.
+    pub use valence_core::item::{ItemKind, ItemStack};
+    pub use valence_core::particle::Particle;
+    pub use valence_core::text::{Color, Text, TextFormat};
     pub use valence_core::uuid::UniqueId;
     pub use valence_core::{translation_key, CoreSettings, Server};
+    pub use valence_dimension::{DimensionType, DimensionTypeRegistry};
     pub use valence_entity::hitbox::{Hitbox, HitboxShape};
+    pub use valence_entity::{
+        EntityAnimation, EntityKind, EntityManager, EntityStatus, HeadYaw, Location, Look,
+        OldLocation, OldPosition, Position,
+    };
+    pub use valence_instance::{Block, BlockMut, BlockRef, Chunk, Instance};
+    #[cfg(feature = "inventory")]
+    pub use valence_inventory::{
+        CursorItem, Inventory, InventoryKind, InventoryWindow, InventoryWindowMut, OpenInventory,
+    };
+    pub use valence_nbt::Compound;
+    #[cfg(feature = "network")]
+    pub use valence_network::{
+        ConnectionMode, ErasedNetworkCallbacks, NetworkCallbacks, NetworkSettings, NewClientInfo,
+        SharedNetworkState,
+    };
+    #[cfg(feature = "player_list")]
+    pub use valence_player_list::{PlayerList, PlayerListEntry};
 
     pub use super::DefaultPlugins;
-    use super::*;
 }
 
 /// This plugin group will add all the default plugins for a Valence

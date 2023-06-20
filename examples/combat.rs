@@ -95,10 +95,10 @@ struct CombatQuery {
 fn handle_combat_events(
     server: Res<Server>,
     mut clients: Query<CombatQuery>,
-    mut sprinting: EventReader<Sprinting>,
+    mut sprinting: EventReader<SprintEvent>,
     mut interact_entity: EventReader<InteractEntityEvent>,
 ) {
-    for &Sprinting { client, state } in sprinting.iter() {
+    for &SprintEvent { client, state } in sprinting.iter() {
         if let Ok(mut client) = clients.get_mut(client) {
             client.state.has_bonus_knockback = state == SprintState::Start;
         }

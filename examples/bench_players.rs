@@ -2,9 +2,7 @@
 
 use std::time::Instant;
 
-use valence::instance::{Chunk, Instance};
 use valence::prelude::*;
-use valence_network::ConnectionMode;
 
 const SPAWN_Y: i32 = 64;
 
