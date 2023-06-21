@@ -1,7 +1,7 @@
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::spanned::Spanned;
-use syn::{parse2, parse_quote, Attribute, DeriveInput, Error, Expr, LitInt, LitStr, Path, Result};
+use syn::{parse2, parse_quote, Attribute, DeriveInput, Error, Expr, LitInt, LitStr, Result};
 
 use crate::add_trait_bounds;
 
@@ -89,7 +89,7 @@ fn parse_packet_helper_attr(attrs: &[Attribute]) -> Result<Option<PacketAttr>> {
                     res.name = Some(meta.value()?.parse::<LitStr>()?);
                     Ok(())
                 } else if meta.path.is_ident("side") {
-                    res.side = Some( meta.value()?.parse::<Expr>()?);
+                    res.side = Some(meta.value()?.parse::<Expr>()?);
                     Ok(())
                 } else if meta.path.is_ident("state") {
                     res.state = Some(meta.value()?.parse::<Expr>()?);
