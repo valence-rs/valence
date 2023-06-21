@@ -18,6 +18,7 @@ default = [
     "anvil",
     "advancement",
     "world_border",
+    "boss_bar",
 ]
 network = ["dep:valence_network"]
 player_list = ["dep:valence_player_list"]
@@ -25,6 +26,7 @@ inventory = ["dep:valence_inventory"]
 anvil = ["dep:valence_anvil"]
 advancement = ["dep:valence_advancement"]
 world_border = ["dep:valence_world_border"]
+boss_bar = ["dep:valence_boss_bar"]
 
 [dependencies]
 bevy_app.workspace = true
@@ -46,6 +48,7 @@ valence_inventory = { workspace = true, optional = true }
 valence_anvil = { workspace = true, optional = true }
 valence_advancement = { workspace = true, optional = true }
 valence_world_border = { workspace = true, optional = true }
+valence_boss_bar = { workspace = true, optional = true }
 
 [dev-dependencies]
 anyhow.workspace = true
@@ -170,5 +173,6 @@ valence_network.path = "crates/valence_network"
 valence_player_list.path = "crates/valence_player_list"
 valence_registry.path = "crates/valence_registry"
 valence_world_border.path = "crates/valence_world_border"
+valence_boss_bar.path = "crates/valence_boss_bar"
 valence.path = "."
 zip = "0.6.3"

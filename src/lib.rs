@@ -30,6 +30,8 @@ mod tests;
 pub use valence_advancement as advancement;
 #[cfg(feature = "anvil")]
 pub use valence_anvil as anvil;
+#[cfg(feature = "boss_bar")]
+pub use valence_boss_bar as boss_bar;
 pub use valence_core::*;
 #[cfg(feature = "inventory")]
 pub use valence_inventory as inventory;
@@ -169,6 +171,11 @@ impl PluginGroup for DefaultPlugins {
         #[cfg(feature = "world_border")]
         {
             group = group.add(valence_world_border::WorldBorderPlugin);
+        }
+
+        #[cfg(feature = "boss_bar")]
+        {
+            group = group.add(valence_boss_bar::BossBarPlugin);
         }
 
         group
