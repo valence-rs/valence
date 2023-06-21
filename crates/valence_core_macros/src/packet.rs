@@ -43,7 +43,7 @@ pub(super) fn derive_packet(item: TokenStream) -> Result<TokenStream> {
 
     let state = packet_attr
         .state
-        .unwrap_or_else(|| parse_quote!(PacketState::Play));
+        .unwrap_or_else(|| parse_quote!(::valence_core::protocol::PacketState::Play));
 
     Ok(quote! {
         impl #impl_generics ::valence_core::__private::Packet for #name #ty_generics

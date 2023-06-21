@@ -5,7 +5,7 @@ use valence_core::ident::Ident;
 use valence_core::property::Property;
 use valence_core::protocol::raw::RawBytes;
 use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::{packet_id, Decode, Encode, Packet};
+use valence_core::protocol::{packet_id, Decode, Encode, Packet, PacketState};
 use valence_core::text::Text;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
