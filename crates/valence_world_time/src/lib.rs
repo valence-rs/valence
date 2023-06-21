@@ -356,14 +356,14 @@ fn handle_interval_time_broadcast(
     server: Res<Server>,
 ) {
     for (mut ins, time, mut interval) in instances.iter_mut() {
-        let currect_tick = server.current_tick();
-        if currect_tick - interval.last_broadcast >= interval.broadcast_rate {
+        let current_tick = server.current_tick();
+        if current_tick - interval.last_broadcast >= interval.broadcast_rate {
             ins.write_packet(&WorldTimeUpdateS2c {
                 time_of_day: time.time_of_day,
                 world_age: time.world_age,
             });
 
-            interval.last_broadcast = currect_tick;
+            interval.last_broadcast = current_tick;
         }
     }
 }
