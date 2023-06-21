@@ -159,7 +159,6 @@ impl SharedNetworkState {
         self.0.max_players
     }
 }
-
 struct SharedNetworkStateInner {
     callbacks: ErasedNetworkCallbacks,
     address: SocketAddr,
