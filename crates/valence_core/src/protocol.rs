@@ -189,6 +189,7 @@ pub trait Packet: std::fmt::Debug {
     }
 }
 
+/// The side a packet is intended for
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum PacketSide {
     /// Server -> Client
@@ -197,6 +198,7 @@ pub enum PacketSide {
     Serverbound,
 }
 
+/// The state which a packet is used
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum PacketState {
     Handshaking,
