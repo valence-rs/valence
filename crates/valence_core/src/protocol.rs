@@ -172,6 +172,10 @@ pub trait Packet: std::fmt::Debug {
     const ID: i32;
     /// The name of this packet for debugging purposes.
     const NAME: &'static str;
+    /// The side this packet is intended for 
+    const SIDE: PacketSide;
+    /// The state which this packet is used
+    const STATE: PacketState;
 
     /// Encodes this packet's VarInt ID first, followed by the packet's body.
     fn encode_with_id(&self, mut w: impl Write) -> anyhow::Result<()>
@@ -183,6 +187,22 @@ pub trait Packet: std::fmt::Debug {
             .context("failed to encode packet ID")?;
         self.encode(w)
     }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum PacketSide {
+    /// Server -> Client
+    Clientbound,
+    /// Client -> Server
+    Serverbound,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum PacketState {
+    Handshaking,
+    Status,
+    Login,
+    Play,
 }
 
 /// Contains constants for every vanilla packet ID.
