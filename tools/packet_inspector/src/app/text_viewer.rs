@@ -6,6 +6,7 @@ mod utils {
     use valence::protocol::{Decode, Packet};
 
     use valence::advancement::packet::*;
+    use valence::boss_bar::packet::*;
     use valence::client::action::*;
     use valence::client::command::*;
     use valence::client::custom_payload::*;
@@ -29,7 +30,6 @@ mod utils {
     use valence::network::packet::*;
     use valence::particle::*;
     use valence::player_list::packet::*;
-    use valence::protocol::packet::boss_bar::*;
     use valence::protocol::packet::chat::*;
     use valence::protocol::packet::command::*;
     use valence::protocol::packet::map::*;

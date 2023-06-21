@@ -34,11 +34,10 @@ pub struct DimensionPlugin;
 impl Plugin for DimensionPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<DimensionTypeRegistry>()
-            .add_startup_system(load_default_dimension_types.in_base_set(StartupSet::PreStartup))
-            .add_system(
-                update_dimension_type_registry
-                    .in_base_set(CoreSet::PostUpdate)
-                    .before(RegistrySet),
+            .add_systems(PreStartup, load_default_dimension_types)
+            .add_systems(
+                PostUpdate,
+                update_dimension_type_registry.before(RegistrySet),
             );
     }
 }

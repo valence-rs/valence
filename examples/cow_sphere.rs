@@ -24,10 +24,11 @@ fn main() {
 
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_startup_system(setup)
-        .add_system(init_clients)
-        .add_system(update_sphere)
-        .add_system(despawn_disconnected_clients)
+        .add_systems(Startup, setup)
+        .add_systems(
+            Update,
+            (init_clients, update_sphere, despawn_disconnected_clients),
+        )
         .run();
 }
 

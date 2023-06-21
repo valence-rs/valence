@@ -2,15 +2,11 @@ use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 use valence_core::CoreSettings;
 
 use super::*;
-use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
+use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 
 pub(super) fn build(app: &mut App) {
-    app.add_system(send_keepalive.in_set(UpdateClientsSet))
-        .add_system(
-            handle_keepalive_response
-                .in_base_set(EventLoopSet::PreUpdate)
-                .in_schedule(EventLoopSchedule),
-        );
+    app.add_systems(PostUpdate, send_keepalive.in_set(UpdateClientsSet))
+        .add_systems(EventLoopPreUpdate, handle_keepalive_response);
 }
 
 #[derive(Component, Debug)]

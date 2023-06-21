@@ -7,7 +7,7 @@ pub fn idle_update(c: &mut Criterion) {
     let mut app = App::new();
 
     app.add_plugins(DefaultPlugins);
-    app.add_startup_system(setup);
+    app.add_systems(Startup, setup);
 
     // Run startup schedule.
     app.update();

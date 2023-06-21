@@ -597,7 +597,8 @@ fn build() -> anyhow::Result<TokenStream> {
             #systems
 
             #(
-                app.add_system(
+                app.add_systems(
+                    PostUpdate,
                     #system_names
                         .in_set(UpdateTrackedDataSet)
                         .ambiguous_with(UpdateTrackedDataSet)

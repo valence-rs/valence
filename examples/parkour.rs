@@ -27,13 +27,16 @@ pub fn main() {
 
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_system(init_clients)
-        .add_systems((
-            reset_clients.after(init_clients),
-            manage_chunks.after(reset_clients).before(manage_blocks),
-            manage_blocks,
-            despawn_disconnected_clients,
-        ))
+        .add_systems(
+            Update,
+            (
+                init_clients,
+                reset_clients.after(init_clients),
+                manage_chunks.after(reset_clients).before(manage_blocks),
+                manage_blocks,
+                despawn_disconnected_clients,
+            ),
+        )
         .run();
 }
 
