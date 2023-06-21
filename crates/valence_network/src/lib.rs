@@ -22,9 +22,11 @@ mod connect;
 pub mod packet;
 mod packet_io;
 
+use std::borrow::Cow;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::Context;
 pub use async_trait::async_trait;
@@ -35,8 +37,10 @@ use flume::{Receiver, Sender};
 use rand::rngs::OsRng;
 use rsa::{PublicKeyParts, RsaPrivateKey};
 use serde::Serialize;
+use tokio::net::UdpSocket;
 use tokio::runtime::{Handle, Runtime};
 use tokio::sync::Semaphore;
+use tokio::time;
 use tracing::error;
 use uuid::Uuid;
 use valence_client::{ClientBundle, ClientBundleArgs, Properties, SpawnClientsSet};
@@ -343,6 +347,12 @@ pub trait NetworkCallbacks: Send + Sync + 'static {
         }
     }
 
+    /// This function is called every 1.5 seconds to broadcast a packet over the local network
+    /// in order to advertise the server to the multiplayer screen with a configurable MOTD.
+    ///
+    /// # Default Implementation
+    ///
+    /// The default implementation returns [BroadcastToLan::Disabled], disabling LAN discovery.
     async fn broadcast_to_lan(&self, shared: &SharedNetworkState) -> BroadcastToLan {
         #![allow(unused_variables)]
 
@@ -562,7 +572,7 @@ pub enum BroadcastToLan<'a> {
     #[default]
     Disabled,
     /// Send packet to broadcast to LAN every 1.5 seconds with specified MOTD.
-    Enabled(&'a str),
+    Enabled(Cow<'a, str>),
 }
 
 /// Represents an individual entry in the player sample.
@@ -580,15 +590,15 @@ pub struct PlayerSampleEntry {
 async fn do_broadcast_to_lan_loop(shared: SharedNetworkState) {
     let port = shared.0.address.port();
 
-    // connect to server_addr on Udp to send a text packet
-    // if this ever fails, you have bigger problems to worry about, since we're
-    // asing the OS for a port
-    let socket = tokio::net::UdpSocket::bind("0.0.0.0:0").await.unwrap();
+    let Ok(socket) = UdpSocket::bind("0.0.0.0:0").await else {
+        tracing::error!("Failed to bind to UDP socket for broadcast to LAN");
+        return;
+    };
 
     loop {
         let motd = match shared.0.callbacks.inner.broadcast_to_lan(&shared).await {
             BroadcastToLan::Disabled => {
-                tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+                time::sleep(Duration::from_millis(1500)).await;
                 continue;
             }
             BroadcastToLan::Enabled(motd) => motd,
