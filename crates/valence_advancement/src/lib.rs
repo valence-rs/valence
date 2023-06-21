@@ -22,7 +22,7 @@ use valence_core::item::ItemStack;
 use valence_core::protocol::encode::WritePacket;
 use valence_core::protocol::raw::RawBytes;
 use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::{packet_id, Encode, Packet};
+use valence_core::protocol::{packet_id, Encode, Packet, PacketSide, PacketState};
 use valence_core::text::Text;
 
 pub struct AdvancementPlugin;
@@ -268,6 +268,8 @@ impl<'w, 's, 'a> Encode for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
 impl<'w, 's, 'a> Packet for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
     const ID: i32 = packet_id::ADVANCEMENT_UPDATE_S2C;
     const NAME: &'static str = "AdvancementUpdateEncodeS2c";
+    const SIDE: PacketSide = PacketSide::Clientbound;
+    const STATE: PacketState = PacketState::Play;
 }
 
 #[allow(clippy::type_complexity)]
