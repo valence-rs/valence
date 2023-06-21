@@ -11,10 +11,16 @@ pub fn main() {
 
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_startup_system(setup)
-        .add_system(init_clients)
-        .add_systems((toggle_gamemode_on_sneak, open_chest))
-        .add_system(despawn_disconnected_clients)
+        .add_systems(Startup, setup)
+        .add_systems(
+            Update,
+            (
+                init_clients,
+                toggle_gamemode_on_sneak,
+                open_chest,
+                despawn_disconnected_clients,
+            ),
+        )
         .run();
 }
 

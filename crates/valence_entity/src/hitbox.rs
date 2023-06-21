@@ -1,10 +1,7 @@
 #![allow(clippy::type_complexity)]
 
-use bevy_app::{App, CoreSet, Plugin};
-use bevy_ecs::prelude::{Component, Entity, SystemSet};
-use bevy_ecs::query::{Added, Changed, Or, With};
-use bevy_ecs::schedule::{IntoSystemConfig, IntoSystemConfigs, IntoSystemSetConfig};
-use bevy_ecs::system::{Commands, Query};
+use bevy_app::prelude::*;
+use bevy_ecs::prelude::*;
 use glam::{DVec3, UVec3, Vec3Swizzles};
 use valence_core::aabb::Aabb;
 use valence_core::direction::Direction;
@@ -42,8 +39,9 @@ impl Default for EntityHitboxSettings {
 impl Plugin for HitboxPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<EntityHitboxSettings>()
-            .configure_set(HitboxShapeUpdateSet.in_base_set(CoreSet::PreUpdate))
+            .configure_set(PreUpdate, HitboxShapeUpdateSet)
             .add_systems(
+                PreUpdate,
                 (
                     update_constant_hitbox,
                     update_warden_hitbox,
@@ -58,17 +56,15 @@ impl Plugin for HitboxPlugin {
                     update_slime_hitbox,
                     update_painting_hitbox,
                     update_shulker_hitbox,
-                )
-                    .in_set(HitboxShapeUpdateSet),
+                ),
             )
-            .configure_set(HitboxComponentsAddSet.in_base_set(CoreSet::PostUpdate))
-            .add_system(add_hitbox_component.in_set(HitboxComponentsAddSet))
-            .configure_set(
-                HitboxUpdateSet
-                    .in_base_set(CoreSet::PreUpdate)
-                    .after(HitboxShapeUpdateSet),
+            .configure_set(PostUpdate, HitboxComponentsAddSet)
+            .add_systems(
+                PostUpdate,
+                add_hitbox_component.in_set(HitboxComponentsAddSet),
             )
-            .add_system(update_hitbox.in_set(HitboxUpdateSet));
+            .configure_set(PreUpdate, HitboxUpdateSet.after(HitboxShapeUpdateSet))
+            .add_systems(PreUpdate, update_hitbox.in_set(HitboxUpdateSet));
     }
 }
 

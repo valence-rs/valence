@@ -18,6 +18,7 @@ default = [
     "anvil",
     "advancement",
     "world_border",
+    "boss_bar",
 ]
 network = ["dep:valence_network"]
 player_list = ["dep:valence_player_list"]
@@ -25,6 +26,7 @@ inventory = ["dep:valence_inventory"]
 anvil = ["dep:valence_anvil"]
 advancement = ["dep:valence_advancement"]
 world_border = ["dep:valence_world_border"]
+boss_bar = ["dep:valence_boss_bar"]
 
 [dependencies]
 bevy_app.workspace = true
@@ -46,6 +48,7 @@ valence_inventory = { workspace = true, optional = true }
 valence_anvil = { workspace = true, optional = true }
 valence_advancement = { workspace = true, optional = true }
 valence_world_border = { workspace = true, optional = true }
+valence_boss_bar = { workspace = true, optional = true }
 
 [dev-dependencies]
 anyhow.workspace = true
@@ -75,6 +78,7 @@ opt-level = 1
 
 [workspace]
 members = ["crates/*", "tools/*"]
+exclude = ["tools/dump_schedule"]
 resolver = "2"
 
 [workspace.package]
@@ -92,11 +96,10 @@ arrayvec = "0.7.2"
 async-trait = "0.1.60"
 atty = "0.2.14"
 base64 = "0.21.0"
-bevy_app = { version = "0.10.1", default-features = false }
-bevy_ecs = { version = "0.10.1", default-features = false, features = [
-    "trace",
-] }
-bevy_hierarchy = { version = "0.10.1", default-features = false }
+bevy_app = { git = "https://github.com/bevyengine/bevy", rev = "910f984709fb58cddbb7393c948634a2540e8d72", default-features = false }
+bevy_ecs = { git = "https://github.com/bevyengine/bevy", rev = "910f984709fb58cddbb7393c948634a2540e8d72", default-features = false }
+bevy_hierarchy = { git = "https://github.com/bevyengine/bevy", rev = "910f984709fb58cddbb7393c948634a2540e8d72", default-features = false }
+bevy_utils = { git = "https://github.com/bevyengine/bevy", rev = "910f984709fb58cddbb7393c948634a2540e8d72" }
 bevy_mod_debugdump = "0.7.0"
 bitfield-struct = "0.3.1"
 byteorder = "1.4.3"
@@ -170,5 +173,6 @@ valence_network.path = "crates/valence_network"
 valence_player_list.path = "crates/valence_player_list"
 valence_registry.path = "crates/valence_registry"
 valence_world_border.path = "crates/valence_world_border"
+valence_boss_bar.path = "crates/valence_boss_bar"
 valence.path = "."
 zip = "0.6.3"

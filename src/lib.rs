@@ -30,6 +30,8 @@ mod tests;
 pub use valence_advancement as advancement;
 #[cfg(feature = "anvil")]
 pub use valence_anvil as anvil;
+#[cfg(feature = "boss_bar")]
+pub use valence_boss_bar as boss_bar;
 pub use valence_core::*;
 #[cfg(feature = "inventory")]
 pub use valence_inventory as inventory;
@@ -65,7 +67,7 @@ pub mod prelude {
     pub use ident::Ident;
     #[cfg(feature = "advancement")]
     pub use valence_advancement::{
-        event::AdvancementTabChange, Advancement, AdvancementBundle, AdvancementClientUpdate,
+        event::AdvancementTabChangeEvent, Advancement, AdvancementBundle, AdvancementClientUpdate,
         AdvancementCriteria, AdvancementDisplay, AdvancementFrameType, AdvancementRequirements,
     };
     pub use valence_biome::{Biome, BiomeId, BiomeRegistry};
@@ -75,7 +77,9 @@ pub mod prelude {
         ClientCommand, JumpWithHorseEvent, JumpWithHorseState, LeaveBedEvent, SneakEvent,
         SneakState, SprintEvent, SprintState,
     };
-    pub use valence_client::event_loop::{EventLoopSchedule, EventLoopSet};
+    pub use valence_client::event_loop::{
+        EventLoopPostUpdate, EventLoopPreUpdate, EventLoopUpdate,
+    };
     pub use valence_client::interact_entity::{EntityInteraction, InteractEntityEvent};
     pub use valence_client::title::SetTitle as _;
     pub use valence_client::{
@@ -169,6 +173,11 @@ impl PluginGroup for DefaultPlugins {
         #[cfg(feature = "world_border")]
         {
             group = group.add(valence_world_border::WorldBorderPlugin);
+        }
+
+        #[cfg(feature = "boss_bar")]
+        {
+            group = group.add(valence_boss_bar::BossBarPlugin);
         }
 
         group
