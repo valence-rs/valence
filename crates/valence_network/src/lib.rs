@@ -347,12 +347,14 @@ pub trait NetworkCallbacks: Send + Sync + 'static {
         }
     }
 
-    /// This function is called every 1.5 seconds to broadcast a packet over the local network
-    /// in order to advertise the server to the multiplayer screen with a configurable MOTD.
+    /// This function is called every 1.5 seconds to broadcast a packet over the
+    /// local network in order to advertise the server to the multiplayer
+    /// screen with a configurable MOTD.
     ///
     /// # Default Implementation
     ///
-    /// The default implementation returns [BroadcastToLan::Disabled], disabling LAN discovery.
+    /// The default implementation returns [BroadcastToLan::Disabled], disabling
+    /// LAN discovery.
     async fn broadcast_to_lan(&self, shared: &SharedNetworkState) -> BroadcastToLan {
         #![allow(unused_variables)]
 
