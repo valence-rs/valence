@@ -1,7 +1,7 @@
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::spanned::Spanned;
-use syn::{parse2, Attribute, DeriveInput, Error, Expr, LitInt, Path, Result, LitStr, parse_quote};
+use syn::{parse2, parse_quote, Attribute, DeriveInput, Error, Expr, LitInt, LitStr, Path, Result};
 
 use crate::add_trait_bounds;
 
@@ -36,13 +36,16 @@ pub(super) fn derive_packet(item: TokenStream) -> Result<TokenStream> {
         } else if name_str.to_lowercase().contains("c2s") {
             parse_quote!(PacketSide::Serverbound)
         } else {
-            return Err(Error::new(input.span(), "missing `side = PacketSide::...` value from packet attribute"));
+            return Err(Error::new(
+                input.span(),
+                "missing `side = PacketSide::...` value from packet attribute",
+            ));
         }
     };
 
-    let state = packet_attr.state.unwrap_or_else(|| parse_quote!(PacketState::Play));
-
-   
+    let state = packet_attr
+        .state
+        .unwrap_or_else(|| parse_quote!(PacketState::Play));
 
     Ok(quote! {
         impl #impl_generics ::valence_core::__private::Packet for #name #ty_generics
@@ -56,7 +59,6 @@ pub(super) fn derive_packet(item: TokenStream) -> Result<TokenStream> {
     })
 }
 
-#[derive(Debug)]
 struct PacketAttr {
     span: Span,
     id: Option<Expr>,

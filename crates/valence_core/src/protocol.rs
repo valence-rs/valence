@@ -172,7 +172,7 @@ pub trait Packet: std::fmt::Debug {
     const ID: i32;
     /// The name of this packet for debugging purposes.
     const NAME: &'static str;
-    /// The side this packet is intended for 
+    /// The side this packet is intended for
     const SIDE: PacketSide;
     /// The state which this packet is used
     const STATE: PacketState;
