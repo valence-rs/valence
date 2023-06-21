@@ -8,17 +8,14 @@ use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 
 use crate::action::ActionSequence;
-use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
+use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 
 pub(super) fn build(app: &mut App) {
-    app.add_event::<InteractBlockEvent>().add_system(
-        handle_interact_block
-            .in_schedule(EventLoopSchedule)
-            .in_base_set(EventLoopSet::PreUpdate),
-    );
+    app.add_event::<InteractBlockEvent>()
+        .add_systems(EventLoopPreUpdate, handle_interact_block);
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Event, Copy, Clone, Debug)]
 pub struct InteractBlockEvent {
     pub client: Entity,
     /// The hand that was used

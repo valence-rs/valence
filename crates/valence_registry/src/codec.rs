@@ -10,7 +10,7 @@ use crate::RegistrySet;
 
 pub(super) fn build(app: &mut App) {
     app.init_resource::<RegistryCodec>()
-        .add_system(cache_registry_codec.in_set(RegistrySet));
+        .add_systems(PostUpdate, cache_registry_codec.in_set(RegistrySet));
 }
 
 /// Contains the registry codec sent to all players while joining. This contains

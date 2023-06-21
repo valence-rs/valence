@@ -36,12 +36,14 @@ pub struct RegistryPlugin;
 /// The [`SystemSet`] where the [`RegistryCodec`](codec::RegistryCodec) and
 /// [`TagsRegistry`](tags::TagsRegistry) caches are rebuilt. Systems that modify
 /// the registry codec or tags registry should run _before_ this.
+///
+/// This set lives in [`PostUpdate`].
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct RegistrySet;
 
 impl Plugin for RegistryPlugin {
     fn build(&self, app: &mut bevy_app::App) {
-        app.configure_set(RegistrySet.in_base_set(CoreSet::PostUpdate));
+        app.configure_set(PostUpdate, RegistrySet);
 
         codec::build(app);
         tags::build(app);

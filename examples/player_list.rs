@@ -15,13 +15,16 @@ fn main() {
 
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_startup_system(setup)
-        .add_systems((
-            init_clients,
-            override_display_name,
-            update_player_list,
-            despawn_disconnected_clients,
-        ))
+        .add_systems(Startup, setup)
+        .add_systems(
+            Update,
+            (
+                init_clients,
+                override_display_name,
+                update_player_list,
+                despawn_disconnected_clients,
+            ),
+        )
         .run();
 }
 

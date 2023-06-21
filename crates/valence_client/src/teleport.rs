@@ -4,15 +4,14 @@ use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 
 use super::*;
-use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
+use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 
 pub(super) fn build(app: &mut App) {
-    app.add_system(teleport.after(update_view).in_set(UpdateClientsSet))
-        .add_system(
-            handle_teleport_confirmations
-                .in_schedule(EventLoopSchedule)
-                .in_base_set(EventLoopSet::PreUpdate),
-        );
+    app.add_systems(
+        PostUpdate,
+        teleport.after(update_view).in_set(UpdateClientsSet),
+    )
+    .add_systems(EventLoopPreUpdate, handle_teleport_confirmations);
 }
 
 #[derive(Component, Debug)]

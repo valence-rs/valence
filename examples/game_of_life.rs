@@ -25,15 +25,18 @@ pub fn main() {
 
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_startup_system(setup)
-        .add_system(init_clients)
-        .add_systems((
-            despawn_disconnected_clients,
-            toggle_cell_on_dig,
-            update_board,
-            pause_on_crouch,
-            reset_oob_clients,
-        ))
+        .add_systems(Startup, setup)
+        .add_systems(
+            Update,
+            (
+                init_clients,
+                despawn_disconnected_clients,
+                toggle_cell_on_dig,
+                update_board,
+                pause_on_crouch,
+                reset_oob_clients,
+            ),
+        )
         .run();
 }
 

@@ -126,14 +126,10 @@ fn build_plugin(app: &mut App) -> anyhow::Result<()> {
 
     // Start accepting connections in `PostStartup` to allow user startup code to
     // run first.
-    app.add_system(
-        start_accept_loop
-            .in_schedule(CoreSchedule::Startup)
-            .in_base_set(StartupSet::PostStartup),
-    );
+    app.add_systems(PostStartup, start_accept_loop);
 
     // Spawn new clients before the event loop starts.
-    app.add_system(spawn_new_clients.in_set(SpawnClientsSet));
+    app.add_systems(PreUpdate, spawn_new_clients.in_set(SpawnClientsSet));
 
     Ok(())
 }

@@ -21,11 +21,16 @@ pub fn main() {
 
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_startup_system(setup)
-        .add_system(init_clients)
-        .add_system(handle_combat_events.in_schedule(EventLoopSchedule))
-        .add_system(despawn_disconnected_clients)
-        .add_system(teleport_oob_clients)
+        .add_systems(Startup, setup)
+        .add_systems(EventLoopUpdate, handle_combat_events)
+        .add_systems(
+            Update,
+            (
+                init_clients,
+                despawn_disconnected_clients,
+                teleport_oob_clients,
+            ),
+        )
         .run();
 }
 
