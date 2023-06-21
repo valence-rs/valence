@@ -30,17 +30,15 @@ pub(super) fn derive_packet(item: TokenStream) -> Result<TokenStream> {
 
     let side = if let Some(side_attr) = packet_attr.side {
         side_attr
+    } else if name_str.to_lowercase().contains("s2c") {
+        parse_quote!(PacketSide::Clientbound)
+    } else if name_str.to_lowercase().contains("c2s") {
+        parse_quote!(PacketSide::Serverbound)
     } else {
-        if name_str.to_lowercase().contains("s2c") {
-            parse_quote!(PacketSide::Clientbound)
-        } else if name_str.to_lowercase().contains("c2s") {
-            parse_quote!(PacketSide::Serverbound)
-        } else {
-            return Err(Error::new(
-                input.span(),
-                "missing `side = PacketSide::...` value from packet attribute",
-            ));
-        }
+        return Err(Error::new(
+            input.span(),
+            "missing `side = PacketSide::...` value from packet attribute",
+        ));
     };
 
     let state = packet_attr
