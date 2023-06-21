@@ -83,8 +83,6 @@ fn build_plugin(app: &mut App) -> anyhow::Result<()> {
         None => settings.tokio_handle.clone().unwrap(),
     };
 
-    let motd = settings.lan_broadcast_motd.clone();
-
     let shared = SharedNetworkState(Arc::new(SharedNetworkStateInner {
         callbacks: settings.callbacks.clone(),
         address: settings.address,
@@ -116,6 +114,12 @@ fn build_plugin(app: &mut App) -> anyhow::Result<()> {
         tokio::spawn(do_accept_loop(shared.clone()));
     };
 
+    let start_broadcast_to_lan_loop = move |shared: Res<SharedNetworkState>| {
+        let _guard = shared.0.tokio_handle.enter();
+
+        tokio::spawn(do_broadcast_to_lan_loop(shared.clone()));
+    };
+
     // System for spawning new clients.
     let spawn_new_clients = move |world: &mut World| {
         for _ in 0..shared.0.new_clients_recv.len() {
@@ -126,24 +130,17 @@ fn build_plugin(app: &mut App) -> anyhow::Result<()> {
         }
     };
 
-    if let Some(motd) = motd {
-        // System for starting the broadcast to lan loop.
-        let start_broadcast_to_lan_loop = move |shared: Res<SharedNetworkState>| {
-            let _guard = shared.0.tokio_handle.enter();
-
-            tokio::spawn(do_broadcast_to_lan_loop(shared.clone(), motd.clone()));
-        };
-
-        app.add_system(
-            start_broadcast_to_lan_loop
-                .in_schedule(CoreSchedule::Startup)
-                .in_base_set(StartupSet::PostStartup),
-        );
-    }
     // Start accepting connections in `PostStartup` to allow user startup code to
     // run first.
     app.add_system(
         start_accept_loop
+            .in_schedule(CoreSchedule::Startup)
+            .in_base_set(StartupSet::PostStartup),
+    );
+
+    // Start the loop that will broadcast messages for the LAN discovery list.
+    app.add_system(
+        start_broadcast_to_lan_loop
             .in_schedule(CoreSchedule::Startup)
             .in_base_set(StartupSet::PostStartup),
     );
@@ -170,6 +167,7 @@ impl SharedNetworkState {
         self.0.max_players
     }
 }
+
 struct SharedNetworkStateInner {
     callbacks: ErasedNetworkCallbacks,
     address: SocketAddr,
@@ -278,15 +276,6 @@ pub struct NetworkSettings {
     ///
     /// The default value is left unspecified and may change in future versions.
     pub outgoing_byte_limit: usize,
-
-    /// The message of the day that will be sent to LAN clients.
-    ///
-    /// If `None`, the server will not send broadcast for LAN discovery.
-    ///
-    /// # Default Value
-    ///
-    /// The default value is left unspecified and may change in future versions.
-    pub lan_broadcast_motd: Option<String>,
 }
 
 impl Default for NetworkSettings {
@@ -302,7 +291,6 @@ impl Default for NetworkSettings {
             },
             incoming_byte_limit: 2097152, // 2 MiB
             outgoing_byte_limit: 8388608, // 8 MiB
-            lan_broadcast_motd: None,
         }
     }
 }
@@ -362,6 +350,12 @@ pub trait NetworkCallbacks: Send + Sync + 'static {
             description: "A Valence Server".into(),
             favicon_png: &[],
         }
+    }
+
+    async fn broadcast_to_lan(&self, shared: &SharedNetworkState) -> BroadcastToLan {
+        #![allow(unused_variables)]
+
+        BroadcastToLan::Disabled
     }
 
     /// Called for each client (after successful authentication if online mode
@@ -568,6 +562,16 @@ pub enum ServerListPing<'a> {
     Ignore,
 }
 
+/// The result of the Broadcast To Lan [callback].
+#[derive(Clone, Default, Debug)]
+pub enum BroadcastToLan<'a> {
+    /// Disabled Broadcast To Lan.
+    #[default]
+    Disabled,
+    /// Send packet to broadcast to LAN every 1.5 seconds with specified MOTD.
+    Enabled(&'a str),
+}
+
 /// Represents an individual entry in the player sample.
 #[derive(Clone, Debug, Serialize)]
 pub struct PlayerSampleEntry {
@@ -580,35 +584,27 @@ pub struct PlayerSampleEntry {
     pub id: Uuid,
 }
 
-async fn do_broadcast_to_lan_loop(shared: SharedNetworkState, motd: String) {
+async fn do_broadcast_to_lan_loop(shared: SharedNetworkState) {
+    let port = shared.0.address.port();
+
+    // connect to server_addr on Udp to send a text packet
+    // if this ever fails, you have bigger problems to worry about, since we're
+    // asing the OS for a port
+    let socket = tokio::net::UdpSocket::bind("0.0.0.0:0").await.unwrap();
+
     loop {
-        let port = shared.0.address.port();
-
-        let Ok(local_addr): Result<SocketAddr, _> = "0.0.0.0:0".parse() else {
-            return;
-        };
-
-        // This weird IP is intentional. It's the multicast address for LAN games.
-        let Ok(server_addr): Result<SocketAddr, _> = "224.0.2.60:4445".parse() else {
-            return;
-        };
-
-        // connect to server_addr on Udp to send a text packet
-        let socket = match std::net::UdpSocket::bind(local_addr) {
-            Ok(s) => s,
-            Err(e) => {
-                println!("couldn't bind socket: {}", e);
-                return;
+        let motd = match shared.0.callbacks.inner.broadcast_to_lan(&shared).await {
+            BroadcastToLan::Disabled => {
+                tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+                continue;
             }
+            BroadcastToLan::Enabled(motd) => motd,
         };
-
-        if socket.connect(server_addr).is_err() {
-            return;
-        }
 
         let message = format!("[MOTD]{motd}[/MOTD][AD]{port}[/AD]");
-        if socket.send(message.as_bytes()).is_err() {
-            return;
+
+        if let Err(e) = socket.send_to(message.as_bytes(), "224.0.2.60:4445").await {
+            tracing::warn!("Failed to send broadcast to LAN packet: {}", e);
         }
 
         // wait 1.5 seconds
