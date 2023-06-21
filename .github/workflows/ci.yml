@@ -38,7 +38,7 @@ jobs:
         run: cp tools/playground/src/playground.template.rs tools/playground/src/playground.rs
 
       - name: cargo fmt
-        run: cargo +nightly fmt --all -- --check
+        run: cargo fmt --all -- --check
 
   valence-clippy:
     strategy:
