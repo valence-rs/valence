@@ -555,6 +555,8 @@ pub enum ServerListPing<'a> {
 }
 
 /// The result of the Broadcast To Lan [callback].
+///
+/// [callback]: NetworkCallbacks::broadcast_to_lan
 #[derive(Clone, Default, Debug)]
 pub enum BroadcastToLan<'a> {
     /// Disabled Broadcast To Lan.
