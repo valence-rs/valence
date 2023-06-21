@@ -135,11 +135,7 @@ fn build_plugin(app: &mut App) -> anyhow::Result<()> {
     app.add_systems(PostStartup, start_accept_loop);
 
     // Start the loop that will broadcast messages for the LAN discovery list.
-    app.add_system(
-        start_broadcast_to_lan_loop
-            .in_schedule(CoreSchedule::Startup)
-            .in_base_set(StartupSet::PostStartup),
-    );
+    app.add_systems(PostStartup, start_broadcast_to_lan_loop);
 
     // Spawn new clients before the event loop starts.
     app.add_systems(PreUpdate, spawn_new_clients.in_set(SpawnClientsSet));
