@@ -11,9 +11,16 @@ pub fn main() {
 
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_startup_system(setup)
-        .add_systems((init_clients, squat_and_die, necromancy))
-        .add_system(despawn_disconnected_clients)
+        .add_systems(Startup, setup)
+        .add_systems(
+            Update,
+            (
+                init_clients,
+                squat_and_die,
+                necromancy,
+                despawn_disconnected_clients,
+            ),
+        )
         .run();
 }
 

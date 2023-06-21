@@ -26,17 +26,18 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .init_resource::<ClientSave>()
-        .add_startup_system(setup)
-        .add_systems((
-            load_clients,
-            apply_system_buffers
-                .after(load_clients)
-                .before(init_advancements),
-            init_clients,
-            init_advancements,
-            sneak,
-            tab_change,
-        ))
+        .add_systems(Startup, setup)
+        .add_systems(
+            Update,
+            (
+                load_clients,
+                apply_deferred.after(load_clients).before(init_advancements),
+                init_clients,
+                init_advancements,
+                sneak,
+                tab_change,
+            ),
+        )
         .run();
 }
 
@@ -251,7 +252,7 @@ fn sneak(
 }
 
 fn tab_change(
-    mut tab_change: EventReader<AdvancementTabChange>,
+    mut tab_change: EventReader<AdvancementTabChangeEvent>,
     mut client: Query<(&mut AdvancementClientUpdate, &mut TabChangeCount)>,
     root2_criteria: Query<Entity, With<Root2Criteria>>,
     root: Query<Entity, With<RootAdvancement>>,

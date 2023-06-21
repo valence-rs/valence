@@ -5,21 +5,17 @@ use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 use valence_entity::entity::Flags;
 use valence_entity::{entity, Pose};
 
-use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
+use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 
 pub(super) fn build(app: &mut App) {
     app.add_event::<SprintEvent>()
         .add_event::<SneakEvent>()
         .add_event::<JumpWithHorseEvent>()
         .add_event::<LeaveBedEvent>()
-        .add_system(
-            handle_client_command
-                .in_schedule(EventLoopSchedule)
-                .in_base_set(EventLoopSet::PreUpdate),
-        );
+        .add_systems(EventLoopPreUpdate, handle_client_command);
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Event, Copy, Clone, PartialEq, Eq, Debug)]
 pub struct SprintEvent {
     pub client: Entity,
     pub state: SprintState,
@@ -31,7 +27,7 @@ pub enum SprintState {
     Stop,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Event, Copy, Clone, PartialEq, Eq, Debug)]
 pub struct SneakEvent {
     pub client: Entity,
     pub state: SneakState,
@@ -43,7 +39,7 @@ pub enum SneakState {
     Stop,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Event, Copy, Clone, PartialEq, Eq, Debug)]
 pub struct JumpWithHorseEvent {
     pub client: Entity,
     pub state: JumpWithHorseState,
@@ -58,7 +54,7 @@ pub enum JumpWithHorseState {
     Stop,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Event, Copy, Clone, PartialEq, Eq, Debug)]
 pub struct LeaveBedEvent {
     pub client: Entity,
 }

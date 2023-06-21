@@ -17,9 +17,8 @@ use valence_entity::{entity, Pose};
 pub fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_startup_system(setup)
-        .add_system(init_clients)
-        .add_systems((spawn_entity, intersections))
+        .add_systems(Startup, setup)
+        .add_systems(Update, (init_clients, spawn_entity, intersections))
         .run();
 }
 

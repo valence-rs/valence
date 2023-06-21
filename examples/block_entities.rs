@@ -14,8 +14,11 @@ pub fn main() {
 
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_startup_system(setup)
-        .add_systems((event_handler, init_clients, despawn_disconnected_clients))
+        .add_systems(Startup, setup)
+        .add_systems(
+            Update,
+            (event_handler, init_clients, despawn_disconnected_clients),
+        )
         .run();
 }
 

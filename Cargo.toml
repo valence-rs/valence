@@ -78,6 +78,7 @@ opt-level = 1
 
 [workspace]
 members = ["crates/*", "tools/*"]
+exclude = ["tools/dump_schedule"]
 resolver = "2"
 
 [workspace.package]
@@ -95,11 +96,10 @@ arrayvec = "0.7.2"
 async-trait = "0.1.60"
 atty = "0.2.14"
 base64 = "0.21.0"
-bevy_app = { version = "0.10.1", default-features = false }
-bevy_ecs = { version = "0.10.1", default-features = false, features = [
-    "trace",
-] }
-bevy_hierarchy = { version = "0.10.1", default-features = false }
+bevy_app = { git = "https://github.com/bevyengine/bevy", rev = "910f984709fb58cddbb7393c948634a2540e8d72", default-features = false }
+bevy_ecs = { git = "https://github.com/bevyengine/bevy", rev = "910f984709fb58cddbb7393c948634a2540e8d72", default-features = false }
+bevy_hierarchy = { git = "https://github.com/bevyengine/bevy", rev = "910f984709fb58cddbb7393c948634a2540e8d72", default-features = false }
+bevy_utils = { git = "https://github.com/bevyengine/bevy", rev = "910f984709fb58cddbb7393c948634a2540e8d72" }
 bevy_mod_debugdump = "0.7.0"
 bitfield-struct = "0.3.1"
 byteorder = "1.4.3"

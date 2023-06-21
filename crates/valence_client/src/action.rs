@@ -4,20 +4,19 @@ use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 
 use super::*;
-use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
+use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 use crate::packet::{PlayerAction, PlayerActionC2s};
 
 pub(super) fn build(app: &mut App) {
     app.add_event::<DiggingEvent>()
-        .add_system(
-            handle_player_action
-                .in_schedule(EventLoopSchedule)
-                .in_base_set(EventLoopSet::PreUpdate),
-        )
-        .add_system(acknowledge_player_actions.in_set(UpdateClientsSet));
+        .add_systems(EventLoopPreUpdate, handle_player_action)
+        .add_systems(
+            PostUpdate,
+            acknowledge_player_actions.in_set(UpdateClientsSet),
+        );
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Event, Copy, Clone, Debug)]
 pub struct DiggingEvent {
     pub client: Entity,
     pub position: BlockPos,

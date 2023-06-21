@@ -12,15 +12,18 @@ pub fn main() {
 
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_startup_system(setup)
-        .add_system(init_clients)
-        .add_system(despawn_disconnected_clients)
-        .add_systems((
-            toggle_gamemode_on_sneak,
-            digging_creative_mode,
-            digging_survival_mode,
-            place_blocks,
-        ))
+        .add_systems(Startup, setup)
+        .add_systems(
+            Update,
+            (
+                init_clients,
+                despawn_disconnected_clients,
+                toggle_gamemode_on_sneak,
+                digging_creative_mode,
+                digging_survival_mode,
+                place_blocks,
+            ),
+        )
         .run();
 }
 

@@ -2,23 +2,20 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 
-use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
+use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 
 pub(super) fn build(app: &mut App) {
     app.add_event::<RequestRespawnEvent>()
         .add_event::<RequestStatsEvent>()
-        .add_system(
-            handle_status
-                .in_schedule(EventLoopSchedule)
-                .in_base_set(EventLoopSet::PreUpdate),
-        );
+        .add_systems(EventLoopPreUpdate, handle_status);
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Event, Copy, Clone, PartialEq, Eq, Debug)]
 pub struct RequestRespawnEvent {
     pub client: Entity,
 }
 
+#[derive(Event, Copy, Clone, PartialEq, Eq, Debug)]
 pub struct RequestStatsEvent {
     pub client: Entity,
 }

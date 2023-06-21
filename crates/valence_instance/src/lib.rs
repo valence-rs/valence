@@ -66,41 +66,48 @@ pub struct InstancePlugin;
 /// When Minecraft entity changes are written to the packet buffers of chunks.
 /// Systems that modify entites should run _before_ this. Systems that read from
 /// the packet buffer of chunks should run _after_ this.
+///
+/// This set lives in [`PostUpdate`].
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct WriteUpdatePacketsToInstancesSet;
 
 /// When instances are updated and changes from the current tick are cleared.
 /// Systems that read changes from instances should run _before_ this.
+///
+/// This set lives in [`PostUpdate`].
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ClearInstanceChangesSet;
 
 impl Plugin for InstancePlugin {
     fn build(&self, app: &mut App) {
-        app.configure_sets((
-            WriteUpdatePacketsToInstancesSet
-                .in_base_set(CoreSet::PostUpdate)
-                .after(InitEntitiesSet)
-                .after(UpdateTrackedDataSet),
-            ClearInstanceChangesSet
-                .after(WriteUpdatePacketsToInstancesSet)
-                .in_base_set(CoreSet::PostUpdate),
-        ))
-        .add_system(
+        app.configure_sets(
+            PostUpdate,
+            (
+                WriteUpdatePacketsToInstancesSet
+                    .after(InitEntitiesSet)
+                    .after(UpdateTrackedDataSet),
+                ClearInstanceChangesSet.after(WriteUpdatePacketsToInstancesSet),
+            ),
+        )
+        .add_systems(
+            PostUpdate,
             // This can run at the same time as entity init because we're only looking at position
             // + location.
-            update_entity_cell_positions
-                .in_base_set(CoreSet::PostUpdate)
-                .before(WriteUpdatePacketsToInstancesSet),
+            update_entity_cell_positions.before(WriteUpdatePacketsToInstancesSet),
         )
-        .add_system(
+        .add_systems(
+            PostUpdate,
             write_update_packets_to_instances
                 .after(update_entity_cell_positions)
                 .in_set(WriteUpdatePacketsToInstancesSet),
         )
-        .add_system(clear_instance_changes.in_set(ClearInstanceChangesSet));
+        .add_systems(
+            PostUpdate,
+            clear_instance_changes.in_set(ClearInstanceChangesSet),
+        );
 
         #[cfg(debug_assertions)]
-        app.add_system(check_instance_invariants.in_base_set(CoreSet::PostUpdate));
+        app.add_systems(PostUpdate, check_instance_invariants);
     }
 }
 

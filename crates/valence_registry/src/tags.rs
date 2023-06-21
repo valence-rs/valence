@@ -13,8 +13,8 @@ use crate::RegistrySet;
 
 pub(super) fn build(app: &mut App) {
     app.init_resource::<TagsRegistry>()
-        .add_startup_system(init_tags_registry)
-        .add_system(cache_tags_packet.in_set(RegistrySet));
+        .add_systems(PreStartup, init_tags_registry)
+        .add_systems(PostUpdate, cache_tags_packet.in_set(RegistrySet));
 }
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]

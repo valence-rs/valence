@@ -35,10 +35,15 @@ pub fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .insert_resource(cli)
-        .add_startup_system(setup)
-        .add_system(despawn_disconnected_clients)
-        .add_systems((init_clients, handle_chunk_loads).chain())
-        .add_system(display_loaded_chunk_count)
+        .add_systems(Startup, setup)
+        .add_systems(
+            Update,
+            (
+                despawn_disconnected_clients,
+                (init_clients, handle_chunk_loads).chain(),
+                display_loaded_chunk_count,
+            ),
+        )
         .run();
 }
 

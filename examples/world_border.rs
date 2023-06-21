@@ -15,12 +15,17 @@ fn main() {
 
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_startup_system(setup)
-        .add_system(init_clients)
-        .add_system(despawn_disconnected_clients)
-        .add_system(border_center_avg)
-        .add_system(border_expand)
-        .add_system(border_controls)
+        .add_systems(Startup, setup)
+        .add_systems(
+            Update,
+            (
+                init_clients,
+                despawn_disconnected_clients,
+                border_center_avg,
+                border_expand,
+                border_controls,
+            ),
+        )
         .run();
 }
 
