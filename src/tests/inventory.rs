@@ -6,7 +6,7 @@ use valence_inventory::packet::{
     OpenScreenS2c, ScreenHandlerSlotUpdateS2c, SlotChange, UpdateSelectedSlotC2s,
 };
 use valence_inventory::{
-    convert_to_player_slot_id, ClientInventoryState, CursorItem, DropItemStack, HeldItem,
+    convert_to_player_slot_id, ClientInventoryState, CursorItem, DropItemStackEvent, HeldItem,
     Inventory, InventoryKind, OpenInventory,
 };
 
@@ -559,7 +559,7 @@ mod dropping_items {
 
         let events = app
             .world
-            .get_resource::<Events<DropItemStack>>()
+            .get_resource::<Events<DropItemStackEvent>>()
             .expect("expected drop item stack events");
 
         let events = events.iter_current_update_events().collect::<Vec<_>>();
@@ -614,7 +614,7 @@ mod dropping_items {
         assert_eq!(inventory.slot(36), None);
         let events = app
             .world
-            .get_resource::<Events<DropItemStack>>()
+            .get_resource::<Events<DropItemStackEvent>>()
             .expect("expected drop item stack events");
         let events = events.iter_current_update_events().collect::<Vec<_>>();
         assert_eq!(events.len(), 1);
@@ -647,7 +647,7 @@ mod dropping_items {
         // Make assertions
         let events = app
             .world
-            .get_resource::<Events<DropItemStack>>()
+            .get_resource::<Events<DropItemStackEvent>>()
             .expect("expected drop item stack events")
             .iter_current_update_events()
             .collect::<Vec<_>>();
@@ -703,7 +703,7 @@ mod dropping_items {
 
         let events = app
             .world
-            .get_resource::<Events<DropItemStack>>()
+            .get_resource::<Events<DropItemStackEvent>>()
             .expect("expected drop item stack events");
 
         let events = events.iter_current_update_events().collect::<Vec<_>>();
@@ -758,7 +758,7 @@ mod dropping_items {
         // Make assertions
         let events = app
             .world
-            .get_resource::<Events<DropItemStack>>()
+            .get_resource::<Events<DropItemStackEvent>>()
             .expect("expected drop item stack events");
 
         let events = events.iter_current_update_events().collect::<Vec<_>>();
@@ -813,7 +813,7 @@ mod dropping_items {
         // Make assertions
         let events = app
             .world
-            .get_resource::<Events<DropItemStack>>()
+            .get_resource::<Events<DropItemStackEvent>>()
             .expect("expected drop item stack events");
 
         let events = events.iter_current_update_events().collect::<Vec<_>>();
@@ -880,7 +880,7 @@ mod dropping_items {
         // Make assertions
         let events = app
             .world
-            .get_resource::<Events<DropItemStack>>()
+            .get_resource::<Events<DropItemStackEvent>>()
             .expect("expected drop item stack events");
 
         let player_inventory = app
@@ -963,7 +963,7 @@ fn should_drop_item_stack_player_open_inventory_with_dropkey() {
     // Make assertions
     let events = app
         .world
-        .get_resource::<Events<DropItemStack>>()
+        .get_resource::<Events<DropItemStackEvent>>()
         .expect("expected drop item stack events");
 
     let player_inventory = app

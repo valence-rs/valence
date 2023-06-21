@@ -43,17 +43,20 @@ pub fn main() {
 
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_startup_system(setup)
+        .add_systems(Startup, setup)
         .add_systems(
+            Update,
             (
-                init_clients,
-                remove_unviewed_chunks,
-                update_client_views,
-                send_recv_chunks,
-            )
-                .chain(),
+                (
+                    init_clients,
+                    remove_unviewed_chunks,
+                    update_client_views,
+                    send_recv_chunks,
+                )
+                    .chain(),
+                despawn_disconnected_clients,
+            ),
         )
-        .add_system(despawn_disconnected_clients)
         .run();
 }
 

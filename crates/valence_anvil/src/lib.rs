@@ -277,11 +277,11 @@ impl Plugin for AnvilPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<ChunkLoadEvent>()
             .add_event::<ChunkUnloadEvent>()
-            .add_system(remove_unviewed_chunks.in_base_set(CoreSet::PreUpdate))
+            .add_systems(PreUpdate, remove_unviewed_chunks)
             .add_systems(
+                PostUpdate,
                 (init_anvil, update_client_views, send_recv_chunks)
                     .chain()
-                    .in_base_set(CoreSet::PostUpdate)
                     .before(UpdateClientsSet),
             );
     }
@@ -433,7 +433,7 @@ fn anvil_worker(mut state: ChunkWorkerState) {
 }
 
 /// An event sent by `valence_anvil` after an attempt to load a chunk is made.
-#[derive(Debug)]
+#[derive(Event, Debug)]
 pub struct ChunkLoadEvent {
     /// The [`Instance`] where the chunk is located.
     pub instance: Entity,
@@ -460,7 +460,7 @@ pub enum ChunkLoadStatus {
 }
 
 /// An event sent by `valence_anvil` when a chunk is unloaded from an instance.
-#[derive(Debug)]
+#[derive(Event, Debug)]
 pub struct ChunkUnloadEvent {
     /// The [`Instance`] where the chunk was unloaded.
     pub instance: Entity,

@@ -93,18 +93,16 @@ pub mod weather;
 
 pub struct ClientPlugin;
 
-/// When clients have their packet buffer flushed. Any system that writes
-/// packets to clients should happen _before_ this. Otherwise, the data
-/// will arrive one tick late.
+/// The [`SystemSet`] in [`PostUpdate`] where clients have their packet buffer
+/// flushed. Any system that writes packets to clients should happen _before_
+/// this. Otherwise, the data will arrive one tick late.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct FlushPacketsSet;
 
-/// The [`SystemSet`] in [`CoreSet::PreUpdate`] where new clients should be
+/// The [`SystemSet`] in [`PreUpdate`] where new clients should be
 /// spawned. Systems that need to perform initialization work on clients before
-/// users get access to it should run _after_ this set in
-/// [`CoreSet::PreUpdate`].
+/// users get access to it should run _after_ this set.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
-
 pub struct SpawnClientsSet;
 
 /// The system set where various facets of the client are updated. Systems that
@@ -115,6 +113,7 @@ pub struct UpdateClientsSet;
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
+            PostUpdate,
             (
                 initial_join.after(RegistrySet),
                 update_chunk_load_dist,
@@ -132,16 +131,17 @@ impl Plugin for ClientPlugin {
             )
                 .in_set(UpdateClientsSet),
         )
-        .configure_sets((
-            SpawnClientsSet.in_base_set(CoreSet::PreUpdate),
-            UpdateClientsSet
-                .in_base_set(CoreSet::PostUpdate)
-                .before(FlushPacketsSet),
-            ClearEntityChangesSet.after(UpdateClientsSet),
-            FlushPacketsSet.in_base_set(CoreSet::PostUpdate),
-            ClearInstanceChangesSet.after(FlushPacketsSet),
-        ))
-        .add_system(flush_packets.in_set(FlushPacketsSet));
+        .add_systems(PostUpdate, flush_packets.in_set(FlushPacketsSet))
+        .configure_set(PreUpdate, SpawnClientsSet)
+        .configure_sets(
+            PostUpdate,
+            (
+                UpdateClientsSet.before(FlushPacketsSet),
+                ClearEntityChangesSet.after(UpdateClientsSet),
+                FlushPacketsSet,
+                ClearInstanceChangesSet.after(FlushPacketsSet),
+            ),
+        );
 
         event_loop::build(app);
         movement::build(app);
@@ -425,7 +425,7 @@ pub struct DisconnectClient {
 }
 
 impl Command for DisconnectClient {
-    fn write(self, world: &mut World) {
+    fn apply(self, world: &mut World) {
         if let Some(mut entity) = world.get_entity_mut(self.client) {
             if let Some(mut client) = entity.get_mut::<Client>() {
                 client.write_packet(&DisconnectS2c {

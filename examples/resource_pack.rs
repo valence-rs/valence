@@ -13,9 +13,16 @@ pub fn main() {
 
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_startup_system(setup)
-        .add_systems((init_clients, prompt_on_punch, on_resource_pack_status))
-        .add_system(despawn_disconnected_clients)
+        .add_systems(Startup, setup)
+        .add_systems(
+            Update,
+            (
+                init_clients,
+                prompt_on_punch,
+                on_resource_pack_status,
+                despawn_disconnected_clients,
+            ),
+        )
         .run();
 }
 

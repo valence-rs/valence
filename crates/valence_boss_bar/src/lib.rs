@@ -20,12 +20,8 @@
 
 use std::borrow::Cow;
 
-use bevy_app::CoreSet::PostUpdate;
-use bevy_app::Plugin;
-use bevy_ecs::prelude::Entity;
-use bevy_ecs::query::{Added, Changed, With};
-use bevy_ecs::schedule::{IntoSystemConfig, IntoSystemConfigs};
-use bevy_ecs::system::Query;
+use bevy_app::prelude::*;
+use bevy_ecs::prelude::*;
 use packet::{BossBarAction, BossBarS2c};
 use valence_client::{Client, FlushPacketsSet};
 use valence_core::despawn::Despawned;
@@ -42,6 +38,7 @@ pub struct BossBarPlugin;
 impl Plugin for BossBarPlugin {
     fn build(&self, app: &mut bevy_app::App) {
         app.add_systems(
+            PostUpdate,
             (
                 boss_bar_title_update,
                 boss_bar_health_update,
@@ -51,8 +48,7 @@ impl Plugin for BossBarPlugin {
                 boss_bar_despawn,
                 client_disconnection.before(boss_bar_viewers_update),
             )
-                .before(FlushPacketsSet)
-                .in_base_set(PostUpdate),
+                .before(FlushPacketsSet),
         );
     }
 }

@@ -67,7 +67,7 @@ pub mod prelude {
     pub use ident::Ident;
     #[cfg(feature = "advancement")]
     pub use valence_advancement::{
-        event::AdvancementTabChange, Advancement, AdvancementBundle, AdvancementClientUpdate,
+        event::AdvancementTabChangeEvent, Advancement, AdvancementBundle, AdvancementClientUpdate,
         AdvancementCriteria, AdvancementDisplay, AdvancementFrameType, AdvancementRequirements,
     };
     pub use valence_biome::{Biome, BiomeId, BiomeRegistry};
@@ -77,7 +77,9 @@ pub mod prelude {
         ClientCommand, JumpWithHorseEvent, JumpWithHorseState, LeaveBedEvent, SneakEvent,
         SneakState, SprintEvent, SprintState,
     };
-    pub use valence_client::event_loop::{EventLoopSchedule, EventLoopSet};
+    pub use valence_client::event_loop::{
+        EventLoopPostUpdate, EventLoopPreUpdate, EventLoopUpdate,
+    };
     pub use valence_client::interact_entity::{EntityInteraction, InteractEntityEvent};
     pub use valence_client::title::SetTitle as _;
     pub use valence_client::{

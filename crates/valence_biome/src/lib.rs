@@ -34,12 +34,8 @@ pub struct BiomePlugin;
 impl Plugin for BiomePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<BiomeRegistry>()
-            .add_startup_system(load_default_biomes.in_base_set(CoreSet::PreUpdate))
-            .add_system(
-                update_biome_registry
-                    .in_base_set(CoreSet::PostUpdate)
-                    .before(RegistrySet),
-            );
+            .add_systems(PreStartup, load_default_biomes)
+            .add_systems(PostUpdate, update_biome_registry.before(RegistrySet));
     }
 }
 

@@ -5,17 +5,14 @@ use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 
 use crate::action::ActionSequence;
-use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
+use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 
 pub(super) fn build(app: &mut App) {
-    app.add_event::<InteractItemEvent>().add_system(
-        handle_player_interact_item
-            .in_schedule(EventLoopSchedule)
-            .in_base_set(EventLoopSet::PreUpdate),
-    );
+    app.add_event::<InteractItemEvent>()
+        .add_systems(EventLoopPreUpdate, handle_player_interact_item);
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Event, Copy, Clone, Debug)]
 pub struct InteractItemEvent {
     pub client: Entity,
     pub hand: Hand,

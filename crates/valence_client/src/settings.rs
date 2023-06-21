@@ -4,15 +4,11 @@ use bitfield_struct::bitfield;
 use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 use valence_entity::player::{self, PlayerModelParts};
 
-use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
+use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 use crate::ViewDistance;
 
 pub(super) fn build(app: &mut App) {
-    app.add_system(
-        handle_client_settings
-            .in_schedule(EventLoopSchedule)
-            .in_base_set(EventLoopSet::PreUpdate),
-    );
+    app.add_systems(EventLoopPreUpdate, handle_client_settings);
 }
 
 /// Component containing client-controlled settings about a client.

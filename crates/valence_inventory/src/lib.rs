@@ -31,7 +31,7 @@ use packet::{
     WindowType,
 };
 use tracing::{debug, warn};
-use valence_client::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent, RunEventLoopSet};
+use valence_client::event_loop::{EventLoopPreUpdate, PacketEvent};
 use valence_client::packet::{PlayerAction, PlayerActionC2s};
 use valence_client::{Client, FlushPacketsSet, SpawnClientsSet};
 use valence_core::game_mode::GameMode;
@@ -47,37 +47,34 @@ pub struct InventoryPlugin;
 
 impl Plugin for InventoryPlugin {
     fn build(&self, app: &mut bevy_app::App) {
-        app.add_system(
-            init_new_client_inventories
-                .in_base_set(CoreSet::PreUpdate)
-                .after(SpawnClientsSet)
-                .before(RunEventLoopSet),
+        app.add_systems(
+            PreUpdate,
+            init_new_client_inventories.after(SpawnClientsSet),
         )
         .add_systems(
+            PostUpdate,
             (
                 update_open_inventories,
                 update_client_on_close_inventory.after(update_open_inventories),
                 update_player_inventories,
             )
-                .in_base_set(CoreSet::PostUpdate)
                 .before(FlushPacketsSet),
         )
         .add_systems(
+            EventLoopPreUpdate,
             (
                 handle_update_selected_slot,
                 handle_click_slot,
                 handle_creative_inventory_action,
                 handle_close_handled_screen,
                 handle_player_actions,
-            )
-                .in_base_set(EventLoopSet::PreUpdate)
-                .in_schedule(EventLoopSchedule),
+            ),
         )
         .init_resource::<InventorySettings>()
-        .add_event::<ClickSlot>()
-        .add_event::<DropItemStack>()
-        .add_event::<CreativeInventoryAction>()
-        .add_event::<UpdateSelectedSlot>();
+        .add_event::<ClickSlotEvent>()
+        .add_event::<DropItemStackEvent>()
+        .add_event::<CreativeInventoryActionEvent>()
+        .add_event::<UpdateSelectedSlotEvent>();
     }
 }
 
@@ -745,8 +742,8 @@ fn update_client_on_close_inventory(
 }
 
 // TODO: make this event user friendly.
-#[derive(Clone, Debug)]
-pub struct ClickSlot {
+#[derive(Event, Clone, Debug)]
+pub struct ClickSlotEvent {
     pub client: Entity,
     pub window_id: u8,
     pub state_id: i32,
@@ -757,8 +754,8 @@ pub struct ClickSlot {
     pub carried_item: Option<ItemStack>,
 }
 
-#[derive(Clone, Debug)]
-pub struct DropItemStack {
+#[derive(Event, Clone, Debug)]
+pub struct DropItemStackEvent {
     pub client: Entity,
     pub from_slot: Option<u16>,
     pub stack: ItemStack,
@@ -774,8 +771,8 @@ fn handle_click_slot(
         &mut CursorItem,
     )>,
     mut inventories: Query<&mut Inventory, Without<Client>>,
-    mut drop_item_stack_events: EventWriter<DropItemStack>,
-    mut click_slot_events: EventWriter<ClickSlot>,
+    mut drop_item_stack_events: EventWriter<DropItemStackEvent>,
+    mut click_slot_events: EventWriter<ClickSlotEvent>,
 ) {
     for packet in packets.iter() {
         let Some(pkt) = packet.decode::<ClickSlotC2s>() else {
@@ -829,7 +826,7 @@ fn handle_click_slot(
             // The client is dropping the cursor item by clicking outside the window.
 
             if let Some(stack) = cursor_item.0.take() {
-                drop_item_stack_events.send(DropItemStack {
+                drop_item_stack_events.send(DropItemStackEvent {
                     client: packet.client,
                     from_slot: None,
                     stack,
@@ -885,7 +882,7 @@ fn handle_click_slot(
                         }
                         .expect("dropped item should exist"); // we already checked that the slot was not empty
 
-                        drop_item_stack_events.send(DropItemStack {
+                        drop_item_stack_events.send(DropItemStackEvent {
                             client: packet.client,
                             from_slot: Some(pkt.slot_idx as u16),
                             stack: dropped,
@@ -909,7 +906,7 @@ fn handle_click_slot(
                         }
                         .expect("dropped item should exist"); // we already checked that the slot was not empty
 
-                        drop_item_stack_events.send(DropItemStack {
+                        drop_item_stack_events.send(DropItemStackEvent {
                             client: packet.client,
                             from_slot: Some(slot_id),
                             stack: dropped,
@@ -934,7 +931,7 @@ fn handle_click_slot(
                     }
                     .expect("dropped item should exist"); // we already checked that the slot was not empty
 
-                    drop_item_stack_events.send(DropItemStack {
+                    drop_item_stack_events.send(DropItemStackEvent {
                         client: packet.client,
                         from_slot: Some(pkt.slot_idx as u16),
                         stack: dropped,
@@ -1033,7 +1030,7 @@ fn handle_click_slot(
                 }
             }
 
-            click_slot_events.send(ClickSlot {
+            click_slot_events.send(ClickSlotEvent {
                 client: packet.client,
                 window_id: pkt.window_id,
                 state_id: pkt.state_id.0,
@@ -1050,7 +1047,7 @@ fn handle_click_slot(
 fn handle_player_actions(
     mut packets: EventReader<PacketEvent>,
     mut clients: Query<(&mut Inventory, &mut ClientInventoryState, &HeldItem)>,
-    mut drop_item_stack_events: EventWriter<DropItemStack>,
+    mut drop_item_stack_events: EventWriter<DropItemStackEvent>,
 ) {
     for packet in packets.iter() {
         if let Some(pkt) = packet.decode::<PlayerActionC2s>() {
@@ -1060,7 +1057,7 @@ fn handle_player_actions(
                         if let Some(stack) = inv.replace_slot(held.slot(), None) {
                             inv_state.slots_changed |= 1 << held.slot();
 
-                            drop_item_stack_events.send(DropItemStack {
+                            drop_item_stack_events.send(DropItemStackEvent {
                                 client: packet.client,
                                 from_slot: Some(held.slot()),
                                 stack,
@@ -1082,7 +1079,7 @@ fn handle_player_actions(
 
                             inv_state.slots_changed |= 1 << held.slot();
 
-                            drop_item_stack_events.send(DropItemStack {
+                            drop_item_stack_events.send(DropItemStackEvent {
                                 client: packet.client,
                                 from_slot: Some(held.slot()),
                                 stack,
@@ -1100,8 +1097,8 @@ fn handle_player_actions(
 }
 
 // TODO: make this event user friendly.
-#[derive(Clone, Debug)]
-pub struct CreativeInventoryAction {
+#[derive(Event, Clone, Debug)]
+pub struct CreativeInventoryActionEvent {
     pub client: Entity,
     pub slot: i16,
     pub clicked_item: Option<ItemStack>,
@@ -1115,8 +1112,8 @@ fn handle_creative_inventory_action(
         &mut ClientInventoryState,
         &GameMode,
     )>,
-    mut inv_action_events: EventWriter<CreativeInventoryAction>,
-    mut drop_item_stack_events: EventWriter<DropItemStack>,
+    mut inv_action_events: EventWriter<CreativeInventoryActionEvent>,
+    mut drop_item_stack_events: EventWriter<DropItemStackEvent>,
 ) {
     for packet in packets.iter() {
         if let Some(pkt) = packet.decode::<CreativeInventoryActionC2s>() {
@@ -1131,7 +1128,7 @@ fn handle_creative_inventory_action(
 
             if pkt.slot == -1 {
                 if let Some(stack) = pkt.clicked_item.clone() {
-                    drop_item_stack_events.send(DropItemStack {
+                    drop_item_stack_events.send(DropItemStackEvent {
                         client: packet.client,
                         from_slot: None,
                         stack,
@@ -1161,7 +1158,7 @@ fn handle_creative_inventory_action(
                 slot_data: Cow::Borrowed(&pkt.clicked_item),
             });
 
-            inv_action_events.send(CreativeInventoryAction {
+            inv_action_events.send(CreativeInventoryActionEvent {
                 client: packet.client,
                 slot: pkt.slot,
                 clicked_item: pkt.clicked_item,
@@ -1170,8 +1167,8 @@ fn handle_creative_inventory_action(
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct UpdateSelectedSlot {
+#[derive(Event, Clone, Debug)]
+pub struct UpdateSelectedSlotEvent {
     pub client: Entity,
     pub slot: i16,
 }
@@ -1179,7 +1176,7 @@ pub struct UpdateSelectedSlot {
 fn handle_update_selected_slot(
     mut packets: EventReader<PacketEvent>,
     mut clients: Query<&mut HeldItem>,
-    mut events: EventWriter<UpdateSelectedSlot>,
+    mut events: EventWriter<UpdateSelectedSlotEvent>,
 ) {
     for packet in packets.iter() {
         if let Some(pkt) = packet.decode::<UpdateSelectedSlotC2s>() {
@@ -1190,7 +1187,7 @@ fn handle_update_selected_slot(
                 }
                 held.held_item_slot = convert_hotbar_slot_id(pkt.slot as u16);
 
-                events.send(UpdateSelectedSlot {
+                events.send(UpdateSelectedSlotEvent {
                     client: packet.client,
                     slot: pkt.slot,
                 });

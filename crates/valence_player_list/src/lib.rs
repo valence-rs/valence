@@ -46,24 +46,24 @@ struct PlayerListSet;
 impl Plugin for PlayerListPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(PlayerList::new())
+            .configure_set(
+                PostUpdate,
+                // Needs to happen before player entities are initialized. Otherwise, they will
+                // appear invisible.
+                PlayerListSet.before(WriteUpdatePacketsToInstancesSet),
+            )
             .add_systems(
+                PostUpdate,
                 (
                     update_header_footer,
                     add_new_clients_to_player_list,
-                    apply_system_buffers, // So new clients get the packets for their own entry.
+                    apply_deferred, // So new clients get the packets for their own entry.
                     update_entries,
                     init_player_list_for_clients,
                     remove_despawned_entries,
                     write_player_list_changes,
                 )
-                    .chain()
-                    .in_set(PlayerListSet),
-            )
-            .configure_set(
-                PlayerListSet
-                    .in_base_set(CoreSet::PostUpdate)
-                    // Needs to happen before player entities are initialized. Otherwise, they will appear invisible.
-                    .before(WriteUpdatePacketsToInstancesSet),
+                    .chain(),
             );
     }
 }
