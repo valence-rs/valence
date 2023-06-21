@@ -18,7 +18,7 @@ jobs:
         platform: [ubuntu-latest]
         style: [default]
         rust:
-          - nightly
+          - nightly-2023-06-20
         include:
           - style: default
             flags: ""
@@ -31,7 +31,7 @@ jobs:
       - name: Setup Rust toolchain and cache
         uses: actions-rust-lang/setup-rust-toolchain@v1.4.4
         with:
-          toolchain: "nightly"
+          toolchain: "nightly-2023-06-20"
           components: "rustfmt"
 
       - name: "Copy playground"
