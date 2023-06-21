@@ -31,9 +31,9 @@ pub(super) fn derive_packet(item: TokenStream) -> Result<TokenStream> {
     let side = if let Some(side_attr) = packet_attr.side {
         side_attr
     } else if name_str.to_lowercase().contains("s2c") {
-        parse_quote!(PacketSide::Clientbound)
+        parse_quote!(::valence_core::protocol::PacketSide::Clientbound)
     } else if name_str.to_lowercase().contains("c2s") {
-        parse_quote!(PacketSide::Serverbound)
+        parse_quote!(::valence_core::protocol::PacketSide::Serverbound)
     } else {
         return Err(Error::new(
             input.span(),
@@ -51,8 +51,8 @@ pub(super) fn derive_packet(item: TokenStream) -> Result<TokenStream> {
         {
             const ID: i32 = #packet_id;
             const NAME: &'static str = #name_str;
-            const SIDE: ::valence_core::protocol::PacketSide = ::valence_core::protocol::#side;
-            const STATE: ::valence_core::protocol::PacketState = ::valence_core::protocol::#state;
+            const SIDE: ::valence_core::protocol::PacketSide = #side;
+            const STATE: ::valence_core::protocol::PacketState = #state;
         }
     })
 }
@@ -62,8 +62,8 @@ struct PacketAttr {
     id: Option<Expr>,
     tag: Option<i32>,
     name: Option<LitStr>,
-    side: Option<Path>,
-    state: Option<Path>,
+    side: Option<Expr>,
+    state: Option<Expr>,
 }
 
 fn parse_packet_helper_attr(attrs: &[Attribute]) -> Result<Option<PacketAttr>> {
@@ -89,29 +89,10 @@ fn parse_packet_helper_attr(attrs: &[Attribute]) -> Result<Option<PacketAttr>> {
                     res.name = Some(meta.value()?.parse::<LitStr>()?);
                     Ok(())
                 } else if meta.path.is_ident("side") {
-                    let path = meta.value()?.parse::<Path>()?;
-                    let Some(first) = path.segments.first() else {
-                        return Err(meta.error("side path should have length equals 2"));
-                    };
-
-                    if first.ident != "PacketSide" {
-                        return Err(meta.error("side must starts with `PacketSide`"));
-                    }
-
-                    res.side = Some(path);
-
+                    res.side = Some( meta.value()?.parse::<Expr>()?);
                     Ok(())
                 } else if meta.path.is_ident("state") {
-                    let path = meta.value()?.parse::<Path>()?;
-                    let Some(first) = path.segments.first() else {
-                        return Err(meta.error("state path should have length equals 2"));
-                    };
-
-                    if first.ident != "PacketState" {
-                        return Err(meta.error("state must starts with `PacketState`"));
-                    }
-
-                    res.state = Some(path);
+                    res.state = Some(meta.value()?.parse::<Expr>()?);
                     Ok(())
                 } else {
                     Err(meta.error("unrecognized packet argument"))
