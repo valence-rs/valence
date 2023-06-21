@@ -18,7 +18,7 @@ jobs:
         platform: [ubuntu-latest]
         style: [default]
         rust:
-          - nightly
+          - nightly-2023-06-20
         include:
           - style: default
             flags: ""
@@ -31,14 +31,14 @@ jobs:
       - name: Setup Rust toolchain and cache
         uses: actions-rust-lang/setup-rust-toolchain@v1.4.4
         with:
-          toolchain: "nightly"
+          toolchain: "nightly-2023-06-20"
           components: "rustfmt"
 
       - name: "Copy playground"
         run: cp tools/playground/src/playground.template.rs tools/playground/src/playground.rs
 
       - name: cargo fmt
-        run: cargo +nightly fmt --all -- --check
+        run: cargo fmt --all -- --check
 
   valence-clippy:
     strategy:
