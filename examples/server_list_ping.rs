@@ -3,8 +3,10 @@
 use std::net::SocketAddr;
 
 use rand::Rng;
+use valence::network::{
+    async_trait, BroadcastToLan, CleanupFn, ConnectionMode, PlayerSampleEntry, ServerListPing,
+};
 use valence::prelude::*;
-use valence_network::{async_trait, CleanupFn, ConnectionMode, PlayerSampleEntry, ServerListPing};
 
 pub fn main() {
     tracing_subscriber::fmt().init();
@@ -42,6 +44,10 @@ impl NetworkCallbacks for MyCallbacks {
                 + remote_addr.to_string().color(Color::GOLD),
             favicon_png: include_bytes!("../assets/logo-64x64.png"),
         }
+    }
+
+    async fn broadcast_to_lan(&self, _shared: &SharedNetworkState) -> BroadcastToLan {
+        BroadcastToLan::Enabled("Hello Valence!".into())
     }
 
     async fn login(
