@@ -70,7 +70,7 @@ pub mod packet;
 
 use std::time::{Duration, Instant};
 
-use bevy_app::{App, CoreSet, Plugin};
+use bevy_app::prelude::*;
 use glam::DVec2;
 use packet::*;
 use valence_client::{Client, FlushPacketsSet};
@@ -97,30 +97,31 @@ pub struct WorldBorderPlugin;
 
 impl Plugin for WorldBorderPlugin {
     fn build(&self, app: &mut App) {
-        app.configure_set(
-            UpdateWorldBorderPerInstanceSet
-                .in_base_set(CoreSet::PostUpdate)
-                .before(WriteUpdatePacketsToInstancesSet),
-        )
-        .configure_set(
-            UpdateWorldBorderPerClientSet
-                .in_base_set(CoreSet::PostUpdate)
-                .before(FlushPacketsSet),
+        app.configure_sets(
+            PostUpdate,
+            (
+                UpdateWorldBorderPerInstanceSet.before(WriteUpdatePacketsToInstancesSet),
+                UpdateWorldBorderPerClientSet.before(FlushPacketsSet),
+            ),
         )
         .add_event::<SetWorldBorderSizeEvent>()
         .add_systems(
+            PostUpdate,
             (
-                handle_wb_size_change.before(handle_diameter_change),
-                handle_diameter_change,
-                handle_lerp_transition,
-                handle_center_change,
-                handle_warn_time_change,
-                handle_warn_blocks_change,
-                handle_portal_teleport_bounary_change,
+                wb_size_change.before(diameter_change),
+                diameter_change,
+                lerp_transition,
+                center_change,
+                warn_time_change,
+                warn_blocks_change,
+                portal_teleport_bounary_change,
             )
                 .in_set(UpdateWorldBorderPerInstanceSet),
         )
-        .add_system(handle_border_for_player.in_set(UpdateWorldBorderPerClientSet));
+        .add_systems(
+            PostUpdate,
+            border_for_player.in_set(UpdateWorldBorderPerClientSet),
+        );
     }
 }
 
@@ -232,6 +233,7 @@ impl MovingWorldBorder {
 ///     })
 /// }
 /// ```
+#[derive(Event, Clone, Debug)]
 pub struct SetWorldBorderSizeEvent {
     /// The instance to change border size. Note that this instance must contain
     /// the [`WorldBorderBundle`] bundle
@@ -243,7 +245,7 @@ pub struct SetWorldBorderSizeEvent {
     pub duration: Duration,
 }
 
-fn handle_wb_size_change(
+fn wb_size_change(
     mut events: EventReader<SetWorldBorderSizeEvent>,
     mut instances: Query<(&WorldBorderDiameter, Option<&mut MovingWorldBorder>)>,
 ) {
@@ -266,7 +268,7 @@ fn handle_wb_size_change(
     }
 }
 
-fn handle_border_for_player(
+fn border_for_player(
     mut clients: Query<(&mut Client, &Location), Changed<Location>>,
     wbs: Query<
         (
@@ -302,7 +304,7 @@ fn handle_border_for_player(
     }
 }
 
-fn handle_diameter_change(
+fn diameter_change(
     mut wbs: Query<(&mut Instance, &MovingWorldBorder), Changed<MovingWorldBorder>>,
 ) {
     for (mut ins, lerping) in wbs.iter_mut() {
@@ -320,7 +322,7 @@ fn handle_diameter_change(
     }
 }
 
-fn handle_lerp_transition(mut wbs: Query<(&mut WorldBorderDiameter, &MovingWorldBorder)>) {
+fn lerp_transition(mut wbs: Query<(&mut WorldBorderDiameter, &MovingWorldBorder)>) {
     for (mut diameter, moving_wb) in wbs.iter_mut() {
         if diameter.0 != moving_wb.new_diameter {
             diameter.0 = moving_wb.current_diameter();
@@ -328,9 +330,7 @@ fn handle_lerp_transition(mut wbs: Query<(&mut WorldBorderDiameter, &MovingWorld
     }
 }
 
-fn handle_center_change(
-    mut wbs: Query<(&mut Instance, &WorldBorderCenter), Changed<WorldBorderCenter>>,
-) {
+fn center_change(mut wbs: Query<(&mut Instance, &WorldBorderCenter), Changed<WorldBorderCenter>>) {
     for (mut ins, center) in wbs.iter_mut() {
         ins.write_packet(&WorldBorderCenterChangedS2c {
             x_pos: center.0.x,
@@ -339,7 +339,7 @@ fn handle_center_change(
     }
 }
 
-fn handle_warn_time_change(
+fn warn_time_change(
     mut wb_query: Query<(&mut Instance, &WorldBorderWarnTime), Changed<WorldBorderWarnTime>>,
 ) {
     for (mut ins, wt) in wb_query.iter_mut() {
@@ -349,7 +349,7 @@ fn handle_warn_time_change(
     }
 }
 
-fn handle_warn_blocks_change(
+fn warn_blocks_change(
     mut wb_query: Query<(&mut Instance, &WorldBorderWarnBlocks), Changed<WorldBorderWarnBlocks>>,
 ) {
     for (mut ins, wb) in wb_query.iter_mut() {
@@ -359,7 +359,7 @@ fn handle_warn_blocks_change(
     }
 }
 
-fn handle_portal_teleport_bounary_change(
+fn portal_teleport_bounary_change(
     mut wbs: Query<
         (
             &mut Instance,

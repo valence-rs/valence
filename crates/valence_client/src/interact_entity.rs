@@ -6,17 +6,14 @@ use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 use valence_entity::EntityManager;
 
-use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
+use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 
 pub(super) fn build(app: &mut App) {
-    app.add_event::<InteractEntityEvent>().add_system(
-        handle_interact_entity
-            .in_schedule(EventLoopSchedule)
-            .in_base_set(EventLoopSet::PreUpdate),
-    );
+    app.add_event::<InteractEntityEvent>()
+        .add_systems(EventLoopPreUpdate, handle_interact_entity);
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Event, Copy, Clone, Debug)]
 pub struct InteractEntityEvent {
     pub client: Entity,
     /// The entity being interacted with.

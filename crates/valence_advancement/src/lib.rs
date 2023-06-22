@@ -8,14 +8,12 @@ use std::borrow::Cow;
 use std::io::Write;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use bevy_app::{CoreSet, Plugin};
-use bevy_ecs::prelude::{Bundle, Component, Entity};
-use bevy_ecs::query::{Added, Changed, Or, With};
-use bevy_ecs::schedule::{IntoSystemConfig, IntoSystemSetConfig, SystemSet};
-use bevy_ecs::system::{Commands, Query, SystemParam};
+use bevy_app::prelude::*;
+use bevy_ecs::prelude::*;
+use bevy_ecs::system::SystemParam;
 pub use bevy_hierarchy;
 use bevy_hierarchy::{Children, Parent};
-use event::{handle_advancement_tab_change, AdvancementTabChange};
+use event::{handle_advancement_tab_change, AdvancementTabChangeEvent};
 use packet::SelectAdvancementTabS2c;
 use rustc_hash::FxHashMap;
 use valence_client::{Client, FlushPacketsSet, SpawnClientsSet};
@@ -24,7 +22,7 @@ use valence_core::item::ItemStack;
 use valence_core::protocol::encode::WritePacket;
 use valence_core::protocol::raw::RawBytes;
 use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::{packet_id, Encode, Packet};
+use valence_core::protocol::{packet_id, Encode, Packet, PacketSide, PacketState};
 use valence_core::text::Text;
 
 pub struct AdvancementPlugin;
@@ -37,23 +35,28 @@ pub struct WriteAdvancementToCacheSet;
 
 impl Plugin for AdvancementPlugin {
     fn build(&self, app: &mut bevy_app::App) {
-        app.configure_sets((
-            WriteAdvancementPacketToClientsSet
-                .in_base_set(CoreSet::PostUpdate)
-                .before(FlushPacketsSet),
-            WriteAdvancementToCacheSet
-                .in_base_set(CoreSet::PostUpdate)
-                .before(WriteAdvancementPacketToClientsSet),
-        ))
-        .add_event::<AdvancementTabChange>()
-        .add_system(
-            add_advancement_update_component_to_new_clients
-                .after(SpawnClientsSet)
-                .in_base_set(CoreSet::PreUpdate),
+        app.configure_sets(
+            PostUpdate,
+            (
+                WriteAdvancementPacketToClientsSet.before(FlushPacketsSet),
+                WriteAdvancementToCacheSet.before(WriteAdvancementPacketToClientsSet),
+            ),
         )
-        .add_system(handle_advancement_tab_change.in_base_set(CoreSet::PreUpdate))
-        .add_system(update_advancement_cached_bytes.in_set(WriteAdvancementToCacheSet))
-        .add_system(send_advancement_update_packet.in_set(WriteAdvancementPacketToClientsSet));
+        .add_event::<AdvancementTabChangeEvent>()
+        .add_systems(
+            PreUpdate,
+            (
+                add_advancement_update_component_to_new_clients.after(SpawnClientsSet),
+                handle_advancement_tab_change,
+            ),
+        )
+        .add_systems(
+            PostUpdate,
+            (
+                update_advancement_cached_bytes,
+                send_advancement_update_packet,
+            ),
+        );
     }
 }
 
@@ -265,6 +268,8 @@ impl<'w, 's, 'a> Encode for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
 impl<'w, 's, 'a> Packet for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
     const ID: i32 = packet_id::ADVANCEMENT_UPDATE_S2C;
     const NAME: &'static str = "AdvancementUpdateEncodeS2c";
+    const SIDE: PacketSide = PacketSide::Clientbound;
+    const STATE: PacketState = PacketState::Play;
 }
 
 #[allow(clippy::type_complexity)]

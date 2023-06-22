@@ -6,14 +6,11 @@ use valence_core::protocol::encode::WritePacket;
 use valence_core::protocol::packet::chat::{ChatMessageC2s, GameMessageS2c};
 use valence_core::text::Text;
 
-use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
+use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 
 pub(super) fn build(app: &mut App) {
-    app.add_event::<ChatMessageEvent>().add_system(
-        handle_chat_message
-            .in_schedule(EventLoopSchedule)
-            .in_base_set(EventLoopSet::PreUpdate),
-    );
+    app.add_event::<ChatMessageEvent>()
+        .add_systems(EventLoopPreUpdate, handle_chat_message);
 }
 
 pub trait SendMessage {
@@ -39,7 +36,7 @@ impl<T: WritePacket> SendMessage for T {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Event, Clone, Debug)]
 pub struct ChatMessageEvent {
     pub client: Entity,
     pub message: Box<str>,

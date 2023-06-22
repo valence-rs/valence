@@ -4,7 +4,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.registry.Registries;
-import net.minecraft.sound.SoundEvent;
 import rs.valence.extractor.Main;
 
 public class Sounds implements Main.Extractor {
