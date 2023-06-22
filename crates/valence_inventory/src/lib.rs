@@ -54,8 +54,8 @@ impl Plugin for InventoryPlugin {
         .add_systems(
             PostUpdate,
             (
+                update_client_on_close_inventory.before(update_open_inventories),
                 update_open_inventories,
-                update_client_on_close_inventory.after(update_open_inventories),
                 update_player_inventories,
             )
                 .before(FlushPacketsSet),
