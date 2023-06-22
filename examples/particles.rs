@@ -126,9 +126,7 @@ fn create_particle_vec() -> Vec<Particle> {
         Particle::Firework,
         Particle::Fishing,
         Particle::Flame,
-        Particle::DrippingCherryLeaves,
-        Particle::FallingCherryLeaves,
-        Particle::LandingCherryLeaves,
+        Particle::CherryLeaves,
         Particle::SculkSoul,
         Particle::SculkCharge { roll: 1.0 },
         Particle::SculkChargePop,
@@ -202,5 +200,6 @@ fn create_particle_vec() -> Vec<Particle> {
         Particle::ElectricSpark,
         Particle::Scrape,
         Particle::Shriek { delay: 0 },
+        Particle::EggCrack,
     ]
 }
