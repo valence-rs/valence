@@ -79,7 +79,7 @@ After cloning the repository, run
 cargo r -r --example
 ```
 
-to view the list of examples. I recommend giving `parkour`, `conway`, `terrain`, and `cow_sphere` a try.
+to view the list of examples. I recommend giving `parkour`, `game_of_life`, `terrain`, and `cow_sphere` a try.
 
 Next, open your Minecraft client and connect to the address `localhost`.
 If all goes well you should be playing on the server.
