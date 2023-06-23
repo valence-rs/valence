@@ -59,12 +59,12 @@ pub use {
 /// // ...
 /// ```
 pub mod prelude {
-    pub use ::uuid::Uuid;
     pub use bevy_app::prelude::*;
     pub use bevy_ecs; // Needed for bevy_ecs macros to function correctly.
     pub use bevy_ecs::prelude::*;
     pub use glam::{DVec2, DVec3, Vec2, Vec3};
     pub use ident::Ident;
+    pub use uuid::Uuid;
     #[cfg(feature = "advancement")]
     pub use valence_advancement::{
         event::AdvancementTabChangeEvent, Advancement, AdvancementBundle, AdvancementClientUpdate,

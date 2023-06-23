@@ -1,4 +1,6 @@
-use std::collections::hash_map::{Entry, OccupiedEntry};
+use std::collections::hash_map::{Entry, OccupiedEntry, VacantEntry};
+
+use crate::chunk::UnloadedChunk;
 
 use super::*;
 
@@ -9,29 +11,14 @@ pub enum ChunkEntry<'a> {
 }
 
 impl<'a> ChunkEntry<'a> {
-    pub(super) fn new(section_count: usize, entry: Entry<'a, ChunkPos, PartitionCell>) -> Self {
+    pub(super) fn new(height: u32, entry: Entry<'a, ChunkPos, LoadedChunk>) -> Self {
         match entry {
-            Entry::Occupied(oe) => {
-                if oe.get().chunk.is_some() {
-                    ChunkEntry::Occupied(OccupiedChunkEntry {
-                        section_count,
-                        entry: oe,
-                    })
-                } else {
-                    ChunkEntry::Vacant(VacantChunkEntry {
-                        section_count,
-                        entry: Entry::Occupied(oe),
-                    })
-                }
-            }
-            Entry::Vacant(ve) => ChunkEntry::Vacant(VacantChunkEntry {
-                section_count,
-                entry: Entry::Vacant(ve),
-            }),
+            Entry::Occupied(oe) => ChunkEntry::Occupied(OccupiedChunkEntry { height, entry: oe }),
+            Entry::Vacant(ve) => ChunkEntry::Vacant(VacantChunkEntry { height, entry: ve }),
         }
     }
 
-    pub fn or_default(self) -> &'a mut Chunk<true> {
+    pub fn or_default(self) -> &'a mut LoadedChunk {
         match self {
             ChunkEntry::Occupied(oe) => oe.into_mut(),
             ChunkEntry::Vacant(ve) => ve.insert(Chunk::default()),
@@ -41,21 +28,21 @@ impl<'a> ChunkEntry<'a> {
 
 #[derive(Debug)]
 pub struct OccupiedChunkEntry<'a> {
-    section_count: usize,
-    entry: OccupiedEntry<'a, ChunkPos, PartitionCell>,
+    height: u32,
+    entry: OccupiedEntry<'a, ChunkPos, LoadedChunk>,
 }
 
 impl<'a> OccupiedChunkEntry<'a> {
-    pub fn get(&self) -> &Chunk<true> {
-        self.entry.get().chunk.as_ref().unwrap()
+    pub fn get(&self) -> &LoadedChunk {
+        self.entry.get()
     }
 
-    pub fn get_mut(&mut self) -> &mut Chunk<true> {
-        self.entry.get_mut().chunk.as_mut().unwrap()
+    pub fn get_mut(&mut self) -> &mut LoadedChunk {
+        self.entry.get_mut()
     }
 
-    pub fn insert(&mut self, mut chunk: Chunk) -> Chunk {
-        chunk.resize(self.section_count);
+    pub fn insert(&mut self, mut chunk: UnloadedChunk) -> Chunk {
+        chunk.set_height(self.height);
 
         self.entry
             .get_mut()
@@ -65,7 +52,7 @@ impl<'a> OccupiedChunkEntry<'a> {
             .into_unloaded()
     }
 
-    pub fn into_mut(self) -> &'a mut Chunk<true> {
+    pub fn into_mut(self) -> &'a mut LoadedChunk {
         self.entry.into_mut().chunk.as_mut().unwrap()
     }
 
@@ -89,12 +76,12 @@ impl<'a> OccupiedChunkEntry<'a> {
 
 #[derive(Debug)]
 pub struct VacantChunkEntry<'a> {
-    section_count: usize,
-    entry: Entry<'a, ChunkPos, PartitionCell>,
+    height: u32,
+    entry: VacantEntry<'a, ChunkPos, LoadedChunk>,
 }
 
 impl<'a> VacantChunkEntry<'a> {
-    pub fn insert(self, mut chunk: Chunk) -> &'a mut Chunk<true> {
+    pub fn insert(self, mut chunk: Chunk) -> &'a mut LoadedChunk {
         chunk.resize(self.section_count);
 
         let cell = self.entry.or_insert_with(|| PartitionCell {

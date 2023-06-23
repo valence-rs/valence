@@ -16,6 +16,7 @@
     unreachable_pub,
     clippy::dbg_macro
 )]
+#![allow(clippy::type_complexity)]
 
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
@@ -25,7 +26,8 @@ use std::mem;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use bevy_ecs::query::WorldQuery;
+use bevy_ecs::query::{Has, WorldQuery};
+use chunk::LoadedChunk;
 pub use chunk::{Block, BlockEntity, BlockMut, BlockRef, Chunk};
 pub use chunk_entry::*;
 use glam::{DVec3, Vec3};
@@ -59,7 +61,6 @@ use valence_entity::{
 mod chunk;
 mod chunk_entry;
 pub mod packet;
-mod paletted_container;
 
 pub struct InstancePlugin;
 
@@ -112,7 +113,6 @@ impl Plugin for InstancePlugin {
 }
 
 /// Handles entities moving from one chunk to another.
-#[allow(clippy::type_complexity)]
 fn update_entity_cell_positions(
     entities: Query<
         (
@@ -121,7 +121,7 @@ fn update_entity_cell_positions(
             &OldPosition,
             &Location,
             &OldLocation,
-            Option<&Despawned>,
+            Has<Despawned>,
         ),
         (With<EntityKind>, Or<(Changed<Position>, With<Despawned>)>),
     >,
@@ -221,22 +221,16 @@ fn write_update_packets_to_instances(
     mut entities: Query<UpdateEntityQuery, (With<EntityKind>, Without<Despawned>)>,
     server: Res<Server>,
 ) {
-    let mut scratch_1 = vec![];
-    let mut scratch_2 = vec![];
-
     for instance in &mut instances {
         let instance = instance.into_inner();
 
         for (&pos, cell) in &mut instance.partition {
             // Cache chunk update packets into the packet buffer of this cell.
             if let Some(chunk) = &mut cell.chunk {
-                let writer = PacketWriter::new(
-                    &mut cell.packet_buf,
-                    server.compression_threshold(),
-                    &mut scratch_2,
-                );
+                let writer =
+                    PacketWriter::new(&mut cell.packet_buf, server.compression_threshold());
 
-                chunk.write_update_packets(writer, &mut scratch_1, pos, &instance.info);
+                chunk.write_update_packets(writer, pos, &instance.info);
 
                 chunk.clear_viewed();
             }
@@ -249,11 +243,8 @@ fn write_update_packets_to_instances(
 
                 let start = cell.packet_buf.len();
 
-                let writer = PacketWriter::new(
-                    &mut cell.packet_buf,
-                    server.compression_threshold(),
-                    &mut scratch_2,
-                );
+                let writer =
+                    PacketWriter::new(&mut cell.packet_buf, server.compression_threshold());
 
                 entity.write_update_packets(writer);
 
@@ -413,14 +404,11 @@ fn check_instance_invariants(instances: Query<&Instance>, entities: Query<(), Wi
 /// update packets on a per-chunk basis.
 #[derive(Component)]
 pub struct Instance {
-    #[doc(hidden)]
-    pub partition: FxHashMap<ChunkPos, PartitionCell>,
-    pub info: InstanceInfo,
+    chunks: FxHashMap<ChunkPos, LoadedChunk>,
+    info: InstanceInfo,
     /// Packet data to send to all clients in this instance at the end of the
     /// tick.
-    pub packet_buf: Vec<u8>,
-    /// Scratch space for writing packets.
-    scratch: Vec<u8>,
+    packet_buf: Vec<u8>,
 }
 
 #[doc(hidden)]
@@ -430,30 +418,6 @@ pub struct InstanceInfo {
     min_y: i32,
     biome_registry_len: usize,
     compression_threshold: Option<u32>,
-    filler_sky_light_mask: Box<[u64]>,
-    /// Sending filler light data causes the vanilla client to lag
-    /// less. Hopefully we can remove this in the future.
-    filler_sky_light_arrays: Box<[LengthPrefixedArray<u8, 2048>]>,
-}
-
-#[doc(hidden)]
-#[derive(Debug)]
-pub struct PartitionCell {
-    /// The chunk in this cell.
-    pub chunk: Option<Chunk<true>>,
-    /// If `chunk` went from `Some` to `None` this tick.
-    pub chunk_removed: bool,
-    /// Minecraft entities in this cell.
-    pub entities: BTreeSet<Entity>,
-    /// Minecraft entities that have entered the chunk this tick, paired with
-    /// the cell position in this instance they came from.
-    pub incoming: Vec<(Entity, Option<ChunkPos>)>,
-    /// Minecraft entities that have left the chunk this tick, paired with the
-    /// cell position in this world they arrived at.
-    pub outgoing: Vec<(Entity, Option<ChunkPos>)>,
-    /// A cache of packets to send to all clients that are in view of this cell
-    /// at the end of the tick.
-    pub packet_buf: Vec<u8>,
 }
 
 impl Instance {
@@ -470,31 +434,16 @@ impl Instance {
 
         assert!(dim.height > 0, "invalid dimension height of {}", dim.height);
 
-        let light_section_count = (dim.height / 16 + 2) as usize;
-
-        let mut sky_light_mask = vec![0; div_ceil(light_section_count, 16)];
-
-        for i in 0..light_section_count {
-            sky_light_mask[i / 64] |= 1 << (i % 64);
-        }
-
         Self {
-            partition: FxHashMap::default(),
+            chunks: FxHashMap::default(),
             info: InstanceInfo {
                 dimension_type_name,
                 section_count: (dim.height / 16) as usize,
                 min_y: dim.min_y,
                 biome_registry_len: biomes.iter().len(),
                 compression_threshold: server.compression_threshold(),
-                filler_sky_light_mask: sky_light_mask.into(),
-                filler_sky_light_arrays: vec![
-                    LengthPrefixedArray([0xff; 2048]);
-                    light_section_count
-                ]
-                .into(),
             },
             packet_buf: vec![],
-            scratch: vec![],
         }
     }
 
@@ -589,7 +538,7 @@ impl Instance {
             chunk.optimize();
         }
 
-        self.partition.shrink_to_fit();
+        self.chunks.shrink_to_fit();
         self.packet_buf.shrink_to_fit();
     }
 
@@ -715,81 +664,23 @@ impl Instance {
             }
         }
     }
-
-    /// Puts a particle effect at the given position in the world. The particle
-    /// effect is visible to all players in the instance with the
-    /// appropriate chunk in view.
-    pub fn play_particle(
-        &mut self,
-        particle: &Particle,
-        long_distance: bool,
-        position: impl Into<DVec3>,
-        offset: impl Into<Vec3>,
-        max_speed: f32,
-        count: i32,
-    ) {
-        let position = position.into();
-
-        self.write_packet_at(
-            &ParticleS2c {
-                particle: Cow::Borrowed(particle),
-                long_distance,
-                position,
-                offset: offset.into(),
-                max_speed,
-                count,
-            },
-            ChunkPos::from_dvec3(position),
-        );
-    }
-
-    /// Plays a sound effect at the given position in the world. The sound
-    /// effect is audible to all players in the instance with the
-    /// appropriate chunk in view.
-    pub fn play_sound(
-        &mut self,
-        sound: Sound,
-        category: SoundCategory,
-        position: impl Into<DVec3>,
-        volume: f32,
-        pitch: f32,
-    ) {
-        let position = position.into();
-
-        self.write_packet_at(
-            &PlaySoundS2c {
-                id: sound.to_id(),
-                category,
-                position: (position * 8.0).as_ivec3(),
-                volume,
-                pitch,
-                seed: rand::random(),
-            },
-            ChunkPos::from_dvec3(position),
-        );
-    }
 }
 
 /// Writing packets to the instance writes to the instance's global packet
 /// buffer. All clients in the instance will receive the packet at the end of
 /// the tick.
 ///
-/// This is more efficient than sending the packet to each client individually.
+/// This is generally more efficient than sending the packet to each client
+/// individually.
 impl WritePacket for Instance {
-    #[inline]
     fn write_packet<P>(&mut self, packet: &P)
     where
         P: Packet + Encode,
     {
-        PacketWriter::new(
-            &mut self.packet_buf,
-            self.info.compression_threshold,
-            &mut self.scratch,
-        )
-        .write_packet(packet)
+        PacketWriter::new(&mut self.packet_buf, self.info.compression_threshold)
+            .write_packet(packet)
     }
 
-    #[inline]
     fn write_packet_bytes(&mut self, bytes: &[u8]) {
         self.packet_buf.extend_from_slice(bytes)
     }

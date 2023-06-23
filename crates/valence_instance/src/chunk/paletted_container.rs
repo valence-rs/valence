@@ -10,14 +10,14 @@ use crate::bit_width;
 
 /// `HALF_LEN` must be equal to `ceil(LEN / 2)`.
 #[derive(Clone, Debug)]
-pub(crate) enum PalettedContainer<T, const LEN: usize, const HALF_LEN: usize> {
+pub(super) enum PalettedContainer<T, const LEN: usize, const HALF_LEN: usize> {
     Single(T),
     Indirect(Box<Indirect<T, LEN, HALF_LEN>>),
     Direct(Box<[T; LEN]>),
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct Indirect<T, const LEN: usize, const HALF_LEN: usize> {
+pub(super) struct Indirect<T, const LEN: usize, const HALF_LEN: usize> {
     /// Each element is a unique instance of `T`. The length of the palette is
     /// always ≥2.
     palette: ArrayVec<T, 16>,
@@ -28,18 +28,18 @@ pub(crate) struct Indirect<T, const LEN: usize, const HALF_LEN: usize> {
 impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>
     PalettedContainer<T, LEN, HALF_LEN>
 {
-    pub(crate) fn new() -> Self {
+    pub(super) fn new() -> Self {
         assert_eq!(div_ceil(LEN, 2), HALF_LEN);
         assert_ne!(LEN, 0);
 
         Self::Single(T::default())
     }
 
-    pub(crate) fn fill(&mut self, val: T) {
+    pub(super) fn fill(&mut self, val: T) {
         *self = Self::Single(val)
     }
 
-    pub(crate) fn get(&self, idx: usize) -> T {
+    pub(super) fn get(&self, idx: usize) -> T {
         debug_assert!(idx < LEN);
 
         match self {
@@ -49,7 +49,7 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>
         }
     }
 
-    pub(crate) fn set(&mut self, idx: usize, val: T) -> T {
+    pub(super) fn set(&mut self, idx: usize, val: T) -> T {
         debug_assert!(idx < LEN);
 
         match self {
@@ -87,7 +87,7 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>
         }
     }
 
-    pub(crate) fn optimize(&mut self) {
+    pub(super) fn optimize(&mut self) {
         match self {
             Self::Single(_) => {}
             Self::Indirect(ind) => {
@@ -142,7 +142,7 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>
     /// - **`direct_bits`**: The minimum number of bits required to represent
     ///   all instances of the element type. If `N` is the total number of
     ///   possible values, then `DIRECT_BITS` is `floor(log2(N - 1)) + 1`.
-    pub(crate) fn encode_mc_format<W, F>(
+    pub(super) fn encode_mc_format<W, F>(
         &self,
         mut writer: W,
         mut to_bits: F,
@@ -236,12 +236,12 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize> Default
 }
 
 impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize> Indirect<T, LEN, HALF_LEN> {
-    pub(crate) fn get(&self, idx: usize) -> T {
+    pub(super) fn get(&self, idx: usize) -> T {
         let palette_idx = self.indices[idx / 2] >> (idx % 2 * 4) & 0b1111;
         self.palette[palette_idx as usize]
     }
 
-    pub(crate) fn set(&mut self, idx: usize, val: T) -> Option<T> {
+    pub(super) fn set(&mut self, idx: usize, val: T) -> Option<T> {
         let palette_idx = if let Some(i) = self.palette.iter().position(|v| *v == val) {
             i
         } else {

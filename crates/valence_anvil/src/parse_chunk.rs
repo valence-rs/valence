@@ -149,7 +149,7 @@ where
         }
 
         if converted_block_palette.len() == 1 {
-            chunk.fill_block_states(adjusted_sect_y as usize, converted_block_palette[0]);
+            chunk.fill_block_state_section(adjusted_sect_y as usize, converted_block_palette[0]);
         } else {
             debug_assert!(converted_block_palette.len() > 1);
 
@@ -215,7 +215,7 @@ where
         }
 
         if converted_biome_palette.len() == 1 {
-            chunk.fill_biomes(adjusted_sect_y as usize, converted_biome_palette[0]);
+            chunk.fill_biome_section(adjusted_sect_y as usize, converted_biome_palette[0]);
         } else {
             debug_assert!(converted_biome_palette.len() > 1);
 
