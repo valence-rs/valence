@@ -18,7 +18,8 @@
 
 use clap::Parser;
 use tracing::Level;
-use valence::{app::App, log::LogPlugin};
+use valence::app::App;
+use valence::log::LogPlugin;
 
 #[allow(dead_code)]
 mod extras;
