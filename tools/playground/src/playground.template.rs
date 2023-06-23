@@ -1,4 +1,5 @@
 use valence::client::despawn_disconnected_clients;
+use valence::log::LogPlugin;
 use valence::network::ConnectionMode;
 use valence::prelude::*;
 
@@ -12,7 +13,7 @@ pub fn build_app(app: &mut App) {
         connection_mode: ConnectionMode::Offline,
         ..Default::default()
     })
-    .add_plugins(DefaultPlugins)
+    .add_plugins(DefaultPlugins.build().disable::<LogPlugin>())
     .add_systems(Startup, setup)
     .add_systems(EventLoopUpdate, toggle_gamemode_on_sneak)
     .add_systems(Update, (init_clients, despawn_disconnected_clients))
