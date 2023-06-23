@@ -192,7 +192,8 @@ pub trait WritePacket {
         }
     }
 
-    /// Writes a packet to this object. The result of encoding the packet is returned.
+    /// Writes a packet to this object. The result of encoding the packet is
+    /// returned.
     fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
     where
         P: Packet + Encode;
