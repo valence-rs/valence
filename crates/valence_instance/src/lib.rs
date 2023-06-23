@@ -777,7 +777,7 @@ impl Instance {
 /// This is more efficient than sending the packet to each client individually.
 impl WritePacket for Instance {
     #[inline]
-    fn write_packet<P>(&mut self, packet: &P)
+    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
     where
         P: Packet + Encode,
     {
@@ -786,7 +786,7 @@ impl WritePacket for Instance {
             self.info.compression_threshold,
             &mut self.scratch,
         )
-        .write_packet(packet)
+        .write_packet_fallible(packet)
     }
 
     #[inline]
