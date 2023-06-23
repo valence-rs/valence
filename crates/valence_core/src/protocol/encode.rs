@@ -185,6 +185,17 @@ pub trait WritePacket {
     /// discarded.
     fn write_packet<P>(&mut self, packet: &P)
     where
+        P: Packet + Encode,
+    {
+        if let Err(e) = self.write_packet_fallible(packet) {
+            warn!("failed to write packet '{}': {e:#}", P::NAME);
+        }
+    }
+
+    /// Writes a packet to this object. The result of encoding the packet is
+    /// returned.
+    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
+    where
         P: Packet + Encode;
 
     /// Copies raw packet data directly into this object. Don't use this unless
@@ -193,11 +204,11 @@ pub trait WritePacket {
 }
 
 impl<W: WritePacket> WritePacket for &mut W {
-    fn write_packet<P>(&mut self, packet: &P)
+    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
     where
         P: Packet + Encode,
     {
-        (*self).write_packet(packet)
+        (*self).write_packet_fallible(packet)
     }
 
     fn write_packet_bytes(&mut self, bytes: &[u8]) {
@@ -206,11 +217,11 @@ impl<W: WritePacket> WritePacket for &mut W {
 }
 
 impl<T: WritePacket> WritePacket for Mut<'_, T> {
-    fn write_packet<P>(&mut self, packet: &P)
+    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
     where
         P: Packet + Encode,
     {
-        self.as_mut().write_packet(packet)
+        self.as_mut().write_packet_fallible(packet)
     }
 
     fn write_packet_bytes(&mut self, bytes: &[u8]) {
@@ -236,23 +247,19 @@ impl<'a> PacketWriter<'a> {
 }
 
 impl WritePacket for PacketWriter<'_> {
-    fn write_packet<P>(&mut self, pkt: &P)
+    fn write_packet_fallible<P>(&mut self, pkt: &P) -> anyhow::Result<()>
     where
         P: Packet + Encode,
     {
         #[cfg(feature = "compression")]
-        let res = if let Some(threshold) = self.threshold {
+        if let Some(threshold) = self.threshold {
             encode_packet_compressed(self.buf, pkt, threshold, self.scratch)
         } else {
             encode_packet(self.buf, pkt)
-        };
+        }
 
         #[cfg(not(feature = "compression"))]
-        let res = encode_packet(self.buf, pkt);
-
-        if let Err(e) = res {
-            warn!("failed to write packet: {e:#}");
-        }
+        encode_packet(self.buf, pkt)
     }
 
     fn write_packet_bytes(&mut self, bytes: &[u8]) {
@@ -263,13 +270,11 @@ impl WritePacket for PacketWriter<'_> {
 }
 
 impl WritePacket for PacketEncoder {
-    fn write_packet<P>(&mut self, packet: &P)
+    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
     where
         P: Packet + Encode,
     {
-        if let Err(e) = self.append_packet(packet) {
-            warn!("failed to write packet: {e:#}");
-        }
+        self.append_packet(packet)
     }
 
     fn write_packet_bytes(&mut self, bytes: &[u8]) {
