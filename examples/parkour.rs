@@ -23,8 +23,6 @@ const BLOCK_TYPES: [BlockState; 7] = [
 ];
 
 pub fn main() {
-    tracing_subscriber::fmt().init();
-
     App::new()
         .add_plugins(DefaultPlugins)
         .add_systems(

@@ -26,6 +26,8 @@ use bevy_app::{PluginGroup, PluginGroupBuilder};
 #[cfg(test)]
 mod tests;
 
+#[cfg(feature = "log")]
+pub use bevy_log as log;
 #[cfg(feature = "advancement")]
 pub use valence_advancement as advancement;
 #[cfg(feature = "anvil")]
@@ -42,7 +44,7 @@ pub use valence_player_list as player_list;
 #[cfg(feature = "world_border")]
 pub use valence_world_border as world_border;
 pub use {
-    bevy_app, bevy_ecs, glam, valence_biome as biome, valence_block as block,
+    bevy_app as app, bevy_ecs as ecs, glam, valence_biome as biome, valence_block as block,
     valence_client as client, valence_dimension as dimension, valence_entity as entity,
     valence_instance as instance, valence_nbt as nbt, valence_registry as registry,
 };
@@ -143,6 +145,11 @@ impl PluginGroup for DefaultPlugins {
             .add(valence_instance::InstancePlugin)
             .add(valence_client::ClientPlugin);
 
+        #[cfg(feature = "log")]
+        {
+            group = group.add(bevy_log::LogPlugin::default());
+        }
+
         #[cfg(feature = "network")]
         {
             group = group.add(valence_network::NetworkPlugin);
@@ -165,9 +172,7 @@ impl PluginGroup for DefaultPlugins {
 
         #[cfg(feature = "advancement")]
         {
-            group = group
-                .add(valence_advancement::AdvancementPlugin)
-                .add(valence_advancement::bevy_hierarchy::HierarchyPlugin);
+            group = group.add(valence_advancement::AdvancementPlugin)
         }
 
         #[cfg(feature = "world_border")]

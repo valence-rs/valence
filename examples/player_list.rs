@@ -11,8 +11,6 @@ const PLAYER_UUID_1: Uuid = Uuid::from_u128(1);
 const PLAYER_UUID_2: Uuid = Uuid::from_u128(2);
 
 fn main() {
-    tracing_subscriber::fmt().init();
-
     App::new()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)

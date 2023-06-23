@@ -12,43 +12,46 @@ categories = ["game-engines"]
 
 [features]
 default = [
+    "advancement",
+    "anvil",
+    "boss_bar",
+    "inventory",
+    "log",
     "network",
     "player_list",
-    "inventory",
-    "anvil",
-    "advancement",
     "world_border",
-    "boss_bar",
 ]
+advancement = ["dep:valence_advancement"]
+anvil = ["dep:valence_anvil"]
+boss_bar = ["dep:valence_boss_bar"]
+inventory = ["dep:valence_inventory"]
+log = ["dep:bevy_log"]
 network = ["dep:valence_network"]
 player_list = ["dep:valence_player_list"]
-inventory = ["dep:valence_inventory"]
-anvil = ["dep:valence_anvil"]
-advancement = ["dep:valence_advancement"]
 world_border = ["dep:valence_world_border"]
-boss_bar = ["dep:valence_boss_bar"]
 
 [dependencies]
 bevy_app.workspace = true
 bevy_ecs.workspace = true
+bevy_log = { workspace = true, optional = true }
 glam.workspace = true
 uuid.workspace = true
-valence_nbt.workspace = true
-valence_core.workspace = true
-valence_registry.workspace = true
-valence_block.workspace = true
+valence_advancement = { workspace = true, optional = true }
+valence_anvil = { workspace = true, optional = true }
 valence_biome.workspace = true
+valence_block.workspace = true
+valence_boss_bar = { workspace = true, optional = true }
+valence_client.workspace = true
+valence_core.workspace = true
 valence_dimension.workspace = true
 valence_entity.workspace = true
 valence_instance.workspace = true
-valence_client.workspace = true
+valence_inventory = { workspace = true, optional = true }
+valence_nbt.workspace = true
 valence_network = { workspace = true, optional = true }
 valence_player_list = { workspace = true, optional = true }
-valence_inventory = { workspace = true, optional = true }
-valence_anvil = { workspace = true, optional = true }
-valence_advancement = { workspace = true, optional = true }
+valence_registry.workspace = true
 valence_world_border = { workspace = true, optional = true }
-valence_boss_bar = { workspace = true, optional = true }
 
 [dev-dependencies]
 anyhow.workspace = true
@@ -58,7 +61,6 @@ criterion.workspace = true
 flume.workspace = true
 noise.workspace = true              # For the terrain example.
 rand.workspace = true
-tracing-subscriber.workspace = true
 tracing.workspace = true
 
 [dev-dependencies.reqwest]
@@ -99,8 +101,9 @@ base64 = "0.21.0"
 bevy_app = { git = "https://github.com/bevyengine/bevy", rev = "910f984709fb58cddbb7393c948634a2540e8d72", default-features = false }
 bevy_ecs = { git = "https://github.com/bevyengine/bevy", rev = "910f984709fb58cddbb7393c948634a2540e8d72", default-features = false }
 bevy_hierarchy = { git = "https://github.com/bevyengine/bevy", rev = "910f984709fb58cddbb7393c948634a2540e8d72", default-features = false }
-bevy_utils = { git = "https://github.com/bevyengine/bevy", rev = "910f984709fb58cddbb7393c948634a2540e8d72" }
+bevy_log = { git = "https://github.com/bevyengine/bevy", rev = "910f984709fb58cddbb7393c948634a2540e8d72" }
 bevy_mod_debugdump = "0.7.0"
+bevy_utils = { git = "https://github.com/bevyengine/bevy", rev = "910f984709fb58cddbb7393c948634a2540e8d72" }
 bitfield-struct = "0.3.1"
 byteorder = "1.4.3"
 bytes = "1.2.1"

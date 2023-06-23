@@ -15,8 +15,6 @@ struct Cli {
 }
 
 pub fn main() {
-    tracing_subscriber::fmt().init();
-
     let cli = Cli::parse();
 
     if !cli.path.exists() {

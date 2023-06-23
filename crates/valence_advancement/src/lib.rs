@@ -12,7 +12,7 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::SystemParam;
 pub use bevy_hierarchy;
-use bevy_hierarchy::{Children, Parent};
+use bevy_hierarchy::{Children, HierarchyPlugin, Parent};
 use event::{handle_advancement_tab_change, AdvancementTabChangeEvent};
 use packet::SelectAdvancementTabS2c;
 use rustc_hash::FxHashMap;
@@ -35,28 +35,29 @@ pub struct WriteAdvancementToCacheSet;
 
 impl Plugin for AdvancementPlugin {
     fn build(&self, app: &mut bevy_app::App) {
-        app.configure_sets(
-            PostUpdate,
-            (
-                WriteAdvancementPacketToClientsSet.before(FlushPacketsSet),
-                WriteAdvancementToCacheSet.before(WriteAdvancementPacketToClientsSet),
-            ),
-        )
-        .add_event::<AdvancementTabChangeEvent>()
-        .add_systems(
-            PreUpdate,
-            (
-                add_advancement_update_component_to_new_clients.after(SpawnClientsSet),
-                handle_advancement_tab_change,
-            ),
-        )
-        .add_systems(
-            PostUpdate,
-            (
-                update_advancement_cached_bytes,
-                send_advancement_update_packet,
-            ),
-        );
+        app.add_plugin(HierarchyPlugin)
+            .configure_sets(
+                PostUpdate,
+                (
+                    WriteAdvancementPacketToClientsSet.before(FlushPacketsSet),
+                    WriteAdvancementToCacheSet.before(WriteAdvancementPacketToClientsSet),
+                ),
+            )
+            .add_event::<AdvancementTabChangeEvent>()
+            .add_systems(
+                PreUpdate,
+                (
+                    add_advancement_update_component_to_new_clients.after(SpawnClientsSet),
+                    handle_advancement_tab_change,
+                ),
+            )
+            .add_systems(
+                PostUpdate,
+                (
+                    update_advancement_cached_bytes,
+                    send_advancement_update_packet,
+                ),
+            );
     }
 }
 

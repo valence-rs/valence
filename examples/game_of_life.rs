@@ -21,8 +21,6 @@ const SPAWN_POS: DVec3 = DVec3::new(
 );
 
 pub fn main() {
-    tracing_subscriber::fmt().init();
-
     App::new()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)

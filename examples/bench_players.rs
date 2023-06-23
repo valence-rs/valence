@@ -10,8 +10,6 @@ const SPAWN_Y: i32 = 64;
 struct TickStart(Instant);
 
 fn main() {
-    tracing_subscriber::fmt().init();
-
     App::new()
         .insert_resource(CoreSettings {
             compression_threshold: None,
