@@ -5,7 +5,7 @@ pub mod unloaded;
 pub use loaded::LoadedChunk;
 pub use unloaded::UnloadedChunk;
 use valence_biome::BiomeId;
-use valence_block::{BlockEntityKind, BlockState};
+use valence_block::BlockState;
 use valence_nbt::Compound;
 
 use self::paletted_container::PalettedContainer;
@@ -14,8 +14,24 @@ use self::paletted_container::PalettedContainer;
 /// [`UnloadedChunk`].
 pub trait Chunk {
     /// Gets the height of this chunk in meters.
-    #[inline]
     fn height(&self) -> u32;
+
+    #[track_caller]
+    fn block(&self, x: u32, y: u32, z: u32) -> BlockRef {
+        BlockRef {
+            state: self.block_state(x, y, z),
+            nbt: self.block_entity(x, y, z),
+        }
+    }
+
+    #[track_caller]
+    fn set_block(&mut self, x: u32, y: u32, z: u32, block: impl IntoBlock) -> Block {
+        let block = block.into_block();
+        let state = self.set_block_state(x, y, z, block.state);
+        let nbt = self.set_block_entity(x, y, z, block.nbt);
+
+        Block { state, nbt }
+    }
 
     /// Gets the block state at the provided position in this chunk. `x` and `z`
     /// are in the range `0..16` while `y` is in the range `0..height`.
@@ -39,7 +55,7 @@ pub trait Chunk {
     fn fill_block_states(&mut self, block: BlockState);
 
     #[track_caller]
-    fn block_entity(&self, x: u32, y: u32, z: u32) -> Option<&BlockEntity>;
+    fn block_entity(&self, x: u32, y: u32, z: u32) -> Option<&Compound>;
 
     #[track_caller]
     fn set_block_entity(
@@ -47,9 +63,10 @@ pub trait Chunk {
         x: u32,
         y: u32,
         z: u32,
-        block_entity: BlockEntity,
-    ) -> Option<BlockEntity>;
+        block_entity: Option<Compound>,
+    ) -> Option<Compound>;
 
+    /// Removes all block entities from the chunk.
     fn clear_block_entities(&mut self);
 
     /// Gets the biome at the provided position in this chunk. `x` and `z` are
@@ -72,9 +89,9 @@ pub trait Chunk {
     /// Note that biomes are 4x4x4 segments of a chunk, so the xyz arguments to
     /// this method differ from those to [`Self::block_state`] and
     /// [`Self::block_entity`].
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// May panic if the position is out of bounds.
     #[track_caller]
     fn set_biome(&mut self, x: u32, y: u32, z: u32, biome: BiomeId) -> BiomeId;
@@ -92,17 +109,54 @@ pub trait Chunk {
     fn optimize(&mut self);
 }
 
-#[derive(Clone, PartialEq, Debug)]
-pub struct BlockEntity {
-    pub kind: BlockEntityKind,
-    pub nbt: Compound,
+/// Represents a block with optional NBT data.
+#[derive(Clone, PartialEq, Default, Debug)]
+pub struct Block {
+    pub state: BlockState,
+    pub nbt: Option<Compound>,
 }
 
-const SECTION_BLOCK_COUNT: usize = 16.pow(3);
-const SECTION_BIOME_COUNT: usize = 4.pow(3);
+/// Referenced variant of [`Block`].
+#[derive(Copy, Clone, PartialEq, Default, Debug)]
+pub struct BlockRef<'a> {
+    pub state: BlockState,
+    pub nbt: Option<&'a Compound>,
+}
+
+pub trait IntoBlock {
+    // TODO: parameterize this with block registry ref?
+    fn into_block(self) -> Block;
+}
+
+impl IntoBlock for Block {
+    fn into_block(self) -> Block {
+        self
+    }
+}
+
+impl<'a> IntoBlock for BlockRef<'a> {
+    fn into_block(self) -> Block {
+        Block {
+            state: self.state,
+            nbt: self.nbt.cloned(),
+        }
+    }
+}
+
+impl IntoBlock for BlockState {
+    fn into_block(self) -> Block {
+        Block {
+            state: self,
+            nbt: self.block_entity_kind().map(|_| Compound::new()),
+        }
+    }
+}
+
+const SECTION_BLOCK_COUNT: usize = 16 * 16 * 16;
+const SECTION_BIOME_COUNT: usize = 4 * 4 * 4;
 
 /// The maximum height of a chunk.
-pub const MAX_HEIGHT: u32 = todo!();
+pub const MAX_HEIGHT: u32 = 4096;
 
 type BlockStateContainer =
     PalettedContainer<BlockState, SECTION_BLOCK_COUNT, { SECTION_BLOCK_COUNT / 2 }>;

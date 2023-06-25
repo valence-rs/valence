@@ -1,54 +1,24 @@
-use std::collections::{btree_map, BTreeMap};
+use std::collections::BTreeMap;
 
 use valence_biome::BiomeId;
+use valence_block::BlockState;
+use valence_nbt::Compound;
 
-use super::paletted_container::PalettedContainer;
 use super::{
-    check_biome_oob, check_block_oob, check_section_oob, BiomeContainer, BlockEntity,
-    BlockStateContainer, Chunk, SECTION_BLOCK_COUNT,
+    check_biome_oob, check_block_oob, BiomeContainer, BlockStateContainer, Chunk, MAX_HEIGHT,
+    SECTION_BLOCK_COUNT,
 };
-
 
 #[derive(Clone, Default, Debug)]
 pub struct UnloadedChunk {
     pub(super) sections: Vec<Section>,
-    pub(super) block_entities: BTreeMap<u32, BlockEntity>,
+    pub(super) block_entities: BTreeMap<u32, Compound>,
 }
 
 #[derive(Clone, Default, Debug)]
 pub(super) struct Section {
     pub(super) block_states: BlockStateContainer,
     pub(super) biomes: BiomeContainer,
-}
-
-impl Section {
-    pub(super) fn count_non_air_blocks(&self) -> u32 {
-        let mut count = 0;
-
-        match &self.block_states {
-            PalettedContainer::Single(s) => {
-                if !s.is_air() {
-                    count += SECTION_BLOCK_COUNT as u32;
-                }
-            }
-            PalettedContainer::Indirect(ind) => {
-                for i in 0..SECTION_BLOCK_COUNT {
-                    if !ind.get(i).is_air() {
-                        count += 1;
-                    }
-                }
-            }
-            PalettedContainer::Direct(dir) => {
-                for s in dir {
-                    if !s.is_air() {
-                        count += 1;
-                    }
-                }
-            }
-        }
-
-        count
-    }
 }
 
 impl UnloadedChunk {
@@ -67,10 +37,11 @@ impl UnloadedChunk {
     /// extended with [`BlockState::AIR`] and [`BiomeId::default()`] from the
     /// top.
     ///
-    /// The new height should be a multiple of 16. Otherwise, the height is
-    /// rounded down to the nearest multiple of 16.
+    /// The new height should be a multiple of 16 and no more than
+    /// [`MAX_HEIGHT`]. Otherwise, the height is rounded down to the nearest
+    /// valid height.
     pub fn set_height(&mut self, height: u32) {
-        let new_count = height as usize / 16;
+        let new_count = height.min(MAX_HEIGHT) as usize / 16;
         let old_count = self.sections.len();
 
         if new_count < old_count {
@@ -82,16 +53,12 @@ impl UnloadedChunk {
         } else if new_count > old_count {
             let diff = new_count - old_count;
             self.sections.reserve_exact(diff);
-            self.sections.extend((0..diff).map(Section::default));
+            self.sections.extend((0..diff).map(|_| Section::default()));
         }
     }
 }
 
 impl Chunk for UnloadedChunk {
-    type OccupiedBlockEntityEntry<'a> = OccupiedBlockEntityEntry<'a>;
-
-    type VacantBlockEntityEntry<'a> = VacantBlockEntityEntry<'a>;
-
     fn height(&self) -> u32 {
         self.sections.len() as u32 * 16
     }
@@ -99,17 +66,19 @@ impl Chunk for UnloadedChunk {
     fn block_state(&self, x: u32, y: u32, z: u32) -> BlockState {
         check_block_oob(self, x, y, z);
 
-        self.sections[y / 16]
+        let idx = x + z * 16 + y % 16 * 16 * 16;
+        self.sections[y as usize / 16]
             .block_states
-            .get(x + z * 16 + y % 16 * 16 * 16)
+            .get(idx as usize)
     }
 
     fn set_block_state(&mut self, x: u32, y: u32, z: u32, block: BlockState) -> BlockState {
         check_block_oob(self, x, y, z);
 
-        self.sections[y / 16]
+        let idx = x + z * 16 + y % 16 * 16 * 16;
+        self.sections[y as usize / 16]
             .block_states
-            .set(x + z * 16 + y % 16 * 16 * 16, block)
+            .set(idx as usize, block)
     }
 
     fn fill_block_states(&mut self, block: BlockState) {
@@ -118,11 +87,10 @@ impl Chunk for UnloadedChunk {
         }
     }
 
-    fn block_entity(&self, x: u32, y: u32, z: u32) -> Option<&BlockEntity> {
-        check_block_oob(chunk, x, y, z);
+    fn block_entity(&self, x: u32, y: u32, z: u32) -> Option<&Compound> {
+        check_block_oob(self, x, y, z);
 
-        let idx = (x + z * 16 + y * 16 * 16) as u32;
-
+        let idx = x + z * 16 + y * 16 * 16;
         self.block_entities.get(&idx)
     }
 
@@ -131,11 +99,14 @@ impl Chunk for UnloadedChunk {
         x: u32,
         y: u32,
         z: u32,
-        block_entity: BlockEntity,
-    ) -> Option<BlockEntity> {
-        let idx = (x + z * 16 + y * 16 * 16) as u32;
+        block_entity: Option<Compound>,
+    ) -> Option<Compound> {
+        let idx = x + z * 16 + y * 16 * 16;
 
-        self.block_entities.insert(idx, block_entity)
+        match block_entity {
+            Some(be) => self.block_entities.insert(idx, be),
+            None => self.block_entities.remove(&idx),
+        }
     }
 
     fn clear_block_entities(&mut self) {
@@ -145,15 +116,17 @@ impl Chunk for UnloadedChunk {
     fn biome(&self, x: u32, y: u32, z: u32) -> BiomeId {
         check_biome_oob(self, x, y, z);
 
-        self.sections[y / 4].biomes.get(x + z * 4 + y % 4 * 4 * 4)
+        let idx = x + z * 4 + y % 4 * 4 * 4;
+        self.sections[y as usize / 4].biomes.get(idx as usize)
     }
 
     fn set_biome(&mut self, x: u32, y: u32, z: u32, biome: BiomeId) -> BiomeId {
         check_biome_oob(self, x, y, z);
 
-        self.sections[y / 4]
+        let idx = x + z * 4 + y % 4 * 4 * 4;
+        self.sections[y as usize / 4]
             .biomes
-            .set(x + z * 4 + y % 4 * 4 * 4, biome)
+            .set(idx as usize, biome)
     }
 
     fn fill_biomes(&mut self, biome: BiomeId) {

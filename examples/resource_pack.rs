@@ -9,8 +9,6 @@ use valence_client::resource_pack::{ResourcePackStatus, ResourcePackStatusEvent}
 const SPAWN_Y: i32 = 64;
 
 pub fn main() {
-    tracing_subscriber::fmt().init();
-
     App::new()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)

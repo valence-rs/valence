@@ -293,11 +293,11 @@ impl Drop for Client {
 /// Writes packets into this client's packet buffer. The buffer is flushed at
 /// the end of the tick.
 impl WritePacket for Client {
-    fn write_packet<P>(&mut self, packet: &P)
+    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
     where
         P: Packet + Encode,
     {
-        self.enc.write_packet(packet)
+        self.enc.write_packet_fallible(packet)
     }
 
     fn write_packet_bytes(&mut self, bytes: &[u8]) {

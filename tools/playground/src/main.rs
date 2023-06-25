@@ -18,7 +18,8 @@
 
 use clap::Parser;
 use tracing::Level;
-use valence::bevy_app::App;
+use valence::app::App;
+use valence::log::LogPlugin;
 
 #[allow(dead_code)]
 mod extras;
@@ -33,11 +34,14 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
-    tracing_subscriber::fmt()
-        .with_max_level(args.log_level)
-        .init();
-
     let mut app = App::new();
+
+    app.add_plugin(LogPlugin {
+        level: args.log_level,
+        ..Default::default()
+    });
+
     playground::build_app(&mut app);
+
     app.run();
 }

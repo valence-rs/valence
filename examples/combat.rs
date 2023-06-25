@@ -17,8 +17,6 @@ struct CombatState {
 }
 
 pub fn main() {
-    tracing_subscriber::fmt().init();
-
     App::new()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)

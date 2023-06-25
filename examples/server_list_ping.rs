@@ -9,8 +9,6 @@ use valence::network::{
 use valence::prelude::*;
 
 pub fn main() {
-    tracing_subscriber::fmt().init();
-
     App::new()
         .insert_resource(NetworkSettings {
             connection_mode: ConnectionMode::Offline,

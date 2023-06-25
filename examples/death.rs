@@ -7,8 +7,6 @@ use valence_client::status::RequestRespawnEvent;
 const SPAWN_Y: i32 = 64;
 
 pub fn main() {
-    tracing_subscriber::fmt().init();
-
     App::new()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
