@@ -6,6 +6,8 @@ use num_integer::div_ceil;
 use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::Encode;
 
+use crate::chunk::bit_width;
+
 /// `HALF_LEN` must be equal to `ceil(LEN / 2)`.
 #[derive(Clone, Debug)]
 pub(super) enum PalettedContainer<T, const LEN: usize, const HALF_LEN: usize> {
@@ -37,6 +39,7 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>
         *self = Self::Single(val)
     }
 
+    #[track_caller]
     pub(super) fn get(&self, idx: usize) -> T {
         debug_assert!(idx < LEN);
 
@@ -47,6 +50,7 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>
         }
     }
 
+    #[track_caller]
     pub(super) fn set(&mut self, idx: usize, val: T) -> T {
         debug_assert!(idx < LEN);
 
@@ -334,9 +338,4 @@ mod tests {
             }
         }
     }
-}
-
-/// Returns the minimum number of bits needed to represent the integer `n`.
-const fn bit_width(n: usize) -> usize {
-    (usize::BITS - n.leading_zeros()) as _
 }

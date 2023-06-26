@@ -406,10 +406,27 @@ impl EntityAnimations {
 #[derive(Component, Default, Debug)]
 pub struct ObjectData(pub i32);
 
-/// The range of packet bytes for this entity within the cell the entity is
+/// The range of packet bytes for this entity within the chunk the entity is
 /// located in. For internal use only.
 #[derive(Component, Default, Debug)]
 pub struct PacketByteRange(pub Range<usize>);
+
+/// If this entity is known to be positioned within a loaded chunk. Updated at
+/// the end of every tick.
+#[derive(Component, Default, Debug)]
+pub struct InLoadedChunk(bool);
+
+impl InLoadedChunk {
+    pub fn get(&self) -> bool {
+        self.0
+    }
+
+    /// Sets the value. Intended for use in `valence_instance` only.
+    #[doc(hidden)]
+    pub fn set(&mut self, val: bool) {
+        self.0 = val;
+    }
+}
 
 /// Cache for all the tracked data of an entity. Used for the
 /// [`EntityTrackerUpdateS2c`][packet] packet.

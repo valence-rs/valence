@@ -18,42 +18,26 @@
 )]
 #![allow(clippy::type_complexity)]
 
-use std::borrow::Cow;
-use std::collections::hash_map::Entry;
-use std::collections::BTreeSet;
-use std::iter::FusedIterator;
 use std::mem;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_ecs::query::{Has, WorldQuery};
-use chunk::LoadedChunk;
-use glam::{DVec3, Vec3};
-use num_integer::div_ceil;
-use rustc_hash::FxHashMap;
-use valence_biome::BiomeRegistry;
-use valence_core::block_pos::BlockPos;
+use chunk::loaded::ChunkState;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::despawn::Despawned;
-use valence_core::ident::Ident;
-use valence_core::particle::{Particle, ParticleS2c};
-use valence_core::protocol::array::LengthPrefixedArray;
 use valence_core::protocol::byte_angle::ByteAngle;
-use valence_core::protocol::encode::{PacketWriter, WritePacket};
-use valence_core::protocol::packet::sound::{PlaySoundS2c, Sound, SoundCategory};
+use valence_core::protocol::encode::WritePacket;
 use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::{Encode, Packet};
-use valence_core::Server;
-use valence_dimension::DimensionTypeRegistry;
 use valence_entity::packet::{
     EntityAnimationS2c, EntityPositionS2c, EntitySetHeadYawS2c, EntityStatusS2c,
     EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, MoveRelativeS2c, RotateAndMoveRelativeS2c,
     RotateS2c,
 };
 use valence_entity::{
-    EntityAnimations, EntityId, EntityKind, EntityStatuses, HeadYaw, InitEntitiesSet, Location,
-    Look, OldLocation, OldPosition, OnGround, PacketByteRange, Position, TrackedData,
-    UpdateTrackedDataSet, Velocity,
+    EntityAnimations, EntityId, EntityKind, EntityStatuses, HeadYaw, InLoadedChunk,
+    InitEntitiesSet, Location, Look, OldLocation, OldPosition, OnGround, PacketByteRange, Position,
+    TrackedData, UpdateTrackedDataSet, Velocity,
 };
 
 pub mod chunk;
@@ -79,7 +63,6 @@ pub struct WriteUpdatePacketsToInstancesSet;
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ClearInstanceChangesSet;
 
-/*
 impl Plugin for InstancePlugin {
     fn build(&self, app: &mut App) {
         app.configure_sets(
@@ -95,12 +78,12 @@ impl Plugin for InstancePlugin {
             PostUpdate,
             // This can run at the same time as entity init because we're only looking at position
             // + location.
-            update_entity_cell_positions.before(WriteUpdatePacketsToInstancesSet),
+            update_entity_chunk_positions.before(WriteUpdatePacketsToInstancesSet),
         )
         .add_systems(
             PostUpdate,
-            write_update_packets_to_instances
-                .after(update_entity_cell_positions)
+            write_update_packets_to_chunks
+                .after(update_entity_chunk_positions)
                 .in_set(WriteUpdatePacketsToInstancesSet),
         )
         .add_systems(
@@ -108,151 +91,122 @@ impl Plugin for InstancePlugin {
             clear_instance_changes.in_set(ClearInstanceChangesSet),
         );
 
-        #[cfg(debug_assertions)]
-        app.add_systems(PostUpdate, check_instance_invariants);
+        // #[cfg(debug_assertions)]
+        // app.add_systems(PostUpdate, check_instance_invariants);
     }
 }
 
 /// Handles entities moving from one chunk to another.
-fn update_entity_cell_positions(
-    entities: Query<
+fn update_entity_chunk_positions(
+    mut entities: Query<
         (
             Entity,
             &Position,
             &OldPosition,
             &Location,
             &OldLocation,
+            &mut InLoadedChunk,
             Has<Despawned>,
         ),
-        (With<EntityKind>, Or<(Changed<Position>, With<Despawned>)>),
+        (
+            With<EntityKind>,
+            Or<(Changed<Position>, Changed<Location>, With<Despawned>)>,
+        ),
     >,
     mut instances: Query<&mut Instance>,
 ) {
-    for (entity, pos, old_pos, loc, old_loc, despawned) in &entities {
+    for (entity, pos, old_pos, loc, old_loc, mut in_loaded_chunk, despawned) in &mut entities {
         let pos = ChunkPos::at(pos.0.x, pos.0.z);
         let old_pos = ChunkPos::at(old_pos.get().x, old_pos.get().z);
 
-        if despawned.is_some() {
-            // Entity was deleted. Remove it from the chunk it was in, if it was in a chunk
-            // at all.
-            if let Ok(mut old_instance) = instances.get_mut(old_loc.get()) {
-                if let Some(old_cell) = old_instance.partition.get_mut(&old_pos) {
-                    if old_cell.entities.remove(&entity) {
-                        old_cell.outgoing.push((entity, None));
-                    }
-                }
-            }
-        } else if old_loc.get() != loc.0 {
-            // Entity changed the instance it is in. Remove it from old cell and
-            // insert it in the new cell.
-
-            // TODO: skip marker entity?
-
-            if let Ok(mut old_instance) = instances.get_mut(old_loc.get()) {
-                if let Some(old_cell) = old_instance.partition.get_mut(&old_pos) {
-                    if old_cell.entities.remove(&entity) {
-                        old_cell.outgoing.push((entity, None));
-                    }
-                }
-            }
-
-            if let Ok(mut instance) = instances.get_mut(loc.0) {
-                match instance.partition.entry(pos) {
-                    Entry::Occupied(oe) => {
-                        let cell = oe.into_mut();
-                        if cell.entities.insert(entity) {
-                            cell.incoming.push((entity, None));
+        if despawned {
+            // Entity was deleted. Remove it from the chunk it was in.
+            if in_loaded_chunk.get() {
+                if let Ok(mut old_inst) = instances.get_mut(old_loc.get()) {
+                    if let Some(old_chunk) = old_inst.chunk_mut(old_pos) {
+                        if old_chunk.entities.remove(&entity) {
+                            old_chunk.outgoing_entities.push((entity, None));
                         }
                     }
-                    Entry::Vacant(ve) => {
-                        ve.insert(PartitionCell {
-                            chunk: None,
-                            chunk_removed: false,
-                            entities: BTreeSet::from([entity]),
-                            incoming: vec![(entity, None)],
-                            outgoing: vec![],
-                            packet_buf: vec![],
-                        });
+                }
+
+                in_loaded_chunk.set(false);
+            }
+        } else if old_loc.get() != loc.0 {
+            // Entity changed the instance it is in. Remove it from old chunk and
+            // insert it in the new chunk.
+
+            if let Ok(mut old_inst) = instances.get_mut(old_loc.get()) {
+                if in_loaded_chunk.get() {
+                    if let Some(old_chunk) = old_inst.chunk_mut(old_pos) {
+                        if old_chunk.entities.remove(&entity) {
+                            old_chunk.outgoing_entities.push((entity, None));
+                        }
                     }
+                }
+            }
+
+            in_loaded_chunk.set(false);
+
+            if let Ok(mut inst) = instances.get_mut(loc.0) {
+                if let Some(chunk) = inst.chunk_mut(pos) {
+                    if chunk.entities.insert(entity) {
+                        chunk.incoming_entities.push((entity, None));
+                    }
+                    in_loaded_chunk.set(true);
                 }
             }
         } else if pos != old_pos {
-            // Entity changed its chunk position without changing instances. Remove
-            // it from old cell and insert it in new cell.
+            // Entity changed its chunk position without changing instances. Insert it in
+            // the new chunk and remove it from the old chunk.
 
-            // TODO: skip marker entity?
+            if let Ok(mut inst) = instances.get_mut(loc.0) {
+                if let Some(chunk) = inst.chunk_mut(pos) {
+                    if chunk.entities.insert(entity) {
+                        let from = if in_loaded_chunk.get() {
+                            Some(old_pos)
+                        } else {
+                            None
+                        };
 
-            if let Ok(mut instance) = instances.get_mut(loc.0) {
-                if let Some(old_cell) = instance.partition.get_mut(&old_pos) {
-                    if old_cell.entities.remove(&entity) {
-                        old_cell.outgoing.push((entity, Some(pos)));
+                        chunk.incoming_entities.push((entity, from));
                     }
+
+                    in_loaded_chunk.set(true);
+                } else {
+                    in_loaded_chunk.set(false);
                 }
 
-                match instance.partition.entry(pos) {
-                    Entry::Occupied(oe) => {
-                        let cell = oe.into_mut();
-                        if cell.entities.insert(entity) {
-                            cell.incoming.push((entity, Some(old_pos)));
-                        }
-                    }
-                    Entry::Vacant(ve) => {
-                        ve.insert(PartitionCell {
-                            chunk: None,
-                            chunk_removed: false,
-                            entities: BTreeSet::from([entity]),
-                            incoming: vec![(entity, Some(old_pos))],
-                            outgoing: vec![],
-                            packet_buf: vec![],
-                        });
+                if let Some(old_chunk) = inst.chunk_mut(old_pos) {
+                    if old_chunk.entities.remove(&entity) {
+                        let to = if in_loaded_chunk.get() {
+                            Some(pos)
+                        } else {
+                            None
+                        };
+
+                        old_chunk.outgoing_entities.push((entity, to));
                     }
                 }
             }
         } else {
-            // The entity didn't change its chunk position so there is nothing
+            // The entity didn't change its chunk position, so there's nothing
             // we need to do.
         }
     }
 }
 
-/// Writes update packets from entities and chunks into each cell's packet
+/// Writes update packets from entities and chunks into each chunk's packet
 /// buffer.
-fn write_update_packets_to_instances(
+fn write_update_packets_to_chunks(
     mut instances: Query<&mut Instance>,
     mut entities: Query<UpdateEntityQuery, (With<EntityKind>, Without<Despawned>)>,
-    server: Res<Server>,
 ) {
-    for instance in &mut instances {
-        let instance = instance.into_inner();
+    for inst in &mut instances {
+        let inst = inst.into_inner();
 
-        for (&pos, cell) in &mut instance.partition {
-            // Cache chunk update packets into the packet buffer of this cell.
-            if let Some(chunk) = &mut cell.chunk {
-                let writer =
-                    PacketWriter::new(&mut cell.packet_buf, server.compression_threshold());
-
-                chunk.write_update_packets(writer, pos, &instance.info);
-
-                chunk.clear_viewed();
-            }
-
-            // Cache entity update packets into the packet buffer of this cell.
-            for &entity in &cell.entities {
-                let mut entity = entities
-                    .get_mut(entity)
-                    .expect("missing entity in partition cell");
-
-                let start = cell.packet_buf.len();
-
-                let writer =
-                    PacketWriter::new(&mut cell.packet_buf, server.compression_threshold());
-
-                entity.write_update_packets(writer);
-
-                let end = cell.packet_buf.len();
-
-                entity.packet_byte_range.0 = start..end;
-            }
+        for (&pos, chunk) in &mut inst.chunks {
+            chunk.update_pre_client(pos, &inst.info, &mut entities)
         }
     }
 }
@@ -272,7 +226,7 @@ struct UpdateEntityQuery {
     tracked_data: &'static TrackedData,
     statuses: &'static EntityStatuses,
     animations: &'static EntityAnimations,
-    packet_byte_range: &'static mut PacketByteRange,
+    packet_byte_range: Option<&'static mut PacketByteRange>,
 }
 
 impl UpdateEntityQueryItem<'_> {
@@ -368,36 +322,26 @@ impl UpdateEntityQueryItem<'_> {
 }
 
 fn clear_instance_changes(mut instances: Query<&mut Instance>) {
-    for mut instance in &mut instances {
-        instance.partition.retain(|_, cell| {
-            cell.packet_buf.clear();
-            cell.chunk_removed = false;
-            cell.incoming.clear();
-            cell.outgoing.clear();
-
-            if let Some(chunk) = &mut cell.chunk {
-                chunk.update_post_client();
-            }
-
-            cell.chunk.is_some() || !cell.entities.is_empty()
+    for mut inst in &mut instances {
+        inst.retain_chunks(|_, chunk| {
+            chunk.update_post_client();
+            chunk.state() != ChunkState::Removed
         });
 
-        instance.packet_buf.clear();
+        inst.packet_buf.clear();
     }
 }
 
-#[cfg(debug_assertions)]
-fn check_instance_invariants(instances: Query<&Instance>, entities: Query<(), With<EntityKind>>) {
-    for instance in &instances {
-        for (pos, cell) in &instance.partition {
-            for &id in &cell.entities {
-                assert!(
-                    entities.get(id).is_ok(),
-                    "instance contains an entity that does not exist at {pos:?}"
-                );
-            }
-        }
-    }
-}
-
-*/
+// #[cfg(debug_assertions)]
+// fn check_instance_invariants(instances: Query<&Instance>, entities: Query<(),
+// With<EntityKind>>) {     for instance in &instances {
+//         for (pos, cell) in &instance.partition {
+//             for &id in &cell.entities {
+//                 assert!(
+//                     entities.get(id).is_ok(),
+//                     "instance contains an entity that does not exist at
+// {pos:?}"                 );
+//             }
+//         }
+//     }
+// }

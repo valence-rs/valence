@@ -180,3 +180,84 @@ fn check_biome_oob(chunk: &impl Chunk, x: u32, y: u32, z: u32) {
         "chunk biome offsets of ({x}, {y}, {z}) are out of bounds"
     );
 }
+
+/// Returns the minimum number of bits needed to represent the integer `n`.
+const fn bit_width(n: usize) -> usize {
+    (usize::BITS - n.leading_zeros()) as _
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn chunk_get_set() {
+        fn check(mut chunk: impl Chunk) {
+            assert_eq!(
+                chunk.set_block_state(1, 2, 3, BlockState::CHAIN),
+                BlockState::AIR
+            );
+            assert_eq!(
+                chunk.set_block_state(1, 2, 3, BlockState::AIR),
+                BlockState::CHAIN
+            );
+
+            assert_eq!(chunk.set_block_entity(1, 2, 3, Some(Compound::new())), None);
+            assert_eq!(chunk.set_block_entity(1, 2, 3, None), Some(Compound::new()));
+        }
+
+        let unloaded = UnloadedChunk::with_height(512);
+        let loaded = LoadedChunk::new(512, None);
+
+        check(unloaded);
+        check(loaded);
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    #[should_panic]
+    fn chunk_debug_oob_0() {
+        let mut chunk = UnloadedChunk::with_height(512);
+        chunk.set_block_state(0, 0, 16, BlockState::AIR);
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    #[should_panic]
+    fn chunk_debug_oob_1() {
+        let mut chunk = LoadedChunk::new(512, None);
+        chunk.set_block_state(0, 0, 16, BlockState::AIR);
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    #[should_panic]
+    fn chunk_debug_oob_2() {
+        let mut chunk = UnloadedChunk::with_height(512);
+        chunk.set_block_entity(0, 0, 16, None);
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    #[should_panic]
+    fn chunk_debug_oob_3() {
+        let mut chunk = LoadedChunk::new(512, None);
+        chunk.set_block_entity(0, 0, 16, None);
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    #[should_panic]
+    fn chunk_debug_oob_4() {
+        let mut chunk = UnloadedChunk::with_height(512);
+        chunk.set_biome(0, 0, 4, BiomeId::DEFAULT);
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    #[should_panic]
+    fn chunk_debug_oob_5() {
+        let mut chunk = LoadedChunk::new(512, None);
+        chunk.set_biome(0, 0, 4, BiomeId::DEFAULT);
+    }
+}

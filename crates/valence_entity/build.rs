@@ -402,7 +402,7 @@ fn build() -> anyhow::Result<TokenStream> {
                 pub animations: super::EntityAnimations,
                 pub object_data: super::ObjectData,
                 pub tracked_data: super::TrackedData,
-                pub packet_byte_range: super::PacketByteRange,
+                pub in_loaded_chunk: super::InLoadedChunk,
             }]);
 
             bundle_init_fields.extend([quote! {
@@ -421,7 +421,7 @@ fn build() -> anyhow::Result<TokenStream> {
                 animations: Default::default(),
                 object_data: Default::default(),
                 tracked_data: Default::default(),
-                packet_byte_range: Default::default(),
+                in_loaded_chunk: Default::default(),
             }]);
 
             let bundle_name_ident = ident(format!("{entity_name}Bundle"));

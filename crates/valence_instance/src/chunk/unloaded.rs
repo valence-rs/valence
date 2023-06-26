@@ -101,6 +101,8 @@ impl Chunk for UnloadedChunk {
         z: u32,
         block_entity: Option<Compound>,
     ) -> Option<Compound> {
+        check_block_oob(self, x, y, z);
+
         let idx = x + z * 16 + y * 16 * 16;
 
         match block_entity {
@@ -140,5 +142,31 @@ impl Chunk for UnloadedChunk {
             sect.block_states.optimize();
             sect.biomes.optimize();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unloaded_chunk_resize_removes_block_entities() {
+        let mut chunk = UnloadedChunk::with_height(32);
+
+        assert_eq!(chunk.height(), 32);
+
+        // First block entity is in section 0.
+        chunk.set_block_entity(0, 5, 0, Some(Compound::new()));
+
+        // Second block entity is in section 1.
+        chunk.set_block_entity(0, 16, 0, Some(Compound::new()));
+
+        // Remove section 0.
+        chunk.set_height(16);
+        assert_eq!(chunk.height(), 16);
+
+        assert_eq!(chunk.block_entity(0, 5, 0), Some(&Compound::new()));
+        assert_eq!(chunk.set_block_entity(0, 5, 0, None), Some(Compound::new()));
+        assert!(chunk.block_entities.is_empty());
     }
 }

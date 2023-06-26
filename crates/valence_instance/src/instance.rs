@@ -22,7 +22,7 @@ use crate::chunk::{Block, BlockRef, Chunk, IntoBlock, LoadedChunk, UnloadedChunk
 #[derive(Component)]
 pub struct Instance {
     pub(super) chunks: FxHashMap<ChunkPos, LoadedChunk>,
-    info: InstanceInfo,
+    pub(super) info: InstanceInfo,
     /// Packet data to send to all clients in this instance at the end of the
     /// tick.
     pub(super) packet_buf: Vec<u8>,
@@ -30,11 +30,11 @@ pub struct Instance {
 
 #[doc(hidden)]
 pub struct InstanceInfo {
-    dimension_type_name: Ident<String>,
-    height: u32,
-    min_y: i32,
-    biome_registry_len: usize,
-    compression_threshold: Option<u32>,
+    pub(crate) dimension_type_name: Ident<String>,
+    pub(crate) height: u32,
+    pub(crate) min_y: i32,
+    pub(crate) biome_registry_len: usize,
+    pub(crate) compression_threshold: Option<u32>,
 }
 
 impl Instance {
@@ -288,7 +288,7 @@ impl<'a> OccupiedChunkEntry<'a> {
         self.entry.get_mut()
     }
 
-    pub fn insert(&mut self, mut chunk: UnloadedChunk) -> UnloadedChunk {
+    pub fn insert(&mut self, chunk: UnloadedChunk) -> UnloadedChunk {
         self.entry.get_mut().insert(chunk)
     }
 
@@ -320,9 +320,11 @@ pub struct VacantChunkEntry<'a> {
 }
 
 impl<'a> VacantChunkEntry<'a> {
-    pub fn insert(self, mut chunk: UnloadedChunk) -> &'a mut LoadedChunk {
-        self.entry
-            .insert(LoadedChunk::new(self.height, self.compression_threshold))
+    pub fn insert(self, chunk: UnloadedChunk) -> &'a mut LoadedChunk {
+        let mut loaded = LoadedChunk::new(self.height, self.compression_threshold);
+        loaded.insert(chunk);
+
+        self.entry.insert(loaded)
     }
 
     pub fn into_key(self) -> ChunkPos {
