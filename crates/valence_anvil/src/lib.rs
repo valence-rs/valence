@@ -82,7 +82,7 @@ impl AnvilLevel {
                     .iter()
                     .map(|(id, name, _)| (name.to_string_ident(), id))
                     .collect(),
-                section_count: 0, // Assigned later.
+                height: 0, // Assigned later.
             }),
             ignored_chunks: HashSet::new(),
             pending: HashMap::new(),
@@ -137,8 +137,8 @@ struct ChunkWorkerState {
     decompress_buf: Vec<u8>,
     /// Mapping of biome names to their biome ID.
     biome_to_id: BTreeMap<Ident<String>, BiomeId>,
-    /// Number of chunk sections in the instance.
-    section_count: usize,
+    /// Height of the chunk in the instance.
+    height: u32,
 }
 
 impl ChunkWorkerState {

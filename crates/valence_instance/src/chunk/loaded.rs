@@ -216,6 +216,11 @@ impl LoadedChunk {
         self.state
     }
 
+    /// All the entities positioned in this chunk.
+    pub fn entities(&self) -> impl Iterator<Item = Entity> + '_ {
+        self.entities.iter().copied()
+    }
+
     /// If this chunk is potentially in view of any clients.
     pub fn is_viewed(&self) -> bool {
         self.is_viewed.load(Ordering::Relaxed)
@@ -243,8 +248,13 @@ impl LoadedChunk {
     }
 
     #[doc(hidden)]
-    pub fn get_chunk_init_packets(&self) -> &[u8] {
-        todo!()
+    pub fn incoming_entities(&self) -> &[(Entity, Option<ChunkPos>)] {
+        &self.incoming_entities
+    }
+
+    #[doc(hidden)]
+    pub fn outgoing_entities(&self) -> &[(Entity, Option<ChunkPos>)] {
+        &self.outgoing_entities
     }
 
     /// Performs the changes necessary to prepare this chunk for client updates.
@@ -404,6 +414,7 @@ impl LoadedChunk {
         self.assert_no_changes();
     }
 
+    /// Writes the packet data needed to initialize this chunk.
     #[doc(hidden)]
     pub fn write_init_packets(
         &self,
@@ -783,7 +794,8 @@ mod tests {
         });
         check(&mut chunk, |c| c.set_block_entity(3, 40, 5, None));
 
-        // Old block state is the same as new block state, so the cache should still be intact.
+        // Old block state is the same as new block state, so the cache should still be
+        // intact.
         assert_eq!(
             chunk.set_block_state(0, 0, 0, BlockState::WET_SPONGE),
             BlockState::WET_SPONGE

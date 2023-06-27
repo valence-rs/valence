@@ -35,9 +35,9 @@ use valence_entity::packet::{
     RotateS2c,
 };
 use valence_entity::{
-    EntityAnimations, EntityId, EntityKind, EntityStatuses, HeadYaw, InLoadedChunk,
-    InitEntitiesSet, Location, Look, OldLocation, OldPosition, OnGround, PacketByteRange, Position,
-    TrackedData, UpdateTrackedDataSet, Velocity,
+    EntityAnimations, EntityId, EntityKind, EntityStatuses, HeadYaw, InitEntitiesSet, Location,
+    Look, OldLocation, OldPosition, OnGround, PacketByteRange, Position, TrackedData,
+    UpdateTrackedDataSet, Velocity,
 };
 
 pub mod chunk;
@@ -78,7 +78,9 @@ impl Plugin for InstancePlugin {
             PostUpdate,
             // This can run at the same time as entity init because we're only looking at position
             // + location.
-            update_entity_chunk_positions.before(WriteUpdatePacketsToInstancesSet),
+            (add_orphaned_entities, update_entity_chunk_positions)
+                .chain()
+                .before(WriteUpdatePacketsToInstancesSet),
         )
         .add_systems(
             PostUpdate,
@@ -88,24 +90,46 @@ impl Plugin for InstancePlugin {
         )
         .add_systems(
             PostUpdate,
-            clear_instance_changes.in_set(ClearInstanceChangesSet),
+            update_post_client.in_set(ClearInstanceChangesSet),
         );
+    }
+}
 
-        // #[cfg(debug_assertions)]
-        // app.add_systems(PostUpdate, check_instance_invariants);
+/// Marker component for entities that are not contained in a chunk.
+#[derive(Component, Debug)]
+struct Orphaned;
+
+/// Attempts to add orphaned entities to the chunk they're positioned in.
+fn add_orphaned_entities(
+    entities: Query<(Entity, &Position, &Location), With<Orphaned>>,
+    mut instances: Query<&mut Instance>,
+    mut commands: Commands,
+) {
+    for (entity, pos, loc) in &entities {
+        if let Ok(mut inst) = instances.get_mut(loc.0) {
+            let pos = ChunkPos::at(pos.0.x, pos.0.z);
+
+            if let Some(chunk) = inst.chunk_mut(pos) {
+                if chunk.entities.insert(entity) {
+                    chunk.incoming_entities.push((entity, None));
+                }
+
+                // Entity is no longer orphaned.
+                commands.entity(entity).remove::<Orphaned>();
+            }
+        }
     }
 }
 
 /// Handles entities moving from one chunk to another.
 fn update_entity_chunk_positions(
-    mut entities: Query<
+    entities: Query<
         (
             Entity,
             &Position,
             &OldPosition,
             &Location,
             &OldLocation,
-            &mut InLoadedChunk,
             Has<Despawned>,
         ),
         (
@@ -114,79 +138,69 @@ fn update_entity_chunk_positions(
         ),
     >,
     mut instances: Query<&mut Instance>,
+    mut commands: Commands,
 ) {
-    for (entity, pos, old_pos, loc, old_loc, mut in_loaded_chunk, despawned) in &mut entities {
+    for (entity, pos, old_pos, loc, old_loc, despawned) in &entities {
         let pos = ChunkPos::at(pos.0.x, pos.0.z);
         let old_pos = ChunkPos::at(old_pos.get().x, old_pos.get().z);
 
         if despawned {
             // Entity was deleted. Remove it from the chunk it was in.
-            if in_loaded_chunk.get() {
-                if let Ok(mut old_inst) = instances.get_mut(old_loc.get()) {
-                    if let Some(old_chunk) = old_inst.chunk_mut(old_pos) {
-                        if old_chunk.entities.remove(&entity) {
-                            old_chunk.outgoing_entities.push((entity, None));
-                        }
+            if let Ok(mut old_inst) = instances.get_mut(old_loc.get()) {
+                if let Some(old_chunk) = old_inst.chunk_mut(old_pos) {
+                    if old_chunk.entities.remove(&entity) {
+                        old_chunk.outgoing_entities.push((entity, None));
                     }
                 }
-
-                in_loaded_chunk.set(false);
             }
         } else if old_loc.get() != loc.0 {
             // Entity changed the instance it is in. Remove it from old chunk and
             // insert it in the new chunk.
 
             if let Ok(mut old_inst) = instances.get_mut(old_loc.get()) {
-                if in_loaded_chunk.get() {
-                    if let Some(old_chunk) = old_inst.chunk_mut(old_pos) {
-                        if old_chunk.entities.remove(&entity) {
-                            old_chunk.outgoing_entities.push((entity, None));
-                        }
+                if let Some(old_chunk) = old_inst.chunk_mut(old_pos) {
+                    if old_chunk.entities.remove(&entity) {
+                        old_chunk.outgoing_entities.push((entity, None));
                     }
                 }
             }
-
-            in_loaded_chunk.set(false);
 
             if let Ok(mut inst) = instances.get_mut(loc.0) {
                 if let Some(chunk) = inst.chunk_mut(pos) {
                     if chunk.entities.insert(entity) {
                         chunk.incoming_entities.push((entity, None));
                     }
-                    in_loaded_chunk.set(true);
+                } else {
+                    // Entity is now orphaned.
+                    commands.entity(entity).insert(Orphaned);
                 }
             }
         } else if pos != old_pos {
-            // Entity changed its chunk position without changing instances. Insert it in
-            // the new chunk and remove it from the old chunk.
+            // Entity changed its chunk position without changing instances. Remove it from
+            // the old chunk and insert it in the new chunk.
 
             if let Ok(mut inst) = instances.get_mut(loc.0) {
-                if let Some(chunk) = inst.chunk_mut(pos) {
-                    if chunk.entities.insert(entity) {
-                        let from = if in_loaded_chunk.get() {
-                            Some(old_pos)
-                        } else {
-                            None
-                        };
-
-                        chunk.incoming_entities.push((entity, from));
-                    }
-
-                    in_loaded_chunk.set(true);
-                } else {
-                    in_loaded_chunk.set(false);
-                }
+                let in_new_chunk = inst.chunk(pos).is_some();
+                let mut in_old_chunk = true;
 
                 if let Some(old_chunk) = inst.chunk_mut(old_pos) {
                     if old_chunk.entities.remove(&entity) {
-                        let to = if in_loaded_chunk.get() {
-                            Some(pos)
-                        } else {
-                            None
-                        };
-
+                        let to = if in_new_chunk { Some(pos) } else { None };
                         old_chunk.outgoing_entities.push((entity, to));
+                    } else {
+                        in_old_chunk = false;
                     }
+                }
+
+                if let Some(chunk) = inst.chunk_mut(pos) {
+                    let from = if in_old_chunk { Some(old_pos) } else { None };
+
+                    if chunk.entities.insert(entity) {
+                        chunk.incoming_entities.push((entity, from));
+                    }
+                } else {
+                    // Entity is now orphaned.
+                    commands.entity(entity).insert(Orphaned);
                 }
             }
         } else {
@@ -321,27 +335,24 @@ impl UpdateEntityQueryItem<'_> {
     }
 }
 
-fn clear_instance_changes(mut instances: Query<&mut Instance>) {
+/// Clears changes made to instances and removes removed chunks.
+fn update_post_client(mut instances: Query<&mut Instance>, mut commands: Commands) {
     for mut inst in &mut instances {
         inst.retain_chunks(|_, chunk| {
             chunk.update_post_client();
+
+            if chunk.state() == ChunkState::Removed {
+                // Any entities still in this chunk are now orphaned.
+                for &entity in &chunk.entities {
+                    if let Some(mut commands) = commands.get_entity(entity) {
+                        commands.insert(Orphaned);
+                    }
+                }
+            }
+
             chunk.state() != ChunkState::Removed
         });
 
         inst.packet_buf.clear();
     }
 }
-
-// #[cfg(debug_assertions)]
-// fn check_instance_invariants(instances: Query<&Instance>, entities: Query<(),
-// With<EntityKind>>) {     for instance in &instances {
-//         for (pos, cell) in &instance.partition {
-//             for &id in &cell.entities {
-//                 assert!(
-//                     entities.get(id).is_ok(),
-//                     "instance contains an entity that does not exist at
-// {pos:?}"                 );
-//             }
-//         }
-//     }
-// }

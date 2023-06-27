@@ -16,6 +16,7 @@
     unreachable_pub,
     clippy::dbg_macro
 )]
+#![allow(clippy::type_complexity)]
 
 use std::borrow::Cow;
 use std::fmt;
@@ -34,7 +35,7 @@ use packet::{
     PlayerRespawnS2c, PlayerSpawnPositionS2c, PlayerSpawnS2c,
 };
 use rand::Rng;
-use tracing::warn;
+use tracing::{debug, warn};
 use uuid::Uuid;
 use valence_biome::BiomeRegistry;
 use valence_core::block_pos::BlockPos;
@@ -50,7 +51,6 @@ use valence_core::protocol::global_pos::GlobalPos;
 use valence_core::protocol::packet::sound::{PlaySoundS2c, Sound, SoundCategory};
 use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::{Encode, Packet};
-use valence_core::scratch::ScratchBuf;
 use valence_core::text::Text;
 use valence_core::uuid::UniqueId;
 use valence_core::Server;
@@ -63,6 +63,7 @@ use valence_entity::{
     ClearEntityChangesSet, EntityId, EntityKind, EntityStatus, HeadYaw, Location, Look, ObjectData,
     OldLocation, OldPosition, OnGround, PacketByteRange, Position, TrackedData, Velocity,
 };
+use valence_instance::chunk::loaded::ChunkState;
 use valence_instance::packet::{
     ChunkLoadDistanceS2c, ChunkRenderDistanceCenterS2c, UnloadChunkS2c,
 };
@@ -169,7 +170,6 @@ impl Plugin for ClientPlugin {
 pub struct ClientBundle {
     pub client: Client,
     pub settings: settings::ClientSettings,
-    pub scratch: ScratchBuf,
     pub entity_remove_buf: EntityRemoveBuf,
     pub username: Username,
     pub ip: Ip,
@@ -202,7 +202,6 @@ impl ClientBundle {
                 enc: args.enc,
             },
             settings: settings::ClientSettings::default(),
-            scratch: ScratchBuf::default(),
             entity_remove_buf: EntityRemoveBuf(vec![]),
             username: Username(args.username),
             ip: Ip(args.ip),
@@ -747,7 +746,6 @@ fn initial_join(
     }
 }
 
-#[allow(clippy::type_complexity)]
 fn respawn(
     mut clients: Query<
         (
@@ -879,9 +877,9 @@ impl EntityInitQueryItem<'_> {
     }
 }
 
-#[allow(clippy::type_complexity)]
 fn read_data_in_old_view(
     mut clients: Query<(
+        Entity,
         &mut Client,
         &mut EntityRemoveBuf,
         &Location,
@@ -896,13 +894,23 @@ fn read_data_in_old_view(
     entity_ids: Query<&EntityId>,
 ) {
     clients.par_iter_mut().for_each_mut(
-        |(mut client, mut remove_buf, loc, old_loc, pos, old_pos, old_view_dist, byte_range)| {
-            let Ok(instance) = instances.get(old_loc.get()) else {
+        |(
+            self_entity,
+            mut client,
+            mut remove_buf,
+            loc,
+            old_loc,
+            pos,
+            old_pos,
+            old_view_dist,
+            byte_range,
+        )| {
+            let Ok(inst) = instances.get(old_loc.get()) else {
                 return;
             };
 
             // Send instance-wide packet data.
-            client.write_packet_bytes(&instance.packet_buf);
+            client.write_packet_bytes(&inst.packet_buf());
 
             // TODO: cache the chunk position?
             let old_chunk_pos = old_pos.chunk_pos();
@@ -912,22 +920,16 @@ fn read_data_in_old_view(
 
             // Iterate over all visible chunks from the previous tick.
             view.for_each(|pos| {
-                if let Some(cell) = instance.partition.get(&pos) {
-                    if cell.chunk_removed && cell.chunk.is_none() {
-                        // Chunk was previously loaded and is now deleted.
-                        client.write_packet(&UnloadChunkS2c { pos });
-                    }
-
-                    if let Some(chunk) = &cell.chunk {
-                        chunk.mark_viewed();
-                    }
+                if let Some(chunk) = inst.chunk(pos) {
+                    // Mark this chunk as being in view of a client.
+                    chunk.set_viewed();
 
                     // Send entity spawn packets for entities entering the client's view.
-                    for &(id, src_pos) in &cell.incoming {
+                    for &(entity, src_pos) in chunk.incoming_entities() {
                         if src_pos.map_or(true, |p| !view.contains(p)) {
                             // The incoming entity originated from outside the view distance, so it
                             // must be spawned.
-                            if let Ok((entity, old_pos)) = entities.get(id) {
+                            if let Ok((entity, old_pos)) = entities.get(entity) {
                                 // Notice we are spawning the entity at its old position rather than
                                 // the current position. This is because the client could also
                                 // receive update packets for this entity this tick, which may
@@ -938,25 +940,52 @@ fn read_data_in_old_view(
                     }
 
                     // Send entity despawn packets for entities exiting the client's view.
-                    for &(id, dest_pos) in &cell.outgoing {
+                    for &(entity, dest_pos) in chunk.outgoing_entities() {
                         if dest_pos.map_or(true, |p| !view.contains(p)) {
                             // The outgoing entity moved outside the view distance, so it must be
                             // despawned.
-                            if let Ok(entity_id) = entity_ids.get(id) {
-                                remove_buf.push(entity_id.get());
+                            if let Ok(id) = entity_ids.get(entity) {
+                                remove_buf.push(id.get());
                             }
                         }
                     }
 
-                    // Send all data in the chunk's packet buffer to this client. This will update
-                    // entities in the cell, spawn or update the chunk in the cell, or send any
-                    // other packet data that was added here by users.
-                    if pos == new_chunk_pos && loc == old_loc {
-                        // Skip range of bytes for the client's own entity.
-                        client.write_packet_bytes(&cell.packet_buf[..byte_range.0.start]);
-                        client.write_packet_bytes(&cell.packet_buf[byte_range.0.end..]);
-                    } else {
-                        client.write_packet_bytes(&cell.packet_buf);
+                    match chunk.state() {
+                        ChunkState::Added => {
+                            // Chunk was added this tick. Send the packet to initialize the chunk.
+                            chunk.write_init_packets(&mut *client, pos, inst.info());
+                        }
+                        ChunkState::Removed => {
+                            // Chunk was removed this tick, so send the packet to deinitialize the
+                            // chunk and despawn all the contained entities.
+                            client.write_packet(&UnloadChunkS2c { pos });
+
+                            for entity in chunk.entities() {
+                                // Skip the client's own entity.
+                                if entity != self_entity {
+                                    if let Ok(id) = entity_ids.get(entity) {
+                                        remove_buf.push(id.get());
+                                    }
+                                }
+                            }
+                        }
+                        ChunkState::Normal => {
+                            // Chunk is neither added nor removed. Send the data to update this
+                            // chunk as normal.
+
+                            // Send all data in the chunk's packet buffer to this client. This will
+                            // update entities in the chunk, update the
+                            // chunk itself, and send any other packet
+                            // data that was added in the buffer by users.
+                            if pos == new_chunk_pos && loc == old_loc {
+                                // Skip range of bytes for the client's own entity.
+                                client
+                                    .write_packet_bytes(&chunk.packet_buf()[..byte_range.0.start]);
+                                client.write_packet_bytes(&chunk.packet_buf()[byte_range.0.end..]);
+                            } else {
+                                client.write_packet_bytes(&chunk.packet_buf());
+                            }
+                        }
                     }
                 }
             });
@@ -969,13 +998,11 @@ fn read_data_in_old_view(
 ///
 /// This handles the situation when a client changes instances or chunk
 /// position. It must run after [`read_data_in_old_view`].
-#[allow(clippy::type_complexity)]
 fn update_view(
     mut clients: Query<
         (
             Entity,
             &mut Client,
-            &mut ScratchBuf,
             &mut EntityRemoveBuf,
             &Location,
             &OldLocation,
@@ -992,9 +1019,8 @@ fn update_view(
 ) {
     clients.par_iter_mut().for_each_mut(
         |(
-            entity,
+            self_entity,
             mut client,
-            mut scratch,
             mut remove_buf,
             loc,
             old_loc,
@@ -1003,7 +1029,6 @@ fn update_view(
             view_dist,
             old_view_dist,
         )| {
-            // TODO: cache chunk pos?
             let view = ChunkView::new(ChunkPos::from_dvec3(pos.0), view_dist.0);
             let old_view = ChunkView::new(ChunkPos::from_dvec3(old_pos.get()), old_view_dist.0);
 
@@ -1018,24 +1043,26 @@ fn update_view(
 
             // Was the client's instance changed?
             if loc.0 != old_loc.get() {
-                if let Ok(old_instance) = instances.get(old_loc.get()) {
+                if let Ok(old_inst) = instances.get(old_loc.get()) {
                     // TODO: only send unload packets when old dimension == new dimension, since the
                     //       client will do the unloading for us in that case?
 
                     // Unload all chunks and entities in the old view.
                     old_view.for_each(|pos| {
-                        if let Some(cell) = old_instance.partition.get(&pos) {
-                            // Unload the chunk at this cell if it was loaded.
-                            if cell.chunk.is_some() {
+                        if let Some(chunk) = old_inst.chunk(pos) {
+                            // Unload the chunk if its state is not "removed", since we already
+                            // unloaded "removed" chunks earlier.
+                            if chunk.state() != ChunkState::Removed {
+                                // Unload the chunk.
                                 client.write_packet(&UnloadChunkS2c { pos });
-                            }
 
-                            // Unload all the entities in the cell.
-                            for &id in &cell.entities {
-                                // Skip client's own entity.
-                                if id != entity {
-                                    if let Ok(entity_id) = entity_ids.get(id) {
-                                        remove_buf.push(entity_id.get());
+                                // Unload all the entities in the chunk.
+                                for entity in chunk.entities() {
+                                    // Skip the client's own entity.
+                                    if entity != self_entity {
+                                        if let Ok(entity_id) = entity_ids.get(entity) {
+                                            remove_buf.push(entity_id.get());
+                                        }
                                     }
                                 }
                             }
@@ -1043,77 +1070,68 @@ fn update_view(
                     });
                 }
 
-                if let Ok(instance) = instances.get(loc.0) {
+                if let Ok(inst) = instances.get(loc.0) {
                     // Load all chunks and entities in new view.
                     view.for_each(|pos| {
-                        if let Some(cell) = instance.partition.get(&pos) {
-                            // Load the chunk at this cell if there is one.
-                            if let Some(chunk) = &cell.chunk {
-                                chunk.write_init_packets(
-                                    &instance.info,
-                                    pos,
-                                    &mut client.enc,
-                                    &mut scratch.0,
-                                );
+                        if let Some(chunk) = inst.chunk(pos) {
+                            // Load the chunk if it's not already removed.
+                            chunk.write_init_packets(&mut *client, pos, inst.info());
 
-                                chunk.mark_viewed();
-                            }
-
-                            // Load all the entities in this cell.
-                            for &id in &cell.entities {
+                            // Load all the entities in this chunk.
+                            for entity in chunk.entities() {
                                 // Skip client's own entity.
-                                if id != entity {
-                                    if let Ok((entity, pos)) = entities.get(id) {
-                                        entity.write_init_packets(pos.get(), &mut client.enc);
+                                if entity != self_entity {
+                                    if let Ok((entity, pos)) = entities.get(entity) {
+                                        entity.write_init_packets(pos.get(), &mut *client);
                                     }
                                 }
                             }
                         }
                     });
                 } else {
-                    warn!("Client entered nonexistent instance ({loc:?}).");
+                    debug!("Client entered nonexistent instance ({loc:?}).");
                 }
             } else if old_view != view {
                 // Client changed their view without changing the instance.
 
-                if let Ok(instance) = instances.get(loc.0) {
+                if let Ok(inst) = instances.get(loc.0) {
                     // Unload chunks and entities in the old view and load chunks and entities in
                     // the new view. We don't need to do any work where the old and new view
                     // overlap.
                     old_view.diff_for_each(view, |pos| {
-                        if let Some(cell) = instance.partition.get(&pos) {
-                            // Unload the chunk at this cell if it was loaded.
-                            if cell.chunk.is_some() {
+                        if let Some(chunk) = inst.chunk(pos) {
+                            // Unload the chunk if its state is not "removed", since we already
+                            // unloaded "removed" chunks earlier.
+                            if chunk.state() != ChunkState::Removed {
+                                // Unload the chunk.
                                 client.write_packet(&UnloadChunkS2c { pos });
-                            }
 
-                            // Unload all the entities in the cell.
-                            for &id in &cell.entities {
-                                if let Ok(entity_id) = entity_ids.get(id) {
-                                    remove_buf.push(entity_id.get());
+                                // Unload all the entities in the chunk.
+                                for entity in chunk.entities() {
+                                    debug_assert_ne!(entity, self_entity);
+
+                                    if let Ok(entity_id) = entity_ids.get(entity) {
+                                        remove_buf.push(entity_id.get());
+                                    }
                                 }
                             }
                         }
                     });
 
                     view.diff_for_each(old_view, |pos| {
-                        if let Some(cell) = instance.partition.get(&pos) {
-                            // Load the chunk at this cell if there is one.
-                            if let Some(chunk) = &cell.chunk {
-                                chunk.write_init_packets(
-                                    &instance.info,
-                                    pos,
-                                    &mut client.enc,
-                                    &mut scratch.0,
-                                );
+                        if let Some(chunk) = inst.chunk(pos) {
+                            // Load the chunk unless it's already unloaded.
+                            if chunk.state() != ChunkState::Removed {
+                                // Load the chunk if it's not already removed.
+                                chunk.write_init_packets(&mut *client, pos, inst.info());
 
-                                chunk.mark_viewed();
-                            }
+                                // Load all the entities in this chunk.
+                                for entity in chunk.entities() {
+                                    debug_assert_ne!(entity, self_entity);
 
-                            // Load all the entities in this cell.
-                            for &id in &cell.entities {
-                                if let Ok((entity, pos)) = entities.get(id) {
-                                    entity.write_init_packets(pos.get(), &mut client.enc);
+                                    if let Ok((entity, pos)) = entities.get(entity) {
+                                        entity.write_init_packets(pos.get(), &mut *client);
+                                    }
                                 }
                             }
                         }

@@ -237,6 +237,17 @@ impl Instance {
             chunk.write_packet_bytes(bytes);
         }
     }
+
+    /// An immutable view into this instance's packet buffer.
+    #[doc(hidden)]
+    pub fn packet_buf(&self) -> &[u8] {
+        &self.packet_buf
+    }
+
+    #[doc(hidden)]
+    pub fn info(&self) -> &InstanceInfo {
+        &self.info
+    }
 }
 
 /// Writing packets to the instance writes to the instance's global packet
