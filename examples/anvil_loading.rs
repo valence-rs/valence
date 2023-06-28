@@ -96,7 +96,7 @@ fn handle_chunk_loads(
             ChunkLoadStatus::Empty => {
                 // There's no chunk here so let's insert an empty chunk. If we were doing
                 // terrain generation we would prepare that here.
-                inst.insert_chunk(event.pos, Chunk::default());
+                inst.insert_chunk(event.pos, UnloadedChunk::new());
             }
             ChunkLoadStatus::Failed(e) => {
                 // Something went wrong.
@@ -104,7 +104,7 @@ fn handle_chunk_loads(
                     "failed to load chunk at ({}, {}): {e:#}",
                     event.pos.x, event.pos.z
                 );
-                inst.insert_chunk(event.pos, Chunk::default());
+                inst.insert_chunk(event.pos, UnloadedChunk::new());
             }
         }
     }

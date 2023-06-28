@@ -107,7 +107,8 @@ pub mod prelude {
         EntityAnimation, EntityKind, EntityManager, EntityStatus, HeadYaw, Location, Look,
         OldLocation, OldPosition, Position,
     };
-    pub use valence_instance::{Block, BlockMut, BlockRef, Chunk, Instance};
+    pub use valence_instance::chunk::{Chunk, LoadedChunk, UnloadedChunk};
+    pub use valence_instance::{Block, BlockRef, Instance};
     #[cfg(feature = "inventory")]
     pub use valence_inventory::{
         CursorItem, Inventory, InventoryKind, InventoryWindow, InventoryWindowMut, OpenInventory,

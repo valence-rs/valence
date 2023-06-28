@@ -38,7 +38,8 @@ use valence_client::{Client, OldView, UpdateClientsSet, View};
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::ident::Ident;
 use valence_entity::{Location, OldLocation};
-use valence_instance::{Chunk, Instance};
+use valence_instance::chunk::UnloadedChunk;
+use valence_instance::Instance;
 use valence_nbt::Compound;
 
 mod parse_chunk;
@@ -61,7 +62,7 @@ pub struct AnvilLevel {
     receiver: Receiver<(ChunkPos, WorkerResult)>,
 }
 
-type WorkerResult = anyhow::Result<Option<(Chunk, AnvilChunk)>>;
+type WorkerResult = anyhow::Result<Option<(UnloadedChunk, u32)>>;
 
 impl AnvilLevel {
     pub fn new(world_root: impl Into<PathBuf>, biomes: &BiomeRegistry) -> Self {
@@ -83,6 +84,7 @@ impl AnvilLevel {
                     .map(|(id, name, _)| (name.to_string_ident(), id))
                     .collect(),
                 height: 0, // Assigned later.
+                min_y: 0,  // Assigned later.
             }),
             ignored_chunks: HashSet::new(),
             pending: HashMap::new(),
@@ -137,8 +139,10 @@ struct ChunkWorkerState {
     decompress_buf: Vec<u8>,
     /// Mapping of biome names to their biome ID.
     biome_to_id: BTreeMap<Ident<String>, BiomeId>,
-    /// Height of the chunk in the instance.
+    /// Height of chunks in the instance.
     height: u32,
+    /// Minimum Y position of chunks in the instance.
+    min_y: i32,
 }
 
 impl ChunkWorkerState {
@@ -290,7 +294,8 @@ impl Plugin for AnvilPlugin {
 fn init_anvil(mut query: Query<(&mut AnvilLevel, &Instance), Added<AnvilLevel>>) {
     for (mut level, inst) in &mut query {
         if let Some(mut state) = level.worker_state.take() {
-            state.section_count = inst.section_count();
+            state.height = inst.height();
+            state.min_y = inst.min_y();
             thread::spawn(move || anvil_worker(state));
         }
     }
@@ -374,9 +379,9 @@ fn send_recv_chunks(
             anvil.pending.remove(&pos);
 
             let status = match res {
-                Ok(Some((chunk, AnvilChunk { data, timestamp }))) => {
+                Ok(Some((chunk, timestamp))) => {
                     inst.insert_chunk(pos, chunk);
-                    ChunkLoadStatus::Success { data, timestamp }
+                    ChunkLoadStatus::Success { timestamp }
                 }
                 Ok(None) => ChunkLoadStatus::Empty,
                 Err(e) => ChunkLoadStatus::Failed(e),
@@ -418,17 +423,9 @@ fn anvil_worker(mut state: ChunkWorkerState) {
             return Ok(None);
         };
 
-        let mut chunk = Chunk::new(state.section_count);
-        // TODO: account for min_y correctly.
-        parse_chunk::parse_chunk(&anvil_chunk.data, &mut chunk, 4, |biome| {
-            state
-                .biome_to_id
-                .get(biome.as_str())
-                .copied()
-                .unwrap_or_default()
-        })?;
+        let chunk = parse_chunk::parse_chunk(anvil_chunk.data, &state.biome_to_id)?;
 
-        Ok(Some((chunk, anvil_chunk)))
+        Ok(Some((chunk, anvil_chunk.timestamp)))
     }
 }
 
@@ -446,8 +443,6 @@ pub struct ChunkLoadEvent {
 pub enum ChunkLoadStatus {
     /// A new chunk was successfully loaded and inserted into the instance.
     Success {
-        /// The raw chunk data of the new chunk.
-        data: Compound,
         /// The time this chunk was last modified, measured in seconds since the
         /// epoch.
         timestamp: u32,

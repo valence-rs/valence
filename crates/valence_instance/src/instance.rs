@@ -72,8 +72,14 @@ impl Instance {
         self.info.dimension_type_name.as_str_ident()
     }
 
+    /// The height of this instance's dimension.
     pub fn height(&self) -> u32 {
         self.info.height
+    }
+
+    /// The `min_y` of this instance's dimension.
+    pub fn min_y(&self) -> i32 {
+        self.info.min_y
     }
 
     /// Get a reference to the chunk at the given position, if it is loaded.

@@ -44,6 +44,7 @@ pub mod chunk;
 mod instance;
 pub mod packet;
 
+pub use chunk::{Block, BlockRef};
 pub use instance::*;
 
 pub struct InstancePlugin;

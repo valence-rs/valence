@@ -71,7 +71,6 @@ impl Plugin for PlayerListPlugin {
 #[derive(Resource)]
 pub struct PlayerList {
     cached_update_packets: Vec<u8>,
-    scratch: Vec<u8>,
     header: Text,
     footer: Text,
     changed_header_or_footer: bool,
@@ -84,7 +83,6 @@ impl PlayerList {
     fn new() -> Self {
         Self {
             cached_update_packets: vec![],
-            scratch: vec![],
             header: Text::default(),
             footer: Text::default(),
             changed_header_or_footer: false,

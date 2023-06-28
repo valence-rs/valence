@@ -5,8 +5,8 @@ use valence_block::BlockState;
 use valence_nbt::Compound;
 
 use super::{
-    check_biome_oob, check_block_oob, BiomeContainer, BlockStateContainer, Chunk, MAX_HEIGHT,
-    SECTION_BLOCK_COUNT,
+    check_biome_oob, check_block_oob, check_section_oob, BiomeContainer, BlockStateContainer,
+    Chunk, MAX_HEIGHT, SECTION_BLOCK_COUNT,
 };
 
 #[derive(Clone, Default, Debug)]
@@ -81,10 +81,10 @@ impl Chunk for UnloadedChunk {
             .set(idx as usize, block)
     }
 
-    fn fill_block_states(&mut self, block: BlockState) {
-        for sect in &mut self.sections {
-            sect.block_states.fill(block);
-        }
+    fn fill_block_state_section(&mut self, sect_y: u32, block: BlockState) {
+        check_section_oob(self, sect_y);
+
+        self.sections[sect_y as usize].block_states.fill(block);
     }
 
     fn block_entity(&self, x: u32, y: u32, z: u32) -> Option<&Compound> {
@@ -131,10 +131,10 @@ impl Chunk for UnloadedChunk {
             .set(idx as usize, biome)
     }
 
-    fn fill_biomes(&mut self, biome: BiomeId) {
-        for sect in &mut self.sections {
-            sect.biomes.fill(biome);
-        }
+    fn fill_biome_section(&mut self, sect_y: u32, biome: BiomeId) {
+        check_section_oob(self, sect_y);
+
+        self.sections[sect_y as usize].biomes.fill(biome);
     }
 
     fn optimize(&mut self) {

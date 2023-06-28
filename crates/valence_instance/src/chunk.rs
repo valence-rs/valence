@@ -52,7 +52,14 @@ pub trait Chunk {
     #[track_caller]
     fn set_block_state(&mut self, x: u32, y: u32, z: u32, block: BlockState) -> BlockState;
 
-    fn fill_block_states(&mut self, block: BlockState);
+    fn fill_block_states(&mut self, block: BlockState) {
+        for sect_y in 0..self.height() / 16 {
+            self.fill_block_state_section(sect_y, block);
+        }
+    }
+
+    #[track_caller]
+    fn fill_block_state_section(&mut self, sect_y: u32, block: BlockState);
 
     #[track_caller]
     fn block_entity(&self, x: u32, y: u32, z: u32) -> Option<&Compound>;
@@ -96,7 +103,14 @@ pub trait Chunk {
     #[track_caller]
     fn set_biome(&mut self, x: u32, y: u32, z: u32, biome: BiomeId) -> BiomeId;
 
-    fn fill_biomes(&mut self, biome: BiomeId);
+    fn fill_biomes(&mut self, biome: BiomeId) {
+        for sect_y in 0..self.height() / 16 {
+            self.fill_biome_section(sect_y, biome);
+        }
+    }
+
+    #[track_caller]
+    fn fill_biome_section(&mut self, sect_y: u32, biome: BiomeId);
 
     /// Sets all blocks and biomes in this chunk to the default values. The
     /// height of the chunk is not modified.
@@ -181,6 +195,15 @@ fn check_biome_oob(chunk: &impl Chunk, x: u32, y: u32, z: u32) {
     );
 }
 
+#[inline]
+#[track_caller]
+fn check_section_oob(chunk: &impl Chunk, sect_y: u32) {
+    assert!(
+        sect_y < chunk.height() / 16,
+        "chunk section offset of {sect_y} is out of bounds"
+    );
+}
+
 /// Returns the minimum number of bits needed to represent the integer `n`.
 const fn bit_width(n: usize) -> usize {
     (usize::BITS - n.leading_zeros()) as _
@@ -259,5 +282,37 @@ mod tests {
     fn chunk_debug_oob_5() {
         let mut chunk = LoadedChunk::new(512, None);
         chunk.set_biome(0, 0, 4, BiomeId::DEFAULT);
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    #[should_panic]
+    fn chunk_debug_oob_6() {
+        let mut chunk = UnloadedChunk::with_height(512);
+        chunk.fill_block_state_section(chunk.height() / 16, BlockState::AIR);
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    #[should_panic]
+    fn chunk_debug_oob_7() {
+        let mut chunk = LoadedChunk::new(512, None);
+        chunk.fill_block_state_section(chunk.height() / 16, BlockState::AIR);
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    #[should_panic]
+    fn chunk_debug_oob_8() {
+        let mut chunk = UnloadedChunk::with_height(512);
+        chunk.fill_biome_section(chunk.height() / 16, BiomeId::DEFAULT);
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    #[should_panic]
+    fn chunk_debug_oob_9() {
+        let mut chunk = LoadedChunk::new(512, None);
+        chunk.fill_biome_section(chunk.height() / 16, BiomeId::DEFAULT);
     }
 }

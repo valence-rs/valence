@@ -21,8 +21,8 @@ use valence_registry::RegistryIdx;
 
 use super::paletted_container::PalettedContainer;
 use super::{
-    bit_width, check_biome_oob, check_block_oob, unloaded, BiomeContainer, BlockStateContainer,
-    Chunk, UnloadedChunk, SECTION_BLOCK_COUNT,
+    bit_width, check_biome_oob, check_block_oob, check_section_oob, unloaded, BiomeContainer,
+    BlockStateContainer, Chunk, UnloadedChunk, SECTION_BLOCK_COUNT,
 };
 use crate::packet::{
     BlockEntityUpdateS2c, BlockUpdateS2c, ChunkBiome, ChunkBiomeDataS2c, ChunkDataBlockEntity,
@@ -548,47 +548,49 @@ impl Chunk for LoadedChunk {
         old_block
     }
 
-    fn fill_block_states(&mut self, block: BlockState) {
-        for (sect_y, sect) in self.sections.iter_mut().enumerate() {
-            if let PalettedContainer::Single(b) = &sect.block_states {
-                if *b != block {
-                    self.cached_init_packets.get_mut().clear();
+    fn fill_block_state_section(&mut self, sect_y: u32, block: BlockState) {
+        check_section_oob(self, sect_y);
 
-                    if *self.is_viewed.get_mut() {
-                        // The whole section is being modified, so any previous modifications would
-                        // be overwritten.
-                        sect.section_updates.clear();
+        let sect = &mut self.sections[sect_y as usize];
 
-                        // Push section updates for all the blocks in the section.
-                        sect.section_updates.reserve_exact(SECTION_BLOCK_COUNT);
-                        let block_bits = (block.to_raw() as i64) << 12;
-                        for z in 0..16 {
-                            for x in 0..16 {
-                                let packed = block_bits | (x << 8 | z << 4 | sect_y as i64);
-                                sect.section_updates.push(VarLong(packed));
-                            }
-                        }
-                    }
-                }
-            } else {
-                let block_bits = (block.to_raw() as i64) << 12;
-                for z in 0..16 {
-                    for x in 0..16 {
-                        let idx = x + z * 16 + sect_y * (16 * 16);
-                        if block != sect.block_states.get(idx) {
-                            self.cached_init_packets.get_mut().clear();
+        if let PalettedContainer::Single(b) = &sect.block_states {
+            if *b != block {
+                self.cached_init_packets.get_mut().clear();
 
-                            if *self.is_viewed.get_mut() {
-                                let packed = block_bits | (x << 8 | z << 4 | sect_y) as i64;
-                                sect.section_updates.push(VarLong(packed));
-                            }
+                if *self.is_viewed.get_mut() {
+                    // The whole section is being modified, so any previous modifications would
+                    // be overwritten.
+                    sect.section_updates.clear();
+
+                    // Push section updates for all the blocks in the section.
+                    sect.section_updates.reserve_exact(SECTION_BLOCK_COUNT);
+                    let block_bits = (block.to_raw() as i64) << 12;
+                    for z in 0..16 {
+                        for x in 0..16 {
+                            let packed = block_bits | (x << 8 | z << 4 | sect_y as i64);
+                            sect.section_updates.push(VarLong(packed));
                         }
                     }
                 }
             }
+        } else {
+            let block_bits = (block.to_raw() as i64) << 12;
+            for z in 0..16 {
+                for x in 0..16 {
+                    let idx = x + z * 16 + sect_y * (16 * 16);
+                    if block != sect.block_states.get(idx as usize) {
+                        self.cached_init_packets.get_mut().clear();
 
-            sect.block_states.fill(block);
+                        if *self.is_viewed.get_mut() {
+                            let packed = block_bits | (x << 8 | z << 4 | sect_y) as i64;
+                            sect.section_updates.push(VarLong(packed));
+                        }
+                    }
+                }
+            }
         }
+
+        sect.block_states.fill(block);
     }
 
     fn block_entity(&self, x: u32, y: u32, z: u32) -> Option<&Compound> {
@@ -674,20 +676,22 @@ impl Chunk for LoadedChunk {
         old_biome
     }
 
-    fn fill_biomes(&mut self, biome: BiomeId) {
-        for sect in self.sections.iter_mut() {
-            if let PalettedContainer::Single(b) = &sect.biomes {
-                if *b != biome {
-                    self.cached_init_packets.get_mut().clear();
-                    self.changed_biomes = *self.is_viewed.get_mut();
-                }
-            } else {
+    fn fill_biome_section(&mut self, sect_y: u32, biome: BiomeId) {
+        check_section_oob(self, sect_y);
+
+        let sect = &mut self.sections[sect_y as usize];
+
+        if let PalettedContainer::Single(b) = &sect.biomes {
+            if *b != biome {
                 self.cached_init_packets.get_mut().clear();
                 self.changed_biomes = *self.is_viewed.get_mut();
             }
-
-            sect.biomes.fill(biome);
+        } else {
+            self.cached_init_packets.get_mut().clear();
+            self.changed_biomes = *self.is_viewed.get_mut();
         }
+
+        sect.biomes.fill(biome);
     }
 
     fn optimize(&mut self) {
