@@ -1,7 +1,6 @@
 //! Contains the [`Instance`] component and methods.
 
 use std::collections::hash_map::{Entry, OccupiedEntry, VacantEntry};
-use std::iter::FusedIterator;
 
 use bevy_ecs::prelude::*;
 use rustc_hash::FxHashMap;
@@ -13,6 +12,7 @@ use valence_core::protocol::encode::{PacketWriter, WritePacket};
 use valence_core::protocol::{Encode, Packet};
 use valence_core::Server;
 use valence_dimension::DimensionTypeRegistry;
+use valence_nbt::Compound;
 
 use crate::chunk::{Block, BlockRef, Chunk, IntoBlock, LoadedChunk, UnloadedChunk, MAX_HEIGHT};
 
@@ -30,11 +30,11 @@ pub struct Instance {
 
 #[doc(hidden)]
 pub struct InstanceInfo {
-    pub(crate) dimension_type_name: Ident<String>,
-    pub(crate) height: u32,
-    pub(crate) min_y: i32,
-    pub(crate) biome_registry_len: usize,
-    pub(crate) compression_threshold: Option<u32>,
+    pub(super) dimension_type_name: Ident<String>,
+    pub(super) height: u32,
+    pub(super) min_y: i32,
+    pub(super) biome_registry_len: usize,
+    pub(super) compression_threshold: Option<u32>,
 }
 
 impl Instance {
@@ -145,13 +145,13 @@ impl Instance {
 
     /// Get an iterator over all loaded chunks in the instance. The order of the
     /// chunks is undefined.
-    pub fn chunks(&self) -> impl FusedIterator<Item = (ChunkPos, &LoadedChunk)> + Clone + '_ {
+    pub fn chunks(&self) -> impl Iterator<Item = (ChunkPos, &LoadedChunk)> + Clone + '_ {
         self.chunks.iter().map(|(pos, chunk)| (*pos, chunk))
     }
 
     /// Get an iterator over all loaded chunks in the instance, mutably. The
     /// order of the chunks is undefined.
-    pub fn chunks_mut(&mut self) -> impl FusedIterator<Item = (ChunkPos, &mut LoadedChunk)> + '_ {
+    pub fn chunks_mut(&mut self) -> impl Iterator<Item = (ChunkPos, &mut LoadedChunk)> + '_ {
         self.chunks.iter_mut().map(|(pos, chunk)| (*pos, chunk))
     }
 
@@ -173,6 +173,11 @@ impl Instance {
     pub fn set_block(&mut self, pos: impl Into<BlockPos>, block: impl IntoBlock) -> Option<Block> {
         let (chunk, x, y, z) = self.chunk_and_offsets_mut(pos.into())?;
         Some(chunk.set_block(x, y, z, block))
+    }
+
+    pub fn block_entity_mut(&mut self, pos: impl Into<BlockPos>) -> Option<&mut Compound> {
+        let (chunk, x, y, z) = self.chunk_and_offsets_mut(pos.into())?;
+        chunk.block_entity_mut(x, y, z)
     }
 
     #[inline]

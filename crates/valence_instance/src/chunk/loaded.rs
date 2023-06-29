@@ -600,6 +600,23 @@ impl Chunk for LoadedChunk {
         self.block_entities.get(&idx)
     }
 
+    fn block_entity_mut(&mut self, x: u32, y: u32, z: u32) -> Option<&mut Compound> {
+        check_block_oob(self, x, y, z);
+
+        let idx = x + z * 16 + y * 16 * 16;
+
+        if let Some(be) = self.block_entities.get_mut(&idx) {
+            if *self.is_viewed.get_mut() {
+                self.changed_block_entities.insert(idx);
+            }
+            self.cached_init_packets.get_mut().clear();
+
+            Some(be)
+        } else {
+            None
+        }
+    }
+
     fn set_block_entity(
         &mut self,
         x: u32,
@@ -796,6 +813,7 @@ mod tests {
         check(&mut chunk, |c| {
             c.set_block_entity(3, 40, 5, Some(compound! {}))
         });
+        check(&mut chunk, |c| drop(c.block_entity_mut(3, 40, 5).unwrap()));
         check(&mut chunk, |c| c.set_block_entity(3, 40, 5, None));
 
         // Old block state is the same as new block state, so the cache should still be

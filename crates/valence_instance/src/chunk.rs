@@ -65,6 +65,9 @@ pub trait Chunk {
     fn block_entity(&self, x: u32, y: u32, z: u32) -> Option<&Compound>;
 
     #[track_caller]
+    fn block_entity_mut(&mut self, x: u32, y: u32, z: u32) -> Option<&mut Compound>;
+
+    #[track_caller]
     fn set_block_entity(
         &mut self,
         x: u32,
@@ -130,11 +133,23 @@ pub struct Block {
     pub nbt: Option<Compound>,
 }
 
+impl Block {
+    pub const fn new(state: BlockState, nbt: Option<Compound>) -> Self {
+        Self { state, nbt }
+    }
+}
+
 /// Referenced variant of [`Block`].
 #[derive(Copy, Clone, PartialEq, Default, Debug)]
 pub struct BlockRef<'a> {
     pub state: BlockState,
     pub nbt: Option<&'a Compound>,
+}
+
+impl<'a> BlockRef<'a> {
+    pub const fn new(state: BlockState, nbt: Option<&'a Compound>) -> Self {
+        Self { state, nbt }
+    }
 }
 
 pub trait IntoBlock {

@@ -37,7 +37,7 @@ fn setup(
 
         for z in -5..5 {
             for x in -5..5 {
-                instance.insert_chunk([x, z], Chunk::default());
+                instance.insert_chunk([x, z], UnloadedChunk::new());
             }
         }
 
@@ -76,7 +76,7 @@ fn squat_and_die(mut clients: Query<&mut Client>, mut events: EventReader<SneakE
 }
 
 fn necromancy(
-    mut clients: Query<(&mut Position, &mut Look, &mut Location)>,
+    mut clients: Query<(&mut Location, &mut RespawnPosition)>,
     mut events: EventReader<RequestRespawnEvent>,
     instances: Query<Entity, With<Instance>>,
 ) {

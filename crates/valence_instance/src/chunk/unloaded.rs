@@ -94,6 +94,13 @@ impl Chunk for UnloadedChunk {
         self.block_entities.get(&idx)
     }
 
+    fn block_entity_mut(&mut self, x: u32, y: u32, z: u32) -> Option<&mut Compound> {
+        check_block_oob(self, x, y, z);
+
+        let idx = x + z * 16 + y * 16 * 16;
+        self.block_entities.get_mut(&idx)
+    }
+
     fn set_block_entity(
         &mut self,
         x: u32,

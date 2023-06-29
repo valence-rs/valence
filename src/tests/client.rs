@@ -5,8 +5,8 @@ use bevy_ecs::world::EntityMut;
 use valence_client::ViewDistance;
 use valence_core::chunk_pos::ChunkView;
 use valence_entity::Position;
+use valence_instance::chunk::UnloadedChunk;
 use valence_instance::packet::{ChunkDataS2c, UnloadChunkS2c};
-use valence_instance::Chunk;
 
 use super::*;
 
@@ -23,7 +23,7 @@ fn client_chunk_view_change() {
 
     for z in -15..15 {
         for x in -15..15 {
-            instance.insert_chunk([x, z], Chunk::default());
+            instance.insert_chunk([x, z], UnloadedChunk::new());
         }
     }
 
