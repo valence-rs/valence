@@ -191,6 +191,7 @@ pub struct ClientBundle {
     pub is_debug: IsDebug,
     pub is_flat: IsFlat,
     pub teleport_state: teleport::TeleportState,
+    pub packet_byte_range: PacketByteRange,
     pub player: PlayerEntityBundle,
 }
 
@@ -223,6 +224,7 @@ impl ClientBundle {
             hashed_seed: HashedSeed::default(),
             reduced_debug_info: ReducedDebugInfo::default(),
             is_debug: IsDebug::default(),
+            packet_byte_range: PacketByteRange::default(),
             player: PlayerEntityBundle {
                 uuid: UniqueId(args.uuid),
                 ..Default::default()
@@ -1074,6 +1076,9 @@ fn update_view(
                     // Load all chunks and entities in new view.
                     view.for_each(|pos| {
                         if let Some(chunk) = inst.chunk(pos) {
+                            // Mark this chunk as being in view of a client.
+                            chunk.set_viewed();
+
                             // Load the chunk if it's not already removed.
                             chunk.write_init_packets(&mut *client, pos, inst.info());
 
@@ -1122,7 +1127,10 @@ fn update_view(
                         if let Some(chunk) = inst.chunk(pos) {
                             // Load the chunk unless it's already unloaded.
                             if chunk.state() != ChunkState::Removed {
-                                // Load the chunk if it's not already removed.
+                                // Mark this chunk as being in view of a client.
+                                chunk.set_viewed();
+
+                                // Load the chunk.
                                 chunk.write_init_packets(&mut *client, pos, inst.info());
 
                                 // Load all the entities in this chunk.

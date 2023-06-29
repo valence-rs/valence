@@ -21,7 +21,7 @@ fn test_intialize_on_join() {
     app.update();
 
     client_helper
-        .collect_sent()
+        .collect_received()
         .assert_count::<WorldBorderInitializeS2c>(1);
 }
 
@@ -37,7 +37,7 @@ fn test_resizing() {
     });
 
     app.update();
-    let frames = client_helper.collect_sent();
+    let frames = client_helper.collect_received();
     frames.assert_count::<WorldBorderSizeChangedS2c>(1);
 }
 
@@ -53,7 +53,7 @@ fn test_center() {
     center.0 = [10.0, 10.0].into();
 
     app.update();
-    let frames = client_helper.collect_sent();
+    let frames = client_helper.collect_received();
     frames.assert_count::<WorldBorderCenterChangedS2c>(1);
 }
 
@@ -69,7 +69,7 @@ fn test_warn_time() {
     wt.0 = 100;
     app.update();
 
-    let frames = client_helper.collect_sent();
+    let frames = client_helper.collect_received();
     frames.assert_count::<WorldBorderWarningTimeChangedS2c>(1);
 }
 
@@ -85,7 +85,7 @@ fn test_warn_blocks() {
     wb.0 = 100;
     app.update();
 
-    let frames = client_helper.collect_sent();
+    let frames = client_helper.collect_received();
     frames.assert_count::<WorldBorderWarningBlocksChangedS2c>(1);
 }
 
@@ -101,7 +101,7 @@ fn test_portal_tp_boundary() {
     tp.0 = 100;
     app.update();
 
-    let frames = client_helper.collect_sent();
+    let frames = client_helper.collect_received();
     frames.assert_count::<WorldBorderInitializeS2c>(1);
 }
 

@@ -275,8 +275,6 @@ impl LoadedChunk {
             // also shouldn't be any changes that need to be cleared.
             self.assert_no_changes();
 
-            *self.is_viewed.get_mut() = false;
-
             return;
         }
 
@@ -409,6 +407,10 @@ impl LoadedChunk {
         self.packet_buf.clear();
         self.incoming_entities.clear();
         self.outgoing_entities.clear();
+
+        if self.state == ChunkState::Added {
+            self.state = ChunkState::Normal;
+        }
 
         // Changes were already cleared in `write_updates_to_packet_buf`.
         self.assert_no_changes();

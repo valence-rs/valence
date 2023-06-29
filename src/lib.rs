@@ -57,7 +57,7 @@ pub use {
 /// use valence::prelude::*; // Glob import.
 ///
 /// let mut app = App::new();
-/// app.add_system(|| println!("yippee!"));
+/// app.add_systems(Update, || println!("yippee!"));
 /// // ...
 /// ```
 pub mod prelude {

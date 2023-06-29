@@ -34,7 +34,7 @@ fn test_should_open_inventory() {
     app.update();
 
     // Make assertions
-    let sent_packets = client_helper.collect_sent();
+    let sent_packets = client_helper.collect_received();
 
     sent_packets.assert_count::<OpenScreenS2c>(1);
     sent_packets.assert_count::<InventoryS2c>(1);
@@ -72,7 +72,7 @@ fn test_should_close_inventory() {
     app.update();
 
     // Make assertions
-    let sent_packets = client_helper.collect_sent();
+    let sent_packets = client_helper.collect_received();
 
     sent_packets.assert_count::<CloseScreenS2c>(1);
 }
@@ -107,7 +107,7 @@ fn test_should_remove_invalid_open_inventory() {
     // Make assertions
     assert!(app.world.get::<OpenInventory>(client_ent).is_none());
 
-    let sent_packets = client_helper.collect_sent();
+    let sent_packets = client_helper.collect_received();
     sent_packets.assert_count::<CloseScreenS2c>(1);
 }
 
@@ -149,7 +149,7 @@ fn test_should_modify_player_inventory_click_slot() {
     app.update();
 
     // Make assertions
-    let sent_packets = client_helper.collect_sent();
+    let sent_packets = client_helper.collect_received();
 
     // because the inventory was changed as a result of the client's click, the
     // server should not send any packets to the client because the client
@@ -202,7 +202,7 @@ fn test_should_modify_player_inventory_server_side() {
     app.update();
 
     // Make assertions
-    let sent_packets = client_helper.collect_sent();
+    let sent_packets = client_helper.collect_received();
     // because the inventory was modified server side, the client needs to be
     // updated with the change.
     sent_packets.assert_count::<ScreenHandlerSlotUpdateS2c>(1);
@@ -226,7 +226,7 @@ fn test_should_sync_entire_player_inventory() {
     app.update();
 
     // Make assertions
-    let sent_packets = client_helper.collect_sent();
+    let sent_packets = client_helper.collect_received();
     sent_packets.assert_count::<InventoryS2c>(1);
 }
 
@@ -279,7 +279,7 @@ fn test_should_modify_open_inventory_click_slot() {
     app.update();
 
     // Make assertions
-    let sent_packets = client_helper.collect_sent();
+    let sent_packets = client_helper.collect_received();
 
     // because the inventory was modified as a result of the client's click, the
     // server should not send any packets to the client because the client
@@ -322,7 +322,7 @@ fn test_should_modify_open_inventory_server_side() {
     app.update();
 
     // Make assertions
-    let sent_packets = client_helper.collect_sent();
+    let sent_packets = client_helper.collect_received();
 
     // because the inventory was modified server side, the client needs to be
     // updated with the change.
@@ -358,7 +358,7 @@ fn test_should_sync_entire_open_inventory() {
     app.update();
 
     // Make assertions
-    let sent_packets = client_helper.collect_sent();
+    let sent_packets = client_helper.collect_received();
     sent_packets.assert_count::<InventoryS2c>(1);
 }
 
@@ -572,7 +572,7 @@ mod dropping_items {
             ItemStack::new(ItemKind::IronIngot, 1, None)
         );
 
-        let sent_packets = client_helper.collect_sent();
+        let sent_packets = client_helper.collect_received();
 
         sent_packets.assert_count::<ScreenHandlerSlotUpdateS2c>(0);
     }
@@ -1030,7 +1030,7 @@ fn dragging_items() {
     client_helper.send(&drag_packet);
 
     app.update();
-    let sent_packets = client_helper.collect_sent();
+    let sent_packets = client_helper.collect_received();
     assert_eq!(sent_packets.0.len(), 0);
 
     let cursor_item = app

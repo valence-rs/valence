@@ -15,7 +15,7 @@ use valence_core::protocol::{Encode, Packet};
 use valence_core::{ident, CoreSettings, Server};
 use valence_dimension::DimensionTypeRegistry;
 use valence_entity::Location;
-use valence_network::{ConnectionMode, NetworkSettings};
+use valence_network::NetworkPlugin;
 
 use crate::client::{ClientBundle, ClientConnection, ReceivedPacket};
 use crate::instance::Instance;
@@ -31,12 +31,7 @@ fn scenario_single_client(app: &mut App) -> (Entity, MockClientHelper) {
         ..Default::default()
     });
 
-    app.insert_resource(NetworkSettings {
-        connection_mode: ConnectionMode::Offline,
-        ..Default::default()
-    });
-
-    app.add_plugins(DefaultPlugins);
+    app.add_plugins(DefaultPlugins.build().disable::<NetworkPlugin>());
 
     app.update(); // Initialize plugins.
 
@@ -176,9 +171,9 @@ impl MockClientHelper {
         self.conn.inject_recv(self.scratch.split());
     }
 
-    /// Collect all packets that have been sent to the client.
+    /// Collect all packets that have been received by the client.
     #[track_caller]
-    fn collect_sent(&mut self) -> PacketFrames {
+    fn collect_received(&mut self) -> PacketFrames {
         self.dec.queue_bytes(self.conn.take_sent());
 
         let mut res = vec![];
