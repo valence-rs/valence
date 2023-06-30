@@ -221,7 +221,7 @@ fn write_update_packets_to_chunks(
         let inst = inst.into_inner();
 
         for (&pos, chunk) in &mut inst.chunks {
-            chunk.update_pre_client(pos, &inst.info, &mut entities)
+            chunk.update_pre_client(pos, &inst.info, &mut entities);
         }
     }
 }
@@ -339,19 +339,20 @@ impl UpdateEntityQueryItem<'_> {
 /// Clears changes made to instances and removes removed chunks.
 fn update_post_client(mut instances: Query<&mut Instance>, mut commands: Commands) {
     for mut inst in &mut instances {
-        inst.retain_chunks(|_, chunk| {
-            chunk.update_post_client();
-
-            if chunk.state() == ChunkState::Removed {
+        inst.retain_chunks(|_, chunk| match chunk.state() {
+            ChunkState::Removed | ChunkState::AddedRemoved => {
                 // Any entities still in this chunk are now orphaned.
                 for &entity in &chunk.entities {
                     if let Some(mut commands) = commands.get_entity(entity) {
                         commands.insert(Orphaned);
                     }
                 }
+                false
             }
-
-            chunk.state() != ChunkState::Removed
+            ChunkState::Added | ChunkState::Overwrite | ChunkState::Normal => {
+                chunk.update_post_client();
+                true
+            }
         });
 
         inst.packet_buf.clear();

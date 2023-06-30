@@ -201,12 +201,12 @@ impl PacketFrames {
     fn assert_count<P: Packet>(&self, expected_count: usize) {
         let actual_count = self.0.iter().filter(|f| f.id == P::ID).count();
 
-        assert_eq!(
-            expected_count,
-            actual_count,
-            "unexpected packet count for {} (expected {expected_count}, got {actual_count})",
-            P::NAME
-        );
+        if expected_count != actual_count {
+            panic!(
+                "unexpected packet count for {} (expected {expected_count}, got {actual_count})",
+                P::NAME
+            );
+        }
     }
 
     #[track_caller]
@@ -217,15 +217,16 @@ impl PacketFrames {
             .filter_map(|f| L::packets().iter().position(|(id, _)| f.id == *id))
             .collect();
 
-        // TODO: replace with slice::is_sorted.
+        // TODO: replace with slice::is_sorted when stabilized.
         let is_sorted = positions.windows(2).all(|w| w[0] <= w[1]);
 
-        assert!(
-            is_sorted,
-            "packets out of order (expected {:?}, got {:?})",
-            L::packets(),
-            self.debug::<L>()
-        );
+        if !is_sorted {
+            panic!(
+                "packets out of order (expected {:?}, got {:?})",
+                L::packets(),
+                self.debug::<L>()
+            );
+        }
     }
 
     fn debug<L: PacketList>(&self) -> impl std::fmt::Debug {

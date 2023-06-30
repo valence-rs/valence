@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use bevy_app::App;
 use bevy_ecs::world::EntityMut;
-use valence_client::{Client, ViewDistance};
+use valence_client::ViewDistance;
 use valence_core::chunk_pos::ChunkView;
 use valence_entity::cow::CowEntityBundle;
 use valence_entity::packet::{EntitiesDestroyS2c, EntitySpawnS2c, MoveRelativeS2c};
@@ -114,12 +114,14 @@ fn entity_chunk_spawn_despawn() {
 
     // Client is in view of the chunk, so they should receive exactly one chunk
     // spawn packet and entity spawn packet.
-    let recvd = client_helper.collect_received();
+    {
+        let recvd = client_helper.collect_received();
 
-    recvd.assert_count::<ChunkDataS2c>(1);
-    recvd.assert_count::<EntitySpawnS2c>(1);
-    recvd.assert_count::<UnloadChunkS2c>(0);
-    recvd.assert_count::<EntitiesDestroyS2c>(0);
+        recvd.assert_count::<ChunkDataS2c>(1);
+        recvd.assert_count::<EntitySpawnS2c>(1);
+        recvd.assert_count::<UnloadChunkS2c>(0);
+        recvd.assert_count::<EntitiesDestroyS2c>(0);
+    }
 
     // Move the entity. Client should receive entity move packet.
     app.world.get_mut::<Position>(cow_ent).unwrap().0.x += 0.1;
@@ -137,12 +139,14 @@ fn entity_chunk_spawn_despawn() {
 
     app.update();
 
-    let recvd = client_helper.collect_received();
+    {
+        let recvd = client_helper.collect_received();
 
-    recvd.assert_count::<UnloadChunkS2c>(1);
-    recvd.assert_count::<EntitiesDestroyS2c>(1);
-    recvd.assert_count::<ChunkDataS2c>(0);
-    recvd.assert_count::<EntitySpawnS2c>(0);
+        recvd.assert_count::<UnloadChunkS2c>(1);
+        recvd.assert_count::<EntitiesDestroyS2c>(1);
+        recvd.assert_count::<ChunkDataS2c>(0);
+        recvd.assert_count::<EntitySpawnS2c>(0);
+    }
 
     // Placing the chunk back should respawn the orphaned entity.
 
@@ -152,14 +156,88 @@ fn entity_chunk_spawn_despawn() {
 
     app.update();
 
-    let recvd = client_helper.collect_received();
+    {
+        let recvd = client_helper.collect_received();
 
-    recvd.assert_count::<ChunkDataS2c>(1);
-    recvd.assert_count::<EntitySpawnS2c>(1);
-    recvd.assert_count::<UnloadChunkS2c>(0);
-    recvd.assert_count::<EntitiesDestroyS2c>(0);
+        recvd.assert_count::<ChunkDataS2c>(1);
+        recvd.assert_count::<EntitySpawnS2c>(1);
+        recvd.assert_count::<UnloadChunkS2c>(0);
+        recvd.assert_count::<EntitiesDestroyS2c>(0);
+    }
 
-    // TODO: add case for spawning chunk and moving entity into it at the same
-    // time. TODO: adding and removing chunk on same tick should not send
-    // any packets.
+    // Move player and entity away from the chunk on the same tick.
+
+    app.world.get_mut::<Position>(client_ent).unwrap().0.x = 1000.0;
+    app.world.get_mut::<Position>(cow_ent).unwrap().0.x = 1000.0;
+
+    app.update();
+
+    {
+        let recvd = client_helper.collect_received();
+
+        recvd.assert_count::<UnloadChunkS2c>(1);
+        recvd.assert_count::<EntitiesDestroyS2c>(1);
+        recvd.assert_count::<ChunkDataS2c>(0);
+        recvd.assert_count::<EntitySpawnS2c>(0);
+    }
+
+    // Put the client and entity back on the same tick.
+
+    app.world
+        .get_mut::<Position>(client_ent)
+        .unwrap()
+        .set([8.0, 0.0, 8.0]);
+    app.world
+        .get_mut::<Position>(cow_ent)
+        .unwrap()
+        .set([8.0, 0.0, 8.0]);
+
+    app.update();
+
+    {
+        let recvd = client_helper.collect_received();
+
+        recvd.assert_count::<ChunkDataS2c>(1);
+        recvd.assert_count::<EntitySpawnS2c>(1);
+        recvd.assert_count::<UnloadChunkS2c>(0);
+        recvd.assert_count::<EntitiesDestroyS2c>(0);
+    }
+
+    // Adding and removing a chunk on the same tick should should have no effect on
+    // the client. Moving the entity to the removed chunk should despawn the entity
+    // once.
+
+    app.world
+        .get_mut::<Instance>(inst_ent)
+        .unwrap()
+        .chunk_entry([0, 1])
+        .or_default()
+        .remove();
+
+    app.world
+        .get_mut::<Position>(cow_ent)
+        .unwrap()
+        .set([24.0, 0.0, 24.0]);
+
+    app.update();
+
+    {
+        let recvd = client_helper.collect_received();
+
+        recvd.assert_count::<ChunkDataS2c>(0);
+        recvd.assert_count::<EntitySpawnS2c>(0);
+        recvd.assert_count::<UnloadChunkS2c>(0);
+        recvd.assert_count::<EntitiesDestroyS2c>(1);
+
+        for pkt in recvd.0 {
+            if pkt.id == EntitiesDestroyS2c::ID {
+                let destroy = pkt.decode::<EntitiesDestroyS2c>().unwrap();
+
+                assert!(
+                    destroy.entity_ids.len() == 1,
+                    "entity should be listed as despawned only once"
+                );
+            }
+        }
+    }
 }

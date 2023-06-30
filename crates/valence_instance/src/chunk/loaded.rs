@@ -37,8 +37,8 @@ pub struct LoadedChunk {
     /// for knowing if it's necessary to record changes, since no client
     /// would be in view to receive the changes if this were false.
     ///
-    /// Invariant: `is_viewed` is always `false` while this chunk's state is
-    /// [`ChunkState::Added`] or [`ChunkState::Removed`].
+    /// Invariant: `is_viewed` is always `false` when this chunk's state not
+    /// [`ChunkState::Normal`].
     is_viewed: AtomicBool,
     /// Block and biome data for the chunk.
     sections: Box<[Section]>,
@@ -76,14 +76,18 @@ pub struct LoadedChunk {
 
 /// Describes the current state of a loaded chunk.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+
 pub enum ChunkState {
-    /// The chunk is newly added this tick. Clients in view of this chunk will
-    /// receive the chunk initialization packet.
+    /// The chunk is newly inserted this tick.
     Added,
-    /// The chunk is marked for removal this tick. Clients in view of this chunk
-    /// will receive the chunk deinitialization packet.
+    /// The chunk was `Added` this tick, but then was later removed this tick.
+    AddedRemoved,
+    /// The chunk was `Normal` in the last tick and has been removed this tick.
     Removed,
-    /// The chunk is neither added nor removed.
+    /// The chunk was `Normal` in the last tick and has been overwritten with a
+    /// new chunk this tick.
+    Overwrite,
+    /// The chunk is in none of the other states. This is the common case.
     Normal,
 }
 
@@ -144,18 +148,24 @@ impl LoadedChunk {
         }
     }
 
-    /// Sets the content of this chunk to the supplied [`UnloadedChunk`] and
-    /// sets the state of this chunk to [`ChunkState::Added`]. The given
-    /// unloaded chunk is [resized] to match the height of this loaded chunk
-    /// prior to insertion.
+    /// Sets the content of this chunk to the supplied [`UnloadedChunk`]. The
+    /// given unloaded chunk is [resized] to match the height of this loaded
+    /// chunk prior to insertion.
     ///
-    /// The previous chunk data is retuned.
+    /// The previous chunk data is returned.
     ///
     /// [resized]: UnloadedChunk::set_height
     pub fn insert(&mut self, mut chunk: UnloadedChunk) -> UnloadedChunk {
         chunk.set_height(self.height());
 
-        self.state = ChunkState::Added;
+        self.state = match self.state {
+            ChunkState::Added => ChunkState::Added,
+            ChunkState::AddedRemoved => ChunkState::Added,
+            ChunkState::Removed => ChunkState::Overwrite,
+            ChunkState::Overwrite => ChunkState::Overwrite,
+            ChunkState::Normal => ChunkState::Overwrite,
+        };
+
         *self.is_viewed.get_mut() = false;
         let old_sections = self
             .sections
@@ -184,7 +194,14 @@ impl LoadedChunk {
     }
 
     pub fn remove(&mut self) -> UnloadedChunk {
-        self.state = ChunkState::Removed;
+        self.state = match self.state {
+            ChunkState::Added => ChunkState::AddedRemoved,
+            ChunkState::AddedRemoved => ChunkState::AddedRemoved,
+            ChunkState::Removed => ChunkState::Removed,
+            ChunkState::Overwrite => ChunkState::Removed,
+            ChunkState::Normal => ChunkState::Removed,
+        };
+
         *self.is_viewed.get_mut() = false;
         let old_sections = self
             .sections
@@ -358,8 +375,8 @@ impl LoadedChunk {
         if self.changed_biomes {
             self.changed_biomes = false;
 
-            // TODO: ChunkBiomeData packet supports updating multiple chunks at the same
-            // time, so it would make more sense to cache the biome data and send it later
+            // TODO: ChunkBiomeData packet supports updating multiple chunks in a single
+            // packet, so it would make more sense to cache the biome data and send it later
             // during client updates.
 
             let mut biomes: Vec<u8> = vec![];
@@ -408,9 +425,13 @@ impl LoadedChunk {
         self.incoming_entities.clear();
         self.outgoing_entities.clear();
 
-        if self.state == ChunkState::Added {
-            self.state = ChunkState::Normal;
-        }
+        self.state = match self.state {
+            ChunkState::Added => ChunkState::Normal,
+            ChunkState::AddedRemoved => unreachable!(),
+            ChunkState::Removed => unreachable!(),
+            ChunkState::Overwrite => ChunkState::Normal,
+            ChunkState::Normal => ChunkState::Normal,
+        };
 
         // Changes were already cleared in `write_updates_to_packet_buf`.
         self.assert_no_changes();
@@ -424,6 +445,11 @@ impl LoadedChunk {
         pos: ChunkPos,
         info: &InstanceInfo,
     ) {
+        debug_assert!(
+            self.state != ChunkState::Removed && self.state != ChunkState::AddedRemoved,
+            "attempt to initialize removed chunk"
+        );
+
         let mut init_packets = self.cached_init_packets.lock();
 
         if init_packets.is_empty() {

@@ -93,8 +93,8 @@ impl Instance {
         self.chunks.get_mut(&pos.into())
     }
 
-    /// Insert a chunk into the instance at the given position. This effectively
-    /// loads the Chunk.
+    /// Insert a chunk into the instance at the given position. The preivous
+    /// chunk data is returned.
     pub fn insert_chunk(
         &mut self,
         pos: impl Into<ChunkPos>,
