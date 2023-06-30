@@ -44,6 +44,10 @@ impl StrCursor {
         Self { bytes: 0, chars: 0 }
     }
 
+    pub const fn new(chars: usize, bytes: usize) -> Self {
+        Self { chars, bytes }
+    }
+
     pub fn chars(&self) -> usize {
         self.chars
     }
@@ -74,6 +78,18 @@ impl StrSpan {
             begin: StrCursor::start(),
             end: StrCursor::start(),
         }
+    }
+
+    pub fn begin(&self) -> StrCursor {
+        self.begin
+    } 
+
+    pub fn end(&self) -> StrCursor {
+        self.end
+    }
+
+    pub fn in_str<'a>(&self, str: &'a str) -> Option<&'a str> {
+        str.get(self.begin.bytes..self.end.bytes)
     }
 }
 
@@ -132,6 +148,12 @@ impl<'a> StrReader<'a> {
     /// Returns valid cursor
     pub const fn cursor(&self) -> StrCursor {
         self.cursor
+    }
+
+    /// # SAFETY
+    /// Cursor should be valid
+    pub unsafe fn set_cursor(&mut self, cursor: StrCursor) {
+        self.cursor = cursor;
     }
 
     pub fn to_end(&mut self) {

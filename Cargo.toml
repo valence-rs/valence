@@ -20,6 +20,7 @@ default = [
     "network",
     "player_list",
     "world_border",
+    "command"
 ]
 advancement = ["dep:valence_advancement"]
 anvil = ["dep:valence_anvil"]
@@ -29,6 +30,7 @@ log = ["dep:bevy_log"]
 network = ["dep:valence_network"]
 player_list = ["dep:valence_player_list"]
 world_border = ["dep:valence_world_border"]
+command = ["dep:valence_command"]
 
 [dependencies]
 bevy_app.workspace = true
@@ -52,6 +54,7 @@ valence_network = { workspace = true, optional = true }
 valence_player_list = { workspace = true, optional = true }
 valence_registry.workspace = true
 valence_world_border = { workspace = true, optional = true }
+valence_command = { workspace = true, optional = true }
 
 [dev-dependencies]
 anyhow.workspace = true
