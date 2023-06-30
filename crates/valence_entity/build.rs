@@ -170,7 +170,7 @@ impl Value {
                 quote!(None)
             }
             Value::ItemStack(stack) => {
-                assert_eq!(stack, "1 air");
+                assert_eq!(stack, "0 air");
                 quote!(valence_core::item::ItemStack::default())
             }
             Value::Boolean(b) => quote!(#b),
@@ -597,7 +597,8 @@ fn build() -> anyhow::Result<TokenStream> {
             #systems
 
             #(
-                app.add_system(
+                app.add_systems(
+                    PostUpdate,
                     #system_names
                         .in_set(UpdateTrackedDataSet)
                         .ambiguous_with(UpdateTrackedDataSet)

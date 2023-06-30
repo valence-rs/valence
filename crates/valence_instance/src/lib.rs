@@ -31,7 +31,7 @@ pub use chunk_entry::*;
 use glam::{DVec3, Vec3};
 use num_integer::div_ceil;
 use rustc_hash::FxHashMap;
-use valence_biome::Biome;
+use valence_biome::BiomeRegistry;
 use valence_core::block_pos::BlockPos;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::despawn::Despawned;
@@ -44,7 +44,7 @@ use valence_core::protocol::packet::sound::{PlaySoundS2c, Sound, SoundCategory};
 use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::{Encode, Packet};
 use valence_core::Server;
-use valence_dimension::DimensionType;
+use valence_dimension::DimensionTypeRegistry;
 use valence_entity::packet::{
     EntityAnimationS2c, EntityPositionS2c, EntitySetHeadYawS2c, EntityStatusS2c,
     EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, MoveRelativeS2c, RotateAndMoveRelativeS2c,
@@ -64,42 +64,50 @@ mod paletted_container;
 pub struct InstancePlugin;
 
 /// When Minecraft entity changes are written to the packet buffers of chunks.
-/// Systems that read from the packet buffer of chunks should run _after_ this.
+/// Systems that modify entites should run _before_ this. Systems that read from
+/// the packet buffer of chunks should run _after_ this.
+///
+/// This set lives in [`PostUpdate`].
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct WriteUpdatePacketsToInstancesSet;
 
 /// When instances are updated and changes from the current tick are cleared.
 /// Systems that read changes from instances should run _before_ this.
+///
+/// This set lives in [`PostUpdate`].
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ClearInstanceChangesSet;
 
 impl Plugin for InstancePlugin {
     fn build(&self, app: &mut App) {
-        app.configure_sets((
-            WriteUpdatePacketsToInstancesSet
-                .in_base_set(CoreSet::PostUpdate)
-                .after(InitEntitiesSet)
-                .after(UpdateTrackedDataSet),
-            ClearInstanceChangesSet
-                .after(WriteUpdatePacketsToInstancesSet)
-                .in_base_set(CoreSet::PostUpdate),
-        ))
-        .add_system(
+        app.configure_sets(
+            PostUpdate,
+            (
+                WriteUpdatePacketsToInstancesSet
+                    .after(InitEntitiesSet)
+                    .after(UpdateTrackedDataSet),
+                ClearInstanceChangesSet.after(WriteUpdatePacketsToInstancesSet),
+            ),
+        )
+        .add_systems(
+            PostUpdate,
             // This can run at the same time as entity init because we're only looking at position
             // + location.
-            update_entity_cell_positions
-                .in_base_set(CoreSet::PostUpdate)
-                .before(WriteUpdatePacketsToInstancesSet),
+            update_entity_cell_positions.before(WriteUpdatePacketsToInstancesSet),
         )
-        .add_system(
+        .add_systems(
+            PostUpdate,
             write_update_packets_to_instances
                 .after(update_entity_cell_positions)
                 .in_set(WriteUpdatePacketsToInstancesSet),
         )
-        .add_system(clear_instance_changes.in_set(ClearInstanceChangesSet));
+        .add_systems(
+            PostUpdate,
+            clear_instance_changes.in_set(ClearInstanceChangesSet),
+        );
 
         #[cfg(debug_assertions)]
-        app.add_system(check_instance_invariants.in_base_set(CoreSet::PostUpdate));
+        app.add_systems(PostUpdate, check_instance_invariants);
     }
 }
 
@@ -432,40 +440,33 @@ pub struct InstanceInfo {
 #[derive(Debug)]
 pub struct PartitionCell {
     /// The chunk in this cell.
-    #[doc(hidden)]
     pub chunk: Option<Chunk<true>>,
     /// If `chunk` went from `Some` to `None` this tick.
-    #[doc(hidden)]
     pub chunk_removed: bool,
     /// Minecraft entities in this cell.
-    #[doc(hidden)]
     pub entities: BTreeSet<Entity>,
     /// Minecraft entities that have entered the chunk this tick, paired with
     /// the cell position in this instance they came from.
-    #[doc(hidden)]
     pub incoming: Vec<(Entity, Option<ChunkPos>)>,
     /// Minecraft entities that have left the chunk this tick, paired with the
     /// cell position in this world they arrived at.
-    #[doc(hidden)]
     pub outgoing: Vec<(Entity, Option<ChunkPos>)>,
     /// A cache of packets to send to all clients that are in view of this cell
     /// at the end of the tick.
-    #[doc(hidden)]
     pub packet_buf: Vec<u8>,
 }
 
 impl Instance {
+    #[track_caller]
     pub fn new(
         dimension_type_name: impl Into<Ident<String>>,
-        dimensions: &Query<&DimensionType>,
-        biomes: &Query<&Biome>,
+        dimensions: &DimensionTypeRegistry,
+        biomes: &BiomeRegistry,
         server: &Server,
     ) -> Self {
         let dimension_type_name = dimension_type_name.into();
 
-        let Some(dim) = dimensions.iter().find(|d| d.name == dimension_type_name) else {
-            panic!("missing dimension type with name \"{dimension_type_name}\"")
-        };
+        let dim = &dimensions[dimension_type_name.as_str_ident()];
 
         assert!(dim.height > 0, "invalid dimension height of {}", dim.height);
 
@@ -491,28 +492,6 @@ impl Instance {
                     light_section_count
                 ]
                 .into(),
-            },
-            packet_buf: vec![],
-            scratch: vec![],
-        }
-    }
-
-    /// TODO: Temporary hack for unit testing. Do not use!
-    #[doc(hidden)]
-    pub fn new_unit_testing(
-        dimension_type_name: impl Into<Ident<String>>,
-        server: &Server,
-    ) -> Self {
-        Self {
-            partition: FxHashMap::default(),
-            info: InstanceInfo {
-                dimension_type_name: dimension_type_name.into(),
-                section_count: 24,
-                min_y: -64,
-                biome_registry_len: 1,
-                compression_threshold: server.compression_threshold(),
-                filler_sky_light_mask: vec![].into(),
-                filler_sky_light_arrays: vec![].into(),
             },
             packet_buf: vec![],
             scratch: vec![],
@@ -798,7 +777,7 @@ impl Instance {
 /// This is more efficient than sending the packet to each client individually.
 impl WritePacket for Instance {
     #[inline]
-    fn write_packet<P>(&mut self, packet: &P)
+    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
     where
         P: Packet + Encode,
     {
@@ -807,7 +786,7 @@ impl WritePacket for Instance {
             self.info.compression_threshold,
             &mut self.scratch,
         )
-        .write_packet(packet)
+        .write_packet_fallible(packet)
     }
 
     #[inline]

@@ -67,10 +67,11 @@ use valence_instance::packet::{
     ChunkLoadDistanceS2c, ChunkRenderDistanceCenterS2c, UnloadChunkS2c,
 };
 use valence_instance::{ClearInstanceChangesSet, Instance, WriteUpdatePacketsToInstancesSet};
-use valence_registry::{RegistryCodec, RegistryCodecSet, TagsRegistry};
+use valence_registry::codec::RegistryCodec;
+use valence_registry::tags::TagsRegistry;
+use valence_registry::RegistrySet;
 
 pub mod action;
-pub mod chat;
 pub mod command;
 pub mod custom_payload;
 pub mod event_loop;
@@ -79,6 +80,7 @@ pub mod interact_block;
 pub mod interact_entity;
 pub mod interact_item;
 pub mod keepalive;
+pub mod message;
 pub mod movement;
 pub mod op_level;
 pub mod packet;
@@ -91,28 +93,29 @@ pub mod weather;
 
 pub struct ClientPlugin;
 
-/// When clients have their packet buffer flushed. Any system that writes
-/// packets to clients should happen _before_ this. Otherwise, the data
-/// will arrive one tick late.
+/// The [`SystemSet`] in [`PostUpdate`] where clients have their packet buffer
+/// flushed. Any system that writes packets to clients should happen _before_
+/// this. Otherwise, the data will arrive one tick late.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct FlushPacketsSet;
 
-/// The [`SystemSet`] in [`CoreSet::PreUpdate`] where new clients should be
+/// The [`SystemSet`] in [`PreUpdate`] where new clients should be
 /// spawned. Systems that need to perform initialization work on clients before
-/// users get access to it should run _after_ this set in
-/// [`CoreSet::PreUpdate`].
+/// users get access to it should run _after_ this set.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
-
 pub struct SpawnClientsSet;
 
+/// The system set where various facets of the client are updated. Systems that
+/// modify chunks should run _before_ this.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
-struct UpdateClientsSet;
+pub struct UpdateClientsSet;
 
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
+            PostUpdate,
             (
-                initial_join.after(RegistryCodecSet),
+                initial_join.after(RegistrySet),
                 update_chunk_load_dist,
                 read_data_in_old_view
                     .after(WriteUpdatePacketsToInstancesSet)
@@ -128,16 +131,17 @@ impl Plugin for ClientPlugin {
             )
                 .in_set(UpdateClientsSet),
         )
-        .configure_sets((
-            SpawnClientsSet.in_base_set(CoreSet::PreUpdate),
-            UpdateClientsSet
-                .in_base_set(CoreSet::PostUpdate)
-                .before(FlushPacketsSet),
-            ClearEntityChangesSet.after(UpdateClientsSet),
-            FlushPacketsSet.in_base_set(CoreSet::PostUpdate),
-            ClearInstanceChangesSet.after(FlushPacketsSet),
-        ))
-        .add_system(flush_packets.in_set(FlushPacketsSet));
+        .add_systems(PostUpdate, flush_packets.in_set(FlushPacketsSet))
+        .configure_set(PreUpdate, SpawnClientsSet)
+        .configure_sets(
+            PostUpdate,
+            (
+                UpdateClientsSet.before(FlushPacketsSet),
+                ClearEntityChangesSet.after(UpdateClientsSet),
+                FlushPacketsSet,
+                ClearInstanceChangesSet.after(FlushPacketsSet),
+            ),
+        );
 
         event_loop::build(app);
         movement::build(app);
@@ -148,7 +152,7 @@ impl Plugin for ClientPlugin {
         action::build(app);
         teleport::build(app);
         weather::build(app);
-        chat::build(app);
+        message::build(app);
         custom_payload::build(app);
         hand_swing::build(app);
         interact_block::build(app);
@@ -289,11 +293,11 @@ impl Drop for Client {
 /// Writes packets into this client's packet buffer. The buffer is flushed at
 /// the end of the tick.
 impl WritePacket for Client {
-    fn write_packet<P>(&mut self, packet: &P)
+    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
     where
         P: Packet + Encode,
     {
-        self.enc.write_packet(packet)
+        self.enc.write_packet_fallible(packet)
     }
 
     fn write_packet_bytes(&mut self, bytes: &[u8]) {
@@ -328,10 +332,9 @@ impl Client {
 
     /// Kills the client and shows `message` on the death screen. If an entity
     /// killed the player, you should supply it as `killer`.
-    pub fn kill(&mut self, killer: Option<EntityId>, message: impl Into<Text>) {
+    pub fn kill(&mut self, message: impl Into<Text>) {
         self.write_packet(&DeathMessageS2c {
             player_id: VarInt(0),
-            entity_id: killer.map(|id| id.get()).unwrap_or(-1),
             message: message.into().into(),
         });
     }
@@ -422,7 +425,7 @@ pub struct DisconnectClient {
 }
 
 impl Command for DisconnectClient {
-    fn write(self, world: &mut World) {
+    fn apply(self, world: &mut World) {
         if let Some(mut entity) = world.get_entity_mut(self.client) {
             if let Some(mut client) = entity.get_mut::<Client>() {
                 client.write_packet(&DisconnectS2c {
@@ -723,6 +726,7 @@ fn initial_join(
             is_debug: q.is_debug.0,
             is_flat: q.is_flat.0,
             last_death_location,
+            portal_cooldown: VarInt(0), // TODO.
         });
 
         q.client.enc.append_bytes(tags.sync_tags_packet());
@@ -783,6 +787,7 @@ fn respawn(
             is_flat: is_flat.0,
             copy_metadata: true,
             last_death_location,
+            portal_cooldown: VarInt(0), // TODO
         });
     }
 }

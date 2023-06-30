@@ -23,7 +23,7 @@ pub mod packet;
 use std::num::Wrapping;
 use std::ops::Range;
 
-use bevy_app::{App, CoreSet, Plugin};
+use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use glam::{DVec3, Vec3};
 use paste::paste;
@@ -45,11 +45,15 @@ pub struct EntityPlugin;
 ///
 /// Systems that need Minecraft entities to be in a valid state should run
 /// _after_ this set.
+///
+/// This set lives in [`PostUpdate`].
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct InitEntitiesSet;
 
 /// When tracked data is written to the entity's [`TrackedData`] component.
 /// Systems that modify tracked data should run _before_ this.
+///
+/// This set lives in [`PostUpdate`].
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct UpdateTrackedDataSet;
 
@@ -57,26 +61,32 @@ pub struct UpdateTrackedDataSet;
 /// Systems that need to observe changes to entities (Such as the difference
 /// between [`Position`] and [`OldPosition`]) should run _before_ this set (and
 /// probably after [`InitEntitiesSet`]).
+///
+/// This set lives in [`PostUpdate`].
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ClearEntityChangesSet;
 
 impl Plugin for EntityPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(EntityManager::new())
-            .configure_sets((
-                InitEntitiesSet.in_base_set(CoreSet::PostUpdate),
-                UpdateTrackedDataSet.in_base_set(CoreSet::PostUpdate),
-                ClearEntityChangesSet
-                    .after(InitEntitiesSet)
-                    .after(UpdateTrackedDataSet)
-                    .in_base_set(CoreSet::PostUpdate),
-            ))
+            .configure_sets(
+                PostUpdate,
+                (
+                    InitEntitiesSet,
+                    UpdateTrackedDataSet,
+                    ClearEntityChangesSet
+                        .after(InitEntitiesSet)
+                        .after(UpdateTrackedDataSet),
+                ),
+            )
             .add_systems(
+                PostUpdate,
                 (init_entities, remove_despawned_from_manager)
                     .chain()
                     .in_set(InitEntitiesSet),
             )
             .add_systems(
+                PostUpdate,
                 (
                     clear_status_changes,
                     clear_animation_changes,

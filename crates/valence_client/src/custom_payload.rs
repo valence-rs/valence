@@ -2,17 +2,14 @@ use valence_core::protocol::raw::RawBytes;
 use valence_core::protocol::{packet_id, Decode, Encode};
 
 use super::*;
-use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
+use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 
 pub(super) fn build(app: &mut App) {
-    app.add_event::<CustomPayloadEvent>().add_system(
-        handle_custom_payload
-            .in_schedule(EventLoopSchedule)
-            .in_base_set(EventLoopSet::PreUpdate),
-    );
+    app.add_event::<CustomPayloadEvent>()
+        .add_systems(EventLoopPreUpdate, handle_custom_payload);
 }
 
-#[derive(Clone, Debug)]
+#[derive(Event, Clone, Debug)]
 pub struct CustomPayloadEvent {
     pub client: Entity,
     pub channel: Ident<String>,

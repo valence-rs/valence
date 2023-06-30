@@ -5,16 +5,12 @@ use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 use valence_entity::{HeadYaw, Look, OnGround, Position};
 
 use super::teleport::TeleportState;
-use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
+use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 
 pub(super) fn build(app: &mut App) {
     app.init_resource::<MovementSettings>()
         .add_event::<MovementEvent>()
-        .add_system(
-            handle_client_movement
-                .in_schedule(EventLoopSchedule)
-                .in_base_set(EventLoopSet::PreUpdate),
-        );
+        .add_systems(EventLoopPreUpdate, handle_client_movement);
 }
 
 /// Configuration resource for client movement checks.
@@ -24,7 +20,7 @@ pub struct MovementSettings {
 }
 
 /// Event sent when a client successfully moves.
-#[derive(Clone, Debug)]
+#[derive(Event, Clone, Debug)]
 pub struct MovementEvent {
     pub client: Entity,
     pub position: DVec3,

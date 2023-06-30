@@ -13,6 +13,7 @@ use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::var_long::VarLong;
 use valence_core::protocol::Encode;
 use valence_nbt::{compound, Compound};
+use valence_registry::RegistryIdx;
 
 use crate::packet::{
     BlockEntityUpdateS2c, BlockUpdateS2c, ChunkDataBlockEntity, ChunkDataS2c, ChunkDeltaUpdateS2c,
@@ -356,7 +357,6 @@ impl Chunk<true> {
 
                         writer.write_packet(&ChunkDeltaUpdateS2c {
                             chunk_section_position,
-                            invert_trust_edges: false,
                             blocks: Cow::Borrowed(&sect.section_updates),
                         });
                     }
@@ -414,7 +414,7 @@ impl Chunk<true> {
                 sect.biomes
                     .encode_mc_format(
                         &mut *scratch,
-                        |b| b.0.into(),
+                        |b| b.to_index() as _,
                         0,
                         3,
                         bit_width(info.biome_registry_len - 1),
@@ -456,7 +456,6 @@ impl Chunk<true> {
                 heightmaps: Cow::Owned(heightmaps),
                 blocks_and_biomes: scratch,
                 block_entities: Cow::Borrowed(&block_entities),
-                trust_edges: true,
                 sky_light_mask: Cow::Borrowed(&info.filler_sky_light_mask),
                 block_light_mask: Cow::Borrowed(&[]),
                 empty_sky_light_mask: Cow::Borrowed(&[]),

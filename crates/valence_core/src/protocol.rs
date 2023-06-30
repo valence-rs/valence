@@ -172,6 +172,10 @@ pub trait Packet: std::fmt::Debug {
     const ID: i32;
     /// The name of this packet for debugging purposes.
     const NAME: &'static str;
+    /// The side this packet is intended for
+    const SIDE: PacketSide;
+    /// The state which this packet is used
+    const STATE: PacketState;
 
     /// Encodes this packet's VarInt ID first, followed by the packet's body.
     fn encode_with_id(&self, mut w: impl Write) -> anyhow::Result<()>
@@ -183,6 +187,24 @@ pub trait Packet: std::fmt::Debug {
             .context("failed to encode packet ID")?;
         self.encode(w)
     }
+}
+
+/// The side a packet is intended for
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum PacketSide {
+    /// Server -> Client
+    Clientbound,
+    /// Client -> Server
+    Serverbound,
+}
+
+/// The state which a packet is used
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum PacketState {
+    Handshaking,
+    Status,
+    Login,
+    Play,
 }
 
 /// Contains constants for every vanilla packet ID.
@@ -202,7 +224,7 @@ mod tests {
     use crate::protocol::encode::PacketEncoder;
 
     #[derive(Encode, Decode, Packet, Debug)]
-    #[packet(id = 1)]
+    #[packet(id = 1, side = PacketSide::Clientbound)]
     struct RegularStruct {
         foo: i32,
         bar: bool,
@@ -210,26 +232,26 @@ mod tests {
     }
 
     #[derive(Encode, Decode, Packet, Debug)]
-    #[packet(id = 2)]
+    #[packet(id = 2, side = PacketSide::Clientbound)]
     struct UnitStruct;
 
     #[derive(Encode, Decode, Packet, Debug)]
-    #[packet(id = 3)]
+    #[packet(id = 3, side = PacketSide::Clientbound)]
     struct EmptyStruct {}
 
     #[derive(Encode, Decode, Packet, Debug)]
-    #[packet(id = 4)]
+    #[packet(id = 4, side = PacketSide::Clientbound)]
     struct TupleStruct(i32, bool, f64);
 
     #[derive(Encode, Decode, Packet, Debug)]
-    #[packet(id = 5)]
+    #[packet(id = 5, side = PacketSide::Clientbound)]
     struct StructWithGenerics<'z, T = ()> {
         foo: &'z str,
         bar: T,
     }
 
     #[derive(Encode, Decode, Packet, Debug)]
-    #[packet(id = 6)]
+    #[packet(id = 6, side = PacketSide::Clientbound)]
     struct TupleStructWithGenerics<'z, T = ()>(&'z str, i32, T);
 
     #[allow(unconditional_recursion, clippy::extra_unused_type_parameters)]
@@ -264,7 +286,7 @@ mod tests {
     const CRYPT_KEY: [u8; 16] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
 
     #[derive(PartialEq, Debug, Encode, Decode, Packet)]
-    #[packet(id = 42)]
+    #[packet(id = 42, side = PacketSide::Clientbound)]
     struct TestPacket<'a> {
         a: bool,
         b: u8,

@@ -608,64 +608,6 @@ pub mod scoreboard {
     }
 }
 
-// TODO: move to valence_boss_bar?
-pub mod boss_bar {
-    use super::*;
-
-    #[derive(Clone, Debug, Encode, Decode, Packet)]
-    #[packet(id = packet_id::BOSS_BAR_S2C)]
-    pub struct BossBarS2c {
-        pub id: Uuid,
-        pub action: BossBarAction,
-    }
-
-    #[derive(Clone, PartialEq, Debug, Encode, Decode)]
-    pub enum BossBarAction {
-        Add {
-            title: Text,
-            health: f32,
-            color: BossBarColor,
-            division: BossBarDivision,
-            flags: BossBarFlags,
-        },
-        Remove,
-        UpdateHealth(f32),
-        UpdateTitle(Text),
-        UpdateStyle(BossBarColor, BossBarDivision),
-        UpdateFlags(BossBarFlags),
-    }
-
-    #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
-    pub enum BossBarColor {
-        Pink,
-        Blue,
-        Red,
-        Green,
-        Yellow,
-        Purple,
-        White,
-    }
-
-    #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
-    pub enum BossBarDivision {
-        NoDivision,
-        SixNotches,
-        TenNotches,
-        TwelveNotches,
-        TwentyNotches,
-    }
-
-    #[bitfield(u8)]
-    #[derive(PartialEq, Eq, Encode, Decode)]
-    pub struct BossBarFlags {
-        pub darken_sky: bool,
-        pub dragon_bar: bool,
-        pub create_fog: bool,
-        #[bits(5)]
-        _pad: u8,
-    }
-}
-
 // TODO: move to valence_sound?
 pub mod sound {
     use super::*;

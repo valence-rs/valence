@@ -6,18 +6,15 @@ use valence_core::protocol::encode::WritePacket;
 use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 use valence_core::text::Text;
 
-use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
+use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 use crate::Client;
 
 pub(super) fn build(app: &mut App) {
-    app.add_event::<ResourcePackStatusEvent>().add_system(
-        handle_resource_pack_status
-            .in_schedule(EventLoopSchedule)
-            .in_base_set(EventLoopSet::PreUpdate),
-    );
+    app.add_event::<ResourcePackStatusEvent>()
+        .add_systems(EventLoopPreUpdate, handle_resource_pack_status);
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Event, Copy, Clone, PartialEq, Eq, Debug)]
 pub struct ResourcePackStatusEvent {
     pub client: Entity,
     pub status: ResourcePackStatus,
