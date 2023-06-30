@@ -89,8 +89,7 @@ pub(crate) fn parse_chunk(
             }
         })
         .min()
-        .unwrap() as i32
-        * 16;
+        .unwrap() as i32;
 
     let mut converted_block_palette = vec![];
     let mut converted_biome_palette = vec![];
@@ -308,7 +307,7 @@ pub(crate) fn parse_chunk(
         }
     }
 
-    todo!()
+    Ok(chunk)
 }
 
 const BLOCKS_PER_SECTION: usize = 16 * 16 * 16;

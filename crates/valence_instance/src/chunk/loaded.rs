@@ -491,7 +491,7 @@ impl LoadedChunk {
                 .filter_map(|(&idx, nbt)| {
                     let x = idx % 16;
                     let z = idx / 16 % 16;
-                    let y = (idx / 16 / 16) as i16 + info.min_y as i16;
+                    let y = idx / 16 / 16;
 
                     let kind = self.sections[y as usize / 16]
                         .block_states
@@ -500,7 +500,7 @@ impl LoadedChunk {
 
                     kind.map(|kind| ChunkDataBlockEntity {
                         packed_xz: ((x << 4) | z) as i8,
-                        y,
+                        y: y as i16 + info.min_y as i16,
                         kind: VarInt(kind as i32),
                         data: Cow::Borrowed(nbt),
                     })
@@ -669,9 +669,6 @@ impl Chunk for LoadedChunk {
                 let res = self.block_entities.remove(&idx);
 
                 if res.is_some() {
-                    if *self.is_viewed.get_mut() {
-                        self.changed_block_entities.insert(idx);
-                    }
                     self.cached_init_packets.get_mut().clear();
                 }
 
