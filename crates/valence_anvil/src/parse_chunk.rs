@@ -188,7 +188,7 @@ pub(crate) fn parse_chunk(
                     let z = i / 16 % 16;
                     let y = i / (16 * 16);
 
-                    chunk.set_block_state(x, y, z, block);
+                    chunk.set_block_state(x, sect_y * 16 + y, z, block);
 
                     i += 1;
                 }
@@ -255,7 +255,7 @@ pub(crate) fn parse_chunk(
                     let z = i / 4 % 4;
                     let y = i / (4 * 4);
 
-                    chunk.set_biome(x, y, z, biome);
+                    chunk.set_biome(x, sect_y * 4 + y, z, biome);
 
                     i += 1;
                 }

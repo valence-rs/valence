@@ -100,10 +100,14 @@ fn handle_chunk_loads(
             }
             ChunkLoadStatus::Failed(e) => {
                 // Something went wrong.
-                eprintln!(
+                let errmsg = format!(
                     "failed to load chunk at ({}, {}): {e:#}",
                     event.pos.x, event.pos.z
                 );
+
+                eprintln!("{errmsg}");
+                inst.send_chat_message(errmsg.color(Color::RED));
+                
                 inst.insert_chunk(event.pos, UnloadedChunk::new());
             }
         }

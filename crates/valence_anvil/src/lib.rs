@@ -83,8 +83,6 @@ impl AnvilLevel {
                     .iter()
                     .map(|(id, name, _)| (name.to_string_ident(), id))
                     .collect(),
-                height: 0, // Assigned later.
-                min_y: 0,  // Assigned later.
             }),
             ignored_chunks: HashSet::new(),
             pending: HashMap::new(),
@@ -139,10 +137,6 @@ struct ChunkWorkerState {
     decompress_buf: Vec<u8>,
     /// Mapping of biome names to their biome ID.
     biome_to_id: BTreeMap<Ident<String>, BiomeId>,
-    /// Height of chunks in the instance.
-    height: u32,
-    /// Minimum Y position of chunks in the instance.
-    min_y: i32,
 }
 
 impl ChunkWorkerState {
@@ -291,11 +285,9 @@ impl Plugin for AnvilPlugin {
     }
 }
 
-fn init_anvil(mut query: Query<(&mut AnvilLevel, &Instance), Added<AnvilLevel>>) {
-    for (mut level, inst) in &mut query {
-        if let Some(mut state) = level.worker_state.take() {
-            state.height = inst.height();
-            state.min_y = inst.min_y();
+fn init_anvil(mut query: Query<&mut AnvilLevel, (Added<AnvilLevel>, With<Instance>)>) {
+    for mut level in &mut query {
+        if let Some(state) = level.worker_state.take() {
             thread::spawn(move || anvil_worker(state));
         }
     }

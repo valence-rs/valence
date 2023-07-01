@@ -170,16 +170,17 @@ impl LoadedChunk {
         let old_sections = self
             .sections
             .iter_mut()
-            .map(|sect| {
+            .zip(chunk.sections)
+            .map(|(sect, other_sect)| {
                 sect.section_updates.clear();
 
                 unloaded::Section {
-                    block_states: mem::take(&mut sect.block_states),
-                    biomes: mem::take(&mut sect.biomes),
+                    block_states: mem::replace(&mut sect.block_states, other_sect.block_states),
+                    biomes: mem::replace(&mut sect.biomes, other_sect.biomes),
                 }
             })
             .collect();
-        let old_block_entities = mem::take(&mut self.block_entities);
+        let old_block_entities = mem::replace(&mut self.block_entities, chunk.block_entities);
         self.changed_block_entities.clear();
         self.changed_biomes = false;
         self.packet_buf.clear();
