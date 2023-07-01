@@ -13,9 +13,15 @@ use self::paletted_container::PalettedContainer;
 /// Common operations on chunks. Notable implementors are [`LoadedChunk`] and
 /// [`UnloadedChunk`].
 pub trait Chunk {
-    /// Gets the height of this chunk in meters.
+    /// Gets the height of this chunk in meters or blocks.
     fn height(&self) -> u32;
 
+    /// Gets the block at the provided position in this chunk. `x` and `z`
+    /// are in the range `0..16` while `y` is in the range `0..height`.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the position is out of bounds.
     #[track_caller]
     fn block(&self, x: u32, y: u32, z: u32) -> BlockRef {
         BlockRef {
@@ -24,6 +30,13 @@ pub trait Chunk {
         }
     }
 
+    /// Sets the block at the provided position in this chunk. `x` and `z`
+    /// are in the range `0..16` while `y` is in the range `0..height`. The
+    /// previous block at the position is returned.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the position is out of bounds.
     #[track_caller]
     fn set_block(&mut self, x: u32, y: u32, z: u32, block: impl IntoBlock) -> Block {
         let block = block.into_block();
@@ -31,6 +44,25 @@ pub trait Chunk {
         let nbt = self.set_block_entity(x, y, z, block.nbt);
 
         Block { state, nbt }
+    }
+
+    /// Sets all the blocks in the entire chunk to the provided block.
+    fn fill_blocks(&mut self, block: impl IntoBlock) {
+        let block = block.into_block();
+
+        self.fill_block_states(block.state);
+
+        if block.nbt.is_some() {
+            for x in 0..16 {
+                for z in 0..16 {
+                    for y in 0..self.height() {
+                        self.set_block_entity(x, y, z, block.nbt.clone());
+                    }
+                }
+            }
+        } else {
+            self.clear_block_entities();
+        }
     }
 
     /// Gets the block state at the provided position in this chunk. `x` and `z`
@@ -42,9 +74,13 @@ pub trait Chunk {
     #[track_caller]
     fn block_state(&self, x: u32, y: u32, z: u32) -> BlockState;
 
-    /// Sets the block state at the provided position in this chunk. The
-    /// previous block state at the position is returned. `x` and `z`
-    /// are in the range `0..16` while `y` is in the range `0..height`.
+    /// Sets the block state at the provided position in this chunk. `x` and `z`
+    /// are in the range `0..16` while `y` is in the range `0..height`. The
+    /// previous block state at the position is returned.
+    ///
+    /// **NOTE:** This is a low-level function which may break expected
+    /// invariants for block entities. Prefer [`Self::set_block`] if performance
+    /// is not a concern.
     ///
     /// # Panics
     ///
@@ -52,21 +88,60 @@ pub trait Chunk {
     #[track_caller]
     fn set_block_state(&mut self, x: u32, y: u32, z: u32, block: BlockState) -> BlockState;
 
+    /// Replaces all block states in the entire chunk with the provided block
+    /// state.
+    ///
+    /// **NOTE:** This is a low-level function which may break expected
+    /// invariants for block entities. Prefer [`Self::fill_blocks`] instead.
     fn fill_block_states(&mut self, block: BlockState) {
         for sect_y in 0..self.height() / 16 {
             self.fill_block_state_section(sect_y, block);
         }
     }
 
+    /// Replaces all the block states in a section with the provided block
+    /// state.
+    ///
+    /// **NOTE:** This is a low-level function which may break expected
+    /// invariants for block entities. Prefer [`Self::set_block`] if performance
+    /// is not a concern.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the section offset is out of bounds.
     #[track_caller]
     fn fill_block_state_section(&mut self, sect_y: u32, block: BlockState);
 
+    /// Gets the block entity at the provided position in this chunk. `x` and
+    /// `z` are in the range `0..16` while `y` is in the range `0..height`.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the position is out of bounds.
     #[track_caller]
     fn block_entity(&self, x: u32, y: u32, z: u32) -> Option<&Compound>;
 
+    /// Gets a mutable reference to the block entity at the provided position in
+    /// this chunk. `x` and `z` are in the range `0..16` while `y` is in the
+    /// range `0..height`.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the position is out of bounds.
     #[track_caller]
     fn block_entity_mut(&mut self, x: u32, y: u32, z: u32) -> Option<&mut Compound>;
 
+    /// Sets the block entity at the provided position in this chunk. `x` and
+    /// `z` are in the range `0..16` while `y` is in the range `0..height`.
+    /// The previous block entity at the position is returned.
+    ///
+    /// **NOTE:** This is a low-level function which may break expected
+    /// invariants for block entities. Prefer [`Self::set_block`] if performance
+    /// is not a concern.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the position is out of bounds.
     #[track_caller]
     fn set_block_entity(
         &mut self,
@@ -77,6 +152,10 @@ pub trait Chunk {
     ) -> Option<Compound>;
 
     /// Removes all block entities from the chunk.
+    ///
+    /// **NOTE:** This is a low-level function which may break expected
+    /// invariants for block entities. Prefer [`Self::set_block`] if performance
+    /// is not a concern.
     fn clear_block_entities(&mut self);
 
     /// Gets the biome at the provided position in this chunk. `x` and `z` are
@@ -106,12 +185,18 @@ pub trait Chunk {
     #[track_caller]
     fn set_biome(&mut self, x: u32, y: u32, z: u32, biome: BiomeId) -> BiomeId;
 
+    /// Sets all the biomes in the entire chunk to the provided biome.
     fn fill_biomes(&mut self, biome: BiomeId) {
         for sect_y in 0..self.height() / 16 {
             self.fill_biome_section(sect_y, biome);
         }
     }
 
+    /// Replaces all the biomes in a section with the provided biome.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the section offset is out of bounds.
     #[track_caller]
     fn fill_biome_section(&mut self, sect_y: u32, biome: BiomeId);
 
@@ -123,10 +208,16 @@ pub trait Chunk {
         self.clear_block_entities();
     }
 
+    /// Attempts to optimize this chunk by reducing its memory usage or other
+    /// characteristics. This may be a relatively expensive operation.
+    ///
+    /// This method must not alter the semantics of the chunk in any observable
+    /// way.
     fn optimize(&mut self);
 }
 
-/// Represents a block with optional NBT data.
+/// Represents a complete block, which is a pair of block state and optional NBT
+/// data for the block entity.
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct Block {
     pub state: BlockState,
@@ -139,7 +230,7 @@ impl Block {
     }
 }
 
-/// Referenced variant of [`Block`].
+/// Like [`Block`], but immutably referenced.
 #[derive(Copy, Clone, PartialEq, Default, Debug)]
 pub struct BlockRef<'a> {
     pub state: BlockState,
@@ -172,6 +263,8 @@ impl<'a> IntoBlock for BlockRef<'a> {
     }
 }
 
+/// This will initialize the block with a new empty compound if the block state
+/// is associated with a block entity.
 impl IntoBlock for BlockState {
     fn into_block(self) -> Block {
         Block {
