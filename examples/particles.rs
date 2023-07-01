@@ -73,7 +73,7 @@ fn manage_particles(
 
     let mut instance = instances.single_mut();
 
-    // instance.play_particle(particle, true, pos, offset, 0.1, 100); TODO
+    instance.play_particle(particle, true, pos, offset, 0.1, 100);
     instance.set_action_bar(name.bold());
 }
 

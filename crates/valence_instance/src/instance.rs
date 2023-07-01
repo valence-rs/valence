@@ -1,16 +1,20 @@
 //! Contains the [`Instance`] component and methods.
 
+use std::borrow::Cow;
 use std::collections::hash_map::{Entry, OccupiedEntry, VacantEntry};
 
 use bevy_ecs::prelude::*;
+use glam::{DVec3, Vec3};
 use num_integer::div_ceil;
 use rustc_hash::FxHashMap;
 use valence_biome::BiomeRegistry;
 use valence_core::block_pos::BlockPos;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::ident::Ident;
+use valence_core::particle::{Particle, ParticleS2c};
 use valence_core::protocol::array::LengthPrefixedArray;
 use valence_core::protocol::encode::{PacketWriter, WritePacket};
+use valence_core::protocol::packet::sound::{PlaySoundS2c, Sound, SoundCategory};
 use valence_core::protocol::{Encode, Packet};
 use valence_core::Server;
 use valence_dimension::DimensionTypeRegistry;
@@ -274,6 +278,61 @@ impl Instance {
     #[doc(hidden)]
     pub fn info(&self) -> &InstanceInfo {
         &self.info
+    }
+
+    // TODO: move to `valence_particle`.
+    /// Puts a particle effect at the given position in the world. The particle
+    /// effect is visible to all players in the instance with the
+    /// appropriate chunk in view.
+    pub fn play_particle(
+        &mut self,
+        particle: &Particle,
+        long_distance: bool,
+        position: impl Into<DVec3>,
+        offset: impl Into<Vec3>,
+        max_speed: f32,
+        count: i32,
+    ) {
+        let position = position.into();
+
+        self.write_packet_at(
+            &ParticleS2c {
+                particle: Cow::Borrowed(particle),
+                long_distance,
+                position,
+                offset: offset.into(),
+                max_speed,
+                count,
+            },
+            ChunkPos::from_dvec3(position),
+        );
+    }
+
+    // TODO: move to `valence_sound`.
+    /// Plays a sound effect at the given position in the world. The sound
+    /// effect is audible to all players in the instance with the
+    /// appropriate chunk in view.
+    pub fn play_sound(
+        &mut self,
+        sound: Sound,
+        category: SoundCategory,
+        position: impl Into<DVec3>,
+        volume: f32,
+        pitch: f32,
+    ) {
+        let position = position.into();
+
+        self.write_packet_at(
+            &PlaySoundS2c {
+                id: sound.to_id(),
+                category,
+                position: (position * 8.0).as_ivec3(),
+                volume,
+                pitch,
+                seed: rand::random(),
+            },
+            ChunkPos::from_dvec3(position),
+        );
     }
 }
 
