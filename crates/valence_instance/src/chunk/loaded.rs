@@ -841,7 +841,9 @@ mod tests {
         check(&mut chunk, |c| {
             c.set_block_entity(3, 40, 5, Some(compound! {}))
         });
-        check(&mut chunk, |c| drop(c.block_entity_mut(3, 40, 5).unwrap()));
+        check(&mut chunk, |c| {
+            c.block_entity_mut(3, 40, 5).unwrap();
+        });
         check(&mut chunk, |c| c.set_block_entity(3, 40, 5, None));
 
         // Old block state is the same as new block state, so the cache should still be
