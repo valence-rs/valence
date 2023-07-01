@@ -3,11 +3,13 @@
 use std::collections::hash_map::{Entry, OccupiedEntry, VacantEntry};
 
 use bevy_ecs::prelude::*;
+use num_integer::div_ceil;
 use rustc_hash::FxHashMap;
 use valence_biome::BiomeRegistry;
 use valence_core::block_pos::BlockPos;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::ident::Ident;
+use valence_core::protocol::array::LengthPrefixedArray;
 use valence_core::protocol::encode::{PacketWriter, WritePacket};
 use valence_core::protocol::{Encode, Packet};
 use valence_core::Server;
@@ -35,6 +37,9 @@ pub struct InstanceInfo {
     pub(super) min_y: i32,
     pub(super) biome_registry_len: usize,
     pub(super) compression_threshold: Option<u32>,
+    // We don't have a proper lighting engine yet, so we just fill chunks with full brightness.
+    pub(super) sky_light_mask: Box<[u64]>,
+    pub(super) sky_light_arrays: Box<[LengthPrefixedArray<u8, 2048>]>,
 }
 
 impl Instance {
@@ -55,6 +60,14 @@ impl Instance {
             dim.height
         );
 
+        let light_section_count = (dim.height / 16 + 2) as usize;
+
+        let mut sky_light_mask = vec![0; div_ceil(light_section_count, 16)];
+
+        for i in 0..light_section_count {
+            sky_light_mask[i / 64] |= 1 << (i % 64);
+        }
+
         Self {
             chunks: FxHashMap::default(),
             info: InstanceInfo {
@@ -63,6 +76,9 @@ impl Instance {
                 min_y: dim.min_y,
                 biome_registry_len: biomes.iter().len(),
                 compression_threshold: server.compression_threshold(),
+                sky_light_mask: sky_light_mask.into(),
+                sky_light_arrays: vec![LengthPrefixedArray([0xff; 2048]); light_section_count]
+                    .into(),
             },
             packet_buf: vec![],
         }

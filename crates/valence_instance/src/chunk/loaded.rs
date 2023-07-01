@@ -514,11 +514,11 @@ impl LoadedChunk {
                     heightmaps: Cow::Owned(heightmaps),
                     blocks_and_biomes: &blocks_and_biomes,
                     block_entities: Cow::Owned(block_entities),
-                    sky_light_mask: Cow::Borrowed(&[]),
+                    sky_light_mask: Cow::Borrowed(&info.sky_light_mask),
                     block_light_mask: Cow::Borrowed(&[]),
                     empty_sky_light_mask: Cow::Borrowed(&[]),
                     empty_block_light_mask: Cow::Borrowed(&[]),
-                    sky_light_arrays: Cow::Borrowed(&[]),
+                    sky_light_arrays: Cow::Borrowed(&info.sky_light_arrays),
                     block_light_arrays: Cow::Borrowed(&[]),
                 },
             )
@@ -808,6 +808,8 @@ mod tests {
                 min_y: -16,
                 biome_registry_len: 200,
                 compression_threshold: THRESHOLD,
+                sky_light_mask: vec![].into(),
+                sky_light_arrays: vec![].into(),
             };
 
             let mut buf = vec![];
