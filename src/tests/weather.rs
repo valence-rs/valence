@@ -47,7 +47,7 @@ fn test_weather_instance() {
     }
 
     // Make assertions.
-    let sent_packets = client_helper.collect_sent();
+    let sent_packets = client_helper.collect_received();
 
     assert_weather_packets(sent_packets);
 }
@@ -94,7 +94,7 @@ fn test_weather_client() {
     }
 
     // Make assertions.
-    let sent_packets = client_helper.collect_sent();
+    let sent_packets = client_helper.collect_received();
 
     assert_weather_packets(sent_packets);
 }

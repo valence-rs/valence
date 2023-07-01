@@ -63,6 +63,7 @@ impl Plugin for PlayerListPlugin {
                     remove_despawned_entries,
                     write_player_list_changes,
                 )
+                    .in_set(PlayerListSet)
                     .chain(),
             );
     }
@@ -71,7 +72,6 @@ impl Plugin for PlayerListPlugin {
 #[derive(Resource)]
 pub struct PlayerList {
     cached_update_packets: Vec<u8>,
-    scratch: Vec<u8>,
     header: Text,
     footer: Text,
     changed_header_or_footer: bool,
@@ -84,7 +84,6 @@ impl PlayerList {
     fn new() -> Self {
         Self {
             cached_update_packets: vec![],
-            scratch: vec![],
             header: Text::default(),
             footer: Text::default(),
             changed_header_or_footer: false,
@@ -165,7 +164,6 @@ fn update_header_footer(player_list: ResMut<PlayerList>, server: Res<Server>) {
         let mut w = PacketWriter::new(
             &mut player_list.cached_update_packets,
             server.compression_threshold(),
-            &mut player_list.scratch,
         );
 
         w.write_packet(&PlayerListHeaderS2c {
@@ -270,7 +268,6 @@ fn remove_despawned_entries(
             let mut w = PacketWriter::new(
                 &mut player_list.cached_update_packets,
                 server.compression_threshold(),
-                &mut player_list.scratch,
             );
 
             w.write_packet(&PlayerRemoveS2c {
@@ -314,7 +311,6 @@ fn update_entries(
     let mut writer = PacketWriter::new(
         &mut player_list.cached_update_packets,
         server.compression_threshold(),
-        &mut player_list.scratch,
     );
 
     for (uuid, username, props, game_mode, ping, display_name, listed) in &entries {

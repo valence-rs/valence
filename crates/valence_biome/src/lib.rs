@@ -101,6 +101,10 @@ impl DerefMut for BiomeRegistry {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub struct BiomeId(u32);
 
+impl BiomeId {
+    pub const DEFAULT: Self = BiomeId(0);
+}
+
 impl RegistryIdx for BiomeId {
     const MAX: usize = u32::MAX as _;
 

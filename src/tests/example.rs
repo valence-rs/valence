@@ -80,7 +80,7 @@ fn example_test_open_inventory() {
         .get::<Client>(client_ent)
         .expect("client not found");
 
-    let sent_packets = client_helper.collect_sent();
+    let sent_packets = client_helper.collect_received();
 
     sent_packets.assert_count::<OpenScreenS2c>(1);
     sent_packets.assert_count::<InventoryS2c>(1);

@@ -233,16 +233,11 @@ impl<T: WritePacket> WritePacket for Mut<'_, T> {
 pub struct PacketWriter<'a> {
     pub buf: &'a mut Vec<u8>,
     pub threshold: Option<u32>,
-    pub scratch: &'a mut Vec<u8>,
 }
 
 impl<'a> PacketWriter<'a> {
-    pub fn new(buf: &'a mut Vec<u8>, threshold: Option<u32>, scratch: &'a mut Vec<u8>) -> Self {
-        Self {
-            buf,
-            threshold,
-            scratch,
-        }
+    pub fn new(buf: &'a mut Vec<u8>, threshold: Option<u32>) -> Self {
+        Self { buf, threshold }
     }
 }
 
@@ -253,7 +248,7 @@ impl WritePacket for PacketWriter<'_> {
     {
         #[cfg(feature = "compression")]
         if let Some(threshold) = self.threshold {
-            encode_packet_compressed(self.buf, pkt, threshold, self.scratch)
+            encode_packet_compressed(self.buf, pkt, threshold)
         } else {
             encode_packet(self.buf, pkt)
         }
@@ -282,7 +277,7 @@ impl WritePacket for PacketEncoder {
     }
 }
 
-pub fn encode_packet<P>(buf: &mut Vec<u8>, pkt: &P) -> anyhow::Result<()>
+fn encode_packet<P>(buf: &mut Vec<u8>, pkt: &P) -> anyhow::Result<()>
 where
     P: Packet + Encode,
 {
@@ -312,12 +307,7 @@ where
 }
 
 #[cfg(feature = "compression")]
-pub fn encode_packet_compressed<P>(
-    buf: &mut Vec<u8>,
-    pkt: &P,
-    threshold: u32,
-    scratch: &mut Vec<u8>,
-) -> anyhow::Result<()>
+fn encode_packet_compressed<P>(buf: &mut Vec<u8>, pkt: &P, threshold: u32) -> anyhow::Result<()>
 where
     P: Packet + Encode,
 {
@@ -335,11 +325,9 @@ where
     if data_len > threshold as usize {
         let mut z = ZlibEncoder::new(&buf[start_len..], Compression::new(4));
 
-        scratch.clear();
+        let mut scratch = vec![];
 
-        let data_len_size = VarInt(data_len as i32).written_size();
-
-        let packet_len = data_len_size + z.read_to_end(scratch)?;
+        let packet_len = VarInt(data_len as i32).written_size() + z.read_to_end(&mut scratch)?;
 
         ensure!(
             packet_len <= MAX_PACKET_SIZE as usize,
@@ -352,7 +340,7 @@ where
 
         VarInt(packet_len as i32).encode(&mut *buf)?;
         VarInt(data_len as i32).encode(&mut *buf)?;
-        buf.extend_from_slice(scratch);
+        buf.extend_from_slice(&scratch);
     } else {
         let data_len_size = 1;
         let packet_len = data_len_size + data_len;

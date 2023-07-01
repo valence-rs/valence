@@ -16,35 +16,19 @@
     unreachable_pub,
     clippy::dbg_macro
 )]
+#![allow(clippy::type_complexity)]
 
-use std::borrow::Cow;
-use std::collections::hash_map::Entry;
-use std::collections::BTreeSet;
-use std::iter::FusedIterator;
 use std::mem;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use bevy_ecs::query::WorldQuery;
-pub use chunk::{Block, BlockEntity, BlockMut, BlockRef, Chunk};
-pub use chunk_entry::*;
-use glam::{DVec3, Vec3};
-use num_integer::div_ceil;
-use rustc_hash::FxHashMap;
-use valence_biome::BiomeRegistry;
-use valence_core::block_pos::BlockPos;
+use bevy_ecs::query::{Has, WorldQuery};
+use chunk::loaded::ChunkState;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::despawn::Despawned;
-use valence_core::ident::Ident;
-use valence_core::particle::{Particle, ParticleS2c};
-use valence_core::protocol::array::LengthPrefixedArray;
 use valence_core::protocol::byte_angle::ByteAngle;
-use valence_core::protocol::encode::{PacketWriter, WritePacket};
-use valence_core::protocol::packet::sound::{PlaySoundS2c, Sound, SoundCategory};
+use valence_core::protocol::encode::WritePacket;
 use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::{Encode, Packet};
-use valence_core::Server;
-use valence_dimension::DimensionTypeRegistry;
 use valence_entity::packet::{
     EntityAnimationS2c, EntityPositionS2c, EntitySetHeadYawS2c, EntityStatusS2c,
     EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, MoveRelativeS2c, RotateAndMoveRelativeS2c,
@@ -56,10 +40,12 @@ use valence_entity::{
     UpdateTrackedDataSet, Velocity,
 };
 
-mod chunk;
-mod chunk_entry;
+pub mod chunk;
+mod instance;
 pub mod packet;
-mod paletted_container;
+
+pub use chunk::{Block, BlockRef};
+pub use instance::*;
 
 pub struct InstancePlugin;
 
@@ -93,27 +79,51 @@ impl Plugin for InstancePlugin {
             PostUpdate,
             // This can run at the same time as entity init because we're only looking at position
             // + location.
-            update_entity_cell_positions.before(WriteUpdatePacketsToInstancesSet),
+            (add_orphaned_entities, update_entity_chunk_positions)
+                .chain()
+                .before(WriteUpdatePacketsToInstancesSet),
         )
         .add_systems(
             PostUpdate,
-            write_update_packets_to_instances
-                .after(update_entity_cell_positions)
+            write_update_packets_to_chunks
+                .after(update_entity_chunk_positions)
                 .in_set(WriteUpdatePacketsToInstancesSet),
         )
         .add_systems(
             PostUpdate,
-            clear_instance_changes.in_set(ClearInstanceChangesSet),
+            update_post_client.in_set(ClearInstanceChangesSet),
         );
+    }
+}
 
-        #[cfg(debug_assertions)]
-        app.add_systems(PostUpdate, check_instance_invariants);
+/// Marker component for entities that are not contained in a chunk.
+#[derive(Component, Debug)]
+struct Orphaned;
+
+/// Attempts to add orphaned entities to the chunk they're positioned in.
+fn add_orphaned_entities(
+    entities: Query<(Entity, &Position, &Location), With<Orphaned>>,
+    mut instances: Query<&mut Instance>,
+    mut commands: Commands,
+) {
+    for (entity, pos, loc) in &entities {
+        if let Ok(mut inst) = instances.get_mut(loc.0) {
+            let pos = ChunkPos::at(pos.0.x, pos.0.z);
+
+            if let Some(chunk) = inst.chunk_mut(pos) {
+                if chunk.entities.insert(entity) {
+                    chunk.incoming_entities.push((entity, None));
+                }
+
+                // Entity is no longer orphaned.
+                commands.entity(entity).remove::<Orphaned>();
+            }
+        }
     }
 }
 
 /// Handles entities moving from one chunk to another.
-#[allow(clippy::type_complexity)]
-fn update_entity_cell_positions(
+fn update_entity_chunk_positions(
     entities: Query<
         (
             Entity,
@@ -121,146 +131,97 @@ fn update_entity_cell_positions(
             &OldPosition,
             &Location,
             &OldLocation,
-            Option<&Despawned>,
+            Has<Despawned>,
         ),
-        (With<EntityKind>, Or<(Changed<Position>, With<Despawned>)>),
+        (
+            With<EntityKind>,
+            Or<(Changed<Position>, Changed<Location>, With<Despawned>)>,
+        ),
     >,
     mut instances: Query<&mut Instance>,
+    mut commands: Commands,
 ) {
     for (entity, pos, old_pos, loc, old_loc, despawned) in &entities {
         let pos = ChunkPos::at(pos.0.x, pos.0.z);
         let old_pos = ChunkPos::at(old_pos.get().x, old_pos.get().z);
 
-        if despawned.is_some() {
-            // Entity was deleted. Remove it from the chunk it was in, if it was in a chunk
-            // at all.
-            if let Ok(mut old_instance) = instances.get_mut(old_loc.get()) {
-                if let Some(old_cell) = old_instance.partition.get_mut(&old_pos) {
-                    if old_cell.entities.remove(&entity) {
-                        old_cell.outgoing.push((entity, None));
+        if despawned {
+            // Entity was deleted. Remove it from the chunk it was in.
+            if let Ok(mut old_inst) = instances.get_mut(old_loc.get()) {
+                if let Some(old_chunk) = old_inst.chunk_mut(old_pos) {
+                    if old_chunk.entities.remove(&entity) {
+                        old_chunk.outgoing_entities.push((entity, None));
                     }
                 }
             }
         } else if old_loc.get() != loc.0 {
-            // Entity changed the instance it is in. Remove it from old cell and
-            // insert it in the new cell.
+            // Entity changed the instance it is in. Remove it from old chunk and
+            // insert it in the new chunk.
 
-            // TODO: skip marker entity?
-
-            if let Ok(mut old_instance) = instances.get_mut(old_loc.get()) {
-                if let Some(old_cell) = old_instance.partition.get_mut(&old_pos) {
-                    if old_cell.entities.remove(&entity) {
-                        old_cell.outgoing.push((entity, None));
+            if let Ok(mut old_inst) = instances.get_mut(old_loc.get()) {
+                if let Some(old_chunk) = old_inst.chunk_mut(old_pos) {
+                    if old_chunk.entities.remove(&entity) {
+                        old_chunk.outgoing_entities.push((entity, None));
                     }
                 }
             }
 
-            if let Ok(mut instance) = instances.get_mut(loc.0) {
-                match instance.partition.entry(pos) {
-                    Entry::Occupied(oe) => {
-                        let cell = oe.into_mut();
-                        if cell.entities.insert(entity) {
-                            cell.incoming.push((entity, None));
-                        }
+            if let Ok(mut inst) = instances.get_mut(loc.0) {
+                if let Some(chunk) = inst.chunk_mut(pos) {
+                    if chunk.entities.insert(entity) {
+                        chunk.incoming_entities.push((entity, None));
                     }
-                    Entry::Vacant(ve) => {
-                        ve.insert(PartitionCell {
-                            chunk: None,
-                            chunk_removed: false,
-                            entities: BTreeSet::from([entity]),
-                            incoming: vec![(entity, None)],
-                            outgoing: vec![],
-                            packet_buf: vec![],
-                        });
-                    }
+                } else {
+                    // Entity is now orphaned.
+                    commands.entity(entity).insert(Orphaned);
                 }
             }
         } else if pos != old_pos {
-            // Entity changed its chunk position without changing instances. Remove
-            // it from old cell and insert it in new cell.
+            // Entity changed its chunk position without changing instances. Remove it from
+            // the old chunk and insert it in the new chunk.
 
-            // TODO: skip marker entity?
+            if let Ok(mut inst) = instances.get_mut(loc.0) {
+                let in_new_chunk = inst.chunk(pos).is_some();
+                let mut in_old_chunk = true;
 
-            if let Ok(mut instance) = instances.get_mut(loc.0) {
-                if let Some(old_cell) = instance.partition.get_mut(&old_pos) {
-                    if old_cell.entities.remove(&entity) {
-                        old_cell.outgoing.push((entity, Some(pos)));
+                if let Some(old_chunk) = inst.chunk_mut(old_pos) {
+                    if old_chunk.entities.remove(&entity) {
+                        let to = if in_new_chunk { Some(pos) } else { None };
+                        old_chunk.outgoing_entities.push((entity, to));
+                    } else {
+                        in_old_chunk = false;
                     }
                 }
 
-                match instance.partition.entry(pos) {
-                    Entry::Occupied(oe) => {
-                        let cell = oe.into_mut();
-                        if cell.entities.insert(entity) {
-                            cell.incoming.push((entity, Some(old_pos)));
-                        }
+                if let Some(chunk) = inst.chunk_mut(pos) {
+                    let from = if in_old_chunk { Some(old_pos) } else { None };
+
+                    if chunk.entities.insert(entity) {
+                        chunk.incoming_entities.push((entity, from));
                     }
-                    Entry::Vacant(ve) => {
-                        ve.insert(PartitionCell {
-                            chunk: None,
-                            chunk_removed: false,
-                            entities: BTreeSet::from([entity]),
-                            incoming: vec![(entity, Some(old_pos))],
-                            outgoing: vec![],
-                            packet_buf: vec![],
-                        });
-                    }
+                } else {
+                    // Entity is now orphaned.
+                    commands.entity(entity).insert(Orphaned);
                 }
             }
         } else {
-            // The entity didn't change its chunk position so there is nothing
+            // The entity didn't change its chunk position, so there's nothing
             // we need to do.
         }
     }
 }
 
-/// Writes update packets from entities and chunks into each cell's packet
+/// Writes update packets from entities and chunks into each chunk's packet
 /// buffer.
-fn write_update_packets_to_instances(
+fn write_update_packets_to_chunks(
     mut instances: Query<&mut Instance>,
     mut entities: Query<UpdateEntityQuery, (With<EntityKind>, Without<Despawned>)>,
-    server: Res<Server>,
 ) {
-    let mut scratch_1 = vec![];
-    let mut scratch_2 = vec![];
+    for inst in &mut instances {
+        let inst = inst.into_inner();
 
-    for instance in &mut instances {
-        let instance = instance.into_inner();
-
-        for (&pos, cell) in &mut instance.partition {
-            // Cache chunk update packets into the packet buffer of this cell.
-            if let Some(chunk) = &mut cell.chunk {
-                let writer = PacketWriter::new(
-                    &mut cell.packet_buf,
-                    server.compression_threshold(),
-                    &mut scratch_2,
-                );
-
-                chunk.write_update_packets(writer, &mut scratch_1, pos, &instance.info);
-
-                chunk.clear_viewed();
-            }
-
-            // Cache entity update packets into the packet buffer of this cell.
-            for &entity in &cell.entities {
-                let mut entity = entities
-                    .get_mut(entity)
-                    .expect("missing entity in partition cell");
-
-                let start = cell.packet_buf.len();
-
-                let writer = PacketWriter::new(
-                    &mut cell.packet_buf,
-                    server.compression_threshold(),
-                    &mut scratch_2,
-                );
-
-                entity.write_update_packets(writer);
-
-                let end = cell.packet_buf.len();
-
-                entity.packet_byte_range.0 = start..end;
-            }
+        for (&pos, chunk) in &mut inst.chunks {
+            chunk.update_pre_client(pos, &inst.info, &mut entities);
         }
     }
 }
@@ -280,7 +241,7 @@ struct UpdateEntityQuery {
     tracked_data: &'static TrackedData,
     statuses: &'static EntityStatuses,
     animations: &'static EntityAnimations,
-    packet_byte_range: &'static mut PacketByteRange,
+    packet_byte_range: Option<&'static mut PacketByteRange>,
 }
 
 impl UpdateEntityQueryItem<'_> {
@@ -375,427 +336,25 @@ impl UpdateEntityQueryItem<'_> {
     }
 }
 
-fn clear_instance_changes(mut instances: Query<&mut Instance>) {
-    for mut instance in &mut instances {
-        instance.partition.retain(|_, cell| {
-            cell.packet_buf.clear();
-            cell.chunk_removed = false;
-            cell.incoming.clear();
-            cell.outgoing.clear();
-
-            if let Some(chunk) = &mut cell.chunk {
-                chunk.update_post_client();
+/// Clears changes made to instances and removes removed chunks.
+fn update_post_client(mut instances: Query<&mut Instance>, mut commands: Commands) {
+    for mut inst in &mut instances {
+        inst.retain_chunks(|_, chunk| match chunk.state() {
+            ChunkState::Removed | ChunkState::AddedRemoved => {
+                // Any entities still in this chunk are now orphaned.
+                for &entity in &chunk.entities {
+                    if let Some(mut commands) = commands.get_entity(entity) {
+                        commands.insert(Orphaned);
+                    }
+                }
+                false
             }
-
-            cell.chunk.is_some() || !cell.entities.is_empty()
+            ChunkState::Added | ChunkState::Overwrite | ChunkState::Normal => {
+                chunk.update_post_client();
+                true
+            }
         });
 
-        instance.packet_buf.clear();
+        inst.packet_buf.clear();
     }
-}
-
-#[cfg(debug_assertions)]
-fn check_instance_invariants(instances: Query<&Instance>, entities: Query<(), With<EntityKind>>) {
-    for instance in &instances {
-        for (pos, cell) in &instance.partition {
-            for &id in &cell.entities {
-                assert!(
-                    entities.get(id).is_ok(),
-                    "instance contains an entity that does not exist at {pos:?}"
-                );
-            }
-        }
-    }
-}
-
-/// An Instance represents a Minecraft world, which consist of [`Chunk`]s.
-/// It manages updating clients when chunks change, and caches chunk and entity
-/// update packets on a per-chunk basis.
-#[derive(Component)]
-pub struct Instance {
-    #[doc(hidden)]
-    pub partition: FxHashMap<ChunkPos, PartitionCell>,
-    pub info: InstanceInfo,
-    /// Packet data to send to all clients in this instance at the end of the
-    /// tick.
-    pub packet_buf: Vec<u8>,
-    /// Scratch space for writing packets.
-    scratch: Vec<u8>,
-}
-
-#[doc(hidden)]
-pub struct InstanceInfo {
-    dimension_type_name: Ident<String>,
-    section_count: usize,
-    min_y: i32,
-    biome_registry_len: usize,
-    compression_threshold: Option<u32>,
-    filler_sky_light_mask: Box<[u64]>,
-    /// Sending filler light data causes the vanilla client to lag
-    /// less. Hopefully we can remove this in the future.
-    filler_sky_light_arrays: Box<[LengthPrefixedArray<u8, 2048>]>,
-}
-
-#[doc(hidden)]
-#[derive(Debug)]
-pub struct PartitionCell {
-    /// The chunk in this cell.
-    pub chunk: Option<Chunk<true>>,
-    /// If `chunk` went from `Some` to `None` this tick.
-    pub chunk_removed: bool,
-    /// Minecraft entities in this cell.
-    pub entities: BTreeSet<Entity>,
-    /// Minecraft entities that have entered the chunk this tick, paired with
-    /// the cell position in this instance they came from.
-    pub incoming: Vec<(Entity, Option<ChunkPos>)>,
-    /// Minecraft entities that have left the chunk this tick, paired with the
-    /// cell position in this world they arrived at.
-    pub outgoing: Vec<(Entity, Option<ChunkPos>)>,
-    /// A cache of packets to send to all clients that are in view of this cell
-    /// at the end of the tick.
-    pub packet_buf: Vec<u8>,
-}
-
-impl Instance {
-    #[track_caller]
-    pub fn new(
-        dimension_type_name: impl Into<Ident<String>>,
-        dimensions: &DimensionTypeRegistry,
-        biomes: &BiomeRegistry,
-        server: &Server,
-    ) -> Self {
-        let dimension_type_name = dimension_type_name.into();
-
-        let dim = &dimensions[dimension_type_name.as_str_ident()];
-
-        assert!(dim.height > 0, "invalid dimension height of {}", dim.height);
-
-        let light_section_count = (dim.height / 16 + 2) as usize;
-
-        let mut sky_light_mask = vec![0; div_ceil(light_section_count, 16)];
-
-        for i in 0..light_section_count {
-            sky_light_mask[i / 64] |= 1 << (i % 64);
-        }
-
-        Self {
-            partition: FxHashMap::default(),
-            info: InstanceInfo {
-                dimension_type_name,
-                section_count: (dim.height / 16) as usize,
-                min_y: dim.min_y,
-                biome_registry_len: biomes.iter().len(),
-                compression_threshold: server.compression_threshold(),
-                filler_sky_light_mask: sky_light_mask.into(),
-                filler_sky_light_arrays: vec![
-                    LengthPrefixedArray([0xff; 2048]);
-                    light_section_count
-                ]
-                .into(),
-            },
-            packet_buf: vec![],
-            scratch: vec![],
-        }
-    }
-
-    pub fn dimension_type_name(&self) -> Ident<&str> {
-        self.info.dimension_type_name.as_str_ident()
-    }
-
-    pub fn section_count(&self) -> usize {
-        self.info.section_count
-    }
-
-    /// Get a reference to the chunk at the given position, if it is loaded.
-    pub fn chunk(&self, pos: impl Into<ChunkPos>) -> Option<&Chunk<true>> {
-        self.partition
-            .get(&pos.into())
-            .and_then(|p| p.chunk.as_ref())
-    }
-
-    /// Get a mutable reference to the chunk at the given position, if it is
-    /// loaded.
-    pub fn chunk_mut(&mut self, pos: impl Into<ChunkPos>) -> Option<&mut Chunk<true>> {
-        self.partition
-            .get_mut(&pos.into())
-            .and_then(|p| p.chunk.as_mut())
-    }
-
-    /// Insert a chunk into the instance at the given position. This effectively
-    /// loads the Chunk.
-    pub fn insert_chunk(&mut self, pos: impl Into<ChunkPos>, chunk: Chunk) -> Option<Chunk> {
-        match self.chunk_entry(pos) {
-            ChunkEntry::Occupied(mut oe) => Some(oe.insert(chunk)),
-            ChunkEntry::Vacant(ve) => {
-                ve.insert(chunk);
-                None
-            }
-        }
-    }
-
-    /// Unload the chunk at the given position, if it is loaded. Returns the
-    /// chunk if it was loaded.
-    pub fn remove_chunk(&mut self, pos: impl Into<ChunkPos>) -> Option<Chunk> {
-        match self.chunk_entry(pos) {
-            ChunkEntry::Occupied(oe) => Some(oe.remove()),
-            ChunkEntry::Vacant(_) => None,
-        }
-    }
-
-    /// Unload all chunks in this instance.
-    pub fn clear_chunks(&mut self) {
-        self.retain_chunks(|_, _| false)
-    }
-
-    /// Retain only the chunks for which the given predicate returns `true`.
-    pub fn retain_chunks<F>(&mut self, mut f: F)
-    where
-        F: FnMut(ChunkPos, &mut Chunk<true>) -> bool,
-    {
-        for (&pos, cell) in &mut self.partition {
-            if let Some(chunk) = &mut cell.chunk {
-                if !f(pos, chunk) {
-                    cell.chunk = None;
-                    cell.chunk_removed = true;
-                }
-            }
-        }
-    }
-
-    /// Get a [`ChunkEntry`] for the given position.
-    pub fn chunk_entry(&mut self, pos: impl Into<ChunkPos>) -> ChunkEntry {
-        ChunkEntry::new(self.info.section_count, self.partition.entry(pos.into()))
-    }
-
-    /// Get an iterator over all loaded chunks in the instance. The order of the
-    /// chunks is undefined.
-    pub fn chunks(&self) -> impl FusedIterator<Item = (ChunkPos, &Chunk<true>)> + Clone + '_ {
-        self.partition
-            .iter()
-            .flat_map(|(&pos, par)| par.chunk.as_ref().map(|c| (pos, c)))
-    }
-
-    /// Get an iterator over all loaded chunks in the instance, mutably. The
-    /// order of the chunks is undefined.
-    pub fn chunks_mut(&mut self) -> impl FusedIterator<Item = (ChunkPos, &mut Chunk<true>)> + '_ {
-        self.partition
-            .iter_mut()
-            .flat_map(|(&pos, par)| par.chunk.as_mut().map(|c| (pos, c)))
-    }
-
-    /// Optimizes the memory usage of the instance.
-    pub fn optimize(&mut self) {
-        for (_, chunk) in self.chunks_mut() {
-            chunk.optimize();
-        }
-
-        self.partition.shrink_to_fit();
-        self.packet_buf.shrink_to_fit();
-    }
-
-    /// Gets a reference to the block at an absolute block position in world
-    /// space. Only works for blocks in loaded chunks.
-    ///
-    /// If the position is not inside of a chunk, then [`Option::None`] is
-    /// returned.
-    pub fn block(&self, pos: impl Into<BlockPos>) -> Option<BlockRef> {
-        let pos = pos.into();
-
-        let Some(y) = pos.y.checked_sub(self.info.min_y).and_then(|y| y.try_into().ok()) else {
-            return None;
-        };
-
-        if y >= self.info.section_count * 16 {
-            return None;
-        }
-
-        let Some(chunk) = self.chunk(ChunkPos::from_block_pos(pos)) else {
-            return None;
-        };
-
-        Some(chunk.block(
-            pos.x.rem_euclid(16) as usize,
-            y,
-            pos.z.rem_euclid(16) as usize,
-        ))
-    }
-
-    /// Gets a mutable reference to the block at an absolute block position in
-    /// world space. Only works for blocks in loaded chunks.
-    ///
-    /// If the position is not inside of a chunk, then [`Option::None`] is
-    /// returned.
-    pub fn block_mut(&mut self, pos: impl Into<BlockPos>) -> Option<BlockMut> {
-        let pos = pos.into();
-
-        let Some(y) = pos.y.checked_sub(self.info.min_y).and_then(|y| y.try_into().ok()) else {
-            return None;
-        };
-
-        if y >= self.info.section_count * 16 {
-            return None;
-        }
-
-        let Some(chunk) = self.chunk_mut(ChunkPos::from_block_pos(pos)) else {
-            return None;
-        };
-
-        Some(chunk.block_mut(
-            pos.x.rem_euclid(16) as usize,
-            y,
-            pos.z.rem_euclid(16) as usize,
-        ))
-    }
-
-    /// Sets the block at an absolute block position in world space. The
-    /// previous block at the position is returned.
-    ///
-    /// If the position is not within a loaded chunk or otherwise out of bounds,
-    /// then [`Option::None`] is returned with no effect.
-    pub fn set_block(
-        &mut self,
-        pos: impl Into<BlockPos>,
-        block: impl Into<Block>,
-    ) -> Option<Block> {
-        let pos = pos.into();
-
-        let Some(y) = pos.y.checked_sub(self.info.min_y).and_then(|y| y.try_into().ok()) else {
-            return None;
-        };
-
-        if y >= self.info.section_count * 16 {
-            return None;
-        }
-
-        let Some(chunk) = self.chunk_mut(ChunkPos::from_block_pos(pos)) else {
-            return None;
-        };
-
-        Some(chunk.set_block(
-            pos.x.rem_euclid(16) as usize,
-            y,
-            pos.z.rem_euclid(16) as usize,
-            block,
-        ))
-    }
-
-    /// Writes a packet to all clients in view of `pos` in this instance. Has no
-    /// effect if there is no chunk at `pos`.
-    ///
-    /// This is more efficient than sending the packet to each client
-    /// individually.
-    pub fn write_packet_at<P>(&mut self, pkt: &P, pos: impl Into<ChunkPos>)
-    where
-        P: Packet + Encode,
-    {
-        let pos = pos.into();
-        if let Some(cell) = self.partition.get_mut(&pos) {
-            if cell.chunk.is_some() {
-                PacketWriter::new(
-                    &mut cell.packet_buf,
-                    self.info.compression_threshold,
-                    &mut self.scratch,
-                )
-                .write_packet(pkt);
-            }
-        }
-    }
-
-    /// Writes arbitrary packet data to all clients in view of `pos` in this
-    /// instance. Has no effect if there is no chunk at `pos`.
-    ///
-    /// The packet data must be properly compressed for the current compression
-    /// threshold but never encrypted. Don't use this function unless you know
-    /// what you're doing. Consider using [`Self::write_packet`] instead.
-    pub fn write_packet_bytes_at(&mut self, bytes: &[u8], pos: impl Into<ChunkPos>) {
-        let pos = pos.into();
-        if let Some(cell) = self.partition.get_mut(&pos) {
-            if cell.chunk.is_some() {
-                cell.packet_buf.extend_from_slice(bytes);
-            }
-        }
-    }
-
-    /// Puts a particle effect at the given position in the world. The particle
-    /// effect is visible to all players in the instance with the
-    /// appropriate chunk in view.
-    pub fn play_particle(
-        &mut self,
-        particle: &Particle,
-        long_distance: bool,
-        position: impl Into<DVec3>,
-        offset: impl Into<Vec3>,
-        max_speed: f32,
-        count: i32,
-    ) {
-        let position = position.into();
-
-        self.write_packet_at(
-            &ParticleS2c {
-                particle: Cow::Borrowed(particle),
-                long_distance,
-                position,
-                offset: offset.into(),
-                max_speed,
-                count,
-            },
-            ChunkPos::from_dvec3(position),
-        );
-    }
-
-    /// Plays a sound effect at the given position in the world. The sound
-    /// effect is audible to all players in the instance with the
-    /// appropriate chunk in view.
-    pub fn play_sound(
-        &mut self,
-        sound: Sound,
-        category: SoundCategory,
-        position: impl Into<DVec3>,
-        volume: f32,
-        pitch: f32,
-    ) {
-        let position = position.into();
-
-        self.write_packet_at(
-            &PlaySoundS2c {
-                id: sound.to_id(),
-                category,
-                position: (position * 8.0).as_ivec3(),
-                volume,
-                pitch,
-                seed: rand::random(),
-            },
-            ChunkPos::from_dvec3(position),
-        );
-    }
-}
-
-/// Writing packets to the instance writes to the instance's global packet
-/// buffer. All clients in the instance will receive the packet at the end of
-/// the tick.
-///
-/// This is more efficient than sending the packet to each client individually.
-impl WritePacket for Instance {
-    #[inline]
-    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
-    where
-        P: Packet + Encode,
-    {
-        PacketWriter::new(
-            &mut self.packet_buf,
-            self.info.compression_threshold,
-            &mut self.scratch,
-        )
-        .write_packet_fallible(packet)
-    }
-
-    #[inline]
-    fn write_packet_bytes(&mut self, bytes: &[u8]) {
-        self.packet_buf.extend_from_slice(bytes)
-    }
-}
-
-/// Returns the minimum number of bits needed to represent the integer `n`.
-const fn bit_width(n: usize) -> usize {
-    (usize::BITS - n.leading_zeros()) as _
 }

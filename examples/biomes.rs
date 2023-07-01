@@ -21,11 +21,11 @@ fn setup(
 ) {
     let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
-    let biome_count = biome_reg.iter().count();
+    let biome_count = biome_reg.iter().count() as u32;
 
     for z in -5..5 {
         for x in -5..5 {
-            let mut chunk = Chunk::new(4);
+            let mut chunk = UnloadedChunk::with_height(64);
             // Set chunk blocks
             for z in 0..16 {
                 for x in 0..16 {
@@ -34,17 +34,14 @@ fn setup(
             }
 
             // Set the biomes of the chunk to a 4x4x4 grid of biomes
-            for cz in 0..4 {
-                for cx in 0..4 {
-                    let height = chunk.section_count() * 16;
-                    for cy in 0..height / 4 {
-                        let biome_id = biome_reg
-                            .iter()
-                            .nth((cx + cz * 4 + cy * 4 * 4) % biome_count)
-                            .unwrap()
-                            .0;
+            for bz in 0..4 {
+                for bx in 0..4 {
+                    for by in 0..chunk.height() / 4 {
+                        let nth = (bx + bz * 4 + by * 4 * 4) % biome_count;
 
-                        chunk.set_biome(cx, cy, cz, biome_id);
+                        let biome_id = biome_reg.iter().nth(nth as usize).unwrap().0;
+
+                        chunk.set_biome(bx, by, bz, biome_id);
                     }
                 }
             }

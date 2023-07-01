@@ -1,11 +1,12 @@
 use std::borrow::Cow;
+use std::collections::BTreeMap;
 
-use num_integer::{div_ceil, Integer};
+use num_integer::div_ceil;
 use thiserror::Error;
 use valence_biome::BiomeId;
-use valence_block::{BlockEntityKind, BlockKind, PropName, PropValue};
+use valence_block::{BlockKind, PropName, PropValue};
 use valence_core::ident::Ident;
-use valence_instance::{BlockEntity, Chunk};
+use valence_instance::chunk::{Chunk, UnloadedChunk};
 use valence_nbt::{Compound, List, Value};
 
 #[derive(Clone, Debug, Error)]
@@ -15,6 +16,8 @@ pub(crate) enum ParseChunkError {
     MissingSections,
     #[error("missing chunk section Y")]
     MissingSectionY,
+    #[error("section Y is out of bounds")]
+    SectionYOutOfBounds,
     #[error("missing block states")]
     MissingBlockStates,
     #[error("missing block palette")]
@@ -52,61 +55,61 @@ pub(crate) enum ParseChunkError {
     #[error("invalid biome palette index")]
     BadBiomePaletteIndex,
     #[error("missing block entities")]
-    MissingBlockEntity,
+    MissingBlockEntities,
     #[error("missing block entity ident")]
     MissingBlockEntityIdent,
     #[error("invalid block entity ident of \"{0}\"")]
-    UnknownBlockEntityIdent(String),
+    InvalidBlockEntityName(String),
     #[error("invalid block entity position")]
     InvalidBlockEntityPosition,
 }
 
-/// Takes an Anvil chunk in NBT form and writes its data to a Valence [`Chunk`].
-/// An error is returned if the NBT data does not match the expected structure
-/// for an Anvil chunk.
-///
-/// # Arguments
-///
-/// - `nbt`: The raw Anvil chunk NBT to read from.
-/// - `chunk`: The Valence chunk to write to.
-/// - `sect_offset`: A constant to add to all sector Y positions in `nbt`. After
-///   applying the offset, only the sectors in the range
-///   `0..chunk.section_count()` are written.
-/// - `map_biome`: A function to map biome resource identifiers in the NBT data
-///   to Valence [`BiomeId`]s.
-pub(crate) fn parse_chunk<F, const LOADED: bool>(
-    nbt: &Compound,
-    chunk: &mut Chunk<LOADED>,
-    sect_offset: i32,
-    mut map_biome: F,
-) -> Result<(), ParseChunkError>
-where
-    F: FnMut(Ident<&str>) -> BiomeId,
-{
-    let Some(Value::List(List::Compound(sections))) = nbt.get("sections") else {
+pub(crate) fn parse_chunk(
+    mut nbt: Compound,
+    biome_map: &BTreeMap<Ident<String>, BiomeId>, // TODO: replace with biome registry arg.
+) -> Result<UnloadedChunk, ParseChunkError> {
+    let Some(Value::List(List::Compound(sections))) = nbt.remove("sections") else {
         return Err(ParseChunkError::MissingSections)
     };
+
+    if sections.is_empty() {
+        return Ok(UnloadedChunk::new());
+    }
+
+    let mut chunk =
+        UnloadedChunk::with_height((sections.len() * 16).try_into().unwrap_or(u32::MAX));
+
+    let min_sect_y = sections
+        .iter()
+        .flat_map(|sect| {
+            if let Some(Value::Byte(sect_y)) = sect.get("Y") {
+                Some(*sect_y)
+            } else {
+                None
+            }
+        })
+        .min()
+        .unwrap() as i32;
 
     let mut converted_block_palette = vec![];
     let mut converted_biome_palette = vec![];
 
-    for section in sections {
-        let Some(Value::Byte(sect_y)) = section.get("Y") else {
+    for mut section in sections {
+        let Some(Value::Byte(sect_y)) = section.remove("Y") else {
             return Err(ParseChunkError::MissingSectionY)
         };
 
-        let adjusted_sect_y = *sect_y as i32 + sect_offset;
+        let sect_y = (sect_y as i32 - min_sect_y) as u32;
 
-        if adjusted_sect_y < 0 || adjusted_sect_y as usize >= chunk.section_count() {
-            // Section is out of bounds. Skip it.
-            continue;
+        if sect_y >= chunk.height() / 16 {
+            return Err(ParseChunkError::SectionYOutOfBounds);
         }
 
-        let Some(Value::Compound(block_states)) = section.get("block_states") else {
+        let Some(Value::Compound(mut block_states)) = section.remove("block_states") else {
             return Err(ParseChunkError::MissingBlockStates)
         };
 
-        let Some(Value::List(List::Compound(palette))) = block_states.get("palette") else {
+        let Some(Value::List(List::Compound(palette))) = block_states.remove("palette") else {
             return Err(ParseChunkError::MissingBlockPalette)
         };
 
@@ -116,29 +119,29 @@ where
 
         converted_block_palette.clear();
 
-        for block in palette {
-            let Some(Value::String(name)) = block.get("Name") else {
+        for mut block in palette {
+            let Some(Value::String(name)) = block.remove("Name") else {
                 return Err(ParseChunkError::MissingBlockName)
             };
 
-            let Some(block_kind) = BlockKind::from_str(ident_path(name)) else {
-                return Err(ParseChunkError::UnknownBlockName(name.into()))
+            let Some(block_kind) = BlockKind::from_str(ident_path(&name)) else {
+                return Err(ParseChunkError::UnknownBlockName(name))
             };
 
             let mut state = block_kind.to_state();
 
-            if let Some(Value::Compound(properties)) = block.get("Properties") {
+            if let Some(Value::Compound(properties)) = block.remove("Properties") {
                 for (key, value) in properties {
                     let Value::String(value) = value else {
                         return Err(ParseChunkError::BadPropValueType)
                     };
 
-                    let Some(prop_name) = PropName::from_str(key) else {
-                        return Err(ParseChunkError::UnknownPropName(key.into()))
+                    let Some(prop_name) = PropName::from_str(&key) else {
+                        return Err(ParseChunkError::UnknownPropName(key))
                     };
 
-                    let Some(prop_value) = PropValue::from_str(value) else {
-                        return Err(ParseChunkError::UnknownPropValue(value.into()))
+                    let Some(prop_value) = PropValue::from_str(&value) else {
+                        return Err(ParseChunkError::UnknownPropValue(value))
                     };
 
                     state = state.set(prop_name, prop_value);
@@ -149,11 +152,11 @@ where
         }
 
         if converted_block_palette.len() == 1 {
-            chunk.fill_block_states(adjusted_sect_y as usize, converted_block_palette[0]);
+            chunk.fill_block_state_section(sect_y, converted_block_palette[0]);
         } else {
             debug_assert!(converted_block_palette.len() > 1);
 
-            let Some(Value::LongArray(data)) = block_states.get("data") else {
+            let Some(Value::LongArray(data)) = block_states.remove("data") else {
                 return Err(ParseChunkError::MissingBlockStateData)
             };
 
@@ -166,12 +169,12 @@ where
                 return Err(ParseChunkError::BadBlockLongCount);
             };
 
-            let mut i = 0;
-            for &long in data.iter() {
+            let mut i: u32 = 0;
+            for long in data {
                 let u64 = long as u64;
 
                 for j in 0..idxs_per_long {
-                    if i >= BLOCKS_PER_SECTION {
+                    if i >= BLOCKS_PER_SECTION as u32 {
                         break;
                     }
 
@@ -185,7 +188,7 @@ where
                     let z = i / 16 % 16;
                     let y = i / (16 * 16);
 
-                    chunk.set_block_state(x, adjusted_sect_y as usize * 16 + y, z, block);
+                    chunk.set_block_state(x, sect_y * 16 + y, z, block);
 
                     i += 1;
                 }
@@ -211,11 +214,12 @@ where
                 return Err(ParseChunkError::BadBiomeName)
             };
 
-            converted_biome_palette.push(map_biome(ident.as_str_ident()));
+            converted_biome_palette
+                .push(biome_map.get(ident.as_str()).copied().unwrap_or_default());
         }
 
         if converted_biome_palette.len() == 1 {
-            chunk.fill_biomes(adjusted_sect_y as usize, converted_biome_palette[0]);
+            chunk.fill_biome_section(sect_y, converted_biome_palette[0]);
         } else {
             debug_assert!(converted_biome_palette.len() > 1);
 
@@ -232,12 +236,12 @@ where
                 return Err(ParseChunkError::BadBiomeLongCount);
             };
 
-            let mut i = 0;
+            let mut i: u32 = 0;
             for &long in data.iter() {
                 let u64 = long as u64;
 
                 for j in 0..idxs_per_long {
-                    if i >= BIOMES_PER_SECTION {
+                    if i >= BIOMES_PER_SECTION as u32 {
                         break;
                     }
 
@@ -251,7 +255,7 @@ where
                     let z = i / 4 % 4;
                     let y = i / (4 * 4);
 
-                    chunk.set_biome(x, adjusted_sect_y as usize * 4 + y, z, biome);
+                    chunk.set_biome(x, sect_y * 4 + y, z, biome);
 
                     i += 1;
                 }
@@ -259,49 +263,51 @@ where
         }
     }
 
-    let Some(Value::List(block_entities)) = nbt.get("block_entities") else {
-        return Err(ParseChunkError::MissingBlockEntity);
+    let Some(Value::List(block_entities)) = nbt.remove("block_entities") else {
+        return Err(ParseChunkError::MissingBlockEntities);
     };
 
     if let List::Compound(block_entities) = block_entities {
-        for comp in block_entities {
-            let Some(Value::String(ident)) = comp.get("id") else {
+        for mut comp in block_entities {
+            let Some(Value::String(ident)) = comp.remove("id") else {
                 return Err(ParseChunkError::MissingBlockEntityIdent);
             };
-            let Ok(ident) = Ident::new(&ident[..]) else {
-                return Err(ParseChunkError::UnknownBlockEntityIdent(ident.clone()));
-            };
-            let Some(kind) = BlockEntityKind::from_ident(ident.as_str_ident()) else {
-                return Err(ParseChunkError::UnknownBlockEntityIdent(ident.as_str().to_string()));
-            };
-            let block_entity = BlockEntity {
-                kind,
-                nbt: comp.clone(),
-            };
-            let Some(Value::Int(x)) = comp.get("x") else {
-                return Err(ParseChunkError::InvalidBlockEntityPosition);
-            };
-            let Ok(x) = usize::try_from(x.mod_floor(&16)) else {
-                return Err(ParseChunkError::InvalidBlockEntityPosition);
-            };
-            let Some(Value::Int(y)) = comp.get("y") else {
-                return Err(ParseChunkError::InvalidBlockEntityPosition);
-            };
-            let Ok(y) = usize::try_from(y + sect_offset * 16) else {
-                return Err(ParseChunkError::InvalidBlockEntityPosition);
-            };
-            let Some(Value::Int(z)) = comp.get("z") else {
-                return Err(ParseChunkError::InvalidBlockEntityPosition);
-            };
-            let Ok(z) = usize::try_from(z.mod_floor(&16)) else {
+
+            if let Err(e) = Ident::new(ident) {
+                return Err(ParseChunkError::InvalidBlockEntityName(e.0));
+            }
+
+            let Some(Value::Int(x)) = comp.remove("x") else {
                 return Err(ParseChunkError::InvalidBlockEntityPosition);
             };
 
-            chunk.set_block_entity(x, y, z, block_entity);
+            let x = x.rem_euclid(16) as u32;
+
+            let Some(Value::Int(y)) = comp.remove("y") else {
+                return Err(ParseChunkError::InvalidBlockEntityPosition);
+            };
+
+            let Ok(y) = u32::try_from(y.wrapping_sub(min_sect_y * 16)) else {
+                return Err(ParseChunkError::InvalidBlockEntityPosition);
+            };
+
+            if y >= chunk.height() {
+                return Err(ParseChunkError::InvalidBlockEntityPosition);
+            }
+
+            let Some(Value::Int(z)) = comp.remove("z") else {
+                return Err(ParseChunkError::InvalidBlockEntityPosition);
+            };
+
+            let z = z.rem_euclid(16) as u32;
+
+            comp.remove("keepPacked");
+
+            chunk.set_block_entity(x, y, z, Some(comp));
         }
     }
 
-    Ok(())
+    Ok(chunk)
 }
 
 const BLOCKS_PER_SECTION: usize = 16 * 16 * 16;

@@ -11,11 +11,11 @@ use valence_client::ClientBundleArgs;
 use valence_core::protocol::decode::{PacketDecoder, PacketFrame};
 use valence_core::protocol::encode::PacketEncoder;
 use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::{Encode, Packet};
+use valence_core::protocol::{Decode, Encode, Packet};
 use valence_core::{ident, CoreSettings, Server};
 use valence_dimension::DimensionTypeRegistry;
 use valence_entity::Location;
-use valence_network::{ConnectionMode, NetworkSettings};
+use valence_network::NetworkPlugin;
 
 use crate::client::{ClientBundle, ClientConnection, ReceivedPacket};
 use crate::instance::Instance;
@@ -31,12 +31,7 @@ fn scenario_single_client(app: &mut App) -> (Entity, MockClientHelper) {
         ..Default::default()
     });
 
-    app.insert_resource(NetworkSettings {
-        connection_mode: ConnectionMode::Offline,
-        ..Default::default()
-    });
-
-    app.add_plugins(DefaultPlugins);
+    app.add_plugins(DefaultPlugins.build().disable::<NetworkPlugin>());
 
     app.update(); // Initialize plugins.
 
@@ -49,25 +44,58 @@ fn scenario_single_client(app: &mut App) -> (Entity, MockClientHelper) {
 
     let instance_ent = app.world.spawn(instance).id();
 
-    let (client, client_helper) = create_mock_client();
-
+    let (mut client, client_helper) = create_mock_client("test");
+    client.player.location.0 = instance_ent;
     let client_ent = app.world.spawn(client).id();
 
-    // Set initial location.
-    app.world.get_mut::<Location>(client_ent).unwrap().0 = instance_ent;
-
     (client_ent, client_helper)
+}
+
+#[allow(unused)]
+fn scenario_double_client(
+    app: &mut App,
+) -> ((Entity, MockClientHelper), (Entity, MockClientHelper)) {
+    app.insert_resource(CoreSettings {
+        compression_threshold: None,
+        ..Default::default()
+    });
+
+    app.add_plugins(DefaultPlugins.build().disable::<NetworkPlugin>());
+
+    app.update(); // Initialize plugins.
+
+    let instance = Instance::new(
+        ident!("overworld"),
+        app.world.resource::<DimensionTypeRegistry>(),
+        app.world.resource::<BiomeRegistry>(),
+        app.world.resource::<Server>(),
+    );
+
+    let instance_ent = app.world.spawn(instance).id();
+
+    let (mut client, client_helper_1) = create_mock_client("test_1");
+    client.player.location.0 = instance_ent;
+    let client_ent_1 = app.world.spawn(client).id();
+
+    let (mut client, client_helper_2) = create_mock_client("test_2");
+    client.player.location.0 = instance_ent;
+    let client_ent_2 = app.world.spawn(client).id();
+
+    (
+        (client_ent_1, client_helper_1),
+        (client_ent_2, client_helper_2),
+    )
 }
 
 /// Creates a mock client bundle that can be used for unit testing.
 ///
 /// Returns the client, and a helper to inject packets as if the client sent
 /// them and receive packets as if the client received them.
-fn create_mock_client() -> (ClientBundle, MockClientHelper) {
+fn create_mock_client(name: impl Into<String>) -> (ClientBundle, MockClientHelper) {
     let conn = MockClientConnection::new();
 
     let bundle = ClientBundle::new(ClientBundleArgs {
-        username: "test".into(),
+        username: name.into(),
         uuid: Uuid::from_bytes(rand::random()),
         ip: "127.0.0.1".parse().unwrap(),
         properties: vec![],
@@ -176,9 +204,9 @@ impl MockClientHelper {
         self.conn.inject_recv(self.scratch.split());
     }
 
-    /// Collect all packets that have been sent to the client.
+    /// Collect all packets that have been received by the client.
     #[track_caller]
-    fn collect_sent(&mut self) -> PacketFrames {
+    fn collect_received(&mut self) -> PacketFrames {
         self.dec.queue_bytes(self.conn.take_sent());
 
         let mut res = vec![];
@@ -206,12 +234,12 @@ impl PacketFrames {
     fn assert_count<P: Packet>(&self, expected_count: usize) {
         let actual_count = self.0.iter().filter(|f| f.id == P::ID).count();
 
-        assert_eq!(
-            expected_count,
-            actual_count,
-            "unexpected packet count for {} (expected {expected_count}, got {actual_count})",
-            P::NAME
-        );
+        if expected_count != actual_count {
+            panic!(
+                "unexpected packet count for {} (expected {expected_count}, got {actual_count})",
+                P::NAME
+            );
+        }
     }
 
     #[track_caller]
@@ -222,27 +250,39 @@ impl PacketFrames {
             .filter_map(|f| L::packets().iter().position(|(id, _)| f.id == *id))
             .collect();
 
-        // TODO: replace with slice::is_sorted.
+        // TODO: replace with slice::is_sorted when stabilized.
         let is_sorted = positions.windows(2).all(|w| w[0] <= w[1]);
 
-        assert!(
-            is_sorted,
-            "packets out of order (expected {:?}, got {:?})",
-            L::packets(),
-            self.debug::<L>()
-        );
+        if !is_sorted {
+            panic!(
+                "packets out of order (expected {:?}, got {:?})",
+                L::packets(),
+                self.debug_order::<L>()
+            );
+        }
     }
 
-    fn debug<L: PacketList>(&self) -> impl std::fmt::Debug {
+    /// Finds the first occurrence of `P` in the packet list and decodes it.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the packet was not found or a decoding error occurs.
+    #[track_caller]
+    fn first<'a, P>(&'a self) -> P
+    where
+        P: Packet + Decode<'a>,
+    {
+        if let Some(frame) = self.0.iter().find(|p| p.id == P::ID) {
+            frame.decode::<P>().unwrap()
+        } else {
+            panic!("failed to find packet {}", P::NAME)
+        }
+    }
+
+    fn debug_order<L: PacketList>(&self) -> impl std::fmt::Debug {
         self.0
             .iter()
-            .map(|f| {
-                L::packets()
-                    .iter()
-                    .find(|(id, _)| f.id == *id)
-                    .cloned()
-                    .unwrap_or((f.id, "<ignored>"))
-            })
+            .filter_map(|f| L::packets().iter().find(|(id, _)| f.id == *id).cloned())
             .collect::<Vec<_>>()
     }
 }
@@ -283,6 +323,8 @@ impl_packet_list!(A, B, C, D, E, F, G, H, I, J, K);
 mod boss_bar;
 mod client;
 mod example;
+mod instance;
 mod inventory;
+mod player_list;
 mod weather;
 mod world_border;

@@ -23,7 +23,7 @@ fn test_intialize_on_join() {
     app.update();
 
     // Check if a boss bar packet was sent
-    let frames = client_helper.collect_sent();
+    let frames = client_helper.collect_received();
     frames.assert_count::<BossBarS2c>(1);
 }
 
@@ -46,7 +46,7 @@ fn test_despawn() {
 
     // Check if a boss bar packet was sent in addition to the ADD packet, which
     // should be a Remove packet
-    let frames = client_helper.collect_sent();
+    let frames = client_helper.collect_received();
     frames.assert_count::<BossBarS2c>(2);
 }
 
@@ -71,7 +71,7 @@ fn test_title_update() {
 
     // Check if a boss bar packet was sent in addition to the ADD packet, which
     // should be an UpdateTitle packet
-    let frames = client_helper.collect_sent();
+    let frames = client_helper.collect_received();
     frames.assert_count::<BossBarS2c>(2);
 }
 
@@ -96,7 +96,7 @@ fn test_health_update() {
 
     // Check if a boss bar packet was sent in addition to the ADD packet, which
     // should be an UpdateHealth packet
-    let frames = client_helper.collect_sent();
+    let frames = client_helper.collect_received();
     frames.assert_count::<BossBarS2c>(2);
 }
 
@@ -122,7 +122,7 @@ fn test_style_update() {
 
     // Check if a boss bar packet was sent in addition to the ADD packet, which
     // should be an UpdateStyle packet
-    let frames = client_helper.collect_sent();
+    let frames = client_helper.collect_received();
     frames.assert_count::<BossBarS2c>(2);
 }
 
@@ -147,7 +147,7 @@ fn test_flags_update() {
 
     // Check if a boss bar packet was sent in addition to the ADD packet, which
     // should be an UpdateFlags packet
-    let frames = client_helper.collect_sent();
+    let frames = client_helper.collect_received();
     frames.assert_count::<BossBarS2c>(2);
 }
 
@@ -177,7 +177,7 @@ fn test_client_disconnection() {
 
     // Check if a boss bar packet was sent in addition to the ADD packet, which
     // should be a Remove packet
-    let frames = client_helper.collect_sent();
+    let frames = client_helper.collect_received();
     frames.assert_count::<BossBarS2c>(2);
 }
 

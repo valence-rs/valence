@@ -92,7 +92,7 @@ license = "MIT"
 
 [workspace.dependencies]
 aes = "0.8.2"
-anyhow = "1.0.70"
+anyhow = { version = "1.0.70", features = ["backtrace"] }
 approx = "0.5.1"
 arrayvec = "0.7.2"
 async-trait = "0.1.60"
