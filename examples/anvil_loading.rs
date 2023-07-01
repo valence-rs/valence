@@ -107,7 +107,7 @@ fn handle_chunk_loads(
 
                 eprintln!("{errmsg}");
                 inst.send_chat_message(errmsg.color(Color::RED));
-                
+
                 inst.insert_chunk(event.pos, UnloadedChunk::new());
             }
         }

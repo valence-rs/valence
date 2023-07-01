@@ -1,8 +1,11 @@
-use super::scenario_single_client;
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use valence_block::BlockState;
-use valence_instance::{Instance, chunk::UnloadedChunk, packet::{ChunkDeltaUpdateS2c, BlockEntityUpdateS2c}};
+use valence_instance::chunk::UnloadedChunk;
+use valence_instance::packet::{BlockEntityUpdateS2c, ChunkDeltaUpdateS2c};
+use valence_instance::Instance;
+
+use super::scenario_single_client;
 
 #[test]
 fn block_create_destroy() {

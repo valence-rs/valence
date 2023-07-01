@@ -279,7 +279,7 @@ impl_packet_list!(A, B, C, D, E, F, G, H, I, J, K);
 mod boss_bar;
 mod client;
 mod example;
+mod instance;
 mod inventory;
 mod weather;
 mod world_border;
-mod instance;
