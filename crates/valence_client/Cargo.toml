@@ -7,6 +7,8 @@ edition.workspace = true
 anyhow.workspace = true
 bevy_app.workspace = true
 bevy_ecs.workspace = true
+bevy_utils.workspace = true # Needed for `ScheduleLabel` derive macro.
+bitfield-struct.workspace = true
 bytes.workspace = true
 glam.workspace = true
 rand.workspace = true
@@ -17,5 +19,5 @@ valence_core.workspace = true
 valence_dimension.workspace = true
 valence_entity.workspace = true
 valence_instance.workspace = true
+valence_nbt.workspace = true
 valence_registry.workspace = true
-

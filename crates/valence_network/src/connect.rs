@@ -4,7 +4,7 @@ use std::io;
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use anyhow::{anyhow, bail, ensure, Context};
+use anyhow::{bail, ensure, Context};
 use base64::prelude::*;
 use hmac::digest::Update;
 use hmac::{Hmac, Mac};
@@ -19,23 +19,20 @@ use tokio::net::{TcpListener, TcpStream};
 use tracing::{error, info, trace, warn};
 use uuid::Uuid;
 use valence_client::is_valid_username;
-use valence_core::packet::c2s::handshake::handshake::NextState;
-use valence_core::packet::c2s::handshake::HandshakeC2s;
-use valence_core::packet::c2s::login::{LoginHelloC2s, LoginKeyC2s, LoginQueryResponseC2s};
-use valence_core::packet::c2s::status::{QueryPingC2s, QueryRequestC2s};
-use valence_core::packet::decode::PacketDecoder;
-use valence_core::packet::encode::PacketEncoder;
-use valence_core::packet::raw::RawBytes;
-use valence_core::packet::s2c::login::{
-    LoginCompressionS2c, LoginDisconnectS2c, LoginHelloS2c, LoginQueryRequestS2c, LoginSuccessS2c,
-};
-use valence_core::packet::s2c::status::{QueryPongS2c, QueryResponseS2c};
-use valence_core::packet::var_int::VarInt;
-use valence_core::packet::Decode;
 use valence_core::property::Property;
+use valence_core::protocol::decode::PacketDecoder;
+use valence_core::protocol::encode::PacketEncoder;
+use valence_core::protocol::raw::RawBytes;
+use valence_core::protocol::var_int::VarInt;
+use valence_core::protocol::Decode;
 use valence_core::text::Text;
 use valence_core::{ident, translation_key, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
+use crate::packet::{
+    HandshakeC2s, HandshakeNextState, LoginCompressionS2c, LoginDisconnectS2c, LoginHelloC2s,
+    LoginHelloS2c, LoginKeyC2s, LoginQueryRequestS2c, LoginQueryResponseC2s, LoginSuccessS2c,
+    QueryPingC2s, QueryPongS2c, QueryRequestC2s, QueryResponseS2c,
+};
 use crate::packet_io::PacketIo;
 use crate::{CleanupOnDrop, ConnectionMode, NewClientInfo, ServerListPing, SharedNetworkState};
 
@@ -101,7 +98,7 @@ async fn handle_connection(shared: SharedNetworkState, stream: TcpStream, remote
 struct HandshakeData {
     protocol_version: i32,
     server_address: String,
-    next_state: NextState,
+    next_state: HandshakeNextState,
 }
 
 async fn handle_handshake(
@@ -124,10 +121,10 @@ async fn handle_handshake(
     );
 
     match handshake.next_state {
-        NextState::Status => handle_status(shared, io, remote_addr, handshake)
+        HandshakeNextState::Status => handle_status(shared, io, remote_addr, handshake)
             .await
             .context("error handling status"),
-        NextState::Login => {
+        HandshakeNextState::Login => {
             match handle_login(&shared, &mut io, remote_addr, handshake)
                 .await
                 .context("error handling login")?
@@ -230,7 +227,9 @@ async fn handle_login(
     let info = match shared.connection_mode() {
         ConnectionMode::Online { .. } => login_online(shared, conn, remote_addr, username).await?,
         ConnectionMode::Offline => login_offline(remote_addr, username)?,
-        ConnectionMode::BungeeCord => login_bungeecord(&handshake.server_address, username)?,
+        ConnectionMode::BungeeCord => {
+            login_bungeecord(remote_addr, &handshake.server_address, username)?
+        }
         ConnectionMode::Velocity { secret } => login_velocity(conn, username, secret).await?,
     };
 
@@ -375,11 +374,15 @@ fn auth_digest(bytes: &[u8]) -> String {
     BigInt::from_signed_bytes_be(bytes).to_str_radix(16)
 }
 
+fn offline_uuid(username: &str) -> anyhow::Result<Uuid> {
+    Uuid::from_slice(&Sha256::digest(username)[..16]).map_err(Into::into)
+}
+
 /// Login procedure for offline mode.
 fn login_offline(remote_addr: SocketAddr, username: String) -> anyhow::Result<NewClientInfo> {
     Ok(NewClientInfo {
         // Derive the client's UUID from a hash of their username.
-        uuid: Uuid::from_slice(&Sha256::digest(username.as_str())[..16])?,
+        uuid: offline_uuid(username.as_str())?,
         username,
         properties: vec![].into(),
         ip: remote_addr.ip(),
@@ -387,24 +390,40 @@ fn login_offline(remote_addr: SocketAddr, username: String) -> anyhow::Result<Ne
 }
 
 /// Login procedure for BungeeCord.
-fn login_bungeecord(server_address: &str, username: String) -> anyhow::Result<NewClientInfo> {
+fn login_bungeecord(
+    remote_addr: SocketAddr,
+    server_address: &str,
+    username: String,
+) -> anyhow::Result<NewClientInfo> {
     // Get data from server_address field of the handshake
-    let [_, client_ip, uuid, properties]: [&str; 4] = server_address
-        .split('\0')
-        .take(4)
-        .collect::<Vec<_>>()
-        .try_into()
-        .map_err(|_| anyhow!("malformed BungeeCord server address data"))?;
+    let data = server_address.split('\0').take(4).collect::<Vec<_>>();
+
+    // Ip of player, only given if ip_forward on bungee is true
+    let ip = match data.get(1) {
+        Some(ip) => ip.parse()?,
+        None => remote_addr.ip(),
+    };
+
+    // Uuid of player, only given if ip_forward on bungee is true
+    let uuid = match data.get(2) {
+        Some(uuid) => uuid.parse()?,
+        None => offline_uuid(username.as_str())?,
+    };
 
     // Read properties and get textures
-    let properties: Vec<Property> =
-        serde_json::from_str(properties).context("failed to parse BungeeCord player properties")?;
+    // Properties of player's game profile, only given if ip_forward and online_mode
+    // on bungee both are true
+    let properties: Vec<Property> = match data.get(3) {
+        Some(properties) => serde_json::from_str(properties)
+            .context("failed to parse BungeeCord player properties")?,
+        None => vec![],
+    };
 
     Ok(NewClientInfo {
-        uuid: uuid.parse()?,
+        uuid,
         username,
         properties: properties.into(),
-        ip: client_ip.parse()?,
+        ip,
     })
 }
 

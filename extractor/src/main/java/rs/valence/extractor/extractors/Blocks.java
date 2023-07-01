@@ -69,7 +69,7 @@ public class Blocks implements Main.Extractor {
                 stateJson.addProperty("id", id);
                 stateJson.addProperty("luminance", state.getLuminance());
                 stateJson.addProperty("opaque", state.isOpaque());
-                stateJson.addProperty("replaceable", state.getMaterial().isReplaceable());
+                stateJson.addProperty("replaceable", state.isReplaceable());
 
                 if (block.getDefaultState().equals(state)) {
                     blockJson.addProperty("default_state_id", id);

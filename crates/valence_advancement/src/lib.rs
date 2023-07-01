@@ -1,31 +1,28 @@
-#[doc = include_str!("../README.md")]
+#![doc = include_str!("../README.md")]
+#![allow(clippy::type_complexity)]
+
 pub mod event;
+pub mod packet;
 
 use std::borrow::Cow;
 use std::io::Write;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use anyhow::Context;
-use bevy_app::{CoreSet, Plugin};
-use bevy_ecs::prelude::{Bundle, Component, Entity};
-use bevy_ecs::query::{Added, Changed, Or, With};
-use bevy_ecs::schedule::{IntoSystemConfig, IntoSystemSetConfig, SystemSet};
-use bevy_ecs::system::{Commands, Query, SystemParam};
+use bevy_app::prelude::*;
+use bevy_ecs::prelude::*;
+use bevy_ecs::system::SystemParam;
 pub use bevy_hierarchy;
-use bevy_hierarchy::{Children, Parent};
-use event::{handle_advancement_tab_change, AdvancementTabChange};
+use bevy_hierarchy::{Children, HierarchyPlugin, Parent};
+use event::{handle_advancement_tab_change, AdvancementTabChangeEvent};
+use packet::SelectAdvancementTabS2c;
 use rustc_hash::FxHashMap;
 use valence_client::{Client, FlushPacketsSet, SpawnClientsSet};
 use valence_core::ident::Ident;
 use valence_core::item::ItemStack;
-use valence_core::packet::encode::WritePacket;
-use valence_core::packet::raw::RawBytes;
-use valence_core::packet::s2c::play::advancement_update::GenericAdvancementUpdateS2c;
-use valence_core::packet::s2c::play::{
-    advancement_update as protocol, AdvancementUpdateS2c, SelectAdvancementTabS2c,
-};
-use valence_core::packet::var_int::VarInt;
-use valence_core::packet::{Encode, Packet};
+use valence_core::protocol::encode::WritePacket;
+use valence_core::protocol::raw::RawBytes;
+use valence_core::protocol::var_int::VarInt;
+use valence_core::protocol::{packet_id, Encode, Packet, PacketSide, PacketState};
 use valence_core::text::Text;
 
 pub struct AdvancementPlugin;
@@ -38,23 +35,29 @@ pub struct WriteAdvancementToCacheSet;
 
 impl Plugin for AdvancementPlugin {
     fn build(&self, app: &mut bevy_app::App) {
-        app.configure_sets((
-            WriteAdvancementPacketToClientsSet
-                .in_base_set(CoreSet::PostUpdate)
-                .before(FlushPacketsSet),
-            WriteAdvancementToCacheSet
-                .in_base_set(CoreSet::PostUpdate)
-                .before(WriteAdvancementPacketToClientsSet),
-        ))
-        .add_event::<AdvancementTabChange>()
-        .add_system(
-            add_advancement_update_component_to_new_clients
-                .after(SpawnClientsSet)
-                .in_base_set(CoreSet::PreUpdate),
-        )
-        .add_system(handle_advancement_tab_change.in_base_set(CoreSet::PreUpdate))
-        .add_system(update_advancement_cached_bytes.in_set(WriteAdvancementToCacheSet))
-        .add_system(send_advancement_update_packet.in_set(WriteAdvancementPacketToClientsSet));
+        app.add_plugin(HierarchyPlugin)
+            .configure_sets(
+                PostUpdate,
+                (
+                    WriteAdvancementPacketToClientsSet.before(FlushPacketsSet),
+                    WriteAdvancementToCacheSet.before(WriteAdvancementPacketToClientsSet),
+                ),
+            )
+            .add_event::<AdvancementTabChangeEvent>()
+            .add_systems(
+                PreUpdate,
+                (
+                    add_advancement_update_component_to_new_clients.after(SpawnClientsSet),
+                    handle_advancement_tab_change,
+                ),
+            )
+            .add_systems(
+                PostUpdate,
+                (
+                    update_advancement_cached_bytes,
+                    send_advancement_update_packet,
+                ),
+            );
     }
 }
 
@@ -81,7 +84,6 @@ fn add_advancement_update_component_to_new_clients(
 }
 
 #[derive(SystemParam, Debug)]
-#[allow(clippy::type_complexity)]
 struct UpdateAdvancementCachedBytesQuery<'w, 's> {
     advancement_id_query: Query<'w, 's, &'static Advancement>,
     criteria_query: Query<'w, 's, &'static AdvancementCriteria>,
@@ -102,11 +104,12 @@ impl<'w, 's> UpdateAdvancementCachedBytesQuery<'w, 's> {
             criteria_query,
         } = self;
 
-        let mut pkt = protocol::Advancement {
+        let mut pkt = packet::Advancement {
             parent_id: None,
             display_data: None,
             criteria: vec![],
             requirements: vec![],
+            sends_telemetry_data: false,
         };
 
         if let Some(a_parent) = a_parent {
@@ -115,7 +118,7 @@ impl<'w, 's> UpdateAdvancementCachedBytesQuery<'w, 's> {
         }
 
         if let Some(a_display) = a_display {
-            pkt.display_data = Some(protocol::AdvancementDisplay {
+            pkt.display_data = Some(packet::AdvancementDisplay {
                 title: Cow::Borrowed(&a_display.title),
                 description: Cow::Borrowed(&a_display.description),
                 icon: &a_display.icon,
@@ -140,7 +143,7 @@ impl<'w, 's> UpdateAdvancementCachedBytesQuery<'w, 's> {
                 let c_identifier = criteria_query.get(*requirement)?;
                 requirements_p.push(c_identifier.0.as_str());
             }
-            pkt.requirements.push(protocol::AdvancementRequirements {
+            pkt.requirements.push(packet::AdvancementRequirements {
                 requirement: requirements_p,
             });
         }
@@ -149,7 +152,6 @@ impl<'w, 's> UpdateAdvancementCachedBytesQuery<'w, 's> {
     }
 }
 
-#[allow(clippy::type_complexity)]
 fn update_advancement_cached_bytes(
     mut query: Query<
         (
@@ -218,7 +220,7 @@ impl<'w, 's, 'a> Encode for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
             reset,
         } = &self.client_update;
 
-        let mut pkt = GenericAdvancementUpdateS2c {
+        let mut pkt = packet::GenericAdvancementUpdateS2c {
             reset: *reset,
             advancement_mapping: vec![],
             identifiers: vec![],
@@ -251,7 +253,7 @@ impl<'w, 's, 'a> Encode for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
             let mut c_progresses_p = vec![];
             for (c, c_progress) in c_progresses {
                 let c_identifier = criteria_query.get(c)?;
-                c_progresses_p.push(protocol::AdvancementCriteria {
+                c_progresses_p.push(packet::AdvancementCriteria {
                     criterion_identifier: c_identifier.0.borrowed(),
                     criterion_progress: c_progress,
                 });
@@ -264,27 +266,11 @@ impl<'w, 's, 'a> Encode for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
     }
 }
 
-impl<'w, 's, 'a, 'b> Packet<'b> for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
-    const PACKET_ID: i32 = AdvancementUpdateS2c::PACKET_ID;
-
-    fn packet_id(&self) -> i32 {
-        Self::PACKET_ID
-    }
-
-    fn packet_name(&self) -> &str {
-        "AdvancementUpdateEncodeS2c"
-    }
-
-    fn encode_packet(&self, mut w: impl Write) -> anyhow::Result<()> {
-        VarInt(Self::PACKET_ID)
-            .encode(&mut w)
-            .context("failed to encode packet ID")?;
-        self.encode(w)
-    }
-
-    fn decode_packet(_r: &mut &'b [u8]) -> anyhow::Result<Self> {
-        panic!("Packet can not be decoded")
-    }
+impl<'w, 's, 'a> Packet for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
+    const ID: i32 = packet_id::ADVANCEMENT_UPDATE_S2C;
+    const NAME: &'static str = "AdvancementUpdateEncodeS2c";
+    const SIDE: PacketSide = PacketSide::Clientbound;
+    const STATE: PacketState = PacketState::Play;
 }
 
 #[allow(clippy::type_complexity)]

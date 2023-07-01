@@ -39,7 +39,7 @@ Valence aims to be the following:
 * **Intuitive**. An API that is easy to use and difficult to misuse. Extensive documentation and examples are important.
 * **Efficient**. Optimal use of system resources with multiple CPU cores in mind. Valence uses very little memory and
   can
-  support [thousands](https://cdn.discordapp.com/attachments/998132822864834613/1051100042519380028/2022-12-10_03.30.09.png)
+  support [thousands](https://raw.githubusercontent.com/valence-rs/valence/main/assets/many-players.png)
   of players at the same time without lag (assuming you have the bandwidth).
 * **Up to date**. Targets the most recent stable version of Minecraft. Support for multiple versions at once is not
   planned. However, you can use a proxy with [ViaBackwards](https://www.spigotmc.org/resources/viabackwards.27448/) to
@@ -79,7 +79,7 @@ After cloning the repository, run
 cargo r -r --example
 ```
 
-to view the list of examples. I recommend giving `parkour`, `conway`, `terrain`, and `cow_sphere` a try.
+to view the list of examples. I recommend giving `parkour`, `game_of_life`, `terrain`, and `cow_sphere` a try.
 
 Next, open your Minecraft client and connect to the address `localhost`.
 If all goes well you should be playing on the server.
@@ -102,8 +102,9 @@ View the latest documentation by running `cargo d --open` in your project.
 # Contributing
 
 Contributions are welcome! Please
-see [CONTRIBUTING.md](https://github.com/valence-rs/valence/blob/main/CONTRIBUTING.md). You can also
-join [the Discord](https://discord.gg/8Fqqy9XrYb) to discuss the project and ask questions.
+see [CONTRIBUTING.md](https://github.com/valence-rs/valence/blob/main/CONTRIBUTING.md). You can
+join [Discord](https://discord.gg/8Fqqy9XrYb) or [GitHub Discussions](https://github.com/valence-rs/valence/discussions)
+to discuss the project and ask questions.
 
 # License
 

@@ -18,11 +18,12 @@
 )]
 
 pub mod hitbox;
+pub mod packet;
 
 use std::num::Wrapping;
 use std::ops::Range;
 
-use bevy_app::{App, CoreSet, Plugin};
+use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use glam::{DVec3, Vec3};
 use paste::paste;
@@ -31,8 +32,8 @@ use tracing::warn;
 use uuid::Uuid;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::despawn::Despawned;
-use valence_core::packet::var_int::VarInt;
-use valence_core::packet::{Decode, Encode};
+use valence_core::protocol::var_int::VarInt;
+use valence_core::protocol::{Decode, Encode};
 use valence_core::uuid::UniqueId;
 use valence_core::DEFAULT_TPS;
 
@@ -44,11 +45,15 @@ pub struct EntityPlugin;
 ///
 /// Systems that need Minecraft entities to be in a valid state should run
 /// _after_ this set.
+///
+/// This set lives in [`PostUpdate`].
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct InitEntitiesSet;
 
 /// When tracked data is written to the entity's [`TrackedData`] component.
 /// Systems that modify tracked data should run _before_ this.
+///
+/// This set lives in [`PostUpdate`].
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct UpdateTrackedDataSet;
 
@@ -56,26 +61,32 @@ pub struct UpdateTrackedDataSet;
 /// Systems that need to observe changes to entities (Such as the difference
 /// between [`Position`] and [`OldPosition`]) should run _before_ this set (and
 /// probably after [`InitEntitiesSet`]).
+///
+/// This set lives in [`PostUpdate`].
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ClearEntityChangesSet;
 
 impl Plugin for EntityPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(EntityManager::new())
-            .configure_sets((
-                InitEntitiesSet.in_base_set(CoreSet::PostUpdate),
-                UpdateTrackedDataSet.in_base_set(CoreSet::PostUpdate),
-                ClearEntityChangesSet
-                    .after(InitEntitiesSet)
-                    .after(UpdateTrackedDataSet)
-                    .in_base_set(CoreSet::PostUpdate),
-            ))
+            .configure_sets(
+                PostUpdate,
+                (
+                    InitEntitiesSet,
+                    UpdateTrackedDataSet,
+                    ClearEntityChangesSet
+                        .after(InitEntitiesSet)
+                        .after(UpdateTrackedDataSet),
+                ),
+            )
             .add_systems(
+                PostUpdate,
                 (init_entities, remove_despawned_from_manager)
                     .chain()
                     .in_set(InitEntitiesSet),
             )
             .add_systems(
+                PostUpdate,
                 (
                     clear_status_changes,
                     clear_animation_changes,
@@ -395,7 +406,7 @@ impl EntityAnimations {
 #[derive(Component, Default, Debug)]
 pub struct ObjectData(pub i32);
 
-/// The range of packet bytes for this entity within the cell the entity is
+/// The range of packet bytes for this entity within the chunk the entity is
 /// located in. For internal use only.
 #[derive(Component, Default, Debug)]
 pub struct PacketByteRange(pub Range<usize>);
@@ -403,7 +414,7 @@ pub struct PacketByteRange(pub Range<usize>);
 /// Cache for all the tracked data of an entity. Used for the
 /// [`EntityTrackerUpdateS2c`][packet] packet.
 ///
-/// [packet]: valence_core::packet::s2c::play::EntityTrackerUpdateS2c
+/// [packet]: crate::packet::EntityTrackerUpdateS2c
 #[derive(Component, Default, Debug)]
 pub struct TrackedData {
     init_data: Vec<u8>,
@@ -418,7 +429,7 @@ impl TrackedData {
     /// [`EntityTrackerUpdateS2c`][packet] packet. This is used when the entity
     /// enters the view of a client.
     ///
-    /// [packet]: valence_core::packet::s2c::play::EntityTrackerUpdateS2c
+    /// [packet]: crate::packet::EntityTrackerUpdateS2c
     pub fn init_data(&self) -> Option<&[u8]> {
         if self.init_data.len() > 1 {
             Some(&self.init_data)
@@ -431,7 +442,7 @@ impl TrackedData {
     /// [`EntityTrackerUpdateS2c`][packet] packet. This is used when tracked
     /// data is changed and the client is already in view of the entity.
     ///
-    /// [packet]: valence_core::packet::s2c::play::EntityTrackerUpdateS2c
+    /// [packet]: crate::packet::EntityTrackerUpdateS2c
     pub fn update_data(&self) -> Option<&[u8]> {
         if self.update_data.len() > 1 {
             Some(&self.update_data)

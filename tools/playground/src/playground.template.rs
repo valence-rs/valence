@@ -1,4 +1,5 @@
 use valence::client::despawn_disconnected_clients;
+use valence::log::LogPlugin;
 use valence::network::ConnectionMode;
 use valence::prelude::*;
 
@@ -12,24 +13,24 @@ pub fn build_app(app: &mut App) {
         connection_mode: ConnectionMode::Offline,
         ..Default::default()
     })
-    .add_plugins(DefaultPlugins)
-    .add_startup_system(setup)
-    .add_system(init_clients)
-    .add_system(despawn_disconnected_clients)
-    .add_system(toggle_gamemode_on_sneak.in_schedule(EventLoopSchedule));
+    .add_plugins(DefaultPlugins.build().disable::<LogPlugin>())
+    .add_systems(Startup, setup)
+    .add_systems(EventLoopUpdate, toggle_gamemode_on_sneak)
+    .add_systems(Update, (init_clients, despawn_disconnected_clients))
+    .run();
 }
 
 fn setup(
     mut commands: Commands,
     server: Res<Server>,
-    biomes: Query<&Biome>,
-    dimensions: Query<&DimensionType>,
+    biomes: Res<BiomeRegistry>,
+    dimensions: Res<DimensionTypeRegistry>,
 ) {
     let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {
-            instance.insert_chunk([x, z], Chunk::default());
+            instance.insert_chunk([x, z], UnloadedChunk::new());
         }
     }
 

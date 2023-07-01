@@ -1,55 +1,46 @@
 use std::time::Instant;
 
 use bevy_app::prelude::*;
+use bevy_app::MainScheduleOrder;
 use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::ScheduleLabel;
 use bevy_ecs::system::SystemState;
 use bytes::Bytes;
 use tracing::{debug, warn};
-use valence_core::packet::{Decode, Packet};
-use valence_entity::hitbox::HitboxUpdateSet;
+use valence_core::protocol::{Decode, Packet};
 
-use crate::{Client, SpawnClientsSet};
+use crate::Client;
 
 pub(super) fn build(app: &mut App) {
-    app.configure_set(
-        RunEventLoopSet
-            .in_base_set(CoreSet::PreUpdate)
-            .after(SpawnClientsSet)
-            .after(HitboxUpdateSet),
-    )
-    .add_system(run_event_loop.in_set(RunEventLoopSet))
-    .add_event::<PacketEvent>();
+    app.add_event::<PacketEvent>()
+        .add_schedule(RunEventLoop, Schedule::new())
+        .add_schedule(EventLoopPreUpdate, Schedule::new())
+        .add_schedule(EventLoopUpdate, Schedule::new())
+        .add_schedule(EventLoopPostUpdate, Schedule::new())
+        .add_systems(RunEventLoop, run_event_loop);
 
-    // Add the event loop schedule.
-    let mut event_loop = Schedule::new();
-    event_loop.set_default_base_set(EventLoopSet::Update);
-    event_loop.configure_sets((
-        EventLoopSet::PreUpdate.before(EventLoopSet::Update),
-        EventLoopSet::Update.before(EventLoopSet::PostUpdate),
-        EventLoopSet::PostUpdate,
-    ));
-
-    app.add_schedule(EventLoopSchedule, event_loop);
+    app.world
+        .resource_mut::<MainScheduleOrder>()
+        .insert_after(PreUpdate, RunEventLoop);
 }
 
-/// The [`ScheduleLabel`] for the event loop [`Schedule`].
-#[derive(ScheduleLabel, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
-pub struct EventLoopSchedule;
+/// The schedule responsible for running [`EventLoopPreUpdate`],
+/// [`EventLoopUpdate`], and [`EventLoopPostUpdate`].
+///
+/// This schedule is situated between [`PreUpdate`] and [`Update`].
+#[derive(ScheduleLabel, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct RunEventLoop;
 
-#[derive(SystemSet, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
-#[system_set(base)]
-pub enum EventLoopSet {
-    PreUpdate,
-    #[default]
-    Update,
-    PostUpdate,
-}
+#[derive(ScheduleLabel, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct EventLoopPreUpdate;
 
-#[derive(SystemSet, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
-pub struct RunEventLoopSet;
+#[derive(ScheduleLabel, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct EventLoopUpdate;
 
-#[derive(Clone, Debug)]
+#[derive(ScheduleLabel, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct EventLoopPostUpdate;
+
+#[derive(Event, Clone, Debug)]
 pub struct PacketEvent {
     /// The client this packet originated from.
     pub client: Entity,
@@ -69,9 +60,9 @@ impl PacketEvent {
     #[inline]
     pub fn decode<'a, P>(&'a self) -> Option<P>
     where
-        P: Packet<'a> + Decode<'a>,
+        P: Packet + Decode<'a>,
     {
-        if self.id == P::PACKET_ID {
+        if self.id == P::ID {
             let mut r = &self.data[..];
 
             match P::decode(&mut r) {
@@ -83,19 +74,25 @@ impl PacketEvent {
                     warn!(
                         "missed {} bytes while decoding packet {} (ID = {})",
                         r.len(),
-                        pkt.packet_name(),
-                        P::PACKET_ID
+                        P::NAME,
+                        P::ID
                     );
                     debug!("complete packet after partial decode: {pkt:?}");
                 }
                 Err(e) => {
-                    warn!("failed to decode packet with ID of {}: {e:#}", P::PACKET_ID);
+                    warn!("failed to decode packet with ID of {}: {e:#}", P::ID);
                 }
             }
         }
 
         None
     }
+}
+
+fn run_event_loop_schedules(world: &mut World) {
+    world.run_schedule(EventLoopPreUpdate);
+    world.run_schedule(EventLoopUpdate);
+    world.run_schedule(EventLoopPostUpdate);
 }
 
 /// An exclusive system for running the event loop schedule.
@@ -120,7 +117,7 @@ fn run_event_loop(
                     client: entity,
                     timestamp: pkt.timestamp,
                     id: pkt.id,
-                    data: pkt.data,
+                    data: pkt.body,
                 });
 
                 let remaining = client.connection().len();
@@ -139,7 +136,7 @@ fn run_event_loop(
     }
 
     state.apply(world);
-    world.run_schedule(EventLoopSchedule);
+    run_event_loop_schedules(world);
 
     while !check_again.is_empty() {
         let (mut clients, mut event_writer, mut commands) = state.get_mut(world);
@@ -154,7 +151,7 @@ fn run_event_loop(
                             client: *entity,
                             timestamp: pkt.timestamp,
                             id: pkt.id,
-                            data: pkt.data,
+                            data: pkt.body,
                         });
                         *remaining -= 1;
                         // Keep looping as long as there are packets to process this tick.
@@ -175,6 +172,6 @@ fn run_event_loop(
         });
 
         state.apply(world);
-        world.run_schedule(EventLoopSchedule);
+        run_event_loop_schedules(world);
     }
 }

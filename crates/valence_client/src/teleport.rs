@@ -1,15 +1,20 @@
-use valence_core::packet::c2s::play::TeleportConfirmC2s;
+use bitfield_struct::bitfield;
+use glam::DVec3;
+use valence_core::protocol::var_int::VarInt;
+use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 
 use super::*;
-use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
+use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 
 pub(super) fn build(app: &mut App) {
-    app.add_system(teleport.after(update_view).in_set(UpdateClientsSet))
-        .add_system(
-            handle_teleport_confirmations
-                .in_schedule(EventLoopSchedule)
-                .in_base_set(EventLoopSet::PreUpdate),
-        );
+    app.add_systems(
+        PostUpdate,
+        teleport
+            .after(update_view)
+            .before(update_respawn_position)
+            .in_set(UpdateClientsSet),
+    )
+    .add_systems(EventLoopPreUpdate, handle_teleport_confirmations);
 }
 
 #[derive(Component, Debug)]
@@ -29,11 +34,12 @@ impl TeleportState {
         Self {
             teleport_id_counter: 0,
             pending_teleports: 0,
-            synced_pos: DVec3::ZERO,
+            // Set initial synced pos and look to NaN so a teleport always happens when first
+            // joining.
+            synced_pos: DVec3::NAN,
             synced_look: Look {
-                // Client starts facing north.
-                yaw: 180.0,
-                pitch: 0.0,
+                yaw: f32::NAN,
+                pitch: f32::NAN,
             },
         }
     }
@@ -79,7 +85,7 @@ fn teleport(
                 yaw: if changed_yaw { look.yaw } else { 0.0 },
                 pitch: if changed_pitch { look.pitch } else { 0.0 },
                 flags,
-                teleport_id: VarInt(state.teleport_id_counter as i32),
+                teleport_id: (state.teleport_id_counter as i32).into(),
             });
 
             state.pending_teleports = state.pending_teleports.wrapping_add(1);
@@ -121,4 +127,32 @@ fn handle_teleport_confirmations(
             }
         }
     }
+}
+
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::TELEPORT_CONFIRM_C2S)]
+pub struct TeleportConfirmC2s {
+    pub teleport_id: VarInt,
+}
+
+#[derive(Copy, Clone, PartialEq, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::PLAYER_POSITION_LOOK_S2C)]
+pub struct PlayerPositionLookS2c {
+    pub position: DVec3,
+    pub yaw: f32,
+    pub pitch: f32,
+    pub flags: PlayerPositionLookFlags,
+    pub teleport_id: VarInt,
+}
+
+#[bitfield(u8)]
+#[derive(PartialEq, Eq, Encode, Decode)]
+pub struct PlayerPositionLookFlags {
+    pub x: bool,
+    pub y: bool,
+    pub z: bool,
+    pub y_rot: bool,
+    pub x_rot: bool,
+    #[bits(3)]
+    _pad: u8,
 }

@@ -5,4 +5,4 @@ edition.workspace = true
 
 [dependencies]
 bevy_mod_debugdump.workspace = true
-valence.path = "../../crates/valence"
+valence.workspace = true

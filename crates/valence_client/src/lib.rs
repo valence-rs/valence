@@ -16,6 +16,7 @@
     unreachable_pub,
     clippy::dbg_macro
 )]
+#![allow(clippy::type_complexity)]
 
 use std::borrow::Cow;
 use std::fmt;
@@ -29,8 +30,12 @@ use bevy_ecs::query::WorldQuery;
 use bevy_ecs::system::Command;
 use bytes::{Bytes, BytesMut};
 use glam::{DVec3, Vec3};
+use packet::{
+    DeathMessageS2c, DisconnectS2c, GameEventKind, GameJoinS2c, GameStateChangeS2c,
+    PlayerRespawnS2c, PlayerSpawnPositionS2c, PlayerSpawnS2c,
+};
 use rand::Rng;
-use tracing::warn;
+use tracing::{debug, warn};
 use uuid::Uuid;
 use valence_biome::BiomeRegistry;
 use valence_core::block_pos::BlockPos;
@@ -38,97 +43,106 @@ use valence_core::chunk_pos::{ChunkPos, ChunkView};
 use valence_core::despawn::Despawned;
 use valence_core::game_mode::GameMode;
 use valence_core::ident::Ident;
-use valence_core::packet::byte_angle::ByteAngle;
-use valence_core::packet::encode::{PacketEncoder, WritePacket};
-use valence_core::packet::global_pos::GlobalPos;
-use valence_core::packet::s2c::play::game_state_change::GameEventKind;
-use valence_core::packet::s2c::play::particle::Particle;
-use valence_core::packet::s2c::play::player_position_look::Flags as PlayerPositionLookFlags;
-use valence_core::packet::s2c::play::{
-    ChunkLoadDistanceS2c, ChunkRenderDistanceCenterS2c, CustomPayloadS2c, DeathMessageS2c,
-    DisconnectS2c, EntitiesDestroyS2c, EntitySetHeadYawS2c, EntitySpawnS2c, EntityStatusS2c,
-    EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, ExperienceOrbSpawnS2c, GameJoinS2c,
-    GameMessageS2c, GameStateChangeS2c, KeepAliveS2c, OverlayMessageS2c, ParticleS2c, PlaySoundS2c,
-    PlayerActionResponseS2c, PlayerPositionLookS2c, PlayerRespawnS2c, PlayerSpawnPositionS2c,
-    PlayerSpawnS2c, ResourcePackSendS2c, SubtitleS2c, TitleFadeS2c, TitleS2c, UnloadChunkS2c,
-};
-use valence_core::packet::var_int::VarInt;
-use valence_core::packet::Packet;
+use valence_core::particle::{Particle, ParticleS2c};
 use valence_core::property::Property;
-use valence_core::scratch::ScratchBuf;
-use valence_core::sound::{Sound, SoundCategory};
+use valence_core::protocol::byte_angle::ByteAngle;
+use valence_core::protocol::encode::{PacketEncoder, WritePacket};
+use valence_core::protocol::global_pos::GlobalPos;
+use valence_core::protocol::packet::sound::{PlaySoundS2c, Sound, SoundCategory};
+use valence_core::protocol::var_int::VarInt;
+use valence_core::protocol::{Encode, Packet};
 use valence_core::text::Text;
 use valence_core::uuid::UniqueId;
 use valence_core::Server;
+use valence_entity::packet::{
+    EntitiesDestroyS2c, EntitySetHeadYawS2c, EntitySpawnS2c, EntityStatusS2c,
+    EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, ExperienceOrbSpawnS2c,
+};
 use valence_entity::player::PlayerEntityBundle;
 use valence_entity::{
     ClearEntityChangesSet, EntityId, EntityKind, EntityStatus, HeadYaw, Location, Look, ObjectData,
     OldLocation, OldPosition, OnGround, PacketByteRange, Position, TrackedData, Velocity,
 };
+use valence_instance::chunk::loaded::ChunkState;
+use valence_instance::packet::{
+    ChunkLoadDistanceS2c, ChunkRenderDistanceCenterS2c, UnloadChunkS2c,
+};
 use valence_instance::{ClearInstanceChangesSet, Instance, WriteUpdatePacketsToInstancesSet};
-use valence_registry::{RegistryCodec, RegistryCodecSet};
+use valence_registry::codec::RegistryCodec;
+use valence_registry::tags::TagsRegistry;
+use valence_registry::RegistrySet;
 
 pub mod action;
 pub mod command;
+pub mod custom_payload;
 pub mod event_loop;
+pub mod hand_swing;
+pub mod interact_block;
 pub mod interact_entity;
+pub mod interact_item;
 pub mod keepalive;
-pub mod misc;
+pub mod message;
 pub mod movement;
+pub mod op_level;
+pub mod packet;
+pub mod resource_pack;
 pub mod settings;
+pub mod status;
 pub mod teleport;
+pub mod title;
 pub mod weather;
 
 pub struct ClientPlugin;
 
-/// When clients have their packet buffer flushed. Any system that writes
-/// packets to clients should happen _before_ this. Otherwise, the data
-/// will arrive one tick late.
+/// The [`SystemSet`] in [`PostUpdate`] where clients have their packet buffer
+/// flushed. Any system that writes packets to clients should happen _before_
+/// this. Otherwise, the data will arrive one tick late.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct FlushPacketsSet;
 
-/// The [`SystemSet`] in [`CoreSet::PreUpdate`] where new clients should be
+/// The [`SystemSet`] in [`PreUpdate`] where new clients should be
 /// spawned. Systems that need to perform initialization work on clients before
-/// users get access to it should run _after_ this set in
-/// [`CoreSet::PreUpdate`].
+/// users get access to it should run _after_ this set.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
-
 pub struct SpawnClientsSet;
 
+/// The system set where various facets of the client are updated. Systems that
+/// modify chunks should run _before_ this.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
-struct UpdateClientsSet;
+pub struct UpdateClientsSet;
 
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
+            PostUpdate,
             (
-                initial_join.after(RegistryCodecSet),
+                initial_join.after(RegistrySet),
                 update_chunk_load_dist,
                 read_data_in_old_view
                     .after(WriteUpdatePacketsToInstancesSet)
                     .after(update_chunk_load_dist),
                 update_view.after(initial_join).after(read_data_in_old_view),
-                respawn.after(update_view),
+                update_respawn_position.after(update_view),
+                respawn.after(update_respawn_position),
                 remove_entities.after(update_view),
-                update_spawn_position.after(update_view),
                 update_old_view_dist.after(update_view),
                 update_game_mode,
                 update_tracked_data.after(WriteUpdatePacketsToInstancesSet),
                 init_tracked_data.after(WriteUpdatePacketsToInstancesSet),
-                update_op_level,
             )
                 .in_set(UpdateClientsSet),
         )
-        .configure_sets((
-            SpawnClientsSet.in_base_set(CoreSet::PreUpdate),
-            UpdateClientsSet
-                .in_base_set(CoreSet::PostUpdate)
-                .before(FlushPacketsSet),
-            ClearEntityChangesSet.after(UpdateClientsSet),
-            FlushPacketsSet.in_base_set(CoreSet::PostUpdate),
-            ClearInstanceChangesSet.after(FlushPacketsSet),
-        ))
-        .add_system(flush_packets.in_set(FlushPacketsSet));
+        .add_systems(PostUpdate, flush_packets.in_set(FlushPacketsSet))
+        .configure_set(PreUpdate, SpawnClientsSet)
+        .configure_sets(
+            PostUpdate,
+            (
+                UpdateClientsSet.before(FlushPacketsSet),
+                ClearEntityChangesSet.after(UpdateClientsSet),
+                FlushPacketsSet,
+                ClearInstanceChangesSet.after(FlushPacketsSet),
+            ),
+        );
 
         event_loop::build(app);
         movement::build(app);
@@ -136,10 +150,17 @@ impl Plugin for ClientPlugin {
         keepalive::build(app);
         interact_entity::build(app);
         settings::build(app);
-        misc::build(app);
         action::build(app);
         teleport::build(app);
         weather::build(app);
+        message::build(app);
+        custom_payload::build(app);
+        hand_swing::build(app);
+        interact_block::build(app);
+        interact_item::build(app);
+        op_level::build(app);
+        resource_pack::build(app);
+        status::build(app);
     }
 }
 
@@ -149,14 +170,13 @@ impl Plugin for ClientPlugin {
 pub struct ClientBundle {
     pub client: Client,
     pub settings: settings::ClientSettings,
-    pub scratch: ScratchBuf,
     pub entity_remove_buf: EntityRemoveBuf,
     pub username: Username,
     pub ip: Ip,
     pub properties: Properties,
-    pub compass_pos: CompassPos,
+    pub respawn_pos: RespawnPosition,
     pub game_mode: GameMode,
-    pub op_level: OpLevel,
+    pub op_level: op_level::OpLevel,
     pub action_sequence: action::ActionSequence,
     pub view_distance: ViewDistance,
     pub old_view_distance: OldViewDistance,
@@ -171,6 +191,7 @@ pub struct ClientBundle {
     pub is_debug: IsDebug,
     pub is_flat: IsFlat,
     pub teleport_state: teleport::TeleportState,
+    pub packet_byte_range: PacketByteRange,
     pub player: PlayerEntityBundle,
 }
 
@@ -182,14 +203,13 @@ impl ClientBundle {
                 enc: args.enc,
             },
             settings: settings::ClientSettings::default(),
-            scratch: ScratchBuf::default(),
             entity_remove_buf: EntityRemoveBuf(vec![]),
             username: Username(args.username),
             ip: Ip(args.ip),
             properties: Properties(args.properties),
-            compass_pos: CompassPos::default(),
+            respawn_pos: RespawnPosition::default(),
             game_mode: GameMode::default(),
-            op_level: OpLevel::default(),
+            op_level: op_level::OpLevel::default(),
             action_sequence: action::ActionSequence::default(),
             view_distance: ViewDistance::default(),
             old_view_distance: OldViewDistance(2),
@@ -204,6 +224,7 @@ impl ClientBundle {
             hashed_seed: HashedSeed::default(),
             reduced_debug_info: ReducedDebugInfo::default(),
             is_debug: IsDebug::default(),
+            packet_byte_range: PacketByteRange::default(),
             player: PlayerEntityBundle {
                 uuid: UniqueId(args.uuid),
                 ..Default::default()
@@ -261,7 +282,7 @@ pub struct ReceivedPacket {
     /// This packet's ID.
     pub id: i32,
     /// The content of the packet, excluding the leading varint packet ID.
-    pub data: Bytes,
+    pub body: Bytes,
 }
 
 impl Drop for Client {
@@ -273,8 +294,11 @@ impl Drop for Client {
 /// Writes packets into this client's packet buffer. The buffer is flushed at
 /// the end of the tick.
 impl WritePacket for Client {
-    fn write_packet<'a>(&mut self, packet: &impl Packet<'a>) {
-        self.enc.write_packet(packet)
+    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
+    where
+        P: Packet + Encode,
+    {
+        self.enc.write_packet_fallible(packet)
     }
 
     fn write_packet_bytes(&mut self, bytes: &[u8]) {
@@ -307,28 +331,11 @@ impl Client {
         }
     }
 
-    /// Sends a system message to the player which is visible in the chat. The
-    /// message is only visible to this client.
-    pub fn send_message(&mut self, msg: impl Into<Text>) {
-        self.write_packet(&GameMessageS2c {
-            chat: msg.into().into(),
-            overlay: false,
-        });
-    }
-
-    pub fn send_custom_payload(&mut self, channel: Ident<&str>, data: &[u8]) {
-        self.write_packet(&CustomPayloadS2c {
-            channel: channel.into(),
-            data: data.into(),
-        });
-    }
-
     /// Kills the client and shows `message` on the death screen. If an entity
     /// killed the player, you should supply it as `killer`.
-    pub fn kill(&mut self, killer: Option<EntityId>, message: impl Into<Text>) {
+    pub fn kill(&mut self, message: impl Into<Text>) {
         self.write_packet(&DeathMessageS2c {
             player_id: VarInt(0),
-            entity_id: killer.map(|id| id.get()).unwrap_or(-1),
             message: message.into().into(),
         });
     }
@@ -338,69 +345,6 @@ impl Client {
         self.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::WinGame,
             value: if show_credits { 1.0 } else { 0.0 },
-        });
-    }
-
-    /// Requests that the client download and enable a resource pack.
-    ///
-    /// # Arguments
-    /// * `url` - The URL of the resource pack file.
-    /// * `hash` - The SHA-1 hash of the resource pack file. Any value other
-    ///   than a 40-character hexadecimal string is ignored by the client.
-    /// * `forced` - Whether a client should be kicked from the server upon
-    ///   declining the pack (this is enforced client-side)
-    /// * `prompt_message` - A message to be displayed with the resource pack
-    ///   dialog.
-    pub fn set_resource_pack(
-        &mut self,
-        url: &str,
-        hash: &str,
-        forced: bool,
-        prompt_message: Option<Text>,
-    ) {
-        self.write_packet(&ResourcePackSendS2c {
-            url,
-            hash,
-            forced,
-            prompt_message: prompt_message.map(|t| t.into()),
-        });
-    }
-
-    /// Sets the title this client sees.
-    ///
-    /// A title is a large piece of text displayed in the center of the screen
-    /// which may also include a subtitle underneath it. The title can be
-    /// configured to fade in and out using the [`TitleFadeS2c`]
-    /// struct.
-    pub fn set_title(
-        &mut self,
-        title: impl Into<Text>,
-        subtitle: impl Into<Text>,
-        animation: impl Into<Option<TitleFadeS2c>>,
-    ) {
-        let title = title.into().into();
-        let subtitle = subtitle.into();
-
-        self.write_packet(&TitleS2c { title_text: title });
-
-        if !subtitle.is_empty() {
-            self.write_packet(&SubtitleS2c {
-                subtitle_text: subtitle.into(),
-            });
-        }
-
-        if let Some(anim) = animation.into() {
-            self.write_packet(&anim);
-        }
-    }
-
-    /// Sets the action bar for this client.
-    ///
-    /// The action bar is a small piece of text displayed at the bottom of the
-    /// screen, above the hotbar.
-    pub fn set_action_bar(&mut self, text: impl Into<Text>) {
-        self.write_packet(&OverlayMessageS2c {
-            action_bar_text: text.into().into(),
         });
     }
 
@@ -482,7 +426,7 @@ pub struct DisconnectClient {
 }
 
 impl Command for DisconnectClient {
-    fn write(self, world: &mut World) {
+    fn apply(self, world: &mut World) {
         if let Some(mut entity) = world.get_entity_mut(self.client) {
             if let Some(mut client) = entity.get_mut::<Client>() {
                 client.write_packet(&DisconnectS2c {
@@ -589,22 +533,15 @@ impl Deref for Properties {
 #[derive(Component, Clone, PartialEq, Eq, Debug)]
 pub struct Ip(pub IpAddr);
 
-/// The position that regular compass items will point to.
-#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
-pub struct CompassPos(pub BlockPos);
-
-#[derive(Component, Clone, PartialEq, Eq, Default, Debug)]
-pub struct OpLevel(u8);
-
-impl OpLevel {
-    pub fn get(&self) -> u8 {
-        self.0
-    }
-
-    /// Sets the op level. Value is clamped to `0..=3`.
-    pub fn set(&mut self, lvl: u8) {
-        self.0 = lvl.min(3);
-    }
+/// The position and angle that clients will respawn with. Also
+/// controls the position that compasses point towards.
+#[derive(Component, Copy, Clone, PartialEq, Default, Debug)]
+pub struct RespawnPosition {
+    /// The position that clients will respawn at. This can be changed at any
+    /// time to set the position that compasses point towards.
+    pub pos: BlockPos,
+    /// The yaw angle that clients will respawn with (in degrees).
+    pub yaw: f32,
 }
 
 #[derive(Component, Clone, PartialEq, Eq, Debug)]
@@ -752,6 +689,7 @@ struct ClientJoinQuery {
 
 fn initial_join(
     codec: Res<RegistryCodec>,
+    tags: Res<TagsRegistry>,
     mut clients: Query<ClientJoinQuery, Added<Client>>,
     instances: Query<&Instance>,
     mut commands: Commands,
@@ -796,7 +734,10 @@ fn initial_join(
             is_debug: q.is_debug.0,
             is_flat: q.is_flat.0,
             last_death_location,
+            portal_cooldown: VarInt(0), // TODO.
         });
+
+        q.client.enc.append_bytes(tags.sync_tags_packet());
 
         /*
         // TODO: enable all the features?
@@ -807,7 +748,6 @@ fn initial_join(
     }
 }
 
-#[allow(clippy::type_complexity)]
 fn respawn(
     mut clients: Query<
         (
@@ -854,6 +794,7 @@ fn respawn(
             is_flat: is_flat.0,
             copy_metadata: true,
             last_death_location,
+            portal_cooldown: VarInt(0), // TODO
         });
     }
 }
@@ -938,9 +879,9 @@ impl EntityInitQueryItem<'_> {
     }
 }
 
-#[allow(clippy::type_complexity)]
 fn read_data_in_old_view(
     mut clients: Query<(
+        Entity,
         &mut Client,
         &mut EntityRemoveBuf,
         &Location,
@@ -948,20 +889,30 @@ fn read_data_in_old_view(
         &Position,
         &OldPosition,
         &OldViewDistance,
-        Option<&PacketByteRange>,
+        &PacketByteRange,
     )>,
     instances: Query<&Instance>,
     entities: Query<(EntityInitQuery, &OldPosition)>,
     entity_ids: Query<&EntityId>,
 ) {
     clients.par_iter_mut().for_each_mut(
-        |(mut client, mut remove_buf, loc, old_loc, pos, old_pos, old_view_dist, byte_range)| {
-            let Ok(instance) = instances.get(old_loc.get()) else {
+        |(
+            self_entity,
+            mut client,
+            mut remove_buf,
+            loc,
+            old_loc,
+            pos,
+            old_pos,
+            old_view_dist,
+            byte_range,
+        )| {
+            let Ok(inst) = instances.get(old_loc.get()) else {
                 return;
             };
 
             // Send instance-wide packet data.
-            client.write_packet_bytes(&instance.packet_buf);
+            client.write_packet_bytes(inst.packet_buf());
 
             // TODO: cache the chunk position?
             let old_chunk_pos = old_pos.chunk_pos();
@@ -971,22 +922,16 @@ fn read_data_in_old_view(
 
             // Iterate over all visible chunks from the previous tick.
             view.for_each(|pos| {
-                if let Some(cell) = instance.partition.get(&pos) {
-                    if cell.chunk_removed && cell.chunk.is_none() {
-                        // Chunk was previously loaded and is now deleted.
-                        client.write_packet(&UnloadChunkS2c { pos });
-                    }
-
-                    if let Some(chunk) = &cell.chunk {
-                        chunk.mark_viewed();
-                    }
+                if let Some(chunk) = inst.chunk(pos) {
+                    // Mark this chunk as being in view of a client.
+                    chunk.set_viewed();
 
                     // Send entity spawn packets for entities entering the client's view.
-                    for &(id, src_pos) in &cell.incoming {
+                    for &(entity, src_pos) in chunk.incoming_entities() {
                         if src_pos.map_or(true, |p| !view.contains(p)) {
                             // The incoming entity originated from outside the view distance, so it
                             // must be spawned.
-                            if let Ok((entity, old_pos)) = entities.get(id) {
+                            if let Ok((entity, old_pos)) = entities.get(entity) {
                                 // Notice we are spawning the entity at its old position rather than
                                 // the current position. This is because the client could also
                                 // receive update packets for this entity this tick, which may
@@ -997,27 +942,55 @@ fn read_data_in_old_view(
                     }
 
                     // Send entity despawn packets for entities exiting the client's view.
-                    for &(id, dest_pos) in &cell.outgoing {
+                    for &(entity, dest_pos) in chunk.outgoing_entities() {
                         if dest_pos.map_or(true, |p| !view.contains(p)) {
                             // The outgoing entity moved outside the view distance, so it must be
                             // despawned.
-                            if let Ok(entity_id) = entity_ids.get(id) {
-                                remove_buf.push(entity_id.get());
+                            if let Ok(id) = entity_ids.get(entity) {
+                                remove_buf.push(id.get());
                             }
                         }
                     }
 
-                    // Send all data in the chunk's packet buffer to this client. This will update
-                    // entities in the cell, spawn or update the chunk in the cell, or send any
-                    // other packet data that was added here by users.
-                    match byte_range {
-                        Some(byte_range) if pos == new_chunk_pos && loc == old_loc => {
-                            // Skip range of bytes for the client's own entity.
-                            client.write_packet_bytes(&cell.packet_buf[..byte_range.0.start]);
-                            client.write_packet_bytes(&cell.packet_buf[byte_range.0.end..]);
+                    match chunk.state() {
+                        ChunkState::Added | ChunkState::Overwrite => {
+                            // Chunk was added or overwritten this tick. Send the packet to
+                            // initialize the chunk.
+                            chunk.write_init_packets(&mut *client, pos, inst.info());
                         }
-                        _ => {
-                            client.write_packet_bytes(&cell.packet_buf);
+                        ChunkState::AddedRemoved => {
+                            // Chunk was added and removed this tick, so there's
+                            // nothing that needs to be sent.
+                        }
+                        ChunkState::Removed => {
+                            // Chunk was removed this tick, so send the packet to deinitialize the
+                            // chunk and despawn all the contained entities.
+                            client.write_packet(&UnloadChunkS2c { pos });
+
+                            for entity in chunk.entities() {
+                                // Skip the client's own entity.
+                                if entity != self_entity {
+                                    if let Ok(id) = entity_ids.get(entity) {
+                                        remove_buf.push(id.get());
+                                    }
+                                }
+                            }
+                        }
+                        ChunkState::Normal => {
+                            // Send the data to update this chunk as normal.
+
+                            // Send all data in the chunk's packet buffer to this client. This will
+                            // update entities in the chunk, update the
+                            // chunk itself, and send any other packet
+                            // data that was added in the buffer by users.
+                            if pos == new_chunk_pos && loc == old_loc {
+                                // Skip range of bytes for the client's own entity.
+                                client
+                                    .write_packet_bytes(&chunk.packet_buf()[..byte_range.0.start]);
+                                client.write_packet_bytes(&chunk.packet_buf()[byte_range.0.end..]);
+                            } else {
+                                client.write_packet_bytes(chunk.packet_buf());
+                            }
                         }
                     }
                 }
@@ -1031,13 +1004,11 @@ fn read_data_in_old_view(
 ///
 /// This handles the situation when a client changes instances or chunk
 /// position. It must run after [`read_data_in_old_view`].
-#[allow(clippy::type_complexity)]
 fn update_view(
     mut clients: Query<
         (
             Entity,
             &mut Client,
-            &mut ScratchBuf,
             &mut EntityRemoveBuf,
             &Location,
             &OldLocation,
@@ -1054,9 +1025,8 @@ fn update_view(
 ) {
     clients.par_iter_mut().for_each_mut(
         |(
-            entity,
+            self_entity,
             mut client,
-            mut scratch,
             mut remove_buf,
             loc,
             old_loc,
@@ -1065,7 +1035,6 @@ fn update_view(
             view_dist,
             old_view_dist,
         )| {
-            // TODO: cache chunk pos?
             let view = ChunkView::new(ChunkPos::from_dvec3(pos.0), view_dist.0);
             let old_view = ChunkView::new(ChunkPos::from_dvec3(old_pos.get()), old_view_dist.0);
 
@@ -1080,24 +1049,28 @@ fn update_view(
 
             // Was the client's instance changed?
             if loc.0 != old_loc.get() {
-                if let Ok(old_instance) = instances.get(old_loc.get()) {
+                if let Ok(old_inst) = instances.get(old_loc.get()) {
                     // TODO: only send unload packets when old dimension == new dimension, since the
                     //       client will do the unloading for us in that case?
 
                     // Unload all chunks and entities in the old view.
                     old_view.for_each(|pos| {
-                        if let Some(cell) = old_instance.partition.get(&pos) {
-                            // Unload the chunk at this cell if it was loaded.
-                            if cell.chunk.is_some() {
+                        if let Some(chunk) = old_inst.chunk(pos) {
+                            // Unload the chunk if its state is not "removed", since we already
+                            // unloaded "removed" chunks earlier.
+                            if chunk.state() != ChunkState::Removed
+                                && chunk.state() != ChunkState::AddedRemoved
+                            {
+                                // Unload the chunk.
                                 client.write_packet(&UnloadChunkS2c { pos });
-                            }
 
-                            // Unload all the entities in the cell.
-                            for &id in &cell.entities {
-                                // Skip client's own entity.
-                                if id != entity {
-                                    if let Ok(entity_id) = entity_ids.get(id) {
-                                        remove_buf.push(entity_id.get());
+                                // Unload all the entities in the chunk.
+                                for entity in chunk.entities() {
+                                    // Skip the client's own entity.
+                                    if entity != self_entity {
+                                        if let Ok(entity_id) = entity_ids.get(entity) {
+                                            remove_buf.push(entity_id.get());
+                                        }
                                     }
                                 }
                             }
@@ -1105,77 +1078,80 @@ fn update_view(
                     });
                 }
 
-                if let Ok(instance) = instances.get(loc.0) {
+                if let Ok(inst) = instances.get(loc.0) {
                     // Load all chunks and entities in new view.
                     view.for_each(|pos| {
-                        if let Some(cell) = instance.partition.get(&pos) {
-                            // Load the chunk at this cell if there is one.
-                            if let Some(chunk) = &cell.chunk {
-                                chunk.write_init_packets(
-                                    &instance.info,
-                                    pos,
-                                    &mut client.enc,
-                                    &mut scratch.0,
-                                );
+                        if let Some(chunk) = inst.chunk(pos) {
+                            // Mark this chunk as being in view of a client.
+                            chunk.set_viewed();
 
-                                chunk.mark_viewed();
-                            }
+                            // Load the chunk if it's not already removed.
+                            chunk.write_init_packets(&mut *client, pos, inst.info());
 
-                            // Load all the entities in this cell.
-                            for &id in &cell.entities {
+                            // Load all the entities in this chunk.
+                            for entity in chunk.entities() {
                                 // Skip client's own entity.
-                                if id != entity {
-                                    if let Ok((entity, pos)) = entities.get(id) {
-                                        entity.write_init_packets(pos.get(), &mut client.enc);
+                                if entity != self_entity {
+                                    if let Ok((entity, pos)) = entities.get(entity) {
+                                        entity.write_init_packets(pos.get(), &mut *client);
                                     }
                                 }
                             }
                         }
                     });
                 } else {
-                    warn!("Client entered nonexistent instance ({loc:?}).");
+                    debug!("Client entered nonexistent instance ({loc:?}).");
                 }
             } else if old_view != view {
                 // Client changed their view without changing the instance.
 
-                if let Ok(instance) = instances.get(loc.0) {
+                if let Ok(inst) = instances.get(loc.0) {
                     // Unload chunks and entities in the old view and load chunks and entities in
                     // the new view. We don't need to do any work where the old and new view
                     // overlap.
                     old_view.diff_for_each(view, |pos| {
-                        if let Some(cell) = instance.partition.get(&pos) {
-                            // Unload the chunk at this cell if it was loaded.
-                            if cell.chunk.is_some() {
+                        if let Some(chunk) = inst.chunk(pos) {
+                            // Unload the chunk if its state is not "removed", since we already
+                            // unloaded "removed" chunks earlier.
+                            if chunk.state() != ChunkState::Removed
+                                && chunk.state() != ChunkState::AddedRemoved
+                            {
+                                // Unload the chunk.
                                 client.write_packet(&UnloadChunkS2c { pos });
-                            }
 
-                            // Unload all the entities in the cell.
-                            for &id in &cell.entities {
-                                if let Ok(entity_id) = entity_ids.get(id) {
-                                    remove_buf.push(entity_id.get());
+                                // Unload all the entities in the chunk.
+                                for entity in chunk.entities() {
+                                    // Skip client's own entity.
+                                    if entity != self_entity {
+                                        if let Ok(entity_id) = entity_ids.get(entity) {
+                                            remove_buf.push(entity_id.get());
+                                        }
+                                    }
                                 }
                             }
                         }
                     });
 
                     view.diff_for_each(old_view, |pos| {
-                        if let Some(cell) = instance.partition.get(&pos) {
-                            // Load the chunk at this cell if there is one.
-                            if let Some(chunk) = &cell.chunk {
-                                chunk.write_init_packets(
-                                    &instance.info,
-                                    pos,
-                                    &mut client.enc,
-                                    &mut scratch.0,
-                                );
+                        if let Some(chunk) = inst.chunk(pos) {
+                            // Load the chunk unless it's already unloaded.
+                            if chunk.state() != ChunkState::Removed
+                                && chunk.state() != ChunkState::AddedRemoved
+                            {
+                                // Mark this chunk as being in view of a client.
+                                chunk.set_viewed();
 
-                                chunk.mark_viewed();
-                            }
+                                // Load the chunk.
+                                chunk.write_init_packets(&mut *client, pos, inst.info());
 
-                            // Load all the entities in this cell.
-                            for &id in &cell.entities {
-                                if let Ok((entity, pos)) = entities.get(id) {
-                                    entity.write_init_packets(pos.get(), &mut client.enc);
+                                // Load all the entities in this chunk.
+                                for entity in chunk.entities() {
+                                    // Skip client's own entity.
+                                    if entity != self_entity {
+                                        if let Ok((entity, pos)) = entities.get(entity) {
+                                            entity.write_init_packets(pos.get(), &mut *client);
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1223,15 +1199,17 @@ fn update_old_view_dist(
     }
 }
 
-/// Sets the client's compass position.
+/// Sets the client's respawn and compass position.
 ///
 /// This also closes the "downloading terrain" screen when first joining, so
 /// it should happen after the initial chunks are written.
-fn update_spawn_position(mut clients: Query<(&mut Client, &CompassPos), Changed<CompassPos>>) {
-    for (mut client, compass_pos) in &mut clients {
+fn update_respawn_position(
+    mut clients: Query<(&mut Client, &RespawnPosition), Changed<RespawnPosition>>,
+) {
+    for (mut client, respawn_pos) in &mut clients {
         client.write_packet(&PlayerSpawnPositionS2c {
-            position: compass_pos.0,
-            angle: 0.0, // TODO: does this do anything?
+            position: respawn_pos.pos,
+            angle: respawn_pos.yaw,
         });
     }
 }
@@ -1267,14 +1245,5 @@ fn update_tracked_data(mut clients: Query<(&mut Client, &TrackedData)>) {
                 metadata: update_data.into(),
             });
         }
-    }
-}
-
-fn update_op_level(mut clients: Query<(&mut Client, &OpLevel), Changed<OpLevel>>) {
-    for (mut client, lvl) in &mut clients {
-        client.write_packet(&EntityStatusS2c {
-            entity_id: 0,
-            entity_status: 24 + lvl.0,
-        });
     }
 }

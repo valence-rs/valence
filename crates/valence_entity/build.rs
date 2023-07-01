@@ -140,7 +140,7 @@ impl Value {
             Value::BlockState(_) => quote!(valence_block::BlockState),
             Value::OptionalBlockState(_) => quote!(valence_block::BlockState),
             Value::NbtCompound(_) => quote!(valence_nbt::Compound),
-            Value::Particle(_) => quote!(valence_core::packet::s2c::play::particle::Particle),
+            Value::Particle(_) => quote!(valence_core::particle::Particle),
             Value::VillagerData { .. } => quote!(crate::VillagerData),
             Value::OptionalInt(_) => quote!(Option<i32>),
             Value::EntityPose(_) => quote!(crate::Pose),
@@ -170,7 +170,7 @@ impl Value {
                 quote!(None)
             }
             Value::ItemStack(stack) => {
-                assert_eq!(stack, "1 air");
+                assert_eq!(stack, "0 air");
                 quote!(valence_core::item::ItemStack::default())
             }
             Value::Boolean(b) => quote!(#b),
@@ -209,7 +209,7 @@ impl Value {
             }
             Value::Particle(p) => {
                 let variant = ident(p.replace('.', "_").to_pascal_case());
-                quote!(valence_core::packet::s2c::play::particle::Particle::#variant)
+                quote!(valence_core::particle::Particle::#variant)
             }
             Value::VillagerData {
                 typ,
@@ -402,7 +402,6 @@ fn build() -> anyhow::Result<TokenStream> {
                 pub animations: super::EntityAnimations,
                 pub object_data: super::ObjectData,
                 pub tracked_data: super::TrackedData,
-                pub packet_byte_range: super::PacketByteRange,
             }]);
 
             bundle_init_fields.extend([quote! {
@@ -421,7 +420,6 @@ fn build() -> anyhow::Result<TokenStream> {
                 animations: Default::default(),
                 object_data: Default::default(),
                 tracked_data: Default::default(),
-                packet_byte_range: Default::default(),
             }]);
 
             let bundle_name_ident = ident(format!("{entity_name}Bundle"));
@@ -597,7 +595,8 @@ fn build() -> anyhow::Result<TokenStream> {
             #systems
 
             #(
-                app.add_system(
+                app.add_systems(
+                    PostUpdate,
                     #system_names
                         .in_set(UpdateTrackedDataSet)
                         .ambiguous_with(UpdateTrackedDataSet)

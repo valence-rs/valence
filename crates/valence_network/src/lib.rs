@@ -19,11 +19,14 @@
 
 mod byte_channel;
 mod connect;
+pub mod packet;
 mod packet_io;
 
+use std::borrow::Cow;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::Context;
 pub use async_trait::async_trait;
@@ -34,8 +37,10 @@ use flume::{Receiver, Sender};
 use rand::rngs::OsRng;
 use rsa::{PublicKeyParts, RsaPrivateKey};
 use serde::Serialize;
+use tokio::net::UdpSocket;
 use tokio::runtime::{Handle, Runtime};
 use tokio::sync::Semaphore;
+use tokio::time;
 use tracing::error;
 use uuid::Uuid;
 use valence_client::{ClientBundle, ClientBundleArgs, Properties, SpawnClientsSet};
@@ -113,6 +118,12 @@ fn build_plugin(app: &mut App) -> anyhow::Result<()> {
         tokio::spawn(do_accept_loop(shared.clone()));
     };
 
+    let start_broadcast_to_lan_loop = move |shared: Res<SharedNetworkState>| {
+        let _guard = shared.0.tokio_handle.enter();
+
+        tokio::spawn(do_broadcast_to_lan_loop(shared.clone()));
+    };
+
     // System for spawning new clients.
     let spawn_new_clients = move |world: &mut World| {
         for _ in 0..shared.0.new_clients_recv.len() {
@@ -125,14 +136,13 @@ fn build_plugin(app: &mut App) -> anyhow::Result<()> {
 
     // Start accepting connections in `PostStartup` to allow user startup code to
     // run first.
-    app.add_system(
-        start_accept_loop
-            .in_schedule(CoreSchedule::Startup)
-            .in_base_set(StartupSet::PostStartup),
-    );
+    app.add_systems(PostStartup, start_accept_loop);
+
+    // Start the loop that will broadcast messages for the LAN discovery list.
+    app.add_systems(PostStartup, start_broadcast_to_lan_loop);
 
     // Spawn new clients before the event loop starts.
-    app.add_system(spawn_new_clients.in_set(SpawnClientsSet));
+    app.add_systems(PreUpdate, spawn_new_clients.in_set(SpawnClientsSet));
 
     Ok(())
 }
@@ -335,6 +345,20 @@ pub trait NetworkCallbacks: Send + Sync + 'static {
             description: "A Valence Server".into(),
             favicon_png: &[],
         }
+    }
+
+    /// This function is called every 1.5 seconds to broadcast a packet over the
+    /// local network in order to advertise the server to the multiplayer
+    /// screen with a configurable MOTD.
+    ///
+    /// # Default Implementation
+    ///
+    /// The default implementation returns [BroadcastToLan::Disabled], disabling
+    /// LAN discovery.
+    async fn broadcast_to_lan(&self, shared: &SharedNetworkState) -> BroadcastToLan {
+        #![allow(unused_variables)]
+
+        BroadcastToLan::Disabled
     }
 
     /// Called for each client (after successful authentication if online mode
@@ -541,6 +565,18 @@ pub enum ServerListPing<'a> {
     Ignore,
 }
 
+/// The result of the Broadcast To Lan [callback].
+///
+/// [callback]: NetworkCallbacks::broadcast_to_lan
+#[derive(Clone, Default, Debug)]
+pub enum BroadcastToLan<'a> {
+    /// Disabled Broadcast To Lan.
+    #[default]
+    Disabled,
+    /// Send packet to broadcast to LAN every 1.5 seconds with specified MOTD.
+    Enabled(Cow<'a, str>),
+}
+
 /// Represents an individual entry in the player sample.
 #[derive(Clone, Debug, Serialize)]
 pub struct PlayerSampleEntry {
@@ -551,4 +587,32 @@ pub struct PlayerSampleEntry {
     pub name: String,
     /// The player UUID.
     pub id: Uuid,
+}
+
+async fn do_broadcast_to_lan_loop(shared: SharedNetworkState) {
+    let port = shared.0.address.port();
+
+    let Ok(socket) = UdpSocket::bind("0.0.0.0:0").await else {
+        tracing::error!("Failed to bind to UDP socket for broadcast to LAN");
+        return;
+    };
+
+    loop {
+        let motd = match shared.0.callbacks.inner.broadcast_to_lan(&shared).await {
+            BroadcastToLan::Disabled => {
+                time::sleep(Duration::from_millis(1500)).await;
+                continue;
+            }
+            BroadcastToLan::Enabled(motd) => motd,
+        };
+
+        let message = format!("[MOTD]{motd}[/MOTD][AD]{port}[/AD]");
+
+        if let Err(e) = socket.send_to(message.as_bytes(), "224.0.2.60:4445").await {
+            tracing::warn!("Failed to send broadcast to LAN packet: {}", e);
+        }
+
+        // wait 1.5 seconds
+        tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+    }
 }

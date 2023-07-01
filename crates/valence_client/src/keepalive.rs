@@ -1,16 +1,12 @@
-use valence_core::packet::c2s::play::KeepAliveC2s;
+use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 use valence_core::CoreSettings;
 
 use super::*;
-use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
+use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 
 pub(super) fn build(app: &mut App) {
-    app.add_system(send_keepalive.in_set(UpdateClientsSet))
-        .add_system(
-            handle_keepalive_response
-                .in_base_set(EventLoopSet::PreUpdate)
-                .in_schedule(EventLoopSchedule),
-        );
+    app.add_systems(PostUpdate, send_keepalive.in_set(UpdateClientsSet))
+        .add_systems(EventLoopPreUpdate, handle_keepalive_response);
 }
 
 #[derive(Component, Debug)]
@@ -80,4 +76,16 @@ fn handle_keepalive_response(
             }
         }
     }
+}
+
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::KEEP_ALIVE_C2S)]
+pub struct KeepAliveC2s {
+    pub id: u64,
+}
+
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::KEEP_ALIVE_S2C)]
+pub struct KeepAliveS2c {
+    pub id: u64,
 }

@@ -15,10 +15,8 @@
 //! New joined players are handled, so that they are get weather events from
 //! the instance.
 
-use valence_core::packet::s2c::play::game_state_change::GameEventKind;
-use valence_core::packet::s2c::play::GameStateChangeS2c;
-
 use super::*;
+use crate::packet::{GameEventKind, GameStateChangeS2c};
 
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 struct UpdateWeatherPerInstanceSet;
@@ -27,43 +25,38 @@ struct UpdateWeatherPerInstanceSet;
 struct UpdateWeatherPerClientSet;
 
 pub(super) fn build(app: &mut App) {
-    app.configure_set(
-        UpdateWeatherPerInstanceSet
-            .in_base_set(CoreSet::PostUpdate)
-            .before(WriteUpdatePacketsToInstancesSet),
-    )
-    .configure_set(
-        UpdateWeatherPerClientSet
-            .in_base_set(CoreSet::PostUpdate)
-            .before(FlushPacketsSet),
+    app.configure_sets(
+        PostUpdate,
+        (UpdateWeatherPerInstanceSet, UpdateWeatherPerClientSet).before(FlushPacketsSet),
     )
     .add_systems(
+        PostUpdate,
         (
-            handle_rain_begin_per_instance,
-            handle_rain_change_per_instance,
-            handle_rain_end_per_instance,
-            handle_thunder_change_per_instance,
-            handle_thunder_end_per_instance,
+            rain_begin_per_instance,
+            rain_change_per_instance,
+            rain_end_per_instance,
+            thunder_change_per_instance,
+            thunder_end_per_instance,
         )
             .chain()
             .in_set(UpdateWeatherPerInstanceSet)
             .before(UpdateWeatherPerClientSet),
     )
     .add_systems(
+        PostUpdate,
         (
-            handle_rain_begin_per_client,
-            handle_rain_change_per_client,
-            handle_rain_end_per_client,
-            handle_thunder_change_per_client,
-            handle_thunder_end_per_client,
+            rain_begin_per_client,
+            rain_change_per_client,
+            rain_end_per_client,
+            thunder_change_per_client,
+            thunder_end_per_client,
         )
             .chain()
             .in_set(UpdateWeatherPerClientSet),
     )
-    .add_system(
-        handle_weather_for_joined_player
-            .before(UpdateWeatherPerClientSet)
-            .in_base_set(CoreSet::PostUpdate),
+    .add_systems(
+        PostUpdate,
+        handle_weather_for_joined_player.before(UpdateWeatherPerClientSet),
     );
 }
 
@@ -107,7 +100,7 @@ fn handle_weather_for_joined_player(
     }
 }
 
-fn handle_rain_begin_per_instance(mut instances: Query<&mut Instance, Added<Rain>>) {
+fn rain_begin_per_instance(mut instances: Query<&mut Instance, Added<Rain>>) {
     for mut instance in &mut instances {
         instance.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::BeginRaining,
@@ -116,7 +109,7 @@ fn handle_rain_begin_per_instance(mut instances: Query<&mut Instance, Added<Rain
     }
 }
 
-fn handle_rain_change_per_instance(mut instances: Query<(&mut Instance, &Rain), Changed<Rain>>) {
+fn rain_change_per_instance(mut instances: Query<(&mut Instance, &Rain), Changed<Rain>>) {
     for (mut instance, rain) in &mut instances {
         instance.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::RainLevelChange,
@@ -125,7 +118,7 @@ fn handle_rain_change_per_instance(mut instances: Query<(&mut Instance, &Rain), 
     }
 }
 
-fn handle_rain_end_per_instance(
+fn rain_end_per_instance(
     mut instances: Query<&mut Instance>,
     mut removed: RemovedComponents<Rain>,
 ) {
@@ -139,9 +132,7 @@ fn handle_rain_end_per_instance(
     }
 }
 
-fn handle_thunder_change_per_instance(
-    mut instances: Query<(&mut Instance, &Thunder), Changed<Thunder>>,
-) {
+fn thunder_change_per_instance(mut instances: Query<(&mut Instance, &Thunder), Changed<Thunder>>) {
     for (mut instance, thunder) in &mut instances {
         instance.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::ThunderLevelChange,
@@ -150,7 +141,7 @@ fn handle_thunder_change_per_instance(
     }
 }
 
-fn handle_thunder_end_per_instance(
+fn thunder_end_per_instance(
     mut instances: Query<&mut Instance>,
     mut removed: RemovedComponents<Thunder>,
 ) {
@@ -164,7 +155,7 @@ fn handle_thunder_end_per_instance(
     }
 }
 
-fn handle_rain_begin_per_client(mut clients: Query<&mut Client, (Added<Rain>, Without<Instance>)>) {
+fn rain_begin_per_client(mut clients: Query<&mut Client, (Added<Rain>, Without<Instance>)>) {
     for mut client in &mut clients {
         client.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::BeginRaining,
@@ -174,7 +165,7 @@ fn handle_rain_begin_per_client(mut clients: Query<&mut Client, (Added<Rain>, Wi
 }
 
 #[allow(clippy::type_complexity)]
-fn handle_rain_change_per_client(
+fn rain_change_per_client(
     mut clients: Query<(&mut Client, &Rain), (Changed<Rain>, Without<Instance>)>,
 ) {
     for (mut client, rain) in &mut clients {
@@ -185,10 +176,7 @@ fn handle_rain_change_per_client(
     }
 }
 
-fn handle_rain_end_per_client(
-    mut clients: Query<&mut Client>,
-    mut removed: RemovedComponents<Rain>,
-) {
+fn rain_end_per_client(mut clients: Query<&mut Client>, mut removed: RemovedComponents<Rain>) {
     for entity in &mut removed {
         if let Ok(mut client) = clients.get_mut(entity) {
             client.write_packet(&GameStateChangeS2c {
@@ -200,7 +188,7 @@ fn handle_rain_end_per_client(
 }
 
 #[allow(clippy::type_complexity)]
-fn handle_thunder_change_per_client(
+fn thunder_change_per_client(
     mut clients: Query<(&mut Client, &Thunder), (Changed<Thunder>, Without<Instance>)>,
 ) {
     for (mut client, thunder) in &mut clients {
@@ -211,7 +199,7 @@ fn handle_thunder_change_per_client(
     }
 }
 
-fn handle_thunder_end_per_client(
+fn thunder_end_per_client(
     mut clients: Query<&mut Client, Without<Instance>>,
     mut removed: RemovedComponents<Thunder>,
 ) {
