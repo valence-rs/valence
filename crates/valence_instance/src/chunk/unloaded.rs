@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
 use valence_biome::BiomeId;
@@ -44,16 +45,20 @@ impl UnloadedChunk {
         let new_count = height.min(MAX_HEIGHT) as usize / 16;
         let old_count = self.sections.len();
 
-        if new_count < old_count {
-            self.sections.truncate(new_count);
-            self.sections.shrink_to_fit();
+        match new_count.cmp(&old_count) {
+            Ordering::Less => {
+                self.sections.truncate(new_count);
+                self.sections.shrink_to_fit();
 
-            let cutoff = SECTION_BLOCK_COUNT as u32 * new_count as u32;
-            self.block_entities.retain(|idx, _| *idx < cutoff);
-        } else if new_count > old_count {
-            let diff = new_count - old_count;
-            self.sections.reserve_exact(diff);
-            self.sections.extend((0..diff).map(|_| Section::default()));
+                let cutoff = SECTION_BLOCK_COUNT as u32 * new_count as u32;
+                self.block_entities.retain(|idx, _| *idx < cutoff);
+            }
+            Ordering::Equal => {}
+            Ordering::Greater => {
+                let diff = new_count - old_count;
+                self.sections.reserve_exact(diff);
+                self.sections.extend((0..diff).map(|_| Section::default()));
+            }
         }
     }
 }

@@ -340,7 +340,7 @@ where
 
         VarInt(packet_len as i32).encode(&mut *buf)?;
         VarInt(data_len as i32).encode(&mut *buf)?;
-        buf.extend_from_slice(&mut scratch);
+        buf.extend_from_slice(&scratch);
     } else {
         let data_len_size = 1;
         let packet_len = data_len_size + data_len;

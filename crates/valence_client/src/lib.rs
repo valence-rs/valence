@@ -912,7 +912,7 @@ fn read_data_in_old_view(
             };
 
             // Send instance-wide packet data.
-            client.write_packet_bytes(&inst.packet_buf());
+            client.write_packet_bytes(inst.packet_buf());
 
             // TODO: cache the chunk position?
             let old_chunk_pos = old_pos.chunk_pos();
@@ -989,7 +989,7 @@ fn read_data_in_old_view(
                                     .write_packet_bytes(&chunk.packet_buf()[..byte_range.0.start]);
                                 client.write_packet_bytes(&chunk.packet_buf()[byte_range.0.end..]);
                             } else {
-                                client.write_packet_bytes(&chunk.packet_buf());
+                                client.write_packet_bytes(chunk.packet_buf());
                             }
                         }
                     }
