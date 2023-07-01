@@ -11,7 +11,7 @@ use valence_client::ClientBundleArgs;
 use valence_core::protocol::decode::{PacketDecoder, PacketFrame};
 use valence_core::protocol::encode::PacketEncoder;
 use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::{Encode, Packet};
+use valence_core::protocol::{Decode, Encode, Packet};
 use valence_core::{ident, CoreSettings, Server};
 use valence_dimension::DimensionTypeRegistry;
 use valence_entity::Location;
@@ -44,25 +44,58 @@ fn scenario_single_client(app: &mut App) -> (Entity, MockClientHelper) {
 
     let instance_ent = app.world.spawn(instance).id();
 
-    let (client, client_helper) = create_mock_client();
-
+    let (mut client, client_helper) = create_mock_client("test");
+    client.player.location.0 = instance_ent;
     let client_ent = app.world.spawn(client).id();
 
-    // Set initial location.
-    app.world.get_mut::<Location>(client_ent).unwrap().0 = instance_ent;
-
     (client_ent, client_helper)
+}
+
+#[allow(unused)]
+fn scenario_double_client(
+    app: &mut App,
+) -> ((Entity, MockClientHelper), (Entity, MockClientHelper)) {
+    app.insert_resource(CoreSettings {
+        compression_threshold: None,
+        ..Default::default()
+    });
+
+    app.add_plugins(DefaultPlugins.build().disable::<NetworkPlugin>());
+
+    app.update(); // Initialize plugins.
+
+    let instance = Instance::new(
+        ident!("overworld"),
+        app.world.resource::<DimensionTypeRegistry>(),
+        app.world.resource::<BiomeRegistry>(),
+        app.world.resource::<Server>(),
+    );
+
+    let instance_ent = app.world.spawn(instance).id();
+
+    let (mut client, client_helper_1) = create_mock_client("test_1");
+    client.player.location.0 = instance_ent;
+    let client_ent_1 = app.world.spawn(client).id();
+
+    let (mut client, client_helper_2) = create_mock_client("test_2");
+    client.player.location.0 = instance_ent;
+    let client_ent_2 = app.world.spawn(client).id();
+
+    (
+        (client_ent_1, client_helper_1),
+        (client_ent_2, client_helper_2),
+    )
 }
 
 /// Creates a mock client bundle that can be used for unit testing.
 ///
 /// Returns the client, and a helper to inject packets as if the client sent
 /// them and receive packets as if the client received them.
-fn create_mock_client() -> (ClientBundle, MockClientHelper) {
+fn create_mock_client(name: impl Into<String>) -> (ClientBundle, MockClientHelper) {
     let conn = MockClientConnection::new();
 
     let bundle = ClientBundle::new(ClientBundleArgs {
-        username: "test".into(),
+        username: name.into(),
         uuid: Uuid::from_bytes(rand::random()),
         ip: "127.0.0.1".parse().unwrap(),
         properties: vec![],
@@ -224,21 +257,32 @@ impl PacketFrames {
             panic!(
                 "packets out of order (expected {:?}, got {:?})",
                 L::packets(),
-                self.debug::<L>()
+                self.debug_order::<L>()
             );
         }
     }
 
-    fn debug<L: PacketList>(&self) -> impl std::fmt::Debug {
+    /// Finds the first occurrence of `P` in the packet list and decodes it.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the packet was not found or a decoding error occurs.
+    #[track_caller]
+    fn first<'a, P>(&'a self) -> P
+    where
+        P: Packet + Decode<'a>,
+    {
+        if let Some(frame) = self.0.iter().find(|p| p.id == P::ID) {
+            frame.decode::<P>().unwrap()
+        } else {
+            panic!("failed to find packet {}", P::NAME)
+        }
+    }
+
+    fn debug_order<L: PacketList>(&self) -> impl std::fmt::Debug {
         self.0
             .iter()
-            .map(|f| {
-                L::packets()
-                    .iter()
-                    .find(|(id, _)| f.id == *id)
-                    .cloned()
-                    .unwrap_or((f.id, "<ignored>"))
-            })
+            .filter_map(|f| L::packets().iter().find(|(id, _)| f.id == *id).cloned())
             .collect::<Vec<_>>()
     }
 }
@@ -281,5 +325,6 @@ mod client;
 mod example;
 mod instance;
 mod inventory;
+mod player_list;
 mod weather;
 mod world_border;

@@ -14,7 +14,7 @@ fn test_intialize_on_join() {
     let mut app = App::new();
     let (_, instance_ent) = prepare(&mut app);
 
-    let (client, mut client_helper) = create_mock_client();
+    let (client, mut client_helper) = create_mock_client("test");
     let client_ent = app.world.spawn(client).id();
 
     app.world.get_mut::<Location>(client_ent).unwrap().0 = instance_ent;

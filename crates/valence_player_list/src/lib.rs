@@ -63,6 +63,7 @@ impl Plugin for PlayerListPlugin {
                     remove_despawned_entries,
                     write_player_list_changes,
                 )
+                    .in_set(PlayerListSet)
                     .chain(),
             );
     }
