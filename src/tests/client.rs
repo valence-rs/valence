@@ -30,8 +30,8 @@ fn client_chunk_view_change() {
         .query::<&mut Instance>()
         .single_mut(&mut app.world);
 
-    for z in -15..15 {
-        for x in -15..15 {
+    for z in -30..30 {
+        for x in -30..30 {
             instance.insert_chunk([x, z], UnloadedChunk::new());
         }
     }
@@ -47,13 +47,16 @@ fn client_chunk_view_change() {
 
     let mut loaded_chunks = BTreeSet::new();
 
+    // Collect all chunks received on join.
     for f in client_helper.collect_received().0 {
         if f.id == ChunkDataS2c::ID {
             let ChunkDataS2c { pos, .. } = f.decode::<ChunkDataS2c>().unwrap();
+            // Newly received chunk was not previously loaded.
             assert!(loaded_chunks.insert(pos), "({pos:?})");
         }
     }
 
+    // Check that all the received chunks are in the client's view.
     for pos in view(&client).iter() {
         assert!(loaded_chunks.contains(&pos), "{pos:?}");
     }
@@ -67,20 +70,24 @@ fn client_chunk_view_change() {
     app.update();
     let client = app.world.entity_mut(client_ent);
 
+    // For all chunks received this tick...
     for f in client_helper.collect_received().0 {
         match f.id {
             ChunkDataS2c::ID => {
                 let ChunkDataS2c { pos, .. } = f.decode().unwrap();
+                // Newly received chunk was not previously loaded.
                 assert!(loaded_chunks.insert(pos), "({pos:?})");
             }
             UnloadChunkS2c::ID => {
                 let UnloadChunkS2c { pos } = f.decode().unwrap();
+                // Newly removed chunk was previously loaded.
                 assert!(loaded_chunks.remove(&pos), "({pos:?})");
             }
             _ => {}
         }
     }
 
+    // Check that all chunks loaded now are within the client's view.
     for pos in view(&client).iter() {
         assert!(loaded_chunks.contains(&pos), "{pos:?}");
     }
