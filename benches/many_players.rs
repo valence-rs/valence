@@ -7,6 +7,7 @@ use rand::Rng;
 use valence::testing::create_mock_client;
 use valence::DefaultPlugins;
 use valence_biome::BiomeRegistry;
+use valence_client::hand_swing::HandSwingC2s;
 use valence_client::keepalive::KeepaliveSettings;
 use valence_client::movement::FullC2s;
 use valence_core::chunk_pos::ChunkPos;
@@ -18,8 +19,8 @@ use valence_instance::Instance;
 use valence_network::NetworkPlugin;
 
 const CLIENT_COUNT: usize = 3000;
-const INST_SIZE: i32 = 16;
 const VIEW_DIST: u8 = 20;
+const INST_SIZE: i32 = 16;
 
 pub fn many_players(c: &mut Criterion) {
     let mut app = App::new();
@@ -84,12 +85,11 @@ pub fn many_players(c: &mut Criterion) {
     app.update();
 
     c.bench_function("many_players", |b| {
-        let setup = || {};
-
-        let routine = |()| {
+        b.iter(|| {
             let mut rng = rand::thread_rng();
 
-            // Move the clients around randomly.
+            // Move the clients around randomly. They'll cross chunk borders and cause
+            // interesting things to happen.
             for (id, helper) in &mut clients {
                 let pos = query.get(&mut app.world, *id).unwrap().get();
 
@@ -101,15 +101,19 @@ pub fn many_players(c: &mut Criterion) {
                     pitch: rng.gen_range(0.0..=360.0),
                     on_ground: rng.gen(),
                 });
+
+                helper.send(&HandSwingC2s {
+                    hand: valence_core::hand::Hand::Main,
+                });
             }
+
+            drop(rng);
 
             app.update(); // The important part.
 
             for (_, helper) in &mut clients {
                 helper.clear_received();
             }
-        };
-
-        b.iter_with_setup(setup, routine);
+        });
     });
 }
