@@ -34,7 +34,6 @@ use packet::{
     DeathMessageS2c, DisconnectS2c, GameEventKind, GameJoinS2c, GameStateChangeS2c,
     PlayerRespawnS2c, PlayerSpawnPositionS2c, PlayerSpawnS2c,
 };
-use rand::Rng;
 use tracing::{debug, warn};
 use uuid::Uuid;
 use valence_biome::BiomeRegistry;
@@ -53,7 +52,6 @@ use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::{Encode, Packet};
 use valence_core::text::Text;
 use valence_core::uuid::UniqueId;
-use valence_core::Server;
 use valence_entity::packet::{
     EntitiesDestroyS2c, EntitySetHeadYawS2c, EntitySpawnS2c, EntityStatusS2c,
     EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, ExperienceOrbSpawnS2c,

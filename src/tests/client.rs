@@ -1,16 +1,22 @@
 use std::collections::BTreeSet;
 
-use bevy_app::App;
+use bevy_app::prelude::*;
+use bevy_ecs::prelude::*;
 use bevy_ecs::world::EntityMut;
+use glam::DVec3;
+use valence_client::movement::FullC2s;
+use valence_client::teleport::{PlayerPositionLookS2c, TeleportConfirmC2s};
 use valence_client::ViewDistance;
-use valence_core::chunk_pos::ChunkView;
+use valence_core::chunk_pos::{ChunkPos, ChunkView};
+use valence_core::protocol::Packet;
 use valence_entity::cow::CowEntityBundle;
 use valence_entity::packet::{EntitiesDestroyS2c, EntitySpawnS2c, MoveRelativeS2c};
-use valence_entity::Position;
+use valence_entity::{Location, Position};
 use valence_instance::chunk::UnloadedChunk;
 use valence_instance::packet::{ChunkDataS2c, UnloadChunkS2c};
+use valence_instance::Instance;
 
-use super::*;
+use crate::testing::{create_mock_client, scenario_single_client};
 
 #[test]
 fn client_chunk_view_change() {
@@ -240,4 +246,55 @@ fn entity_chunk_spawn_despawn() {
             }
         }
     }
+}
+
+#[test]
+fn client_teleport_and_move() {
+    let mut app = App::new();
+
+    let (_, mut helper_1) = scenario_single_client(&mut app);
+
+    let (inst_ent, mut inst) = app
+        .world
+        .query::<(Entity, &mut Instance)>()
+        .single_mut(&mut app.world);
+
+    for z in -10..10 {
+        for x in -10..10 {
+            inst.insert_chunk(ChunkPos::new(x, z), UnloadedChunk::new());
+        }
+    }
+
+    let (mut bundle, mut helper_2) = create_mock_client("other");
+
+    bundle.player.location.0 = inst_ent;
+
+    app.world.spawn(bundle);
+
+    app.update();
+
+    // Client received an initial teleport.
+    helper_1
+        .collect_received()
+        .assert_count::<PlayerPositionLookS2c>(1);
+
+    // Confirm the initial teleport from the server.
+    helper_1.send(&TeleportConfirmC2s {
+        teleport_id: 0.into(),
+    });
+
+    // Move a little.
+    helper_1.send(&FullC2s {
+        position: DVec3::new(1.0, 0.0, 0.0),
+        yaw: 0.0,
+        pitch: 0.0,
+        on_ground: true,
+    });
+
+    app.update();
+
+    // Check that the other client saw the client moving.
+    helper_2
+        .collect_received()
+        .assert_count::<MoveRelativeS2c>(1);
 }

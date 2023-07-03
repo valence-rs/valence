@@ -8,7 +8,7 @@ use valence_boss_bar::{
 use valence_core::despawn::Despawned;
 use valence_core::text::Text;
 
-use super::{scenario_single_client, MockClientHelper};
+use crate::testing::{MockClientHelper, scenario_single_client};
 
 #[test]
 fn test_intialize_on_join() {
@@ -186,7 +186,7 @@ fn prepare(app: &mut App) -> (Entity, MockClientHelper, Entity) {
 
     // Process a tick to get past the "on join" logic.
     app.update();
-    client_helper.clear_sent();
+    client_helper.clear_received();
 
     // Insert a boss bar into the world
     let boss_bar = app
@@ -203,6 +203,6 @@ fn prepare(app: &mut App) -> (Entity, MockClientHelper, Entity) {
         app.update();
     }
 
-    client_helper.clear_sent();
+    client_helper.clear_received();
     (client_ent, client_helper, boss_bar)
 }

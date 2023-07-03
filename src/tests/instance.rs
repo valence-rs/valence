@@ -5,7 +5,7 @@ use valence_instance::chunk::UnloadedChunk;
 use valence_instance::packet::{BlockEntityUpdateS2c, ChunkDeltaUpdateS2c};
 use valence_instance::Instance;
 
-use super::scenario_single_client;
+use crate::testing::scenario_single_client;
 
 #[test]
 fn block_create_destroy() {

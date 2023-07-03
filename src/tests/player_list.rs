@@ -5,7 +5,7 @@ use valence_instance::chunk::UnloadedChunk;
 use valence_instance::Instance;
 use valence_player_list::packet::PlayerListS2c;
 
-use super::{create_mock_client, scenario_single_client};
+use crate::testing::{scenario_single_client, create_mock_client};
 
 #[test]
 fn player_list_arrives_before_player_spawn() {
