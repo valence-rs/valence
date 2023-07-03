@@ -23,9 +23,9 @@
 
 use bevy_app::{PluginGroup, PluginGroupBuilder};
 
+pub mod testing;
 #[cfg(test)]
 mod tests;
-pub mod testing;
 
 #[cfg(feature = "log")]
 pub use bevy_log as log;

@@ -1,4 +1,5 @@
 use std::time::Duration;
+
 use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 
 use super::*;
@@ -85,8 +86,7 @@ fn handle_keepalive_response(
                 } else if pkt.id != state.last_keepalive_id {
                     warn!(
                         "keepalive IDs don't match for client {client:?} (expected {}, got {})",
-                        state.last_keepalive_id,
-                        pkt.id,
+                        state.last_keepalive_id, pkt.id,
                     );
                     commands.entity(client).remove::<Client>();
                 } else {

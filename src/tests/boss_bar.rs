@@ -8,7 +8,7 @@ use valence_boss_bar::{
 use valence_core::despawn::Despawned;
 use valence_core::text::Text;
 
-use crate::testing::{MockClientHelper, scenario_single_client};
+use crate::testing::{scenario_single_client, MockClientHelper};
 
 #[test]
 fn test_intialize_on_join() {

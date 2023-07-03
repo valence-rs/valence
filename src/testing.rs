@@ -35,7 +35,6 @@ pub fn scenario_single_client(app: &mut App) -> (Entity, MockClientHelper) {
 
     app.insert_resource(KeepaliveSettings {
         period: Duration::MAX,
-        ..Default::default()
     });
 
     app.add_plugins(DefaultPlugins.build().disable::<NetworkPlugin>());
@@ -141,6 +140,12 @@ impl ClientConnection for MockClientConnection {
 
     fn len(&self) -> usize {
         self.inner.lock().unwrap().recv_buf.len()
+    }
+}
+
+impl Default for MockClientConnection {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

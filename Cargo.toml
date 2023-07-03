@@ -31,11 +31,14 @@ player_list = ["dep:valence_player_list"]
 world_border = ["dep:valence_world_border"]
 
 [dependencies]
+anyhow.workspace = true
 bevy_app.workspace = true
 bevy_ecs.workspace = true
 bevy_log = { workspace = true, optional = true }
 glam.workspace = true
 uuid.workspace = true
+bytes.workspace = true
+rand.workspace = true
 valence_advancement = { workspace = true, optional = true }
 valence_anvil = { workspace = true, optional = true }
 valence_biome.workspace = true
@@ -55,12 +58,10 @@ valence_world_border = { workspace = true, optional = true }
 
 [dev-dependencies]
 anyhow.workspace = true
-bytes.workspace = true
 clap.workspace = true
 criterion.workspace = true
 flume.workspace = true
 noise.workspace = true              # For the terrain example.
-rand.workspace = true
 tracing.workspace = true
 
 [dev-dependencies.reqwest]

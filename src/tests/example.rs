@@ -14,8 +14,8 @@ use valence_entity::Position;
 use valence_inventory::packet::{InventoryS2c, OpenScreenS2c};
 use valence_inventory::{Inventory, InventoryKind, OpenInventory};
 
-use crate::DefaultPlugins;
 use crate::testing::scenario_single_client;
+use crate::DefaultPlugins;
 
 /// The server's tick should increment every update.
 #[test]
