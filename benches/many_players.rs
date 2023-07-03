@@ -32,7 +32,6 @@ pub fn many_players(c: &mut Criterion) {
 
     app.insert_resource(KeepaliveSettings {
         period: Duration::MAX,
-        ..Default::default()
     });
 
     app.add_plugins(DefaultPlugins.build().disable::<NetworkPlugin>());
@@ -91,7 +90,7 @@ pub fn many_players(c: &mut Criterion) {
             // Move the clients around randomly. They'll cross chunk borders and cause
             // interesting things to happen.
             for (id, helper) in &mut clients {
-                let pos = query.get(&mut app.world, *id).unwrap().get();
+                let pos = query.get(&app.world, *id).unwrap().get();
 
                 let offset = DVec3::new(rng.gen_range(-2.0..=2.0), 0.0, rng.gen_range(-2.0..=2.0));
 
