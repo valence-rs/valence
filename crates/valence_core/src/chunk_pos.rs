@@ -12,8 +12,6 @@ pub struct ChunkPos {
     pub z: i32,
 }
 
-const EXTRA_VIEW_RADIUS: i32 = 2;
-
 impl ChunkPos {
     /// Constructs a new chunk position.
     pub const fn new(x: i32, z: i32) -> Self {
@@ -36,7 +34,7 @@ impl ChunkPos {
         Self::new((x / 16.0).floor() as i32, (z / 16.0).floor() as i32)
     }
 
-    pub fn distance_squared(self, other: Self) -> u64 {
+    pub const fn distance_squared(self, other: Self) -> u64 {
         let diff_x = other.x as i64 - self.x as i64;
         let diff_z = other.z as i64 - self.z as i64;
 
@@ -68,79 +66,62 @@ impl From<ChunkPos> for [i32; 2] {
     }
 }
 
+include!(concat!(env!("OUT_DIR"), "/chunk_pos.rs"));
+
 /// Represents the set of all chunk positions that a client can see, defined by
 /// a center chunk position `pos` and view distance `dist`.
 #[derive(Copy, Clone, PartialEq, Eq, Default, Debug)]
 pub struct ChunkView {
+    /// The center position of this chunk view.
     pub pos: ChunkPos,
-    pub dist: u8,
+    dist: u8,
 }
 
 impl ChunkView {
-    #[inline]
-    pub fn new(pos: impl Into<ChunkPos>, dist: u8) -> Self {
+    /// Creates a new chunk view. `dist` is clamped to the range
+    /// 0..[MAX_VIEW_DIST].
+    pub const fn new(pos: ChunkPos, dist: u8) -> Self {
         Self {
-            pos: pos.into(),
-            dist,
+            pos,
+            dist: if dist > MAX_VIEW_DIST {
+                MAX_VIEW_DIST
+            } else {
+                dist
+            },
         }
     }
 
-    #[must_use]
-    pub fn with_pos(mut self, pos: impl Into<ChunkPos>) -> Self {
-        self.pos = pos.into();
-        self
+    pub const fn with_dist(self, dist: u8) -> Self {
+        Self::new(self.pos, dist)
     }
 
-    #[must_use]
-    pub fn with_dist(mut self, dist: u8) -> Self {
-        self.dist = dist;
-        self
+    pub const fn dist(self) -> u8 {
+        self.dist
     }
 
-    #[inline]
-    pub fn contains(self, pos: ChunkPos) -> bool {
+    pub const fn contains(self, pos: ChunkPos) -> bool {
         let true_dist = self.dist as u64 + EXTRA_VIEW_RADIUS as u64;
         self.pos.distance_squared(pos) <= true_dist * true_dist
     }
 
-    /// Returns an iterator over all the chunk positions in this view.
-    pub fn iter(self) -> impl Iterator<Item = ChunkPos> {
-        let true_dist = self.dist as i32 + EXTRA_VIEW_RADIUS;
-
-        (self.pos.z - true_dist..=self.pos.z + true_dist)
-            .flat_map(move |z| {
-                (self.pos.x - true_dist..=self.pos.x + true_dist).map(move |x| ChunkPos { x, z })
+    /// Returns an iterator over all the chunk positions in this view. Positions
+    /// are sorted by the distance to [`pos`](Self::pos), with closer positions
+    /// appearing first.
+    pub fn iter(self) -> impl DoubleEndedIterator<Item = ChunkPos> + ExactSizeIterator + Clone {
+        CHUNK_VIEW_LUT[self.dist as usize]
+            .iter()
+            .map(move |&(x, z)| ChunkPos {
+                x: self.pos.x + x as i32,
+                z: self.pos.z + z as i32,
             })
-            .filter(move |&p| self.contains(p))
     }
 
-    pub fn diff(self, other: Self) -> impl Iterator<Item = ChunkPos> {
+    /// Returns an iterator over all the chunk positions in `self`, excluding
+    /// the positions that overlap with `other`. Positions are sorted by the
+    /// distance to [`pos`](Self::pos), with closer positions
+    /// appearing first.
+    pub fn diff(self, other: Self) -> impl DoubleEndedIterator<Item = ChunkPos> + Clone {
         self.iter().filter(move |&p| !other.contains(p))
-    }
-
-    // The foreach-based methods are optimizing better than the iterator ones.
-
-    #[inline]
-    pub fn for_each(self, mut f: impl FnMut(ChunkPos)) {
-        let true_dist = self.dist as i32 + EXTRA_VIEW_RADIUS;
-
-        for z in self.pos.z - true_dist..=self.pos.z + true_dist {
-            for x in self.pos.x - true_dist..=self.pos.x + true_dist {
-                let p = ChunkPos { x, z };
-                if self.contains(p) {
-                    f(p);
-                }
-            }
-        }
-    }
-
-    #[inline]
-    pub fn diff_for_each(self, other: Self, mut f: impl FnMut(ChunkPos)) {
-        self.for_each(|p| {
-            if !other.contains(p) {
-                f(p);
-            }
-        })
     }
 }
 
@@ -151,35 +132,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn chunk_view_for_each_and_iter() {
-        let pos = ChunkPos::new(42, 24);
-
-        for dist in 2..=32 {
-            let mut positions = vec![];
-
-            let view = ChunkView { pos, dist };
-
-            view.for_each(|pos| {
-                positions.push(pos);
-                assert!(view.contains(pos))
-            });
-
-            for (i, pos) in view.iter().enumerate() {
-                assert_eq!(positions[i], pos);
-                assert!(view.contains(pos));
-            }
-        }
-    }
-
-    #[test]
     fn chunk_view_contains() {
-        let view = ChunkView::new([0, 0], 16);
+        let view = ChunkView::new(ChunkPos::new(0, 0), 32);
         let positions = BTreeSet::from_iter(view.iter());
 
         for z in -64..64 {
             for x in -64..64 {
                 let p = ChunkPos::new(x, z);
-                assert_eq!(view.contains(p), positions.contains(&p));
+                assert_eq!(view.contains(p), positions.contains(&p), "{p:?}");
             }
         }
     }
