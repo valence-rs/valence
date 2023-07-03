@@ -6,9 +6,11 @@ use valence::protocol::var_long::VarLong;
 use valence::protocol::{Decode, Encode};
 
 pub fn var_long(c: &mut Criterion) {
+    let mut group = c.benchmark_group("varlong");
+
     let mut rng = rand::thread_rng();
 
-    c.bench_function("VarLong::encode", |b| {
+    group.bench_function("VarLong::encode", |b| {
         b.iter_with_setup(
             || rng.gen(),
             |i| {
@@ -20,7 +22,7 @@ pub fn var_long(c: &mut Criterion) {
         );
     });
 
-    c.bench_function("VarLong::decode", |b| {
+    group.bench_function("VarLong::decode", |b| {
         b.iter_with_setup(
             || {
                 let mut buf = [0; VarLong::MAX_SIZE];
