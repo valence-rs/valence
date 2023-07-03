@@ -4,7 +4,7 @@ use std::borrow::Cow;
 use std::collections::hash_map::{Entry, OccupiedEntry, VacantEntry};
 
 use bevy_ecs::prelude::*;
-use glam::{DVec3, Vec3};
+use glam::{DVec3, Vec3, u32};
 use num_integer::div_ceil;
 use rustc_hash::FxHashMap;
 use valence_biome::BiomeRegistry;

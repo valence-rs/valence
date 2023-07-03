@@ -43,6 +43,7 @@ use valence_entity::{
 pub mod chunk;
 mod instance;
 pub mod packet;
+pub mod message;
 
 pub use chunk::{Block, BlockRef};
 pub use instance::*;
