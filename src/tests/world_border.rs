@@ -7,7 +7,7 @@ use valence_registry::{Entity, Mut};
 use valence_world_border::packet::*;
 use valence_world_border::*;
 
-use super::{create_mock_client, scenario_single_client, MockClientHelper};
+use crate::testing::{create_mock_client, scenario_single_client, MockClientHelper};
 
 #[test]
 fn test_intialize_on_join() {
@@ -110,7 +110,7 @@ fn prepare(app: &mut App) -> (MockClientHelper, Entity) {
 
     // Process a tick to get past the "on join" logic.
     app.update();
-    client_helper.clear_sent();
+    client_helper.clear_received();
 
     // Get the instance entity.
     let instance_ent = app
@@ -128,6 +128,6 @@ fn prepare(app: &mut App) -> (MockClientHelper, Entity) {
         app.update();
     }
 
-    client_helper.clear_sent();
+    client_helper.clear_received();
     (client_helper, instance_ent)
 }

@@ -6,9 +6,11 @@ use valence::protocol::var_int::VarInt;
 use valence::protocol::{Decode, Encode};
 
 pub fn var_int(c: &mut Criterion) {
+    let mut group = c.benchmark_group("varint");
+
     let mut rng = rand::thread_rng();
 
-    c.bench_function("VarInt::encode", |b| {
+    group.bench_function("VarInt::encode", |b| {
         b.iter_with_setup(
             || rng.gen(),
             |i| {
@@ -20,7 +22,7 @@ pub fn var_int(c: &mut Criterion) {
         );
     });
 
-    c.bench_function("VarInt::decode", |b| {
+    group.bench_function("VarInt::decode", |b| {
         b.iter_with_setup(
             || {
                 let mut buf = [0; VarInt::MAX_SIZE];
