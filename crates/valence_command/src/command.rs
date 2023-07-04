@@ -13,7 +13,7 @@ use valence_core::protocol::packet::command::{Node, Parser};
 use valence_core::text::Text;
 use valence_core::translation_key::COMMAND_UNKNOWN_COMMAND;
 
-use crate::parse::parse_error_message;
+use crate::parse::{parse_error_message, CommandExecutor};
 use crate::reader::{StrCursor, StrLocated, StrReader, StrSpan};
 
 pub trait Command {
@@ -37,6 +37,10 @@ impl CommandStorage {
     pub fn is_registered(&self, name: &str) -> bool {
         self.commands.contains(name)
     }
+
+    pub fn commands(&self) -> impl Iterator<Item = &String> {
+        self.commands.iter()
+    }
 }
 
 pub trait RegisterCommand {
@@ -55,59 +59,17 @@ impl RegisterCommand for App {
 
 #[derive(Event)]
 pub struct CommandExecutionEvent {
-    pub client: Entity,
-    whole: String,
-    backslash: usize,
-    name: usize,
+    pub executor: CommandExecutor,
+    pub command: String,
 }
 
 impl CommandExecutionEvent {
-    pub fn new(client: Entity, command: String) -> Self {
-        let name = command.find(' ').unwrap_or(command.len());
-
-        Self {
-            client,
-            backslash: if command.starts_with('/') {
-                '/'.len_utf8()
-            } else {
-                0
-            },
-            whole: command,
-            name,
-        }
-    }
-
-    pub fn whole(&self) -> &str {
-        // SAFETY: backslash is always a valid byte index
-        unsafe { self.whole.get_unchecked(self.backslash..) }
-    }
-
-    pub fn name(&self) -> &str {
-        // SAFETY: name is always a valid byte index
-        unsafe { self.whole.get_unchecked(self.backslash..self.name) }
+    pub fn new(executor: CommandExecutor, command: String) -> Self {
+        Self { executor, command }
     }
 
     pub fn reader(&self) -> StrReader {
-        let mut reader = StrReader::new(self.whole());
-
-        let cursor = self.name;
-
-        // SAFETY: cursor is valid
-        let chars = unsafe { self.whole.get_unchecked(0..cursor) }
-            .chars()
-            .count();
-
-        // SAFETY: cursor is valid
-        unsafe { reader.set_cursor(StrCursor::new(chars, cursor)) }
-
-        reader
-    }
-
-    fn name_span(&self) -> StrSpan {
-        StrSpan::new(
-            StrCursor::new(self.backslash, self.backslash),
-            StrCursor::new(self.name, self.name().chars().count() + self.backslash),
-        )
+        StrReader::from_command(&self.command)
     }
 }
 
@@ -118,7 +80,7 @@ pub fn command_event(
     for packet_event in packets.iter() {
         if let Some(packet) = packet_event.decode::<CommandExecutionC2s>() {
             execution.send(CommandExecutionEvent::new(
-                packet_event.client,
+                CommandExecutor::Entity(packet_event.client),
                 packet.command.to_string(),
             ));
         }
@@ -131,18 +93,27 @@ pub fn check_command_not_found(
     mut client: Query<&mut Client>,
 ) {
     for execution in execution.iter() {
-        if !storage.is_registered(execution.name()) {
-            let Ok(mut client) = client.get_mut(execution.client) else {
-                continue;
-            };
-
-            client.send_chat_message(parse_error_message(
-                &StrReader::new(execution.whole()),
+        let mut reader = execution.reader();
+        let begin = reader.cursor();
+        if !storage.is_registered(reader.read_unquoted_str()) {
+            let error_message = parse_error_message(
+                &reader,
                 StrLocated::new(
-                    execution.name_span(),
+                    StrSpan::new(begin, reader.cursor()),
                     Text::translate(COMMAND_UNKNOWN_COMMAND, vec![]),
                 ),
-            ));
+            );
+
+            match execution.executor {
+                CommandExecutor::Entity(entity) => {
+                    let Ok(mut client) = client.get_mut(entity) else {
+                        continue;
+                    };
+
+                    client.send_chat_message(error_message);
+                }
+                _ => todo!(),
+            }
         }
     }
 }

@@ -777,7 +777,7 @@ pub mod command {
 
     #[derive(Clone, Debug)]
     pub struct Node<'a> {
-        pub children: Vec<VarInt>,
+        pub children: Cow<'a, [VarInt]>,
         pub data: NodeData<'a>,
         pub executable: bool,
         pub redirect_node: Option<VarInt>,
@@ -929,7 +929,7 @@ pub mod command {
         fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
             let flags = u8::decode(r)?;
 
-            let children = Vec::decode(r)?;
+            let children = Cow::decode(r)?;
 
             let redirect_node = if flags & 0x08 != 0 {
                 Some(VarInt::decode(r)?)

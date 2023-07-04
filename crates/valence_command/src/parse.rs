@@ -4,15 +4,18 @@ use std::pin::Pin;
 use std::ptr::NonNull;
 use std::sync::Mutex;
 
-use bevy_ecs::prelude::{Entity, EventWriter, Event};
+use bevy_ecs::prelude::{Entity, Event, EventWriter};
 use bevy_ecs::query::WorldQuery;
 use bevy_ecs::system::{Query, ReadOnlySystemParam, SystemParam};
 use valence_client::Client;
+use valence_core::__private::VarInt;
 use valence_core::block_pos::BlockPos;
+use valence_core::protocol::encode::WritePacket;
 use valence_core::protocol::{Decode, Encode};
 use valence_core::text::{Color, Text, TextFormat};
 use valence_core::translation_key::COMMAND_CONTEXT_HERE;
 
+use crate::packet::CommandSuggestionsS2c;
 use crate::reader::{StrLocated, StrReader};
 
 pub type ParseError = StrLocated<Text>;
@@ -47,12 +50,60 @@ impl<'a> Suggestion<'a> {
             tooltip: None,
         }
     }
+
+    pub fn to_static(&self) -> Suggestion<'static> {
+        Suggestion {
+            message: match self.message {
+                Cow::Owned(ref owned) => Cow::Owned(owned.clone()),
+                Cow::Borrowed(borrowed) => Cow::Owned(borrowed.to_owned()),
+            },
+            tooltip: self.tooltip.clone(),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum SuggestionsTransaction {
     Player { ent: Entity, id: i32 },
     Event { id: u32 },
+}
+
+#[derive(SystemParam)]
+pub struct SuggestionsTransactionAnswer<'w, 's> {
+    client: Query<'w, 's, &'static mut Client>,
+    event: EventWriter<'w, CompletedSuggestionEvent>,
+}
+
+impl<'w, 's> SuggestionsTransactionAnswer<'w, 's> {
+    pub fn answer<'b>(
+        &mut self,
+        transaction: SuggestionsTransaction,
+        suggestions: StrLocated<Cow<'b, [Suggestion<'b>]>>,
+    ) {
+        match transaction {
+            SuggestionsTransaction::Player { ent, id } => {
+                self.client
+                    .get_mut(ent)
+                    .expect("Entity is not a client")
+                    .write_packet(&CommandSuggestionsS2c {
+                        id: VarInt(id),
+                        start: VarInt(suggestions.span.begin().chars() as i32),
+                        length: VarInt(
+                            (suggestions.span.end().chars() - suggestions.span.begin().chars())
+                                as i32,
+                        ),
+                        matches: suggestions.object,
+                    });
+            }
+            SuggestionsTransaction::Event { id } => {
+                self.event.send(CompletedSuggestionEvent {
+                    id,
+                    suggestions: suggestions
+                        .map(|v| v.into_iter().map(|v| v.to_static()).collect()),
+                })
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -67,6 +118,7 @@ pub trait RawParseSuggestions<'a>: Parse<'a> {
 
     fn send_suggestions(
         transaction: SuggestionsTransaction,
+        answer: &mut SuggestionsTransactionAnswer,
         executor: CommandExecutor,
         query: &mut Self::RawSuggestionsQuery,
         str: String,
@@ -109,7 +161,7 @@ pub trait AsyncParseSuggestions<'a>: Parse<'a> {
 #[derive(Event, Clone, Debug, PartialEq)]
 pub struct CompletedSuggestionEvent {
     pub id: u32,
-    pub suggestions: Vec<Suggestion<'static>>,
+    pub suggestions: StrLocated<Vec<Suggestion<'static>>>,
 }
 
 #[macro_export]
@@ -120,6 +172,7 @@ macro_rules! suggestions_impl {
 
             fn send_suggestions(
                 _transaction: $crate::parse::SuggestionsTransaction,
+                _answer: &mut $crate::parse::SuggestionsTransactionAnswer,
                 _executor: $crate::parse::CommandExecutor,
                 _query: &mut Self::RawSuggestionsQuery,
                 _str: String,
@@ -136,40 +189,18 @@ macro_rules! suggestions_impl {
         where
             $ty: $crate::parse::ParseSuggestions<'a>,
         {
-            type RawSuggestionsQuery = (
-                bevy_ecs::prelude::Query<'a, 'a, &'static mut valence_client::Client>,
-                bevy_ecs::prelude::EventWriter<'a, $crate::parse::CompletedSuggestionEvent>,
-                <$ty as $crate::parse::ParseSuggestions<'a>>::SuggestionsQuery,
-            );
+            type RawSuggestionsQuery =
+                <$ty as $crate::parse::ParseSuggestions<'a>>::SuggestionsQuery;
 
             fn send_suggestions(
                 transaction: $crate::parse::SuggestionsTransaction,
+                answer: &mut $crate::parse::SuggestionsTransactionAnswer,
                 executor: $crate::parse::CommandExecutor,
                 query: &mut Self::RawSuggestionsQuery,
                 str: String,
                 suggestions: Self::Suggestions,
             ) {
-                let result = <$ty>::suggestions(executor, &query.2, str, suggestions);
-
-                match transaction {
-                    $crate::parse::SuggestionsTransaction::Player { ent, id } => {
-                        if let Ok(mut client) = query.0.get_mut(ent) {
-                            let id = valence_core::protocol::var_int::VarInt(id);
-                            let start = valence_core::protocol::var_int::VarInt(result.span.begin().chars() as i32);
-                            let length = valence_core::protocol::var_int::VarInt((result.span.end().chars() - result.span.begin().chars()) as i32);
-                            let matches = result.object;
-                            <valence_client::Client as valence_core::protocol::encode::WritePacket>::write_packet(&mut client, &$crate::packet::CommandSuggestionsS2c {
-                                id,
-                                start,
-                                length,
-                                matches,
-                            });
-                        }
-                    }
-                    $crate::parse::SuggestionsTransaction::Event { id } => {
-                        todo!()
-                    }
-                }
+                answer.answer(transaction, <$ty>::suggestions(executor, &query, str, suggestions));
             }
         }
     };
@@ -190,14 +221,24 @@ pub fn parse_error_message(reader: &StrReader, error: ParseError) -> Text {
         unsafe { reader.set_cursor(span.end()) };
 
         Text::text("")
-            .add_child(error.color(Color::RED))
+            .color(Color::RED)
+            .add_child(error)
             .add_child(Text::text("\n"))
-            .add_child(Text::text(reader.used_str().to_string()).color(Color::RED))
-            .add_child(Text::translate(COMMAND_CONTEXT_HERE, vec![]).color(Color::RED))
-            .add_child(Text::text(reader.remaining_str().to_string()).color(Color::RED))
+            .add_child(Text::text(reader.used_str().to_string()))
+            .add_child(Text::translate(COMMAND_CONTEXT_HERE, vec![]))
+            .add_child(Text::text(reader.remaining_str().to_string()))
     } else {
         // ParseError contains more informative span than brigadier does, so we can
-        // actually give error place more accurate
-        todo!()
+        // actually give error's place more accurate
+
+        let (left, right) = reader.str().split_at(span.begin().bytes());
+        let (middle, right) = right.split_at(span.end().bytes());
+
+        Text::text("")
+            .add_child(error)
+            .add_child(Text::text("\n"))
+            .add_child(Text::text(left.to_string()))
+            .add_child(Text::text(middle.to_string()).color(Color::RED))
+            .add_child(Text::text(right.to_string()))
     }
 }

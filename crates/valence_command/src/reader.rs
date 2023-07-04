@@ -82,7 +82,7 @@ impl StrSpan {
 
     pub fn begin(&self) -> StrCursor {
         self.begin
-    } 
+    }
 
     pub fn end(&self) -> StrCursor {
         self.end
@@ -143,6 +143,14 @@ impl<'a> StrReader<'a> {
             str,
             cursor: StrCursor { bytes: 0, chars: 0 },
         }
+    }
+
+    pub fn from_command(command: &'a str) -> Self {
+        StrReader::new(if command.starts_with('/') {
+            unsafe { command.get_unchecked('/'.len_utf8()..) }
+        } else {
+            command
+        })
     }
 
     /// Returns valid cursor
@@ -375,6 +383,10 @@ impl<'a> StrReader<'a> {
             '0'..='9' | '+' | '-' | 'e' | '.' => StrReaderFilter::Continue,
             _ => StrReaderFilter::Exclude,
         })
+    }
+
+    pub fn is_ended(&self) -> bool {
+        self.str.len() == self.cursor().bytes
     }
 }
 

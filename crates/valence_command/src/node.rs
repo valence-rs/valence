@@ -1,5 +1,7 @@
+use std::borrow::Cow;
+
 use bevy_ecs::prelude::{Bundle, Component, DetectChanges, Entity};
-use bevy_ecs::query::{Changed, With};
+use bevy_ecs::query::{Added, Changed, Or, With};
 use bevy_ecs::system::Query;
 use bevy_ecs::world::Ref;
 use valence_client::Client;
@@ -14,6 +16,7 @@ use crate::packet::{CommandTreeRawNodes, CommandTreeS2c};
 #[derive(Debug, Component)]
 pub struct Nodes {
     bytes: Vec<u8>,
+    root_children: Vec<VarInt>,
     count: usize,
 }
 
@@ -21,34 +24,27 @@ pub const ROOT_ID: VarInt = VarInt(0);
 
 impl Nodes {
     pub fn new() -> Self {
-        let mut result = Self {
+        Self {
             bytes: vec![],
-            count: 0,
-        };
-
-        result
-            .insert_nodes(
-                [Node {
-                    children: vec![],
-                    data: NodeData::Root,
-                    executable: false,
-                    redirect_node: None,
-                }]
-                .into_iter(),
-            )
-            .expect("???");
-
-        result
+            root_children: vec![],
+            count: 1,
+        }
     }
 
     pub fn count(&self) -> usize {
         self.count
     }
 
-    pub fn insert_nodes<'a>(
+    pub fn insert_command_nodes<'a>(
         &mut self,
-        nodes: impl Iterator<Item = Node<'a>>,
+        mut nodes: impl Iterator<Item = Node<'a>>,
     ) -> anyhow::Result<()> {
+        if let Some(node) = nodes.next() {
+            self.root_children.push(VarInt(self.count as i32));
+            self.count += 1;
+            node.encode(&mut self.bytes)?;
+        }
+
         for node in nodes {
             self.count += 1;
             node.encode(&mut self.bytes)?;
@@ -56,15 +52,17 @@ impl Nodes {
         Ok(())
     }
 
-    pub fn bytes(&self) -> &[u8] {
-        &self.bytes
-    }
-
     pub(crate) fn to_pkt(&self) -> CommandTreeS2c<CommandTreeRawNodes> {
         CommandTreeS2c {
             nodes: CommandTreeRawNodes {
                 count: VarInt(self.count() as i32),
-                bytes: self.bytes(),
+                root: Node {
+                    children: Cow::Borrowed(&self.root_children),
+                    data: NodeData::Root,
+                    executable: false,
+                    redirect_node: None,
+                },
+                bytes: &self.bytes,
             },
             root_index: ROOT_ID,
         }
@@ -101,7 +99,10 @@ pub fn update_nodes(
 }
 
 pub fn update_client_nodes(
-    mut client_query: Query<(Option<&ClientNode>, &mut Client), Changed<ClientNode>>,
+    mut client_query: Query<
+        (Option<&ClientNode>, &mut Client),
+        Or<(Changed<ClientNode>, Added<Client>)>,
+    >,
     node_query: Query<Ref<Nodes>>,
     primary_node_query: Query<Ref<Nodes>, With<PrimaryNodes>>,
 ) {
