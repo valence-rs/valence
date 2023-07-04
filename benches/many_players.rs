@@ -18,11 +18,18 @@ use valence_instance::chunk::UnloadedChunk;
 use valence_instance::Instance;
 use valence_network::NetworkPlugin;
 
-const CLIENT_COUNT: usize = 3000;
-const VIEW_DIST: u8 = 20;
-const INST_SIZE: i32 = 16;
-
 pub fn many_players(c: &mut Criterion) {
+    run_many_players(c, "many_players", 3000, 20, 16);
+    run_many_players(c, "many_players_spread_out", 3000, 8, 200);
+}
+
+fn run_many_players(
+    c: &mut Criterion,
+    func_name: &str,
+    client_count: usize,
+    view_dist: u8,
+    inst_size: i32,
+) {
     let mut app = App::new();
 
     app.insert_resource(CoreSettings {
@@ -45,8 +52,8 @@ pub fn many_players(c: &mut Criterion) {
         app.world.resource::<Server>(),
     );
 
-    for z in -INST_SIZE..INST_SIZE {
-        for x in -INST_SIZE..INST_SIZE {
+    for z in -inst_size..inst_size {
+        for x in -inst_size..inst_size {
             inst.insert_chunk(ChunkPos::new(x, z), UnloadedChunk::new());
         }
     }
@@ -56,15 +63,15 @@ pub fn many_players(c: &mut Criterion) {
     let mut clients = vec![];
 
     // Spawn a bunch of clients in at random initial positions in the instance.
-    for i in 0..CLIENT_COUNT {
+    for i in 0..client_count {
         let (mut bundle, helper) = create_mock_client(format!("client_{i}"));
 
         bundle.player.location.0 = inst_ent;
-        bundle.view_distance.set(VIEW_DIST);
+        bundle.view_distance.set(view_dist);
 
         let mut rng = rand::thread_rng();
-        let x = rng.gen_range(-INST_SIZE as f64 * 16.0..=INST_SIZE as f64 * 16.0);
-        let z = rng.gen_range(-INST_SIZE as f64 * 16.0..=INST_SIZE as f64 * 16.0);
+        let x = rng.gen_range(-inst_size as f64 * 16.0..=inst_size as f64 * 16.0);
+        let z = rng.gen_range(-inst_size as f64 * 16.0..=inst_size as f64 * 16.0);
 
         bundle.player.position.set(DVec3::new(x, 64.0, z));
 
@@ -83,7 +90,7 @@ pub fn many_players(c: &mut Criterion) {
 
     app.update();
 
-    c.bench_function("many_players", |b| {
+    c.bench_function(func_name, |b| {
         b.iter(|| {
             let mut rng = rand::thread_rng();
 

@@ -1,22 +1,17 @@
 use bevy_ecs::entity::Entity;
-use glam::DVec3;
-use valence_core::{
-    chunk_pos::ChunkPos,
-    protocol::{
-        encode::{PacketWriter, WritePacket},
-        Encode, Packet,
-    },
-};
+use valence_core::chunk_pos::ChunkPos;
+use valence_core::protocol::encode::{PacketWriter, WritePacket};
+use valence_core::protocol::{Encode, Packet};
 
 #[derive(Clone, Debug)]
-pub struct MessageBuffer {
-    messages: Vec<Message>,
+pub struct MessageBuf<C> {
+    messages: Vec<Message<C>>,
     bytes: Vec<u8>,
     compression_threshold: Option<u32>,
 }
 
-impl MessageBuffer {
-    pub fn new(compression_threshold: Option<u32>) -> Self {
+impl<C: PartialEq> MessageBuf<C> {
+    pub(super) fn new(compression_threshold: Option<u32>) -> Self {
         Self {
             messages: vec![],
             bytes: vec![],
@@ -24,7 +19,7 @@ impl MessageBuffer {
         }
     }
 
-    pub fn messages(&self) -> &[Message] {
+    pub fn messages(&self) -> &[Message<C>] {
         &self.messages
     }
 
@@ -32,28 +27,25 @@ impl MessageBuffer {
         &self.bytes
     }
 
-    pub fn append_packet<P>(&mut self, cond: MessageCondition, pkt: &P)
+    pub fn send_packet<P>(&mut self, cond: C, pkt: &P)
     where
         P: Packet + Encode,
     {
-        let threshold = self.compression_threshold;
-
-        self.append(cond, |bytes| {
-            PacketWriter::new(bytes, threshold).write_packet(pkt)
-        })
+        self.send(cond, |mut w| w.write_packet(pkt))
     }
 
-    pub fn append_packet_bytes(&mut self, cond: MessageCondition, bytes: &[u8]) {
+    pub fn send_packet_bytes(&mut self, cond: C, bytes: &[u8]) {
         if !bytes.is_empty() {
-            self.append(cond, |b| b.extend_from_slice(bytes));
+            self.send(cond, |mut w| w.write_packet_bytes(bytes));
         }
     }
 
-    fn append(&mut self, cond: MessageCondition, append_data: impl FnOnce(&mut Vec<u8>)) {
+    pub fn send(&mut self, cond: C, append_data: impl FnOnce(PacketWriter)) {
         const LOOKBACK_BYTE_LIMIT: usize = 512;
         const LOOKBACK_MSG_LIMIT: usize = 64;
 
-        // Look for a message with an identical condition to ours. If we find one, move it to the front and merge our message with it.
+        // Look for a message with an identical condition to ours. If we find one, move
+        // it to the front and merge our message with it.
 
         let mut acc = 0;
 
@@ -61,7 +53,10 @@ impl MessageBuffer {
         if let Some(msg) = self.messages.last_mut() {
             if msg.cond == cond {
                 let old_len = self.bytes.len();
-                append_data(&mut self.bytes);
+                append_data(PacketWriter::new(
+                    &mut self.bytes,
+                    self.compression_threshold,
+                ));
                 let new_len = self.bytes.len();
 
                 msg.len += new_len - old_len;
@@ -97,7 +92,10 @@ impl MessageBuffer {
                 self.bytes.drain(range);
 
                 let old_len = self.bytes.len();
-                append_data(&mut self.bytes);
+                append_data(PacketWriter::new(
+                    &mut self.bytes,
+                    self.compression_threshold,
+                ));
                 let new_len = self.bytes.len();
 
                 msg.len += new_len - old_len;
@@ -111,7 +109,10 @@ impl MessageBuffer {
         // Didn't find a compatible message, so append a new one to the end.
 
         let old_len = self.bytes.len();
-        append_data(&mut self.bytes);
+        append_data(PacketWriter::new(
+            &mut self.bytes,
+            self.compression_threshold,
+        ));
         let new_len = self.bytes.len();
 
         self.messages.push(Message {
@@ -124,17 +125,22 @@ impl MessageBuffer {
         self.messages.clear();
         self.bytes.clear();
     }
+
+    pub fn shrink_to_fit(&mut self) {
+        self.messages.shrink_to_fit();
+        self.bytes.shrink_to_fit();
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub struct Message {
-    pub cond: MessageCondition,
+pub struct Message<C> {
+    pub cond: C,
     /// Length of this message in bytes.
     pub len: usize,
 }
 
-impl Message {
-    pub const fn new(cond: MessageCondition, len: usize) -> Self {
+impl<C> Message<C> {
+    pub const fn new(cond: C, len: usize) -> Self {
         Self { cond, len }
     }
 }
@@ -162,11 +168,13 @@ pub enum MessageCondition {
         viewed: ChunkPos,
         unviewed: ChunkPos,
     },
+    /*
     /// Client's position must be contained in this sphere.
     Sphere {
         center: DVec3,
         radius: f64,
     },
+    */
 }
 
 #[cfg(test)]
@@ -179,22 +187,21 @@ mod tests {
         let cond2 = MessageCondition::Except {
             client: Entity::PLACEHOLDER,
         };
-        let cond3 = MessageCondition::Sphere {
-            center: DVec3::ZERO,
-            radius: 10.0,
+        let cond3 = MessageCondition::View {
+            pos: ChunkPos::new(5, 6),
         };
 
-        let mut buf = MessageBuffer::new(None);
+        let mut buf = MessageBuf::new(None);
 
         let bytes = &[1, 2, 3, 4, 5];
 
-        buf.append_packet_bytes(cond1, bytes);
-        buf.append_packet_bytes(cond2, bytes);
-        buf.append_packet_bytes(cond3, bytes);
+        buf.send_packet_bytes(cond1, bytes);
+        buf.send_packet_bytes(cond2, bytes);
+        buf.send_packet_bytes(cond3, bytes);
 
-        buf.append_packet_bytes(cond2, bytes);
-        buf.append_packet_bytes(cond3, bytes);
-        buf.append_packet_bytes(cond1, bytes);
+        buf.send_packet_bytes(cond2, bytes);
+        buf.send_packet_bytes(cond3, bytes);
+        buf.send_packet_bytes(cond1, bytes);
 
         let msgs = buf.messages();
 

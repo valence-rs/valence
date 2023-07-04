@@ -4,15 +4,15 @@ use valence::prelude::*;
 /// Benches the performance of a single server tick while nothing much is
 /// happening.
 pub fn idle_update(c: &mut Criterion) {
-    let mut app = App::new();
-
-    app.add_plugins(DefaultPlugins);
-    app.add_systems(Startup, setup);
-
-    // Run startup schedule.
-    app.update();
-
     c.bench_function("idle_update", |b| {
+        let mut app = App::new();
+
+        app.add_plugins(DefaultPlugins);
+        app.add_systems(Startup, setup);
+
+        // Run startup schedule.
+        app.update();
+
         b.iter(|| {
             app.update();
         });

@@ -338,7 +338,7 @@ mod tests {
         }
 
         let unloaded = UnloadedChunk::with_height(512);
-        let loaded = LoadedChunk::new(512, None);
+        let loaded = LoadedChunk::new(512);
 
         check(unloaded);
         check(loaded);
@@ -356,7 +356,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn chunk_debug_oob_1() {
-        let mut chunk = LoadedChunk::new(512, None);
+        let mut chunk = LoadedChunk::new(512);
         chunk.set_block_state(0, 0, 16, BlockState::AIR);
     }
 
@@ -372,7 +372,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn chunk_debug_oob_3() {
-        let mut chunk = LoadedChunk::new(512, None);
+        let mut chunk = LoadedChunk::new(512);
         chunk.set_block_entity(0, 0, 16, None);
     }
 
@@ -388,7 +388,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn chunk_debug_oob_5() {
-        let mut chunk = LoadedChunk::new(512, None);
+        let mut chunk = LoadedChunk::new(512);
         chunk.set_biome(0, 0, 4, BiomeId::DEFAULT);
     }
 
@@ -404,7 +404,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn chunk_debug_oob_7() {
-        let mut chunk = LoadedChunk::new(512, None);
+        let mut chunk = LoadedChunk::new(512);
         chunk.fill_block_state_section(chunk.height() / 16, BlockState::AIR);
     }
 
@@ -420,7 +420,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn chunk_debug_oob_9() {
-        let mut chunk = LoadedChunk::new(512, None);
+        let mut chunk = LoadedChunk::new(512);
         chunk.fill_biome_section(chunk.height() / 16, BiomeId::DEFAULT);
     }
 }

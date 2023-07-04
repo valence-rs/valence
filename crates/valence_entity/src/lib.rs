@@ -17,11 +17,14 @@
     clippy::dbg_macro
 )]
 
+mod flags;
 pub mod hitbox;
+pub mod layer;
 pub mod packet;
+pub mod query;
+pub mod tracked_data;
 
 use std::num::Wrapping;
-use std::ops::Range;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
@@ -29,6 +32,7 @@ use glam::{DVec3, Vec3};
 use paste::paste;
 use rustc_hash::FxHashMap;
 use tracing::warn;
+use tracked_data::TrackedData;
 use uuid::Uuid;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::despawn::Despawned;
@@ -406,116 +410,6 @@ impl EntityAnimations {
 #[derive(Component, Default, Debug)]
 pub struct ObjectData(pub i32);
 
-/// The range of packet bytes for this entity within the chunk the entity is
-/// located in. For internal use only.
-#[derive(Component, Default, Debug)]
-pub struct PacketByteRange(pub Range<usize>);
-
-/// Cache for all the tracked data of an entity. Used for the
-/// [`EntityTrackerUpdateS2c`][packet] packet.
-///
-/// [packet]: crate::packet::EntityTrackerUpdateS2c
-#[derive(Component, Default, Debug)]
-pub struct TrackedData {
-    init_data: Vec<u8>,
-    /// A map of tracked data indices to the byte length of the entry in
-    /// `init_data`.
-    init_entries: Vec<(u8, u32)>,
-    update_data: Vec<u8>,
-}
-
-impl TrackedData {
-    /// Returns initial tracked data for the entity, ready to be sent in the
-    /// [`EntityTrackerUpdateS2c`][packet] packet. This is used when the entity
-    /// enters the view of a client.
-    ///
-    /// [packet]: crate::packet::EntityTrackerUpdateS2c
-    pub fn init_data(&self) -> Option<&[u8]> {
-        if self.init_data.len() > 1 {
-            Some(&self.init_data)
-        } else {
-            None
-        }
-    }
-
-    /// Contains updated tracked data for the entity, ready to be sent in the
-    /// [`EntityTrackerUpdateS2c`][packet] packet. This is used when tracked
-    /// data is changed and the client is already in view of the entity.
-    ///
-    /// [packet]: crate::packet::EntityTrackerUpdateS2c
-    pub fn update_data(&self) -> Option<&[u8]> {
-        if self.update_data.len() > 1 {
-            Some(&self.update_data)
-        } else {
-            None
-        }
-    }
-
-    pub fn insert_init_value(&mut self, index: u8, type_id: u8, value: impl Encode) {
-        debug_assert!(
-            index != 0xff,
-            "index of 0xff is reserved for the terminator"
-        );
-
-        self.remove_init_value(index);
-
-        self.init_data.pop(); // Remove terminator.
-
-        // Append the new value to the end.
-        let len_before = self.init_data.len();
-
-        self.init_data.extend_from_slice(&[index, type_id]);
-        if let Err(e) = value.encode(&mut self.init_data) {
-            warn!("failed to encode initial tracked data: {e:#}");
-        }
-
-        let len = self.init_data.len() - len_before;
-
-        self.init_entries.push((index, len as u32));
-
-        self.init_data.push(0xff); // Add terminator.
-    }
-
-    pub fn remove_init_value(&mut self, index: u8) -> bool {
-        let mut start = 0;
-
-        for (pos, &(idx, len)) in self.init_entries.iter().enumerate() {
-            if idx == index {
-                let end = start + len as usize;
-
-                self.init_data.drain(start..end);
-                self.init_entries.remove(pos);
-
-                return true;
-            }
-
-            start += len as usize;
-        }
-
-        false
-    }
-
-    pub fn append_update_value(&mut self, index: u8, type_id: u8, value: impl Encode) {
-        debug_assert!(
-            index != 0xff,
-            "index of 0xff is reserved for the terminator"
-        );
-
-        self.update_data.pop(); // Remove terminator.
-
-        self.update_data.extend_from_slice(&[index, type_id]);
-        if let Err(e) = value.encode(&mut self.update_data) {
-            warn!("failed to encode updated tracked data: {e:#}");
-        }
-
-        self.update_data.push(0xff); // Add terminator.
-    }
-
-    pub fn clear_update_values(&mut self) {
-        self.update_data.clear();
-    }
-}
-
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Encode, Decode)]
 pub struct VillagerData {
     pub kind: VillagerKind,
@@ -751,171 +645,5 @@ impl EntityManager {
     /// Gets the entity with the given UUID.
     pub fn get_by_uuid(&self, uuid: Uuid) -> Option<Entity> {
         self.uuid_to_entity.get(&uuid).cloned()
-    }
-}
-
-// TODO: should `set_if_neq` behavior be the default behavior for setters?
-macro_rules! flags {
-    (
-        $(
-            $component:path {
-                $($flag:ident: $offset:literal),* $(,)?
-            }
-        )*
-
-    ) => {
-        $(
-            impl $component {
-                $(
-                    #[doc = "Gets the bit at offset "]
-                    #[doc = stringify!($offset)]
-                    #[doc = "."]
-                    #[inline]
-                    pub const fn $flag(&self) -> bool {
-                        (self.0 >> $offset) & 1 == 1
-                    }
-
-                    paste! {
-                        #[doc = "Sets the bit at offset "]
-                        #[doc = stringify!($offset)]
-                        #[doc = "."]
-                        #[inline]
-                        pub fn [< set_$flag >] (&mut self, $flag: bool) {
-                            self.0 = (self.0 & !(1 << $offset)) | (($flag as i8) << $offset);
-                        }
-                    }
-                )*
-            }
-        )*
-    }
-}
-
-flags! {
-    entity::Flags {
-        on_fire: 0,
-        sneaking: 1,
-        sprinting: 3,
-        swimming: 4,
-        invisible: 5,
-        glowing: 6,
-        fall_flying: 7,
-    }
-    persistent_projectile::ProjectileFlags {
-        critical: 0,
-        no_clip: 1,
-    }
-    living::LivingFlags {
-        using_item: 0,
-        off_hand_active: 1,
-        using_riptide: 2,
-    }
-    player::PlayerModelParts {
-        cape: 0,
-        jacket: 1,
-        left_sleeve: 2,
-        right_sleeve: 3,
-        left_pants_leg: 4,
-        right_pants_leg: 5,
-        hat: 6,
-    }
-    player::MainArm {
-        right: 0,
-    }
-    armor_stand::ArmorStandFlags {
-        small: 0,
-        show_arms: 1,
-        hide_base_plate: 2,
-        marker: 3,
-    }
-    mob::MobFlags {
-        ai_disabled: 0,
-        left_handed: 1,
-        attacking: 2,
-    }
-    bat::BatFlags {
-        hanging: 0,
-    }
-    abstract_horse::HorseFlags {
-        tamed: 1,
-        saddled: 2,
-        bred: 3,
-        eating_grass: 4,
-        angry: 5,
-        eating: 6,
-    }
-    fox::FoxFlags {
-        sitting: 0,
-        crouching: 2,
-        rolling_head: 3,
-        chasing: 4,
-        sleeping: 5,
-        walking: 6,
-        aggressive: 7,
-    }
-    panda::PandaFlags {
-        sneezing: 1,
-        playing: 2,
-        sitting: 3,
-        lying_on_back: 4,
-    }
-    tameable::TameableFlags {
-        sitting_pose: 0,
-        tamed: 2,
-    }
-    iron_golem::IronGolemFlags {
-        player_created: 0,
-    }
-    snow_golem::SnowGolemFlags {
-        has_pumpkin: 4,
-    }
-    blaze::BlazeFlags {
-        fire_active: 0,
-    }
-    vex::VexFlags {
-        charging: 0,
-    }
-    spider::SpiderFlags {
-        climbing_wall: 0,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn insert_remove_init_tracked_data() {
-        let mut td = TrackedData::default();
-
-        td.insert_init_value(0, 3, "foo");
-        td.insert_init_value(10, 6, "bar");
-        td.insert_init_value(5, 9, "baz");
-
-        assert!(td.remove_init_value(10));
-        assert!(!td.remove_init_value(10));
-
-        // Insertion overwrites value at index 0.
-        td.insert_init_value(0, 64, "quux");
-
-        assert!(td.remove_init_value(0));
-        assert!(td.remove_init_value(5));
-
-        assert!(td.init_data.as_slice().is_empty() || td.init_data.as_slice() == [0xff]);
-        assert!(td.init_data().is_none());
-
-        assert!(td.update_data.is_empty());
-    }
-
-    #[test]
-    fn get_set_flags() {
-        let mut flags = entity::Flags(0);
-
-        flags.set_on_fire(true);
-        let before = flags.clone();
-        assert_ne!(flags.0, 0);
-        flags.set_on_fire(true);
-        assert_eq!(before, flags);
-        flags.set_on_fire(false);
-        assert_eq!(flags.0, 0);
     }
 }

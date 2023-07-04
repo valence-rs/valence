@@ -401,7 +401,7 @@ fn build() -> anyhow::Result<TokenStream> {
                 pub statuses: super::EntityStatuses,
                 pub animations: super::EntityAnimations,
                 pub object_data: super::ObjectData,
-                pub tracked_data: super::TrackedData,
+                pub tracked_data: super::tracked_data::TrackedData,
             }]);
 
             bundle_init_fields.extend([quote! {
@@ -477,7 +477,7 @@ fn build() -> anyhow::Result<TokenStream> {
             systems.extend([quote! {
                 #[allow(clippy::needless_borrow)]
                 fn #system_name_ident(
-                    mut query: Query<(&#component_path, &mut TrackedData), Changed<#component_path>>
+                    mut query: Query<(&#component_path, &mut tracked_data::TrackedData), Changed<#component_path>>
                 ) {
                     for (value, mut tracked_data) in &mut query {
                         if *value == Default::default() {

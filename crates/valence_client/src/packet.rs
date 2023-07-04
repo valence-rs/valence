@@ -397,16 +397,6 @@ pub struct PlayerSpawnPositionS2c {
     pub angle: f32,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::PLAYER_SPAWN_S2C)]
-pub struct PlayerSpawnS2c {
-    pub entity_id: VarInt,
-    pub player_uuid: Uuid,
-    pub position: DVec3,
-    pub yaw: ByteAngle,
-    pub pitch: ByteAngle,
-}
-
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 #[packet(id = packet_id::SERVER_METADATA_S2C)]
 pub struct ServerMetadataS2c<'a> {

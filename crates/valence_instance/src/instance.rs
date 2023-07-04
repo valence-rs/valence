@@ -1,26 +1,22 @@
 //! Contains the [`Instance`] component and methods.
 
-use std::borrow::Cow;
 use std::collections::hash_map::{Entry, OccupiedEntry, VacantEntry};
 
 use bevy_ecs::prelude::*;
-use glam::{DVec3, Vec3, u32};
 use num_integer::div_ceil;
 use rustc_hash::FxHashMap;
 use valence_biome::BiomeRegistry;
 use valence_core::block_pos::BlockPos;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::ident::Ident;
-use valence_core::particle::{Particle, ParticleS2c};
 use valence_core::protocol::array::LengthPrefixedArray;
-use valence_core::protocol::encode::{PacketWriter, WritePacket};
-use valence_core::protocol::packet::sound::{PlaySoundS2c, Sound, SoundCategory};
-use valence_core::protocol::{Encode, Packet};
 use valence_core::Server;
 use valence_dimension::DimensionTypeRegistry;
+use valence_entity::EntityId;
 use valence_nbt::Compound;
 
 use crate::chunk::{Block, BlockRef, Chunk, IntoBlock, LoadedChunk, UnloadedChunk, MAX_HEIGHT};
+use crate::message::{MessageBuf, MessageCondition};
 
 /// An Instance represents a Minecraft world, which consist of [`Chunk`]s.
 /// It manages updating clients when chunks change, and caches chunk and entity
@@ -29,9 +25,9 @@ use crate::chunk::{Block, BlockRef, Chunk, IntoBlock, LoadedChunk, UnloadedChunk
 pub struct Instance {
     pub(super) chunks: FxHashMap<ChunkPos, LoadedChunk>,
     pub(super) info: InstanceInfo,
-    /// Packet data to send to all clients in this instance at the end of the
-    /// tick.
-    pub(super) packet_buf: Vec<u8>,
+    pub(super) message_buf: MessageBuf<MessageCondition>,
+    pub(super) entity_removals: Vec<EntityRemoval>,
+    pub(super) biome_changes: Vec<BiomeChange>,
 }
 
 #[doc(hidden)]
@@ -44,6 +40,19 @@ pub struct InstanceInfo {
     // We don't have a proper lighting engine yet, so we just fill chunks with full brightness.
     pub(super) sky_light_mask: Box<[u64]>,
     pub(super) sky_light_arrays: Box<[LengthPrefixedArray<u8, 2048>]>,
+}
+
+#[doc(hidden)]
+pub struct EntityRemoval {
+    pub pos: ChunkPos,
+    pub id: EntityId,
+}
+
+#[doc(hidden)]
+pub struct BiomeChange {
+    pub pos: ChunkPos,
+    /// Data for the ChunkBiomeDataS2c packet.
+    pub data: Vec<u8>,
 }
 
 impl Instance {
@@ -84,7 +93,9 @@ impl Instance {
                 sky_light_arrays: vec![LengthPrefixedArray([0xff; 2048]); light_section_count]
                     .into(),
             },
-            packet_buf: vec![],
+            message_buf: MessageBuf::new(server.compression_threshold()),
+            entity_removals: vec![],
+            biome_changes: vec![],
         }
     }
 
@@ -157,7 +168,6 @@ impl Instance {
             Entry::Occupied(oe) => ChunkEntry::Occupied(OccupiedChunkEntry { entry: oe }),
             Entry::Vacant(ve) => ChunkEntry::Vacant(VacantChunkEntry {
                 height: self.info.height,
-                compression_threshold: self.info.compression_threshold,
                 entry: ve,
             }),
         }
@@ -182,7 +192,7 @@ impl Instance {
         }
 
         self.chunks.shrink_to_fit();
-        self.packet_buf.shrink_to_fit();
+        self.message_buf.shrink_to_fit();
     }
 
     pub fn block(&self, pos: impl Into<BlockPos>) -> Option<BlockRef> {
@@ -243,43 +253,17 @@ impl Instance {
         Some((chunk, x, y, z))
     }
 
-    /// Writes a packet to all clients in view of `pos` in this instance. Has no
-    /// effect if there is no chunk at `pos`.
-    ///
-    /// This is more efficient than sending the packet to each client
-    /// individually.
-    pub fn write_packet_at<P>(&mut self, pkt: &P, pos: impl Into<ChunkPos>)
-    where
-        P: Packet + Encode,
-    {
-        if let Some(chunk) = self.chunks.get_mut(&pos.into()) {
-            chunk.write_packet(pkt);
-        }
-    }
-
-    /// Writes arbitrary packet data to all clients in view of `pos` in this
-    /// instance. Has no effect if there is no chunk at `pos`.
-    ///
-    /// The packet data must be properly compressed for the current compression
-    /// threshold but never encrypted. Don't use this function unless you know
-    /// what you're doing. Consider using [`Self::write_packet`] instead.
-    pub fn write_packet_bytes_at(&mut self, bytes: &[u8], pos: impl Into<ChunkPos>) {
-        if let Some(chunk) = self.chunks.get_mut(&pos.into()) {
-            chunk.write_packet_bytes(bytes);
-        }
-    }
-
-    /// An immutable view into this instance's packet buffer.
-    #[doc(hidden)]
-    pub fn packet_buf(&self) -> &[u8] {
-        &self.packet_buf
-    }
-
     #[doc(hidden)]
     pub fn info(&self) -> &InstanceInfo {
         &self.info
     }
 
+    #[doc(hidden)]
+    pub fn message_buf(&self) -> &MessageBuf<MessageCondition> {
+        &self.message_buf
+    }
+
+    /*
     // TODO: move to `valence_particle`.
     /// Puts a particle effect at the given position in the world. The particle
     /// effect is visible to all players in the instance with the
@@ -333,27 +317,7 @@ impl Instance {
             },
             ChunkPos::from_dvec3(position),
         );
-    }
-}
-
-/// Writing packets to the instance writes to the instance's global packet
-/// buffer. All clients in the instance will receive the packet at the end of
-/// the tick.
-///
-/// This is generally more efficient than sending the packet to each client
-/// individually.
-impl WritePacket for Instance {
-    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
-    where
-        P: Packet + Encode,
-    {
-        PacketWriter::new(&mut self.packet_buf, self.info.compression_threshold)
-            .write_packet_fallible(packet)
-    }
-
-    fn write_packet_bytes(&mut self, bytes: &[u8]) {
-        self.packet_buf.extend_from_slice(bytes)
-    }
+    }*/
 }
 
 #[derive(Debug)]
@@ -412,13 +376,12 @@ impl<'a> OccupiedChunkEntry<'a> {
 #[derive(Debug)]
 pub struct VacantChunkEntry<'a> {
     height: u32,
-    compression_threshold: Option<u32>,
     entry: VacantEntry<'a, ChunkPos, LoadedChunk>,
 }
 
 impl<'a> VacantChunkEntry<'a> {
     pub fn insert(self, chunk: UnloadedChunk) -> &'a mut LoadedChunk {
-        let mut loaded = LoadedChunk::new(self.height, self.compression_threshold);
+        let mut loaded = LoadedChunk::new(self.height);
         loaded.insert(chunk);
 
         self.entry.insert(loaded)

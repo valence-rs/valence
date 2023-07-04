@@ -431,7 +431,7 @@ impl Command for DisconnectClient {
                     reason: self.reason.into(),
                 });
 
-                entity.remove::<Client>();
+                entity.remove::<Client>(); // TODO ?
             }
         }
     }
@@ -803,69 +803,6 @@ fn update_chunk_load_dist(
         if dist.0 != old_dist.0 {
             client.write_packet(&ChunkLoadDistanceS2c {
                 view_distance: VarInt(dist.0.into()),
-            });
-        }
-    }
-}
-
-#[derive(WorldQuery)]
-struct EntityInitQuery {
-    entity_id: &'static EntityId,
-    uuid: &'static UniqueId,
-    kind: &'static EntityKind,
-    look: &'static Look,
-    head_yaw: &'static HeadYaw,
-    on_ground: &'static OnGround,
-    object_data: &'static ObjectData,
-    velocity: &'static Velocity,
-    tracked_data: &'static TrackedData,
-}
-
-impl EntityInitQueryItem<'_> {
-    /// Writes the appropriate packets to initialize an entity. This will spawn
-    /// the entity and initialize tracked data.
-    fn write_init_packets(&self, pos: DVec3, mut writer: impl WritePacket) {
-        match *self.kind {
-            EntityKind::MARKER => {}
-            EntityKind::EXPERIENCE_ORB => {
-                writer.write_packet(&ExperienceOrbSpawnS2c {
-                    entity_id: self.entity_id.get().into(),
-                    position: pos,
-                    count: self.object_data.0 as i16,
-                });
-            }
-            EntityKind::PLAYER => {
-                writer.write_packet(&PlayerSpawnS2c {
-                    entity_id: self.entity_id.get().into(),
-                    player_uuid: self.uuid.0,
-                    position: pos,
-                    yaw: ByteAngle::from_degrees(self.look.yaw),
-                    pitch: ByteAngle::from_degrees(self.look.pitch),
-                });
-
-                // Player spawn packet doesn't include head yaw for some reason.
-                writer.write_packet(&EntitySetHeadYawS2c {
-                    entity_id: self.entity_id.get().into(),
-                    head_yaw: ByteAngle::from_degrees(self.head_yaw.0),
-                });
-            }
-            _ => writer.write_packet(&EntitySpawnS2c {
-                entity_id: self.entity_id.get().into(),
-                object_uuid: self.uuid.0,
-                kind: self.kind.get().into(),
-                position: pos,
-                pitch: ByteAngle::from_degrees(self.look.pitch),
-                yaw: ByteAngle::from_degrees(self.look.yaw),
-                head_yaw: ByteAngle::from_degrees(self.head_yaw.0),
-                data: self.object_data.0.into(),
-                velocity: self.velocity.to_packet_units(),
-            }),
-        }
-
-        if let Some(init_data) = self.tracked_data.init_data() {
-            writer.write_packet(&EntityTrackerUpdateS2c {
-                entity_id: self.entity_id.get().into(),
-                metadata: init_data.into(),
             });
         }
     }
