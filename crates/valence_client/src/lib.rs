@@ -34,7 +34,6 @@ use packet::{
     DeathMessageS2c, DisconnectS2c, GameEventKind, GameJoinS2c, GameStateChangeS2c,
     PlayerRespawnS2c, PlayerSpawnPositionS2c, PlayerSpawnS2c,
 };
-use rand::Rng;
 use tracing::{debug, warn};
 use uuid::Uuid;
 use valence_biome::BiomeRegistry;
@@ -53,7 +52,6 @@ use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::{Encode, Packet};
 use valence_core::text::Text;
 use valence_core::uuid::UniqueId;
-use valence_core::Server;
 use valence_entity::packet::{
     EntitiesDestroyS2c, EntitySetHeadYawS2c, EntitySpawnS2c, EntityStatusS2c,
     EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, ExperienceOrbSpawnS2c,
@@ -590,10 +588,7 @@ pub struct View {
 
 impl ViewItem<'_> {
     pub fn get(&self) -> ChunkView {
-        ChunkView {
-            pos: self.pos.chunk_pos(),
-            dist: self.view_dist.0,
-        }
+        ChunkView::new(self.pos.chunk_pos(), self.view_dist.0)
     }
 }
 
@@ -605,10 +600,7 @@ pub struct OldView {
 
 impl OldViewItem<'_> {
     pub fn get(&self) -> ChunkView {
-        ChunkView {
-            pos: self.old_pos.chunk_pos(),
-            dist: self.old_view_dist.0,
-        }
+        ChunkView::new(self.old_pos.chunk_pos(), self.old_view_dist.0)
     }
 }
 
@@ -921,7 +913,7 @@ fn read_data_in_old_view(
             let view = ChunkView::new(old_chunk_pos, old_view_dist.0);
 
             // Iterate over all visible chunks from the previous tick.
-            view.for_each(|pos| {
+            for pos in view.iter() {
                 if let Some(chunk) = inst.chunk(pos) {
                     // Mark this chunk as being in view of a client.
                     chunk.set_viewed();
@@ -994,7 +986,7 @@ fn read_data_in_old_view(
                         }
                     }
                 }
-            });
+            }
         },
     );
 }
@@ -1054,7 +1046,7 @@ fn update_view(
                     //       client will do the unloading for us in that case?
 
                     // Unload all chunks and entities in the old view.
-                    old_view.for_each(|pos| {
+                    for pos in old_view.iter() {
                         if let Some(chunk) = old_inst.chunk(pos) {
                             // Unload the chunk if its state is not "removed", since we already
                             // unloaded "removed" chunks earlier.
@@ -1075,12 +1067,12 @@ fn update_view(
                                 }
                             }
                         }
-                    });
+                    }
                 }
 
                 if let Ok(inst) = instances.get(loc.0) {
                     // Load all chunks and entities in new view.
-                    view.for_each(|pos| {
+                    for pos in view.iter() {
                         if let Some(chunk) = inst.chunk(pos) {
                             // Mark this chunk as being in view of a client.
                             chunk.set_viewed();
@@ -1098,7 +1090,7 @@ fn update_view(
                                 }
                             }
                         }
-                    });
+                    }
                 } else {
                     debug!("Client entered nonexistent instance ({loc:?}).");
                 }
@@ -1109,7 +1101,7 @@ fn update_view(
                     // Unload chunks and entities in the old view and load chunks and entities in
                     // the new view. We don't need to do any work where the old and new view
                     // overlap.
-                    old_view.diff_for_each(view, |pos| {
+                    for pos in old_view.diff(view) {
                         if let Some(chunk) = inst.chunk(pos) {
                             // Unload the chunk if its state is not "removed", since we already
                             // unloaded "removed" chunks earlier.
@@ -1130,9 +1122,9 @@ fn update_view(
                                 }
                             }
                         }
-                    });
+                    }
 
-                    view.diff_for_each(old_view, |pos| {
+                    for pos in view.diff(old_view) {
                         if let Some(chunk) = inst.chunk(pos) {
                             // Load the chunk unless it's already unloaded.
                             if chunk.state() != ChunkState::Removed
@@ -1155,7 +1147,7 @@ fn update_view(
                                 }
                             }
                         }
-                    });
+                    }
                 }
             }
         },

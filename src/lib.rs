@@ -23,6 +23,7 @@
 
 use bevy_app::{PluginGroup, PluginGroupBuilder};
 
+pub mod testing;
 #[cfg(test)]
 mod tests;
 

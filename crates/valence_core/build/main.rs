@@ -1,5 +1,6 @@
 use valence_build_utils::{rerun_if_changed, write_generated_file};
 
+mod chunk_pos;
 mod item;
 mod packet_id;
 mod sound;
@@ -17,6 +18,7 @@ pub fn main() -> anyhow::Result<()> {
     write_generated_file(sound::build()?, "sound.rs")?;
     write_generated_file(translation_key::build()?, "translation_key.rs")?;
     write_generated_file(packet_id::build()?, "packet_id.rs")?;
+    write_generated_file(chunk_pos::build(), "chunk_pos.rs")?;
 
     Ok(())
 }

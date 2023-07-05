@@ -2,8 +2,9 @@ use bevy_app::App;
 use valence_client::packet::GameStateChangeS2c;
 use valence_client::weather::{Rain, Thunder};
 use valence_client::Client;
+use valence_instance::Instance;
 
-use super::*;
+use crate::testing::{scenario_single_client, PacketFrames};
 
 #[test]
 fn test_weather_instance() {
@@ -12,7 +13,7 @@ fn test_weather_instance() {
 
     // Process a tick to get past the "on join" logic.
     app.update();
-    client_helper.clear_sent();
+    client_helper.clear_received();
 
     // Get the instance entity.
     let instance_ent = app
@@ -59,7 +60,7 @@ fn test_weather_client() {
 
     // Process a tick to get past the "on join" logic.
     app.update();
-    client_helper.clear_sent();
+    client_helper.clear_received();
 
     // Get the client entity.
     let client_ent = app

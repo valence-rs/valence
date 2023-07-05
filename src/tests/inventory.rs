@@ -1,6 +1,8 @@
-use bevy_app::App;
+use bevy_app::prelude::*;
+use bevy_ecs::prelude::*;
 use valence_core::game_mode::GameMode;
 use valence_core::item::{ItemKind, ItemStack};
+use valence_core::protocol::var_int::VarInt;
 use valence_inventory::packet::{
     ClickMode, ClickSlotC2s, CloseScreenS2c, CreativeInventoryActionC2s, InventoryS2c,
     OpenScreenS2c, ScreenHandlerSlotUpdateS2c, SlotChange, UpdateSelectedSlotC2s,
@@ -10,7 +12,7 @@ use valence_inventory::{
     Inventory, InventoryKind, OpenInventory,
 };
 
-use super::*;
+use crate::testing::scenario_single_client;
 
 #[test]
 fn test_should_open_inventory() {
@@ -22,7 +24,7 @@ fn test_should_open_inventory() {
 
     // Process a tick to get past the "on join" logic.
     app.update();
-    client_helper.clear_sent();
+    client_helper.clear_received();
 
     // Open the inventory.
     let open_inventory = OpenInventory::new(inventory_ent);
@@ -51,7 +53,7 @@ fn test_should_close_inventory() {
 
     // Process a tick to get past the "on join" logic.
     app.update();
-    client_helper.clear_sent();
+    client_helper.clear_received();
 
     // Open the inventory.
     let open_inventory = OpenInventory::new(inventory_ent);
@@ -61,7 +63,7 @@ fn test_should_close_inventory() {
         .insert(open_inventory);
 
     app.update();
-    client_helper.clear_sent();
+    client_helper.clear_received();
 
     // Close the inventory.
     app.world
@@ -87,7 +89,7 @@ fn test_should_remove_invalid_open_inventory() {
 
     // Process a tick to get past the "on join" logic.
     app.update();
-    client_helper.clear_sent();
+    client_helper.clear_received();
 
     // Open the inventory.
     let open_inventory = OpenInventory::new(inventory_ent);
@@ -97,7 +99,7 @@ fn test_should_remove_invalid_open_inventory() {
         .insert(open_inventory);
 
     app.update();
-    client_helper.clear_sent();
+    client_helper.clear_received();
 
     // Remove the inventory.
     app.world.despawn(inventory_ent);
@@ -118,7 +120,7 @@ fn test_should_modify_player_inventory_click_slot() {
 
     // Process a tick to get past the "on join" logic.
     app.update();
-    client_helper.clear_sent();
+    client_helper.clear_received();
 
     let mut inventory = app
         .world
@@ -190,7 +192,7 @@ fn test_should_modify_player_inventory_server_side() {
     inventory.set_slot(20, ItemStack::new(ItemKind::Diamond, 2, None));
 
     app.update();
-    client_helper.clear_sent();
+    client_helper.clear_received();
 
     // Modify the inventory.
     let mut inventory = app
@@ -215,7 +217,7 @@ fn test_should_sync_entire_player_inventory() {
 
     // Process a tick to get past the "on join" logic.
     app.update();
-    client_helper.clear_sent();
+    client_helper.clear_received();
 
     let mut inventory = app
         .world
@@ -257,7 +259,7 @@ fn test_should_modify_open_inventory_click_slot() {
 
     // Process a tick to get past the "on join" logic.
     app.update();
-    client_helper.clear_sent();
+    client_helper.clear_received();
 
     // Make the client click the slot and pick up the item.
     let inv_state = app.world.get::<ClientInventoryState>(client_ent).unwrap();
@@ -310,7 +312,7 @@ fn test_should_modify_open_inventory_server_side() {
 
     // Process a tick to get past the "on join" logic.
     app.update();
-    client_helper.clear_sent();
+    client_helper.clear_received();
 
     // Modify the inventory.
     let mut inventory = app
@@ -347,7 +349,7 @@ fn test_should_sync_entire_open_inventory() {
 
     // Process a tick to get past the "on join" logic.
     app.update();
-    client_helper.clear_sent();
+    client_helper.clear_received();
 
     let mut inventory = app
         .world
@@ -374,7 +376,7 @@ fn test_set_creative_mode_slot_handling() {
 
     // Process a tick to get past the "on join" logic.
     app.update();
-    client_helper.clear_sent();
+    client_helper.clear_received();
 
     client_helper.send(&CreativeInventoryActionC2s {
         slot: 36,
@@ -407,7 +409,7 @@ fn test_ignore_set_creative_mode_slot_if_not_creative() {
 
     // Process a tick to get past the "on join" logic.
     app.update();
-    client_helper.clear_sent();
+    client_helper.clear_received();
 
     client_helper.send(&CreativeInventoryActionC2s {
         slot: 36,
@@ -433,7 +435,7 @@ fn test_window_id_increments() {
 
     // Process a tick to get past the "on join" logic.
     app.update();
-    client_helper.clear_sent();
+    client_helper.clear_received();
 
     for _ in 0..3 {
         let open_inventory = OpenInventory::new(inventory_ent);
@@ -467,7 +469,7 @@ fn test_should_handle_set_held_item() {
 
     // Process a tick to get past the "on join" logic.
     app.update();
-    client_helper.clear_sent();
+    client_helper.clear_received();
 
     client_helper.send(&UpdateSelectedSlotC2s { slot: 4 });
 
@@ -489,7 +491,7 @@ fn should_not_increment_state_id_on_cursor_item_change() {
 
     // Process a tick to get past the "on join" logic.
     app.update();
-    client_helper.clear_sent();
+    client_helper.clear_received();
 
     let inv_state = app
         .world
@@ -529,7 +531,7 @@ mod dropping_items {
 
         // Process a tick to get past the "on join" logic.
         app.update();
-        client_helper.clear_sent();
+        client_helper.clear_received();
 
         let mut inventory = app
             .world
@@ -584,7 +586,7 @@ mod dropping_items {
 
         // Process a tick to get past the "on join" logic.
         app.update();
-        client_helper.clear_sent();
+        client_helper.clear_received();
 
         let mut inventory = app
             .world
@@ -633,7 +635,7 @@ mod dropping_items {
 
         // Process a tick to get past the "on join" logic.
         app.update();
-        client_helper.clear_sent();
+        client_helper.clear_received();
 
         app.world.entity_mut(client_ent).insert(GameMode::Creative);
 
@@ -668,7 +670,7 @@ mod dropping_items {
 
         // Process a tick to get past the "on join" logic.
         app.update();
-        client_helper.clear_sent();
+        client_helper.clear_received();
 
         let mut cursor_item = app
             .world
@@ -724,7 +726,7 @@ mod dropping_items {
 
         // Process a tick to get past the "on join" logic.
         app.update();
-        client_helper.clear_sent();
+        client_helper.clear_received();
 
         let inv_state = app
             .world
@@ -779,7 +781,7 @@ mod dropping_items {
 
         // Process a tick to get past the "on join" logic.
         app.update();
-        client_helper.clear_sent();
+        client_helper.clear_received();
 
         let inv_state = app
             .world
@@ -852,7 +854,7 @@ mod dropping_items {
 
         app.update();
 
-        client_helper.clear_sent();
+        client_helper.clear_received();
 
         let inv_state = app
             .world
@@ -935,7 +937,7 @@ fn should_drop_item_stack_player_open_inventory_with_dropkey() {
     let _inventory_ent = set_up_open_inventory(&mut app, client_ent);
 
     app.update();
-    client_helper.clear_sent();
+    client_helper.clear_received();
 
     let inv_state = app
         .world
@@ -996,7 +998,7 @@ fn dragging_items() {
 
     // Process a tick to get past the "on join" logic.
     app.update();
-    client_helper.clear_sent();
+    client_helper.clear_received();
 
     app.world.get_mut::<CursorItem>(client_ent).unwrap().0 =
         Some(ItemStack::new(ItemKind::Diamond, 64, None));

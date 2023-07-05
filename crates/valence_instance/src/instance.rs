@@ -73,7 +73,7 @@ impl Instance {
         }
 
         Self {
-            chunks: FxHashMap::default(),
+            chunks: Default::default(),
             info: InstanceInfo {
                 dimension_type_name,
                 height: dim.height as u32,
