@@ -35,6 +35,8 @@ use valence_entity::{
 };
 
 pub mod chunk;
+#[doc(hidden)]
+pub mod chunk_bvh;
 mod instance;
 pub mod message;
 pub mod packet;

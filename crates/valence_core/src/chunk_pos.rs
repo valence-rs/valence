@@ -123,6 +123,17 @@ impl ChunkView {
     pub fn diff(self, other: Self) -> impl DoubleEndedIterator<Item = ChunkPos> + Clone {
         self.iter().filter(move |&p| !other.contains(p))
     }
+
+    /// Returns a `(min, max)` tuple of a tight bounding box containing this
+    /// view.
+    pub fn bounding_box(self) -> (ChunkPos, ChunkPos) {
+        let r = self.dist as i32 + EXTRA_VIEW_RADIUS;
+
+        (
+            ChunkPos::new(self.pos.x - r, self.pos.z - r),
+            ChunkPos::new(self.pos.x + r, self.pos.x + r),
+        )
+    }
 }
 
 #[cfg(test)]
@@ -150,5 +161,18 @@ mod tests {
 
         assert_eq!(ChunkPos::from(<(i32, i32)>::from(p)), p);
         assert_eq!(ChunkPos::from(<[i32; 2]>::from(p)), p);
+    }
+
+    #[test]
+    fn view_bounding_box() {
+        let view = ChunkView::new(ChunkPos::new(5, -4), 32);
+
+        let (min, max) = view.bounding_box();
+
+        for z in min.z..=max.z {
+            for x in min.x..=max.x {
+                assert!(view.contains(ChunkPos::new(x, z)));
+            }
+        }
     }
 }
