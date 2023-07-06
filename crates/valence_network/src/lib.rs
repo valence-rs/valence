@@ -19,6 +19,7 @@
 
 mod byte_channel;
 mod connect;
+mod legacy_ping;
 pub mod packet;
 mod packet_io;
 
@@ -34,6 +35,7 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use connect::do_accept_loop;
 use flume::{Receiver, Sender};
+pub use legacy_ping::{ServerListLegacyPingPayload, ServerListLegacyPingResponse};
 use rand::rngs::OsRng;
 use rsa::{PublicKeyParts, RsaPrivateKey};
 use serde::Serialize;
@@ -45,7 +47,7 @@ use tracing::error;
 use uuid::Uuid;
 use valence_client::{ClientBundle, ClientBundleArgs, Properties, SpawnClientsSet};
 use valence_core::text::Text;
-use valence_core::Server;
+use valence_core::{Server, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
 pub struct NetworkPlugin;
 
@@ -347,6 +349,40 @@ pub trait NetworkCallbacks: Send + Sync + 'static {
         }
     }
 
+    /// Called when the server receives a Server List Legacy Ping query.
+    /// Data for the response can be provided or the query can be ignored.
+    ///
+    /// This function is called from within a tokio runtime.
+    ///
+    /// # Default Implementation
+    ///
+    /// [`server_list_ping`][Self::server_list_ping] re-used.
+    async fn server_list_legacy_ping(
+        &self,
+        shared: &SharedNetworkState,
+        remote_addr: SocketAddr,
+        payload: Option<ServerListLegacyPingPayload>,
+    ) -> ServerListLegacyPing {
+        #![allow(unused_variables)]
+
+        let protocol = payload.map(|p| p.protocol).unwrap_or(0);
+
+        match self.server_list_ping(shared, remote_addr, protocol).await {
+            ServerListPing::Respond {
+                online_players,
+                max_players,
+                player_sample,
+                description,
+                favicon_png,
+            } => ServerListLegacyPing::Respond(
+                ServerListLegacyPingResponse::new(PROTOCOL_VERSION, online_players, max_players)
+                    .description(description.try_into_legacy().unwrap())
+                    .version(format!("§dValence §5{}", MINECRAFT_VERSION)),
+            ),
+            ServerListPing::Ignore => ServerListLegacyPing::Ignore,
+        }
+    }
+
     /// This function is called every 1.5 seconds to broadcast a packet over the
     /// local network in order to advertise the server to the multiplayer
     /// screen with a configurable MOTD.
@@ -560,6 +596,18 @@ pub enum ServerListPing<'a> {
         /// No icon is used if the slice is empty.
         favicon_png: &'a [u8],
     },
+    /// Ignores the query and disconnects from the client.
+    #[default]
+    Ignore,
+}
+
+/// The result of the Server List Legacy Ping [callback].
+///
+/// [callback]: NetworkCallbacks::server_list_legacy_ping
+#[derive(Clone, Default, Debug)]
+pub enum ServerListLegacyPing {
+    /// Responds to the server list legacy ping with the given information.
+    Respond(ServerListLegacyPingResponse),
     /// Ignores the query and disconnects from the client.
     #[default]
     Ignore,

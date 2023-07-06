@@ -555,6 +555,65 @@ impl Text {
             TextContent::StorageNbt { nbt, .. } => nbt.is_empty(),
         }
     }
+
+    /// Attempts to convert the [`Text`] object to a plain string with the [legacy formatting (`§` and format codes)](https://wiki.vg/Chat#Old_system)
+    ///
+    /// Fails if the [`Text`] object contains anything other than text, color
+    /// and styles, or if any of the colors are not on [the legacy color list](https://wiki.vg/Chat#Colors).
+    pub fn try_into_legacy(&self) -> Option<String> {
+        fn try_into_legacy_inner(this: &Text, mut result: String) -> Option<String> {
+            if let Some(color) = this.0.color {
+                result.push('§');
+                let code = match color {
+                    Color::BLACK => '0',
+                    Color::DARK_BLUE => '1',
+                    Color::DARK_GREEN => '2',
+                    Color::DARK_AQUA => '3',
+                    Color::DARK_RED => '4',
+                    Color::DARK_PURPLE => '5',
+                    Color::GOLD => '6',
+                    Color::GRAY => '7',
+                    Color::DARK_GRAY => '8',
+                    Color::BLUE => '9',
+                    Color::GREEN => 'a',
+                    Color::AQUA => 'b',
+                    Color::RED => 'c',
+                    Color::LIGHT_PURPLE => 'd',
+                    Color::YELLOW => 'e',
+                    Color::WHITE => 'f',
+                    _ => return None,
+                };
+                result.push(code);
+            }
+            if let Some(true) = this.0.obfuscated {
+                result.push_str("§k");
+            }
+            if let Some(true) = this.0.bold {
+                result.push_str("§l");
+            }
+            if let Some(true) = this.0.strikethrough {
+                result.push_str("§m");
+            }
+            if let Some(true) = this.0.underlined {
+                result.push_str("§n");
+            }
+            if let Some(true) = this.0.italic {
+                result.push_str("§o");
+            }
+            if let TextContent::Text { text } = &this.0.content {
+                result.push_str(text);
+                for child in &this.0.extra {
+                    result = try_into_legacy_inner(child, result)?;
+                }
+
+                Some(result)
+            } else {
+                None
+            }
+        }
+
+        try_into_legacy_inner(self, String::new())
+    }
 }
 
 /// Provides the methods necessary for working with [`Text`] objects.
