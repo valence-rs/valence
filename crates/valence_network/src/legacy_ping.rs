@@ -105,13 +105,18 @@ pub(crate) async fn try_handle_legacy_ping(
         _ => None,
     };
 
-    if let ServerListLegacyPing::Respond(response) = shared
+    if let ServerListLegacyPing::Respond(mut response) = shared
         .0
         .callbacks
         .inner
         .server_list_legacy_ping(shared, remote_addr, payload)
         .await
     {
+        if format == PingFormat::Pre1_4 {
+            // remove formatting for pre-1.4 legacy pings
+            remove_formatting(&mut response.description);
+        }
+
         let separator = match format {
             PingFormat::Pre1_4 => '§',
             _ => '\0',
@@ -138,15 +143,12 @@ pub(crate) async fn try_handle_legacy_ping(
             );
         }
 
+        // Description
         buf.extend(
-            if format == PingFormat::Pre1_4 {
-                // remove formatting for pre-1.4 legacy pings
-                remove_formatting(&response.description)
-            } else {
-                response.description
-            }
-            .encode_utf16()
-            .flat_map(|c| c.to_be_bytes()),
+            response
+                .description
+                .encode_utf16()
+                .flat_map(|c| c.to_be_bytes()),
         );
 
         // Online and max players
@@ -287,19 +289,14 @@ fn int_len(num: i32) -> usize {
 }
 
 // Removes all `§` and their modifiers, if any
-fn remove_formatting(input: &str) -> String {
-    let mut result = String::with_capacity(input.len());
-    let mut skip_next = false;
-
-    for c in input.chars() {
-        if skip_next {
-            skip_next = false;
-        } else if c != '§' {
-            result.push(c);
+fn remove_formatting(string: &mut String) {
+    while let Some(pos) = string.rfind('§') {
+        // + 2 because we know that `§` is 2 bytes
+        if let Some(c) = string[(pos + 2)..].chars().next() {
+            // remove next char too if any
+            string.replace_range(pos..=(pos + 2 + c.len_utf8()), "");
         } else {
-            skip_next = true;
+            string.remove(pos);
         }
     }
-
-    result
 }
