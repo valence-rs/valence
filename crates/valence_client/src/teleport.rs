@@ -5,12 +5,13 @@ use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 
 use super::*;
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
+use crate::spawn::update_respawn_position;
 
 pub(super) fn build(app: &mut App) {
     app.add_systems(
         PostUpdate,
         teleport
-            .after(update_view)
+            .after(update_view_and_layers)
             .before(update_respawn_position)
             .in_set(UpdateClientsSet),
     )

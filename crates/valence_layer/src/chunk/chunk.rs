@@ -314,9 +314,9 @@ pub(super) const fn bit_width(n: usize) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use crate::chunk::{loaded::LoadedChunk, unloaded::UnloadedChunk};
-
     use super::*;
+    use crate::chunk::loaded::LoadedChunk;
+    use crate::chunk::unloaded::UnloadedChunk;
 
     #[test]
     fn chunk_get_set() {

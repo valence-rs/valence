@@ -15,6 +15,7 @@
 //! New joined players are handled, so that they are get weather events from
 //! the instance.
 
+/*
 use super::*;
 use crate::packet::{GameEventKind, GameStateChangeS2c};
 
@@ -212,3 +213,4 @@ fn thunder_end_per_client(
         }
     }
 }
+*/

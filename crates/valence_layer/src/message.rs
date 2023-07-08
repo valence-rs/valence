@@ -1,7 +1,7 @@
 use core::fmt;
 use std::ops::Range;
 
-use valence_core::chunk_pos::ChunkPos;
+use valence_core::chunk_pos::{ChunkPos, ChunkView};
 
 use crate::bvh::{ChunkBvh, GetChunkPos};
 
@@ -141,13 +141,17 @@ where
     pub fn iter_global(&self) -> impl Iterator<Item = (G, Range<usize>)> + '_ {
         debug_assert!(self.is_ready);
 
-        self.global.iter().map(|(m, r)| (*m, r.start as usize..r.end as usize))
+        self.global
+            .iter()
+            .map(|(m, r)| (*m, r.start as usize..r.end as usize))
     }
 
-    pub fn query_local(&self) {
+    pub fn query_local(&self, view: ChunkView, mut f: impl FnMut(L, Range<usize>)) {
         debug_assert!(self.is_ready);
 
-        todo!()
+        self.bvh.query(view, |pair| {
+            f(pair.msg, pair.range.start as usize..pair.range.end as usize)
+        });
     }
 }
 
@@ -180,8 +184,8 @@ where
 
 #[derive(Debug)]
 struct MessagePair<M> {
-    pub msg: M,
-    pub range: Range<u32>,
+    msg: M,
+    range: Range<u32>,
 }
 
 impl<M: GetChunkPos> GetChunkPos for MessagePair<M> {

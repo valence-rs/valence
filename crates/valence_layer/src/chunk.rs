@@ -20,14 +20,12 @@ use valence_core::Server;
 use valence_dimension::DimensionTypeRegistry;
 use valence_nbt::Compound;
 
-use crate::bvh::GetChunkPos;
-use crate::chunk::chunk::MAX_HEIGHT;
-use crate::message::Messages;
-use crate::{Layer, UpdateLayersPreClient};
-
-pub use self::chunk::*;
+pub use self::chunk::{MAX_HEIGHT, *};
 pub use self::loaded::LoadedChunk;
 pub use self::unloaded::UnloadedChunk;
+use crate::bvh::GetChunkPos;
+use crate::message::Messages;
+use crate::{Layer, UpdateLayersPreClient};
 
 #[derive(Component, Debug)]
 pub struct ChunkLayer {
@@ -55,8 +53,9 @@ type ChunkLayerMessages = Messages<GlobalMsg, LocalMsg>;
 pub enum GlobalMsg {
     /// Send packet data to all clients viewing the layer.
     Packet,
-    /// Send packet data to all clients viewing layer, except the client identified by `except`.
-    PacketExcept,
+    /// Send packet data to all clients viewing the layer, except the client
+    /// identified by `except`.
+    PacketExcept { except: Entity },
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
@@ -464,9 +463,7 @@ fn update_chunks_pre_client(mut layers: Query<&mut ChunkLayer>) {
 
 fn update_chunks_post_client(mut layers: Query<&mut ChunkLayer>) {
     for mut layer in &mut layers {
-        layer
-            .chunks
-            .retain(|&pos, chunk| chunk.update_post_client(pos));
+        layer.chunks.retain(|_, chunk| chunk.update_post_client());
 
         layer.messages.unready();
     }

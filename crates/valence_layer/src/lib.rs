@@ -49,11 +49,14 @@ impl<Client: Component> Default for LayerPlugin<Client> {
     }
 }
 
-/// When entity and chunk changes are written to layers. Systems that modify chunks and entities should run _before_ this. Systems that need to read layer messages should run _after_ this.
+/// When entity and chunk changes are written to layers. Systems that modify
+/// chunks and entities should run _before_ this. Systems that need to read
+/// layer messages should run _after_ this.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct UpdateLayersPreClient;
 
-/// When layers are cleared and messages from this tick are lost. Systems that read layer messages should run _before_ this.
+/// When layers are cleared and messages from this tick are lost. Systems that
+/// read layer messages should run _before_ this.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct UpdateLayersPostClient;
 

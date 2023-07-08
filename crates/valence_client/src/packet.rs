@@ -11,7 +11,6 @@ use valence_core::direction::Direction;
 use valence_core::game_mode::GameMode;
 use valence_core::hand::Hand;
 use valence_core::ident::Ident;
-use valence_core::protocol::byte_angle::ByteAngle;
 use valence_core::protocol::global_pos::GlobalPos;
 use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::var_long::VarLong;

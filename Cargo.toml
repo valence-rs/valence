@@ -48,7 +48,7 @@ valence_client.workspace = true
 valence_core.workspace = true
 valence_dimension.workspace = true
 valence_entity.workspace = true
-valence_instance.workspace = true
+valence_layer.workspace = true
 valence_inventory = { workspace = true, optional = true }
 valence_nbt.workspace = true
 valence_network = { workspace = true, optional = true }
@@ -170,7 +170,7 @@ valence_core_macros.path = "crates/valence_core_macros"
 valence_core.path = "crates/valence_core"
 valence_dimension.path = "crates/valence_dimension"
 valence_entity.path = "crates/valence_entity"
-valence_instance.path = "crates/valence_instance"
+valence_layer.path = "crates/valence_layer"
 valence_inventory.path = "crates/valence_inventory"
 valence_nbt = { path = "crates/valence_nbt", features = ["uuid"] }
 valence_network.path = "crates/valence_network"

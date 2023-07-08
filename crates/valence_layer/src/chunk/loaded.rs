@@ -30,7 +30,9 @@ use crate::packet::{
 #[derive(Debug)]
 pub struct LoadedChunk {
     state: ChunkState,
-    /// A count of the clients viewing this chunk. Useful for knowing if it's necessary to record changes, since no client would be in view to receive the changes if this were nonzero.
+    /// A count of the clients viewing this chunk. Useful for knowing if it's
+    /// necessary to record changes, since no client would be in view to receive
+    /// the changes if this were nonzero.
     viewer_count: AtomicU32,
     /// Block and biome data for the chunk.
     sections: Box<[Section]>,
@@ -223,8 +225,7 @@ impl LoadedChunk {
     /// Performs the changes necessary to prepare this chunk for client updates.
     /// Notably:
     /// - Message is sent to spawn or despawn the chunk.
-    /// - Chunk update packets are written to this chunk's packet
-    ///   buffer.
+    /// - Chunk update packets are written to this chunk's packet buffer.
     /// - Recorded changes are cleared.
     pub(crate) fn update_pre_client(
         &mut self,
@@ -355,7 +356,7 @@ impl LoadedChunk {
     }
 
     /// Returns if the chunk should be retained.
-    pub(crate) fn update_post_client(&mut self, pos: ChunkPos) -> bool {
+    pub(crate) fn update_post_client(&mut self) -> bool {
         // Changes were already cleared in `update_pre_client`.
         self.assert_no_changes();
 
@@ -364,7 +365,15 @@ impl LoadedChunk {
                 self.state = ChunkState::Normal;
                 true
             }
-            ChunkState::Removed | ChunkState::AddedRemoved => false,
+            ChunkState::Removed | ChunkState::AddedRemoved => {
+                debug_assert_eq!(
+                    *self.viewer_count.get_mut(),
+                    0,
+                    "chunk viewer count should be zero by the time it's removed"
+                );
+
+                false
+            }
         }
     }
 

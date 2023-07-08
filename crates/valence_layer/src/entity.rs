@@ -23,30 +23,35 @@ pub struct EntityLayer {
     compression_threshold: Option<u32>,
 }
 
-#[doc(hidden)]
-pub type EntityLayerMessages = Messages<GlobalMsg, LocalMsg>;
+type EntityLayerMessages = Messages<GlobalMsg, LocalMsg>;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum GlobalMsg {
     /// Send packet data to all clients viewing the layer.
     Packet,
-    /// Send packet data to all clients viewing layer, except the client identified by `except`.
-    PacketExcept,
+    /// Send packet data to all clients viewing layer, except the client
+    /// identified by `except`.
+    PacketExcept { except: Entity },
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum LocalMsg {
+    /// Spawn entities if the client is not already viewing `src_layer`. Message
+    /// data is the serialized form of [`Entity`].
+    SpawnEntity { pos: ChunkPos, src_layer: Entity },
+    /// Spawn entities if the client is not in view of `src_pos`. Message data
+    /// is the serialized form of [`Entity`].
+    SpawnEntityTransition { pos: ChunkPos, src_pos: ChunkPos },
     /// Send packet data to all clients viewing the layer in view of `pos`.
     PacketAt { pos: ChunkPos },
-    /// Send packet data to all clients viewing the layer in view of `pos`, except the client identified by `except`.
+    /// Send packet data to all clients viewing the layer in view of `pos`,
+    /// except the client identified by `except`.
     PacketAtExcept { pos: ChunkPos, except: Entity },
-    /// Spawn entities if the client is not already viewing `src_layer`. Message data is the serialized form of [`Entity`].
-    SpawnEntity { pos: ChunkPos, src_layer: Entity },
-    /// Spawn entities if the client is not in view of `src_pos`. Message data is the serialized form of [`Entity`].
-    SpawnEntityTransition { pos: ChunkPos, src_pos: ChunkPos },
-    /// Despawn entities if the client is not already viewing `dest_layer`. Message data is the serialized form of `EntityId`.
+    /// Despawn entities if the client is not already viewing `dest_layer`.
+    /// Message data is the serialized form of `EntityId`.
     DespawnEntity { pos: ChunkPos, dest_layer: Entity },
-    /// Despawn entities if the client is not in view of `dest_pos`. Message data is the serialized form of `EntityId`.
+    /// Despawn entities if the client is not in view of `dest_pos`. Message
+    /// data is the serialized form of `EntityId`.
     DespawnEntityTransition { pos: ChunkPos, dest_pos: ChunkPos },
 }
 
@@ -82,6 +87,11 @@ impl EntityLayer {
             .get(&pos.into())
             .into_iter()
             .flat_map(|entities| entities.iter().copied())
+    }
+
+    #[doc(hidden)]
+    pub fn messages(&self) -> &EntityLayerMessages {
+        &self.messages
     }
 }
 
