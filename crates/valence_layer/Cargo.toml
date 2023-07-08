@@ -1,5 +1,5 @@
 [package]
-name = "valence_instance"
+name = "valence_layer"
 version.workspace = true
 edition.workspace = true
 

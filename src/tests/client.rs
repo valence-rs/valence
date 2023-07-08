@@ -11,7 +11,7 @@ use valence_core::chunk_pos::{ChunkPos, ChunkView};
 use valence_core::protocol::Packet;
 use valence_entity::cow::CowEntityBundle;
 use valence_entity::packet::{EntitiesDestroyS2c, EntitySpawnS2c, MoveRelativeS2c};
-use valence_entity::{Location, Position};
+use valence_entity::{EntityLayerId, Position};
 use valence_instance::chunk::UnloadedChunk;
 use valence_instance::packet::{ChunkDataS2c, UnloadChunkS2c};
 use valence_instance::Instance;
@@ -118,7 +118,7 @@ fn entity_chunk_spawn_despawn() {
         .world
         .spawn(CowEntityBundle {
             position: Position::new([8.0, 0.0, 8.0]),
-            location: Location(inst_ent),
+            location: EntityLayerId(inst_ent),
             ..Default::default()
         })
         .id();

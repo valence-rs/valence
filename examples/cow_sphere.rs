@@ -51,7 +51,7 @@ fn setup(
     commands.spawn_batch([0; SPHERE_AMOUNT].map(|_| {
         (
             SpherePartBundle {
-                location: Location(instance_id),
+                location: EntityLayerId(instance_id),
                 ..Default::default()
             },
             SpherePart,
@@ -60,7 +60,7 @@ fn setup(
 }
 
 fn init_clients(
-    mut clients: Query<(&mut Location, &mut Position, &mut GameMode), Added<Client>>,
+    mut clients: Query<(&mut EntityLayerId, &mut Position, &mut GameMode), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
 ) {
     for (mut loc, mut pos, mut game_mode) in &mut clients {

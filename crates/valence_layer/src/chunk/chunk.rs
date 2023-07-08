@@ -1,14 +1,8 @@
-pub mod loaded;
-mod paletted_container;
-pub mod unloaded;
-
-pub use loaded::LoadedChunk;
-pub use unloaded::UnloadedChunk;
 use valence_biome::BiomeId;
 use valence_block::BlockState;
 use valence_nbt::Compound;
 
-use self::paletted_container::PalettedContainer;
+use super::paletted_container::PalettedContainer;
 
 /// Common operations on chunks. Notable implementors are [`LoadedChunk`] and
 /// [`UnloadedChunk`].
@@ -213,7 +207,7 @@ pub trait Chunk {
     ///
     /// This method must not alter the semantics of the chunk in any observable
     /// way.
-    fn optimize(&mut self);
+    fn shrink_to_fit(&mut self);
 }
 
 /// Represents a complete block, which is a pair of block state and optional NBT
@@ -274,20 +268,21 @@ impl IntoBlock for BlockState {
     }
 }
 
-const SECTION_BLOCK_COUNT: usize = 16 * 16 * 16;
-const SECTION_BIOME_COUNT: usize = 4 * 4 * 4;
+pub(super) const SECTION_BLOCK_COUNT: usize = 16 * 16 * 16;
+pub(super) const SECTION_BIOME_COUNT: usize = 4 * 4 * 4;
 
 /// The maximum height of a chunk.
 pub const MAX_HEIGHT: u32 = 4096;
 
-type BlockStateContainer =
+pub(super) type BlockStateContainer =
     PalettedContainer<BlockState, SECTION_BLOCK_COUNT, { SECTION_BLOCK_COUNT / 2 }>;
 
-type BiomeContainer = PalettedContainer<BiomeId, SECTION_BIOME_COUNT, { SECTION_BIOME_COUNT / 2 }>;
+pub(super) type BiomeContainer =
+    PalettedContainer<BiomeId, SECTION_BIOME_COUNT, { SECTION_BIOME_COUNT / 2 }>;
 
 #[inline]
 #[track_caller]
-fn check_block_oob(chunk: &impl Chunk, x: u32, y: u32, z: u32) {
+pub(super) fn check_block_oob(chunk: &impl Chunk, x: u32, y: u32, z: u32) {
     assert!(
         x < 16 && y < chunk.height() && z < 16,
         "chunk block offsets of ({x}, {y}, {z}) are out of bounds"
@@ -296,7 +291,7 @@ fn check_block_oob(chunk: &impl Chunk, x: u32, y: u32, z: u32) {
 
 #[inline]
 #[track_caller]
-fn check_biome_oob(chunk: &impl Chunk, x: u32, y: u32, z: u32) {
+pub(super) fn check_biome_oob(chunk: &impl Chunk, x: u32, y: u32, z: u32) {
     assert!(
         x < 4 && y < chunk.height() / 4 && z < 4,
         "chunk biome offsets of ({x}, {y}, {z}) are out of bounds"
@@ -305,7 +300,7 @@ fn check_biome_oob(chunk: &impl Chunk, x: u32, y: u32, z: u32) {
 
 #[inline]
 #[track_caller]
-fn check_section_oob(chunk: &impl Chunk, sect_y: u32) {
+pub(super) fn check_section_oob(chunk: &impl Chunk, sect_y: u32) {
     assert!(
         sect_y < chunk.height() / 16,
         "chunk section offset of {sect_y} is out of bounds"
@@ -313,12 +308,14 @@ fn check_section_oob(chunk: &impl Chunk, sect_y: u32) {
 }
 
 /// Returns the minimum number of bits needed to represent the integer `n`.
-const fn bit_width(n: usize) -> usize {
+pub(super) const fn bit_width(n: usize) -> usize {
     (usize::BITS - n.leading_zeros()) as _
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::chunk::{loaded::LoadedChunk, unloaded::UnloadedChunk};
+
     use super::*;
 
     #[test]

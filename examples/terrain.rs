@@ -110,7 +110,15 @@ fn setup(
 }
 
 fn init_clients(
-    mut clients: Query<(&mut Location, &mut Position, &mut IsFlat, &mut GameMode), Added<Client>>,
+    mut clients: Query<
+        (
+            &mut EntityLayerId,
+            &mut Position,
+            &mut IsFlat,
+            &mut GameMode,
+        ),
+        Added<Client>,
+    >,
     instances: Query<Entity, With<Instance>>,
 ) {
     for (mut loc, mut pos, mut is_flat, mut game_mode) in &mut clients {

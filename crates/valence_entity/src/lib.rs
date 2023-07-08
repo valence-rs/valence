@@ -16,24 +16,22 @@
     unreachable_pub,
     clippy::dbg_macro
 )]
+#![allow(clippy::type_complexity)]
 
 mod flags;
 pub mod hitbox;
-pub mod layer;
+pub mod manager;
 pub mod packet;
 pub mod query;
 pub mod tracked_data;
 
-use std::num::Wrapping;
-
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use glam::{DVec3, Vec3};
+pub use manager::EntityManager;
 use paste::paste;
-use rustc_hash::FxHashMap;
 use tracing::warn;
 use tracked_data::TrackedData;
-use uuid::Uuid;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::despawn::Despawned;
 use valence_core::protocol::var_int::VarInt;
@@ -111,7 +109,7 @@ fn update_old_position(mut query: Query<(&Position, &mut OldPosition)>) {
     }
 }
 
-fn update_old_location(mut query: Query<(&Location, &mut OldLocation)>) {
+fn update_old_location(mut query: Query<(&EntityLayerId, &mut OldEntityLayerId)>) {
     for (loc, mut old_loc) in &mut query {
         old_loc.0 = loc.0;
     }
@@ -153,7 +151,6 @@ fn init_entities(
     }
 }
 
-#[allow(clippy::type_complexity)]
 fn remove_despawned_from_manager(
     entities: Query<(&EntityId, &UniqueId), (With<EntityKind>, With<Despawned>)>,
     mut manager: ResMut<EntityManager>,
@@ -184,47 +181,40 @@ fn clear_tracked_data_changes(mut tracked_data: Query<&mut TrackedData, Changed<
     }
 }
 
-/// Contains the `Instance` an entity is located in. For the coordinates
-/// within the instance, see [`Position`].
+/// Contains the entity layer an entity is on.
 #[derive(Component, Copy, Clone, PartialEq, Eq, Debug)]
-pub struct Location(pub Entity);
+pub struct EntityLayerId(pub Entity);
 
-impl Default for Location {
+impl Default for EntityLayerId {
     fn default() -> Self {
         Self(Entity::PLACEHOLDER)
     }
 }
 
-impl PartialEq<OldLocation> for Location {
-    fn eq(&self, other: &OldLocation) -> bool {
+impl PartialEq<OldEntityLayerId> for EntityLayerId {
+    fn eq(&self, other: &OldEntityLayerId) -> bool {
         self.0 == other.0
     }
 }
 
-/// The value of [`Location`] from the end of the previous tick.
-///
-/// **NOTE**: You should not modify this component after the entity is spawned.
+/// The value of [`EntityLayerId`] from the end of the previous tick.
 #[derive(Component, Copy, Clone, PartialEq, Eq, Debug)]
-pub struct OldLocation(Entity);
+pub struct OldEntityLayerId(Entity);
 
-impl OldLocation {
-    pub fn new(instance: Entity) -> Self {
-        Self(instance)
-    }
-
+impl OldEntityLayerId {
     pub fn get(&self) -> Entity {
         self.0
     }
 }
 
-impl Default for OldLocation {
+impl Default for OldEntityLayerId {
     fn default() -> Self {
         Self(Entity::PLACEHOLDER)
     }
 }
 
-impl PartialEq<Location> for OldLocation {
-    fn eq(&self, other: &Location) -> bool {
+impl PartialEq<EntityLayerId> for OldEntityLayerId {
+    fn eq(&self, other: &EntityLayerId) -> bool {
         self.0 == other.0
     }
 }
@@ -362,6 +352,8 @@ impl Velocity {
             .map(|v| v as i16)
     }
 }
+
+// TODO: don't make statuses and animations components.
 
 #[derive(Component, Copy, Clone, Default, Debug)]
 pub struct EntityStatuses(pub u64);
@@ -600,50 +592,5 @@ impl Decode<'_> for OptionalInt {
         } else {
             Some(n.wrapping_sub(1))
         }))
-    }
-}
-
-/// A [`Resource`] which maintains information about all spawned Minecraft
-/// entities.
-#[derive(Resource, Debug)]
-pub struct EntityManager {
-    /// Maps protocol IDs to ECS entities.
-    id_to_entity: FxHashMap<i32, Entity>,
-    uuid_to_entity: FxHashMap<Uuid, Entity>,
-    next_id: Wrapping<i32>,
-}
-
-impl EntityManager {
-    fn new() -> Self {
-        Self {
-            id_to_entity: FxHashMap::default(),
-            uuid_to_entity: FxHashMap::default(),
-            next_id: Wrapping(1), // Skip 0.
-        }
-    }
-
-    /// Returns the next unique entity ID and increments the counter.
-    pub fn next_id(&mut self) -> EntityId {
-        if self.next_id.0 == 0 {
-            warn!("entity ID overflow!");
-            // ID 0 is reserved for clients, so skip over it.
-            self.next_id.0 = 1;
-        }
-
-        let id = EntityId(self.next_id.0);
-
-        self.next_id += 1;
-
-        id
-    }
-
-    /// Gets the entity with the given entity ID.
-    pub fn get_by_id(&self, entity_id: i32) -> Option<Entity> {
-        self.id_to_entity.get(&entity_id).cloned()
-    }
-
-    /// Gets the entity with the given UUID.
-    pub fn get_by_uuid(&self, uuid: Uuid) -> Option<Entity> {
-        self.uuid_to_entity.get(&uuid).cloned()
     }
 }

@@ -16,21 +16,21 @@ use crate::packet::{
 };
 use crate::tracked_data::TrackedData;
 use crate::{
-    EntityAnimations, EntityId, EntityKind, EntityStatuses, HeadYaw, Location, Look, ObjectData,
-    OldLocation, OldPosition, OnGround, Position, Velocity,
+    EntityAnimations, EntityId, EntityKind, EntityLayerId, EntityStatuses, HeadYaw, Look,
+    ObjectData, OldEntityLayerId, OldPosition, OnGround, Position, Velocity,
 };
 
 #[derive(WorldQuery)]
 pub struct EntityInitQuery {
-    entity_id: &'static EntityId,
-    uuid: &'static UniqueId,
-    kind: &'static EntityKind,
-    look: &'static Look,
-    head_yaw: &'static HeadYaw,
-    on_ground: &'static OnGround,
-    object_data: &'static ObjectData,
-    velocity: &'static Velocity,
-    tracked_data: &'static TrackedData,
+    pub entity_id: &'static EntityId,
+    pub uuid: &'static UniqueId,
+    pub kind: &'static EntityKind,
+    pub look: &'static Look,
+    pub head_yaw: &'static HeadYaw,
+    pub on_ground: &'static OnGround,
+    pub object_data: &'static ObjectData,
+    pub velocity: &'static Velocity,
+    pub tracked_data: &'static TrackedData,
 }
 
 impl EntityInitQueryItem<'_> {
@@ -86,18 +86,18 @@ impl EntityInitQueryItem<'_> {
 
 #[derive(WorldQuery)]
 pub struct UpdateEntityQuery {
-    id: &'static EntityId,
-    pos: &'static Position,
-    old_pos: &'static OldPosition,
-    loc: &'static Location,
-    old_loc: &'static OldLocation,
-    look: Ref<'static, Look>,
-    head_yaw: Ref<'static, HeadYaw>,
-    on_ground: &'static OnGround,
-    velocity: Ref<'static, Velocity>,
-    tracked_data: &'static TrackedData,
-    statuses: &'static EntityStatuses,
-    animations: &'static EntityAnimations,
+    pub id: &'static EntityId,
+    pub pos: &'static Position,
+    pub old_pos: &'static OldPosition,
+    pub loc: &'static EntityLayerId,
+    pub old_loc: &'static OldEntityLayerId,
+    pub look: Ref<'static, Look>,
+    pub head_yaw: Ref<'static, HeadYaw>,
+    pub on_ground: &'static OnGround,
+    pub velocity: Ref<'static, Velocity>,
+    pub tracked_data: &'static TrackedData,
+    pub statuses: &'static EntityStatuses,
+    pub animations: &'static EntityAnimations,
 }
 
 impl UpdateEntityQueryItem<'_> {

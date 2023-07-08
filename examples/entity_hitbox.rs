@@ -46,7 +46,15 @@ fn setup(
 }
 
 fn init_clients(
-    mut clients: Query<(&mut Location, &mut Position, &mut GameMode, &mut Client), Added<Client>>,
+    mut clients: Query<
+        (
+            &mut EntityLayerId,
+            &mut Position,
+            &mut GameMode,
+            &mut Client,
+        ),
+        Added<Client>,
+    >,
     instances: Query<Entity, With<Instance>>,
 ) {
     for (mut loc, mut pos, mut game_mode, mut client) in &mut clients {
@@ -60,7 +68,7 @@ fn init_clients(
 fn spawn_entity(
     mut commands: Commands,
     mut sneaking: EventReader<SneakEvent>,
-    client_query: Query<(&Position, &Location)>,
+    client_query: Query<(&Position, &EntityLayerId)>,
 ) {
     for sneaking in sneaking.iter() {
         if sneaking.state == SneakState::Start {

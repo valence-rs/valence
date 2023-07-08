@@ -71,7 +71,7 @@ fn setup(
 }
 
 fn init_clients(
-    mut clients: Query<(Entity, &mut Location, &mut Position), Added<Client>>,
+    mut clients: Query<(Entity, &mut EntityLayerId, &mut Position), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
     mut commands: Commands,
 ) {

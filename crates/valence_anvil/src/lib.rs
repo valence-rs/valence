@@ -37,7 +37,7 @@ use valence_biome::{BiomeId, BiomeRegistry};
 use valence_client::{Client, OldView, UpdateClientsSet, View};
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::ident::Ident;
-use valence_entity::{Location, OldLocation};
+use valence_entity::{EntityLayerId, OldEntityLayerId};
 use valence_instance::chunk::UnloadedChunk;
 use valence_instance::Instance;
 use valence_nbt::Compound;
@@ -317,7 +317,7 @@ fn remove_unviewed_chunks(
 }
 
 fn update_client_views(
-    clients: Query<(&Location, Ref<OldLocation>, View, OldView), With<Client>>,
+    clients: Query<(&EntityLayerId, Ref<OldEntityLayerId>, View, OldView), With<Client>>,
     mut instances: Query<(&Instance, &mut AnvilLevel)>,
 ) {
     for (loc, old_loc, view, old_view) in &clients {

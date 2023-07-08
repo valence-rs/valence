@@ -47,7 +47,7 @@ fn setup(
     let instance_ent = commands.spawn(instance).id();
 
     commands.spawn(SheepEntityBundle {
-        location: Location(instance_ent),
+        location: EntityLayerId(instance_ent),
         position: Position::new([0.0, SPAWN_Y as f64 + 1.0, 2.0]),
         look: Look::new(180.0, 0.0),
         head_yaw: HeadYaw(180.0),
@@ -66,7 +66,7 @@ fn init_clients(
         client.send_chat_message("Hit the sheep to prompt for the resource pack.".italic());
 
         commands.entity(entity).insert(PlayerEntityBundle {
-            location: Location(instances.single()),
+            location: EntityLayerId(instances.single()),
             position: Position::new([0.0, SPAWN_Y as f64 + 1.0, 0.0]),
             uuid: *uuid,
             ..Default::default()

@@ -54,7 +54,7 @@ fn init_clients(
         (
             Entity,
             &mut Client,
-            &mut Location,
+            &mut EntityLayerId,
             &mut Position,
             &mut GameMode,
         ),

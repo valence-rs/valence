@@ -72,7 +72,7 @@ fn setup(
 }
 
 fn init_clients(
-    mut clients: Query<(&mut Client, &mut Location, &mut Position), Added<Client>>,
+    mut clients: Query<(&mut Client, &mut EntityLayerId, &mut Position), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
 ) {
     for (mut client, mut loc, mut pos) in &mut clients {

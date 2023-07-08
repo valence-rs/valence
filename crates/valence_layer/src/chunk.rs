@@ -1,7 +1,13 @@
 //! Contains the [`Instance`] component and methods.
 
+mod chunk;
+pub mod loaded;
+mod paletted_container;
+pub mod unloaded;
+
 use std::collections::hash_map::{Entry, OccupiedEntry, VacantEntry};
 
+use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use num_integer::div_ceil;
 use rustc_hash::FxHashMap;
@@ -12,50 +18,86 @@ use valence_core::ident::Ident;
 use valence_core::protocol::array::LengthPrefixedArray;
 use valence_core::Server;
 use valence_dimension::DimensionTypeRegistry;
-use valence_entity::EntityId;
 use valence_nbt::Compound;
 
-use crate::chunk::{Block, BlockRef, Chunk, IntoBlock, LoadedChunk, UnloadedChunk, MAX_HEIGHT};
-use crate::message::{MessageBuf, MessageCondition};
+use crate::bvh::GetChunkPos;
+use crate::chunk::chunk::MAX_HEIGHT;
+use crate::message::Messages;
+use crate::{Layer, UpdateLayersPreClient};
 
-/// An Instance represents a Minecraft world, which consist of [`Chunk`]s.
-/// It manages updating clients when chunks change, and caches chunk and entity
-/// update packets on a per-chunk basis.
-#[derive(Component)]
-pub struct Instance {
-    pub(super) chunks: FxHashMap<ChunkPos, LoadedChunk>,
-    pub(super) info: InstanceInfo,
-    pub(super) message_buf: MessageBuf<MessageCondition>,
-    pub(super) entity_removals: Vec<EntityRemoval>,
-    pub(super) biome_changes: Vec<BiomeChange>,
+pub use self::chunk::*;
+pub use self::loaded::LoadedChunk;
+pub use self::unloaded::UnloadedChunk;
+
+#[derive(Component, Debug)]
+pub struct ChunkLayer {
+    messages: ChunkLayerMessages,
+    chunks: FxHashMap<ChunkPos, LoadedChunk>,
+    info: ChunkLayerInfo,
 }
 
 #[doc(hidden)]
-pub struct InstanceInfo {
-    pub(super) dimension_type_name: Ident<String>,
-    pub(super) height: u32,
-    pub(super) min_y: i32,
-    pub(super) biome_registry_len: usize,
-    pub(super) compression_threshold: Option<u32>,
+#[derive(Debug)]
+pub struct ChunkLayerInfo {
+    dimension_type_name: Ident<String>,
+    height: u32,
+    min_y: i32,
+    biome_registry_len: usize,
+    compression_threshold: Option<u32>,
     // We don't have a proper lighting engine yet, so we just fill chunks with full brightness.
-    pub(super) sky_light_mask: Box<[u64]>,
-    pub(super) sky_light_arrays: Box<[LengthPrefixedArray<u8, 2048>]>,
+    sky_light_mask: Box<[u64]>,
+    sky_light_arrays: Box<[LengthPrefixedArray<u8, 2048>]>,
 }
 
-#[doc(hidden)]
-pub struct EntityRemoval {
-    pub pos: ChunkPos,
-    pub id: EntityId,
+type ChunkLayerMessages = Messages<GlobalMsg, LocalMsg>;
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
+pub enum GlobalMsg {
+    /// Send packet data to all clients viewing the layer.
+    Packet,
+    /// Send packet data to all clients viewing layer, except the client identified by `except`.
+    PacketExcept,
 }
 
-#[doc(hidden)]
-pub struct BiomeChange {
-    pub pos: ChunkPos,
-    /// Data for the ChunkBiomeDataS2c packet.
-    pub data: Vec<u8>,
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
+pub enum LocalMsg {
+    /// Send packet data to all clients viewing the layer in view of `pos`.
+    PacketAt {
+        pos: ChunkPos,
+    },
+    ChangeBiome {
+        pos: ChunkPos,
+    },
 }
 
-impl Instance {
+impl GetChunkPos for LocalMsg {
+    fn chunk_pos(&self) -> ChunkPos {
+        match *self {
+            LocalMsg::PacketAt { pos } => pos,
+            LocalMsg::ChangeBiome { pos } => pos,
+        }
+    }
+}
+
+impl Layer for ChunkLayer {
+    type Global = GlobalMsg;
+
+    type Local = LocalMsg;
+
+    fn send_global(&mut self, msg: Self::Global, f: impl FnOnce(&mut Vec<u8>)) {
+        self.messages.send_global(msg, f)
+    }
+
+    fn send_local(&mut self, msg: Self::Local, f: impl FnOnce(&mut Vec<u8>)) {
+        self.messages.send_local(msg, f)
+    }
+
+    fn compression_threshold(&self) -> Option<u32> {
+        self.info.compression_threshold
+    }
+}
+
+impl ChunkLayer {
     #[track_caller]
     pub fn new(
         dimension_type_name: impl Into<Ident<String>>,
@@ -82,8 +124,9 @@ impl Instance {
         }
 
         Self {
+            messages: Messages::new(),
             chunks: Default::default(),
-            info: InstanceInfo {
+            info: ChunkLayerInfo {
                 dimension_type_name,
                 height: dim.height as u32,
                 min_y: dim.min_y,
@@ -93,9 +136,6 @@ impl Instance {
                 sky_light_arrays: vec![LengthPrefixedArray([0xff; 2048]); light_section_count]
                     .into(),
             },
-            message_buf: MessageBuf::new(server.compression_threshold()),
-            entity_removals: vec![],
-            biome_changes: vec![],
         }
     }
 
@@ -159,7 +199,11 @@ impl Instance {
     where
         F: FnMut(ChunkPos, &mut LoadedChunk) -> bool,
     {
-        self.chunks.retain(|pos, chunk| f(*pos, chunk));
+        for (pos, chunk) in &mut self.chunks {
+            if !f(*pos, chunk) {
+                chunk.remove();
+            }
+        }
     }
 
     /// Get a [`ChunkEntry`] for the given position.
@@ -188,11 +232,11 @@ impl Instance {
     /// Optimizes the memory usage of the instance.
     pub fn optimize(&mut self) {
         for (_, chunk) in self.chunks_mut() {
-            chunk.optimize();
+            chunk.shrink_to_fit();
         }
 
         self.chunks.shrink_to_fit();
-        self.message_buf.shrink_to_fit();
+        self.messages.shrink_to_fit();
     }
 
     pub fn block(&self, pos: impl Into<BlockPos>) -> Option<BlockRef> {
@@ -254,13 +298,13 @@ impl Instance {
     }
 
     #[doc(hidden)]
-    pub fn info(&self) -> &InstanceInfo {
+    pub fn info(&self) -> &ChunkLayerInfo {
         &self.info
     }
 
     #[doc(hidden)]
-    pub fn message_buf(&self) -> &MessageBuf<MessageCondition> {
-        &self.message_buf
+    pub fn messages(&self) -> &ChunkLayerMessages {
+        &self.messages
     }
 
     /*
@@ -393,5 +437,37 @@ impl<'a> VacantChunkEntry<'a> {
 
     pub fn key(&self) -> &ChunkPos {
         self.entry.key()
+    }
+}
+
+pub(super) fn build(app: &mut App) {
+    app.add_systems(
+        PostUpdate,
+        (
+            update_chunks_pre_client.in_set(UpdateLayersPreClient),
+            update_chunks_post_client.in_set(UpdateLayersPreClient),
+        ),
+    );
+}
+
+fn update_chunks_pre_client(mut layers: Query<&mut ChunkLayer>) {
+    for layer in &mut layers {
+        let layer = layer.into_inner();
+
+        for (&pos, chunk) in &mut layer.chunks {
+            chunk.update_pre_client(pos, &layer.info, &mut layer.messages);
+        }
+
+        layer.messages.ready();
+    }
+}
+
+fn update_chunks_post_client(mut layers: Query<&mut ChunkLayer>) {
+    for mut layer in &mut layers {
+        layer
+            .chunks
+            .retain(|&pos, chunk| chunk.update_post_client(pos));
+
+        layer.messages.unready();
     }
 }

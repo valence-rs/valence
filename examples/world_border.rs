@@ -56,7 +56,7 @@ fn init_clients(
     mut clients: Query<
         (
             &mut Client,
-            &mut Location,
+            &mut EntityLayerId,
             &mut Position,
             &mut Inventory,
             &HeldItem,
@@ -75,7 +75,7 @@ fn init_clients(
 }
 
 fn border_center_avg(
-    clients: Query<(&Location, &Position)>,
+    clients: Query<(&EntityLayerId, &Position)>,
     mut instances: Query<(Entity, &mut WorldBorderCenter), With<Instance>>,
 ) {
     for (entity, mut center) in instances.iter_mut() {
@@ -99,7 +99,7 @@ fn border_center_avg(
 
 fn border_expand(
     mut events: EventReader<DiggingEvent>,
-    clients: Query<&Location, With<Client>>,
+    clients: Query<&EntityLayerId, With<Client>>,
     wbs: Query<&WorldBorderDiameter, With<Instance>>,
     mut event_writer: EventWriter<SetWorldBorderSizeEvent>,
 ) {

@@ -52,7 +52,7 @@ fn setup(
 }
 
 fn init_clients(
-    mut clients: Query<(&mut Client, &mut Location, &mut Position), Added<Client>>,
+    mut clients: Query<(&mut Client, &mut EntityLayerId, &mut Position), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
 ) {
     for (mut client, mut loc, mut pos) in &mut clients {
@@ -76,7 +76,7 @@ fn squat_and_die(mut clients: Query<&mut Client>, mut events: EventReader<SneakE
 }
 
 fn necromancy(
-    mut clients: Query<(&mut Location, &mut RespawnPosition)>,
+    mut clients: Query<(&mut EntityLayerId, &mut RespawnPosition)>,
     mut events: EventReader<RequestRespawnEvent>,
     instances: Query<Entity, With<Instance>>,
 ) {

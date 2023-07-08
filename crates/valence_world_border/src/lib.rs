@@ -77,7 +77,7 @@ use valence_client::{Client, FlushPacketsSet};
 use valence_core::protocol::encode::WritePacket;
 use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::var_long::VarLong;
-use valence_entity::Location;
+use valence_entity::EntityLayerId;
 use valence_instance::{Instance, WriteUpdatePacketsToInstancesSet};
 use valence_registry::*;
 
@@ -269,7 +269,7 @@ fn wb_size_change(
 }
 
 fn border_for_player(
-    mut clients: Query<(&mut Client, &Location), Changed<Location>>,
+    mut clients: Query<(&mut Client, &EntityLayerId), Changed<EntityLayerId>>,
     wbs: Query<
         (
             &WorldBorderCenter,

@@ -4,9 +4,15 @@ use std::ops::Range;
 use valence_core::chunk_pos::{ChunkPos, ChunkView};
 
 #[derive(Clone, Debug)]
-pub struct ChunkBvh<T> {
+pub struct ChunkBvh<T, const MAX_SURFACE_AREA: i32 = { 8 * 4 }> {
     nodes: Vec<Node>,
     values: Vec<T>,
+}
+
+impl<T, const MAX_SURFACE_AREA: i32> Default for ChunkBvh<T, MAX_SURFACE_AREA> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -85,17 +91,18 @@ impl GetChunkPos for ChunkPos {
     }
 }
 
-/// When to stop subdividing nodes.
-const MAX_SURFACE_AREA: i32 = 8 * 4;
-
-impl<T: GetChunkPos> ChunkBvh<T> {
+impl<T, const MAX_SURFACE_AREA: i32> ChunkBvh<T, MAX_SURFACE_AREA> {
     pub fn new() -> Self {
+        assert!(MAX_SURFACE_AREA > 0);
+
         Self {
             nodes: vec![],
             values: vec![],
         }
     }
+}
 
+impl<T: GetChunkPos, const MAX_SURFACE_AREA: i32> ChunkBvh<T, MAX_SURFACE_AREA> {
     pub fn build(&mut self, items: impl IntoIterator<Item = T>) {
         self.nodes.clear();
         self.values.clear();
@@ -157,14 +164,14 @@ impl<T: GetChunkPos> ChunkBvh<T> {
         });
     }
 
-    pub fn traverse(&self, view: ChunkView, mut f: impl FnMut(&T)) {
+    pub fn query(&self, view: ChunkView, mut f: impl FnMut(&T)) {
         if let Some(root) = self.nodes.last() {
             let (min, max) = view.bounding_box();
-            self.traverse_rec(root, view, Aabb { min, max }, &mut f);
+            self.query_rec(root, view, Aabb { min, max }, &mut f);
         }
     }
 
-    fn traverse_rec(&self, node: &Node, view: ChunkView, view_aabb: Aabb, f: &mut impl FnMut(&T)) {
+    fn query_rec(&self, node: &Node, view: ChunkView, view_aabb: Aabb, f: &mut impl FnMut(&T)) {
         match node {
             Node::Internal {
                 bounds,
@@ -172,8 +179,8 @@ impl<T: GetChunkPos> ChunkBvh<T> {
                 right,
             } => {
                 if bounds.intersects(view_aabb) {
-                    self.traverse_rec(&self.nodes[*left as usize], view, view_aabb, f);
-                    self.traverse_rec(&self.nodes[*right as usize], view, view_aabb, f);
+                    self.query_rec(&self.nodes[*left as usize], view, view_aabb, f);
+                    self.query_rec(&self.nodes[*right as usize], view, view_aabb, f);
                 }
             }
             Node::Leaf { bounds, values } => {
@@ -186,6 +193,11 @@ impl<T: GetChunkPos> ChunkBvh<T> {
                 }
             }
         }
+    }
+
+    pub fn shrink_to_fit(&mut self) {
+        self.nodes.shrink_to_fit();
+        self.values.shrink_to_fit();
     }
 
     #[cfg(test)]
@@ -211,7 +223,10 @@ impl<T: GetChunkPos> ChunkBvh<T> {
                 self.check_invariants_rec(left);
                 self.check_invariants_rec(right);
             }
-            Node::Leaf { bounds: leaf_bounds, values } => {
+            Node::Leaf {
+                bounds: leaf_bounds,
+                values,
+            } => {
                 let bounds = value_bounds(&self.values[values.start as usize..values.end as usize])
                     .expect("leaf should be nonempty");
 
@@ -276,7 +291,7 @@ mod tests {
     }
 
     #[test]
-    fn traversal_visits_correct_nodes() {
+    fn query_visits_correct_nodes() {
         let mut bvh = ChunkBvh::<ChunkPos>::new();
 
         let mut positions = vec![];
@@ -310,7 +325,7 @@ mod tests {
 
         // Check that we traverse exactly the positions that we know the view can see.
 
-        bvh.traverse(view, |pos| {
+        bvh.query(view, |pos| {
             let idx = viewed_positions.iter().position(|p| p == pos).expect("😔");
             viewed_positions.remove(idx);
         });

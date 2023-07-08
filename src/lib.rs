@@ -105,8 +105,8 @@ pub mod prelude {
     pub use valence_dimension::{DimensionType, DimensionTypeRegistry};
     pub use valence_entity::hitbox::{Hitbox, HitboxShape};
     pub use valence_entity::{
-        EntityAnimation, EntityKind, EntityManager, EntityStatus, HeadYaw, Location, Look,
-        OldLocation, OldPosition, Position,
+        EntityAnimation, EntityKind, EntityLayerId, EntityManager, EntityStatus, HeadYaw, Look,
+        OldEntityLayerId, OldPosition, Position,
     };
     pub use valence_instance::chunk::{Chunk, LoadedChunk, UnloadedChunk};
     pub use valence_instance::{Block, BlockRef, Instance};

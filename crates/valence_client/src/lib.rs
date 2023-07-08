@@ -58,8 +58,9 @@ use valence_entity::packet::{
 };
 use valence_entity::player::PlayerEntityBundle;
 use valence_entity::{
-    ClearEntityChangesSet, EntityId, EntityKind, EntityStatus, HeadYaw, Location, Look, ObjectData,
-    OldLocation, OldPosition, OnGround, PacketByteRange, Position, TrackedData, Velocity,
+    ClearEntityChangesSet, EntityId, EntityKind, EntityLayerId, EntityStatus, HeadYaw, Look,
+    ObjectData, OldEntityLayerId, OldPosition, OnGround, PacketByteRange, Position, TrackedData,
+    Velocity,
 };
 use valence_instance::chunk::loaded::ChunkState;
 use valence_instance::packet::{
@@ -665,7 +666,7 @@ pub fn despawn_disconnected_clients(
 struct ClientJoinQuery {
     entity: Entity,
     client: &'static mut Client,
-    loc: &'static Location,
+    loc: &'static EntityLayerId,
     pos: &'static Position,
     is_hardcore: &'static IsHardcore,
     game_mode: &'static GameMode,
@@ -744,7 +745,7 @@ fn respawn(
     mut clients: Query<
         (
             &mut Client,
-            &Location,
+            &EntityLayerId,
             &DeathLocation,
             &HashedSeed,
             &GameMode,
@@ -752,7 +753,7 @@ fn respawn(
             &IsDebug,
             &IsFlat,
         ),
-        Changed<Location>,
+        Changed<EntityLayerId>,
     >,
     instances: Query<&Instance>,
 ) {
@@ -813,8 +814,8 @@ fn read_data_in_old_view(
         Entity,
         &mut Client,
         &mut EntityRemoveBuf,
-        &Location,
-        &OldLocation,
+        &EntityLayerId,
+        &OldEntityLayerId,
         &Position,
         &OldPosition,
         &OldViewDistance,
@@ -939,14 +940,18 @@ fn update_view(
             Entity,
             &mut Client,
             &mut EntityRemoveBuf,
-            &Location,
-            &OldLocation,
+            &EntityLayerId,
+            &OldEntityLayerId,
             &Position,
             &OldPosition,
             &ViewDistance,
             &OldViewDistance,
         ),
-        Or<(Changed<Location>, Changed<Position>, Changed<ViewDistance>)>,
+        Or<(
+            Changed<EntityLayerId>,
+            Changed<Position>,
+            Changed<ViewDistance>,
+        )>,
     >,
     instances: Query<&Instance>,
     entities: Query<(EntityInitQuery, &Position)>,

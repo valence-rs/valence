@@ -73,7 +73,7 @@ pub struct Rain(pub f32);
 pub struct Thunder(pub f32);
 
 fn handle_weather_for_joined_player(
-    mut clients: Query<(&mut Client, &Location), Added<Client>>,
+    mut clients: Query<(&mut Client, &EntityLayerId), Added<Client>>,
     weathers: Query<(Option<&Rain>, Option<&Thunder>), With<Instance>>,
 ) {
     for (mut client, loc) in &mut clients {

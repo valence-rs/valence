@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use bevy_app::App;
-use valence_entity::Location;
+use valence_entity::EntityLayerId;
 use valence_instance::Instance;
 use valence_registry::{Entity, Mut};
 use valence_world_border::packet::*;
@@ -17,7 +17,7 @@ fn test_intialize_on_join() {
     let (client, mut client_helper) = create_mock_client("test");
     let client_ent = app.world.spawn(client).id();
 
-    app.world.get_mut::<Location>(client_ent).unwrap().0 = instance_ent;
+    app.world.get_mut::<EntityLayerId>(client_ent).unwrap().0 = instance_ent;
     app.update();
 
     client_helper
