@@ -47,7 +47,7 @@ pub use valence_world_border as world_border;
 pub use {
     bevy_app as app, bevy_ecs as ecs, glam, valence_biome as biome, valence_block as block,
     valence_client as client, valence_dimension as dimension, valence_entity as entity,
-    valence_instance as instance, valence_nbt as nbt, valence_registry as registry,
+    valence_layer as layer, valence_nbt as nbt, valence_registry as registry,
 };
 
 /// Contains the most frequently used items in Valence projects.
@@ -84,11 +84,11 @@ pub mod prelude {
         EventLoopPostUpdate, EventLoopPreUpdate, EventLoopUpdate,
     };
     pub use valence_client::interact_entity::{EntityInteraction, InteractEntityEvent};
+    pub use valence_client::spawn::{ClientSpawnQuery, ClientSpawnQueryReadOnly};
     pub use valence_client::title::SetTitle as _;
     pub use valence_client::{
-        despawn_disconnected_clients, Client, DeathLocation, HasRespawnScreen, HashedSeed, Ip,
-        IsDebug, IsFlat, IsHardcore, OldView, OldViewDistance, PrevGameMode, Properties,
-        ReducedDebugInfo, RespawnPosition, Username, View, ViewDistance,
+        despawn_disconnected_clients, Client, Ip, OldView, OldViewDistance, Properties,
+        RespawnPosition, Username, View, ViewDistance,
     };
     pub use valence_core::block_pos::BlockPos;
     pub use valence_core::chunk_pos::{ChunkPos, ChunkView};
@@ -108,12 +108,14 @@ pub mod prelude {
         EntityAnimation, EntityKind, EntityLayerId, EntityManager, EntityStatus, HeadYaw, Look,
         OldEntityLayerId, OldPosition, Position,
     };
-    pub use valence_instance::chunk::{Chunk, LoadedChunk, UnloadedChunk};
-    pub use valence_instance::{Block, BlockRef, Instance};
     #[cfg(feature = "inventory")]
     pub use valence_inventory::{
         CursorItem, Inventory, InventoryKind, InventoryWindow, InventoryWindowMut, OpenInventory,
     };
+    pub use valence_layer::chunk::{
+        Block, BlockRef, Chunk, ChunkLayer, LoadedChunk, UnloadedChunk,
+    };
+    pub use valence_layer::entity::EntityLayer;
     pub use valence_nbt::Compound;
     #[cfg(feature = "network")]
     pub use valence_network::{
@@ -144,7 +146,7 @@ impl PluginGroup for DefaultPlugins {
             .add(valence_dimension::DimensionPlugin)
             .add(valence_entity::EntityPlugin)
             .add(valence_entity::hitbox::HitboxPlugin)
-            .add(valence_instance::InstancePlugin)
+            .add(valence_layer::LayerPlugin::<valence_client::Client>::new())
             .add(valence_client::ClientPlugin);
 
         #[cfg(feature = "log")]
@@ -177,10 +179,11 @@ impl PluginGroup for DefaultPlugins {
             group = group.add(valence_advancement::AdvancementPlugin)
         }
 
-        #[cfg(feature = "world_border")]
-        {
-            group = group.add(valence_world_border::WorldBorderPlugin);
-        }
+        // TODO
+        // #[cfg(feature = "world_border")]
+        // {
+        //     group = group.add(valence_world_border::WorldBorderPlugin);
+        // }
 
         #[cfg(feature = "boss_bar")]
         {

@@ -17,17 +17,17 @@ use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::{Decode, Encode, Packet};
 use valence_core::{ident, CoreSettings, Server};
 use valence_dimension::DimensionTypeRegistry;
+use valence_layer::{ChunkLayer, EntityLayer};
 use valence_network::NetworkPlugin;
 
 use crate::client::{ClientBundle, ClientConnection, ReceivedPacket};
-use crate::instance::Instance;
 use crate::DefaultPlugins;
 
 /// Sets up valence with a single mock client. Returns the Entity of the client
 /// and the corresponding MockClientHelper.
 ///
 /// Reduces boilerplate in unit tests.
-pub fn scenario_single_client(app: &mut App) -> (Entity, MockClientHelper) {
+pub fn scenario_single_client(app: &mut App) -> ScenarioSingleClient {
     app.insert_resource(CoreSettings {
         compression_threshold: None,
         ..Default::default()
@@ -41,20 +41,32 @@ pub fn scenario_single_client(app: &mut App) -> (Entity, MockClientHelper) {
 
     app.update(); // Initialize plugins.
 
-    let instance = Instance::new(
+    let chunk_layer = ChunkLayer::new(
         ident!("overworld"),
         app.world.resource::<DimensionTypeRegistry>(),
         app.world.resource::<BiomeRegistry>(),
         app.world.resource::<Server>(),
     );
-
-    let instance_ent = app.world.spawn(instance).id();
+    let entity_layer = EntityLayer::new(app.world.resource::<Server>());
+    let layer_ent = app.world.spawn((chunk_layer, entity_layer)).id();
 
     let (mut client, client_helper) = create_mock_client("test");
-    client.player.location.0 = instance_ent;
+    client.player.layer.0 = layer_ent;
+    client.visible_chunk_layer.0 = layer_ent;
+    client.visible_entity_layers.0.insert(layer_ent);
     let client_ent = app.world.spawn(client).id();
 
-    (client_ent, client_helper)
+    ScenarioSingleClient {
+        client: client_ent,
+        helper: client_helper,
+        layer: layer_ent,
+    }
+}
+
+pub struct ScenarioSingleClient {
+    pub client: Entity,
+    pub helper: MockClientHelper,
+    pub layer: Entity,
 }
 
 /// Creates a mock client bundle that can be used for unit testing.

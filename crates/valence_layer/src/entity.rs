@@ -14,7 +14,7 @@ use valence_entity::{EntityId, EntityLayerId, OldEntityLayerId, OldPosition, Pos
 
 use crate::bvh::GetChunkPos;
 use crate::message::Messages;
-use crate::{Layer, UpdateLayersPostClient, UpdateLayersPreClient};
+use crate::{Layer, UpdateLayersPostClientSet, UpdateLayersPreClientSet};
 
 #[derive(Component, Debug)]
 pub struct EntityLayer {
@@ -123,8 +123,8 @@ pub(super) fn build<Client: Component>(app: &mut App) {
                 ready_entity_layers,
             )
                 .chain()
-                .in_set(UpdateLayersPreClient),
-            unready_entity_layers.in_set(UpdateLayersPostClient),
+                .in_set(UpdateLayersPreClientSet),
+            unready_entity_layers.in_set(UpdateLayersPostClientSet),
         ),
     );
 }

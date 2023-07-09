@@ -30,9 +30,15 @@ where
         f(&mut self.staging);
         let end = self.staging.len();
 
-        if start != end {
-            self.global.push((msg, start as u32..end as u32));
+        if let Some((m, range)) = self.global.last_mut() {
+            if msg == *m {
+                // Extend the existing message.
+                range.end = end as u32;
+                return;
+            }
         }
+
+        self.global.push((msg, start as u32..end as u32));
     }
 
     pub(crate) fn send_local(&mut self, msg: L, f: impl FnOnce(&mut Vec<u8>)) {
@@ -42,9 +48,15 @@ where
         f(&mut self.staging);
         let end = self.staging.len();
 
-        if start != end {
-            self.local.push((msg, start as u32..end as u32));
+        if let Some((m, range)) = self.local.last_mut() {
+            if msg == *m {
+                // Extend the existing message.
+                range.end = end as u32;
+                return;
+            }
         }
+
+        self.local.push((msg, start as u32..end as u32));
     }
 
     /// Readies messages to be read by clients.

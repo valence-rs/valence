@@ -66,6 +66,9 @@
     clippy::dbg_macro
 )]
 
+// TODO: fix.
+
+/*
 pub mod packet;
 
 use std::time::{Duration, Instant};
@@ -78,7 +81,7 @@ use valence_core::protocol::encode::WritePacket;
 use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::var_long::VarLong;
 use valence_entity::EntityLayerId;
-use valence_instance::{Instance, WriteUpdatePacketsToInstancesSet};
+use valence_layer::UpdateLayersPreClientSet;
 use valence_registry::*;
 
 // https://minecraft.fandom.com/wiki/World_border
@@ -100,7 +103,7 @@ impl Plugin for WorldBorderPlugin {
         app.configure_sets(
             PostUpdate,
             (
-                UpdateWorldBorderPerInstanceSet.before(WriteUpdatePacketsToInstancesSet),
+                UpdateWorldBorderPerInstanceSet.before(UpdateLayersPreClientSet),
                 UpdateWorldBorderPerClientSet.before(FlushPacketsSet),
             ),
         )
@@ -396,3 +399,4 @@ fn portal_teleport_bounary_change(
 fn lerp(start: f64, end: f64, t: f64) -> f64 {
     start + (end - start) * t
 }
+*/

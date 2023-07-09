@@ -94,7 +94,7 @@ impl Plugin for EntityPlugin {
                     clear_animation_changes,
                     clear_tracked_data_changes,
                     update_old_position,
-                    update_old_location,
+                    update_old_layer_id,
                 )
                     .in_set(ClearEntityChangesSet),
             );
@@ -109,7 +109,7 @@ fn update_old_position(mut query: Query<(&Position, &mut OldPosition)>) {
     }
 }
 
-fn update_old_location(mut query: Query<(&EntityLayerId, &mut OldEntityLayerId)>) {
+fn update_old_layer_id(mut query: Query<(&EntityLayerId, &mut OldEntityLayerId)>) {
     for (loc, mut old_loc) in &mut query {
         old_loc.0 = loc.0;
     }

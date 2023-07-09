@@ -53,22 +53,22 @@ impl<Client: Component> Default for LayerPlugin<Client> {
 /// chunks and entities should run _before_ this. Systems that need to read
 /// layer messages should run _after_ this.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct UpdateLayersPreClient;
+pub struct UpdateLayersPreClientSet;
 
 /// When layers are cleared and messages from this tick are lost. Systems that
 /// read layer messages should run _before_ this.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct UpdateLayersPostClient;
+pub struct UpdateLayersPostClientSet;
 
 impl<Client: Component> Plugin for LayerPlugin<Client> {
     fn build(&self, app: &mut App) {
         app.configure_sets(
             PostUpdate,
             (
-                UpdateLayersPreClient
+                UpdateLayersPreClientSet
                     .after(InitEntitiesSet)
                     .after(UpdateTrackedDataSet),
-                UpdateLayersPostClient.after(UpdateLayersPreClient),
+                UpdateLayersPostClientSet.after(UpdateLayersPreClientSet),
             ),
         );
 

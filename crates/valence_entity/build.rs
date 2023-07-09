@@ -391,7 +391,7 @@ fn build() -> anyhow::Result<TokenStream> {
                 pub id: super::EntityId,
                 pub uuid: super::UniqueId,
                 pub layer: super::EntityLayerId,
-                pub old_layer: super::EntityLayerId,
+                pub old_layer: super::OldEntityLayerId,
                 pub position: super::Position,
                 pub old_position: super::OldPosition,
                 pub look: super::Look,

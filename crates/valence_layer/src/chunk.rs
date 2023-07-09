@@ -25,7 +25,7 @@ pub use self::loaded::LoadedChunk;
 pub use self::unloaded::UnloadedChunk;
 use crate::bvh::GetChunkPos;
 use crate::message::Messages;
-use crate::{Layer, UpdateLayersPreClient};
+use crate::{Layer, UpdateLayersPostClientSet, UpdateLayersPreClientSet};
 
 #[derive(Component, Debug)]
 pub struct ChunkLayer {
@@ -61,12 +61,15 @@ pub enum GlobalMsg {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum LocalMsg {
     /// Send packet data to all clients viewing the layer in view of `pos`.
-    PacketAt {
-        pos: ChunkPos,
-    },
-    ChangeBiome {
-        pos: ChunkPos,
-    },
+    PacketAt { pos: ChunkPos },
+    /// Instruct clients to load the chunk at `pos`. Message content is
+    /// empty/ignored.
+    LoadChunk { pos: ChunkPos },
+    /// Instruct clients to load the chunk at `pos`. Message content is
+    UnloadChunk { pos: ChunkPos },
+    /// Message content is the data for a single biome in the "change biomes"
+    /// packet.
+    ChangeBiome { pos: ChunkPos },
 }
 
 impl GetChunkPos for LocalMsg {
@@ -74,6 +77,8 @@ impl GetChunkPos for LocalMsg {
         match *self {
             LocalMsg::PacketAt { pos } => pos,
             LocalMsg::ChangeBiome { pos } => pos,
+            LocalMsg::LoadChunk { pos } => pos,
+            LocalMsg::UnloadChunk { pos } => pos,
         }
     }
 }
@@ -443,8 +448,8 @@ pub(super) fn build(app: &mut App) {
     app.add_systems(
         PostUpdate,
         (
-            update_chunks_pre_client.in_set(UpdateLayersPreClient),
-            update_chunks_post_client.in_set(UpdateLayersPreClient),
+            update_chunks_pre_client.in_set(UpdateLayersPreClientSet),
+            update_chunks_post_client.in_set(UpdateLayersPostClientSet),
         ),
     );
 }

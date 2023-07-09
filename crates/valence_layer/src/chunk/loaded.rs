@@ -235,17 +235,13 @@ impl LoadedChunk {
     ) {
         match self.state {
             ChunkState::Added | ChunkState::Overwrite => {
-                // Load the chunk for any viewers.
-                messages.send_local(LocalMsg::PacketAt { pos }, |buf| {
-                    self.write_init_packets(
-                        PacketWriter::new(buf, info.compression_threshold),
-                        pos,
-                        info,
-                    )
-                });
+                // Load the chunk.
+                messages.send_local(LocalMsg::LoadChunk { pos }, |_| {});
             }
             ChunkState::Removed | ChunkState::AddedRemoved => {
                 // Unload the chunk.
+                messages.send_local(LocalMsg::UnloadChunk { pos }, |_| {});
+
                 messages.send_local(LocalMsg::PacketAt { pos }, |buf| {
                     PacketWriter::new(buf, info.compression_threshold)
                         .write_packet(&UnloadChunkS2c { pos })
@@ -262,81 +258,89 @@ impl LoadedChunk {
             return;
         }
 
-        messages.send_local(LocalMsg::PacketAt { pos }, |buf| {
-            let mut writer = PacketWriter::new(buf, info.compression_threshold);
+        // Block states
+        for (sect_y, sect) in self.sections.iter_mut().enumerate() {
+            match sect.section_updates.len() {
+                0 => {}
+                1 => {
+                    let packed = sect.section_updates[0].0 as u64;
+                    let offset_y = packed & 0b1111;
+                    let offset_z = (packed >> 4) & 0b1111;
+                    let offset_x = (packed >> 8) & 0b1111;
+                    let block = packed >> 12;
 
-            // Block states
-            for (sect_y, sect) in self.sections.iter_mut().enumerate() {
-                match sect.section_updates.len() {
-                    0 => {}
-                    1 => {
-                        let packed = sect.section_updates[0].0 as u64;
-                        let offset_y = packed & 0b1111;
-                        let offset_z = (packed >> 4) & 0b1111;
-                        let offset_x = (packed >> 8) & 0b1111;
-                        let block = packed >> 12;
+                    let global_x = pos.x * 16 + offset_x as i32;
+                    let global_y = info.min_y + sect_y as i32 * 16 + offset_y as i32;
+                    let global_z = pos.z * 16 + offset_z as i32;
 
-                        let global_x = pos.x * 16 + offset_x as i32;
-                        let global_y = info.min_y + sect_y as i32 * 16 + offset_y as i32;
-                        let global_z = pos.z * 16 + offset_z as i32;
+                    messages.send_local(LocalMsg::PacketAt { pos }, |buf| {
+                        let mut writer = PacketWriter::new(buf, info.compression_threshold);
 
                         writer.write_packet(&BlockUpdateS2c {
                             position: BlockPos::new(global_x, global_y, global_z),
                             block_id: VarInt(block as i32),
                         });
-                    }
-                    _ => {
-                        let chunk_section_position = (pos.x as i64) << 42
-                            | (pos.z as i64 & 0x3fffff) << 20
-                            | (sect_y as i64 + info.min_y.div_euclid(16) as i64) & 0xfffff;
+                    });
+                }
+                _ => {
+                    let chunk_section_position = (pos.x as i64) << 42
+                        | (pos.z as i64 & 0x3fffff) << 20
+                        | (sect_y as i64 + info.min_y.div_euclid(16) as i64) & 0xfffff;
+
+                    messages.send_local(LocalMsg::PacketAt { pos }, |buf| {
+                        let mut writer = PacketWriter::new(buf, info.compression_threshold);
 
                         writer.write_packet(&ChunkDeltaUpdateS2c {
                             chunk_section_position,
                             blocks: Cow::Borrowed(&sect.section_updates),
                         });
-                    }
+                    });
                 }
-
-                sect.section_updates.clear();
             }
 
-            // Block entities
-            for &idx in &self.changed_block_entities {
-                let Some(nbt) = self.block_entities.get(&idx) else {
-                    continue;
-                };
+            sect.section_updates.clear();
+        }
 
-                let x = idx % 16;
-                let z = (idx / 16) % 16;
-                let y = idx / 16 / 16;
+        // Block entities
+        for &idx in &self.changed_block_entities {
+            let Some(nbt) = self.block_entities.get(&idx) else {
+                continue;
+            };
 
-                let state = self.sections[y as usize / 16]
-                    .block_states
-                    .get(idx as usize % SECTION_BLOCK_COUNT);
+            let x = idx % 16;
+            let z = (idx / 16) % 16;
+            let y = idx / 16 / 16;
 
-                let Some(kind) = state.block_entity_kind() else {
-                    continue;
-                };
+            let state = self.sections[y as usize / 16]
+                .block_states
+                .get(idx as usize % SECTION_BLOCK_COUNT);
 
-                let global_x = pos.x * 16 + x as i32;
-                let global_y = info.min_y + y as i32;
-                let global_z = pos.z * 16 + z as i32;
+            let Some(kind) = state.block_entity_kind() else {
+                continue;
+            };
+
+            let global_x = pos.x * 16 + x as i32;
+            let global_y = info.min_y + y as i32;
+            let global_z = pos.z * 16 + z as i32;
+
+            messages.send_local(LocalMsg::PacketAt { pos }, |buf| {
+                let mut writer = PacketWriter::new(buf, info.compression_threshold);
 
                 writer.write_packet(&BlockEntityUpdateS2c {
                     position: BlockPos::new(global_x, global_y, global_z),
                     kind: VarInt(kind as i32),
                     data: Cow::Borrowed(nbt),
                 });
-            }
+            });
+        }
 
-            self.changed_block_entities.clear();
-        });
+        self.changed_block_entities.clear();
 
-        messages.send_local(LocalMsg::ChangeBiome { pos }, |buf| {
-            // Biomes
-            if self.changed_biomes {
-                self.changed_biomes = false;
+        // Biomes
+        if self.changed_biomes {
+            self.changed_biomes = false;
 
+            messages.send_local(LocalMsg::ChangeBiome { pos }, |buf| {
                 for sect in self.sections.iter() {
                     sect.biomes
                         .encode_mc_format(
@@ -348,8 +352,8 @@ impl LoadedChunk {
                         )
                         .expect("paletted container encode should always succeed");
                 }
-            }
-        });
+            });
+        }
 
         // All changes should be cleared.
         self.assert_no_changes();

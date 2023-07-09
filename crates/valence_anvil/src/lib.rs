@@ -38,8 +38,8 @@ use valence_client::{Client, OldView, UpdateClientsSet, View};
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::ident::Ident;
 use valence_entity::{EntityLayerId, OldEntityLayerId};
-use valence_instance::chunk::UnloadedChunk;
-use valence_instance::Instance;
+use valence_layer::chunk::UnloadedChunk;
+use valence_layer::ChunkLayer;
 use valence_nbt::Compound;
 
 mod parse_chunk;
@@ -285,7 +285,7 @@ impl Plugin for AnvilPlugin {
     }
 }
 
-fn init_anvil(mut query: Query<&mut AnvilLevel, (Added<AnvilLevel>, With<Instance>)>) {
+fn init_anvil(mut query: Query<&mut AnvilLevel, (Added<AnvilLevel>, With<ChunkLayer>)>) {
     for mut level in &mut query {
         if let Some(state) = level.worker_state.take() {
             thread::spawn(move || anvil_worker(state));
@@ -298,16 +298,16 @@ fn init_anvil(mut query: Query<&mut AnvilLevel, (Added<AnvilLevel>, With<Instanc
 /// This needs to run in `PreUpdate` where the chunk viewer counts have been
 /// updated from the previous tick.
 fn remove_unviewed_chunks(
-    mut instances: Query<(Entity, &mut Instance, &AnvilLevel)>,
+    mut chunk_layers: Query<(Entity, &mut ChunkLayer, &AnvilLevel)>,
     mut unload_events: EventWriter<ChunkUnloadEvent>,
 ) {
-    for (entity, mut inst, anvil) in &mut instances {
-        inst.retain_chunks(|pos, chunk| {
-            if chunk.is_viewed_mut() || anvil.ignored_chunks.contains(&pos) {
+    for (entity, mut layer, anvil) in &mut chunk_layers {
+        layer.retain_chunks(|pos, chunk| {
+            if chunk.viewer_count_mut() > 0 || anvil.ignored_chunks.contains(&pos) {
                 true
             } else {
                 unload_events.send(ChunkUnloadEvent {
-                    instance: entity,
+                    chunk_layer: entity,
                     pos,
                 });
                 false
@@ -318,19 +318,19 @@ fn remove_unviewed_chunks(
 
 fn update_client_views(
     clients: Query<(&EntityLayerId, Ref<OldEntityLayerId>, View, OldView), With<Client>>,
-    mut instances: Query<(&Instance, &mut AnvilLevel)>,
+    mut chunk_layers: Query<(&ChunkLayer, &mut AnvilLevel)>,
 ) {
     for (loc, old_loc, view, old_view) in &clients {
         let view = view.get();
         let old_view = old_view.get();
 
         if loc != &*old_loc || view != old_view || old_loc.is_added() {
-            let Ok((inst, mut anvil)) = instances.get_mut(loc.0) else {
+            let Ok((layer, mut anvil)) = chunk_layers.get_mut(loc.0) else {
                 continue
             };
 
             let queue_pos = |pos| {
-                if !anvil.ignored_chunks.contains(&pos) && inst.chunk(pos).is_none() {
+                if !anvil.ignored_chunks.contains(&pos) && layer.chunk(pos).is_none() {
                     // Chunks closer to clients are prioritized.
                     match anvil.pending.entry(pos) {
                         Entry::Occupied(mut oe) => {
@@ -358,21 +358,21 @@ fn update_client_views(
 }
 
 fn send_recv_chunks(
-    mut instances: Query<(Entity, &mut Instance, &mut AnvilLevel)>,
+    mut instances: Query<(Entity, &mut ChunkLayer, &mut AnvilLevel)>,
     mut to_send: Local<Vec<(Priority, ChunkPos)>>,
     mut load_events: EventWriter<ChunkLoadEvent>,
 ) {
-    for (entity, mut inst, anvil) in &mut instances {
+    for (entity, mut layer, anvil) in &mut instances {
         let anvil = anvil.into_inner();
 
-        // Insert the chunks that are finished loading into the instance and send load
-        // events.
+        // Insert the chunks that are finished loading into the chunk layer and send
+        // load events.
         for (pos, res) in anvil.receiver.drain() {
             anvil.pending.remove(&pos);
 
             let status = match res {
                 Ok(Some((chunk, timestamp))) => {
-                    inst.insert_chunk(pos, chunk);
+                    layer.insert_chunk(pos, chunk);
                     ChunkLoadStatus::Success { timestamp }
                 }
                 Ok(None) => ChunkLoadStatus::Empty,
@@ -450,7 +450,7 @@ pub enum ChunkLoadStatus {
 #[derive(Event, Debug)]
 pub struct ChunkUnloadEvent {
     /// The [`Instance`] where the chunk was unloaded.
-    pub instance: Entity,
+    pub chunk_layer: Entity,
     /// The position of the chunk that was unloaded.
     pub pos: ChunkPos,
 }
