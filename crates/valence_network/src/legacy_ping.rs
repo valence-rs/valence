@@ -2,7 +2,6 @@ use std::io;
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use bytes::BytesMut;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::time::sleep;
@@ -10,14 +9,21 @@ use tokio::time::sleep;
 use crate::{ServerListLegacyPing, SharedNetworkState};
 
 /// The payload of the legacy server list ping.
-#[derive(PartialEq, Debug, Clone, Default)]
-pub struct ServerListLegacyPingPayload {
-    /// The protocol version of the client.
-    pub protocol: i32,
-    /// The hostname the client used to connect to the server.
-    pub hostname: String,
-    /// The port the client used to connect to the server.
-    pub port: u16,
+#[derive(PartialEq, Debug, Clone)]
+pub enum ServerListLegacyPingPayload {
+    /// The 1.6 legacy ping format, which includes additional data.
+    Pre1_7 {
+        /// The protocol version of the client.
+        protocol: i32,
+        /// The hostname the client used to connect to the server.
+        hostname: String,
+        /// The port the client used to connect to the server.
+        port: u16,
+    },
+    /// The 1.4-1.5 legacy ping format.
+    Pre1_6,
+    /// The Beta 1.8-1.3 legacy ping format.
+    Pre1_4,
 }
 
 /// Response data of the legacy server list ping.
@@ -103,8 +109,9 @@ pub(crate) async fn try_handle_legacy_ping(
     };
 
     let payload = match format {
-        PingFormat::Pre1_7 => Some(read_payload(stream).await?),
-        _ => None,
+        PingFormat::Pre1_7 => read_payload(stream).await?,
+        PingFormat::Pre1_6 => ServerListLegacyPingPayload::Pre1_6,
+        PingFormat::Pre1_4 => ServerListLegacyPingPayload::Pre1_4,
     };
 
     if let ServerListLegacyPing::Respond(mut response) = shared
@@ -124,7 +131,7 @@ pub(crate) async fn try_handle_legacy_ping(
             _ => '\0',
         };
 
-        let mut buf = BytesMut::new();
+        let mut buf = Vec::new();
 
         // packet ID and length placeholder
         buf.extend([0xff, 0x00, 0x00]);
@@ -174,14 +181,22 @@ pub(crate) async fn try_handle_legacy_ping(
     Ok(true)
 }
 
+// Reads the payload of a 1.6 legacy ping
 async fn read_payload(stream: &mut TcpStream) -> io::Result<ServerListLegacyPingPayload> {
     // consume the first 29 useless bytes of this amazing protocol
     stream.read_exact(&mut [0u8; 29]).await?;
 
     let protocol = stream.read_u8().await? as i32;
-    let hostname_len = stream.read_u16().await? * 2;
+    let hostname_len = (stream.read_u16().await? as usize) * 2;
 
-    let mut hostname = vec![0u8; hostname_len as usize];
+    if hostname_len > 512 {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "hostname too long",
+        ));
+    }
+
+    let mut hostname = vec![0u8; hostname_len];
     stream.read_exact(&mut hostname).await?;
     let hostname = String::from_utf16_lossy(
         &hostname
@@ -192,7 +207,7 @@ async fn read_payload(stream: &mut TcpStream) -> io::Result<ServerListLegacyPing
 
     let port = stream.read_i32().await? as u16;
 
-    Ok(ServerListLegacyPingPayload {
+    Ok(ServerListLegacyPingPayload::Pre1_7 {
         protocol,
         hostname,
         port,

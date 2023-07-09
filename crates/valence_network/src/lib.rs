@@ -361,11 +361,14 @@ pub trait NetworkCallbacks: Send + Sync + 'static {
         &self,
         shared: &SharedNetworkState,
         remote_addr: SocketAddr,
-        payload: Option<ServerListLegacyPingPayload>,
+        payload: ServerListLegacyPingPayload,
     ) -> ServerListLegacyPing {
         #![allow(unused_variables)]
 
-        let protocol = payload.map(|p| p.protocol).unwrap_or(0);
+        let protocol = match payload {
+            ServerListLegacyPingPayload::Pre1_7 { protocol, .. } => protocol,
+            _ => 0,
+        };
 
         match self.server_list_ping(shared, remote_addr, protocol).await {
             ServerListPing::Respond {
