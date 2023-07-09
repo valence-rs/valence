@@ -215,8 +215,7 @@ async fn read_payload(stream: &mut TcpStream) -> io::Result<ServerListLegacyPing
 }
 
 impl ServerListLegacyPingResponse {
-    // 255 - 6, because of the `§1\0` prefix in 1.4-1.5 and 1.6 legacy ping
-    const MAX_VALID_LENGTH: usize = 249;
+    const MAX_VALID_LENGTH: usize = 248;
 
     // Length of all the fields combined in string form. Used for validating and
     // comparing with MAX_VALID_LENGTH.
@@ -257,8 +256,16 @@ impl ServerListLegacyPingResponse {
 
         self.description.retain(|c| c != '\0');
 
-        self.description
-            .truncate(Self::MAX_VALID_LENGTH + self.description.len() - self.length());
+        let overflow = self.length() as i32 - Self::MAX_VALID_LENGTH as i32;
+        if overflow > 0 {
+            let truncation_index = self
+                .description
+                .char_indices()
+                .nth(self.description.encode_utf16().count() - overflow as usize)
+                .unwrap()
+                .0;
+            self.description.truncate(truncation_index);
+        }
 
         self
     }
@@ -277,8 +284,16 @@ impl ServerListLegacyPingResponse {
 
         self.version.retain(|c| c != '\0');
 
-        self.version
-            .truncate(Self::MAX_VALID_LENGTH + self.version.len() - self.length());
+        let overflow = self.length() as i32 - Self::MAX_VALID_LENGTH as i32;
+        if overflow > 0 {
+            let truncation_index = self
+                .version
+                .char_indices()
+                .nth(self.version.encode_utf16().count() - overflow as usize)
+                .unwrap()
+                .0;
+            self.version.truncate(truncation_index);
+        }
 
         self
     }
