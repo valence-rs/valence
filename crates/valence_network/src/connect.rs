@@ -79,7 +79,15 @@ async fn handle_connection(
         error!("failed to set TCP_NODELAY: {e}");
     }
 
-    match try_handle_legacy_ping(&shared, &mut stream, remote_addr).await {
+    let timeout = Duration::from_secs(5);
+
+    match tokio::time::timeout(
+        timeout,
+        try_handle_legacy_ping(&shared, &mut stream, remote_addr),
+    )
+    .await
+    .unwrap_or(Err(io::Error::new(io::ErrorKind::TimedOut, "timed out")))
+    {
         Ok(true) => return,
         Ok(false) => {}
         Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => {}
@@ -88,12 +96,7 @@ async fn handle_connection(
         }
     }
 
-    let conn = PacketIo::new(
-        stream,
-        PacketEncoder::new(),
-        PacketDecoder::new(),
-        Duration::from_secs(5),
-    );
+    let conn = PacketIo::new(stream, PacketEncoder::new(), PacketDecoder::new(), timeout);
 
     if let Err(e) = handle_handshake(shared, conn, remote_addr).await {
         // EOF can happen if the client disconnects while joining, which isn't
