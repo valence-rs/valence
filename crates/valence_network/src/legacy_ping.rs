@@ -25,16 +25,18 @@ pub struct ServerListLegacyPingPayload {
 /// # Example
 ///
 /// ```
+/// # use valence_network::ServerListLegacyPingResponse;
 /// let mut response =
 ///     ServerListLegacyPingResponse::new(127, 0, 10).version("Valence 1.20.1".to_owned());
 ///
 /// // This will make the description just repeat "hello" until the length limit
 /// // (which depends on the other fields that we set above: protocol, version,
 /// // online players, max players).
+/// let max_description = response.max_description();
 /// response = response.description(
 ///     std::iter::repeat("hello ")
 ///         .flat_map(|s| s.chars())
-///         .take(response.max_description())
+///         .take(max_description)
 ///         .collect(),
 /// );
 /// ```
@@ -238,10 +240,10 @@ impl ServerListLegacyPingResponse {
     pub fn description(mut self, description: String) -> Self {
         self.description = description;
 
-        let overflow = self.length() - Self::MAX_VALID_LENGTH;
-        self.description.truncate(self.description.len() - overflow);
-
         self.description.retain(|c| c != '\0');
+
+        self.description
+            .truncate(Self::MAX_VALID_LENGTH + self.description.len() - self.length());
 
         self
     }
@@ -258,10 +260,10 @@ impl ServerListLegacyPingResponse {
     pub fn version(mut self, version: String) -> Self {
         self.version = version;
 
-        let overflow = self.length() - Self::MAX_VALID_LENGTH;
-        self.version.truncate(self.version.len() - overflow);
-
         self.version.retain(|c| c != '\0');
+
+        self.version
+            .truncate(Self::MAX_VALID_LENGTH + self.version.len() - self.length());
 
         self
     }
@@ -290,11 +292,11 @@ fn int_len(num: i32) -> usize {
 
 // Removes all `§` and their modifiers, if any
 fn remove_formatting(string: &mut String) {
-    while let Some(pos) = string.rfind('§') {
+    while let Some(pos) = string.find('§') {
         // + 2 because we know that `§` is 2 bytes
         if let Some(c) = string[(pos + 2)..].chars().next() {
             // remove next char too if any
-            string.replace_range(pos..=(pos + 2 + c.len_utf8()), "");
+            string.replace_range(pos..(pos + 2 + c.len_utf8()), "");
         } else {
             string.remove(pos);
         }

@@ -376,8 +376,8 @@ pub trait NetworkCallbacks: Send + Sync + 'static {
                 favicon_png,
             } => ServerListLegacyPing::Respond(
                 ServerListLegacyPingResponse::new(PROTOCOL_VERSION, online_players, max_players)
-                    .description(description.try_into_legacy().unwrap())
-                    .version(format!("§dValence §5{}", MINECRAFT_VERSION)),
+                    .version(format!("§dValence §5{MINECRAFT_VERSION}"))
+                    .description(description.to_legacy_lossy()),
             ),
             ServerListPing::Ignore => ServerListLegacyPing::Ignore,
         }
