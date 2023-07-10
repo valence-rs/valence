@@ -34,6 +34,7 @@ pub use async_trait::async_trait;
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use connect::do_accept_loop;
+pub use connect::HandshakeData;
 use flume::{Receiver, Sender};
 pub use legacy_ping::{ServerListLegacyPingPayload, ServerListLegacyPingResponse};
 use rand::rngs::OsRng;
@@ -336,7 +337,7 @@ pub trait NetworkCallbacks: Send + Sync + 'static {
         &self,
         shared: &SharedNetworkState,
         remote_addr: SocketAddr,
-        protocol_version: i32,
+        handshake_data: &HandshakeData,
     ) -> ServerListPing {
         #![allow(unused_variables)]
 
@@ -346,6 +347,8 @@ pub trait NetworkCallbacks: Send + Sync + 'static {
             player_sample: vec![],
             description: "A Valence Server".into(),
             favicon_png: &[],
+            version_name: MINECRAFT_VERSION.to_owned(),
+            protocol: PROTOCOL_VERSION,
         }
     }
 
@@ -365,21 +368,34 @@ pub trait NetworkCallbacks: Send + Sync + 'static {
     ) -> ServerListLegacyPing {
         #![allow(unused_variables)]
 
-        let protocol = match payload {
-            ServerListLegacyPingPayload::Pre1_7 { protocol, .. } => protocol,
-            _ => 0,
+        let handshake_data = match payload {
+            ServerListLegacyPingPayload::Pre1_7 {
+                protocol,
+                hostname,
+                port,
+            } => HandshakeData {
+                protocol_version: protocol,
+                server_address: hostname,
+                server_port: port,
+            },
+            _ => HandshakeData::default(),
         };
 
-        match self.server_list_ping(shared, remote_addr, protocol).await {
+        match self
+            .server_list_ping(shared, remote_addr, &handshake_data)
+            .await
+        {
             ServerListPing::Respond {
                 online_players,
                 max_players,
                 player_sample,
                 description,
                 favicon_png,
+                version_name,
+                protocol,
             } => ServerListLegacyPing::Respond(
-                ServerListLegacyPingResponse::new(PROTOCOL_VERSION, online_players, max_players)
-                    .version(format!("§dValence §5{MINECRAFT_VERSION}"))
+                ServerListLegacyPingResponse::new(protocol, online_players, max_players)
+                    .version(version_name)
                     .description(description.to_legacy_lossy()),
             ),
             ServerListPing::Ignore => ServerListLegacyPing::Ignore,
@@ -598,6 +614,14 @@ pub enum ServerListPing<'a> {
         ///
         /// No icon is used if the slice is empty.
         favicon_png: &'a [u8],
+        /// The version name of the server. Displayed when client is using a
+        /// different protocol.
+        ///
+        /// Can be formatted using `§` and format codes. Or use
+        /// [`valence_core::text::Text::to_legacy_lossy`].
+        version_name: String,
+        /// The protocol version of the server.
+        protocol: i32,
     },
     /// Ignores the query and disconnects from the client.
     #[default]
