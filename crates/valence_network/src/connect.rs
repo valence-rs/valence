@@ -28,6 +28,7 @@ use valence_core::protocol::Decode;
 use valence_core::text::Text;
 use valence_core::{ident, translation_key, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
+use crate::legacy_ping::try_handle_legacy_ping;
 use crate::packet::{
     HandshakeC2s, HandshakeNextState, LoginCompressionS2c, LoginDisconnectS2c, LoginHelloC2s,
     LoginHelloS2c, LoginKeyC2s, LoginQueryRequestS2c, LoginQueryResponseC2s, LoginSuccessS2c,
@@ -67,21 +68,35 @@ pub(super) async fn do_accept_loop(shared: SharedNetworkState) {
     }
 }
 
-async fn handle_connection(shared: SharedNetworkState, stream: TcpStream, remote_addr: SocketAddr) {
+async fn handle_connection(
+    shared: SharedNetworkState,
+    mut stream: TcpStream,
+    remote_addr: SocketAddr,
+) {
     trace!("handling connection");
 
     if let Err(e) = stream.set_nodelay(true) {
         error!("failed to set TCP_NODELAY: {e}");
     }
 
-    let conn = PacketIo::new(
-        stream,
-        PacketEncoder::new(),
-        PacketDecoder::new(),
-        Duration::from_secs(5),
-    );
+    let timeout = Duration::from_secs(5);
 
-    // TODO: peek stream for 0xFE legacy ping
+    match tokio::time::timeout(
+        timeout,
+        try_handle_legacy_ping(&shared, &mut stream, remote_addr),
+    )
+    .await
+    .unwrap_or(Err(io::Error::new(io::ErrorKind::TimedOut, "timed out")))
+    {
+        Ok(true) => return,
+        Ok(false) => {}
+        Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => {}
+        Err(e) => {
+            warn!("connection ended with error: {e:#}");
+        }
+    }
+
+    let conn = PacketIo::new(stream, PacketEncoder::new(), PacketDecoder::new(), timeout);
 
     if let Err(e) = handle_handshake(shared, conn, remote_addr).await {
         // EOF can happen if the client disconnects while joining, which isn't
