@@ -17,8 +17,7 @@ pub fn main() {
                 init_clients,
                 despawn_disconnected_clients,
                 toggle_gamemode_on_sneak,
-                digging_creative_mode,
-                digging_survival_mode,
+                digging,
                 place_blocks,
             ),
         )
@@ -79,7 +78,7 @@ fn toggle_gamemode_on_sneak(
     }
 }
 
-fn digging_creative_mode(
+fn digging(
     clients: Query<&GameMode>,
     mut instances: Query<&mut Instance>,
     mut events: EventReader<DiggingEvent>,
@@ -90,24 +89,9 @@ fn digging_creative_mode(
         let Ok(game_mode) = clients.get(event.client) else {
             continue;
         };
-        if *game_mode == GameMode::Creative && event.state == DiggingState::Start {
-            instance.set_block(event.position, BlockState::AIR);
-        }
-    }
-}
-
-fn digging_survival_mode(
-    clients: Query<&GameMode>,
-    mut instances: Query<&mut Instance>,
-    mut events: EventReader<DiggingEvent>,
-) {
-    let mut instance = instances.single_mut();
-
-    for event in events.iter() {
-        let Ok(game_mode) = clients.get(event.client) else {
-            continue;
-        };
-        if *game_mode == GameMode::Survival && event.state == DiggingState::Stop {
+        if (*game_mode == GameMode::Creative && event.state == DiggingState::Start)
+            || (*game_mode == GameMode::Survival && event.state == DiggingState::Stop)
+        {
             instance.set_block(event.position, BlockState::AIR);
         }
     }
