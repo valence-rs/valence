@@ -9,9 +9,12 @@
 //! [`WorldBorderBundle`] bundle into a [`Instance`].
 //! Use [`WorldBorderBundle::default()`] to use Minecraft Vanilla border default
 //! ```
+//! # use valence_world_border::WorldBorderBundle;
+//! # fn example(commands: &mut bevy_ecs::system::Commands, instance_entity: bevy_ecs::entity::Entity) {
 //! commands
 //!     .entity(instance_entity)
 //!     .insert(WorldBorderBundle::new([0.0, 0.0], 10.0));
+//! # }
 //! ```
 //!
 //!
@@ -20,13 +23,17 @@
 //! Setting duration to 0 will move the border to `new_diameter` immediately,
 //! otherwise, it will interpolate to `new_diameter` over `duration` time.
 //! ```
+//! # use bevy_ecs::event::EventWriter;
+//! # use valence_world_border::SetWorldBorderSizeEvent;
+//! # use core::time::Duration;
 //! fn change_diameter(
-//!     event_writer: EventWriter<SetWorldBorderSizeEvent>,
+//!     mut event_writer: EventWriter<SetWorldBorderSizeEvent>,
+//!     instance: bevy_ecs::entity::Entity,
 //!     diameter: f64,
 //!     duration: Duration,
 //! ) {
 //!     event_writer.send(SetWorldBorderSizeEvent {
-//!         instance: entity,
+//!         instance,
 //!         new_diameter: diameter,
 //!         duration,
 //!     })
@@ -221,13 +228,17 @@ impl MovingWorldBorder {
 /// Setting duration to 0 will move the border to `new_diameter` immediately,
 /// otherwise it will interpolate to `new_diameter` over `duration` time.
 /// ```
+/// # use bevy_ecs::event::EventWriter;
+/// # use valence_world_border::SetWorldBorderSizeEvent;
+/// # use core::time::Duration;
 /// fn change_diameter(
-///     event_writer: EventWriter<SetWorldBorderSizeEvent>,
+///     mut event_writer: EventWriter<SetWorldBorderSizeEvent>,
+///     instance: bevy_ecs::entity::Entity,
 ///     diameter: f64,
 ///     duration: Duration,
 /// ) {
 ///     event_writer.send(SetWorldBorderSizeEvent {
-///         instance: entity,
+///         instance,
 ///         new_diameter: diameter,
 ///         duration,
 ///     })
