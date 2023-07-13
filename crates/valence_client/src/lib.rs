@@ -120,9 +120,10 @@ impl Plugin for ClientPlugin {
                     spawn::initial_join.after(RegistrySet),
                     update_chunk_load_dist,
                     handle_layer_messages.after(update_chunk_load_dist),
+                    despawn_entities_in_despawned_layers.after(handle_layer_messages),
                     update_view_and_layers
                         .after(spawn::initial_join)
-                        .after(handle_layer_messages),
+                        .after(despawn_entities_in_despawned_layers),
                     spawn::update_respawn_position.after(update_view_and_layers),
                     spawn::respawn.after(spawn::update_respawn_position),
                     remove_entities.after(update_view_and_layers),
@@ -452,7 +453,7 @@ impl Command for DisconnectClient {
                     reason: self.reason.into(),
                 });
 
-                entity.remove::<Client>(); // TODO ?
+                entity.remove::<Client>();
             }
         }
     }
@@ -874,6 +875,32 @@ fn handle_layer_messages(
     );
 }
 
+/// Despawn all entities in despawned entity layers.
+///
+/// TODO: this could be faster with an entity layer -> client mapping. (wait
+/// until relations land?)
+fn despawn_entities_in_despawned_layers(
+    mut clients: Query<(&mut VisibleEntityLayers, OldView, &mut EntityRemoveBuf), With<Client>>,
+    entity_layers: Query<(Entity, &EntityLayer), With<Despawned>>,
+    entities: Query<&EntityId>,
+) {
+    if entity_layers.iter().len() > 0 {
+        for (mut visible_entity_layers, old_view, mut remove_buf) in &mut clients {
+            for (layer_entity, layer) in &entity_layers {
+                if visible_entity_layers.0.remove(&layer_entity) {
+                    for pos in old_view.get().iter() {
+                        for entity in layer.entities_at(pos) {
+                            if let Ok(&id) = entities.get(entity) {
+                                remove_buf.push(id.get());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 fn update_view_and_layers(
     mut clients: Query<
         (
@@ -897,7 +924,7 @@ fn update_view_and_layers(
         )>,
     >,
     chunk_layers: Query<&ChunkLayer>,
-    entity_layers: Query<&EntityLayer>,
+    entity_layers: Query<&EntityLayer, Without<Despawned>>,
     entity_ids: Query<&EntityId>,
     entity_init: Query<(EntityInitQuery, &Position)>,
 ) {
