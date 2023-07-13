@@ -26,7 +26,7 @@ use valence_core::protocol::raw::RawBytes;
 use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::Decode;
 use valence_core::text::Text;
-use valence_core::{ident, translation_key, MINECRAFT_VERSION, PROTOCOL_VERSION};
+use valence_core::{ident, translation_key, PROTOCOL_VERSION};
 
 use crate::legacy_ping::try_handle_legacy_ping;
 use crate::packet::{
@@ -110,10 +110,16 @@ async fn handle_connection(
     }
 }
 
-struct HandshakeData {
-    protocol_version: i32,
-    server_address: String,
-    next_state: HandshakeNextState,
+/// Basic information about a client, provided at the beginning of the
+/// connection
+#[derive(Default, Debug)]
+pub struct HandshakeData {
+    /// The protocol version of the client.
+    pub protocol_version: i32,
+    /// The address that the client used to connect.
+    pub server_address: String,
+    /// The port that the client used to connect.
+    pub server_port: u16,
 }
 
 async fn handle_handshake(
@@ -123,10 +129,12 @@ async fn handle_handshake(
 ) -> anyhow::Result<()> {
     let handshake = io.recv_packet::<HandshakeC2s>().await?;
 
+    let next_state = handshake.next_state;
+
     let handshake = HandshakeData {
         protocol_version: handshake.protocol_version.0,
         server_address: handshake.server_address.to_owned(),
-        next_state: handshake.next_state,
+        server_port: handshake.server_port,
     };
 
     ensure!(
@@ -135,7 +143,7 @@ async fn handle_handshake(
         "handshake server address is too long"
     );
 
-    match handshake.next_state {
+    match next_state {
         HandshakeNextState::Status => handle_status(shared, io, remote_addr, handshake)
             .await
             .context("error handling status"),
@@ -174,7 +182,7 @@ async fn handle_status(
         .0
         .callbacks
         .inner
-        .server_list_ping(&shared, remote_addr, handshake.protocol_version)
+        .server_list_ping(&shared, remote_addr, &handshake)
         .await
     {
         ServerListPing::Respond {
@@ -183,11 +191,13 @@ async fn handle_status(
             player_sample,
             description,
             favicon_png,
+            version_name,
+            protocol,
         } => {
             let mut json = json!({
                 "version": {
-                    "name": MINECRAFT_VERSION,
-                    "protocol": PROTOCOL_VERSION
+                    "name": version_name,
+                    "protocol": protocol,
                 },
                 "players": {
                     "online": online_players,
