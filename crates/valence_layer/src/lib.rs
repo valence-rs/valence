@@ -30,8 +30,12 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 pub use chunk::ChunkLayer;
 pub use entity::EntityLayer;
+use valence_biome::BiomeRegistry;
+use valence_core::Server;
+use valence_core::ident::Ident;
 use valence_core::protocol::encode::{PacketWriter, WritePacket};
 use valence_core::protocol::{Encode, Packet};
+use valence_dimension::DimensionTypeRegistry;
 use valence_entity::{InitEntitiesSet, UpdateTrackedDataSet};
 
 // Plugin is generic over the client type for hacky reasons.
@@ -111,5 +115,26 @@ pub trait Layer {
         let threshold = self.compression_threshold();
 
         self.send_local(msg, |b| PacketWriter::new(b, threshold).write_packet(pkt));
+    }
+}
+
+/// Convenience [`Bundle`] for spawning a layer entity with both [`ChunkLayer`] and [`EntityLayer`].
+#[derive(Bundle)]
+pub struct LayerBundle {
+    pub chunk: ChunkLayer,
+    pub entity: EntityLayer,
+}
+
+impl LayerBundle {
+    pub fn new(
+        dimension_type_name: impl Into<Ident<String>>,
+        dimensions: &DimensionTypeRegistry,
+        biomes: &BiomeRegistry,
+        server: &Server,
+    ) -> Self {
+        Self {
+            chunk: ChunkLayer::new(dimension_type_name, dimensions, biomes, server),
+            entity: EntityLayer::new(server),
+        }
     }
 }
