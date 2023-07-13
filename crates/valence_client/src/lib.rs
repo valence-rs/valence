@@ -64,7 +64,6 @@ use valence_entity::{
     ClearEntityChangesSet, EntityId, EntityLayerId, EntityStatus, Look, OldPosition, Position,
     Velocity,
 };
-use valence_layer::chunk::loaded::ChunkState;
 use valence_layer::packet::{
     ChunkBiome, ChunkBiomeDataS2c, ChunkLoadDistanceS2c, ChunkRenderDistanceCenterS2c,
     UnloadChunkS2c,
@@ -752,16 +751,20 @@ fn handle_layer_messages(
                             data: &bytes[range],
                         });
                     }
-                    valence_layer::chunk::LocalMsg::LoadChunk { pos } => {
-                        if let Some(chunk) = chunk_layer.chunk(pos) {
-                            chunk.write_init_packets(&mut *client, pos, chunk_layer.info());
-                            chunk.inc_viewer_count();
-                        }
-                    }
-                    valence_layer::chunk::LocalMsg::UnloadChunk { pos } => {
-                        if let Some(chunk) = chunk_layer.chunk(pos) {
-                            client.write_packet(&UnloadChunkS2c { pos });
-                            chunk.dec_viewer_count();
+                    valence_layer::chunk::LocalMsg::LoadOrUnloadChunk { pos } => {
+                        match bytes[range].last() {
+                            Some(&1) => {
+                                // Load chunk.
+                                if let Some(chunk) = chunk_layer.chunk(pos) {
+                                    chunk.write_init_packets(&mut *client, pos, chunk_layer.info());
+                                    chunk.inc_viewer_count();
+                                }
+                            }
+                            Some(&0) => {
+                                // Unload chunk.
+                                client.write_packet(&UnloadChunkS2c { pos });
+                            }
+                            _ => panic!("invalid message data"),
                         }
                     }
                 });
@@ -927,17 +930,12 @@ fn update_view_and_layers(
             // Was the client's chunk layer changed?
             if old_chunk_layer.0 != chunk_layer.0 {
                 // Unload all chunks in the old view.
+                // TODO: can we skip this step if old dimension != new dimension?
                 if let Ok(layer) = chunk_layers.get(old_chunk_layer.0) {
                     for pos in old_view.iter() {
                         if let Some(chunk) = layer.chunk(pos) {
-                            // Unload the chunk if its state is not "removed", since we already
-                            // unloaded "removed" chunks while we were handling layer messages.
-                            if chunk.state() != ChunkState::Removed
-                                && chunk.state() != ChunkState::AddedRemoved
-                            {
-                                client.write_packet(&UnloadChunkS2c { pos });
-                                chunk.dec_viewer_count();
-                            }
+                            client.write_packet(&UnloadChunkS2c { pos });
+                            chunk.dec_viewer_count();
                         }
                     }
                 }
@@ -946,12 +944,8 @@ fn update_view_and_layers(
                 if let Ok(layer) = chunk_layers.get(chunk_layer.0) {
                     for pos in view.iter() {
                         if let Some(chunk) = layer.chunk(pos) {
-                            if chunk.state() != ChunkState::Removed
-                                && chunk.state() != ChunkState::AddedRemoved
-                            {
-                                chunk.write_init_packets(&mut *client, pos, layer.info());
-                                chunk.inc_viewer_count();
-                            }
+                            chunk.write_init_packets(&mut *client, pos, layer.info());
+                            chunk.inc_viewer_count();
                         }
                     }
                 }
@@ -1044,14 +1038,8 @@ fn update_view_and_layers(
                     if let Ok(layer) = chunk_layers.get(chunk_layer.0) {
                         for pos in old_view.diff(view) {
                             if let Some(chunk) = layer.chunk(pos) {
-                                // Unload the chunk if its state is not "removed", since we already
-                                // unloaded "removed" chunks while we were handling layer messages.
-                                if chunk.state() != ChunkState::Removed
-                                    && chunk.state() != ChunkState::AddedRemoved
-                                {
-                                    client.write_packet(&UnloadChunkS2c { pos });
-                                    chunk.dec_viewer_count();
-                                }
+                                client.write_packet(&UnloadChunkS2c { pos });
+                                chunk.dec_viewer_count();
                             }
                         }
                     }
@@ -1060,12 +1048,8 @@ fn update_view_and_layers(
                     if let Ok(layer) = chunk_layers.get(chunk_layer.0) {
                         for pos in view.diff(old_view) {
                             if let Some(chunk) = layer.chunk(pos) {
-                                if chunk.state() != ChunkState::Removed
-                                    && chunk.state() != ChunkState::AddedRemoved
-                                {
-                                    chunk.write_init_packets(&mut *client, pos, layer.info());
-                                    chunk.inc_viewer_count();
-                                }
+                                chunk.write_init_packets(&mut *client, pos, layer.info());
+                                chunk.inc_viewer_count();
                             }
                         }
                     }

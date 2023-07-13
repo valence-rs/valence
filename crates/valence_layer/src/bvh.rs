@@ -128,7 +128,7 @@ impl<T: GetChunkPos, const MAX_SURFACE_AREA: i32> ChunkBvh<T, MAX_SURFACE_AREA> 
 
         // Determine splitting axis based on the side that's longer. Then split along
         // the spatial midpoint. We could use a more advanced heuristic like SAH,
-        // but it probably doesn't matter here.
+        // but it's probably not worth it.
 
         let point = if bounds.length_x() >= bounds.length_z() {
             // Split on Z axis.
@@ -323,7 +323,7 @@ mod tests {
 
         bvh.check_invariants();
 
-        // Check that we traverse exactly the positions that we know the view can see.
+        // Check that we query exactly the positions that we know the view can see.
 
         bvh.query(view, |pos| {
             let idx = viewed_positions.iter().position(|p| p == pos).expect("😔");

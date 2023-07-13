@@ -62,11 +62,12 @@ pub enum GlobalMsg {
 pub enum LocalMsg {
     /// Send packet data to all clients viewing the layer in view of `pos`.
     PacketAt { pos: ChunkPos },
-    /// Instruct clients to load the chunk at `pos`. Message content is
-    /// empty/ignored.
-    LoadChunk { pos: ChunkPos },
-    /// Instruct clients to load the chunk at `pos`. Message content is
-    UnloadChunk { pos: ChunkPos },
+    /// Instruct clients to load or unload the chunk at `pos`. Loading and
+    /// unloading are combined into a single message so that load/unload order
+    /// is not lost when messages are sorted.
+    ///
+    /// Message content is a single byte indicating load (1) or unload (0).
+    LoadOrUnloadChunk { pos: ChunkPos },
     /// Message content is the data for a single biome in the "change biomes"
     /// packet.
     ChangeBiome { pos: ChunkPos },
@@ -77,8 +78,7 @@ impl GetChunkPos for LocalMsg {
         match *self {
             LocalMsg::PacketAt { pos } => pos,
             LocalMsg::ChangeBiome { pos } => pos,
-            LocalMsg::LoadChunk { pos } => pos,
-            LocalMsg::UnloadChunk { pos } => pos,
+            LocalMsg::LoadOrUnloadChunk { pos } => pos,
         }
     }
 }
@@ -203,19 +203,28 @@ impl ChunkLayer {
     where
         F: FnMut(ChunkPos, &mut LoadedChunk) -> bool,
     {
-        for (pos, chunk) in &mut self.chunks {
+        self.chunks.retain(|pos, chunk| {
             if !f(*pos, chunk) {
-                chunk.remove();
+                self.messages
+                    .send_local(LocalMsg::LoadOrUnloadChunk { pos: *pos }, |b| b.push(0));
+
+                false
+            } else {
+                true
             }
-        }
+        });
     }
 
     /// Get a [`ChunkEntry`] for the given position.
     pub fn chunk_entry(&mut self, pos: impl Into<ChunkPos>) -> ChunkEntry {
         match self.chunks.entry(pos.into()) {
-            Entry::Occupied(oe) => ChunkEntry::Occupied(OccupiedChunkEntry { entry: oe }),
+            Entry::Occupied(oe) => ChunkEntry::Occupied(OccupiedChunkEntry {
+                messages: &mut self.messages,
+                entry: oe,
+            }),
             Entry::Vacant(ve) => ChunkEntry::Vacant(VacantChunkEntry {
                 height: self.info.height,
+                messages: &mut self.messages,
                 entry: ve,
             }),
         }
@@ -234,7 +243,7 @@ impl ChunkLayer {
     }
 
     /// Optimizes the memory usage of the instance.
-    pub fn optimize(&mut self) {
+    pub fn shrink_to_fit(&mut self) {
         for (_, chunk) in self.chunks_mut() {
             chunk.shrink_to_fit();
         }
@@ -260,7 +269,11 @@ impl ChunkLayer {
 
     #[inline]
     fn chunk_and_offsets(&self, pos: BlockPos) -> Option<(&LoadedChunk, u32, u32, u32)> {
-        let Some(y) = pos.y.checked_sub(self.info.min_y).and_then(|y| y.try_into().ok()) else {
+        let Some(y) = pos
+            .y
+            .checked_sub(self.info.min_y)
+            .and_then(|y| y.try_into().ok())
+        else {
             return None;
         };
 
@@ -283,7 +296,11 @@ impl ChunkLayer {
         &mut self,
         pos: BlockPos,
     ) -> Option<(&mut LoadedChunk, u32, u32, u32)> {
-        let Some(y) = pos.y.checked_sub(self.info.min_y).and_then(|y| y.try_into().ok()) else {
+        let Some(y) = pos
+            .y
+            .checked_sub(self.info.min_y)
+            .and_then(|y| y.try_into().ok())
+        else {
             return None;
         };
 
@@ -385,6 +402,7 @@ impl<'a> ChunkEntry<'a> {
 
 #[derive(Debug)]
 pub struct OccupiedChunkEntry<'a> {
+    messages: &'a mut ChunkLayerMessages,
     entry: OccupiedEntry<'a, ChunkPos, LoadedChunk>,
 }
 
@@ -398,6 +416,13 @@ impl<'a> OccupiedChunkEntry<'a> {
     }
 
     pub fn insert(&mut self, chunk: UnloadedChunk) -> UnloadedChunk {
+        self.messages.send_local(
+            LocalMsg::LoadOrUnloadChunk {
+                pos: *self.entry.key(),
+            },
+            |b| b.push(1),
+        );
+
         self.entry.get_mut().insert(chunk)
     }
 
@@ -410,12 +435,26 @@ impl<'a> OccupiedChunkEntry<'a> {
     }
 
     pub fn remove(mut self) -> UnloadedChunk {
+        self.messages.send_local(
+            LocalMsg::LoadOrUnloadChunk {
+                pos: *self.entry.key(),
+            },
+            |b| b.push(0),
+        );
+
         self.entry.get_mut().remove()
     }
 
     pub fn remove_entry(mut self) -> (ChunkPos, UnloadedChunk) {
         let pos = *self.entry.key();
         let chunk = self.entry.get_mut().remove();
+
+        self.messages.send_local(
+            LocalMsg::LoadOrUnloadChunk {
+                pos: *self.entry.key(),
+            },
+            |b| b.push(0),
+        );
 
         (pos, chunk)
     }
@@ -424,6 +463,7 @@ impl<'a> OccupiedChunkEntry<'a> {
 #[derive(Debug)]
 pub struct VacantChunkEntry<'a> {
     height: u32,
+    messages: &'a mut ChunkLayerMessages,
     entry: VacantEntry<'a, ChunkPos, LoadedChunk>,
 }
 
@@ -431,6 +471,13 @@ impl<'a> VacantChunkEntry<'a> {
     pub fn insert(self, chunk: UnloadedChunk) -> &'a mut LoadedChunk {
         let mut loaded = LoadedChunk::new(self.height);
         loaded.insert(chunk);
+
+        self.messages.send_local(
+            LocalMsg::LoadOrUnloadChunk {
+                pos: *self.entry.key(),
+            },
+            |b| b.push(1),
+        );
 
         self.entry.insert(loaded)
     }
@@ -448,13 +495,13 @@ pub(super) fn build(app: &mut App) {
     app.add_systems(
         PostUpdate,
         (
-            update_chunks_pre_client.in_set(UpdateLayersPreClientSet),
-            update_chunks_post_client.in_set(UpdateLayersPostClientSet),
+            update_chunk_layers_pre_client.in_set(UpdateLayersPreClientSet),
+            update_chunk_layers_post_client.in_set(UpdateLayersPostClientSet),
         ),
     );
 }
 
-fn update_chunks_pre_client(mut layers: Query<&mut ChunkLayer>) {
+fn update_chunk_layers_pre_client(mut layers: Query<&mut ChunkLayer>) {
     for layer in &mut layers {
         let layer = layer.into_inner();
 
@@ -466,10 +513,8 @@ fn update_chunks_pre_client(mut layers: Query<&mut ChunkLayer>) {
     }
 }
 
-fn update_chunks_post_client(mut layers: Query<&mut ChunkLayer>) {
+fn update_chunk_layers_post_client(mut layers: Query<&mut ChunkLayer>) {
     for mut layer in &mut layers {
-        layer.chunks.retain(|_, chunk| chunk.update_post_client());
-
         layer.messages.unready();
     }
 }

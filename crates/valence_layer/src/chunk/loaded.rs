@@ -24,12 +24,10 @@ use super::unloaded::{self, UnloadedChunk};
 use super::{ChunkLayerInfo, ChunkLayerMessages, LocalMsg};
 use crate::packet::{
     BlockEntityUpdateS2c, BlockUpdateS2c, ChunkDataBlockEntity, ChunkDataS2c, ChunkDeltaUpdateS2c,
-    UnloadChunkS2c,
 };
 
 #[derive(Debug)]
 pub struct LoadedChunk {
-    state: ChunkState,
     /// A count of the clients viewing this chunk. Useful for knowing if it's
     /// necessary to record changes, since no client would be in view to receive
     /// the changes if this were nonzero.
@@ -46,23 +44,6 @@ pub struct LoadedChunk {
     /// invalidated if empty. This should be cleared whenever the chunk is
     /// modified in an observable way, even if the chunk is not viewed.
     cached_init_packets: Mutex<Vec<u8>>,
-}
-
-/// Describes the current state of a loaded chunk.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-
-pub enum ChunkState {
-    /// The chunk is newly inserted this tick.
-    Added,
-    /// The chunk was `Added` this tick, but then was later removed this tick.
-    AddedRemoved,
-    /// The chunk was `Normal` in the last tick and has been removed this tick.
-    Removed,
-    /// The chunk was `Normal` in the last tick and has been overwritten with a
-    /// new chunk this tick.
-    Overwrite,
-    /// The chunk is in none of the other states. This is the common case.
-    Normal,
 }
 
 #[derive(Clone, Default, Debug)]
@@ -107,7 +88,6 @@ impl Section {
 impl LoadedChunk {
     pub(crate) fn new(height: u32) -> Self {
         Self {
-            state: ChunkState::Added,
             viewer_count: AtomicU32::new(0),
             sections: vec![Section::default(); height as usize / 16].into(),
             block_entities: BTreeMap::new(),
@@ -124,16 +104,8 @@ impl LoadedChunk {
     /// The previous chunk data is returned.
     ///
     /// [resized]: UnloadedChunk::set_height
-    pub fn insert(&mut self, mut chunk: UnloadedChunk) -> UnloadedChunk {
+    pub(crate) fn insert(&mut self, mut chunk: UnloadedChunk) -> UnloadedChunk {
         chunk.set_height(self.height());
-
-        self.state = match self.state {
-            ChunkState::Added => ChunkState::Added,
-            ChunkState::AddedRemoved => ChunkState::Added,
-            ChunkState::Removed => ChunkState::Overwrite,
-            ChunkState::Overwrite => ChunkState::Overwrite,
-            ChunkState::Normal => ChunkState::Overwrite,
-        };
 
         let old_sections = self
             .sections
@@ -161,15 +133,7 @@ impl LoadedChunk {
         }
     }
 
-    pub fn remove(&mut self) -> UnloadedChunk {
-        self.state = match self.state {
-            ChunkState::Added => ChunkState::AddedRemoved,
-            ChunkState::AddedRemoved => ChunkState::AddedRemoved,
-            ChunkState::Removed => ChunkState::Removed,
-            ChunkState::Overwrite => ChunkState::Removed,
-            ChunkState::Normal => ChunkState::Removed,
-        };
-
+    pub(crate) fn remove(&mut self) -> UnloadedChunk {
         let old_sections = self
             .sections
             .iter_mut()
@@ -195,10 +159,6 @@ impl LoadedChunk {
         }
     }
 
-    pub fn state(&self) -> ChunkState {
-        self.state
-    }
-
     /// Returns the number of clients in view of this chunk.
     pub fn viewer_count(&self) -> u32 {
         self.viewer_count.load(Ordering::Relaxed)
@@ -209,13 +169,13 @@ impl LoadedChunk {
         *self.viewer_count.get_mut()
     }
 
-    /// For internal use only.
+    /// Increments the viewer count. For internal use only.
     #[doc(hidden)]
     pub fn inc_viewer_count(&self) {
         self.viewer_count.fetch_add(1, Ordering::Relaxed);
     }
 
-    /// For internal use only.
+    /// Decrements the viewer count. For internal use only.
     #[doc(hidden)]
     pub fn dec_viewer_count(&self) {
         let old = self.viewer_count.fetch_sub(1, Ordering::Relaxed);
@@ -223,9 +183,7 @@ impl LoadedChunk {
     }
 
     /// Performs the changes necessary to prepare this chunk for client updates.
-    /// Notably:
-    /// - Message is sent to spawn or despawn the chunk.
-    /// - Chunk update packets are written to this chunk's packet buffer.
+    /// - Chunk change messages are written to the layer.
     /// - Recorded changes are cleared.
     pub(crate) fn update_pre_client(
         &mut self,
@@ -233,24 +191,7 @@ impl LoadedChunk {
         info: &ChunkLayerInfo,
         messages: &mut ChunkLayerMessages,
     ) {
-        match self.state {
-            ChunkState::Added | ChunkState::Overwrite => {
-                // Load the chunk.
-                messages.send_local(LocalMsg::LoadChunk { pos }, |_| {});
-            }
-            ChunkState::Removed | ChunkState::AddedRemoved => {
-                // Unload the chunk.
-                messages.send_local(LocalMsg::UnloadChunk { pos }, |_| {});
-
-                messages.send_local(LocalMsg::PacketAt { pos }, |buf| {
-                    PacketWriter::new(buf, info.compression_threshold)
-                        .write_packet(&UnloadChunkS2c { pos })
-                });
-            }
-            ChunkState::Normal => {}
-        }
-
-        if !is_viewed(&mut self.viewer_count, self.state) {
+        if *self.viewer_count.get_mut() == 0 {
             // Nobody is viewing the chunk, so no need to send any update packets. There
             // also shouldn't be any changes that need to be cleared.
             self.assert_no_changes();
@@ -359,28 +300,6 @@ impl LoadedChunk {
         self.assert_no_changes();
     }
 
-    /// Returns if the chunk should be retained.
-    pub(crate) fn update_post_client(&mut self) -> bool {
-        // Changes were already cleared in `update_pre_client`.
-        self.assert_no_changes();
-
-        match self.state {
-            ChunkState::Added | ChunkState::Overwrite | ChunkState::Normal => {
-                self.state = ChunkState::Normal;
-                true
-            }
-            ChunkState::Removed | ChunkState::AddedRemoved => {
-                debug_assert_eq!(
-                    *self.viewer_count.get_mut(),
-                    0,
-                    "chunk viewer count should be zero by the time it's removed"
-                );
-
-                false
-            }
-        }
-    }
-
     /// Writes the packet data needed to initialize this chunk.
     #[doc(hidden)]
     pub fn write_init_packets(
@@ -389,11 +308,6 @@ impl LoadedChunk {
         pos: ChunkPos,
         info: &ChunkLayerInfo,
     ) {
-        debug_assert!(
-            self.state != ChunkState::Removed && self.state != ChunkState::AddedRemoved,
-            "attempt to initialize removed chunk"
-        );
-
         let mut init_packets = self.cached_init_packets.lock();
 
         if init_packets.is_empty() {
@@ -511,7 +425,7 @@ impl Chunk for LoadedChunk {
         if block != old_block {
             self.cached_init_packets.get_mut().clear();
 
-            if is_viewed(&mut self.viewer_count, self.state) {
+            if *self.viewer_count.get_mut() > 0 {
                 let compact = (block.to_raw() as i64) << 12 | (x << 8 | z << 4 | (y % 16)) as i64;
                 sect.section_updates.push(VarLong(compact));
             }
@@ -529,7 +443,7 @@ impl Chunk for LoadedChunk {
             if *b != block {
                 self.cached_init_packets.get_mut().clear();
 
-                if is_viewed(&mut self.viewer_count, self.state) {
+                if *self.viewer_count.get_mut() > 0 {
                     // The whole section is being modified, so any previous modifications would
                     // be overwritten.
                     sect.section_updates.clear();
@@ -553,7 +467,7 @@ impl Chunk for LoadedChunk {
                     if block != sect.block_states.get(idx as usize) {
                         self.cached_init_packets.get_mut().clear();
 
-                        if is_viewed(&mut self.viewer_count, self.state) {
+                        if *self.viewer_count.get_mut() > 0 {
                             let packed = block_bits | (x << 8 | z << 4 | sect_y) as i64;
                             sect.section_updates.push(VarLong(packed));
                         }
@@ -578,7 +492,7 @@ impl Chunk for LoadedChunk {
         let idx = x + z * 16 + y * 16 * 16;
 
         if let Some(be) = self.block_entities.get_mut(&idx) {
-            if is_viewed(&mut self.viewer_count, self.state) {
+            if *self.viewer_count.get_mut() > 0 {
                 self.changed_block_entities.insert(idx);
             }
             self.cached_init_packets.get_mut().clear();
@@ -602,7 +516,7 @@ impl Chunk for LoadedChunk {
 
         match block_entity {
             Some(nbt) => {
-                if is_viewed(&mut self.viewer_count, self.state) {
+                if *self.viewer_count.get_mut() > 0 {
                     self.changed_block_entities.insert(idx);
                 }
                 self.cached_init_packets.get_mut().clear();
@@ -628,7 +542,7 @@ impl Chunk for LoadedChunk {
 
         self.cached_init_packets.get_mut().clear();
 
-        if is_viewed(&mut self.viewer_count, self.state) {
+        if *self.viewer_count.get_mut() > 0 {
             self.changed_block_entities
                 .extend(mem::take(&mut self.block_entities).into_keys());
         } else {
@@ -654,7 +568,7 @@ impl Chunk for LoadedChunk {
         if biome != old_biome {
             self.cached_init_packets.get_mut().clear();
 
-            if is_viewed(&mut self.viewer_count, self.state) {
+            if *self.viewer_count.get_mut() > 0 {
                 self.changed_biomes = true;
             }
         }
@@ -670,11 +584,11 @@ impl Chunk for LoadedChunk {
         if let PalettedContainer::Single(b) = &sect.biomes {
             if *b != biome {
                 self.cached_init_packets.get_mut().clear();
-                self.changed_biomes = is_viewed(&mut self.viewer_count, self.state);
+                self.changed_biomes = *self.viewer_count.get_mut() > 0;
             }
         } else {
             self.cached_init_packets.get_mut().clear();
-            self.changed_biomes = is_viewed(&mut self.viewer_count, self.state);
+            self.changed_biomes = *self.viewer_count.get_mut() > 0;
         }
 
         sect.biomes.fill(biome);
@@ -689,12 +603,6 @@ impl Chunk for LoadedChunk {
             sect.section_updates.shrink_to_fit();
         }
     }
-}
-
-/// If there are potentially clients viewing this chunk.
-#[inline]
-fn is_viewed(viewer_count: &mut AtomicU32, state: ChunkState) -> bool {
-    state == ChunkState::Normal && *viewer_count.get_mut() > 0
 }
 
 #[cfg(test)]
