@@ -79,7 +79,7 @@ mod tests {
     #[test]
     fn smoke_test() {
         let mut app = bevy_app::App::new();
-        app.add_plugin(RegistryPlugin);
+        app.add_plugins(RegistryPlugin);
         app.insert_resource(Server::default());
         app.update();
 

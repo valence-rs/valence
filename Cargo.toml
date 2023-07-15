@@ -99,12 +99,12 @@ arrayvec = "0.7.2"
 async-trait = "0.1.60"
 atty = "0.2.14"
 base64 = "0.21.0"
-bevy_app = { git = "https://github.com/bevyengine/bevy", rev = "910f984709fb58cddbb7393c948634a2540e8d72", default-features = false }
-bevy_ecs = { git = "https://github.com/bevyengine/bevy", rev = "910f984709fb58cddbb7393c948634a2540e8d72", default-features = false }
-bevy_hierarchy = { git = "https://github.com/bevyengine/bevy", rev = "910f984709fb58cddbb7393c948634a2540e8d72", default-features = false }
-bevy_log = { git = "https://github.com/bevyengine/bevy", rev = "910f984709fb58cddbb7393c948634a2540e8d72" }
+bevy_app = { version = "0.11", default-features = false }
+bevy_ecs = { version = "0.11", default-features = false }
+bevy_hierarchy = { version = "0.11", default-features = false }
+bevy_log = { version = "0.11" }
 bevy_mod_debugdump = "0.7.0"
-bevy_utils = { git = "https://github.com/bevyengine/bevy", rev = "910f984709fb58cddbb7393c948634a2540e8d72" }
+bevy_utils = { version = "0.11" }
 bitfield-struct = "0.3.1"
 byteorder = "1.4.3"
 bytes = "1.2.1"
