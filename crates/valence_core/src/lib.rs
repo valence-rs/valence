@@ -88,7 +88,7 @@ impl Plugin for CorePlugin {
         let tick_period = Duration::from_secs_f64((tick_rate.get() as f64).recip());
 
         // Make the app loop forever at the configured TPS.
-        app.add_plugin(ScheduleRunnerPlugin::run_loop(tick_period));
+        app.add_plugins(ScheduleRunnerPlugin::run_loop(tick_period));
 
         fn increment_tick_counter(mut server: ResMut<Server>) {
             server.current_tick += 1;

@@ -35,7 +35,7 @@ pub struct WriteAdvancementToCacheSet;
 
 impl Plugin for AdvancementPlugin {
     fn build(&self, app: &mut bevy_app::App) {
-        app.add_plugin(HierarchyPlugin)
+        app.add_plugins(HierarchyPlugin)
             .configure_sets(
                 PostUpdate,
                 (
