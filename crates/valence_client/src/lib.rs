@@ -478,8 +478,12 @@ impl fmt::Display for Username {
 /// Returns whether or not the given string is a valid Minecraft username.
 ///
 /// A valid username is 3 to 16 characters long with only ASCII alphanumeric
-/// characters. The username must match the regex `^[a-zA-Z0-9_]{3,16}$` to be
+/// characters. The username must match the regex `^[a-zA-Z0-9_\.]{3,16}$` to be
 /// considered valid.
+///
+/// Although the dot character is not valid in Java edition, the GeyserMC
+/// plugin uses it to differentiate Bedrock players, which means a dot is
+/// possible if Valence is behind a proxy with GeyserMC support
 ///
 /// # Examples
 ///
@@ -488,6 +492,7 @@ impl fmt::Display for Username {
 ///
 /// assert!(is_valid_username("00a"));
 /// assert!(is_valid_username("jeb_"));
+/// assert!(is_valid_username(".jeb"));
 ///
 /// assert!(!is_valid_username("notavalidusername"));
 /// assert!(!is_valid_username("NotValid!"));
@@ -496,7 +501,7 @@ pub fn is_valid_username(username: &str) -> bool {
     (3..=16).contains(&username.len())
         && username
             .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '_')
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '.')
 }
 
 #[derive(Component, Clone, PartialEq, Eq, Default, Debug)]
