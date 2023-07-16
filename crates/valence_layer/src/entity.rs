@@ -1,5 +1,6 @@
 use std::collections::hash_map::Entry;
 use std::collections::BTreeSet;
+use std::convert::Infallible;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
@@ -26,6 +27,7 @@ pub struct EntityLayer {
 
 type EntityLayerMessages = Messages<GlobalMsg, LocalMsg>;
 
+#[doc(hidden)]
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum GlobalMsg {
     /// Send packet data to all clients viewing the layer. Message data is
@@ -39,6 +41,7 @@ pub enum GlobalMsg {
     DespawnLayer,
 }
 
+#[doc(hidden)]
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum LocalMsg {
     /// Spawn entities if the client is not already viewing `src_layer`. Message
@@ -103,20 +106,13 @@ impl EntityLayer {
 }
 
 impl Layer for EntityLayer {
-    type Global = GlobalMsg;
+    type ChunkWriter<'a> = ChunkWriter<'a>;
 
-    type Local = LocalMsg;
-
-    fn send_global(&mut self, msg: Self::Global, f: impl FnOnce(&mut Vec<u8>)) {
-        self.messages.send_global(msg, f);
-    }
-
-    fn send_local(&mut self, msg: Self::Local, f: impl FnOnce(&mut Vec<u8>)) {
-        self.messages.send_local(msg, f);
-    }
-
-    fn compression_threshold(&self) -> Option<u32> {
-        self.compression_threshold
+    fn chunk_writer(&mut self, pos: impl Into<ChunkPos>) -> Self::ChunkWriter<'_> {
+        ChunkWriter {
+            layer: self,
+            pos: pos.into(),
+        }
     }
 }
 
@@ -125,14 +121,42 @@ impl WritePacket for EntityLayer {
     where
         P: Packet + Encode,
     {
-        self.send_global_packet(GlobalMsg::Packet, packet);
-
-        // TODO: propagate error up.
-        Ok(())
+        self.messages.send_global(GlobalMsg::Packet, |b| {
+            PacketWriter::new(b, self.compression_threshold).write_packet_fallible(packet)
+        })
     }
 
     fn write_packet_bytes(&mut self, bytes: &[u8]) {
-        self.send_global_bytes(GlobalMsg::Packet, bytes)
+        let _ = self
+            .messages
+            .send_global::<Infallible>(GlobalMsg::Packet, |b| Ok(b.extend_from_slice(bytes)));
+    }
+}
+
+pub struct ChunkWriter<'a> {
+    layer: &'a mut EntityLayer,
+    pos: ChunkPos,
+}
+
+impl<'a> WritePacket for ChunkWriter<'a> {
+    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
+    where
+        P: Packet + Encode,
+    {
+        self.layer
+            .messages
+            .send_local(LocalMsg::PacketAt { pos: self.pos }, |b| {
+                PacketWriter::new(b, self.layer.compression_threshold).write_packet_fallible(packet)
+            })
+    }
+
+    fn write_packet_bytes(&mut self, bytes: &[u8]) {
+        let _ = self
+            .layer
+            .messages
+            .send_local::<Infallible>(LocalMsg::PacketAt { pos: self.pos }, |b| {
+                Ok(b.extend_from_slice(bytes))
+            });
     }
 }
 
@@ -180,12 +204,12 @@ fn change_entity_positions(
 
                 if let Entry::Occupied(mut old_cell) = old_layer.entities.entry(old_chunk_pos) {
                     if old_cell.get_mut().remove(&entity) {
-                        old_layer.messages.send_local(
+                        let _ = old_layer.messages.send_local::<Infallible>(
                             LocalMsg::DespawnEntity {
                                 pos: old_chunk_pos,
                                 dest_layer: Entity::PLACEHOLDER,
                             },
-                            |b| b.extend_from_slice(&entity_id.get().to_ne_bytes()),
+                            |b| Ok(b.extend_from_slice(&entity_id.get().to_ne_bytes())),
                         );
 
                         if old_cell.get().is_empty() {
@@ -203,12 +227,12 @@ fn change_entity_positions(
 
                 if let Entry::Occupied(mut old_cell) = old_layer.entities.entry(old_chunk_pos) {
                     if old_cell.get_mut().remove(&entity) {
-                        old_layer.messages.send_local(
+                        let _ = old_layer.messages.send_local::<Infallible>(
                             LocalMsg::DespawnEntity {
                                 pos: old_chunk_pos,
                                 dest_layer: layer_id.0,
                             },
-                            |b| b.extend_from_slice(&entity_id.get().to_ne_bytes()),
+                            |b| Ok(b.extend_from_slice(&entity_id.get().to_ne_bytes())),
                         );
 
                         if old_cell.get().is_empty() {
@@ -220,12 +244,12 @@ fn change_entity_positions(
 
             if let Ok(mut layer) = layers.get_mut(layer_id.0) {
                 if layer.entities.entry(chunk_pos).or_default().insert(entity) {
-                    layer.messages.send_local(
+                    let _ = layer.messages.send_local::<Infallible>(
                         LocalMsg::SpawnEntity {
                             pos: chunk_pos,
                             src_layer: old_layer_id.get(),
                         },
-                        |b| b.extend_from_slice(&entity.to_bits().to_ne_bytes()),
+                        |b| Ok(b.extend_from_slice(&entity.to_bits().to_ne_bytes())),
                     );
                 }
             }
@@ -236,23 +260,23 @@ fn change_entity_positions(
             if let Ok(mut layer) = layers.get_mut(layer_id.0) {
                 if let Entry::Occupied(mut old_cell) = layer.entities.entry(old_chunk_pos) {
                     if old_cell.get_mut().remove(&entity) {
-                        layer.messages.send_local(
+                        let _ = layer.messages.send_local::<Infallible>(
                             LocalMsg::DespawnEntityTransition {
                                 pos: old_chunk_pos,
                                 dest_pos: chunk_pos,
                             },
-                            |b| b.extend_from_slice(&entity_id.get().to_ne_bytes()),
+                            |b| Ok(b.extend_from_slice(&entity_id.get().to_ne_bytes())),
                         );
                     }
                 }
 
                 if layer.entities.entry(chunk_pos).or_default().insert(entity) {
-                    layer.messages.send_local(
+                    let _ = layer.messages.send_local::<Infallible>(
                         LocalMsg::SpawnEntityTransition {
                             pos: chunk_pos,
                             src_pos: old_chunk_pos,
                         },
-                        |b| b.extend_from_slice(&entity.to_bits().to_ne_bytes()),
+                        |b| Ok(b.extend_from_slice(&entity.to_bits().to_ne_bytes())),
                     );
                 }
             }
@@ -284,9 +308,11 @@ fn send_entity_update_messages<Client: Component>(
                         LocalMsg::PacketAt { pos: chunk_pos }
                     };
 
-                    layer.messages.send_local(msg, |b| {
-                        update
-                            .write_update_packets(PacketWriter::new(b, layer.compression_threshold))
+                    let _ = layer.messages.send_local::<Infallible>(msg, |b| {
+                        Ok(update.write_update_packets(PacketWriter::new(
+                            b,
+                            layer.compression_threshold,
+                        )))
                     });
                 } else {
                     panic!(
@@ -301,7 +327,9 @@ fn send_entity_update_messages<Client: Component>(
 
 fn send_layer_despawn_messages(mut layers: Query<&mut EntityLayer, With<Despawned>>) {
     for mut layer in &mut layers {
-        layer.send_global(GlobalMsg::DespawnLayer, |_| {});
+        let _ = layer
+            .messages
+            .send_global::<Infallible>(GlobalMsg::DespawnLayer, |_| Ok(()));
     }
 }
 

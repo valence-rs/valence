@@ -31,9 +31,9 @@ use bevy_ecs::prelude::*;
 pub use chunk::ChunkLayer;
 pub use entity::EntityLayer;
 use valence_biome::BiomeRegistry;
+use valence_core::chunk_pos::ChunkPos;
 use valence_core::ident::Ident;
-use valence_core::protocol::encode::{PacketWriter, WritePacket};
-use valence_core::protocol::{Encode, Packet};
+use valence_core::protocol::encode::WritePacket;
 use valence_core::Server;
 use valence_dimension::DimensionTypeRegistry;
 use valence_entity::{InitEntitiesSet, UpdateTrackedDataSet};
@@ -81,41 +81,54 @@ impl<Client: Component> Plugin for LayerPlugin<Client> {
     }
 }
 
-pub trait Layer {
-    type Global;
-    type Local;
+// pub trait Layer {
+//     type Global;
+//     type Local;
 
-    fn send_global(&mut self, msg: Self::Global, f: impl FnOnce(&mut Vec<u8>));
+//     fn send_global(&mut self, msg: Self::Global, f: impl FnOnce(&mut
+// Vec<u8>));
 
-    fn send_local(&mut self, msg: Self::Local, f: impl FnOnce(&mut Vec<u8>));
+//     fn send_local(&mut self, msg: Self::Local, f: impl FnOnce(&mut Vec<u8>));
 
-    fn compression_threshold(&self) -> Option<u32>;
+//     fn compression_threshold(&self) -> Option<u32>;
 
-    fn send_global_bytes(&mut self, msg: Self::Global, bytes: &[u8]) {
-        self.send_global(msg, |b| b.extend_from_slice(bytes));
-    }
+//     fn send_global_bytes(&mut self, msg: Self::Global, bytes: &[u8]) {
+//         self.send_global(msg, |b| b.extend_from_slice(bytes));
+//     }
 
-    fn send_local_bytes(&mut self, msg: Self::Local, bytes: &[u8]) {
-        self.send_local(msg, |b| b.extend_from_slice(bytes));
-    }
+//     fn send_local_bytes(&mut self, msg: Self::Local, bytes: &[u8]) {
+//         self.send_local(msg, |b| b.extend_from_slice(bytes));
+//     }
 
-    fn send_global_packet<P>(&mut self, msg: Self::Global, pkt: &P)
+//     fn send_global_packet<P>(&mut self, msg: Self::Global, pkt: &P)
+//     where
+//         P: Encode + Packet,
+//     {
+//         let threshold = self.compression_threshold();
+
+//         self.send_global(msg, |b| PacketWriter::new(b,
+// threshold).write_packet(pkt));     }
+
+//     fn send_local_packet<P>(&mut self, msg: Self::Local, pkt: &P)
+//     where
+//         P: Encode + Packet,
+//     {
+//         let threshold = self.compression_threshold();
+
+//         self.send_local(msg, |b| PacketWriter::new(b,
+// threshold).write_packet(pkt));     }
+// }
+
+pub trait Layer: WritePacket {
+    type ChunkWriter<'a>: WritePacket
     where
-        P: Encode + Packet,
-    {
-        let threshold = self.compression_threshold();
+        Self: 'a;
 
-        self.send_global(msg, |b| PacketWriter::new(b, threshold).write_packet(pkt));
-    }
-
-    fn send_local_packet<P>(&mut self, msg: Self::Local, pkt: &P)
-    where
-        P: Encode + Packet,
-    {
-        let threshold = self.compression_threshold();
-
-        self.send_local(msg, |b| PacketWriter::new(b, threshold).write_packet(pkt));
-    }
+    /// Returns a [`WritePacket`] implementor for a chunk position.
+    ///
+    /// When writing packets to the chunk writer, only clients in view of `pos`
+    /// will receive the packet.
+    fn chunk_writer(&mut self, pos: impl Into<ChunkPos>) -> Self::ChunkWriter<'_>;
 }
 
 /// Convenience [`Bundle`] for spawning a layer entity with both [`ChunkLayer`]

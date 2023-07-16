@@ -7,6 +7,7 @@ pub mod unloaded;
 
 use std::borrow::Cow;
 use std::collections::hash_map::{Entry, OccupiedEntry, VacantEntry};
+use std::convert::Infallible;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
@@ -19,7 +20,7 @@ use valence_core::chunk_pos::ChunkPos;
 use valence_core::ident::Ident;
 use valence_core::particle::{Particle, ParticleS2c};
 use valence_core::protocol::array::LengthPrefixedArray;
-use valence_core::protocol::encode::WritePacket;
+use valence_core::protocol::encode::{PacketWriter, WritePacket};
 use valence_core::protocol::packet::sound::{PlaySoundS2c, Sound, SoundCategory};
 use valence_core::protocol::{Encode, Packet};
 use valence_core::Server;
@@ -55,6 +56,7 @@ pub struct ChunkLayerInfo {
 
 type ChunkLayerMessages = Messages<GlobalMsg, LocalMsg>;
 
+#[doc(hidden)]
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum GlobalMsg {
     /// Send packet data to all clients viewing the layer.
@@ -64,6 +66,7 @@ pub enum GlobalMsg {
     PacketExcept { except: Entity },
 }
 
+#[doc(hidden)]
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum LocalMsg {
     /// Send packet data to all clients viewing the layer in view of `pos`.
@@ -86,24 +89,6 @@ impl GetChunkPos for LocalMsg {
             LocalMsg::ChangeBiome { pos } => pos,
             LocalMsg::LoadOrUnloadChunk { pos } => pos,
         }
-    }
-}
-
-impl Layer for ChunkLayer {
-    type Global = GlobalMsg;
-
-    type Local = LocalMsg;
-
-    fn send_global(&mut self, msg: Self::Global, f: impl FnOnce(&mut Vec<u8>)) {
-        self.messages.send_global(msg, f)
-    }
-
-    fn send_local(&mut self, msg: Self::Local, f: impl FnOnce(&mut Vec<u8>)) {
-        self.messages.send_local(msg, f)
-    }
-
-    fn compression_threshold(&self) -> Option<u32> {
-        self.info.compression_threshold
     }
 }
 
@@ -211,8 +196,11 @@ impl ChunkLayer {
     {
         self.chunks.retain(|pos, chunk| {
             if !f(*pos, chunk) {
-                self.messages
-                    .send_local(LocalMsg::LoadOrUnloadChunk { pos: *pos }, |b| b.push(0));
+                let _ = self
+                    .messages
+                    .send_local::<Infallible>(LocalMsg::LoadOrUnloadChunk { pos: *pos }, |b| {
+                        Ok(b.push(0))
+                    });
 
                 false
             } else {
@@ -359,19 +347,15 @@ impl ChunkLayer {
     ) {
         let position = position.into();
 
-        self.send_local_packet(
-            LocalMsg::PacketAt {
-                pos: ChunkPos::from_dvec3(position),
-            },
-            &ParticleS2c {
+        self.chunk_writer(ChunkPos::from_dvec3(position))
+            .write_packet(&ParticleS2c {
                 particle: Cow::Borrowed(particle),
                 long_distance,
                 position,
                 offset: offset.into(),
                 max_speed,
                 count,
-            },
-        );
+            });
     }
 
     // TODO: move to `valence_sound`.
@@ -388,19 +372,71 @@ impl ChunkLayer {
     ) {
         let position = position.into();
 
-        self.send_local_packet(
-            LocalMsg::PacketAt {
-                pos: ChunkPos::from_dvec3(position),
-            },
-            &PlaySoundS2c {
+        self.chunk_writer(ChunkPos::from_dvec3(position))
+            .write_packet(&PlaySoundS2c {
                 id: sound.to_id(),
                 category,
                 position: (position * 8.0).as_ivec3(),
                 volume,
                 pitch,
                 seed: rand::random(),
-            },
-        );
+            });
+    }
+}
+
+impl Layer for ChunkLayer {
+    type ChunkWriter<'a> = ChunkWriter<'a>;
+
+    fn chunk_writer(&mut self, pos: impl Into<ChunkPos>) -> Self::ChunkWriter<'_> {
+        ChunkWriter {
+            layer: self,
+            pos: pos.into(),
+        }
+    }
+}
+
+impl WritePacket for ChunkLayer {
+    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
+    where
+        P: Packet + Encode,
+    {
+        self.messages.send_global(GlobalMsg::Packet, |b| {
+            PacketWriter::new(b, self.info.compression_threshold).write_packet_fallible(packet)
+        })
+    }
+
+    fn write_packet_bytes(&mut self, bytes: &[u8]) {
+        let _ = self
+            .messages
+            .send_global::<Infallible>(GlobalMsg::Packet, |b| Ok(b.extend_from_slice(bytes)));
+    }
+}
+
+pub struct ChunkWriter<'a> {
+    layer: &'a mut ChunkLayer,
+    pos: ChunkPos,
+}
+
+impl<'a> WritePacket for ChunkWriter<'a> {
+    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
+    where
+        P: Packet + Encode,
+    {
+        self.layer
+            .messages
+            .send_local(LocalMsg::PacketAt { pos: self.pos }, |b| {
+                PacketWriter::new(b, self.layer.info.compression_threshold)
+                    .write_packet_fallible(packet)
+            })
+    }
+
+    fn write_packet_bytes(&mut self, bytes: &[u8]) {
+        let _ = self
+            .layer
+            .messages
+            .send_local::<Infallible>(LocalMsg::PacketAt { pos: self.pos }, |b| {
+                Ok(b.extend_from_slice(bytes))
+            });
     }
 }
 
@@ -435,11 +471,11 @@ impl<'a> OccupiedChunkEntry<'a> {
     }
 
     pub fn insert(&mut self, chunk: UnloadedChunk) -> UnloadedChunk {
-        self.messages.send_local(
+        let _ = self.messages.send_local::<Infallible>(
             LocalMsg::LoadOrUnloadChunk {
                 pos: *self.entry.key(),
             },
-            |b| b.push(1),
+            |b| Ok(b.push(1)),
         );
 
         self.entry.get_mut().insert(chunk)
@@ -454,11 +490,11 @@ impl<'a> OccupiedChunkEntry<'a> {
     }
 
     pub fn remove(mut self) -> UnloadedChunk {
-        self.messages.send_local(
+        let _ = self.messages.send_local::<Infallible>(
             LocalMsg::LoadOrUnloadChunk {
                 pos: *self.entry.key(),
             },
-            |b| b.push(0),
+            |b| Ok(b.push(0)),
         );
 
         self.entry.get_mut().remove()
@@ -468,11 +504,11 @@ impl<'a> OccupiedChunkEntry<'a> {
         let pos = *self.entry.key();
         let chunk = self.entry.get_mut().remove();
 
-        self.messages.send_local(
+        let _ = self.messages.send_local::<Infallible>(
             LocalMsg::LoadOrUnloadChunk {
                 pos: *self.entry.key(),
             },
-            |b| b.push(0),
+            |b| Ok(b.push(0)),
         );
 
         (pos, chunk)
@@ -491,11 +527,11 @@ impl<'a> VacantChunkEntry<'a> {
         let mut loaded = LoadedChunk::new(self.height);
         loaded.insert(chunk);
 
-        self.messages.send_local(
+        let _ = self.messages.send_local::<Infallible>(
             LocalMsg::LoadOrUnloadChunk {
                 pos: *self.entry.key(),
             },
-            |b| b.push(1),
+            |b| Ok(b.push(1)),
         );
 
         self.entry.insert(loaded)
@@ -507,22 +543,6 @@ impl<'a> VacantChunkEntry<'a> {
 
     pub fn key(&self) -> &ChunkPos {
         self.entry.key()
-    }
-}
-
-impl WritePacket for ChunkLayer {
-    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
-    where
-        P: Packet + Encode,
-    {
-        self.send_global_packet(GlobalMsg::Packet, packet);
-
-        // TODO: propagate error up.
-        Ok(())
-    }
-
-    fn write_packet_bytes(&mut self, bytes: &[u8]) {
-        self.send_global_bytes(GlobalMsg::Packet, bytes)
     }
 }
 

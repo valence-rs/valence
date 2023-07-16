@@ -23,40 +23,52 @@ where
         Self::default()
     }
 
-    pub(crate) fn send_global(&mut self, msg: G, f: impl FnOnce(&mut Vec<u8>)) {
+    pub(crate) fn send_global<E>(
+        &mut self,
+        msg: G,
+        f: impl FnOnce(&mut Vec<u8>) -> Result<(), E>,
+    ) -> Result<(), E> {
         debug_assert!(!self.is_ready);
 
         let start = self.staging.len();
-        f(&mut self.staging);
+        f(&mut self.staging)?;
         let end = self.staging.len();
 
         if let Some((m, range)) = self.global.last_mut() {
             if msg == *m {
                 // Extend the existing message.
                 range.end = end as u32;
-                return;
+                return Ok(());
             }
         }
 
         self.global.push((msg, start as u32..end as u32));
+
+        Ok(())
     }
 
-    pub(crate) fn send_local(&mut self, msg: L, f: impl FnOnce(&mut Vec<u8>)) {
+    pub(crate) fn send_local<E>(
+        &mut self,
+        msg: L,
+        f: impl FnOnce(&mut Vec<u8>) -> Result<(), E>,
+    ) -> Result<(), E> {
         debug_assert!(!self.is_ready);
 
         let start = self.staging.len();
-        f(&mut self.staging);
+        f(&mut self.staging)?;
         let end = self.staging.len();
 
         if let Some((m, range)) = self.local.last_mut() {
             if msg == *m {
                 // Extend the existing message.
                 range.end = end as u32;
-                return;
+                return Ok(());
             }
         }
 
         self.local.push((msg, start as u32..end as u32));
+
+        Ok(())
     }
 
     /// Readies messages to be read by clients.
@@ -208,6 +220,8 @@ impl<M: GetChunkPos> GetChunkPos for MessagePair<M> {
 
 #[cfg(test)]
 mod tests {
+    use std::convert::Infallible;
+
     use super::*;
 
     #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
@@ -229,9 +243,12 @@ mod tests {
 
         let mut messages = Messages::<TestMsg, DummyLocal>::new();
 
-        messages.send_global(TestMsg::Foo, |w| w.extend_from_slice(&[1, 2, 3]));
-        messages.send_global(TestMsg::Bar, |b| b.extend_from_slice(&[4, 5, 6]));
-        messages.send_global(TestMsg::Foo, |b| b.extend_from_slice(&[7, 8, 9]));
+        let _ = messages
+            .send_global::<Infallible>(TestMsg::Foo, |b| Ok(b.extend_from_slice(&[1, 2, 3])));
+        let _ = messages
+            .send_global::<Infallible>(TestMsg::Bar, |b| Ok(b.extend_from_slice(&[4, 5, 6])));
+        let _ = messages
+            .send_global::<Infallible>(TestMsg::Foo, |b| Ok(b.extend_from_slice(&[7, 8, 9])));
 
         messages.ready();
 
