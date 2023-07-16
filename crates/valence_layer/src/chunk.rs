@@ -11,7 +11,7 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use num_integer::div_ceil;
 use rustc_hash::FxHashMap;
-use valence_biome::BiomeRegistry;
+use valence_biome::{BiomeId, BiomeRegistry};
 use valence_core::block_pos::BlockPos;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::ident::Ident;
@@ -265,6 +265,16 @@ impl ChunkLayer {
     pub fn block_entity_mut(&mut self, pos: impl Into<BlockPos>) -> Option<&mut Compound> {
         let (chunk, x, y, z) = self.chunk_and_offsets_mut(pos.into())?;
         chunk.block_entity_mut(x, y, z)
+    }
+
+    pub fn biome(&self, pos: impl Into<BlockPos>) -> Option<BiomeId> {
+        let (chunk, x, y, z) = self.chunk_and_offsets(pos.into())?;
+        Some(chunk.biome(x / 4, y / 4, z / 4))
+    }
+
+    pub fn set_biome(&mut self, pos: impl Into<BlockPos>, biome: BiomeId) -> Option<BiomeId> {
+        let (chunk, x, y, z) = self.chunk_and_offsets_mut(pos.into())?;
+        Some(chunk.set_biome(x / 4, y / 4, z / 4, biome))
     }
 
     #[inline]

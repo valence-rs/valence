@@ -27,11 +27,15 @@ type EntityLayerMessages = Messages<GlobalMsg, LocalMsg>;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum GlobalMsg {
-    /// Send packet data to all clients viewing the layer.
+    /// Send packet data to all clients viewing the layer. Message data is
+    /// serialized packet data.
     Packet,
     /// Send packet data to all clients viewing layer, except the client
     /// identified by `except`.
     PacketExcept { except: Entity },
+    /// This layer was despawned and should be removed from the set of visible
+    /// entity layers. Message data is empty.
+    DespawnLayer,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
@@ -43,9 +47,11 @@ pub enum LocalMsg {
     /// is the serialized form of [`Entity`].
     SpawnEntityTransition { pos: ChunkPos, src_pos: ChunkPos },
     /// Send packet data to all clients viewing the layer in view of `pos`.
+    /// Message data is serialized packet data.
     PacketAt { pos: ChunkPos },
     /// Send packet data to all clients viewing the layer in view of `pos`,
-    /// except the client identified by `except`.
+    /// except the client identified by `except`. Message data is serialized
+    /// packet data.
     PacketAtExcept { pos: ChunkPos, except: Entity },
     /// Despawn entities if the client is not already viewing `dest_layer`.
     /// Message data is the serialized form of `EntityId`.
@@ -119,7 +125,8 @@ pub(super) fn build<Client: Component>(app: &mut App) {
         (
             (
                 change_entity_positions,
-                send_entity_updates::<Client>,
+                send_entity_update_messages::<Client>,
+                send_layer_despawn_messages,
                 ready_entity_layers,
             )
                 .chain()
@@ -129,7 +136,7 @@ pub(super) fn build<Client: Component>(app: &mut App) {
     );
 }
 
-pub fn change_entity_positions(
+fn change_entity_positions(
     entities: Query<
         (
             Entity,
@@ -236,7 +243,7 @@ pub fn change_entity_positions(
     }
 }
 
-pub fn send_entity_updates<Client: Component>(
+fn send_entity_update_messages<Client: Component>(
     entities: Query<(Entity, UpdateEntityQuery, Has<Client>), Without<Despawned>>,
     mut layers: Query<&mut EntityLayer>,
 ) {
@@ -275,13 +282,19 @@ pub fn send_entity_updates<Client: Component>(
     }
 }
 
-pub fn ready_entity_layers(mut layers: Query<&mut EntityLayer>) {
+fn send_layer_despawn_messages(mut layers: Query<&mut EntityLayer, With<Despawned>>) {
+    for mut layer in &mut layers {
+        layer.send_global(GlobalMsg::DespawnLayer, |_| {});
+    }
+}
+
+fn ready_entity_layers(mut layers: Query<&mut EntityLayer>) {
     for mut layer in &mut layers {
         layer.messages.ready();
     }
 }
 
-pub fn unready_entity_layers(mut layers: Query<&mut EntityLayer>) {
+fn unready_entity_layers(mut layers: Query<&mut EntityLayer>) {
     for mut layer in &mut layers {
         layer.messages.unready();
     }

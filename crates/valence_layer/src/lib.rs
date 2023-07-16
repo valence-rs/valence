@@ -31,10 +31,10 @@ use bevy_ecs::prelude::*;
 pub use chunk::ChunkLayer;
 pub use entity::EntityLayer;
 use valence_biome::BiomeRegistry;
-use valence_core::Server;
 use valence_core::ident::Ident;
 use valence_core::protocol::encode::{PacketWriter, WritePacket};
 use valence_core::protocol::{Encode, Packet};
+use valence_core::Server;
 use valence_dimension::DimensionTypeRegistry;
 use valence_entity::{InitEntitiesSet, UpdateTrackedDataSet};
 
@@ -118,7 +118,8 @@ pub trait Layer {
     }
 }
 
-/// Convenience [`Bundle`] for spawning a layer entity with both [`ChunkLayer`] and [`EntityLayer`].
+/// Convenience [`Bundle`] for spawning a layer entity with both [`ChunkLayer`]
+/// and [`EntityLayer`] components.
 #[derive(Bundle)]
 pub struct LayerBundle {
     pub chunk: ChunkLayer,

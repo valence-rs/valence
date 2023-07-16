@@ -177,6 +177,7 @@ impl LoadedChunk {
 
     /// Decrements the viewer count. For internal use only.
     #[doc(hidden)]
+    #[track_caller]
     pub fn dec_viewer_count(&self) {
         let old = self.viewer_count.fetch_sub(1, Ordering::Relaxed);
         debug_assert_ne!(old, 0, "viewer count underflow!");

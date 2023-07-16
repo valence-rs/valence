@@ -36,7 +36,6 @@ use packet::{
     DeathMessageS2c, DisconnectS2c, GameEventKind, GameJoinS2c, GameStateChangeS2c,
     PlayerRespawnS2c, PlayerSpawnPositionS2c,
 };
-use spawn::PortalCooldown;
 use tracing::warn;
 use uuid::Uuid;
 use valence_biome::BiomeRegistry;
@@ -120,10 +119,9 @@ impl Plugin for ClientPlugin {
                     spawn::initial_join.after(RegistrySet),
                     update_chunk_load_dist,
                     handle_layer_messages.after(update_chunk_load_dist),
-                    despawn_entities_in_despawned_layers.after(handle_layer_messages),
                     update_view_and_layers
                         .after(spawn::initial_join)
-                        .after(despawn_entities_in_despawned_layers),
+                        .after(handle_layer_messages),
                     spawn::update_respawn_position.after(update_view_and_layers),
                     spawn::respawn.after(spawn::update_respawn_position),
                     remove_entities.after(update_view_and_layers),
@@ -203,7 +201,7 @@ pub struct ClientBundle {
     pub has_respawn_screen: spawn::HasRespawnScreen,
     pub is_debug: spawn::IsDebug,
     pub is_flat: spawn::IsFlat,
-    pub portal_cooldown: PortalCooldown,
+    pub portal_cooldown: spawn::PortalCooldown,
     pub player: PlayerEntityBundle,
 }
 
@@ -241,7 +239,7 @@ impl ClientBundle {
             hashed_seed: spawn::HashedSeed::default(),
             reduced_debug_info: spawn::ReducedDebugInfo::default(),
             is_debug: spawn::IsDebug::default(),
-            portal_cooldown: PortalCooldown::default(),
+            portal_cooldown: spawn::PortalCooldown::default(),
             player: PlayerEntityBundle {
                 uuid: UniqueId(args.uuid),
                 ..Default::default()
@@ -705,6 +703,7 @@ fn handle_layer_messages(
         &mut EntityRemoveBuf,
         OldView,
         &OldVisibleChunkLayer,
+        &mut VisibleEntityLayers,
         &OldVisibleEntityLayers,
     )>,
     chunk_layers: Query<&ChunkLayer>,
@@ -718,15 +717,18 @@ fn handle_layer_messages(
             mut client,
             mut remove_buf,
             old_view,
-            old_chunk_layer,
-            old_entity_layers,
+            old_visible_chunk_layer,
+            mut visible_entity_layers,
+            old_visible_entity_layers,
         )| {
             let old_view = old_view.get();
 
-            if let Ok(chunk_layer) = chunk_layers.get(old_chunk_layer.get()) {
+            // Chunk layer messages
+            if let Ok(chunk_layer) = chunk_layers.get(old_visible_chunk_layer.get()) {
                 let messages = chunk_layer.messages();
                 let bytes = messages.bytes();
 
+                // Global messages
                 for (msg, range) in messages.iter_global() {
                     match msg {
                         valence_layer::chunk::GlobalMsg::Packet => {
@@ -742,6 +744,7 @@ fn handle_layer_messages(
 
                 let mut chunk_biome_buf = vec![];
 
+                // Local messages
                 messages.query_local(old_view, |msg, range| match msg {
                     valence_layer::chunk::LocalMsg::PacketAt { .. } => {
                         client.write_packet_bytes(&bytes[range]);
@@ -762,8 +765,11 @@ fn handle_layer_messages(
                                 }
                             }
                             Some(&0) => {
-                                // Unload chunk.
-                                client.write_packet(&UnloadChunkS2c { pos });
+                                // Unload chunk. If the chunk doesn't exist, then it shouldn't be
+                                // loaded on the client and no packet needs to be sent.
+                                if chunk_layer.chunk(pos).is_some() {
+                                    client.write_packet(&UnloadChunkS2c { pos });
+                                }
                             }
                             _ => panic!("invalid message data"),
                         }
@@ -777,11 +783,13 @@ fn handle_layer_messages(
                 }
             }
 
-            for &layer_id in &old_entity_layers.0 {
+            // Entity layer messages
+            for &layer_id in &old_visible_entity_layers.0 {
                 if let Ok(layer) = entity_layers.get(layer_id) {
                     let messages = layer.messages();
                     let bytes = messages.bytes();
 
+                    // Global messages
                     for (msg, range) in messages.iter_global() {
                         match msg {
                             valence_layer::entity::GlobalMsg::Packet => {
@@ -792,9 +800,16 @@ fn handle_layer_messages(
                                     client.write_packet_bytes(&bytes[range]);
                                 }
                             }
+                            valence_layer::entity::GlobalMsg::DespawnLayer => {
+                                // Remove this entity layer. The changes to the visible entity layer
+                                // set will be detected by the `update_view_and_layers` system and
+                                // despawning of entities will happen there.
+                                visible_entity_layers.0.remove(&layer_id);
+                            }
                         }
                     }
 
+                    // Local messages
                     messages.query_local(old_view, |msg, range| match msg {
                         valence_layer::entity::LocalMsg::PacketAt { pos: _ } => {
                             client.write_packet_bytes(&bytes[range]);
@@ -805,7 +820,7 @@ fn handle_layer_messages(
                             }
                         }
                         valence_layer::entity::LocalMsg::SpawnEntity { pos: _, src_layer } => {
-                            if !old_entity_layers.0.contains(&src_layer) {
+                            if !old_visible_entity_layers.0.contains(&src_layer) {
                                 let mut bytes = &bytes[range];
 
                                 while let Ok(u64) = bytes.read_u64::<NativeEndian>() {
@@ -844,7 +859,7 @@ fn handle_layer_messages(
                             }
                         }
                         valence_layer::entity::LocalMsg::DespawnEntity { pos: _, dest_layer } => {
-                            if !old_entity_layers.0.contains(&dest_layer) {
+                            if !old_visible_entity_layers.0.contains(&dest_layer) {
                                 let mut bytes = &bytes[range];
 
                                 while let Ok(id) = bytes.read_i32::<NativeEndian>() {
@@ -875,32 +890,6 @@ fn handle_layer_messages(
     );
 }
 
-/// Despawn all entities in despawned entity layers.
-///
-/// TODO: this could be faster with an entity layer -> client mapping. (wait
-/// until relations land?)
-fn despawn_entities_in_despawned_layers(
-    mut clients: Query<(&mut VisibleEntityLayers, OldView, &mut EntityRemoveBuf), With<Client>>,
-    entity_layers: Query<(Entity, &EntityLayer), With<Despawned>>,
-    entities: Query<&EntityId>,
-) {
-    if entity_layers.iter().len() > 0 {
-        for (mut visible_entity_layers, old_view, mut remove_buf) in &mut clients {
-            for (layer_entity, layer) in &entity_layers {
-                if visible_entity_layers.0.remove(&layer_entity) {
-                    for pos in old_view.get().iter() {
-                        for entity in layer.entities_at(pos) {
-                            if let Ok(&id) = entities.get(entity) {
-                                remove_buf.push(id.get());
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
 fn update_view_and_layers(
     mut clients: Query<
         (
@@ -924,7 +913,7 @@ fn update_view_and_layers(
         )>,
     >,
     chunk_layers: Query<&ChunkLayer>,
-    entity_layers: Query<&EntityLayer, Without<Despawned>>,
+    entity_layers: Query<&EntityLayer>,
     entity_ids: Query<&EntityId>,
     entity_init: Query<(EntityInitQuery, &Position)>,
 ) {
