@@ -26,8 +26,9 @@ use valence_core::protocol::raw::RawBytes;
 use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::Decode;
 use valence_core::text::Text;
-use valence_core::{ident, translation_key, MINECRAFT_VERSION, PROTOCOL_VERSION};
+use valence_core::{ident, translation_key, PROTOCOL_VERSION};
 
+use crate::legacy_ping::try_handle_legacy_ping;
 use crate::packet::{
     HandshakeC2s, HandshakeNextState, LoginCompressionS2c, LoginDisconnectS2c, LoginHelloC2s,
     LoginHelloS2c, LoginKeyC2s, LoginQueryRequestS2c, LoginQueryResponseC2s, LoginSuccessS2c,
@@ -67,21 +68,35 @@ pub(super) async fn do_accept_loop(shared: SharedNetworkState) {
     }
 }
 
-async fn handle_connection(shared: SharedNetworkState, stream: TcpStream, remote_addr: SocketAddr) {
+async fn handle_connection(
+    shared: SharedNetworkState,
+    mut stream: TcpStream,
+    remote_addr: SocketAddr,
+) {
     trace!("handling connection");
 
     if let Err(e) = stream.set_nodelay(true) {
         error!("failed to set TCP_NODELAY: {e}");
     }
 
-    let conn = PacketIo::new(
-        stream,
-        PacketEncoder::new(),
-        PacketDecoder::new(),
-        Duration::from_secs(5),
-    );
+    let timeout = Duration::from_secs(5);
 
-    // TODO: peek stream for 0xFE legacy ping
+    match tokio::time::timeout(
+        timeout,
+        try_handle_legacy_ping(&shared, &mut stream, remote_addr),
+    )
+    .await
+    .unwrap_or(Err(io::Error::new(io::ErrorKind::TimedOut, "timed out")))
+    {
+        Ok(true) => return,
+        Ok(false) => {}
+        Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => {}
+        Err(e) => {
+            warn!("connection ended with error: {e:#}");
+        }
+    }
+
+    let conn = PacketIo::new(stream, PacketEncoder::new(), PacketDecoder::new(), timeout);
 
     if let Err(e) = handle_handshake(shared, conn, remote_addr).await {
         // EOF can happen if the client disconnects while joining, which isn't
@@ -95,10 +110,16 @@ async fn handle_connection(shared: SharedNetworkState, stream: TcpStream, remote
     }
 }
 
-struct HandshakeData {
-    protocol_version: i32,
-    server_address: String,
-    next_state: HandshakeNextState,
+/// Basic information about a client, provided at the beginning of the
+/// connection
+#[derive(Default, Debug)]
+pub struct HandshakeData {
+    /// The protocol version of the client.
+    pub protocol_version: i32,
+    /// The address that the client used to connect.
+    pub server_address: String,
+    /// The port that the client used to connect.
+    pub server_port: u16,
 }
 
 async fn handle_handshake(
@@ -108,10 +129,12 @@ async fn handle_handshake(
 ) -> anyhow::Result<()> {
     let handshake = io.recv_packet::<HandshakeC2s>().await?;
 
+    let next_state = handshake.next_state;
+
     let handshake = HandshakeData {
         protocol_version: handshake.protocol_version.0,
         server_address: handshake.server_address.to_owned(),
-        next_state: handshake.next_state,
+        server_port: handshake.server_port,
     };
 
     ensure!(
@@ -120,7 +143,7 @@ async fn handle_handshake(
         "handshake server address is too long"
     );
 
-    match handshake.next_state {
+    match next_state {
         HandshakeNextState::Status => handle_status(shared, io, remote_addr, handshake)
             .await
             .context("error handling status"),
@@ -159,7 +182,7 @@ async fn handle_status(
         .0
         .callbacks
         .inner
-        .server_list_ping(&shared, remote_addr, handshake.protocol_version)
+        .server_list_ping(&shared, remote_addr, &handshake)
         .await
     {
         ServerListPing::Respond {
@@ -168,11 +191,13 @@ async fn handle_status(
             player_sample,
             description,
             favicon_png,
+            version_name,
+            protocol,
         } => {
             let mut json = json!({
                 "version": {
-                    "name": MINECRAFT_VERSION,
-                    "protocol": PROTOCOL_VERSION
+                    "name": version_name,
+                    "protocol": protocol,
                 },
                 "players": {
                     "online": online_players,

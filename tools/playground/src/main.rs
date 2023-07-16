@@ -36,7 +36,7 @@ fn main() {
 
     let mut app = App::new();
 
-    app.add_plugin(LogPlugin {
+    app.add_plugins(LogPlugin {
         level: args.log_level,
         ..Default::default()
     });

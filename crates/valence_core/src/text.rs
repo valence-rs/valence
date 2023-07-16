@@ -555,6 +555,124 @@ impl Text {
             TextContent::StorageNbt { nbt, .. } => nbt.is_empty(),
         }
     }
+
+    /// Converts the [`Text`] object to a plain string with the [legacy formatting (`§` and format codes)](https://wiki.vg/Chat#Old_system)
+    ///
+    /// Removes everything that can't be represented with a `§` and a modifier.
+    /// Any colors not on the [the legacy color list](https://wiki.vg/Chat#Colors) will be replaced with their closest equivalent.
+    pub fn to_legacy_lossy(&self) -> String {
+        // For keeping track of the currently active modifiers
+        #[derive(Default, Clone)]
+        struct Modifiers {
+            obfuscated: Option<bool>,
+            bold: Option<bool>,
+            strikethrough: Option<bool>,
+            underlined: Option<bool>,
+            italic: Option<bool>,
+            color: Option<char>,
+        }
+
+        impl Modifiers {
+            // Writes all active modifiers to a String as `§<mod>`
+            fn write(&self, output: &mut String) {
+                if let Some(color) = self.color {
+                    output.push('§');
+                    output.push(color);
+                }
+                if let Some(true) = self.obfuscated {
+                    output.push_str("§k");
+                }
+                if let Some(true) = self.bold {
+                    output.push_str("§l");
+                }
+                if let Some(true) = self.strikethrough {
+                    output.push_str("§m");
+                }
+                if let Some(true) = self.underlined {
+                    output.push_str("§n");
+                }
+                if let Some(true) = self.italic {
+                    output.push_str("§o");
+                }
+            }
+            // Merges 2 Modifiers. The result is what you would get if you applied them both
+            // sequentially.
+            fn add(&self, other: &Self) -> Self {
+                Self {
+                    obfuscated: other.obfuscated.or(self.obfuscated),
+                    bold: other.bold.or(self.bold),
+                    strikethrough: other.strikethrough.or(self.strikethrough),
+                    underlined: other.underlined.or(self.underlined),
+                    italic: other.italic.or(self.italic),
+                    color: other.color.or(self.color),
+                }
+            }
+        }
+
+        fn to_legacy_inner(this: &Text, result: &mut String, mods: &mut Modifiers) {
+            let new_mods = Modifiers {
+                obfuscated: this.0.obfuscated,
+                bold: this.0.bold,
+                strikethrough: this.0.strikethrough,
+                underlined: this.0.underlined,
+                italic: this.0.italic,
+                color: this.0.color.map(|color| match color.to_legacy() {
+                    Color::BLACK => '0',
+                    Color::DARK_BLUE => '1',
+                    Color::DARK_GREEN => '2',
+                    Color::DARK_AQUA => '3',
+                    Color::DARK_RED => '4',
+                    Color::DARK_PURPLE => '5',
+                    Color::GOLD => '6',
+                    Color::GRAY => '7',
+                    Color::DARK_GRAY => '8',
+                    Color::BLUE => '9',
+                    Color::GREEN => 'a',
+                    Color::AQUA => 'b',
+                    Color::RED => 'c',
+                    Color::LIGHT_PURPLE => 'd',
+                    Color::YELLOW => 'e',
+                    Color::WHITE => 'f',
+                    _ => unreachable!(),
+                }),
+            };
+
+            // If any modifiers were removed
+            if [
+                this.0.obfuscated,
+                this.0.bold,
+                this.0.strikethrough,
+                this.0.underlined,
+                this.0.italic,
+            ]
+            .iter()
+            .any(|m| *m == Some(false))
+            {
+                // Reset and print sum of old and new modifiers
+                result.push_str("§r");
+                mods.add(&new_mods).write(result);
+            } else {
+                // Print only new modifiers
+                new_mods.write(result);
+            }
+
+            *mods = mods.add(&new_mods);
+
+            if let TextContent::Text { text } = &this.0.content {
+                result.push_str(text);
+            }
+
+            for child in &this.0.extra {
+                to_legacy_inner(child, result, mods);
+            }
+        }
+
+        let mut result = String::new();
+        let mut mods = Modifiers::default();
+        to_legacy_inner(self, &mut result, &mut mods);
+
+        result
+    }
 }
 
 /// Provides the methods necessary for working with [`Text`] objects.
@@ -897,6 +1015,35 @@ impl Color {
     pub const fn new(r: u8, g: u8, b: u8) -> Self {
         Self { r, g, b }
     }
+
+    // Returns the closest legacy color
+    pub fn to_legacy(self) -> Self {
+        [
+            Self::AQUA,
+            Self::BLACK,
+            Self::BLUE,
+            Self::DARK_AQUA,
+            Self::DARK_BLUE,
+            Self::DARK_GRAY,
+            Self::DARK_GREEN,
+            Self::DARK_PURPLE,
+            Self::DARK_RED,
+            Self::GOLD,
+            Self::GRAY,
+            Self::GREEN,
+            Self::LIGHT_PURPLE,
+            Self::RED,
+            Self::WHITE,
+            Self::YELLOW,
+        ]
+        .into_iter()
+        .min_by_key(|legacy| {
+            (legacy.r as i32 - self.r as i32).pow(2)
+                + (legacy.g as i32 - self.g as i32).pow(2)
+                + (legacy.b as i32 - self.b as i32).pow(2)
+        })
+        .unwrap()
+    }
 }
 
 impl Serialize for Color {
@@ -1087,5 +1234,31 @@ mod tests {
         let expected = r#"{"storage":"minecraft:foo","nbt":"bar","interpret":true,"separator":{"text":"baz"}}"#;
         assert_eq!(serialized, expected);
         assert_eq!(txt, deserialized);
+    }
+
+    #[test]
+    fn text_to_legacy_lossy() {
+        let text = "Heavily formatted green text\n"
+            .bold()
+            .italic()
+            .strikethrough()
+            .underlined()
+            .obfuscated()
+            .color(Color { r: 0, g: 255, b: 0 })
+            + "Lightly formatted red text\n"
+                .not_bold()
+                .not_strikethrough()
+                .not_obfuscated()
+                .color(Color { r: 255, g: 0, b: 0 })
+            + "Not formatted blue text"
+                .not_italic()
+                .not_underlined()
+                .color(Color { r: 0, g: 0, b: 255 });
+
+        assert_eq!(
+            text.to_legacy_lossy(),
+            "§2§k§l§m§n§oHeavily formatted green text\n§r§4§n§oLightly formatted red \
+             text\n§r§1Not formatted blue text"
+        );
     }
 }

@@ -7,6 +7,8 @@ use valence::network::{
     async_trait, BroadcastToLan, CleanupFn, ConnectionMode, PlayerSampleEntry, ServerListPing,
 };
 use valence::prelude::*;
+use valence_core::MINECRAFT_VERSION;
+use valence_network::HandshakeData;
 
 pub fn main() {
     App::new()
@@ -27,7 +29,7 @@ impl NetworkCallbacks for MyCallbacks {
         &self,
         _shared: &SharedNetworkState,
         remote_addr: SocketAddr,
-        _protocol_version: i32,
+        handshake_data: &HandshakeData,
     ) -> ServerListPing {
         let max_players = 420;
 
@@ -39,8 +41,11 @@ impl NetworkCallbacks for MyCallbacks {
                 id: Uuid::from_u128(12345),
             }],
             description: "Your IP address is ".into_text()
-                + remote_addr.to_string().color(Color::GOLD),
+                + remote_addr.to_string().color(Color::DARK_GRAY),
             favicon_png: include_bytes!("../assets/logo-64x64.png"),
+            version_name: ("Valence ".color(Color::GOLD) + MINECRAFT_VERSION.color(Color::RED))
+                .to_legacy_lossy(),
+            protocol: handshake_data.protocol_version,
         }
     }
 
