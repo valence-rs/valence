@@ -88,7 +88,7 @@ pub mod prelude {
     pub use valence_client::title::SetTitle as _;
     pub use valence_client::{
         despawn_disconnected_clients, Client, Ip, OldView, OldViewDistance, Properties,
-        RespawnPosition, Username, View, ViewDistance,
+        RespawnPosition, Username, View, ViewDistance, VisibleChunkLayer, VisibleEntityLayers,
     };
     pub use valence_core::block_pos::BlockPos;
     pub use valence_core::chunk_pos::{ChunkPos, ChunkView};
@@ -115,7 +115,7 @@ pub mod prelude {
     pub use valence_layer::chunk::{
         Block, BlockRef, Chunk, ChunkLayer, LoadedChunk, UnloadedChunk,
     };
-    pub use valence_layer::entity::EntityLayer;
+    pub use valence_layer::{EntityLayer, LayerBundle};
     pub use valence_nbt::Compound;
     #[cfg(feature = "network")]
     pub use valence_network::{

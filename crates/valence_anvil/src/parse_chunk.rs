@@ -69,7 +69,7 @@ pub(crate) fn parse_chunk(
     biome_map: &BTreeMap<Ident<String>, BiomeId>, // TODO: replace with biome registry arg.
 ) -> Result<UnloadedChunk, ParseChunkError> {
     let Some(Value::List(List::Compound(sections))) = nbt.remove("sections") else {
-        return Err(ParseChunkError::MissingSections)
+        return Err(ParseChunkError::MissingSections);
     };
 
     if sections.is_empty() {
@@ -96,7 +96,7 @@ pub(crate) fn parse_chunk(
 
     for mut section in sections {
         let Some(Value::Byte(sect_y)) = section.remove("Y") else {
-            return Err(ParseChunkError::MissingSectionY)
+            return Err(ParseChunkError::MissingSectionY);
         };
 
         let sect_y = (sect_y as i32 - min_sect_y) as u32;
@@ -106,11 +106,11 @@ pub(crate) fn parse_chunk(
         }
 
         let Some(Value::Compound(mut block_states)) = section.remove("block_states") else {
-            return Err(ParseChunkError::MissingBlockStates)
+            return Err(ParseChunkError::MissingBlockStates);
         };
 
         let Some(Value::List(List::Compound(palette))) = block_states.remove("palette") else {
-            return Err(ParseChunkError::MissingBlockPalette)
+            return Err(ParseChunkError::MissingBlockPalette);
         };
 
         if !(1..BLOCKS_PER_SECTION).contains(&palette.len()) {
@@ -121,11 +121,11 @@ pub(crate) fn parse_chunk(
 
         for mut block in palette {
             let Some(Value::String(name)) = block.remove("Name") else {
-                return Err(ParseChunkError::MissingBlockName)
+                return Err(ParseChunkError::MissingBlockName);
             };
 
             let Some(block_kind) = BlockKind::from_str(ident_path(&name)) else {
-                return Err(ParseChunkError::UnknownBlockName(name))
+                return Err(ParseChunkError::UnknownBlockName(name));
             };
 
             let mut state = block_kind.to_state();
@@ -133,15 +133,15 @@ pub(crate) fn parse_chunk(
             if let Some(Value::Compound(properties)) = block.remove("Properties") {
                 for (key, value) in properties {
                     let Value::String(value) = value else {
-                        return Err(ParseChunkError::BadPropValueType)
+                        return Err(ParseChunkError::BadPropValueType);
                     };
 
                     let Some(prop_name) = PropName::from_str(&key) else {
-                        return Err(ParseChunkError::UnknownPropName(key))
+                        return Err(ParseChunkError::UnknownPropName(key));
                     };
 
                     let Some(prop_value) = PropValue::from_str(&value) else {
-                        return Err(ParseChunkError::UnknownPropValue(value))
+                        return Err(ParseChunkError::UnknownPropValue(value));
                     };
 
                     state = state.set(prop_name, prop_value);
@@ -157,7 +157,7 @@ pub(crate) fn parse_chunk(
             debug_assert!(converted_block_palette.len() > 1);
 
             let Some(Value::LongArray(data)) = block_states.remove("data") else {
-                return Err(ParseChunkError::MissingBlockStateData)
+                return Err(ParseChunkError::MissingBlockStateData);
             };
 
             let bits_per_idx = bit_width(converted_block_palette.len() - 1).max(4);
@@ -181,7 +181,7 @@ pub(crate) fn parse_chunk(
                     let idx = (u64 >> (bits_per_idx * j)) & mask;
 
                     let Some(block) = converted_block_palette.get(idx as usize).cloned() else {
-                        return Err(ParseChunkError::BadBlockPaletteIndex)
+                        return Err(ParseChunkError::BadBlockPaletteIndex);
                     };
 
                     let x = i % 16;
@@ -196,11 +196,11 @@ pub(crate) fn parse_chunk(
         }
 
         let Some(Value::Compound(biomes)) = section.get("biomes") else {
-            return Err(ParseChunkError::MissingBiomes)
+            return Err(ParseChunkError::MissingBiomes);
         };
 
         let Some(Value::List(List::String(palette))) = biomes.get("palette") else {
-            return Err(ParseChunkError::MissingBiomePalette)
+            return Err(ParseChunkError::MissingBiomePalette);
         };
 
         if !(1..BIOMES_PER_SECTION).contains(&palette.len()) {
@@ -211,7 +211,7 @@ pub(crate) fn parse_chunk(
 
         for biome_name in palette {
             let Ok(ident) = Ident::<Cow<str>>::new(biome_name) else {
-                return Err(ParseChunkError::BadBiomeName)
+                return Err(ParseChunkError::BadBiomeName);
             };
 
             converted_biome_palette
@@ -224,7 +224,7 @@ pub(crate) fn parse_chunk(
             debug_assert!(converted_biome_palette.len() > 1);
 
             let Some(Value::LongArray(data)) = biomes.get("data") else {
-                return Err(ParseChunkError::MissingBiomeData)
+                return Err(ParseChunkError::MissingBiomeData);
             };
 
             let bits_per_idx = bit_width(converted_biome_palette.len() - 1);
@@ -248,7 +248,7 @@ pub(crate) fn parse_chunk(
                     let idx = (u64 >> (bits_per_idx * j)) & mask;
 
                     let Some(biome) = converted_biome_palette.get(idx as usize).cloned() else {
-                        return Err(ParseChunkError::BadBiomePaletteIndex)
+                        return Err(ParseChunkError::BadBiomePaletteIndex);
                     };
 
                     let x = i % 4;

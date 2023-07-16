@@ -7,7 +7,7 @@ use valence_core::text::Text;
 use valence_core::uuid::UniqueId;
 
 /// The bundle of components that make up a boss bar.
-#[derive(Bundle)]
+#[derive(Bundle, Default)]
 pub struct BossBarBundle {
     pub id: UniqueId,
     pub title: BossBarTitle,
@@ -17,43 +17,26 @@ pub struct BossBarBundle {
     pub viewers: BossBarViewers,
 }
 
-impl BossBarBundle {
-    pub fn new(
-        title: Text,
-        color: BossBarColor,
-        division: BossBarDivision,
-        flags: BossBarFlags,
-    ) -> BossBarBundle {
-        BossBarBundle {
-            id: UniqueId::default(),
-            title: BossBarTitle(title),
-            health: BossBarHealth(1.0),
-            style: BossBarStyle { color, division },
-            flags,
-            viewers: BossBarViewers::default(),
-        }
-    }
-}
-
 /// The title of a boss bar.
-#[derive(Component, Clone)]
+#[derive(Component, Clone, Default)]
 pub struct BossBarTitle(pub Text);
 
 /// The health of a boss bar.
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct BossBarHealth(pub f32);
 
 /// The style of a boss bar. This includes the color and division of the boss
 /// bar.
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct BossBarStyle {
     pub color: BossBarColor,
     pub division: BossBarDivision,
 }
 
 /// The color of a boss bar.
-#[derive(Component, Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug, Encode, Decode)]
 pub enum BossBarColor {
+    #[default]
     Pink,
     Blue,
     Red,
@@ -64,8 +47,9 @@ pub enum BossBarColor {
 }
 
 /// The division of a boss bar.
-#[derive(Component, Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug, Encode, Decode)]
 pub enum BossBarDivision {
+    #[default]
     NoDivision,
     SixNotches,
     TenNotches,
@@ -75,7 +59,7 @@ pub enum BossBarDivision {
 
 /// The flags of a boss bar (darken sky, dragon bar, create fog).
 #[bitfield(u8)]
-#[derive(Component, PartialEq, Eq, Encode, Decode)]
+#[derive(Component, PartialEq, Eq, Default, Encode, Decode)]
 pub struct BossBarFlags {
     pub darken_sky: bool,
     pub dragon_bar: bool,

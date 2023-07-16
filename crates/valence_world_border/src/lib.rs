@@ -117,7 +117,7 @@ impl Plugin for WorldBorderPlugin {
                 center_change,
                 warn_time_change,
                 warn_blocks_change,
-                portal_teleport_bounary_change,
+                portal_teleport_boundary_change,
             )
                 .in_set(UpdateWorldBorderPerInstanceSet),
         )
@@ -223,6 +223,7 @@ impl MovingWorldBorder {
 /// An event for controlling world border diameter.
 /// Setting duration to 0 will move the border to `new_diameter` immediately,
 /// otherwise it will interpolate to `new_diameter` over `duration` time.
+///
 /// ```
 /// fn change_diameter(
 ///     event_writer: EventWriter<SetWorldBorderSizeEvent>,
@@ -230,17 +231,17 @@ impl MovingWorldBorder {
 ///     duration: Duration,
 /// ) {
 ///     event_writer.send(SetWorldBorderSizeEvent {
-///         instance: entity,
+///         entity_layer: entity,
 ///         new_diameter: diameter,
 ///         duration,
-///     })
+///     });
 /// }
 /// ```
 #[derive(Event, Clone, Debug)]
 pub struct SetWorldBorderSizeEvent {
-    /// The instance to change border size. Note that this instance must contain
-    /// the [`WorldBorderBundle`] bundle
-    pub instance: Entity,
+    /// The [`EntityLayer`] to change border size. Note that this entity layer must contain
+    /// the [`WorldBorderBundle`] bundle.
+    pub entity_layer: Entity,
     /// The new diameter of the world border
     pub new_diameter: f64,
     /// How long the border takes to reach it new_diameter in millisecond. Set
@@ -253,7 +254,7 @@ fn wb_size_change(
     mut instances: Query<(&WorldBorderDiameter, Option<&mut MovingWorldBorder>)>,
 ) {
     for SetWorldBorderSizeEvent {
-        instance,
+        entity_layer: instance,
         new_diameter,
         duration,
     } in events.iter()
@@ -362,7 +363,7 @@ fn warn_blocks_change(
     }
 }
 
-fn portal_teleport_bounary_change(
+fn portal_teleport_boundary_change(
     mut wbs: Query<
         (
             &mut Instance,

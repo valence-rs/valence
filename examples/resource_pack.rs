@@ -1,6 +1,5 @@
 #![allow(clippy::type_complexity)]
 
-use valence::entity::player::PlayerEntityBundle;
 use valence::entity::sheep::SheepEntityBundle;
 use valence::prelude::*;
 use valence_client::message::SendMessage;
@@ -30,24 +29,24 @@ fn setup(
     dimensions: Res<DimensionTypeRegistry>,
     biomes: Res<BiomeRegistry>,
 ) {
-    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let mut layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {
-            instance.insert_chunk([x, z], UnloadedChunk::new());
+            layer.chunk.insert_chunk([x, z], UnloadedChunk::new());
         }
     }
 
     for z in -25..25 {
         for x in -25..25 {
-            instance.set_block([x, SPAWN_Y, z], BlockState::BEDROCK);
+            layer.chunk.set_block([x, SPAWN_Y, z], BlockState::BEDROCK);
         }
     }
 
-    let instance_ent = commands.spawn(instance).id();
+    let layer_ent = commands.spawn(layer).id();
 
     commands.spawn(SheepEntityBundle {
-        location: EntityLayerId(instance_ent),
+        layer: EntityLayerId(layer_ent),
         position: Position::new([0.0, SPAWN_Y as f64 + 1.0, 2.0]),
         look: Look::new(180.0, 0.0),
         head_yaw: HeadYaw(180.0),
@@ -56,21 +55,37 @@ fn setup(
 }
 
 fn init_clients(
-    mut clients: Query<(Entity, &UniqueId, &mut Client, &mut GameMode), Added<Client>>,
-    instances: Query<Entity, With<Instance>>,
-    mut commands: Commands,
+    mut clients: Query<
+        (
+            &mut Client,
+            &mut EntityLayerId,
+            &mut VisibleChunkLayer,
+            &mut VisibleEntityLayers,
+            &mut Position,
+            &mut GameMode,
+        ),
+        Added<Client>,
+    >,
+    layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
 ) {
-    for (entity, uuid, mut client, mut game_mode) in &mut clients {
+    for (
+        mut client,
+        mut layer_id,
+        mut visible_chunk_layer,
+        mut visible_entity_layers,
+        mut pos,
+        mut game_mode,
+    ) in &mut clients
+    {
+        let layer = layers.single();
+
+        layer_id.0 = layer;
+        visible_chunk_layer.0 = layer;
+        visible_entity_layers.0.insert(layer);
+        pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
         *game_mode = GameMode::Creative;
 
         client.send_chat_message("Hit the sheep to prompt for the resource pack.".italic());
-
-        commands.entity(entity).insert(PlayerEntityBundle {
-            location: EntityLayerId(instances.single()),
-            position: Position::new([0.0, SPAWN_Y as f64 + 1.0, 0.0]),
-            uuid: *uuid,
-            ..Default::default()
-        });
     }
 }
 

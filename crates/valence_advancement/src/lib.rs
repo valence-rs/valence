@@ -132,7 +132,9 @@ impl<'w, 's> UpdateAdvancementCachedBytesQuery<'w, 's> {
 
         if let Some(a_children) = a_children {
             for a_child in a_children.iter() {
-                let Ok(c_identifier) = criteria_query.get(*a_child) else { continue; };
+                let Ok(c_identifier) = criteria_query.get(*a_child) else {
+                    continue;
+                };
                 pkt.criteria.push((c_identifier.0.borrowed(), ()));
             }
         }

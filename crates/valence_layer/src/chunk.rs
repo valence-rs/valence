@@ -5,17 +5,23 @@ pub mod loaded;
 mod paletted_container;
 pub mod unloaded;
 
+use std::borrow::Cow;
 use std::collections::hash_map::{Entry, OccupiedEntry, VacantEntry};
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+use glam::{DVec3, Vec3};
 use num_integer::div_ceil;
 use rustc_hash::FxHashMap;
 use valence_biome::{BiomeId, BiomeRegistry};
 use valence_core::block_pos::BlockPos;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::ident::Ident;
+use valence_core::particle::{Particle, ParticleS2c};
 use valence_core::protocol::array::LengthPrefixedArray;
+use valence_core::protocol::encode::WritePacket;
+use valence_core::protocol::packet::sound::{PlaySoundS2c, Sound, SoundCategory};
+use valence_core::protocol::{Encode, Packet};
 use valence_core::Server;
 use valence_dimension::DimensionTypeRegistry;
 use valence_nbt::Compound;
@@ -338,7 +344,6 @@ impl ChunkLayer {
         &self.messages
     }
 
-    /*
     // TODO: move to `valence_particle`.
     /// Puts a particle effect at the given position in the world. The particle
     /// effect is visible to all players in the instance with the
@@ -354,7 +359,10 @@ impl ChunkLayer {
     ) {
         let position = position.into();
 
-        self.write_packet_at(
+        self.send_local_packet(
+            LocalMsg::PacketAt {
+                pos: ChunkPos::from_dvec3(position),
+            },
             &ParticleS2c {
                 particle: Cow::Borrowed(particle),
                 long_distance,
@@ -363,7 +371,6 @@ impl ChunkLayer {
                 max_speed,
                 count,
             },
-            ChunkPos::from_dvec3(position),
         );
     }
 
@@ -381,7 +388,10 @@ impl ChunkLayer {
     ) {
         let position = position.into();
 
-        self.write_packet_at(
+        self.send_local_packet(
+            LocalMsg::PacketAt {
+                pos: ChunkPos::from_dvec3(position),
+            },
             &PlaySoundS2c {
                 id: sound.to_id(),
                 category,
@@ -390,9 +400,8 @@ impl ChunkLayer {
                 pitch,
                 seed: rand::random(),
             },
-            ChunkPos::from_dvec3(position),
         );
-    }*/
+    }
 }
 
 #[derive(Debug)]
@@ -498,6 +507,22 @@ impl<'a> VacantChunkEntry<'a> {
 
     pub fn key(&self) -> &ChunkPos {
         self.entry.key()
+    }
+}
+
+impl WritePacket for ChunkLayer {
+    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
+    where
+        P: Packet + Encode,
+    {
+        self.send_global_packet(GlobalMsg::Packet, packet);
+
+        // TODO: propagate error up.
+        Ok(())
+    }
+
+    fn write_packet_bytes(&mut self, bytes: &[u8]) {
+        self.send_global_bytes(GlobalMsg::Packet, bytes)
     }
 }
 

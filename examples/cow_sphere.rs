@@ -36,22 +36,22 @@ fn setup(
     dimensions: Res<DimensionTypeRegistry>,
     biomes: Res<BiomeRegistry>,
 ) {
-    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let mut layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {
-            instance.insert_chunk([x, z], UnloadedChunk::new());
+            layer.chunk.insert_chunk([x, z], UnloadedChunk::new());
         }
     }
 
-    instance.set_block(SPAWN_POS, BlockState::BEDROCK);
+    layer.chunk.set_block(SPAWN_POS, BlockState::BEDROCK);
 
-    let instance_id = commands.spawn(instance).id();
+    let layer_id = commands.spawn(layer).id();
 
     commands.spawn_batch([0; SPHERE_AMOUNT].map(|_| {
         (
             SpherePartBundle {
-                location: EntityLayerId(instance_id),
+                layer: EntityLayerId(layer_id),
                 ..Default::default()
             },
             SpherePart,
@@ -60,17 +60,36 @@ fn setup(
 }
 
 fn init_clients(
-    mut clients: Query<(&mut EntityLayerId, &mut Position, &mut GameMode), Added<Client>>,
-    instances: Query<Entity, With<Instance>>,
+    mut clients: Query<
+        (
+            &mut EntityLayerId,
+            &mut VisibleChunkLayer,
+            &mut VisibleEntityLayers,
+            &mut Position,
+            &mut GameMode,
+        ),
+        Added<Client>,
+    >,
+    layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
 ) {
-    for (mut loc, mut pos, mut game_mode) in &mut clients {
-        loc.0 = instances.single();
+    for (
+        mut layer_id,
+        mut visible_chunk_layer,
+        mut visible_entity_layers,
+        mut pos,
+        mut game_mode,
+    ) in &mut clients
+    {
+        let layer = layers.single();
+
+        layer_id.0 = layer;
+        visible_chunk_layer.0 = layer;
+        visible_entity_layers.0.insert(layer);
         pos.set([
             SPAWN_POS.x as f64 + 0.5,
             SPAWN_POS.y as f64 + 1.0,
             SPAWN_POS.z as f64 + 0.5,
         ]);
-
         *game_mode = GameMode::Creative;
     }
 }

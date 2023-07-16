@@ -8,7 +8,7 @@ use valence_boss_bar::{
 use valence_core::despawn::Despawned;
 use valence_core::text::Text;
 
-use crate::testing::{scenario_single_client, MockClientHelper};
+use crate::testing::{scenario_single_client, MockClientHelper, ScenarioSingleClient};
 
 #[test]
 fn test_intialize_on_join() {
@@ -182,7 +182,11 @@ fn test_client_disconnection() {
 }
 
 fn prepare(app: &mut App) -> (Entity, MockClientHelper, Entity) {
-    let (client_ent, mut client_helper) = scenario_single_client(app);
+    let ScenarioSingleClient {
+        client,
+        helper,
+        layer,
+    } = scenario_single_client(app);
 
     // Process a tick to get past the "on join" logic.
     app.update();
@@ -203,6 +207,6 @@ fn prepare(app: &mut App) -> (Entity, MockClientHelper, Entity) {
         app.update();
     }
 
-    client_helper.clear_received();
-    (client_ent, client_helper, boss_bar)
+    helper.clear_received();
+    (client, helper, boss_bar)
 }

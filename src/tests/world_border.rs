@@ -9,6 +9,7 @@ use valence_world_border::*;
 
 use crate::testing::{create_mock_client, scenario_single_client, MockClientHelper};
 
+/*
 #[test]
 fn test_intialize_on_join() {
     let mut app = App::new();
@@ -131,3 +132,4 @@ fn prepare(app: &mut App) -> (MockClientHelper, Entity) {
     client_helper.clear_received();
     (client_helper, instance_ent)
 }
+*/

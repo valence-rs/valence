@@ -16,6 +16,7 @@ use valence_dimension::DimensionTypeRegistry;
 use valence_entity::Position;
 use valence_instance::chunk::UnloadedChunk;
 use valence_instance::Instance;
+use valence_layer::{ChunkLayer, EntityLayer};
 use valence_network::NetworkPlugin;
 
 pub fn many_players(c: &mut Criterion) {
@@ -28,7 +29,7 @@ fn run_many_players(
     func_name: &str,
     client_count: usize,
     view_dist: u8,
-    inst_size: i32,
+    world_size: i32,
 ) {
     let mut app = App::new();
 
@@ -45,20 +46,23 @@ fn run_many_players(
 
     app.update(); // Initialize plugins.
 
-    let mut inst = Instance::new(
+    let mut chunks = ChunkLayer::new(
         ident!("overworld"),
         app.world.resource::<DimensionTypeRegistry>(),
         app.world.resource::<BiomeRegistry>(),
         app.world.resource::<Server>(),
     );
 
-    for z in -inst_size..inst_size {
-        for x in -inst_size..inst_size {
-            inst.insert_chunk(ChunkPos::new(x, z), UnloadedChunk::new());
+    for z in -world_size..world_size {
+        for x in -world_size..world_size {
+            chunks.insert_chunk(ChunkPos::new(x, z), UnloadedChunk::new());
         }
     }
 
-    let inst_ent = app.world.spawn(inst).id();
+    let layer = app
+        .world
+        .spawn((chunks, EntityLayer::new(app.world.resource::<Server>())))
+        .id();
 
     let mut clients = vec![];
 
@@ -66,12 +70,14 @@ fn run_many_players(
     for i in 0..client_count {
         let (mut bundle, helper) = create_mock_client(format!("client_{i}"));
 
-        bundle.player.location.0 = inst_ent;
+        bundle.visible_chunk_layer.0 = layer;
+        bundle.visible_entity_layers.0.insert(layer);
+        bundle.player.layer.0 = layer;
         bundle.view_distance.set(view_dist);
 
         let mut rng = rand::thread_rng();
-        let x = rng.gen_range(-inst_size as f64 * 16.0..=inst_size as f64 * 16.0);
-        let z = rng.gen_range(-inst_size as f64 * 16.0..=inst_size as f64 * 16.0);
+        let x = rng.gen_range(-world_size as f64 * 16.0..=world_size as f64 * 16.0);
+        let z = rng.gen_range(-world_size as f64 * 16.0..=world_size as f64 * 16.0);
 
         bundle.player.position.set(DVec3::new(x, 64.0, z));
 

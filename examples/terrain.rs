@@ -104,48 +104,59 @@ fn setup(
         receiver: finished_receiver,
     });
 
-    let instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
 
-    commands.spawn(instance);
+    commands.spawn(layer);
 }
 
 fn init_clients(
     mut clients: Query<
         (
             &mut EntityLayerId,
+            &mut VisibleChunkLayer,
+            &mut VisibleEntityLayers,
             &mut Position,
-            &mut IsFlat,
             &mut GameMode,
         ),
         Added<Client>,
     >,
-    instances: Query<Entity, With<Instance>>,
+    layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
 ) {
-    for (mut loc, mut pos, mut is_flat, mut game_mode) in &mut clients {
-        loc.0 = instances.single();
+    for (
+        mut layer_id,
+        mut visible_chunk_layer,
+        mut visible_entity_layers,
+        mut pos,
+        mut game_mode,
+    ) in &mut clients
+    {
+        let layer = layers.single();
+
+        layer_id.0 = layer;
+        visible_chunk_layer.0 = layer;
+        visible_entity_layers.0.insert(layer);
         pos.set(SPAWN_POS);
-        is_flat.0 = true;
         *game_mode = GameMode::Creative;
     }
 }
 
-fn remove_unviewed_chunks(mut instances: Query<&mut Instance>) {
-    instances
+fn remove_unviewed_chunks(mut layers: Query<&mut ChunkLayer>) {
+    layers
         .single_mut()
-        .retain_chunks(|_, chunk| chunk.is_viewed_mut());
+        .retain_chunks(|_, chunk| chunk.viewer_count_mut() > 0);
 }
 
 fn update_client_views(
-    mut instances: Query<&mut Instance>,
+    mut layers: Query<&mut ChunkLayer>,
     mut clients: Query<(&mut Client, View, OldView)>,
     mut state: ResMut<GameState>,
 ) {
-    let instance = instances.single_mut();
+    let layer = layers.single_mut();
 
     for (client, view, old_view) in &mut clients {
         let view = view.get();
         let queue_pos = |pos| {
-            if instance.chunk(pos).is_none() {
+            if layer.chunk(pos).is_none() {
                 match state.pending.entry(pos) {
                     Entry::Occupied(mut oe) => {
                         if let Some(priority) = oe.get_mut() {
@@ -173,13 +184,13 @@ fn update_client_views(
     }
 }
 
-fn send_recv_chunks(mut instances: Query<&mut Instance>, state: ResMut<GameState>) {
-    let mut instance = instances.single_mut();
+fn send_recv_chunks(mut layers: Query<&mut ChunkLayer>, state: ResMut<GameState>) {
+    let mut layer = layers.single_mut();
     let state = state.into_inner();
 
     // Insert the chunks that are finished generating into the instance.
     for (pos, chunk) in state.receiver.drain() {
-        instance.insert_chunk(pos, chunk);
+        layer.insert_chunk(pos, chunk);
         assert!(state.pending.remove(&pos).is_some());
     }
 

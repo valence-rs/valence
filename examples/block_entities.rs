@@ -26,26 +26,28 @@ fn setup(
     dimensions: Res<DimensionTypeRegistry>,
     biomes: Res<BiomeRegistry>,
 ) {
-    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let mut layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {
-            instance.insert_chunk([x, z], UnloadedChunk::new());
+            layer.chunk.insert_chunk([x, z], UnloadedChunk::new());
         }
     }
 
     for z in 0..16 {
         for x in 0..8 {
-            instance.set_block([x, FLOOR_Y, z], BlockState::WHITE_CONCRETE);
+            layer
+                .chunk
+                .set_block([x, FLOOR_Y, z], BlockState::WHITE_CONCRETE);
         }
     }
 
-    instance.set_block(
+    layer.chunk.set_block(
         [3, FLOOR_Y + 1, 1],
         BlockState::CHEST.set(PropName::Facing, PropValue::West),
     );
 
-    instance.set_block(
+    layer.chunk.set_block(
         SIGN_POS,
         Block {
             state: BlockState::OAK_SIGN.set(PropName::Rotation, PropValue::_4),
@@ -55,26 +57,41 @@ fn setup(
         },
     );
 
-    instance.set_block(
+    layer.chunk.set_block(
         SKULL_POS,
         BlockState::PLAYER_HEAD.set(PropName::Rotation, PropValue::_12),
     );
 
-    commands.spawn(instance);
+    commands.spawn(layer);
 }
 
 fn init_clients(
     mut clients: Query<
-        (&mut EntityLayerId, &mut Position, &mut Look, &mut GameMode),
+        (
+            &mut EntityLayerId,
+            &mut VisibleChunkLayer,
+            &mut VisibleEntityLayers,
+            &mut Position,
+            &mut GameMode,
+        ),
         Added<Client>,
     >,
-    instances: Query<Entity, With<Instance>>,
+    layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
 ) {
-    for (mut loc, mut pos, mut look, mut game_mode) in &mut clients {
-        loc.0 = instances.single();
-        pos.set([1.5, FLOOR_Y as f64 + 1.0, 1.5]);
-        *look = Look::new(-90.0, 0.0);
+    for (
+        mut layer_id,
+        mut visible_chunk_layer,
+        mut visible_entity_layers,
+        mut pos,
+        mut game_mode,
+    ) in &mut clients
+    {
+        let layer = layers.single();
 
+        layer_id.0 = layer;
+        visible_chunk_layer.0 = layer;
+        visible_entity_layers.0.insert(layer);
+        pos.set([0.0, FLOOR_Y as f64 + 1.0, 0.0]);
         *game_mode = GameMode::Creative;
     }
 }
@@ -83,18 +100,19 @@ fn event_handler(
     clients: Query<(&Username, &Properties, &UniqueId)>,
     mut messages: EventReader<ChatMessageEvent>,
     mut block_interacts: EventReader<InteractBlockEvent>,
-    mut instances: Query<&mut Instance>,
+    mut layers: Query<&mut ChunkLayer>,
 ) {
-    let mut instance = instances.single_mut();
+    let mut layer = layers.single_mut();
+
     for ChatMessageEvent {
         client, message, ..
     } in messages.iter()
     {
         let Ok((username, _, _)) = clients.get(*client) else {
-            continue
+            continue;
         };
 
-        let nbt = instance.block_entity_mut(SIGN_POS).unwrap();
+        let nbt = layer.block_entity_mut(SIGN_POS).unwrap();
 
         nbt.insert("Text2", message.to_string().color(Color::DARK_GREEN));
         nbt.insert("Text3", format!("~{username}").italic());
@@ -109,14 +127,14 @@ fn event_handler(
     {
         if *hand == Hand::Main && *position == SKULL_POS {
             let Ok((_, properties, uuid)) = clients.get(*client) else {
-                continue
+                continue;
             };
 
             let Some(textures) = properties.textures() else {
                 continue;
             };
 
-            *instance.block_entity_mut(SKULL_POS).unwrap() = compound! {
+            *layer.block_entity_mut(SKULL_POS).unwrap() = compound! {
                 "SkullOwner" => compound! {
                     "Id" => uuid.0,
                     "Properties" => compound! {

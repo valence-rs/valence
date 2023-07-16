@@ -33,22 +33,24 @@ fn setup(
     biomes: Res<BiomeRegistry>,
     dimensions: Res<DimensionTypeRegistry>,
 ) {
-    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let mut layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {
-            instance.insert_chunk([x, z], UnloadedChunk::new());
+            layer.chunk.insert_chunk([x, z], UnloadedChunk::new());
         }
     }
 
     for z in -25..25 {
         for x in -25..25 {
-            instance.set_block([x, SPAWN_Y, z], BlockState::MOSSY_COBBLESTONE);
+            layer
+                .chunk
+                .set_block([x, SPAWN_Y, z], BlockState::MOSSY_COBBLESTONE);
         }
     }
 
     commands
-        .spawn(instance)
+        .spawn(layer)
         .insert(WorldBorderBundle::new([0.0, 0.0], 1.0));
 }
 
@@ -113,7 +115,7 @@ fn border_expand(
         };
 
         event_writer.send(SetWorldBorderSizeEvent {
-            instance: loc.0,
+            entity_layer: loc.0,
             new_diameter: size.get() + 1.0,
             duration: Duration::from_secs(1),
         });
@@ -143,7 +145,7 @@ fn border_controls(
                 };
 
                 event_writer.send(SetWorldBorderSizeEvent {
-                    instance: entity,
+                    entity_layer: entity,
                     new_diameter: diameter.get() + value,
                     duration: Duration::from_millis(speed as u64),
                 })

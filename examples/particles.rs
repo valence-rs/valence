@@ -26,28 +26,48 @@ fn setup(
     dimensions: Res<DimensionTypeRegistry>,
     biomes: Res<BiomeRegistry>,
 ) {
-    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let mut layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {
-            instance.insert_chunk([x, z], UnloadedChunk::new());
+            layer.chunk.insert_chunk([x, z], UnloadedChunk::new());
         }
     }
 
-    instance.set_block([0, SPAWN_Y, 0], BlockState::BEDROCK);
+    layer.chunk.set_block([0, SPAWN_Y, 0], BlockState::BEDROCK);
 
-    commands.spawn(instance);
+    commands.spawn(layer);
 
     commands.insert_resource(ParticleVec(create_particle_vec()));
 }
 
 fn init_clients(
-    mut clients: Query<(&mut EntityLayerId, &mut Position, &mut GameMode), Added<Client>>,
-    instances: Query<Entity, With<Instance>>,
+    mut clients: Query<
+        (
+            &mut EntityLayerId,
+            &mut VisibleChunkLayer,
+            &mut VisibleEntityLayers,
+            &mut Position,
+            &mut GameMode,
+        ),
+        Added<Client>,
+    >,
+    layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
 ) {
-    for (mut loc, mut pos, mut game_mode) in &mut clients {
-        loc.0 = instances.single();
-        pos.set([0.5, SPAWN_Y as f64 + 1.0, 0.5]);
+    for (
+        mut layer_id,
+        mut visible_chunk_layer,
+        mut visible_entity_layers,
+        mut pos,
+        mut game_mode,
+    ) in &mut clients
+    {
+        let layer = layers.single();
+
+        layer_id.0 = layer;
+        visible_chunk_layer.0 = layer;
+        visible_entity_layers.0.insert(layer);
+        pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
         *game_mode = GameMode::Creative;
     }
 }
@@ -55,7 +75,7 @@ fn init_clients(
 fn manage_particles(
     particles: Res<ParticleVec>,
     server: Res<Server>,
-    mut instances: Query<&mut Instance>,
+    mut layers: Query<&mut ChunkLayer>,
     mut particle_idx: Local<usize>,
 ) {
     if server.current_tick() % 10 != 0 {
@@ -71,10 +91,10 @@ fn manage_particles(
     let pos = [0.5, SPAWN_Y as f64 + 2.0, 5.0];
     let offset = [0.5, 0.5, 0.5];
 
-    let mut instance = instances.single_mut();
+    let mut layer = layers.single_mut();
 
-    instance.play_particle(particle, true, pos, offset, 0.1, 100);
-    instance.set_action_bar(name.bold());
+    layer.play_particle(particle, true, pos, offset, 0.1, 100);
+    layer.set_action_bar(name.bold());
 }
 
 fn dbg_name(dbg: &impl fmt::Debug) -> String {

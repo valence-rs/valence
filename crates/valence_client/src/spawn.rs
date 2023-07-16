@@ -90,7 +90,7 @@ pub(super) fn initial_join(
 ) {
     for (mut client, visible_chunk_layer, spawn) in &mut clients {
         let Ok(chunk_layer) = chunk_layers.get(visible_chunk_layer.0) else {
-            continue
+            continue;
         };
 
         let dimension_names: Vec<Ident<Cow<str>>> = codec
@@ -165,7 +165,7 @@ pub(super) fn respawn(
         }
 
         let Ok(chunk_layer) = chunk_layers.get(loc.0) else {
-            continue
+            continue;
         };
 
         let dimension_name = chunk_layer.dimension_type_name();

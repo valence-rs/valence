@@ -28,39 +28,54 @@ fn setup(
     dimensions: Res<DimensionTypeRegistry>,
     biomes: Res<BiomeRegistry>,
 ) {
-    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let mut layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {
-            instance.insert_chunk([x, z], UnloadedChunk::new());
+            layer.chunk.insert_chunk([x, z], UnloadedChunk::new());
         }
     }
 
     for z in -25..25 {
         for x in -25..25 {
-            instance.set_block([x, 64, z], BlockState::GRASS_BLOCK);
+            layer.chunk.set_block([x, 64, z], BlockState::GRASS_BLOCK);
         }
     }
 
-    commands.spawn(instance);
+    commands.spawn(layer);
 }
 
 fn init_clients(
     mut clients: Query<
         (
+            &mut Client,
             &mut EntityLayerId,
+            &mut VisibleChunkLayer,
+            &mut VisibleEntityLayers,
             &mut Position,
             &mut GameMode,
-            &mut Client,
         ),
         Added<Client>,
     >,
-    instances: Query<Entity, With<Instance>>,
+    layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
 ) {
-    for (mut loc, mut pos, mut game_mode, mut client) in &mut clients {
-        loc.0 = instances.single();
-        pos.set([0.5, 65.0, 0.5]);
+    for (
+        mut client,
+        mut layer_id,
+        mut visible_chunk_layer,
+        mut visible_entity_layers,
+        mut pos,
+        mut game_mode,
+    ) in &mut clients
+    {
+        let layer = layers.single();
+
+        layer_id.0 = layer;
+        visible_chunk_layer.0 = layer;
+        visible_entity_layers.0.insert(layer);
+        pos.set([0.0, 65.0, 0.0]);
         *game_mode = GameMode::Creative;
+
         client.send_chat_message("To spawn an entity, press shift. F3 + B to activate hitboxes");
     }
 }
@@ -75,54 +90,53 @@ fn spawn_entity(
             continue;
         }
 
-        let (position, location) = client_query.get(sneaking.client).unwrap();
+        let (position, layer) = client_query.get(sneaking.client).unwrap();
 
         let position = *position;
-        let location = *location;
+        let layer = *layer;
 
         match rand::thread_rng().gen_range(0..7) {
             0 => commands.spawn(SheepEntityBundle {
                 position,
-                location,
+                layer,
                 entity_name_visible: NameVisible(true),
                 ..Default::default()
             }),
             1 => commands.spawn(PigEntityBundle {
                 position,
-                location,
+                layer,
                 entity_name_visible: NameVisible(true),
                 ..Default::default()
             }),
             2 => commands.spawn(ZombieEntityBundle {
                 position,
-                location,
+                layer,
                 entity_name_visible: NameVisible(true),
                 ..Default::default()
             }),
             3 => commands.spawn(ZombieHorseEntityBundle {
                 position,
-                location,
+                layer,
                 entity_name_visible: NameVisible(true),
                 ..Default::default()
             }),
             4 => commands.spawn(WardenEntityBundle {
                 position,
-                location,
+                layer,
                 entity_name_visible: NameVisible(true),
                 entity_pose: entity::Pose(Pose::Digging),
                 ..Default::default()
             }),
             5 => commands.spawn(WardenEntityBundle {
                 position,
-                location,
+                layer,
                 entity_name_visible: NameVisible(true),
                 ..Default::default()
             }),
             6 => commands.spawn(HoglinEntityBundle {
                 position,
-                location,
+                layer,
                 entity_name_visible: NameVisible(true),
-
                 ..Default::default()
             }),
             _ => unreachable!(),
@@ -148,7 +162,9 @@ fn intersections(query: Query<(Entity, &Hitbox)>, mut name_query: Query<&mut ent
     }
 
     for (entity, value) in intersections {
-        let Ok(mut name) = name_query.get_mut(entity) else { continue; };
+        let Ok(mut name) = name_query.get_mut(entity) else {
+            continue;
+        };
         name.0 = Some(format!("{value}").into());
     }
 }

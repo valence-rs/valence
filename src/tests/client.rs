@@ -15,8 +15,9 @@ use valence_entity::{EntityLayerId, Position};
 use valence_instance::chunk::UnloadedChunk;
 use valence_instance::packet::{ChunkDataS2c, UnloadChunkS2c};
 use valence_instance::Instance;
+use valence_layer::ChunkLayer;
 
-use crate::testing::{create_mock_client, scenario_single_client};
+use crate::testing::{create_mock_client, scenario_single_client, ScenarioSingleClient};
 
 #[test]
 fn client_chunk_view_change() {
@@ -103,22 +104,23 @@ fn client_chunk_view_change() {
 fn entity_chunk_spawn_despawn() {
     let mut app = App::new();
 
-    let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+    let ScenarioSingleClient {
+        client: client_ent,
+        helper,
+        layer,
+    } = scenario_single_client(&mut app);
 
-    let (inst_ent, mut inst) = app
-        .world
-        .query::<(Entity, &mut Instance)>()
-        .single_mut(&mut app.world);
+    let mut chunks = app.world.entity_mut::<ChunkLayer>(layer);
 
     // Insert an empty chunk at (0, 0).
-    inst.insert_chunk([0, 0], UnloadedChunk::new());
+    chunks.insert_chunk([0, 0], UnloadedChunk::new());
 
     // Put an entity in the new chunk.
     let cow_ent = app
         .world
         .spawn(CowEntityBundle {
             position: Position::new([8.0, 0.0, 8.0]),
-            location: EntityLayerId(inst_ent),
+            layer: EntityLayerId(inst_ent),
             ..Default::default()
         })
         .id();

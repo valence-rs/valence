@@ -55,9 +55,9 @@ fn setup(
     let instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
     let mut level = AnvilLevel::new(&cli.path, &biomes);
 
-    // Force a 16x16 area of chunks around the origin to be loaded at all times,
-    // similar to spawn chunks in vanilla. This isn't necessary, but it is done to
-    // demonstrate that it is possible.
+    // Force a 16x16 area of chunks around the origin to be loaded at all times.
+    // This is similar to "spawn chunks" in vanilla. This isn't necessary for the
+    // example to function, but it's done to demonstrate that it's possible.
     for z in -8..8 {
         for x in -8..8 {
             let pos = ChunkPos::new(x, z);
@@ -74,19 +74,30 @@ fn init_clients(
     mut clients: Query<
         (
             &mut EntityLayerId,
+            &mut VisibleChunkLayer,
+            &mut VisibleEntityLayers,
             &mut Position,
             &mut GameMode,
-            &mut IsFlat,
         ),
         Added<Client>,
     >,
-    instances: Query<Entity, With<Instance>>,
+    layers: Query<Entity, With<ChunkLayer>>,
 ) {
-    for (mut loc, mut pos, mut game_mode, mut is_flat) in &mut clients {
-        loc.0 = instances.single();
-        pos.set(SPAWN_POS);
+    for (
+        mut layer_id,
+        mut visible_chunk_layer,
+        mut visible_entity_layers,
+        mut pos,
+        mut game_mode,
+    ) in &mut clients
+    {
+        let layer = layers.single();
+
+        layer_id.0 = layer;
+        visible_chunk_layer.0 = layer;
+        visible_entity_layers.0.insert(layer);
+        pos.set([0.5, 65.0, 0.5]);
         *game_mode = GameMode::Creative;
-        is_flat.0 = true;
     }
 }
 

@@ -229,7 +229,11 @@ impl<T: WritePacket> WritePacket for Mut<'_, T> {
     }
 }
 
-/// An implementor of [`WritePacket`] backed by a `Vec` reference.
+/// An implementor of [`WritePacket`] backed by a `Vec` mutable reference.
+///
+/// Packets are written by appending to the contained vec. If an error occurs
+/// while writing, the written bytes are truncated away.
+#[derive(Debug)]
 pub struct PacketWriter<'a> {
     pub buf: &'a mut Vec<u8>,
     pub threshold: Option<u32>,
@@ -242,19 +246,35 @@ impl<'a> PacketWriter<'a> {
 }
 
 impl WritePacket for PacketWriter<'_> {
+    #[cfg_attr(not(feature = "compression"), track_caller)]
     fn write_packet_fallible<P>(&mut self, pkt: &P) -> anyhow::Result<()>
     where
         P: Packet + Encode,
     {
-        #[cfg(feature = "compression")]
+        let start = self.buf.len();
+
+        let res;
+
         if let Some(threshold) = self.threshold {
-            encode_packet_compressed(self.buf, pkt, threshold)
+            #[cfg(feature = "compression")]
+            {
+                res = encode_packet_compressed(self.buf, pkt, threshold);
+            }
+
+            #[cfg(not(feature = "compression"))]
+            {
+                let _ = threshold;
+                panic!("\"compression\" feature must be enabled to write compressed packets");
+            }
         } else {
-            encode_packet(self.buf, pkt)
+            res = encode_packet(self.buf, pkt)
+        };
+
+        if res.is_err() {
+            self.buf.truncate(start);
         }
 
-        #[cfg(not(feature = "compression"))]
-        encode_packet(self.buf, pkt)
+        res
     }
 
     fn write_packet_bytes(&mut self, bytes: &[u8]) {

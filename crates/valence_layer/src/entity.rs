@@ -7,7 +7,8 @@ use bevy_ecs::query::Has;
 use rustc_hash::FxHashMap;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::despawn::Despawned;
-use valence_core::protocol::encode::PacketWriter;
+use valence_core::protocol::encode::{PacketWriter, WritePacket};
+use valence_core::protocol::{Encode, Packet};
 use valence_core::Server;
 use valence_entity::query::UpdateEntityQuery;
 use valence_entity::{EntityId, EntityLayerId, OldEntityLayerId, OldPosition, Position};
@@ -116,6 +117,22 @@ impl Layer for EntityLayer {
 
     fn compression_threshold(&self) -> Option<u32> {
         self.compression_threshold
+    }
+}
+
+impl WritePacket for EntityLayer {
+    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
+    where
+        P: Packet + Encode,
+    {
+        self.send_global_packet(GlobalMsg::Packet, packet);
+
+        // TODO: propagate error up.
+        Ok(())
+    }
+
+    fn write_packet_bytes(&mut self, bytes: &[u8]) {
+        self.send_global_bytes(GlobalMsg::Packet, bytes)
     }
 }
 
