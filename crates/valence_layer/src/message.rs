@@ -1,4 +1,5 @@
 use core::fmt;
+use std::convert::Infallible;
 use std::ops::Range;
 
 use valence_core::chunk_pos::{ChunkPos, ChunkView};
@@ -69,6 +70,14 @@ where
         self.local.push((msg, start as u32..end as u32));
 
         Ok(())
+    }
+
+    pub(crate) fn send_global_infallible(&mut self, msg: G, f: impl FnOnce(&mut Vec<u8>)) {
+        let _ = self.send_global::<Infallible>(msg, |b| Ok(f(b)));
+    }
+
+    pub(crate) fn send_local_infallible(&mut self, msg: L, f: impl FnOnce(&mut Vec<u8>)) {
+        let _ = self.send_local::<Infallible>(msg, |b| Ok(f(b)));
     }
 
     /// Readies messages to be read by clients.
@@ -220,8 +229,6 @@ impl<M: GetChunkPos> GetChunkPos for MessagePair<M> {
 
 #[cfg(test)]
 mod tests {
-    use std::convert::Infallible;
-
     use super::*;
 
     #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
@@ -243,12 +250,9 @@ mod tests {
 
         let mut messages = Messages::<TestMsg, DummyLocal>::new();
 
-        let _ = messages
-            .send_global::<Infallible>(TestMsg::Foo, |b| Ok(b.extend_from_slice(&[1, 2, 3])));
-        let _ = messages
-            .send_global::<Infallible>(TestMsg::Bar, |b| Ok(b.extend_from_slice(&[4, 5, 6])));
-        let _ = messages
-            .send_global::<Infallible>(TestMsg::Foo, |b| Ok(b.extend_from_slice(&[7, 8, 9])));
+        messages.send_global_infallible(TestMsg::Foo, |b| b.extend_from_slice(&[1, 2, 3]));
+        messages.send_global_infallible(TestMsg::Bar, |b| b.extend_from_slice(&[4, 5, 6]));
+        messages.send_global_infallible(TestMsg::Foo, |b| b.extend_from_slice(&[7, 8, 9]));
 
         messages.ready();
 

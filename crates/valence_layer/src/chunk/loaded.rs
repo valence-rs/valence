@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet};
-use std::convert::Infallible;
 use std::mem;
 use std::sync::atomic::{AtomicU32, Ordering};
 
@@ -216,15 +215,13 @@ impl LoadedChunk {
                     let global_y = info.min_y + sect_y as i32 * 16 + offset_y as i32;
                     let global_z = pos.z * 16 + offset_z as i32;
 
-                    let _ = messages.send_local::<Infallible>(LocalMsg::PacketAt { pos }, |buf| {
+                    messages.send_local_infallible(LocalMsg::PacketAt { pos }, |buf| {
                         let mut writer = PacketWriter::new(buf, info.compression_threshold);
 
                         writer.write_packet(&BlockUpdateS2c {
                             position: BlockPos::new(global_x, global_y, global_z),
                             block_id: VarInt(block as i32),
                         });
-
-                        Ok(())
                     });
                 }
                 _ => {
@@ -232,15 +229,13 @@ impl LoadedChunk {
                         | (pos.z as i64 & 0x3fffff) << 20
                         | (sect_y as i64 + info.min_y.div_euclid(16) as i64) & 0xfffff;
 
-                    let _ = messages.send_local::<Infallible>(LocalMsg::PacketAt { pos }, |buf| {
+                    messages.send_local_infallible(LocalMsg::PacketAt { pos }, |buf| {
                         let mut writer = PacketWriter::new(buf, info.compression_threshold);
 
                         writer.write_packet(&ChunkDeltaUpdateS2c {
                             chunk_section_position,
                             blocks: Cow::Borrowed(&sect.section_updates),
                         });
-
-                        Ok(())
                     });
                 }
             }
@@ -270,7 +265,7 @@ impl LoadedChunk {
             let global_y = info.min_y + y as i32;
             let global_z = pos.z * 16 + z as i32;
 
-            let _ = messages.send_local::<Infallible>(LocalMsg::PacketAt { pos }, |buf| {
+            messages.send_local_infallible(LocalMsg::PacketAt { pos }, |buf| {
                 let mut writer = PacketWriter::new(buf, info.compression_threshold);
 
                 writer.write_packet(&BlockEntityUpdateS2c {
@@ -278,8 +273,6 @@ impl LoadedChunk {
                     kind: VarInt(kind as i32),
                     data: Cow::Borrowed(nbt),
                 });
-
-                Ok(())
             });
         }
 
@@ -289,7 +282,7 @@ impl LoadedChunk {
         if self.changed_biomes {
             self.changed_biomes = false;
 
-            let _ = messages.send_local::<Infallible>(LocalMsg::ChangeBiome { pos }, |buf| {
+            messages.send_local_infallible(LocalMsg::ChangeBiome { pos }, |buf| {
                 for sect in self.sections.iter() {
                     sect.biomes
                         .encode_mc_format(
@@ -301,8 +294,6 @@ impl LoadedChunk {
                         )
                         .expect("paletted container encode should always succeed");
                 }
-
-                Ok(())
             });
         }
 

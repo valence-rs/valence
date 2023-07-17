@@ -1,6 +1,17 @@
+use std::collections::BTreeSet;
+
+use bevy_ecs::world::EntityMut;
 use valence_block::BlockState;
+use valence_client::ViewDistance;
+use valence_core::chunk_pos::ChunkView;
+use valence_core::protocol::Packet;
+use valence_entity::cow::CowEntityBundle;
+use valence_entity::packet::{EntitiesDestroyS2c, EntitySpawnS2c, MoveRelativeS2c};
+use valence_entity::{EntityLayerId, Position};
 use valence_layer::chunk::UnloadedChunk;
-use valence_layer::packet::{BlockEntityUpdateS2c, ChunkDeltaUpdateS2c};
+use valence_layer::packet::{
+    BlockEntityUpdateS2c, ChunkDataS2c, ChunkDeltaUpdateS2c, UnloadChunkS2c,
+};
 use valence_layer::ChunkLayer;
 
 use crate::testing::ScenarioSingleClient;
@@ -51,5 +62,227 @@ fn block_create_destroy() {
 
         recvd.assert_count::<ChunkDeltaUpdateS2c>(1);
         recvd.assert_count::<BlockEntityUpdateS2c>(0);
+    }
+}
+
+#[test]
+fn layer_chunk_view_change() {
+    fn view(client: &EntityMut) -> ChunkView {
+        let chunk_pos = client.get::<Position>().unwrap().chunk_pos();
+        let view_dist = client.get::<ViewDistance>().unwrap().get();
+
+        ChunkView::new(chunk_pos, view_dist)
+    }
+
+    let ScenarioSingleClient {
+        mut app,
+        client: client_ent,
+        mut helper,
+        layer: layer_ent,
+    } = ScenarioSingleClient::new();
+
+    let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
+
+    for z in -30..30 {
+        for x in -30..30 {
+            layer.insert_chunk([x, z], UnloadedChunk::new());
+        }
+    }
+
+    let mut client = app.world.entity_mut(client_ent);
+
+    client.get_mut::<Position>().unwrap().set([8.0, 0.0, 8.0]);
+    client.get_mut::<ViewDistance>().unwrap().set(6);
+
+    // Tick
+    app.update();
+    let mut client = app.world.entity_mut(client_ent);
+
+    let mut loaded_chunks = BTreeSet::new();
+
+    // Collect all chunks received on join.
+    for f in helper.collect_received().0 {
+        if f.id == ChunkDataS2c::ID {
+            let ChunkDataS2c { pos, .. } = f.decode::<ChunkDataS2c>().unwrap();
+            // Newly received chunk was not previously loaded.
+            assert!(loaded_chunks.insert(pos), "({pos:?})");
+        }
+    }
+
+    // Check that all the received chunks are in the client's view.
+    for pos in view(&client).iter() {
+        assert!(loaded_chunks.contains(&pos), "{pos:?}");
+    }
+
+    assert!(!loaded_chunks.is_empty());
+
+    // Move the client to the adjacent chunk.
+    client.get_mut::<Position>().unwrap().set([24.0, 0.0, 24.0]);
+
+    // Tick
+    app.update();
+    let client = app.world.entity_mut(client_ent);
+
+    // For all chunks received this tick...
+    for f in helper.collect_received().0 {
+        match f.id {
+            ChunkDataS2c::ID => {
+                let ChunkDataS2c { pos, .. } = f.decode().unwrap();
+                // Newly received chunk was not previously loaded.
+                assert!(loaded_chunks.insert(pos), "({pos:?})");
+            }
+            UnloadChunkS2c::ID => {
+                let UnloadChunkS2c { pos } = f.decode().unwrap();
+                // Newly removed chunk was previously loaded.
+                assert!(loaded_chunks.remove(&pos), "({pos:?})");
+            }
+            _ => {}
+        }
+    }
+
+    // Check that all chunks loaded now are within the client's view.
+    for pos in view(&client).iter() {
+        assert!(loaded_chunks.contains(&pos), "{pos:?}");
+    }
+}
+
+#[test]
+fn chunk_entity_spawn_despawn() {
+    let ScenarioSingleClient {
+        mut app,
+        client: client_ent,
+        mut helper,
+        layer: layer_ent,
+    } = ScenarioSingleClient::new();
+
+    let mut chunks = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
+
+    // Insert an empty chunk at (0, 0).
+    chunks.insert_chunk([0, 0], UnloadedChunk::new());
+
+    // Put an entity in the new chunk.
+    let cow_ent = app
+        .world
+        .spawn(CowEntityBundle {
+            position: Position::new([8.0, 0.0, 8.0]),
+            layer: EntityLayerId(layer_ent),
+            ..Default::default()
+        })
+        .id();
+
+    app.update();
+
+    // Client is in view of the chunk, so they should receive exactly one chunk
+    // spawn packet and entity spawn packet.
+    {
+        let recvd = helper.collect_received();
+
+        recvd.assert_count::<ChunkDataS2c>(1);
+        recvd.assert_count::<EntitySpawnS2c>(1);
+        recvd.assert_count::<UnloadChunkS2c>(0);
+        recvd.assert_count::<EntitiesDestroyS2c>(0);
+    }
+
+    // Move the entity. Client should receive entity move packet.
+    app.world.get_mut::<Position>(cow_ent).unwrap().0.x += 0.1;
+
+    app.update();
+
+    helper.collect_received().assert_count::<MoveRelativeS2c>(1);
+
+    // Despawning the chunk should delete the chunk and not the entity contained
+    // within.
+    let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
+
+    layer.remove_chunk([0, 0]).unwrap();
+
+    app.update();
+
+    {
+        let recvd = helper.collect_received();
+
+        recvd.assert_count::<UnloadChunkS2c>(1);
+        recvd.assert_count::<EntitiesDestroyS2c>(0);
+        recvd.assert_count::<ChunkDataS2c>(0);
+        recvd.assert_count::<EntitySpawnS2c>(0);
+    }
+
+    // Placing the chunk back should respawn the chunk and not the entity.
+
+    let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
+
+    assert!(layer.insert_chunk([0, 0], UnloadedChunk::new()).is_none());
+
+    app.update();
+
+    {
+        let recvd = helper.collect_received();
+
+        recvd.assert_count::<ChunkDataS2c>(1);
+        recvd.assert_count::<EntitySpawnS2c>(0);
+        recvd.assert_count::<UnloadChunkS2c>(0);
+        recvd.assert_count::<EntitiesDestroyS2c>(0);
+    }
+
+    // Move player and entity away from the chunk on the same tick.
+
+    app.world.get_mut::<Position>(client_ent).unwrap().0.x = 1000.0;
+    app.world.get_mut::<Position>(cow_ent).unwrap().0.x = -1000.0;
+
+    app.update();
+
+    {
+        let recvd = helper.collect_received();
+
+        recvd.assert_count::<UnloadChunkS2c>(1);
+        recvd.assert_count::<EntitiesDestroyS2c>(1);
+        recvd.assert_count::<ChunkDataS2c>(0);
+        recvd.assert_count::<EntitySpawnS2c>(0);
+    }
+
+    // Put the client and entity back on the same tick.
+
+    app.world
+        .get_mut::<Position>(client_ent)
+        .unwrap()
+        .set([8.0, 0.0, 8.0]);
+    app.world
+        .get_mut::<Position>(cow_ent)
+        .unwrap()
+        .set([8.0, 0.0, 8.0]);
+
+    app.update();
+
+    {
+        let recvd = helper.collect_received();
+
+        recvd.assert_count::<ChunkDataS2c>(1);
+        recvd.assert_count::<EntitySpawnS2c>(1);
+        recvd.assert_count::<UnloadChunkS2c>(0);
+        recvd.assert_count::<EntitiesDestroyS2c>(0);
+    }
+
+    // Adding and removing a chunk on the same tick should have no effect on
+    // the client.
+
+    let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
+
+    layer.insert_chunk([0, 1], UnloadedChunk::new());
+    layer.remove_chunk([0, 1]).unwrap();
+
+    app.world
+        .get_mut::<Position>(cow_ent)
+        .unwrap()
+        .set([24.0, 0.0, 24.0]);
+
+    app.update();
+
+    {
+        let recvd = helper.collect_received();
+
+        recvd.assert_count::<ChunkDataS2c>(0);
+        recvd.assert_count::<EntitySpawnS2c>(0);
+        recvd.assert_count::<UnloadChunkS2c>(0);
+        recvd.assert_count::<EntitiesDestroyS2c>(0);
     }
 }

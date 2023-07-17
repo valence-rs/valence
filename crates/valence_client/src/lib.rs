@@ -122,6 +122,7 @@ impl Plugin for ClientPlugin {
                     update_view_and_layers
                         .after(spawn::initial_join)
                         .after(handle_layer_messages),
+                    cleanup_chunks_after_client_despawn.after(update_view_and_layers),
                     spawn::update_respawn_position.after(update_view_and_layers),
                     spawn::respawn.after(spawn::update_respawn_position),
                     remove_entities.after(update_view_and_layers),
@@ -132,7 +133,6 @@ impl Plugin for ClientPlugin {
                 )
                     .in_set(UpdateClientsSet),
                 flush_packets.in_set(FlushPacketsSet),
-                cleanup_chunks_after_client_despawn.after(UpdateClientsSet),
             ),
         )
         .configure_set(PreUpdate, SpawnClientsSet)
@@ -260,6 +260,8 @@ pub struct ClientBundleArgs {
     pub enc: PacketEncoder,
 }
 
+/// Marker [`Component`] for client entities. This component should exist even
+/// if the client is disconnected.
 #[derive(Component, Copy, Clone)]
 pub struct ClientMarker;
 
@@ -755,23 +757,24 @@ fn handle_layer_messages(
                             data: &bytes[range],
                         });
                     }
-                    valence_layer::chunk::LocalMsg::LoadOrUnloadChunk { pos } => {
-                        match bytes[range].last() {
-                            Some(&1) => {
+                    valence_layer::chunk::LocalMsg::ChangeChunkState { pos } => {
+                        match &bytes[range] {
+                            [ChunkLayer::LOAD, .., ChunkLayer::UNLOAD] => {
+                                // Chunk is being loaded and unloaded on the
+                                // same tick, so there's no need to do anything.
+                            }
+                            [.., ChunkLayer::LOAD | ChunkLayer::OVERWRITE] => {
                                 // Load chunk.
                                 if let Some(chunk) = chunk_layer.chunk(pos) {
                                     chunk.write_init_packets(&mut *client, pos, chunk_layer.info());
                                     chunk.inc_viewer_count();
                                 }
                             }
-                            Some(&0) => {
-                                // Unload chunk. If the chunk doesn't exist, then it shouldn't be
-                                // loaded on the client and no packet needs to be sent.
-                                if chunk_layer.chunk(pos).is_some() {
-                                    client.write_packet(&UnloadChunkS2c { pos });
-                                }
+                            [.., ChunkLayer::UNLOAD] => {
+                                // Unload chunk.
+                                client.write_packet(&UnloadChunkS2c { pos });
                             }
-                            _ => panic!("invalid message data"),
+                            _ => unreachable!("invalid message data while changing chunk state"),
                         }
                     }
                 });

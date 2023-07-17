@@ -1,6 +1,5 @@
 use std::collections::hash_map::Entry;
 use std::collections::BTreeSet;
-use std::convert::Infallible;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
@@ -127,9 +126,8 @@ impl WritePacket for EntityLayer {
     }
 
     fn write_packet_bytes(&mut self, bytes: &[u8]) {
-        let _ = self
-            .messages
-            .send_global::<Infallible>(GlobalMsg::Packet, |b| Ok(b.extend_from_slice(bytes)));
+        self.messages
+            .send_global_infallible(GlobalMsg::Packet, |b| b.extend_from_slice(bytes));
     }
 }
 
@@ -151,11 +149,10 @@ impl<'a> WritePacket for ViewWriter<'a> {
     }
 
     fn write_packet_bytes(&mut self, bytes: &[u8]) {
-        let _ = self
-            .layer
+        self.layer
             .messages
-            .send_local::<Infallible>(LocalMsg::PacketAt { pos: self.pos }, |b| {
-                Ok(b.extend_from_slice(bytes))
+            .send_local_infallible(LocalMsg::PacketAt { pos: self.pos }, |b| {
+                b.extend_from_slice(bytes)
             });
     }
 }
@@ -204,12 +201,12 @@ fn change_entity_positions(
 
                 if let Entry::Occupied(mut old_cell) = old_layer.entities.entry(old_chunk_pos) {
                     if old_cell.get_mut().remove(&entity) {
-                        let _ = old_layer.messages.send_local::<Infallible>(
+                        old_layer.messages.send_local_infallible(
                             LocalMsg::DespawnEntity {
                                 pos: old_chunk_pos,
                                 dest_layer: Entity::PLACEHOLDER,
                             },
-                            |b| Ok(b.extend_from_slice(&entity_id.get().to_ne_bytes())),
+                            |b| b.extend_from_slice(&entity_id.get().to_ne_bytes()),
                         );
 
                         if old_cell.get().is_empty() {
@@ -227,12 +224,12 @@ fn change_entity_positions(
 
                 if let Entry::Occupied(mut old_cell) = old_layer.entities.entry(old_chunk_pos) {
                     if old_cell.get_mut().remove(&entity) {
-                        let _ = old_layer.messages.send_local::<Infallible>(
+                        old_layer.messages.send_local_infallible(
                             LocalMsg::DespawnEntity {
                                 pos: old_chunk_pos,
                                 dest_layer: layer_id.0,
                             },
-                            |b| Ok(b.extend_from_slice(&entity_id.get().to_ne_bytes())),
+                            |b| b.extend_from_slice(&entity_id.get().to_ne_bytes()),
                         );
 
                         if old_cell.get().is_empty() {
@@ -244,12 +241,12 @@ fn change_entity_positions(
 
             if let Ok(mut layer) = layers.get_mut(layer_id.0) {
                 if layer.entities.entry(chunk_pos).or_default().insert(entity) {
-                    let _ = layer.messages.send_local::<Infallible>(
+                    layer.messages.send_local_infallible(
                         LocalMsg::SpawnEntity {
                             pos: chunk_pos,
                             src_layer: old_layer_id.get(),
                         },
-                        |b| Ok(b.extend_from_slice(&entity.to_bits().to_ne_bytes())),
+                        |b| b.extend_from_slice(&entity.to_bits().to_ne_bytes()),
                     );
                 }
             }
@@ -260,23 +257,23 @@ fn change_entity_positions(
             if let Ok(mut layer) = layers.get_mut(layer_id.0) {
                 if let Entry::Occupied(mut old_cell) = layer.entities.entry(old_chunk_pos) {
                     if old_cell.get_mut().remove(&entity) {
-                        let _ = layer.messages.send_local::<Infallible>(
+                        layer.messages.send_local_infallible(
                             LocalMsg::DespawnEntityTransition {
                                 pos: old_chunk_pos,
                                 dest_pos: chunk_pos,
                             },
-                            |b| Ok(b.extend_from_slice(&entity_id.get().to_ne_bytes())),
+                            |b| b.extend_from_slice(&entity_id.get().to_ne_bytes()),
                         );
                     }
                 }
 
                 if layer.entities.entry(chunk_pos).or_default().insert(entity) {
-                    let _ = layer.messages.send_local::<Infallible>(
+                    layer.messages.send_local_infallible(
                         LocalMsg::SpawnEntityTransition {
                             pos: chunk_pos,
                             src_pos: old_chunk_pos,
                         },
-                        |b| Ok(b.extend_from_slice(&entity.to_bits().to_ne_bytes())),
+                        |b| b.extend_from_slice(&entity.to_bits().to_ne_bytes()),
                     );
                 }
             }
@@ -308,11 +305,9 @@ fn send_entity_update_messages<Client: Component>(
                         LocalMsg::PacketAt { pos: chunk_pos }
                     };
 
-                    let _ = layer.messages.send_local::<Infallible>(msg, |b| {
-                        Ok(update.write_update_packets(PacketWriter::new(
-                            b,
-                            layer.compression_threshold,
-                        )))
+                    layer.messages.send_local_infallible(msg, |b| {
+                        update
+                            .write_update_packets(PacketWriter::new(b, layer.compression_threshold))
                     });
                 } else {
                     panic!(
@@ -327,9 +322,9 @@ fn send_entity_update_messages<Client: Component>(
 
 fn send_layer_despawn_messages(mut layers: Query<&mut EntityLayer, With<Despawned>>) {
     for mut layer in &mut layers {
-        let _ = layer
+        layer
             .messages
-            .send_global::<Infallible>(GlobalMsg::DespawnLayer, |_| Ok(()));
+            .send_global_infallible(GlobalMsg::DespawnLayer, |_| {});
     }
 }
 

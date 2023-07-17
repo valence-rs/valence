@@ -7,7 +7,7 @@ pub mod unloaded;
 
 use std::borrow::Cow;
 use std::collections::hash_map::{Entry, OccupiedEntry, VacantEntry};
-use std::convert::Infallible;
+use std::fmt;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
@@ -42,7 +42,6 @@ pub struct ChunkLayer {
 }
 
 #[doc(hidden)]
-#[derive(Debug)]
 pub struct ChunkLayerInfo {
     dimension_type_name: Ident<String>,
     height: u32,
@@ -52,6 +51,19 @@ pub struct ChunkLayerInfo {
     // We don't have a proper lighting engine yet, so we just fill chunks with full brightness.
     sky_light_mask: Box<[u64]>,
     sky_light_arrays: Box<[LengthPrefixedArray<u8, 2048>]>,
+}
+
+impl fmt::Debug for ChunkLayerInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ChunkLayerInfo")
+            .field("dimension_type_name", &self.dimension_type_name)
+            .field("height", &self.height)
+            .field("min_y", &self.min_y)
+            .field("biome_registry_len", &self.biome_registry_len)
+            .field("compression_threshold", &self.compression_threshold)
+            // Ignore sky light mask and array.
+            .finish()
+    }
 }
 
 type ChunkLayerMessages = Messages<GlobalMsg, LocalMsg>;
@@ -76,7 +88,7 @@ pub enum LocalMsg {
     /// is not lost when messages are sorted.
     ///
     /// Message content is a single byte indicating load (1) or unload (0).
-    LoadOrUnloadChunk { pos: ChunkPos },
+    ChangeChunkState { pos: ChunkPos },
     /// Message content is the data for a single biome in the "change biomes"
     /// packet.
     ChangeBiome { pos: ChunkPos },
@@ -87,12 +99,19 @@ impl GetChunkPos for LocalMsg {
         match *self {
             LocalMsg::PacketAt { pos } => pos,
             LocalMsg::ChangeBiome { pos } => pos,
-            LocalMsg::LoadOrUnloadChunk { pos } => pos,
+            LocalMsg::ChangeChunkState { pos } => pos,
         }
     }
 }
 
 impl ChunkLayer {
+    #[doc(hidden)]
+    pub const LOAD: u8 = 0;
+    #[doc(hidden)]
+    pub const UNLOAD: u8 = 1;
+    #[doc(hidden)]
+    pub const OVERWRITE: u8 = 2;
+
     #[track_caller]
     pub fn new(
         dimension_type_name: impl Into<Ident<String>>,
@@ -196,10 +215,9 @@ impl ChunkLayer {
     {
         self.chunks.retain(|pos, chunk| {
             if !f(*pos, chunk) {
-                let _ = self
-                    .messages
-                    .send_local::<Infallible>(LocalMsg::LoadOrUnloadChunk { pos: *pos }, |b| {
-                        Ok(b.push(0))
+                self.messages
+                    .send_local_infallible(LocalMsg::ChangeChunkState { pos: *pos }, |b| {
+                        b.push(Self::UNLOAD)
                     });
 
                 false
@@ -406,9 +424,8 @@ impl WritePacket for ChunkLayer {
     }
 
     fn write_packet_bytes(&mut self, bytes: &[u8]) {
-        let _ = self
-            .messages
-            .send_global::<Infallible>(GlobalMsg::Packet, |b| Ok(b.extend_from_slice(bytes)));
+        self.messages
+            .send_global_infallible(GlobalMsg::Packet, |b| b.extend_from_slice(bytes));
     }
 }
 
@@ -431,11 +448,10 @@ impl<'a> WritePacket for ViewWriter<'a> {
     }
 
     fn write_packet_bytes(&mut self, bytes: &[u8]) {
-        let _ = self
-            .layer
+        self.layer
             .messages
-            .send_local::<Infallible>(LocalMsg::PacketAt { pos: self.pos }, |b| {
-                Ok(b.extend_from_slice(bytes))
+            .send_local_infallible(LocalMsg::PacketAt { pos: self.pos }, |b| {
+                b.extend_from_slice(bytes)
             });
     }
 }
@@ -471,11 +487,11 @@ impl<'a> OccupiedChunkEntry<'a> {
     }
 
     pub fn insert(&mut self, chunk: UnloadedChunk) -> UnloadedChunk {
-        let _ = self.messages.send_local::<Infallible>(
-            LocalMsg::LoadOrUnloadChunk {
+        self.messages.send_local_infallible(
+            LocalMsg::ChangeChunkState {
                 pos: *self.entry.key(),
             },
-            |b| Ok(b.push(1)),
+            |b| b.push(ChunkLayer::OVERWRITE),
         );
 
         self.entry.get_mut().insert(chunk)
@@ -489,26 +505,26 @@ impl<'a> OccupiedChunkEntry<'a> {
         self.entry.key()
     }
 
-    pub fn remove(mut self) -> UnloadedChunk {
-        let _ = self.messages.send_local::<Infallible>(
-            LocalMsg::LoadOrUnloadChunk {
+    pub fn remove(self) -> UnloadedChunk {
+        self.messages.send_local_infallible(
+            LocalMsg::ChangeChunkState {
                 pos: *self.entry.key(),
             },
-            |b| Ok(b.push(0)),
+            |b| b.push(ChunkLayer::UNLOAD),
         );
 
-        self.entry.get_mut().remove()
+        self.entry.remove().remove()
     }
 
     pub fn remove_entry(mut self) -> (ChunkPos, UnloadedChunk) {
         let pos = *self.entry.key();
         let chunk = self.entry.get_mut().remove();
 
-        let _ = self.messages.send_local::<Infallible>(
-            LocalMsg::LoadOrUnloadChunk {
+        self.messages.send_local_infallible(
+            LocalMsg::ChangeChunkState {
                 pos: *self.entry.key(),
             },
-            |b| Ok(b.push(0)),
+            |b| b.push(ChunkLayer::UNLOAD),
         );
 
         (pos, chunk)
@@ -527,11 +543,11 @@ impl<'a> VacantChunkEntry<'a> {
         let mut loaded = LoadedChunk::new(self.height);
         loaded.insert(chunk);
 
-        let _ = self.messages.send_local::<Infallible>(
-            LocalMsg::LoadOrUnloadChunk {
+        self.messages.send_local_infallible(
+            LocalMsg::ChangeChunkState {
                 pos: *self.entry.key(),
             },
-            |b| Ok(b.push(1)),
+            |b| b.push(ChunkLayer::LOAD),
         );
 
         self.entry.insert(loaded)
