@@ -996,9 +996,6 @@ fn update_view_and_layers(
                         }
                     }
                 }
-
-                // Update the old chunk layer.
-                old_chunk_layer.0 = chunk_layer.0;
             } else {
                 // Update the client's visible entity layers.
                 if visible_entity_layers.is_changed() {
@@ -1037,11 +1034,6 @@ fn update_view_and_layers(
                             }
                         }
                     }
-
-                    // old := new
-                    old_visible_entity_layers
-                        .0
-                        .clone_from(&visible_entity_layers.0);
                 }
 
                 // Update the client's view (chunk position and view distance)
@@ -1100,6 +1092,16 @@ fn update_view_and_layers(
                         }
                     }
                 }
+            }
+
+            // Update the old layers.
+
+            old_chunk_layer.0 = chunk_layer.0;
+
+            if visible_entity_layers.is_changed() {
+                old_visible_entity_layers
+                    .0
+                    .clone_from(&visible_entity_layers.0);
             }
         },
     );
