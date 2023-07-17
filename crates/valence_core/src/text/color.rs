@@ -1,3 +1,5 @@
+//! [`Color`] and related data structures.
+
 use std::fmt;
 
 use serde::de::Visitor;
@@ -29,7 +31,7 @@ pub struct RgbColor {
     pub b: u8,
 }
 
-/// Normal Minecraft colors
+/// Normal Minecraft color
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub enum NormalColor {
     /// Hex digit: `0`, name: `black`
@@ -66,6 +68,7 @@ pub enum NormalColor {
     White,
 }
 
+/// Color parsing error
 #[derive(Debug, Error, PartialEq, PartialOrd, Clone, Copy, Hash, Eq, Ord)]
 #[error("invalid color name or hex code")]
 pub struct ColorError;

@@ -2,6 +2,7 @@
 
 use std::borrow::Cow;
 use std::io::Write;
+use std::ops::{Deref, DerefMut};
 use std::{fmt, ops};
 
 use anyhow::Context;
@@ -15,8 +16,12 @@ use crate::protocol::{Decode, Encode};
 use crate::text::color::NormalColor;
 
 pub mod color;
+mod into_text;
+mod text_format;
 
 pub use color::Color;
+pub use into_text::IntoText;
+pub use text_format::TextFormat;
 
 /// Represents formatted text in Minecraft's JSON text format.
 ///
@@ -31,7 +36,7 @@ pub use color::Color;
 ///
 /// With [`TextFormat`] in scope, you can write the following:
 /// ```
-/// use valence_core::text::{Color, Text, TextFormat};
+/// use valence_core::text::{Color, IntoText, Text, TextFormat};
 ///
 /// let txt = "The text is ".into_text()
 ///     + "Red".color(Color::RED)
@@ -50,68 +55,9 @@ pub use color::Color;
 /// ```
 #[derive(Clone, PartialEq, Default, Serialize)]
 #[serde(transparent)]
-pub struct Text(pub Box<TextInner>);
+pub struct Text(Box<TextInner>);
 
-impl<'de> Deserialize<'de> for Text {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        struct TextVisitor;
-
-        impl<'de> Visitor<'de> for TextVisitor {
-            type Value = Text;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                write!(formatter, "a text component data type")
-            }
-
-            fn visit_bool<E: de::Error>(self, v: bool) -> Result<Self::Value, E> {
-                Ok(Text::text(v.to_string()))
-            }
-
-            fn visit_i64<E: de::Error>(self, v: i64) -> Result<Self::Value, E> {
-                Ok(Text::text(v.to_string()))
-            }
-
-            fn visit_u64<E: de::Error>(self, v: u64) -> Result<Self::Value, E> {
-                Ok(Text::text(v.to_string()))
-            }
-
-            fn visit_f64<E: de::Error>(self, v: f64) -> Result<Self::Value, E> {
-                Ok(Text::text(v.to_string()))
-            }
-
-            fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
-                Ok(Text::text(v.to_string()))
-            }
-
-            fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
-                Ok(Text::text(v))
-            }
-
-            fn visit_seq<A: de::SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
-                let Some(mut res) = seq.next_element()? else {
-                    return Ok(Text::default())
-                };
-
-                while let Some(child) = seq.next_element::<Text>()? {
-                    res += child;
-                }
-
-                Ok(res)
-            }
-
-            fn visit_map<A: de::MapAccess<'de>>(self, map: A) -> Result<Self::Value, A::Error> {
-                use de::value::MapAccessDeserializer;
-
-                Ok(Text(Box::new(TextInner::deserialize(
-                    MapAccessDeserializer::new(map),
-                )?)))
-            }
-        }
-
-        deserializer.deserialize_any(TextVisitor)
-    }
-}
-
+/// Text data and formatting.
 #[derive(Clone, PartialEq, Default, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TextInner {
@@ -152,12 +98,12 @@ pub struct TextInner {
     pub extra: Vec<Text>,
 }
 
+/// The text content of a Text object.
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum TextContent {
-    Text {
-        text: Cow<'static, str>,
-    },
+    /// Normal text
+    Text { text: Cow<'static, str> },
     /// A piece of text that will be translated on the client based on the
     /// client language. If no corresponding translation can be found, the
     /// identifier itself is used as the translated text.
@@ -171,9 +117,7 @@ pub enum TextContent {
         with: Vec<Text>,
     },
     /// Displays a score holder's current score in an objective.
-    ScoreboardValue {
-        score: ScoreboardValueContent,
-    },
+    ScoreboardValue { score: ScoreboardValueContent },
     /// Displays the name of one or more entities found by a [`selector`].
     ///
     /// [`selector`]: https://minecraft.fandom.com/wiki/Target_selectors
@@ -216,7 +160,7 @@ pub enum TextContent {
     },
     /// Displays NBT values from command storage.
     StorageNbt {
-        storage: Ident<String>,
+        storage: Ident<Cow<'static, str>>,
         nbt: Cow<'static, str>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         interpret: Option<bool>,
@@ -225,6 +169,7 @@ pub enum TextContent {
     },
 }
 
+/// Scoreboard value.
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct ScoreboardValueContent {
     /// The name of the score holder whose score should be displayed. This
@@ -240,33 +185,54 @@ pub struct ScoreboardValueContent {
     pub value: Option<Cow<'static, str>>,
 }
 
+/// Action to take on click of the text.
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(tag = "action", content = "value", rename_all = "snake_case")]
 pub enum ClickEvent {
+    /// Opens an URL
     OpenUrl(Cow<'static, str>),
     /// Only usable by internal servers for security reasons.
     OpenFile(Cow<'static, str>),
+    /// Sends a chat command. Doesn't actually have to be a command, can be a
+    /// normal chat message.
     RunCommand(Cow<'static, str>),
+    /// Replaces the contents of the chat box with the text, not necessarily a
+    /// command.
     SuggestCommand(Cow<'static, str>),
+    /// Only usable within written books. Changes the page of the book. Indexing
+    /// starts at 1.
     ChangePage(i32),
+    /// Copies the given text to clipboard
     CopyToClipboard(Cow<'static, str>),
 }
 
+/// Action to take when mouse-hovering on the text.
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(tag = "action", content = "contents", rename_all = "snake_case")]
 #[allow(clippy::enum_variant_names)]
 pub enum HoverEvent {
+    /// Displays a tooltip with the given text.
     ShowText(Text),
+    /// Shows an item.
     ShowItem {
-        id: Ident<String>,
+        /// Resource identifier of the item
+        id: Ident<Cow<'static, str>>,
+        /// Number of the items in the stack
         count: Option<i32>,
-        // TODO: tag
+        /// NBT information about the item (sNBT format)
+        tag: Cow<'static, str>, // TODO replace with newtype for sNBT?
     },
+    /// Shows an entity.
     ShowEntity {
-        name: Text,
-        #[serde(rename = "type")]
-        kind: Ident<String>,
+        /// The entity's UUID
         id: Uuid,
+        /// Resource identifier of the entity
+        #[serde(rename = "type")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        kind: Option<Ident<Cow<'static, str>>>,
+        /// Optional custom name for the entity
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        name: Option<Text>,
     },
 }
 
@@ -373,7 +339,7 @@ impl Text {
 
     /// Creates a text component for a command storage NBT tag.
     pub fn storage_nbt(
-        storage: impl Into<Ident<String>>,
+        storage: impl Into<Ident<Cow<'static, str>>>,
         nbt: impl Into<Cow<'static, str>>,
         interpret: Option<bool>,
         separator: Option<Text>,
@@ -658,201 +624,21 @@ impl Text {
     }
 }
 
-/// Provides the methods necessary for working with [`Text`] objects.
-///
-/// This trait exists to allow using `Into<Text>` types without having to first
-/// convert the type into [`Text`]. A blanket implementation exists for all
-/// `Into<Text>` types, including [`Text`] itself.
-pub trait TextFormat: Into<Text> {
-    /// Converts this type into a [`Text`] object.
-    fn into_text(self) -> Text {
-        self.into()
-    }
+impl Deref for Text {
+    type Target = TextInner;
 
-    fn color(self, color: Color) -> Text {
-        let mut t = self.into();
-        t.0.color = Some(color);
-        t
-    }
-
-    fn clear_color(self) -> Text {
-        let mut t = self.into();
-        t.0.color = None;
-        t
-    }
-
-    fn font(self, font: impl Into<Cow<'static, str>>) -> Text {
-        let mut t = self.into();
-        t.0.font = Some(font.into());
-        t
-    }
-
-    fn clear_font(self) -> Text {
-        let mut t = self.into();
-        t.0.font = None;
-        t
-    }
-
-    fn bold(self) -> Text {
-        let mut t = self.into();
-        t.0.bold = Some(true);
-        t
-    }
-
-    fn not_bold(self) -> Text {
-        let mut t = self.into();
-        t.0.bold = Some(false);
-        t
-    }
-
-    fn clear_bold(self) -> Text {
-        let mut t = self.into();
-        t.0.bold = None;
-        t
-    }
-
-    fn italic(self) -> Text {
-        let mut t = self.into();
-        t.0.italic = Some(true);
-        t
-    }
-
-    fn not_italic(self) -> Text {
-        let mut t = self.into();
-        t.0.italic = Some(false);
-        t
-    }
-
-    fn clear_italic(self) -> Text {
-        let mut t = self.into();
-        t.0.italic = None;
-        t
-    }
-
-    fn underlined(self) -> Text {
-        let mut t = self.into();
-        t.0.underlined = Some(true);
-        t
-    }
-
-    fn not_underlined(self) -> Text {
-        let mut t = self.into();
-        t.0.underlined = Some(false);
-        t
-    }
-
-    fn clear_underlined(self) -> Text {
-        let mut t = self.into();
-        t.0.underlined = None;
-        t
-    }
-
-    fn strikethrough(self) -> Text {
-        let mut t = self.into();
-        t.0.strikethrough = Some(true);
-        t
-    }
-
-    fn not_strikethrough(self) -> Text {
-        let mut t = self.into();
-        t.0.strikethrough = Some(false);
-        t
-    }
-
-    fn clear_strikethrough(self) -> Text {
-        let mut t = self.into();
-        t.0.strikethrough = None;
-        t
-    }
-
-    fn obfuscated(self) -> Text {
-        let mut t = self.into();
-        t.0.obfuscated = Some(true);
-        t
-    }
-
-    fn not_obfuscated(self) -> Text {
-        let mut t = self.into();
-        t.0.obfuscated = Some(false);
-        t
-    }
-
-    fn clear_obfuscated(self) -> Text {
-        let mut t = self.into();
-        t.0.obfuscated = None;
-        t
-    }
-
-    fn insertion(self, insertion: impl Into<Cow<'static, str>>) -> Text {
-        let mut t = self.into();
-        t.0.insertion = Some(insertion.into());
-        t
-    }
-
-    fn clear_insertion(self) -> Text {
-        let mut t = self.into();
-        t.0.insertion = None;
-        t
-    }
-
-    fn on_click_open_url(self, url: impl Into<Cow<'static, str>>) -> Text {
-        let mut t = self.into();
-        t.0.click_event = Some(ClickEvent::OpenUrl(url.into()));
-        t
-    }
-
-    fn on_click_run_command(self, command: impl Into<Cow<'static, str>>) -> Text {
-        let mut t = self.into();
-        t.0.click_event = Some(ClickEvent::RunCommand(command.into()));
-        t
-    }
-
-    fn on_click_suggest_command(self, command: impl Into<Cow<'static, str>>) -> Text {
-        let mut t = self.into();
-        t.0.click_event = Some(ClickEvent::SuggestCommand(command.into()));
-        t
-    }
-
-    fn on_click_change_page(self, page: impl Into<i32>) -> Text {
-        let mut t = self.into();
-        t.0.click_event = Some(ClickEvent::ChangePage(page.into()));
-        t
-    }
-
-    fn on_click_copy_to_clipboard(self, text: impl Into<Cow<'static, str>>) -> Text {
-        let mut t = self.into();
-        t.0.click_event = Some(ClickEvent::CopyToClipboard(text.into()));
-        t
-    }
-
-    fn clear_click_event(self) -> Text {
-        let mut t = self.into();
-        t.0.click_event = None;
-        t
-    }
-
-    fn on_hover_show_text(self, text: impl Into<Text>) -> Text {
-        let mut t = self.into();
-        t.0.hover_event = Some(HoverEvent::ShowText(text.into()));
-        t
-    }
-
-    fn clear_hover_event(self) -> Text {
-        let mut t = self.into();
-        t.0.hover_event = None;
-        t
-    }
-
-    fn add_child(self, text: impl Into<Text>) -> Text {
-        let mut t = self.into();
-        t.0.extra.push(text.into());
-        t
+    fn deref(&self) -> &Self::Target {
+        &*self.0
     }
 }
 
-impl<T: Into<Text>> TextFormat for T {}
+impl DerefMut for Text {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut *self.0
+    }
+}
 
-impl<T: Into<Text>> ops::Add<T> for Text {
+impl<T: IntoText> ops::Add<T> for Text {
     type Output = Self;
 
     fn add(self, rhs: T) -> Self::Output {
@@ -860,63 +646,9 @@ impl<T: Into<Text>> ops::Add<T> for Text {
     }
 }
 
-impl<T: Into<Text>> ops::AddAssign<T> for Text {
+impl<T: IntoText> ops::AddAssign<T> for Text {
     fn add_assign(&mut self, rhs: T) {
-        self.0.extra.push(rhs.into());
-    }
-}
-
-impl From<char> for Text {
-    fn from(c: char) -> Self {
-        Text::text(String::from(c))
-    }
-}
-
-impl From<String> for Text {
-    fn from(s: String) -> Self {
-        Text::text(s)
-    }
-}
-
-impl From<&'static str> for Text {
-    fn from(s: &'static str) -> Self {
-        Text::text(s)
-    }
-}
-
-impl From<Cow<'static, str>> for Text {
-    fn from(s: Cow<'static, str>) -> Self {
-        Text::text(s)
-    }
-}
-
-impl From<i32> for Text {
-    fn from(value: i32) -> Self {
-        Text::text(value.to_string())
-    }
-}
-
-impl From<i64> for Text {
-    fn from(value: i64) -> Self {
-        Text::text(value.to_string())
-    }
-}
-
-impl From<u64> for Text {
-    fn from(value: u64) -> Self {
-        Text::text(value.to_string())
-    }
-}
-
-impl From<f64> for Text {
-    fn from(value: f64) -> Self {
-        Text::text(value.to_string())
-    }
-}
-
-impl From<bool> for Text {
-    fn from(value: bool) -> Self {
-        Text::text(value.to_string())
+        self.add_child(rhs);
     }
 }
 
@@ -953,6 +685,12 @@ impl fmt::Display for Text {
     }
 }
 
+impl Default for TextContent {
+    fn default() -> Self {
+        Self::Text { text: "".into() }
+    }
+}
+
 impl Encode for Text {
     fn encode(&self, w: impl Write) -> anyhow::Result<()> {
         serde_json::to_string(self)?.encode(w)
@@ -970,9 +708,63 @@ impl Decode<'_> for Text {
     }
 }
 
-impl Default for TextContent {
-    fn default() -> Self {
-        Self::Text { text: "".into() }
+impl<'de> Deserialize<'de> for Text {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct TextVisitor;
+
+        impl<'de> Visitor<'de> for TextVisitor {
+            type Value = Text;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                write!(formatter, "a text component data type")
+            }
+
+            fn visit_bool<E: de::Error>(self, v: bool) -> Result<Self::Value, E> {
+                Ok(Text::text(v.to_string()))
+            }
+
+            fn visit_i64<E: de::Error>(self, v: i64) -> Result<Self::Value, E> {
+                Ok(Text::text(v.to_string()))
+            }
+
+            fn visit_u64<E: de::Error>(self, v: u64) -> Result<Self::Value, E> {
+                Ok(Text::text(v.to_string()))
+            }
+
+            fn visit_f64<E: de::Error>(self, v: f64) -> Result<Self::Value, E> {
+                Ok(Text::text(v.to_string()))
+            }
+
+            fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+                Ok(Text::text(v.to_string()))
+            }
+
+            fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
+                Ok(Text::text(v))
+            }
+
+            fn visit_seq<A: de::SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+                let Some(mut res) = seq.next_element()? else {
+                    return Ok(Text::default())
+                };
+
+                while let Some(child) = seq.next_element::<Text>()? {
+                    res += child;
+                }
+
+                Ok(res)
+            }
+
+            fn visit_map<A: de::MapAccess<'de>>(self, map: A) -> Result<Self::Value, A::Error> {
+                use de::value::MapAccessDeserializer;
+
+                Ok(Text(Box::new(TextInner::deserialize(
+                    MapAccessDeserializer::new(map),
+                )?)))
+            }
+        }
+
+        deserializer.deserialize_any(TextVisitor)
     }
 }
 
@@ -1014,7 +806,7 @@ mod tests {
     fn translate() {
         let txt = Text::translate(
             translation_key::CHAT_TYPE_ADVANCEMENT_TASK,
-            ["arg1".into(), "arg2".into()],
+            ["arg1".into_text(), "arg2".into_text()],
         );
         let serialized = serde_json::to_string(&txt).unwrap();
         let deserialized: Text = serde_json::from_str(&serialized).unwrap();
@@ -1061,7 +853,7 @@ mod tests {
 
     #[test]
     fn block_nbt() {
-        let txt = Text::block_nbt("foo", "bar", Some(true), Some("baz".into()));
+        let txt = Text::block_nbt("foo", "bar", Some(true), Some("baz".into_text()));
         let serialized = serde_json::to_string(&txt).unwrap();
         let deserialized: Text = serde_json::from_str(&serialized).unwrap();
         let expected = r#"{"block":"foo","nbt":"bar","interpret":true,"separator":{"text":"baz"}}"#;
@@ -1071,7 +863,7 @@ mod tests {
 
     #[test]
     fn entity_nbt() {
-        let txt = Text::entity_nbt("foo", "bar", Some(true), Some("baz".into()));
+        let txt = Text::entity_nbt("foo", "bar", Some(true), Some("baz".into_text()));
         let serialized = serde_json::to_string(&txt).unwrap();
         let deserialized: Text = serde_json::from_str(&serialized).unwrap();
         let expected =
@@ -1082,7 +874,7 @@ mod tests {
 
     #[test]
     fn storage_nbt() {
-        let txt = Text::storage_nbt(ident!("foo"), "bar", Some(true), Some("baz".into()));
+        let txt = Text::storage_nbt(ident!("foo"), "bar", Some(true), Some("baz".into_text()));
         let serialized = serde_json::to_string(&txt).unwrap();
         let deserialized: Text = serde_json::from_str(&serialized).unwrap();
         let expected = r#"{"storage":"minecraft:foo","nbt":"bar","interpret":true,"separator":{"text":"baz"}}"#;

@@ -280,7 +280,7 @@ mod tests {
     use crate::item::{ItemKind, ItemStack};
     use crate::protocol::var_int::VarInt;
     use crate::protocol::var_long::VarLong;
-    use crate::text::{Text, TextFormat};
+    use crate::text::{IntoText, Text, TextFormat};
 
     #[cfg(feature = "encryption")]
     const CRYPT_KEY: [u8; 16] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
