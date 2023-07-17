@@ -6,12 +6,17 @@ use std::{fmt, ops};
 
 use anyhow::Context;
 use serde::de::Visitor;
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{de, Deserialize, Deserializer, Serialize};
 use uuid::Uuid;
 use valence_nbt::Value;
 
 use crate::ident::Ident;
 use crate::protocol::{Decode, Encode};
+use crate::text::color::NormalColor;
+
+pub mod color;
+
+pub use color::Color;
 
 /// Represents formatted text in Minecraft's JSON text format.
 ///
@@ -45,7 +50,7 @@ use crate::protocol::{Decode, Encode};
 /// ```
 #[derive(Clone, PartialEq, Default, Serialize)]
 #[serde(transparent)]
-pub struct Text(Box<TextInner>);
+pub struct Text(pub Box<TextInner>);
 
 impl<'de> Deserialize<'de> for Text {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
@@ -109,47 +114,47 @@ impl<'de> Deserialize<'de> for Text {
 
 #[derive(Clone, PartialEq, Default, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct TextInner {
+pub struct TextInner {
     #[serde(flatten)]
-    content: TextContent,
+    pub content: TextContent,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    color: Option<Color>,
+    pub color: Option<Color>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    font: Option<Cow<'static, str>>,
+    pub font: Option<Cow<'static, str>>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    bold: Option<bool>,
+    pub bold: Option<bool>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    italic: Option<bool>,
+    pub italic: Option<bool>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    underlined: Option<bool>,
+    pub underlined: Option<bool>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    strikethrough: Option<bool>,
+    pub strikethrough: Option<bool>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    obfuscated: Option<bool>,
+    pub obfuscated: Option<bool>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    insertion: Option<Cow<'static, str>>,
+    pub insertion: Option<Cow<'static, str>>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    click_event: Option<ClickEvent>,
+    pub click_event: Option<ClickEvent>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    hover_event: Option<HoverEvent>,
+    pub hover_event: Option<HoverEvent>,
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    extra: Vec<Text>,
+    pub extra: Vec<Text>,
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(untagged)]
-enum TextContent {
+pub enum TextContent {
     Text {
         text: Cow<'static, str>,
     },
@@ -221,34 +226,23 @@ enum TextContent {
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
-struct ScoreboardValueContent {
+pub struct ScoreboardValueContent {
     /// The name of the score holder whose score should be displayed. This
     /// can be a [`selector`] or an explicit name.
     ///
     /// [`selector`]: https://minecraft.fandom.com/wiki/Target_selectors
-    name: Cow<'static, str>,
+    pub name: Cow<'static, str>,
     /// The internal name of the objective to display the player's score in.
-    objective: Cow<'static, str>,
+    pub objective: Cow<'static, str>,
     /// If present, this value is displayed regardless of what the score
     /// would have been.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    value: Option<Cow<'static, str>>,
-}
-
-/// Text color
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub struct Color {
-    /// Red channel
-    pub r: u8,
-    /// Green channel
-    pub g: u8,
-    /// Blue channel
-    pub b: u8,
+    pub value: Option<Cow<'static, str>>,
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(tag = "action", content = "value", rename_all = "snake_case")]
-enum ClickEvent {
+pub enum ClickEvent {
     OpenUrl(Cow<'static, str>),
     /// Only usable by internal servers for security reasons.
     OpenFile(Cow<'static, str>),
@@ -261,7 +255,7 @@ enum ClickEvent {
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(tag = "action", content = "contents", rename_all = "snake_case")]
 #[allow(clippy::enum_variant_names)]
-enum HoverEvent {
+pub enum HoverEvent {
     ShowText(Text),
     ShowItem {
         id: Ident<String>,
@@ -569,15 +563,21 @@ impl Text {
             strikethrough: Option<bool>,
             underlined: Option<bool>,
             italic: Option<bool>,
-            color: Option<char>,
+            color: Option<Color>,
         }
 
         impl Modifiers {
             // Writes all active modifiers to a String as `§<mod>`
             fn write(&self, output: &mut String) {
                 if let Some(color) = self.color {
+                    let code = match color {
+                        Color::Rgb(rgb) => NormalColor::from(rgb).as_hex_digit(),
+                        Color::Normal(normal) => normal.as_hex_digit(),
+                        Color::Reset => return,
+                    };
+
                     output.push('§');
-                    output.push(color);
+                    output.push(code);
                 }
                 if let Some(true) = self.obfuscated {
                     output.push_str("§k");
@@ -616,25 +616,7 @@ impl Text {
                 strikethrough: this.0.strikethrough,
                 underlined: this.0.underlined,
                 italic: this.0.italic,
-                color: this.0.color.map(|color| match color.to_legacy() {
-                    Color::BLACK => '0',
-                    Color::DARK_BLUE => '1',
-                    Color::DARK_GREEN => '2',
-                    Color::DARK_AQUA => '3',
-                    Color::DARK_RED => '4',
-                    Color::DARK_PURPLE => '5',
-                    Color::GOLD => '6',
-                    Color::GRAY => '7',
-                    Color::DARK_GRAY => '8',
-                    Color::BLUE => '9',
-                    Color::GREEN => 'a',
-                    Color::AQUA => 'b',
-                    Color::RED => 'c',
-                    Color::LIGHT_PURPLE => 'd',
-                    Color::YELLOW => 'e',
-                    Color::WHITE => 'f',
-                    _ => unreachable!(),
-                }),
+                color: this.0.color,
             };
 
             // If any modifiers were removed
@@ -647,6 +629,7 @@ impl Text {
             ]
             .iter()
             .any(|m| *m == Some(false))
+                || this.0.color == Some(Color::Reset)
             {
                 // Reset and print sum of old and new modifiers
                 result.push_str("§r");
@@ -993,121 +976,6 @@ impl Default for TextContent {
     }
 }
 
-impl Color {
-    pub const AQUA: Color = Color::new(85, 255, 255);
-    pub const BLACK: Color = Color::new(0, 0, 0);
-    pub const BLUE: Color = Color::new(85, 85, 255);
-    pub const DARK_AQUA: Color = Color::new(0, 170, 170);
-    pub const DARK_BLUE: Color = Color::new(0, 0, 170);
-    pub const DARK_GRAY: Color = Color::new(85, 85, 85);
-    pub const DARK_GREEN: Color = Color::new(0, 170, 0);
-    pub const DARK_PURPLE: Color = Color::new(170, 0, 170);
-    pub const DARK_RED: Color = Color::new(170, 0, 0);
-    pub const GOLD: Color = Color::new(255, 170, 0);
-    pub const GRAY: Color = Color::new(170, 170, 170);
-    pub const GREEN: Color = Color::new(85, 255, 85);
-    pub const LIGHT_PURPLE: Color = Color::new(255, 85, 255);
-    pub const RED: Color = Color::new(255, 85, 85);
-    pub const WHITE: Color = Color::new(255, 255, 255);
-    pub const YELLOW: Color = Color::new(255, 255, 85);
-
-    /// Constructs a new color from red, green, and blue components.
-    pub const fn new(r: u8, g: u8, b: u8) -> Self {
-        Self { r, g, b }
-    }
-
-    // Returns the closest legacy color
-    pub fn to_legacy(self) -> Self {
-        [
-            Self::AQUA,
-            Self::BLACK,
-            Self::BLUE,
-            Self::DARK_AQUA,
-            Self::DARK_BLUE,
-            Self::DARK_GRAY,
-            Self::DARK_GREEN,
-            Self::DARK_PURPLE,
-            Self::DARK_RED,
-            Self::GOLD,
-            Self::GRAY,
-            Self::GREEN,
-            Self::LIGHT_PURPLE,
-            Self::RED,
-            Self::WHITE,
-            Self::YELLOW,
-        ]
-        .into_iter()
-        .min_by_key(|legacy| {
-            (legacy.r as i32 - self.r as i32).pow(2)
-                + (legacy.g as i32 - self.g as i32).pow(2)
-                + (legacy.b as i32 - self.b as i32).pow(2)
-        })
-        .unwrap()
-    }
-}
-
-impl Serialize for Color {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        format!("#{:02x}{:02x}{:02x}", self.r, self.g, self.b).serialize(serializer)
-    }
-}
-
-impl<'de> Deserialize<'de> for Color {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_str(ColorVisitor)
-    }
-}
-
-struct ColorVisitor;
-
-impl<'de> Visitor<'de> for ColorVisitor {
-    type Value = Color;
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "a hex color of the form #rrggbb")
-    }
-
-    fn visit_str<E: de::Error>(self, s: &str) -> Result<Self::Value, E> {
-        color_from_str(s).ok_or_else(|| E::custom("invalid hex color"))
-    }
-}
-
-fn color_from_str(s: &str) -> Option<Color> {
-    let to_num = |d| match d {
-        b'0'..=b'9' => Some(d - b'0'),
-        b'a'..=b'f' => Some(d - b'a' + 0xa),
-        b'A'..=b'F' => Some(d - b'A' + 0xa),
-        _ => None,
-    };
-
-    match s.as_bytes() {
-        [b'#', r0, r1, g0, g1, b0, b1] => Some(Color {
-            r: to_num(*r0)? << 4 | to_num(*r1)?,
-            g: to_num(*g0)? << 4 | to_num(*g1)?,
-            b: to_num(*b0)? << 4 | to_num(*b1)?,
-        }),
-        _ => match s {
-            "aqua" => Some(Color::AQUA),
-            "black" => Some(Color::BLACK),
-            "blue" => Some(Color::BLUE),
-            "dark_aqua" => Some(Color::DARK_AQUA),
-            "dark_blue" => Some(Color::DARK_BLUE),
-            "dark_gray" => Some(Color::DARK_GRAY),
-            "dark_green" => Some(Color::DARK_GREEN),
-            "dark_purple" => Some(Color::DARK_PURPLE),
-            "dark_red" => Some(Color::DARK_RED),
-            "gold" => Some(Color::GOLD),
-            "gray" => Some(Color::GRAY),
-            "green" => Some(Color::GREEN),
-            "light_purple" => Some(Color::LIGHT_PURPLE),
-            "red" => Some(Color::RED),
-            "white" => Some(Color::WHITE),
-            "yellow" => Some(Color::YELLOW),
-            _ => None,
-        },
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1132,20 +1000,6 @@ mod tests {
 
         assert_eq!(before, after);
         assert_eq!(before.to_string(), after.to_string());
-    }
-
-    #[test]
-    fn text_color() {
-        assert_eq!(
-            color_from_str("#aBcDeF"),
-            Some(Color::new(0xab, 0xcd, 0xef))
-        );
-        assert_eq!(color_from_str("#fFfFfF"), Some(Color::new(255, 255, 255)));
-        assert_eq!(color_from_str("#00000000"), None);
-        assert_eq!(color_from_str("#000000"), Some(Color::BLACK));
-        assert_eq!(color_from_str("#"), None);
-        assert_eq!(color_from_str("red"), Some(Color::RED));
-        assert_eq!(color_from_str("blue"), Some(Color::BLUE));
     }
 
     #[test]
@@ -1191,7 +1045,7 @@ mod tests {
         let deserialized: Text = serde_json::from_str(&serialized).unwrap();
         assert_eq!(
             serialized,
-            r##"{"selector":"foo","separator":{"text":"bar","color":"#ff5555","bold":true}}"##
+            r##"{"selector":"foo","separator":{"text":"bar","color":"red","bold":true}}"##
         );
         assert_eq!(txt, deserialized);
     }
@@ -1244,21 +1098,21 @@ mod tests {
             .strikethrough()
             .underlined()
             .obfuscated()
-            .color(Color { r: 0, g: 255, b: 0 })
+            .color(Color::GREEN)
             + "Lightly formatted red text\n"
                 .not_bold()
                 .not_strikethrough()
                 .not_obfuscated()
-                .color(Color { r: 255, g: 0, b: 0 })
+                .color(Color::RED)
             + "Not formatted blue text"
                 .not_italic()
                 .not_underlined()
-                .color(Color { r: 0, g: 0, b: 255 });
+                .color(Color::BLUE);
 
         assert_eq!(
             text.to_legacy_lossy(),
-            "§2§k§l§m§n§oHeavily formatted green text\n§r§4§n§oLightly formatted red \
-             text\n§r§1Not formatted blue text"
+            "§a§k§l§m§n§oHeavily formatted green text\n§r§c§n§oLightly formatted red \
+             text\n§r§9Not formatted blue text"
         );
     }
 }
