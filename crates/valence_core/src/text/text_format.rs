@@ -20,6 +20,8 @@ use super::{ClickEvent, Color, HoverEvent, IntoText, Text};
 pub trait TextFormat {
     type ReturnType: Sized;
 
+    fn into_text(self) -> Self::ReturnType;
+
     /// Sets the color of the text.
     fn color(self, color: impl Into<Color>) -> Self::ReturnType;
     /// Clears the color of the text. Color of parent [`Text`] object will be
@@ -98,17 +100,21 @@ pub trait TextFormat {
     fn clear_click_event(self) -> Self::ReturnType;
 
     /// On mouse hover, shows the given text in a tooltip.
-    fn on_hover_show_text(self, text: impl IntoText) -> Self::ReturnType;
+    fn on_hover_show_text(self, text: impl IntoText<'static>) -> Self::ReturnType;
     /// Clears the `hover_event` property of the text. Property of the parent
     /// [`Text`] object will be used.
     fn clear_hover_event(self) -> Self::ReturnType;
 
     /// Adds a child [`Text`] object.
-    fn add_child(self, text: impl IntoText) -> Self::ReturnType;
+    fn add_child(self, text: impl IntoText<'static>) -> Self::ReturnType;
 }
 
 impl<'a> TextFormat for &'a mut Text {
     type ReturnType = &'a mut Text;
+
+    fn into_text(self) -> Self::ReturnType {
+        self
+    }
 
     fn color(self, color: impl Into<Color>) -> Self::ReturnType {
         self.color = Some(color.into());
@@ -227,7 +233,7 @@ impl<'a> TextFormat for &'a mut Text {
         self
     }
 
-    fn on_hover_show_text(self, text: impl IntoText) -> Self::ReturnType {
+    fn on_hover_show_text(self, text: impl IntoText<'static>) -> Self::ReturnType {
         self.hover_event = Some(HoverEvent::ShowText(text.into_text()));
         self
     }
@@ -237,14 +243,18 @@ impl<'a> TextFormat for &'a mut Text {
         self
     }
 
-    fn add_child(self, text: impl IntoText) -> Self::ReturnType {
+    fn add_child(self, text: impl IntoText<'static>) -> Self::ReturnType {
         self.extra.push(text.into_text());
         self
     }
 }
 
-impl<T: IntoText> TextFormat for T {
+impl<'a, T: IntoText<'a>> TextFormat for T {
     type ReturnType = Text;
+
+    fn into_text(self) -> Self::ReturnType {
+        self.into_cow_text().into_owned()
+    }
 
     fn color(self, color: impl Into<Color>) -> Self::ReturnType {
         let mut value = self.into_text();
@@ -390,7 +400,7 @@ impl<T: IntoText> TextFormat for T {
         value
     }
 
-    fn on_hover_show_text(self, text: impl IntoText) -> Self::ReturnType {
+    fn on_hover_show_text(self, text: impl IntoText<'static>) -> Self::ReturnType {
         let mut value = self.into_text();
         value.hover_event = Some(HoverEvent::ShowText(text.into_text()));
         value
@@ -402,7 +412,7 @@ impl<T: IntoText> TextFormat for T {
         value
     }
 
-    fn add_child(self, text: impl IntoText) -> Self::ReturnType {
+    fn add_child(self, text: impl IntoText<'static>) -> Self::ReturnType {
         let mut value = self.into_text();
         value.extra.push(text.into_text());
         value

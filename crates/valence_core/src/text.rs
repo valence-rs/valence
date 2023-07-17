@@ -638,7 +638,7 @@ impl DerefMut for Text {
     }
 }
 
-impl<T: IntoText> ops::Add<T> for Text {
+impl<T: IntoText<'static>> ops::Add<T> for Text {
     type Output = Self;
 
     fn add(self, rhs: T) -> Self::Output {
@@ -646,7 +646,7 @@ impl<T: IntoText> ops::Add<T> for Text {
     }
 }
 
-impl<T: IntoText> ops::AddAssign<T> for Text {
+impl<T: IntoText<'static>> ops::AddAssign<T> for Text {
     fn add_assign(&mut self, rhs: T) {
         self.add_child(rhs);
     }
