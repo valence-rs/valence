@@ -25,19 +25,19 @@ fn setup(
     biomes: Res<BiomeRegistry>,
     server: Res<Server>,
 ) {
-    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let mut layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {
-            instance.insert_chunk([x, z], UnloadedChunk::new());
+            layer.chunk.insert_chunk([x, z], UnloadedChunk::new());
         }
     }
 
     for z in -50..50 {
         for x in -50..50 {
-            instance.set_block([x, 64, z], BlockState::GRASS_BLOCK);
+            layer.chunk.set_block([x, 64, z], BlockState::GRASS_BLOCK);
         }
     }
 
-    commands.spawn(instance);
+    commands.spawn(layer);
 }

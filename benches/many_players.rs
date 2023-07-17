@@ -14,9 +14,8 @@ use valence_core::chunk_pos::ChunkPos;
 use valence_core::{ident, CoreSettings, Server};
 use valence_dimension::DimensionTypeRegistry;
 use valence_entity::Position;
-use valence_instance::chunk::UnloadedChunk;
-use valence_instance::Instance;
-use valence_layer::{ChunkLayer, EntityLayer};
+use valence_layer::chunk::UnloadedChunk;
+use valence_layer::LayerBundle;
 use valence_network::NetworkPlugin;
 
 pub fn many_players(c: &mut Criterion) {
@@ -34,7 +33,7 @@ fn run_many_players(
     let mut app = App::new();
 
     app.insert_resource(CoreSettings {
-        compression_threshold: Some(256),
+        compression_threshold: None,
         ..Default::default()
     });
 
@@ -46,7 +45,7 @@ fn run_many_players(
 
     app.update(); // Initialize plugins.
 
-    let mut chunks = ChunkLayer::new(
+    let mut layer = LayerBundle::new(
         ident!("overworld"),
         app.world.resource::<DimensionTypeRegistry>(),
         app.world.resource::<BiomeRegistry>(),
@@ -55,14 +54,13 @@ fn run_many_players(
 
     for z in -world_size..world_size {
         for x in -world_size..world_size {
-            chunks.insert_chunk(ChunkPos::new(x, z), UnloadedChunk::new());
+            layer
+                .chunk
+                .insert_chunk(ChunkPos::new(x, z), UnloadedChunk::new());
         }
     }
 
-    let layer = app
-        .world
-        .spawn((chunks, EntityLayer::new(app.world.resource::<Server>())))
-        .id();
+    let layer = app.world.spawn(layer).id();
 
     let mut clients = vec![];
 
