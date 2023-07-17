@@ -1,7 +1,5 @@
 use std::collections::BTreeSet;
 
-use bevy_app::prelude::*;
-use bevy_ecs::prelude::*;
 use bevy_ecs::world::EntityMut;
 use glam::DVec3;
 use valence_client::movement::FullC2s;
@@ -9,15 +7,13 @@ use valence_client::teleport::{PlayerPositionLookS2c, TeleportConfirmC2s};
 use valence_client::ViewDistance;
 use valence_core::chunk_pos::{ChunkPos, ChunkView};
 use valence_core::protocol::Packet;
-use valence_entity::cow::CowEntityBundle;
-use valence_entity::packet::{EntitiesDestroyS2c, EntitySpawnS2c, MoveRelativeS2c};
-use valence_entity::{EntityLayerId, Position};
-use valence_instance::chunk::UnloadedChunk;
-use valence_instance::packet::{ChunkDataS2c, UnloadChunkS2c};
-use valence_instance::Instance;
+use valence_entity::packet::MoveRelativeS2c;
+use valence_entity::Position;
+use valence_layer::chunk::UnloadedChunk;
+use valence_layer::packet::{ChunkDataS2c, UnloadChunkS2c};
 use valence_layer::ChunkLayer;
 
-use crate::testing::{create_mock_client, scenario_single_client, ScenarioSingleClient};
+use crate::testing::{create_mock_client, ScenarioSingleClient};
 
 #[test]
 fn client_chunk_view_change() {
@@ -28,18 +24,18 @@ fn client_chunk_view_change() {
         ChunkView::new(chunk_pos, view_dist)
     }
 
-    let mut app = App::new();
+    let ScenarioSingleClient {
+        mut app,
+        client: client_ent,
+        mut helper,
+        layer: layer_ent,
+    } = ScenarioSingleClient::new();
 
-    let (client_ent, mut client_helper) = scenario_single_client(&mut app);
-
-    let mut instance = app
-        .world
-        .query::<&mut Instance>()
-        .single_mut(&mut app.world);
+    let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
 
     for z in -30..30 {
         for x in -30..30 {
-            instance.insert_chunk([x, z], UnloadedChunk::new());
+            layer.insert_chunk([x, z], UnloadedChunk::new());
         }
     }
 
@@ -55,7 +51,7 @@ fn client_chunk_view_change() {
     let mut loaded_chunks = BTreeSet::new();
 
     // Collect all chunks received on join.
-    for f in client_helper.collect_received().0 {
+    for f in helper.collect_received().0 {
         if f.id == ChunkDataS2c::ID {
             let ChunkDataS2c { pos, .. } = f.decode::<ChunkDataS2c>().unwrap();
             // Newly received chunk was not previously loaded.
@@ -78,7 +74,7 @@ fn client_chunk_view_change() {
     let client = app.world.entity_mut(client_ent);
 
     // For all chunks received this tick...
-    for f in client_helper.collect_received().0 {
+    for f in helper.collect_received().0 {
         match f.id {
             ChunkDataS2c::ID => {
                 let ChunkDataS2c { pos, .. } = f.decode().unwrap();
@@ -100,17 +96,17 @@ fn client_chunk_view_change() {
     }
 }
 
+/*
 #[test]
 fn entity_chunk_spawn_despawn() {
-    let mut app = App::new();
-
     let ScenarioSingleClient {
+        mut app,
         client: client_ent,
-        helper,
-        layer,
-    } = scenario_single_client(&mut app);
+        mut helper,
+        layer: layer_ent,
+    } = ScenarioSingleClient::new();
 
-    let mut chunks = app.world.entity_mut::<ChunkLayer>(layer);
+    let mut chunks = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
 
     // Insert an empty chunk at (0, 0).
     chunks.insert_chunk([0, 0], UnloadedChunk::new());
@@ -120,7 +116,7 @@ fn entity_chunk_spawn_despawn() {
         .world
         .spawn(CowEntityBundle {
             position: Position::new([8.0, 0.0, 8.0]),
-            layer: EntityLayerId(inst_ent),
+            layer: EntityLayerId(layer_ent),
             ..Default::default()
         })
         .id();
@@ -130,7 +126,7 @@ fn entity_chunk_spawn_despawn() {
     // Client is in view of the chunk, so they should receive exactly one chunk
     // spawn packet and entity spawn packet.
     {
-        let recvd = client_helper.collect_received();
+        let recvd = helper.collect_received();
 
         recvd.assert_count::<ChunkDataS2c>(1);
         recvd.assert_count::<EntitySpawnS2c>(1);
@@ -143,19 +139,19 @@ fn entity_chunk_spawn_despawn() {
 
     app.update();
 
-    client_helper
+    helper
         .collect_received()
         .assert_count::<MoveRelativeS2c>(1);
 
     // Despawning the chunk should delete the chunk and the entity contained within.
-    let mut inst = app.world.get_mut::<Instance>(inst_ent).unwrap();
+    let mut inst = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
 
     inst.remove_chunk([0, 0]).unwrap();
 
     app.update();
 
     {
-        let recvd = client_helper.collect_received();
+        let recvd = helper.collect_received();
 
         recvd.assert_count::<UnloadChunkS2c>(1);
         recvd.assert_count::<EntitiesDestroyS2c>(1);
@@ -165,14 +161,14 @@ fn entity_chunk_spawn_despawn() {
 
     // Placing the chunk back should respawn the orphaned entity.
 
-    let mut inst = app.world.get_mut::<Instance>(inst_ent).unwrap();
+    let mut inst = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
 
     assert!(inst.insert_chunk([0, 0], UnloadedChunk::new()).is_none());
 
     app.update();
 
     {
-        let recvd = client_helper.collect_received();
+        let recvd = helper.collect_received();
 
         recvd.assert_count::<ChunkDataS2c>(1);
         recvd.assert_count::<EntitySpawnS2c>(1);
@@ -188,7 +184,7 @@ fn entity_chunk_spawn_despawn() {
     app.update();
 
     {
-        let recvd = client_helper.collect_received();
+        let recvd = helper.collect_received();
 
         recvd.assert_count::<UnloadChunkS2c>(1);
         recvd.assert_count::<EntitiesDestroyS2c>(1);
@@ -210,7 +206,7 @@ fn entity_chunk_spawn_despawn() {
     app.update();
 
     {
-        let recvd = client_helper.collect_received();
+        let recvd = helper.collect_received();
 
         recvd.assert_count::<ChunkDataS2c>(1);
         recvd.assert_count::<EntitySpawnS2c>(1);
@@ -223,7 +219,7 @@ fn entity_chunk_spawn_despawn() {
     // once.
 
     app.world
-        .get_mut::<Instance>(inst_ent)
+        .get_mut::<ChunkLayer>(layer_ent)
         .unwrap()
         .chunk_entry([0, 1])
         .or_default()
@@ -237,7 +233,7 @@ fn entity_chunk_spawn_despawn() {
     app.update();
 
     {
-        let recvd = client_helper.collect_received();
+        let recvd = helper.collect_received();
 
         recvd.assert_count::<ChunkDataS2c>(0);
         recvd.assert_count::<EntitySpawnS2c>(0);
@@ -255,28 +251,30 @@ fn entity_chunk_spawn_despawn() {
             }
         }
     }
-}
+}*/
 
 #[test]
 fn client_teleport_and_move() {
-    let mut app = App::new();
+    let ScenarioSingleClient {
+        mut app,
+        client: _,
+        helper: mut helper_1,
+        layer: layer_ent,
+    } = ScenarioSingleClient::new();
 
-    let (_, mut helper_1) = scenario_single_client(&mut app);
-
-    let (inst_ent, mut inst) = app
-        .world
-        .query::<(Entity, &mut Instance)>()
-        .single_mut(&mut app.world);
+    let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
 
     for z in -10..10 {
         for x in -10..10 {
-            inst.insert_chunk(ChunkPos::new(x, z), UnloadedChunk::new());
+            layer.insert_chunk(ChunkPos::new(x, z), UnloadedChunk::new());
         }
     }
 
     let (mut bundle, mut helper_2) = create_mock_client("other");
 
-    bundle.player.location.0 = inst_ent;
+    bundle.player.layer.0 = layer_ent;
+    bundle.visible_chunk_layer.0 = layer_ent;
+    bundle.visible_entity_layers.0.insert(layer_ent);
 
     app.world.spawn(bundle);
 

@@ -106,10 +106,10 @@ impl EntityLayer {
 }
 
 impl Layer for EntityLayer {
-    type ChunkWriter<'a> = ChunkWriter<'a>;
+    type ViewWriter<'a> = ViewWriter<'a>;
 
-    fn chunk_writer(&mut self, pos: impl Into<ChunkPos>) -> Self::ChunkWriter<'_> {
-        ChunkWriter {
+    fn view_writer(&mut self, pos: impl Into<ChunkPos>) -> Self::ViewWriter<'_> {
+        ViewWriter {
             layer: self,
             pos: pos.into(),
         }
@@ -133,12 +133,12 @@ impl WritePacket for EntityLayer {
     }
 }
 
-pub struct ChunkWriter<'a> {
+pub struct ViewWriter<'a> {
     layer: &'a mut EntityLayer,
     pos: ChunkPos,
 }
 
-impl<'a> WritePacket for ChunkWriter<'a> {
+impl<'a> WritePacket for ViewWriter<'a> {
     fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
     where
         P: Packet + Encode,

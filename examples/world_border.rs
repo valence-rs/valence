@@ -1,3 +1,8 @@
+// TODO: fix
+
+fn main() {}
+
+/*
 use std::time::Duration;
 
 use bevy_app::App;
@@ -165,3 +170,4 @@ fn border_controls(
         }
     }
 }
+*/

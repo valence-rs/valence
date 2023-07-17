@@ -1,5 +1,3 @@
-use bevy_app::App;
-use bevy_ecs::entity::Entity;
 use valence_boss_bar::packet::BossBarS2c;
 use valence_boss_bar::{
     BossBarBundle, BossBarColor, BossBarDivision, BossBarFlags, BossBarHealth, BossBarStyle,
@@ -8,112 +6,130 @@ use valence_boss_bar::{
 use valence_core::despawn::Despawned;
 use valence_core::text::Text;
 
-use crate::testing::{scenario_single_client, MockClientHelper, ScenarioSingleClient};
+use crate::testing::ScenarioSingleClient;
 
 #[test]
 fn test_intialize_on_join() {
-    let mut app = App::new();
-    let (client_ent, mut client_helper, instance_ent) = prepare(&mut app);
+    let ScenarioSingleClient {
+        mut app,
+        client,
+        mut helper,
+        layer,
+    } = prepare();
 
     // Fetch the boss bar component
-    let mut boss_bar = app.world.get_mut::<BossBarViewers>(instance_ent).unwrap();
+    let mut boss_bar = app.world.get_mut::<BossBarViewers>(layer).unwrap();
     // Add our mock client to the viewers list
-    assert!(boss_bar.viewers.insert(client_ent));
+    assert!(boss_bar.viewers.insert(client));
 
     app.update();
 
     // Check if a boss bar packet was sent
-    let frames = client_helper.collect_received();
+    let frames = helper.collect_received();
     frames.assert_count::<BossBarS2c>(1);
 }
 
 #[test]
 fn test_despawn() {
-    let mut app = App::new();
-    let (client_ent, mut client_helper, instance_ent) = prepare(&mut app);
+    let ScenarioSingleClient {
+        mut app,
+        client,
+        mut helper,
+        layer,
+    } = prepare();
 
     // Fetch the boss bar component
-    let mut boss_bar = app.world.get_mut::<BossBarViewers>(instance_ent).unwrap();
+    let mut boss_bar = app.world.get_mut::<BossBarViewers>(layer).unwrap();
     // Add our mock client to the viewers list
-    assert!(boss_bar.viewers.insert(client_ent));
+    assert!(boss_bar.viewers.insert(client));
 
     app.update();
 
     // Despawn the boss bar
-    app.world.entity_mut(instance_ent).insert(Despawned);
+    app.world.entity_mut(layer).insert(Despawned);
 
     app.update();
 
     // Check if a boss bar packet was sent in addition to the ADD packet, which
     // should be a Remove packet
-    let frames = client_helper.collect_received();
+    let frames = helper.collect_received();
     frames.assert_count::<BossBarS2c>(2);
 }
 
 #[test]
 fn test_title_update() {
-    let mut app = App::new();
-    let (client_ent, mut client_helper, instance_ent) = prepare(&mut app);
+    let ScenarioSingleClient {
+        mut app,
+        client,
+        mut helper,
+        layer,
+    } = prepare();
 
     // Fetch the boss bar component
-    let mut boss_bar = app.world.get_mut::<BossBarViewers>(instance_ent).unwrap();
+    let mut boss_bar = app.world.get_mut::<BossBarViewers>(layer).unwrap();
     // Add our mock client to the viewers list
-    assert!(boss_bar.viewers.insert(client_ent));
+    assert!(boss_bar.viewers.insert(client));
 
     app.update();
 
     // Update the title
     app.world
-        .entity_mut(instance_ent)
+        .entity_mut(layer)
         .insert(BossBarTitle(Text::text("Test 2")));
 
     app.update();
 
     // Check if a boss bar packet was sent in addition to the ADD packet, which
     // should be an UpdateTitle packet
-    let frames = client_helper.collect_received();
+    let frames = helper.collect_received();
     frames.assert_count::<BossBarS2c>(2);
 }
 
 #[test]
 fn test_health_update() {
-    let mut app = App::new();
-    let (client_ent, mut client_helper, instance_ent) = prepare(&mut app);
+    let ScenarioSingleClient {
+        mut app,
+        client,
+        mut helper,
+        layer,
+    } = prepare();
 
     // Fetch the boss bar component
-    let mut boss_bar = app.world.get_mut::<BossBarViewers>(instance_ent).unwrap();
+    let mut boss_bar = app.world.get_mut::<BossBarViewers>(layer).unwrap();
     // Add our mock client to the viewers list
-    assert!(boss_bar.viewers.insert(client_ent));
+    assert!(boss_bar.viewers.insert(client));
 
     app.update();
 
     // Update the health
-    app.world
-        .entity_mut(instance_ent)
-        .insert(BossBarHealth(0.5));
+    app.world.entity_mut(layer).insert(BossBarHealth(0.5));
 
     app.update();
 
     // Check if a boss bar packet was sent in addition to the ADD packet, which
     // should be an UpdateHealth packet
-    let frames = client_helper.collect_received();
+    let frames = helper.collect_received();
     frames.assert_count::<BossBarS2c>(2);
 }
 
 #[test]
 fn test_style_update() {
-    let mut app = App::new();
-    let (client_ent, mut client_helper, instance_ent) = prepare(&mut app);
+    let ScenarioSingleClient {
+        mut app,
+        client,
+        mut helper,
+        layer,
+    } = prepare();
 
     // Fetch the boss bar component
-    let mut boss_bar = app.world.get_mut::<BossBarViewers>(instance_ent).unwrap();
+    let mut boss_bar = app.world.get_mut::<BossBarViewers>(layer).unwrap();
     // Add our mock client to the viewers list
-    assert!(boss_bar.viewers.insert(client_ent));
+    assert!(boss_bar.viewers.insert(client));
 
     app.update();
 
     // Update the style
-    app.world.entity_mut(instance_ent).insert(BossBarStyle {
+    app.world.entity_mut(layer).insert(BossBarStyle {
         color: BossBarColor::Red,
         division: BossBarDivision::TenNotches,
     });
@@ -122,91 +138,97 @@ fn test_style_update() {
 
     // Check if a boss bar packet was sent in addition to the ADD packet, which
     // should be an UpdateStyle packet
-    let frames = client_helper.collect_received();
+    let frames = helper.collect_received();
     frames.assert_count::<BossBarS2c>(2);
 }
 
 #[test]
 fn test_flags_update() {
-    let mut app = App::new();
-    let (client_ent, mut client_helper, instance_ent) = prepare(&mut app);
+    let ScenarioSingleClient {
+        mut app,
+        client,
+        mut helper,
+        layer,
+    } = prepare();
 
     // Fetch the boss bar component
-    let mut boss_bar = app.world.get_mut::<BossBarViewers>(instance_ent).unwrap();
+    let mut boss_bar = app.world.get_mut::<BossBarViewers>(layer).unwrap();
     // Add our mock client to the viewers list
-    assert!(boss_bar.viewers.insert(client_ent));
+    assert!(boss_bar.viewers.insert(client));
 
     app.update();
 
     // Update the flags
     let mut new_flags = BossBarFlags::new();
     new_flags.set_create_fog(true);
-    app.world.entity_mut(instance_ent).insert(new_flags);
+    app.world.entity_mut(layer).insert(new_flags);
 
     app.update();
 
     // Check if a boss bar packet was sent in addition to the ADD packet, which
     // should be an UpdateFlags packet
-    let frames = client_helper.collect_received();
+    let frames = helper.collect_received();
     frames.assert_count::<BossBarS2c>(2);
 }
 
 #[test]
 fn test_client_disconnection() {
-    let mut app = App::new();
-    let (client_ent, mut client_helper, instance_ent) = prepare(&mut app);
+    let ScenarioSingleClient {
+        mut app,
+        client,
+        mut helper,
+        layer,
+    } = prepare();
 
     // Fetch the boss bar component
-    let mut boss_bar = app.world.get_mut::<BossBarViewers>(instance_ent).unwrap();
+    let mut boss_bar = app.world.get_mut::<BossBarViewers>(layer).unwrap();
     // Add our mock client to the viewers list
-    assert!(boss_bar.viewers.insert(client_ent));
+    assert!(boss_bar.viewers.insert(client));
 
     app.update();
 
     // Remove the client from the world
-    app.world.entity_mut(client_ent).insert(Despawned);
+    app.world.entity_mut(client).insert(Despawned);
 
     app.update();
 
     assert!(app
         .world
-        .get_mut::<BossBarViewers>(instance_ent)
+        .get_mut::<BossBarViewers>(layer)
         .unwrap()
         .viewers
         .is_empty());
 
     // Check if a boss bar packet was sent in addition to the ADD packet, which
     // should be a Remove packet
-    let frames = client_helper.collect_received();
+    let frames = helper.collect_received();
     frames.assert_count::<BossBarS2c>(2);
 }
 
-fn prepare(app: &mut App) -> (Entity, MockClientHelper, Entity) {
-    let ScenarioSingleClient {
-        client,
-        helper,
-        layer,
-    } = scenario_single_client(app);
+fn prepare() -> ScenarioSingleClient {
+    let mut s = ScenarioSingleClient::new();
 
     // Process a tick to get past the "on join" logic.
-    app.update();
-    client_helper.clear_received();
+    s.app.update();
+    s.helper.clear_received();
 
     // Insert a boss bar into the world
-    let boss_bar = app
-        .world
-        .spawn(BossBarBundle::new(
-            Text::text("Test"),
-            BossBarColor::Blue,
-            BossBarDivision::SixNotches,
-            BossBarFlags::new(),
-        ))
-        .id();
+
+    // Attach the new boss bar to the layer for convenience.
+    s.app.world.entity_mut(s.layer).insert(BossBarBundle {
+        title: BossBarTitle(Text::text("Test")),
+        style: BossBarStyle {
+            color: BossBarColor::Blue,
+            division: BossBarDivision::SixNotches,
+        },
+        flags: BossBarFlags::new(),
+        ..Default::default()
+    });
 
     for _ in 0..2 {
-        app.update();
+        s.app.update();
     }
 
-    helper.clear_received();
-    (client, helper, boss_bar)
+    s.helper.clear_received();
+    s
 }

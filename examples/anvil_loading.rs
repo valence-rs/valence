@@ -1,5 +1,9 @@
-use std::path::PathBuf;
+// TODO
 
+fn main() {}
+
+/*
+use std::path::PathBuf;
 use clap::Parser;
 use valence::prelude::*;
 use valence_anvil::{AnvilLevel, ChunkLoadEvent, ChunkLoadStatus};
@@ -146,3 +150,4 @@ fn display_loaded_chunk_count(mut instances: Query<&mut Instance>, mut last_coun
         );
     }
 }
+*/

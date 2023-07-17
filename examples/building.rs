@@ -113,7 +113,7 @@ fn digging(
         let Ok(game_mode) = clients.get(event.client) else {
             continue;
         };
-        
+
         if (*game_mode == GameMode::Creative && event.state == DiggingState::Start)
             || (*game_mode == GameMode::Survival && event.state == DiggingState::Stop)
         {

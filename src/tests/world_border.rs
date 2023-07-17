@@ -1,3 +1,6 @@
+// TODO: fix
+
+/*
 use std::time::Duration;
 
 use bevy_app::App;
@@ -7,9 +10,8 @@ use valence_registry::{Entity, Mut};
 use valence_world_border::packet::*;
 use valence_world_border::*;
 
-use crate::testing::{create_mock_client, scenario_single_client, MockClientHelper};
+use crate::testing::{create_mock_client, MockClientHelper};
 
-/*
 #[test]
 fn test_intialize_on_join() {
     let mut app = App::new();

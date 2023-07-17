@@ -120,7 +120,7 @@ impl<Client: Component> Plugin for LayerPlugin<Client> {
 // }
 
 pub trait Layer: WritePacket {
-    type ChunkWriter<'a>: WritePacket
+    type ViewWriter<'a>: WritePacket
     where
         Self: 'a;
 
@@ -128,7 +128,7 @@ pub trait Layer: WritePacket {
     ///
     /// When writing packets to the chunk writer, only clients in view of `pos`
     /// will receive the packet.
-    fn chunk_writer(&mut self, pos: impl Into<ChunkPos>) -> Self::ChunkWriter<'_>;
+    fn view_writer(&mut self, pos: impl Into<ChunkPos>) -> Self::ViewWriter<'_>;
 }
 
 /// Convenience [`Bundle`] for spawning a layer entity with both [`ChunkLayer`]

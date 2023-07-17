@@ -23,50 +23,60 @@ use valence_network::NetworkPlugin;
 use crate::client::{ClientBundle, ClientConnection, ReceivedPacket};
 use crate::DefaultPlugins;
 
-/// Sets up valence with a single mock client. Returns the Entity of the client
-/// and the corresponding MockClientHelper.
-///
-/// Reduces boilerplate in unit tests.
-pub fn scenario_single_client(app: &mut App) -> ScenarioSingleClient {
-    app.insert_resource(CoreSettings {
-        compression_threshold: None,
-        ..Default::default()
-    });
-
-    app.insert_resource(KeepaliveSettings {
-        period: Duration::MAX,
-    });
-
-    app.add_plugins(DefaultPlugins.build().disable::<NetworkPlugin>());
-
-    app.update(); // Initialize plugins.
-
-    let chunk_layer = ChunkLayer::new(
-        ident!("overworld"),
-        app.world.resource::<DimensionTypeRegistry>(),
-        app.world.resource::<BiomeRegistry>(),
-        app.world.resource::<Server>(),
-    );
-    let entity_layer = EntityLayer::new(app.world.resource::<Server>());
-    let layer_ent = app.world.spawn((chunk_layer, entity_layer)).id();
-
-    let (mut client, client_helper) = create_mock_client("test");
-    client.player.layer.0 = layer_ent;
-    client.visible_chunk_layer.0 = layer_ent;
-    client.visible_entity_layers.0.insert(layer_ent);
-    let client_ent = app.world.spawn(client).id();
-
-    ScenarioSingleClient {
-        client: client_ent,
-        helper: client_helper,
-        layer: layer_ent,
-    }
+pub struct ScenarioSingleClient {
+    /// The new bevy application.
+    pub app: App,
+    /// Entity handle of the single [`Client`].
+    pub client: Entity,
+    /// Helper for sending and receiving packets from the mock client.
+    pub helper: MockClientHelper,
+    /// Entity with [`ChunkLayer`] and [`EntityLayer`] components.
+    pub layer: Entity,
 }
 
-pub struct ScenarioSingleClient {
-    pub client: Entity,
-    pub helper: MockClientHelper,
-    pub layer: Entity,
+impl ScenarioSingleClient {
+    /// Sets up Valence with a single mock client and entity+chunk layer. The
+    /// client is configured to be placed within the layer.
+    ///
+    /// Reduces boilerplate in unit tests.
+    pub fn new() -> Self {
+        let mut app = App::new();
+
+        app.insert_resource(CoreSettings {
+            compression_threshold: None,
+            ..Default::default()
+        });
+
+        app.insert_resource(KeepaliveSettings {
+            period: Duration::MAX,
+        });
+
+        app.add_plugins(DefaultPlugins.build().disable::<NetworkPlugin>());
+
+        app.update(); // Initialize plugins.
+
+        let chunk_layer = ChunkLayer::new(
+            ident!("overworld"),
+            app.world.resource::<DimensionTypeRegistry>(),
+            app.world.resource::<BiomeRegistry>(),
+            app.world.resource::<Server>(),
+        );
+        let entity_layer = EntityLayer::new(app.world.resource::<Server>());
+        let layer = app.world.spawn((chunk_layer, entity_layer)).id();
+
+        let (mut client, helper) = create_mock_client("test");
+        client.player.layer.0 = layer;
+        client.visible_chunk_layer.0 = layer;
+        client.visible_entity_layers.0.insert(layer);
+        let client = app.world.spawn(client).id();
+
+        ScenarioSingleClient {
+            app,
+            client,
+            helper,
+            layer,
+        }
+    }
 }
 
 /// Creates a mock client bundle that can be used for unit testing.
@@ -117,7 +127,7 @@ impl MockClientConnection {
     }
 
     /// Injects a (Packet ID + data) frame to be received by the server.
-    fn inject_send(&mut self, mut bytes: BytesMut) {
+    fn inject_send(&self, mut bytes: BytesMut) {
         let id = VarInt::decode_partial((&mut bytes).reader()).expect("failed to decode packet ID");
 
         self.inner
@@ -131,11 +141,11 @@ impl MockClientConnection {
             });
     }
 
-    fn take_received(&mut self) -> BytesMut {
+    fn take_received(&self) -> BytesMut {
         self.inner.lock().unwrap().send_buf.split()
     }
 
-    fn clear_received(&mut self) {
+    fn clear_received(&self) {
         self.inner.lock().unwrap().send_buf.clear();
     }
 }

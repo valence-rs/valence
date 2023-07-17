@@ -347,7 +347,7 @@ impl ChunkLayer {
     ) {
         let position = position.into();
 
-        self.chunk_writer(ChunkPos::from_dvec3(position))
+        self.view_writer(ChunkPos::from_dvec3(position))
             .write_packet(&ParticleS2c {
                 particle: Cow::Borrowed(particle),
                 long_distance,
@@ -372,7 +372,7 @@ impl ChunkLayer {
     ) {
         let position = position.into();
 
-        self.chunk_writer(ChunkPos::from_dvec3(position))
+        self.view_writer(ChunkPos::from_dvec3(position))
             .write_packet(&PlaySoundS2c {
                 id: sound.to_id(),
                 category,
@@ -385,10 +385,10 @@ impl ChunkLayer {
 }
 
 impl Layer for ChunkLayer {
-    type ChunkWriter<'a> = ChunkWriter<'a>;
+    type ViewWriter<'a> = ViewWriter<'a>;
 
-    fn chunk_writer(&mut self, pos: impl Into<ChunkPos>) -> Self::ChunkWriter<'_> {
-        ChunkWriter {
+    fn view_writer(&mut self, pos: impl Into<ChunkPos>) -> Self::ViewWriter<'_> {
+        ViewWriter {
             layer: self,
             pos: pos.into(),
         }
@@ -412,12 +412,12 @@ impl WritePacket for ChunkLayer {
     }
 }
 
-pub struct ChunkWriter<'a> {
+pub struct ViewWriter<'a> {
     layer: &'a mut ChunkLayer,
     pos: ChunkPos,
 }
 
-impl<'a> WritePacket for ChunkWriter<'a> {
+impl<'a> WritePacket for ViewWriter<'a> {
     fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
     where
         P: Packet + Encode,
