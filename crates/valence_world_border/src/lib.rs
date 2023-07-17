@@ -73,11 +73,11 @@
     clippy::dbg_macro
 )]
 
+pub mod packet;
+
 // TODO: fix.
 
 /*
-pub mod packet;
-
 use std::time::{Duration, Instant};
 
 use bevy_app::prelude::*;

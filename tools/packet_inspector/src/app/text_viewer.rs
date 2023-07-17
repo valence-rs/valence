@@ -1,10 +1,7 @@
 use super::{SharedState, Tab, View};
 
 mod utils {
-    use packet_inspector::Packet as ProxyPacket;
-    use packet_inspector::{PacketSide, PacketState};
-    use valence::protocol::{Decode, Packet};
-
+    use packet_inspector::{Packet as ProxyPacket, PacketSide, PacketState};
     use valence::advancement::packet::*;
     use valence::boss_bar::packet::*;
     use valence::client::action::*;
@@ -24,9 +21,9 @@ mod utils {
     use valence::client::teleport::*;
     use valence::client::title::*;
     use valence::entity::packet::*;
-    use valence::instance::packet::*;
     use valence::inventory::packet::synchronize_recipes::*;
     use valence::inventory::packet::*;
+    use valence::layer::packet::*;
     use valence::network::packet::*;
     use valence::particle::*;
     use valence::player_list::packet::*;
@@ -35,6 +32,7 @@ mod utils {
     use valence::protocol::packet::map::*;
     use valence::protocol::packet::scoreboard::*;
     use valence::protocol::packet::sound::*;
+    use valence::protocol::{Decode, Packet};
     use valence::registry::tags::*;
     use valence::world_border::packet::*;
 
