@@ -47,7 +47,7 @@ use tokio::time;
 use tracing::error;
 use uuid::Uuid;
 use valence_client::{ClientBundle, ClientBundleArgs, Properties, SpawnClientsSet};
-use valence_core::text::Text;
+use valence_core::text::{Text, TextFormat};
 use valence_core::{Server, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
 pub struct NetworkPlugin;
@@ -345,7 +345,7 @@ pub trait NetworkCallbacks: Send + Sync + 'static {
             online_players: shared.player_count().load(Ordering::Relaxed) as i32,
             max_players: shared.max_players() as i32,
             player_sample: vec![],
-            description: "A Valence Server".into(),
+            description: "A Valence Server".into_text(),
             favicon_png: &[],
             version_name: MINECRAFT_VERSION.to_owned(),
             protocol: PROTOCOL_VERSION,
@@ -467,7 +467,7 @@ pub trait NetworkCallbacks: Send + Sync + 'static {
             }))
         } else {
             // TODO: use correct translation key.
-            Err("Server Full".into())
+            Err("Server Full".into_text())
         }
     }
 

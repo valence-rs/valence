@@ -38,7 +38,7 @@ use valence_core::game_mode::GameMode;
 use valence_core::item::ItemStack;
 use valence_core::protocol::encode::WritePacket;
 use valence_core::protocol::var_int::VarInt;
-use valence_core::text::Text;
+use valence_core::text::{IntoText, Text};
 
 pub mod packet;
 mod validate;
@@ -98,9 +98,9 @@ impl Inventory {
         Self::with_title(kind, "Inventory")
     }
 
-    pub fn with_title(kind: InventoryKind, title: impl Into<Text>) -> Self {
+    pub fn with_title<'a>(kind: InventoryKind, title: impl IntoText<'a>) -> Self {
         Inventory {
-            title: title.into(),
+            title: title.into_cow_text().into_owned(),
             kind,
             slots: vec![None; kind.slot_count()].into(),
             changed: 0,
