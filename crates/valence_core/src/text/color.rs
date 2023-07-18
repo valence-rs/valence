@@ -1,13 +1,14 @@
 //! [`Color`] and related data structures.
 
 use std::fmt;
+use std::hash::Hash;
 
 use serde::de::Visitor;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 
 /// Text color
-#[derive(Default, Debug, PartialOrd, Eq, Ord, Clone, Copy, Hash)]
+#[derive(Default, Debug, PartialOrd, Eq, Ord, Clone, Copy)]
 pub enum Color {
     /// The default color for the text will be used, which varies by context
     /// (in some cases, it's white; in others, it's black; in still others, it
@@ -141,6 +142,22 @@ impl PartialEq for Color {
                 rgb == RgbColor::from(normal)
             }
             (Self::Reset, _) | (_, Self::Reset) => false,
+        }
+    }
+}
+
+impl Hash for Color {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            Self::Reset => state.write_u8(0),
+            Self::Rgb(rgb) => {
+                state.write_u8(1);
+                rgb.hash(state);
+            }
+            Self::Normal(normal) => {
+                state.write_u8(1);
+                RgbColor::from(*normal).hash(state);
+            }
         }
     }
 }
