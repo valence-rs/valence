@@ -68,7 +68,7 @@ pub struct TextInner {
     pub color: Option<Color>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub font: Option<Cow<'static, str>>,
+    pub font: Option<Font>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bold: Option<bool>,
@@ -234,6 +234,20 @@ pub enum HoverEvent {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         name: Option<Text>,
     },
+}
+
+/// The font of the text.
+#[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
+pub enum Font {
+    /// The default font.
+    #[serde(rename = "minecraft:default")]
+    Default,
+    /// Unicode font.
+    #[serde(rename = "minecraft:uniform")]
+    Uniform,
+    /// Enchanting table font.
+    #[serde(rename = "minecraft:alt")]
+    Alt,
 }
 
 #[allow(clippy::self_named_constructors)]

@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 
-use super::{ClickEvent, Color, HoverEvent, IntoText, Text};
+use super::{ClickEvent, Color, Font, HoverEvent, IntoText, Text};
 
 /// Provides the methods necessary for working with [`Text`] objects.
 ///
@@ -28,10 +28,8 @@ pub trait TextFormat {
     /// used.
     fn clear_color(self) -> Self::ReturnType;
 
-    /// Sets the font of the text. Possible options: `minecraft:uniform`
-    /// (Unicode font), `minecraft:alt` (Enchanting table font), or
-    /// `minecraft:default` (Default).
-    fn font(self, font: impl Into<Cow<'static, str>>) -> Self::ReturnType;
+    /// Sets the font of the text.
+    fn font(self, font: Font) -> Self::ReturnType;
     /// Clears the font of the text. Font of parent [`Text`] object will be
     /// used.
     fn clear_font(self) -> Self::ReturnType;
@@ -125,8 +123,8 @@ impl<'a> TextFormat for &'a mut Text {
         self
     }
 
-    fn font(self, font: impl Into<Cow<'static, str>>) -> Self::ReturnType {
-        self.font = Some(font.into());
+    fn font(self, font: Font) -> Self::ReturnType {
+        self.font = Some(font);
         self
     }
     fn clear_font(self) -> Self::ReturnType {
@@ -267,9 +265,9 @@ impl<'a, T: IntoText<'a>> TextFormat for T {
         value
     }
 
-    fn font(self, font: impl Into<Cow<'static, str>>) -> Self::ReturnType {
+    fn font(self, font: Font) -> Self::ReturnType {
         let mut value = self.into_text();
-        value.font = Some(font.into());
+        value.font = Some(font);
         value
     }
     fn clear_font(self) -> Self::ReturnType {
