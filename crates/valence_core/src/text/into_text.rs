@@ -100,6 +100,30 @@ impl From<&'static str> for Text {
     }
 }
 
+impl<'a, T: IntoText<'a>, const N: usize> IntoText<'static> for [T; N] {
+    fn into_cow_text(self) -> Cow<'static, Text> {
+        let mut txt = Text::text("");
+
+        for child in self {
+            txt = txt.add_child(child.into_cow_text().into_owned());
+        }
+
+        Cow::Owned(txt)
+    }
+}
+
+impl<'a, 'b, T: IntoText<'a> + Clone, const N: usize> IntoText<'static> for &'b [T; N] {
+    fn into_cow_text(self) -> Cow<'static, Text> {
+        let mut txt = Text::text("");
+
+        for child in self {
+            txt = txt.add_child(child.clone().into_cow_text().into_owned());
+        }
+
+        Cow::Owned(txt)
+    }
+}
+
 macro_rules! impl_primitives {
     ($($primitive:ty),+) => {
         $(
