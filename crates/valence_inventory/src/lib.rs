@@ -264,16 +264,16 @@ impl Inventory {
     /// inv.set_title("Box of Holding");
     /// ```
     #[inline]
-    pub fn set_title(&mut self, title: impl Into<Text>) {
+    pub fn set_title<'a>(&mut self, title: impl IntoText<'a>) {
         let _ = self.replace_title(title);
     }
 
     /// Replace the text displayed on the inventory's title bar, and returns the
     /// old text.
     #[must_use]
-    pub fn replace_title(&mut self, title: impl Into<Text>) -> Text {
+    pub fn replace_title<'a>(&mut self, title: impl IntoText<'a>) -> Text {
         // TODO: set title modified flag
-        std::mem::replace(&mut self.title, title.into())
+        std::mem::replace(&mut self.title, title.into_cow_text().into_owned())
     }
 
     pub(crate) fn slot_slice(&self) -> &[Option<ItemStack>] {

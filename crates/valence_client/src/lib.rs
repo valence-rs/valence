@@ -50,7 +50,7 @@ use valence_core::protocol::global_pos::GlobalPos;
 use valence_core::protocol::packet::sound::{PlaySoundS2c, Sound, SoundCategory};
 use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::{Encode, Packet};
-use valence_core::text::Text;
+use valence_core::text::{IntoText, Text};
 use valence_core::uuid::UniqueId;
 use valence_entity::packet::{
     EntitiesDestroyS2c, EntitySetHeadYawS2c, EntitySpawnS2c, EntityStatusS2c,
@@ -331,10 +331,10 @@ impl Client {
 
     /// Kills the client and shows `message` on the death screen. If an entity
     /// killed the player, you should supply it as `killer`.
-    pub fn kill(&mut self, message: impl Into<Text>) {
+    pub fn kill<'a>(&mut self, message: impl IntoText<'a>) {
         self.write_packet(&DeathMessageS2c {
             player_id: VarInt(0),
-            message: message.into().into(),
+            message: message.into_cow_text(),
         });
     }
 
