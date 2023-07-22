@@ -6,7 +6,8 @@ use super::{ClickEvent, Color, Font, HoverEvent, Text};
 
 /// Trait for any data that can be converted to a [`Text`] object.
 ///
-/// Also conveniently provides many useful methods for modifying a [`Text`] object.
+/// Also conveniently provides many useful methods for modifying a [`Text`]
+/// object.
 ///
 /// # Usage
 ///
@@ -359,7 +360,6 @@ impl_primitives! {char, bool, f32, f64, isize, usize, i8, i16, i32, i64, i128, u
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::text::TextFormat;
 
     #[test]
     fn intotext_trait() {

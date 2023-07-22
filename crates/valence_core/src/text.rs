@@ -756,7 +756,7 @@ impl<'de> Deserialize<'de> for Text {
 
             fn visit_seq<A: de::SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
                 let Some(mut res) = seq.next_element()? else {
-                    return Ok(Text::default())
+                    return Ok(Text::default());
                 };
 
                 while let Some(child) = seq.next_element::<Text>()? {
