@@ -9,7 +9,7 @@ use valence::protocol::byte_angle::ByteAngle;
 use valence::protocol::decode::PacketDecoder;
 use valence::protocol::encode::PacketEncoder;
 use valence::protocol::var_int::VarInt;
-use valence::text::IntoFormat;
+use valence::text::IntoText;
 use valence_core::protocol::encode::{PacketWriter, WritePacket};
 use valence_entity::packet::EntitySpawnS2c;
 use valence_instance::packet::ChunkDataS2c;
