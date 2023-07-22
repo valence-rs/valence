@@ -47,7 +47,7 @@ use tokio::time;
 use tracing::error;
 use uuid::Uuid;
 use valence_client::{ClientBundle, ClientBundleArgs, Properties, SpawnClientsSet};
-use valence_core::text::{Text, TextFormat};
+use valence_core::text::{IntoText, Text};
 use valence_core::{Server, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
 pub struct NetworkPlugin;

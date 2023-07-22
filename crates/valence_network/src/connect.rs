@@ -25,7 +25,6 @@ use valence_core::protocol::encode::PacketEncoder;
 use valence_core::protocol::raw::RawBytes;
 use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::Decode;
-use valence_core::text::color::NormalColor;
 use valence_core::text::{Color, Text};
 use valence_core::{ident, translation_key, PROTOCOL_VERSION};
 
@@ -201,7 +200,7 @@ async fn handle_status(
             if handshake.protocol_version < 735 {
                 fn fallback_webcolors(txt: &mut Text) {
                     if let Some(Color::Rgb(ref color)) = txt.color {
-                        txt.color = Some(Color::Normal(NormalColor::from(*color)));
+                        txt.color = Some(Color::Named(color.to_named_lossy()));
                     }
                     for child in &mut txt.extra {
                         fallback_webcolors(child);

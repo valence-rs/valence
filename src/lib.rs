@@ -99,7 +99,7 @@ pub mod prelude {
     pub use valence_core::ident; // Export the `ident!` macro.
     pub use valence_core::item::{ItemKind, ItemStack};
     pub use valence_core::particle::Particle;
-    pub use valence_core::text::{Color, Text, TextFormat};
+    pub use valence_core::text::{Color, IntoText, Text};
     pub use valence_core::uuid::UniqueId;
     pub use valence_core::{translation_key, CoreSettings, Server};
     pub use valence_dimension::{DimensionType, DimensionTypeRegistry};

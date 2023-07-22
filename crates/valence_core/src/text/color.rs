@@ -17,8 +17,8 @@ pub enum Color {
     Reset,
     /// RGB Color
     Rgb(RgbColor),
-    /// One of the 16 normal Minecraft colors
-    Normal(NormalColor),
+    /// One of the 16 named Minecraft colors
+    Named(NamedColor),
 }
 
 /// RGB Color
@@ -32,9 +32,9 @@ pub struct RgbColor {
     pub b: u8,
 }
 
-/// Normal Minecraft color
+/// Named Minecraft color
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub enum NormalColor {
+pub enum NamedColor {
     /// Hex digit: `0`, name: `black`
     Black = 0,
     /// Hex digit: `1`, name: `dark_blue`
@@ -76,22 +76,22 @@ pub struct ColorError;
 
 impl Color {
     pub const RESET: Self = Self::Reset;
-    pub const AQUA: Self = Self::Normal(NormalColor::Aqua);
-    pub const BLACK: Self = Self::Normal(NormalColor::Black);
-    pub const BLUE: Self = Self::Normal(NormalColor::Blue);
-    pub const DARK_AQUA: Self = Self::Normal(NormalColor::DarkAqua);
-    pub const DARK_BLUE: Self = Self::Normal(NormalColor::DarkBlue);
-    pub const DARK_GRAY: Self = Self::Normal(NormalColor::DarkGray);
-    pub const DARK_GREEN: Self = Self::Normal(NormalColor::DarkGreen);
-    pub const DARK_PURPLE: Self = Self::Normal(NormalColor::DarkPurple);
-    pub const DARK_RED: Self = Self::Normal(NormalColor::DarkRed);
-    pub const GOLD: Self = Self::Normal(NormalColor::Gold);
-    pub const GRAY: Self = Self::Normal(NormalColor::Gray);
-    pub const GREEN: Self = Self::Normal(NormalColor::Green);
-    pub const LIGHT_PURPLE: Self = Self::Normal(NormalColor::LightPurple);
-    pub const RED: Self = Self::Normal(NormalColor::Red);
-    pub const WHITE: Self = Self::Normal(NormalColor::White);
-    pub const YELLOW: Self = Self::Normal(NormalColor::Yellow);
+    pub const AQUA: Self = Self::Named(NamedColor::Aqua);
+    pub const BLACK: Self = Self::Named(NamedColor::Black);
+    pub const BLUE: Self = Self::Named(NamedColor::Blue);
+    pub const DARK_AQUA: Self = Self::Named(NamedColor::DarkAqua);
+    pub const DARK_BLUE: Self = Self::Named(NamedColor::DarkBlue);
+    pub const DARK_GRAY: Self = Self::Named(NamedColor::DarkGray);
+    pub const DARK_GREEN: Self = Self::Named(NamedColor::DarkGreen);
+    pub const DARK_PURPLE: Self = Self::Named(NamedColor::DarkPurple);
+    pub const DARK_RED: Self = Self::Named(NamedColor::DarkRed);
+    pub const GOLD: Self = Self::Named(NamedColor::Gold);
+    pub const GRAY: Self = Self::Named(NamedColor::Gray);
+    pub const GREEN: Self = Self::Named(NamedColor::Green);
+    pub const LIGHT_PURPLE: Self = Self::Named(NamedColor::LightPurple);
+    pub const RED: Self = Self::Named(NamedColor::Red);
+    pub const WHITE: Self = Self::Named(NamedColor::White);
+    pub const YELLOW: Self = Self::Named(NamedColor::Yellow);
 
     /// Constructs a new RGB color
     pub const fn rgb(r: u8, g: u8, b: u8) -> Self {
@@ -104,13 +104,46 @@ impl RgbColor {
     pub const fn new(r: u8, g: u8, b: u8) -> Self {
         Self { r, g, b }
     }
+    /// Converts the RGB color to the closest [`NamedColor`] equivalent (lossy).
+    pub fn to_named_lossy(self) -> NamedColor {
+        // calculates the squared distance between 2 colors
+        fn squared_distance(c1: RgbColor, c2: RgbColor) -> i32 {
+            (c1.r as i32 - c2.r as i32).pow(2)
+                + (c1.g as i32 - c2.g as i32).pow(2)
+                + (c1.b as i32 - c2.b as i32).pow(2)
+        }
+
+        [
+            NamedColor::Aqua,
+            NamedColor::Black,
+            NamedColor::Blue,
+            NamedColor::DarkAqua,
+            NamedColor::DarkBlue,
+            NamedColor::DarkGray,
+            NamedColor::DarkGreen,
+            NamedColor::DarkPurple,
+            NamedColor::DarkRed,
+            NamedColor::Gold,
+            NamedColor::Gray,
+            NamedColor::Green,
+            NamedColor::LightPurple,
+            NamedColor::Red,
+            NamedColor::White,
+            NamedColor::Yellow,
+        ]
+        .into_iter()
+        .min_by_key(|&named| squared_distance(named.into(), self))
+        .unwrap()
+    }
 }
 
-impl NormalColor {
-    pub const fn as_hex_digit(self) -> char {
+impl NamedColor {
+    /// Returns the corresponding hex digit of the color.
+    pub const fn hex_digit(self) -> char {
         b"0123456789abcdef"[self as usize] as char
     }
-    pub const fn as_name(self) -> &'static str {
+    /// Returns the identifier of the color.
+    pub const fn name(self) -> &'static str {
         [
             "black",
             "dark_blue",
@@ -137,8 +170,8 @@ impl PartialEq for Color {
         match (*self, *other) {
             (Self::Reset, Self::Reset) => true,
             (Self::Rgb(rgb1), Self::Rgb(rgb2)) => rgb1 == rgb2,
-            (Self::Normal(normal1), Self::Normal(normal2)) => normal1 == normal2,
-            (Self::Rgb(rgb), Self::Normal(normal)) | (Self::Normal(normal), Self::Rgb(rgb)) => {
+            (Self::Named(normal1), Self::Named(normal2)) => normal1 == normal2,
+            (Self::Rgb(rgb), Self::Named(normal)) | (Self::Named(normal), Self::Rgb(rgb)) => {
                 rgb == RgbColor::from(normal)
             }
             (Self::Reset, _) | (_, Self::Reset) => false,
@@ -154,7 +187,7 @@ impl Hash for Color {
                 state.write_u8(1);
                 rgb.hash(state);
             }
-            Self::Normal(normal) => {
+            Self::Named(normal) => {
                 state.write_u8(1);
                 RgbColor::from(*normal).hash(state);
             }
@@ -162,59 +195,26 @@ impl Hash for Color {
     }
 }
 
-impl From<NormalColor> for RgbColor {
-    fn from(value: NormalColor) -> Self {
+impl From<NamedColor> for RgbColor {
+    fn from(value: NamedColor) -> Self {
         match value {
-            NormalColor::Aqua => Self::new(85, 255, 255),
-            NormalColor::Black => Self::new(0, 0, 0),
-            NormalColor::Blue => Self::new(85, 85, 255),
-            NormalColor::DarkAqua => Self::new(0, 170, 170),
-            NormalColor::DarkBlue => Self::new(0, 0, 170),
-            NormalColor::DarkGray => Self::new(85, 85, 85),
-            NormalColor::DarkGreen => Self::new(0, 170, 0),
-            NormalColor::DarkPurple => Self::new(170, 0, 170),
-            NormalColor::DarkRed => Self::new(170, 0, 0),
-            NormalColor::Gold => Self::new(255, 170, 0),
-            NormalColor::Gray => Self::new(170, 170, 170),
-            NormalColor::Green => Self::new(85, 255, 85),
-            NormalColor::LightPurple => Self::new(255, 85, 255),
-            NormalColor::Red => Self::new(255, 85, 85),
-            NormalColor::White => Self::new(255, 255, 255),
-            NormalColor::Yellow => Self::new(255, 255, 85),
+            NamedColor::Aqua => Self::new(85, 255, 255),
+            NamedColor::Black => Self::new(0, 0, 0),
+            NamedColor::Blue => Self::new(85, 85, 255),
+            NamedColor::DarkAqua => Self::new(0, 170, 170),
+            NamedColor::DarkBlue => Self::new(0, 0, 170),
+            NamedColor::DarkGray => Self::new(85, 85, 85),
+            NamedColor::DarkGreen => Self::new(0, 170, 0),
+            NamedColor::DarkPurple => Self::new(170, 0, 170),
+            NamedColor::DarkRed => Self::new(170, 0, 0),
+            NamedColor::Gold => Self::new(255, 170, 0),
+            NamedColor::Gray => Self::new(170, 170, 170),
+            NamedColor::Green => Self::new(85, 255, 85),
+            NamedColor::LightPurple => Self::new(255, 85, 255),
+            NamedColor::Red => Self::new(255, 85, 85),
+            NamedColor::White => Self::new(255, 255, 255),
+            NamedColor::Yellow => Self::new(255, 255, 85),
         }
-    }
-}
-
-impl From<RgbColor> for NormalColor {
-    fn from(value: RgbColor) -> Self {
-        // calculates the squared distance between 2 colors
-        fn squared_distance(c1: RgbColor, c2: RgbColor) -> i32 {
-            (c1.r as i32 - c2.r as i32).pow(2)
-                + (c1.g as i32 - c2.g as i32).pow(2)
-                + (c1.b as i32 - c2.b as i32).pow(2)
-        }
-
-        [
-            NormalColor::Aqua,
-            NormalColor::Black,
-            NormalColor::Blue,
-            NormalColor::DarkAqua,
-            NormalColor::DarkBlue,
-            NormalColor::DarkGray,
-            NormalColor::DarkGreen,
-            NormalColor::DarkPurple,
-            NormalColor::DarkRed,
-            NormalColor::Gold,
-            NormalColor::Gray,
-            NormalColor::Green,
-            NormalColor::LightPurple,
-            NormalColor::Red,
-            NormalColor::White,
-            NormalColor::Yellow,
-        ]
-        .into_iter()
-        .min_by_key(|&normal| squared_distance(normal.into(), value))
-        .unwrap()
     }
 }
 
@@ -224,9 +224,9 @@ impl From<RgbColor> for Color {
     }
 }
 
-impl From<NormalColor> for Color {
-    fn from(value: NormalColor) -> Self {
-        Self::Normal(value)
+impl From<NamedColor> for Color {
+    fn from(value: NamedColor) -> Self {
+        Self::Named(value)
     }
 }
 
@@ -242,31 +242,31 @@ impl TryFrom<&str> for Color {
             return Ok(Self::Reset);
         }
 
-        Ok(Self::Normal(NormalColor::try_from(value)?))
+        Ok(Self::Named(NamedColor::try_from(value)?))
     }
 }
 
-impl TryFrom<&str> for NormalColor {
+impl TryFrom<&str> for NamedColor {
     type Error = ColorError;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
-            "black" => Ok(NormalColor::Black),
-            "dark_blue" => Ok(NormalColor::DarkBlue),
-            "dark_green" => Ok(NormalColor::DarkGreen),
-            "dark_aqua" => Ok(NormalColor::DarkAqua),
-            "dark_red" => Ok(NormalColor::DarkRed),
-            "dark_purple" => Ok(NormalColor::DarkPurple),
-            "gold" => Ok(NormalColor::Gold),
-            "gray" => Ok(NormalColor::Gray),
-            "dark_gray" => Ok(NormalColor::DarkGray),
-            "blue" => Ok(NormalColor::Blue),
-            "green" => Ok(NormalColor::Green),
-            "aqua" => Ok(NormalColor::Aqua),
-            "red" => Ok(NormalColor::Red),
-            "light_purple" => Ok(NormalColor::LightPurple),
-            "yellow" => Ok(NormalColor::Yellow),
-            "white" => Ok(NormalColor::White),
+            "black" => Ok(NamedColor::Black),
+            "dark_blue" => Ok(NamedColor::DarkBlue),
+            "dark_green" => Ok(NamedColor::DarkGreen),
+            "dark_aqua" => Ok(NamedColor::DarkAqua),
+            "dark_red" => Ok(NamedColor::DarkRed),
+            "dark_purple" => Ok(NamedColor::DarkPurple),
+            "gold" => Ok(NamedColor::Gold),
+            "gray" => Ok(NamedColor::Gray),
+            "dark_gray" => Ok(NamedColor::DarkGray),
+            "blue" => Ok(NamedColor::Blue),
+            "green" => Ok(NamedColor::Green),
+            "aqua" => Ok(NamedColor::Aqua),
+            "red" => Ok(NamedColor::Red),
+            "light_purple" => Ok(NamedColor::LightPurple),
+            "yellow" => Ok(NamedColor::Yellow),
+            "white" => Ok(NamedColor::White),
             _ => Err(ColorError),
         }
     }
@@ -326,7 +326,7 @@ impl fmt::Display for Color {
         match self {
             Color::Reset => write!(f, "reset"),
             Color::Rgb(rgb) => rgb.fmt(f),
-            Color::Normal(normal) => normal.fmt(f),
+            Color::Named(normal) => normal.fmt(f),
         }
     }
 }
@@ -337,9 +337,9 @@ impl fmt::Display for RgbColor {
     }
 }
 
-impl fmt::Display for NormalColor {
+impl fmt::Display for NamedColor {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.as_name())
+        write!(f, "{}", self.name())
     }
 }
 
@@ -357,9 +357,9 @@ mod tests {
             Color::try_from("#fFfFfF"),
             Ok(RgbColor::new(255, 255, 255).into())
         );
-        assert_eq!(Color::try_from("#000000"), Ok(NormalColor::Black.into()));
-        assert_eq!(Color::try_from("red"), Ok(NormalColor::Red.into()));
-        assert_eq!(Color::try_from("blue"), Ok(NormalColor::Blue.into()));
+        assert_eq!(Color::try_from("#000000"), Ok(NamedColor::Black.into()));
+        assert_eq!(Color::try_from("red"), Ok(NamedColor::Red.into()));
+        assert_eq!(Color::try_from("blue"), Ok(NamedColor::Blue.into()));
         assert!(Color::try_from("#ffTf00").is_err());
         assert!(Color::try_from("#ffš00").is_err());
         assert!(Color::try_from("#00000000").is_err());

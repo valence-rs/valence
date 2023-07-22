@@ -13,15 +13,12 @@ use valence_nbt::Value;
 
 use crate::ident::Ident;
 use crate::protocol::{Decode, Encode};
-use crate::text::color::NormalColor;
 
 pub mod color;
 mod into_text;
-mod text_format;
 
 pub use color::Color;
 pub use into_text::IntoText;
-pub use text_format::TextFormat;
 
 /// Represents formatted text in Minecraft's JSON text format.
 ///
@@ -34,9 +31,9 @@ pub use text_format::TextFormat;
 ///
 /// # Examples
 ///
-/// With [`TextFormat`] in scope, you can write the following:
+/// With [`IntoText`] in scope, you can write the following:
 /// ```
-/// use valence_core::text::{Color, IntoText, Text, TextFormat};
+/// use valence_core::text::{Color, IntoText, Text};
 ///
 /// let txt = "The text is ".into_text()
 ///     + "Red".color(Color::RED)
@@ -551,8 +548,8 @@ impl Text {
             fn write(&self, output: &mut String) {
                 if let Some(color) = self.color {
                     let code = match color {
-                        Color::Rgb(rgb) => NormalColor::from(rgb).as_hex_digit(),
-                        Color::Normal(normal) => normal.as_hex_digit(),
+                        Color::Rgb(rgb) => rgb.to_named_lossy().hex_digit(),
+                        Color::Named(normal) => normal.hex_digit(),
                         Color::Reset => return,
                     };
 
@@ -662,7 +659,7 @@ impl<T: IntoText<'static>> ops::Add<T> for Text {
 
 impl<T: IntoText<'static>> ops::AddAssign<T> for Text {
     fn add_assign(&mut self, rhs: T) {
-        self.add_child(rhs);
+        self.extra.push(rhs.into_text());
     }
 }
 
