@@ -74,7 +74,7 @@ fn init_clients(
 
 fn override_display_name(mut clients: Query<&mut DisplayName, (Added<DisplayName>, With<Client>)>) {
     for mut display_name in &mut clients {
-        display_name.0 = Some("ඞ".color(Color::new(255, 87, 66)));
+        display_name.0 = Some("ඞ".color(Color::rgb(255, 87, 66)));
     }
 }
 
@@ -94,7 +94,7 @@ fn update_player_list(
         for (_, uuid, mut display_name) in &mut entries {
             if uuid.0 == PLAYER_UUID_1 {
                 let mut rng = rand::thread_rng();
-                let color = Color::new(rng.gen(), rng.gen(), rng.gen());
+                let color = Color::rgb(rng.gen(), rng.gen(), rng.gen());
 
                 let new_name = display_name.0.clone().unwrap_or_default().color(color);
                 display_name.0 = Some(new_name);

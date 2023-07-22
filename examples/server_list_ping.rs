@@ -41,7 +41,7 @@ impl NetworkCallbacks for MyCallbacks {
                 id: Uuid::from_u128(12345),
             }],
             description: "Your IP address is ".into_text()
-                + remote_addr.to_string().color(Color::DARK_GRAY),
+                + remote_addr.to_string().color(Color::rgb(50, 50, 250)),
             favicon_png: include_bytes!("../assets/logo-64x64.png"),
             version_name: ("Valence ".color(Color::GOLD) + MINECRAFT_VERSION.color(Color::RED))
                 .to_legacy_lossy(),
