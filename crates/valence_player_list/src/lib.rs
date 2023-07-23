@@ -30,7 +30,7 @@ use valence_client::{Client, Ping, Properties, Username};
 use valence_core::despawn::Despawned;
 use valence_core::game_mode::GameMode;
 use valence_core::protocol::encode::{PacketWriter, WritePacket};
-use valence_core::text::Text;
+use valence_core::text::{IntoText, Text};
 use valence_core::uuid::UniqueId;
 use valence_core::Server;
 use valence_layer::UpdateLayersPreClientSet;
@@ -99,8 +99,8 @@ impl PlayerList {
         &self.footer
     }
 
-    pub fn set_header(&mut self, txt: impl Into<Text>) {
-        let txt = txt.into();
+    pub fn set_header<'a>(&mut self, txt: impl IntoText<'a>) {
+        let txt = txt.into_cow_text().into_owned();
 
         if txt != self.header {
             self.changed_header_or_footer = true;
@@ -109,8 +109,8 @@ impl PlayerList {
         self.header = txt;
     }
 
-    pub fn set_footer(&mut self, txt: impl Into<Text>) {
-        let txt = txt.into();
+    pub fn set_footer<'a>(&mut self, txt: impl IntoText<'a>) {
+        let txt = txt.into_cow_text().into_owned();
 
         if txt != self.footer {
             self.changed_header_or_footer = true;
