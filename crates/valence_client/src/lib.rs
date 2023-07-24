@@ -485,40 +485,10 @@ impl EntityRemoveBuf {
 #[derive(Component, Clone, PartialEq, Eq, Default, Debug)]
 pub struct Username(pub String);
 
-impl Username {
-    pub fn is_valid(&self) -> bool {
-        is_valid_username(&self.0)
-    }
-}
-
 impl fmt::Display for Username {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)
     }
-}
-
-/// Returns whether or not the given string is a valid Minecraft username.
-///
-/// A valid username is 3 to 16 characters long with only ASCII alphanumeric
-/// characters. The username must match the regex `^[a-zA-Z0-9_]{3,16}$` to be
-/// considered valid.
-///
-/// # Examples
-///
-/// ```
-/// # use valence_client::is_valid_username;
-///
-/// assert!(is_valid_username("00a"));
-/// assert!(is_valid_username("jeb_"));
-///
-/// assert!(!is_valid_username("notavalidusername"));
-/// assert!(!is_valid_username("NotValid!"));
-/// ```
-pub fn is_valid_username(username: &str) -> bool {
-    (3..=16).contains(&username.len())
-        && username
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '_')
 }
 
 #[derive(Component, Clone, PartialEq, Eq, Default, Debug)]

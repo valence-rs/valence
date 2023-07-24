@@ -81,7 +81,7 @@ opt-level = 1
 
 [workspace]
 members = ["crates/*", "tools/*"]
-exclude = ["tools/dump_schedule"]
+exclude = []
 resolver = "2"
 
 [workspace.package]
@@ -103,7 +103,7 @@ bevy_app = { version = "0.11", default-features = false }
 bevy_ecs = { version = "0.11", default-features = false }
 bevy_hierarchy = { version = "0.11", default-features = false }
 bevy_log = { version = "0.11" }
-bevy_mod_debugdump = "0.7.0"
+bevy_mod_debugdump = { version =  "0.8.0", default-features = false }
 bevy_utils = { version = "0.11" }
 bitfield-struct = "0.3.1"
 byteorder = "1.4.3"

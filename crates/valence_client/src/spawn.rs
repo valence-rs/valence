@@ -62,26 +62,6 @@ pub struct ClientSpawnQuery {
     pub portal_cooldown: &'static mut PortalCooldown,
 }
 
-// #[derive(WorldQuery)]
-// #[world_query(mutable)]
-// struct ClientJoinQuery {
-//     entity: Entity,
-//     client: &'static mut Client,
-//     visible_chunk_layer: &'static VisibleChunkLayer,
-//     pos: &'static Position,
-//     is_hardcore: &'static IsHardcore,
-//     game_mode: &'static GameMode,
-//     prev_game_mode: &'static PrevGameMode,
-//     hashed_seed: &'static HashedSeed,
-//     view_distance: &'static ViewDistance,
-//     reduced_debug_info: &'static ReducedDebugInfo,
-//     has_respawn_screen: &'static HasRespawnScreen,
-//     is_debug: &'static IsDebug,
-//     is_flat: &'static IsFlat,
-//     death_loc: &'static DeathLocation,
-//     portal_cooldown: &'static PortalCooldown,
-// }
-
 pub(super) fn initial_join(
     codec: Res<RegistryCodec>,
     tags: Res<TagsRegistry>,
