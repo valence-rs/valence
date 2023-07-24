@@ -18,7 +18,6 @@ use sha2::{Digest, Sha256};
 use tokio::net::{TcpListener, TcpStream};
 use tracing::{error, info, trace, warn};
 use uuid::Uuid;
-use valence_client::is_valid_username;
 use valence_core::property::Property;
 use valence_core::protocol::decode::PacketDecoder;
 use valence_core::protocol::encode::PacketEncoder;
@@ -270,8 +269,6 @@ async fn handle_login(
         profile_id: _, // TODO
     } = io.recv_packet().await?;
 
-    ensure!(is_valid_username(username), "invalid username");
-
     let username = username.to_owned();
 
     let info = match shared.connection_mode() {
@@ -404,11 +401,6 @@ async fn login_online(
     }
 
     let profile: GameProfile = resp.json().await.context("parsing game profile")?;
-
-    ensure!(
-        is_valid_username(&profile.name),
-        "invalid game profile username"
-    );
 
     ensure!(profile.name == username, "usernames do not match");
 
