@@ -1,6 +1,6 @@
 use std::io::ErrorKind;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use std::{io, mem};
 
 use anyhow::bail;
@@ -9,7 +9,6 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::sync::Semaphore;
 use tokio::task::JoinHandle;
-use tokio::time::timeout;
 use tracing::{debug, warn};
 use valence_client::{ClientBundleArgs, ClientConnection, ReceivedPacket};
 use valence_core::protocol::decode::{PacketDecoder, PacketFrame};
@@ -24,18 +23,12 @@ pub(crate) struct PacketIo {
     enc: PacketEncoder,
     dec: PacketDecoder,
     frame: PacketFrame,
-    timeout: Duration,
 }
 
 const READ_BUF_SIZE: usize = 4096;
 
 impl PacketIo {
-    pub(crate) fn new(
-        stream: TcpStream,
-        enc: PacketEncoder,
-        dec: PacketDecoder,
-        timeout: Duration,
-    ) -> Self {
+    pub(crate) fn new(stream: TcpStream, enc: PacketEncoder, dec: PacketDecoder) -> Self {
         Self {
             stream,
             enc,
@@ -44,7 +37,6 @@ impl PacketIo {
                 id: -1,
                 body: BytesMut::new(),
             },
-            timeout,
         }
     }
 
@@ -54,7 +46,7 @@ impl PacketIo {
     {
         self.enc.append_packet(pkt)?;
         let bytes = self.enc.take();
-        timeout(self.timeout, self.stream.write_all(&bytes)).await??;
+        self.stream.write_all(&bytes).await?;
         Ok(())
     }
 
@@ -62,27 +54,24 @@ impl PacketIo {
     where
         P: Packet + Decode<'a>,
     {
-        timeout(self.timeout, async {
-            loop {
-                if let Some(frame) = self.dec.try_next_packet()? {
-                    self.frame = frame;
+        loop {
+            if let Some(frame) = self.dec.try_next_packet()? {
+                self.frame = frame;
 
-                    return self.frame.decode();
-                }
-
-                self.dec.reserve(READ_BUF_SIZE);
-                let mut buf = self.dec.take_capacity();
-
-                if self.stream.read_buf(&mut buf).await? == 0 {
-                    return Err(io::Error::from(ErrorKind::UnexpectedEof).into());
-                }
-
-                // This should always be an O(1) unsplit because we reserved space earlier and
-                // the call to `read_buf` shouldn't have grown the allocation.
-                self.dec.queue_bytes(buf);
+                return self.frame.decode();
             }
-        })
-        .await?
+
+            self.dec.reserve(READ_BUF_SIZE);
+            let mut buf = self.dec.take_capacity();
+
+            if self.stream.read_buf(&mut buf).await? == 0 {
+                return Err(io::Error::from(ErrorKind::UnexpectedEof).into());
+            }
+
+            // This should always be an O(1) unsplit because we reserved space earlier and
+            // the call to `read_buf` shouldn't have grown the allocation.
+            self.dec.queue_bytes(buf);
+        }
     }
 
     #[allow(dead_code)]
