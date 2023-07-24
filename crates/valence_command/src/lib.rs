@@ -15,6 +15,7 @@ pub mod reader;
 pub mod suggestions;
 pub mod world;
 pub mod boolean;
+pub mod nums;
 
 pub struct CommandPlugin;
 

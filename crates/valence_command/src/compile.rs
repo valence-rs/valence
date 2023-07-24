@@ -212,7 +212,7 @@ pub fn compile_commands(
             }),
             Err(e) => {
                 // TODO: error msg
-                cebridge.send_message(&event.executor, e.object);
+                cebridge.send_message(event.real_executor, e.object);
             }
         }
     }

@@ -53,11 +53,11 @@ pub struct CommandExecutorBridge<'w, 's> {
 }
 
 impl<'w, 's> CommandExecutorBridge<'w, 's> {
-    pub fn send_message(&mut self, executor: &CommandExecutor, text: Text) {
-        match executor.base {
-            CommandExecutorBase::Console => todo!(),
-            CommandExecutorBase::Block { instance, pos } => todo!(),
-            CommandExecutorBase::Entity { entity } => {
+    pub fn send_message(&mut self, executor: RealCommandExecutor, text: Text) {
+        match executor {
+            RealCommandExecutor::Console => todo!(),
+            RealCommandExecutor::Misc(id) => todo!(),
+            RealCommandExecutor::Player(entity) => {
                 self.client.get_mut(entity).unwrap().send_chat_message(text)
             }
         }
