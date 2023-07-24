@@ -1,244 +1,330 @@
-use std::borrow::Cow;
-use std::collections::VecDeque;
-use std::pin::Pin;
+use std::any::TypeId;
+use std::mem::{ManuallyDrop, MaybeUninit};
 use std::ptr::NonNull;
-use std::sync::Mutex;
 
-use bevy_ecs::prelude::{Entity, Event, EventWriter};
-use bevy_ecs::query::WorldQuery;
-use bevy_ecs::system::{Query, ReadOnlySystemParam, SystemParam};
-use valence_client::Client;
-use valence_core::__private::VarInt;
-use valence_core::block_pos::BlockPos;
-use valence_core::protocol::encode::WritePacket;
-use valence_core::protocol::{Decode, Encode};
-use valence_core::text::{Color, Text, TextFormat};
-use valence_core::translation_key::COMMAND_CONTEXT_HERE;
+use bevy_ecs::world::World;
+use valence_core::text::Text;
 
-use crate::packet::CommandSuggestionsS2c;
+use crate::command::{CommandExecutor, RealCommandExecutor};
+use crate::pkt;
 use crate::reader::{StrLocated, StrReader};
+use crate::suggestions::{RawParseSuggestions, SuggestionAnswerer, SuggestionsTransaction};
 
-pub type ParseError = StrLocated<Text>;
+pub type ParseResult<T> = Result<T, StrLocated<Text>>;
 
-pub type ParseResult<T> = Result<T, ParseError>;
+/// Identifies any object that can be parsed in a command
+pub trait Parse<'a>: 'a + Send + Sized {
+    /// Any data that can be possibly passed to [`Parse`] to change it's
+    /// behaviour.
+    type Data: 'a + Sync + Send;
 
-pub trait Parse<'a>: Sync + Sized + 'a {
-    type Data;
+    /// A type which is used to calculate suggestions after [`Parse::parse`] or
+    /// [`Parse::skip`] methods were called.
+    type Suggestions: 'a + Default;
 
-    type Suggestions: Default + 'a;
+    fn id() -> TypeId;
 
-    type Query: ReadOnlySystemParam + 'a;
-
+    /// Parses value from a given string and moves reader to the place where the
+    /// value is ended.
+    /// ### May not
+    /// - give different results on the same data and reader string
+    /// - panic if data is valid. Error should be passed as an [`Result::Err`]
     fn parse(
         data: &Self::Data,
         suggestions: &mut Self::Suggestions,
-        query: &Self::Query,
         reader: &mut StrReader<'a>,
     ) -> ParseResult<Self>;
+
+    /// Does the same as [`Parse::parse`] but doesn't return any value. Useful
+    /// for values, which contain some stuff that needs heap allocation
+    fn skip(
+        data: &Self::Data,
+        suggestions: &mut Self::Suggestions,
+        reader: &mut StrReader<'a>,
+    ) -> ParseResult<()> {
+        Self::parse(data, suggestions, reader).map(|_| ())
+    }
+
+    fn brigadier(data: &Self::Data) -> Option<pkt::Parser<'static>>;
+
+    #[allow(unused_variables)]
+    /// Returns true if this [`Parse`] is provided by vanilla minecraft
+    fn vanilla(data: &Self::Data) -> bool {
+        false
+    }
 }
 
-#[derive(Encode, Decode, Clone, Debug, PartialEq)]
-pub struct Suggestion<'a> {
-    pub message: Cow<'a, str>,
-    pub tooltip: Option<Text>,
+#[derive(Clone, Debug)]
+pub(crate) struct ParseResultsWrite(pub Vec<u64>);
+
+// we don't want rust to change variables places in the struct
+#[repr(C)]
+pub(crate) struct RawAny<T> {
+    obj_drop: Option<unsafe fn(*mut T)>,
+    tid: TypeId,
+    obj: T,
 }
 
-impl<'a> Suggestion<'a> {
-    pub const fn new_str(str: &'a str) -> Self {
+impl<T> Drop for RawAny<T> {
+    fn drop(&mut self) {
+        if let Some(obj_drop) = self.obj_drop {
+            // SAFETY: Guarantied by struct
+            unsafe { obj_drop(&mut self.obj as *mut T) }
+        }
+    }
+}
+
+impl<T> RawAny<T> {
+    pub fn new<'a>(obj: T) -> Self
+    where
+        T: Parse<'a>,
+    {
         Self {
-            message: Cow::Borrowed(str),
-            tooltip: None,
-        }
-    }
-
-    pub fn to_static(&self) -> Suggestion<'static> {
-        Suggestion {
-            message: match self.message {
-                Cow::Owned(ref owned) => Cow::Owned(owned.clone()),
-                Cow::Borrowed(borrowed) => Cow::Owned(borrowed.to_owned()),
+            obj_drop: if std::mem::needs_drop::<T>() {
+                Some(std::ptr::drop_in_place)
+            } else {
+                None
             },
-            tooltip: self.tooltip.clone(),
+            tid: T::id(),
+            obj,
+        }
+    }
+
+    pub fn write(self, vec: &mut Vec<u64>) {
+        let mut to_write = (0, self);
+
+        // Depends on system. if less than 64bit then the size does not change otherwise
+        // changes
+        let len = std::mem::size_of::<(usize, RawAny<T>)>() / 8;
+
+        to_write.0 = len;
+
+        // TypeId is an u64, so it shouldn't panic
+        debug_assert!(std::mem::size_of::<(usize, RawAny<T>)>() % 8 == 0);
+
+        let self_ptr = &to_write as *const (usize, RawAny<T>) as *const u64;
+
+        // SAFETY: self_ptr is the pointer to our struct, the size of u64 we can put
+        // into the struct is equal to len variable
+        unsafe {
+            vec.extend_from_slice(std::slice::from_raw_parts(self_ptr, len));
+        }
+
+        // We wrote bytes to the vector and all objects there shouldn't be dropped so we
+        // can use them in future
+        std::mem::forget(to_write);
+    }
+
+    /// # Safety
+    /// - Slice must be created using [`Self::write`] method
+    pub unsafe fn read<'a>(slice: &mut &'a [u64]) -> &'a Self
+    where
+        T: Parse<'a>,
+    {
+        if slice.len() <= std::mem::size_of::<(usize, RawAny<()>)>() / 8 {
+            panic!("Slice doesn't contain essential information as length, drop and tid");
+        }
+
+        let slice_ptr = slice.as_ptr();
+
+        // SAFETY: caller
+        let empty_any_ptr = unsafe { &*(slice_ptr as *const (usize, RawAny<()>)) };
+
+        if empty_any_ptr.1.tid != T::id() {
+            panic!("Tried to read the wrong object");
+        }
+
+        // SAFETY: we have checked if the type caller has gave to us is the right one.
+        let right_any_ptr =
+            unsafe { &*(empty_any_ptr as *const (usize, RawAny<()>) as *const (usize, RawAny<T>)) };
+
+        *slice = &slice[right_any_ptr.0..];
+
+        &right_any_ptr.1
+    }
+
+    /// # Safety
+    /// - Vec must be filled using [`Self::write`] method
+    pub unsafe fn drop_all(vec: &mut Vec<u64>) {
+        let mut slice = vec.as_mut_slice();
+
+        while !slice.is_empty() {
+            let slice_ptr = slice.as_mut_ptr();
+
+            let empty_any = slice_ptr as *mut (usize, RawAny<()>);
+
+            // SAFETY: the pointer is right
+            unsafe {
+                std::ptr::drop_in_place(empty_any);
+            }
+
+            // SAFETY: the pointer is right
+            slice = &mut slice[unsafe { (&*empty_any).0 }..];
         }
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum SuggestionsTransaction {
-    Player { ent: Entity, id: i32 },
-    Event { id: u32 },
-}
-
-#[derive(SystemParam)]
-pub struct SuggestionsTransactionAnswer<'w, 's> {
-    client: Query<'w, 's, &'static mut Client>,
-    event: EventWriter<'w, CompletedSuggestionEvent>,
-}
-
-impl<'w, 's> SuggestionsTransactionAnswer<'w, 's> {
-    pub fn answer<'b>(
-        &mut self,
-        transaction: SuggestionsTransaction,
-        suggestions: StrLocated<Cow<'b, [Suggestion<'b>]>>,
-    ) {
-        match transaction {
-            SuggestionsTransaction::Player { ent, id } => {
-                self.client
-                    .get_mut(ent)
-                    .expect("Entity is not a client")
-                    .write_packet(&CommandSuggestionsS2c {
-                        id: VarInt(id),
-                        start: VarInt(suggestions.span.begin().chars() as i32),
-                        length: VarInt(
-                            (suggestions.span.end().chars() - suggestions.span.begin().chars())
-                                as i32,
-                        ),
-                        matches: suggestions.object,
-                    });
-            }
-            SuggestionsTransaction::Event { id } => {
-                self.event.send(CompletedSuggestionEvent {
-                    id,
-                    suggestions: suggestions
-                        .map(|v| v.into_iter().map(|v| v.to_static()).collect()),
-                })
-            }
-        }
+impl ParseResultsWrite {
+    pub fn write<'a, T: Parse<'a>>(&mut self, obj: T) {
+        RawAny::new(obj).write(&mut self.0);
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum CommandExecutor {
-    Entity(Entity),
-    Block(Entity, BlockPos),
-    Console,
+impl Drop for ParseResultsWrite {
+    fn drop(&mut self) {
+        // SAFETY: only write method is public
+        unsafe { RawAny::<()>::drop_all(&mut self.0) }
+    }
 }
 
-pub trait RawParseSuggestions<'a>: Parse<'a> {
-    type RawSuggestionsQuery: SystemParam + 'a;
+#[derive(Clone, Debug)]
+pub struct ParseResultsRead<'a>(&'a [u64]);
 
-    fn send_suggestions(
+impl<'a> ParseResultsRead<'a> {
+    pub fn read<T: Parse<'a>>(&mut self) -> &'a T {
+        // SAFETY: slice is from ParseResultsWrite
+        unsafe { &RawAny::read(&mut self.0).obj }
+    }
+}
+
+pub(crate) struct ParseResults {
+    command: String,
+    results: ParseResultsWrite,
+}
+
+impl ParseResults {
+
+    /// # Safety
+    /// Given [`ParseResultsWrite`] must be made from given command [`String`]
+    pub unsafe fn new(command: String, results: ParseResultsWrite) -> Self {
+        Self {
+            command,
+            results
+        }
+    }
+
+    pub fn new_empty(command: String) -> Self {
+        Self {
+            command,
+            results: ParseResultsWrite(vec![])
+        }
+    }
+
+    pub fn to_write(&mut self) -> (StrReader, &mut ParseResultsWrite) {
+        (StrReader::from_command(&self.command), &mut self.results)
+    }
+
+    pub fn to_read(&self) -> ParseResultsRead {
+        ParseResultsRead(&self.results.0)
+    }
+
+}
+
+pub(crate) trait ParseObject: Sync + Send {
+    /// Parses an object and writes it into the `fill` vec. Returns bytes which
+    /// represents suggestions
+    /// # Safety
+    /// The implementation must write type id first into the `fill` vec and then
+    /// the object itself. Returned pointer. Also the implementation must ensure
+    /// that the parsed object has 'a lifetime
+    unsafe fn obj_parse<'a>(
+        &self,
+        reader: &mut StrReader<'a>,
+        fill: &mut ParseResultsWrite,
+    ) -> (ParseResult<()>, NonNull<u8>);
+
+    unsafe fn obj_skip<'a>(&self, reader: &mut StrReader<'a>) -> (ParseResult<()>, NonNull<u8>);
+
+    fn obj_brigadier(&self) -> Option<pkt::Parser<'static>>;
+
+    /// # Safety
+    /// Suggestions must be dropped and suggestions pointer must point to valid
+    /// suggestions object.
+    unsafe fn obj_call_suggestions(
+        &self,
+        suggestions: NonNull<u8>,
+        real: RealCommandExecutor,
         transaction: SuggestionsTransaction,
-        answer: &mut SuggestionsTransactionAnswer,
         executor: CommandExecutor,
-        query: &mut Self::RawSuggestionsQuery,
-        str: String,
-        suggestions: Self::Suggestions,
+        answer: &mut SuggestionAnswerer,
+        command: String,
+        world: &World,
     );
+
+    unsafe fn obj_drop_suggestions(&self, suggestions: NonNull<u8>);
 }
 
-pub trait NoSuggestions<'a>: Parse<'a> {}
+pub(crate) struct ParseWithData<'a, T: Parse<'a>>(pub T::Data);
 
-pub trait ParseSuggestions<'a>: Parse<'a> {
-    type SuggestionsQuery: ReadOnlySystemParam;
+impl<T: Parse<'static> + RawParseSuggestions<'static>> ParseObject
+    for ParseWithData<'static, T>
+{
+    unsafe fn obj_parse<'a>(
+        &self,
+        reader: &mut StrReader<'a>,
+        fill: &mut ParseResultsWrite,
+    ) -> (ParseResult<()>, NonNull<u8>) {
+        let mut suggestions = T::Suggestions::default();
+        let result = T::parse(&self.0, &mut suggestions, unsafe {
+            std::mem::transmute(reader)
+        });
+        (
+            match result {
+                Ok(obj) => {
+                    fill.write(obj);
+                    Ok(())
+                }
+                Err(e) => Err(e),
+            },
+            // SAFETY: drop provided by next methods
+            unsafe { std::mem::transmute(Box::new(suggestions)) },
+        )
+    }
 
-    fn suggestions(
+    unsafe fn obj_skip<'a>(&self, reader: &mut StrReader<'a>) -> (ParseResult<()>, NonNull<u8>) {
+        let mut suggestions = T::Suggestions::default();
+        let result = T::skip(&self.0, &mut suggestions, unsafe {
+            std::mem::transmute(reader)
+        });
+        (
+            result,
+            // SAFETY: drop provided by next methods
+            unsafe { std::mem::transmute(Box::new(suggestions)) },
+        )
+    }
+
+    fn obj_brigadier(&self) -> Option<pkt::Parser<'static>> {
+        T::brigadier(&self.0)
+    }
+
+    unsafe fn obj_call_suggestions(
+        &self,
+        suggestions: NonNull<u8>,
+        real: RealCommandExecutor,
+        transaction: SuggestionsTransaction,
         executor: CommandExecutor,
-        query: &Self::SuggestionsQuery,
-        str: String,
-        suggestions: Self::Suggestions,
-    ) -> StrLocated<Cow<'a, [Suggestion<'a>]>>;
-}
+        answer: &mut SuggestionAnswerer,
+        command: String,
+        world: &World,
+    ) {
+        // SAFETY: Box is a boxed NonNull and method accepts only valid T::Suggestions
+        // pointers
+        let suggestions: Box<T::Suggestions> = std::mem::transmute(suggestions);
+        let suggestions = *suggestions;
+        T::call_suggestions(
+            &self.0,
+            real,
+            transaction,
+            executor,
+            answer,
+            suggestions,
+            command,
+            world,
+        )
+    }
 
-#[async_trait::async_trait]
-pub trait AsyncParseSuggestions<'a>: Parse<'a> {
-    type SuggestionsQuery: ReadOnlySystemParam;
-
-    type AsyncSuggestionsQuery;
-
-    fn async_query(
-        executor: CommandExecutor,
-        query: &Self::SuggestionsQuery,
-    ) -> Self::AsyncSuggestionsQuery;
-
-    async fn suggestions(
-        executor: CommandExecutor,
-        query: Self::AsyncSuggestionsQuery,
-        str: String,
-        suggestions: Self::Suggestions,
-    ) -> StrLocated<Cow<'a, [Suggestion<'a>]>>;
-}
-
-#[derive(Event, Clone, Debug, PartialEq)]
-pub struct CompletedSuggestionEvent {
-    pub id: u32,
-    pub suggestions: StrLocated<Vec<Suggestion<'static>>>,
-}
-
-#[macro_export]
-macro_rules! suggestions_impl {
-    (!$ty: ty) => {
-        impl<'a> $crate::parse::RawParseSuggestions<'a> for $ty {
-            type RawSuggestionsQuery = ();
-
-            fn send_suggestions(
-                _transaction: $crate::parse::SuggestionsTransaction,
-                _answer: &mut $crate::parse::SuggestionsTransactionAnswer,
-                _executor: $crate::parse::CommandExecutor,
-                _query: &mut Self::RawSuggestionsQuery,
-                _str: String,
-                _suggestions: Self::Suggestions,
-            ) {};
-        }
-
-    };
-    (async $ty:ty) => {
-        compile_error!("async is not implemented, yet");
-    };
-    ($ty:ty) => {
-        impl<'a> $crate::parse::RawParseSuggestions<'a> for $ty
-        where
-            $ty: $crate::parse::ParseSuggestions<'a>,
-        {
-            type RawSuggestionsQuery =
-                <$ty as $crate::parse::ParseSuggestions<'a>>::SuggestionsQuery;
-
-            fn send_suggestions(
-                transaction: $crate::parse::SuggestionsTransaction,
-                answer: &mut $crate::parse::SuggestionsTransactionAnswer,
-                executor: $crate::parse::CommandExecutor,
-                query: &mut Self::RawSuggestionsQuery,
-                str: String,
-                suggestions: Self::Suggestions,
-            ) {
-                answer.answer(transaction, <$ty>::suggestions(executor, &query, str, suggestions));
-            }
-        }
-    };
-}
-
-pub const BRIGADIER_LIKE_ERROR_MESSAGE: bool = true;
-
-pub fn parse_error_message(reader: &StrReader, error: ParseError) -> Text {
-    let ParseError {
-        span,
-        object: error,
-    } = error;
-
-    if BRIGADIER_LIKE_ERROR_MESSAGE {
-        let mut reader = reader.clone();
-
-        // SAFETY: span is valid
-        unsafe { reader.set_cursor(span.end()) };
-
-        Text::text("")
-            .color(Color::RED)
-            .add_child(error)
-            .add_child(Text::text("\n"))
-            .add_child(Text::text(reader.used_str().to_string()))
-            .add_child(Text::translate(COMMAND_CONTEXT_HERE, vec![]))
-            .add_child(Text::text(reader.remaining_str().to_string()))
-    } else {
-        // ParseError contains more informative span than brigadier does, so we can
-        // actually give error's place more accurate
-
-        let (left, right) = reader.str().split_at(span.begin().bytes());
-        let (middle, right) = right.split_at(span.end().bytes());
-
-        Text::text("")
-            .add_child(error)
-            .add_child(Text::text("\n"))
-            .add_child(Text::text(left.to_string()))
-            .add_child(Text::text(middle.to_string()).color(Color::RED))
-            .add_child(Text::text(right.to_string()))
+    unsafe fn obj_drop_suggestions(&self, suggestions: NonNull<u8>) {
+        // SAFETY: provided by caller
+        let _: Box<T::Suggestions> = std::mem::transmute(suggestions);
     }
 }

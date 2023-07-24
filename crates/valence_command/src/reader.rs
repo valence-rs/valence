@@ -388,6 +388,10 @@ impl<'a> StrReader<'a> {
     pub fn is_ended(&self) -> bool {
         self.str.len() == self.cursor().bytes
     }
+
+    pub fn skip_char_or_end(&mut self, ch: char) -> bool {
+        self.skip_char(ch) || self.is_ended()
+    }
 }
 
 #[cfg(test)]

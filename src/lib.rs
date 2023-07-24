@@ -187,8 +187,7 @@ impl PluginGroup for DefaultPlugins {
 
         #[cfg(feature = "command")]
         {
-            group = group
-                .add(valence_command::CommandAPIPlugin)
+            group = group.add(valence_command::CommandPlugin);
         }
 
         group

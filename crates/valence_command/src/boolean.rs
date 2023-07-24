@@ -1,78 +1,58 @@
-use std::borrow::Cow;
+use std::any::TypeId;
 
 use valence_core::text::Text;
-use valence_core::translation_key::PARSING_BOOL_INVALID;
+use valence_core::translation_key::{PARSING_BOOL_EXPECTED, PARSING_BOOL_INVALID};
 
-use crate::parse::{CommandExecutor, Parse, ParseResult, ParseSuggestions, Suggestion};
-use crate::reader::{StrLocated, StrReader, StrSpan};
-use crate::suggestions_impl;
+use crate::parse::{Parse, ParseResult};
+use crate::pkt;
+use crate::reader::{StrLocated, StrReader};
+use crate::suggestions::RawParseSuggestions;
 
 impl<'a> Parse<'a> for bool {
     type Data = ();
 
-    type Query = ();
+    type Suggestions = ();
 
-    type Suggestions = StrSpan;
+    fn id() -> TypeId {
+        TypeId::of::<Self>()
+    }
 
     fn parse(
         _data: &Self::Data,
-        suggestions: &mut Self::Suggestions,
-        _query: &Self::Query,
+        _suggestions: &mut Self::Suggestions,
         reader: &mut StrReader<'a>,
     ) -> ParseResult<Self> {
-        reader.span_err_located(suggestions, |reader| {
-            let str = reader.read_unquoted_str();
-            if str.eq_ignore_ascii_case("true") {
-                Ok(true)
-            } else if str.eq_ignore_ascii_case("false") {
-                Ok(false)
-            } else {
-                Err(Text::translate(
-                    PARSING_BOOL_INVALID,
-                    vec![str.to_string().into()],
-                ))
-            }
+        reader.err_located(|reader| match reader.read_unquoted_str() {
+            "true" => Ok(true),
+            "false" => Ok(false),
+            o if o.is_empty() => Err(Text::translate(PARSING_BOOL_EXPECTED, vec![])),
+            o => Err(Text::translate(
+                PARSING_BOOL_INVALID,
+                vec![o.to_string().into()],
+            )),
         })
     }
-}
 
-impl<'a> ParseSuggestions<'a> for bool {
-    type SuggestionsQuery = ();
+    fn brigadier(data: &Self::Data) -> Option<pkt::Parser<'static>> {
+        Some(pkt::Parser::Bool)
+    }
 
-    fn suggestions(
-        _executor: CommandExecutor,
-        _query: &Self::SuggestionsQuery,
-        str: String,
-        suggestions: Self::Suggestions,
-    ) -> StrLocated<Cow<'a, [Suggestion<'a>]>> {
-        const EMPTY: &[Suggestion<'static>] = &[];
-        const ONLY_TRUE: &[Suggestion<'static>] = &[Suggestion::new_str("true")];
-        const ONLY_FALSE: &[Suggestion<'static>] = &[Suggestion::new_str("false")];
-        const BOTH: &[Suggestion<'static>] =
-            &[Suggestion::new_str("true"), Suggestion::new_str("false")];
-
-        let str = suggestions
-            .in_str(&str)
-            .expect("Given string is not the one parse has used");
-
-        if str.len() > 5 {
-            return StrLocated::new(suggestions, Cow::Borrowed(EMPTY));
-        }
-
-        let lc_str = str.to_ascii_lowercase();
-
-        let result = if str.len() == 0 {
-            BOTH
-        } else if "true".starts_with(&lc_str) {
-            ONLY_TRUE
-        } else if "false".starts_with(&lc_str) {
-            ONLY_FALSE
-        } else {
-            EMPTY
-        };
-
-        StrLocated::new(suggestions, Cow::Borrowed(result))
+    fn vanilla(data: &Self::Data) -> bool {
+        true
     }
 }
 
-suggestions_impl!(bool);
+impl<'a> RawParseSuggestions<'a> for bool {
+    fn call_suggestions(
+        data: &Self::Data,
+        real: crate::command::RealCommandExecutor,
+        transaction: crate::suggestions::SuggestionsTransaction,
+        executor: crate::command::CommandExecutor,
+        answer: &mut crate::suggestions::SuggestionAnswerer,
+        suggestions: Self::Suggestions,
+        command: String,
+        world: &bevy_ecs::world::World,
+    ) {
+        todo!()
+    }
+}

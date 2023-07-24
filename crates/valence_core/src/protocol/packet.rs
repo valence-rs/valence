@@ -242,7 +242,7 @@ pub mod chat {
         pub id: VarInt,
         pub start: VarInt,
         pub length: VarInt,
-        pub matches: Vec<CommandSuggestionsMatch<'a>>,
+        pub matches: Cow<'a, [CommandSuggestionsMatch<'a>]>,
     }
 
     #[derive(Clone, PartialEq, Debug, Encode, Decode)]
@@ -763,7 +763,6 @@ pub mod sound {
     }
 }
 
-// TODO: move to valence_command
 pub mod command {
 
     use super::*;
@@ -777,7 +776,7 @@ pub mod command {
 
     #[derive(Clone, Debug)]
     pub struct Node<'a> {
-        pub children: Cow<'a, [VarInt]>,
+        pub children: Vec<VarInt>,
         pub data: NodeData<'a>,
         pub executable: bool,
         pub redirect_node: Option<VarInt>,
@@ -854,13 +853,11 @@ pub mod command {
         ResourceKey { registry: Ident<Cow<'a, str>> },
         TemplateMirror,
         TemplateRotation,
-        Heightmap,
         Uuid,
     }
 
-    #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Default)]
+    #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
     pub enum StringArg {
-        #[default]
         SingleWord,
         QuotablePhrase,
         GreedyPhrase,
@@ -929,7 +926,7 @@ pub mod command {
         fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
             let flags = u8::decode(r)?;
 
-            let children = Cow::decode(r)?;
+            let children = Vec::decode(r)?;
 
             let redirect_node = if flags & 0x08 != 0 {
                 Some(VarInt::decode(r)?)
@@ -1092,8 +1089,7 @@ pub mod command {
                 }
                 Parser::TemplateMirror => 45u8.encode(&mut w)?,
                 Parser::TemplateRotation => 46u8.encode(&mut w)?,
-                Parser::Heightmap => 47u8.encode(&mut w)?,
-                Parser::Uuid => 48u8.encode(&mut w)?,
+                Parser::Uuid => 47u8.encode(&mut w)?,
             }
 
             Ok(())
