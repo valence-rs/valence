@@ -237,7 +237,11 @@ fn sneak(
         if sneaking.state == SneakState::Stop {
             continue;
         }
-        let Ok((mut advancement_client_update, mut root_criteria_done)) = client.get_mut(sneaking.client) else { continue; };
+        let Ok((mut advancement_client_update, mut root_criteria_done)) =
+            client.get_mut(sneaking.client)
+        else {
+            continue;
+        };
         root_criteria_done.0 = !root_criteria_done.0;
         match root_criteria_done.0 {
             true => advancement_client_update.criteria_done(root_criteria),
@@ -262,7 +266,11 @@ fn tab_change(
     let root2_criteria = root2_criteria.single();
     let root = root.single();
     for tab_change in tab_change.iter() {
-        let Ok((mut advancement_client_update, mut tab_change_count)) = client.get_mut(tab_change.client) else { continue; };
+        let Ok((mut advancement_client_update, mut tab_change_count)) =
+            client.get_mut(tab_change.client)
+        else {
+            continue;
+        };
         if let Some(ref opened) = tab_change.opened_tab {
             if opened.as_str() == "custom:root2" {
                 tab_change_count.0 += 1;

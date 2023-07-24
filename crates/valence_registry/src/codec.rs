@@ -64,7 +64,7 @@ impl Default for RegistryCodec {
 
             let Value::Compound(mut outer) = v else {
                 error!("registry {reg_name} is not a compound");
-                continue
+                continue;
             };
 
             let values = match outer.remove("value") {
@@ -79,7 +79,7 @@ impl Default for RegistryCodec {
             for mut value in values {
                 let Some(Value::String(name)) = value.remove("name") else {
                     error!("missing \"name\" string in value for {reg_name}");
-                    continue
+                    continue;
                 };
 
                 let name = match Ident::new(name) {
@@ -92,7 +92,7 @@ impl Default for RegistryCodec {
 
                 let Some(Value::Compound(element)) = value.remove("element") else {
                     error!("missing \"element\" compound in value for {reg_name}");
-                    continue
+                    continue;
                 };
 
                 reg_values.push(RegistryValue { name, element });

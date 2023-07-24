@@ -13,7 +13,10 @@ pub(super) fn derive_packet(item: TokenStream) -> Result<TokenStream> {
     };
 
     let Some(packet_id) = packet_attr.id else {
-        return Err(Error::new(packet_attr.span, "missing `id = ...` value from packet attribute"));
+        return Err(Error::new(
+            packet_attr.span,
+            "missing `id = ...` value from packet attribute",
+        ));
     };
 
     add_trait_bounds(&mut input.generics, quote!(::std::fmt::Debug));

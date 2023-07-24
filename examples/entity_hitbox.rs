@@ -140,7 +140,9 @@ fn intersections(query: Query<(Entity, &Hitbox)>, mut name_query: Query<&mut ent
     }
 
     for (entity, value) in intersections {
-        let Ok(mut name) = name_query.get_mut(entity) else { continue; };
+        let Ok(mut name) = name_query.get_mut(entity) else {
+            continue;
+        };
         name.0 = Some(format!("{value}").into());
     }
 }

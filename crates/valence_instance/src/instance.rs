@@ -202,7 +202,11 @@ impl Instance {
 
     #[inline]
     fn chunk_and_offsets(&self, pos: BlockPos) -> Option<(&LoadedChunk, u32, u32, u32)> {
-        let Some(y) = pos.y.checked_sub(self.info.min_y).and_then(|y| y.try_into().ok()) else {
+        let Some(y) = pos
+            .y
+            .checked_sub(self.info.min_y)
+            .and_then(|y| y.try_into().ok())
+        else {
             return None;
         };
 
@@ -225,7 +229,11 @@ impl Instance {
         &mut self,
         pos: BlockPos,
     ) -> Option<(&mut LoadedChunk, u32, u32, u32)> {
-        let Some(y) = pos.y.checked_sub(self.info.min_y).and_then(|y| y.try_into().ok()) else {
+        let Some(y) = pos
+            .y
+            .checked_sub(self.info.min_y)
+            .and_then(|y| y.try_into().ok())
+        else {
             return None;
         };
 

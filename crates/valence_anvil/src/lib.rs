@@ -326,7 +326,7 @@ fn update_client_views(
 
         if loc != &*old_loc || view != old_view || old_loc.is_added() {
             let Ok((inst, mut anvil)) = instances.get_mut(loc.0) else {
-                continue
+                continue;
             };
 
             let queue_pos = |pos| {

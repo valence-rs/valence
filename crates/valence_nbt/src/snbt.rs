@@ -642,7 +642,9 @@ mod tests {
             *more.get("larr").unwrap().as_long_array().unwrap(),
             vec![1, 2, 3]
         );
-        let List::String(list) = cpd.get("empty").unwrap().as_list().unwrap() else { panic!() };
+        let List::String(list) = cpd.get("empty").unwrap().as_list().unwrap() else {
+            panic!()
+        };
         assert_eq!(list[0], "Bibabo");
         assert_eq!(
             from_snbt_str("\"\\n\"").unwrap_err().error_type,

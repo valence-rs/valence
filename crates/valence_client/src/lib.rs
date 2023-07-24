@@ -688,9 +688,12 @@ fn initial_join(
 ) {
     for mut q in &mut clients {
         let Ok(instance) = instances.get(q.loc.0) else {
-            warn!("client {:?} joined nonexistent instance {:?}", q.entity, q.loc.0);
+            warn!(
+                "client {:?} joined nonexistent instance {:?}",
+                q.entity, q.loc.0
+            );
             commands.entity(q.entity).remove::<Client>();
-            continue
+            continue;
         };
 
         let dimension_names: Vec<Ident<Cow<str>>> = codec
@@ -766,7 +769,7 @@ fn respawn(
 
         let Ok(instance) = instances.get(loc.0) else {
             warn!("Client respawned in nonexistent instance.");
-            continue
+            continue;
         };
 
         let dimension_name = instance.dimension_type_name();

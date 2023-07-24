@@ -88,7 +88,7 @@ fn event_handler(
     } in messages.iter()
     {
         let Ok((username, _, _)) = clients.get(*client) else {
-            continue
+            continue;
         };
 
         let nbt = instance.block_entity_mut(SIGN_POS).unwrap();
@@ -106,7 +106,7 @@ fn event_handler(
     {
         if *hand == Hand::Main && *position == SKULL_POS {
             let Ok((_, properties, uuid)) = clients.get(*client) else {
-                continue
+                continue;
             };
 
             let Some(textures) = properties.textures() else {

@@ -777,16 +777,12 @@ fn handle_click_slot(
     for packet in packets.iter() {
         let Some(pkt) = packet.decode::<ClickSlotC2s>() else {
             // Not the packet we're looking for.
-            continue
+            continue;
         };
 
-        let Ok((
-            mut client,
-            mut client_inv,
-            mut inv_state,
-            open_inventory,
-            mut cursor_item
-        )) = clients.get_mut(packet.client) else {
+        let Ok((mut client, mut client_inv, mut inv_state, open_inventory, mut cursor_item)) =
+            clients.get_mut(packet.client)
+        else {
             // The client does not exist, ignore.
             continue;
         };
@@ -1117,8 +1113,10 @@ fn handle_creative_inventory_action(
 ) {
     for packet in packets.iter() {
         if let Some(pkt) = packet.decode::<CreativeInventoryActionC2s>() {
-            let Ok((mut client, mut inventory, mut inv_state, game_mode)) = clients.get_mut(packet.client) else {
-                continue
+            let Ok((mut client, mut inventory, mut inv_state, game_mode)) =
+                clients.get_mut(packet.client)
+            else {
+                continue;
             };
 
             if *game_mode != GameMode::Creative {
