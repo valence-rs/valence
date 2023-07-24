@@ -33,6 +33,9 @@ struct Cli {
     /// Output SVG file path.
     #[clap(short, long, default_value = "graph.svg")]
     output: PathBuf,
+    /// Disables transitive reduction of the output schedule graph.
+    #[clap(short = 't', long)]
+    no_tred: bool,
 }
 
 fn main() -> io::Result<()> {
@@ -70,18 +73,31 @@ fn main() -> io::Result<()> {
         },
     );
 
-    let mut child = Command::new("dot")
-        .stdin(Stdio::piped())
-        .arg("-Tsvg")
-        .arg("-o")
-        .arg(cli.output)
-        .spawn()?;
+    let mut dot_command = Command::new("dot");
+    dot_command.arg("-Tsvg").arg("-o").arg(cli.output);
 
-    if let Some(stdin) = child.stdin.as_mut() {
-        stdin.write_all(dot_graph.as_bytes())?;
-    }
+    if cli.no_tred {
+        let mut dot_child = dot_command.stdin(Stdio::piped()).spawn()?;
 
-    child.wait_with_output()?;
+        dot_child
+            .stdin
+            .as_mut()
+            .unwrap()
+            .write_all(dot_graph.as_bytes())?;
+
+        dot_child.wait_with_output()?;
+    } else {
+        let tred_child = Command::new("tred")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()?;
+
+        let dot_child = dot_command.stdin(tred_child.stdout.unwrap()).spawn()?;
+
+        tred_child.stdin.unwrap().write_all(dot_graph.as_bytes())?;
+
+        dot_child.wait_with_output()?;
+    };
 
     Ok(())
 }
