@@ -145,7 +145,6 @@ impl Plugin for ClientPlugin {
                     .before(FlushPacketsSet),
                 ClearEntityChangesSet.after(UpdateClientsSet),
                 FlushPacketsSet,
-                UpdateLayersPostClientSet.after(FlushPacketsSet),
             ),
         );
 
