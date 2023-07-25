@@ -94,7 +94,7 @@ where
             staging: &[u8],
             ready: &mut Vec<u8>,
         ) {
-            // Sort is deliberately stable.
+            // Sort must be stable.
             msgs.sort_by_key(|(msg, _)| *msg);
 
             // Make sure the first element is already copied to "ready".
