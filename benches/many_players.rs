@@ -103,7 +103,7 @@ fn run_many_players(
             for (id, helper) in &mut clients {
                 let pos = query.get(&app.world, *id).unwrap().get();
 
-                let offset = DVec3::new(rng.gen_range(-2.0..=2.0), 0.0, rng.gen_range(-2.0..=2.0));
+                let offset = DVec3::new(rng.gen_range(-1.0..=1.0), 0.0, rng.gen_range(-1.0..=1.0));
 
                 helper.send(&FullC2s {
                     position: pos + offset,
