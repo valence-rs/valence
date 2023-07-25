@@ -33,7 +33,7 @@ fn run_many_players(
     let mut app = App::new();
 
     app.insert_resource(CoreSettings {
-        compression_threshold: None,
+        compression_threshold: Some(256),
         ..Default::default()
     });
 
