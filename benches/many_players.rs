@@ -19,7 +19,7 @@ use valence_layer::LayerBundle;
 use valence_network::NetworkPlugin;
 
 pub fn many_players(c: &mut Criterion) {
-    run_many_players(c, "many_players", 3000, 20, 16);
+    run_many_players(c, "many_players", 3000, 16, 16);
     run_many_players(c, "many_players_spread_out", 3000, 8, 200);
 }
 
