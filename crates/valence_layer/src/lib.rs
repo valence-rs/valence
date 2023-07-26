@@ -31,6 +31,7 @@ use bevy_ecs::prelude::*;
 pub use chunk::ChunkLayer;
 pub use entity::EntityLayer;
 use valence_biome::BiomeRegistry;
+use valence_core::block_pos::BlockPos;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::ident::Ident;
 use valence_core::protocol::encode::WritePacket;
@@ -81,54 +82,52 @@ impl<Client: Component> Plugin for LayerPlugin<Client> {
     }
 }
 
-// pub trait Layer {
-//     type Global;
-//     type Local;
-
-//     fn send_global(&mut self, msg: Self::Global, f: impl FnOnce(&mut
-// Vec<u8>));
-
-//     fn send_local(&mut self, msg: Self::Local, f: impl FnOnce(&mut Vec<u8>));
-
-//     fn compression_threshold(&self) -> Option<u32>;
-
-//     fn send_global_bytes(&mut self, msg: Self::Global, bytes: &[u8]) {
-//         self.send_global(msg, |b| b.extend_from_slice(bytes));
-//     }
-
-//     fn send_local_bytes(&mut self, msg: Self::Local, bytes: &[u8]) {
-//         self.send_local(msg, |b| b.extend_from_slice(bytes));
-//     }
-
-//     fn send_global_packet<P>(&mut self, msg: Self::Global, pkt: &P)
-//     where
-//         P: Encode + Packet,
-//     {
-//         let threshold = self.compression_threshold();
-
-//         self.send_global(msg, |b| PacketWriter::new(b,
-// threshold).write_packet(pkt));     }
-
-//     fn send_local_packet<P>(&mut self, msg: Self::Local, pkt: &P)
-//     where
-//         P: Encode + Packet,
-//     {
-//         let threshold = self.compression_threshold();
-
-//         self.send_local(msg, |b| PacketWriter::new(b,
-// threshold).write_packet(pkt));     }
-// }
-
 pub trait Layer: WritePacket {
+    type ExceptWriter<'a>: WritePacket
+    where
+        Self: 'a;
+
     type ViewWriter<'a>: WritePacket
     where
         Self: 'a;
 
-    /// Returns a [`WritePacket`] implementor for a chunk position.
-    ///
-    /// When writing packets to the chunk writer, only clients in view of `pos`
+    type ViewExceptWriter<'a>: WritePacket
+    where
+        Self: 'a;
+
+    type RadiusWriter<'a>: WritePacket
+    where
+        Self: 'a;
+
+    type RadiusExceptWriter<'a>: WritePacket
+    where
+        Self: 'a;
+
+    /// Returns a packet writer which sends packet data to all clients viewing
+    /// the layer, except the client identified by `except`.
+    fn except_writer(&mut self, except: Entity) -> Self::ExceptWriter<'_>;
+
+    /// When writing packets to the view writer, only clients in view of `pos`
     /// will receive the packet.
     fn view_writer(&mut self, pos: impl Into<ChunkPos>) -> Self::ViewWriter<'_>;
+
+    /// Like [`view_writer`](Self::view_writer), but packets written to the
+    /// returned [`ViewExceptWriter`](Self::ViewExceptWriter) are not sent to
+    /// the client identified by `except`.
+    fn view_except_writer(
+        &mut self,
+        pos: impl Into<ChunkPos>,
+        except: Entity,
+    ) -> Self::ViewExceptWriter<'_>;
+
+    fn radius_writer(&mut self, pos: impl Into<BlockPos>, radius: u32) -> Self::RadiusWriter<'_>;
+
+    fn radius_except_writer(
+        &mut self,
+        pos: impl Into<BlockPos>,
+        radius: u32,
+        except: Entity,
+    ) -> Self::RadiusExceptWriter<'_>;
 }
 
 /// Convenience [`Bundle`] for spawning a layer entity with both [`ChunkLayer`]

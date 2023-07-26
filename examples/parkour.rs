@@ -193,7 +193,7 @@ fn manage_blocks(mut clients: Query<(&mut Client, &Position, &mut GameState, &mu
 fn manage_chunks(mut clients: Query<(&Position, &OldPosition, &mut ChunkLayer), With<Client>>) {
     for (pos, old_pos, mut layer) in &mut clients {
         let old_view = ChunkView::new(old_pos.chunk_pos(), VIEW_DIST);
-        let view = ChunkView::new(pos.chunk_pos(), VIEW_DIST);
+        let view = ChunkView::new(pos.to_chunk_pos(), VIEW_DIST);
 
         if old_view != view {
             for pos in old_view.diff(view) {

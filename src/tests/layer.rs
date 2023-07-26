@@ -68,7 +68,7 @@ fn block_create_destroy() {
 #[test]
 fn layer_chunk_view_change() {
     fn view(client: &EntityMut) -> ChunkView {
-        let chunk_pos = client.get::<Position>().unwrap().chunk_pos();
+        let chunk_pos = client.get::<Position>().unwrap().to_chunk_pos();
         let view_dist = client.get::<ViewDistance>().unwrap().get();
 
         ChunkView::new(chunk_pos, view_dist)

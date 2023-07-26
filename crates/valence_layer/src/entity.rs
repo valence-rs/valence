@@ -5,6 +5,7 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_ecs::query::Has;
 use rustc_hash::FxHashMap;
+use valence_core::block_pos::BlockPos;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::despawn::Despawned;
 use valence_core::protocol::encode::{PacketWriter, WritePacket};
@@ -56,6 +57,15 @@ pub enum LocalMsg {
     /// except the client identified by `except`. Message data is serialized
     /// packet data.
     PacketAtExcept { pos: ChunkPos, except: Entity },
+    RadiusAt {
+        center: BlockPos,
+        radius_squared: u32,
+    },
+    RadiusAtExcept {
+        center: BlockPos,
+        radius_squared: u32,
+        except: Entity,
+    },
     /// Despawn entities if the client is not already viewing `dest_layer`.
     /// Message data is the serialized form of `EntityId`.
     DespawnEntity { pos: ChunkPos, dest_layer: Entity },
@@ -69,6 +79,8 @@ impl GetChunkPos for LocalMsg {
         match *self {
             LocalMsg::PacketAt { pos } => pos,
             LocalMsg::PacketAtExcept { pos, .. } => pos,
+            LocalMsg::RadiusAt { center, .. } => center.to_chunk_pos(),
+            LocalMsg::RadiusAtExcept { center, .. } => center.to_chunk_pos(),
             LocalMsg::SpawnEntity { pos, .. } => pos,
             LocalMsg::SpawnEntityTransition { pos, .. } => pos,
             LocalMsg::DespawnEntity { pos, .. } => pos,
@@ -105,12 +117,65 @@ impl EntityLayer {
 }
 
 impl Layer for EntityLayer {
+    type ExceptWriter<'a> = ExceptWriter<'a>;
+
     type ViewWriter<'a> = ViewWriter<'a>;
+
+    type ViewExceptWriter<'a> = ViewExceptWriter<'a>;
+
+    type RadiusWriter<'a> = RadiusWriter<'a>;
+
+    type RadiusExceptWriter<'a> = RadiusExceptWriter<'a>;
+
+    fn except_writer(&mut self, except: Entity) -> Self::ExceptWriter<'_> {
+        ExceptWriter {
+            layer: self,
+            except,
+        }
+    }
 
     fn view_writer(&mut self, pos: impl Into<ChunkPos>) -> Self::ViewWriter<'_> {
         ViewWriter {
             layer: self,
             pos: pos.into(),
+        }
+    }
+
+    fn view_except_writer(
+        &mut self,
+        pos: impl Into<ChunkPos>,
+        except: Entity,
+    ) -> Self::ViewExceptWriter<'_> {
+        ViewExceptWriter {
+            layer: self,
+            pos: pos.into(),
+            except,
+        }
+    }
+
+    fn radius_writer(
+        &mut self,
+        center: impl Into<BlockPos>,
+        radius: u32,
+    ) -> Self::RadiusWriter<'_> {
+        RadiusWriter {
+            layer: self,
+            center: center.into(),
+            radius_squared: radius.saturating_mul(radius),
+        }
+    }
+
+    fn radius_except_writer(
+        &mut self,
+        center: impl Into<BlockPos>,
+        radius: u32,
+        except: Entity,
+    ) -> Self::RadiusExceptWriter<'_> {
+        RadiusExceptWriter {
+            layer: self,
+            center: center.into(),
+            radius_squared: radius.saturating_mul(radius),
+            except,
         }
     }
 }
@@ -128,6 +193,36 @@ impl WritePacket for EntityLayer {
     fn write_packet_bytes(&mut self, bytes: &[u8]) {
         self.messages
             .send_global_infallible(GlobalMsg::Packet, |b| b.extend_from_slice(bytes));
+    }
+}
+
+pub struct ExceptWriter<'a> {
+    layer: &'a mut EntityLayer,
+    except: Entity,
+}
+
+impl WritePacket for ExceptWriter<'_> {
+    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
+    where
+        P: Packet + Encode,
+    {
+        self.layer.messages.send_global(
+            GlobalMsg::PacketExcept {
+                except: self.except,
+            },
+            |b| {
+                PacketWriter::new(b, self.layer.compression_threshold).write_packet_fallible(packet)
+            },
+        )
+    }
+
+    fn write_packet_bytes(&mut self, bytes: &[u8]) {
+        self.layer.messages.send_global_infallible(
+            GlobalMsg::PacketExcept {
+                except: self.except,
+            },
+            |b| b.extend_from_slice(bytes),
+        )
     }
 }
 
@@ -154,6 +249,108 @@ impl<'a> WritePacket for ViewWriter<'a> {
             .send_local_infallible(LocalMsg::PacketAt { pos: self.pos }, |b| {
                 b.extend_from_slice(bytes)
             });
+    }
+}
+
+pub struct ViewExceptWriter<'a> {
+    layer: &'a mut EntityLayer,
+    pos: ChunkPos,
+    except: Entity,
+}
+
+impl WritePacket for ViewExceptWriter<'_> {
+    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
+    where
+        P: Packet + Encode,
+    {
+        self.layer.messages.send_local(
+            LocalMsg::PacketAtExcept {
+                pos: self.pos,
+                except: self.except,
+            },
+            |b| {
+                PacketWriter::new(b, self.layer.compression_threshold).write_packet_fallible(packet)
+            },
+        )
+    }
+
+    fn write_packet_bytes(&mut self, bytes: &[u8]) {
+        self.layer.messages.send_local_infallible(
+            LocalMsg::PacketAtExcept {
+                pos: self.pos,
+                except: self.except,
+            },
+            |b| b.extend_from_slice(bytes),
+        );
+    }
+}
+
+pub struct RadiusWriter<'a> {
+    layer: &'a mut EntityLayer,
+    center: BlockPos,
+    radius_squared: u32,
+}
+
+impl WritePacket for RadiusWriter<'_> {
+    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
+    where
+        P: Packet + Encode,
+    {
+        self.layer.messages.send_local(
+            LocalMsg::RadiusAt {
+                center: self.center,
+                radius_squared: self.radius_squared,
+            },
+            |b| {
+                PacketWriter::new(b, self.layer.compression_threshold).write_packet_fallible(packet)
+            },
+        )
+    }
+
+    fn write_packet_bytes(&mut self, bytes: &[u8]) {
+        self.layer.messages.send_local_infallible(
+            LocalMsg::RadiusAt {
+                center: self.center,
+                radius_squared: self.radius_squared,
+            },
+            |b| b.extend_from_slice(bytes),
+        );
+    }
+}
+
+pub struct RadiusExceptWriter<'a> {
+    layer: &'a mut EntityLayer,
+    center: BlockPos,
+    radius_squared: u32,
+    except: Entity,
+}
+
+impl WritePacket for RadiusExceptWriter<'_> {
+    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
+    where
+        P: Packet + Encode,
+    {
+        self.layer.messages.send_local(
+            LocalMsg::RadiusAtExcept {
+                center: self.center,
+                radius_squared: self.radius_squared,
+                except: self.except,
+            },
+            |b| {
+                PacketWriter::new(b, self.layer.compression_threshold).write_packet_fallible(packet)
+            },
+        )
+    }
+
+    fn write_packet_bytes(&mut self, bytes: &[u8]) {
+        self.layer.messages.send_local_infallible(
+            LocalMsg::RadiusAtExcept {
+                center: self.center,
+                radius_squared: self.radius_squared,
+                except: self.except,
+            },
+            |b| b.extend_from_slice(bytes),
+        );
     }
 }
 
@@ -190,7 +387,7 @@ fn change_entity_positions(
     mut layers: Query<&mut EntityLayer>,
 ) {
     for (entity, entity_id, pos, old_pos, layer_id, old_layer_id, despawned) in &entities {
-        let chunk_pos = pos.chunk_pos();
+        let chunk_pos = pos.to_chunk_pos();
         let old_chunk_pos = old_pos.chunk_pos();
 
         if despawned {
@@ -291,7 +488,7 @@ fn send_entity_update_messages<Client: Component>(
         for cell in layer.entities.values_mut() {
             for &entity in cell.iter() {
                 if let Ok((entity, update, is_client)) = entities.get(entity) {
-                    let chunk_pos = update.pos.chunk_pos();
+                    let chunk_pos = update.pos.to_chunk_pos();
 
                     // Send the update packets to all viewers. If the entity being updated is a
                     // client, then we need to be careful to exclude the client itself from

@@ -579,7 +579,7 @@ pub struct View {
 
 impl ViewItem<'_> {
     pub fn get(&self) -> ChunkView {
-        ChunkView::new(self.pos.chunk_pos(), self.view_dist.0)
+        ChunkView::new(self.pos.to_chunk_pos(), self.view_dist.0)
     }
 }
 
@@ -692,7 +692,15 @@ fn handle_layer_messages(
             mut visible_entity_layers,
             old_visible_entity_layers,
         )| {
+            let block_pos = BlockPos::from_pos(old_view.old_pos.get());
             let old_view = old_view.get();
+
+            fn in_radius(p0: BlockPos, p1: BlockPos, radius_squared: u32) -> bool {
+                let dist_squared =
+                    (p1.x - p0.x).pow(2) + (p1.y - p0.y).pow(2) + (p1.z - p0.z).pow(2);
+
+                dist_squared as u32 <= radius_squared
+            }
 
             // Chunk layer messages
             if let Ok(chunk_layer) = chunk_layers.get(old_visible_chunk_layer.get()) {
@@ -719,6 +727,28 @@ fn handle_layer_messages(
                 messages.query_local(old_view, |msg, range| match msg {
                     valence_layer::chunk::LocalMsg::PacketAt { .. } => {
                         client.write_packet_bytes(&bytes[range]);
+                    }
+                    valence_layer::chunk::LocalMsg::PacketAtExcept { except, .. } => {
+                        if self_entity != except {
+                            client.write_packet_bytes(&bytes[range]);
+                        }
+                    }
+                    valence_layer::chunk::LocalMsg::RadiusAt {
+                        center,
+                        radius_squared,
+                    } => {
+                        if in_radius(block_pos, center, radius_squared) {
+                            client.write_packet_bytes(&bytes[range]);
+                        }
+                    }
+                    valence_layer::chunk::LocalMsg::RadiusAtExcept {
+                        center,
+                        radius_squared,
+                        except,
+                    } => {
+                        if self_entity != except && in_radius(block_pos, center, radius_squared) {
+                            client.write_packet_bytes(&bytes[range]);
+                        }
                     }
                     valence_layer::chunk::LocalMsg::ChangeBiome { pos } => {
                         chunk_biome_buf.push(ChunkBiome {
@@ -788,6 +818,24 @@ fn handle_layer_messages(
                         }
                         valence_layer::entity::LocalMsg::PacketAtExcept { pos: _, except } => {
                             if self_entity != except {
+                                client.write_packet_bytes(&bytes[range]);
+                            }
+                        }
+                        valence_layer::entity::LocalMsg::RadiusAt {
+                            center,
+                            radius_squared,
+                        } => {
+                            if in_radius(block_pos, center, radius_squared) {
+                                client.write_packet_bytes(&bytes[range]);
+                            }
+                        }
+                        valence_layer::entity::LocalMsg::RadiusAtExcept {
+                            center,
+                            radius_squared,
+                            except,
+                        } => {
+                            if self_entity != except && in_radius(block_pos, center, radius_squared)
+                            {
                                 client.write_packet_bytes(&bytes[range]);
                             }
                         }
@@ -903,8 +951,8 @@ fn update_view_and_layers(
             view_dist,
             old_view_dist,
         )| {
-            let view = ChunkView::new(ChunkPos::from_dvec3(pos.0), view_dist.0);
-            let old_view = ChunkView::new(ChunkPos::from_dvec3(old_pos.get()), old_view_dist.0);
+            let view = ChunkView::new(ChunkPos::from_pos(pos.0), view_dist.0);
+            let old_view = ChunkView::new(ChunkPos::from_pos(old_pos.get()), old_view_dist.0);
 
             // Make sure the center chunk is set before loading chunks! Otherwise the client
             // may ignore the chunk.

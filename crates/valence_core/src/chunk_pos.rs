@@ -20,18 +20,12 @@ impl ChunkPos {
 
     /// Constructs a chunk position from a position in world space. Only the `x`
     /// and `z` components are used.
-    pub fn from_dvec3(pos: DVec3) -> Self {
-        Self::at(pos.x, pos.z)
+    pub fn from_pos(pos: DVec3) -> Self {
+        Self::new((pos.x / 16.0).floor() as i32, (pos.z / 16.0).floor() as i32)
     }
 
-    pub fn from_block_pos(pos: BlockPos) -> Self {
+    pub const fn from_block_pos(pos: BlockPos) -> Self {
         Self::new(pos.x.div_euclid(16), pos.z.div_euclid(16))
-    }
-
-    /// Takes an X and Z position in world space and returns the chunk position
-    /// containing the point.
-    pub fn at(x: f64, z: f64) -> Self {
-        Self::new((x / 16.0).floor() as i32, (z / 16.0).floor() as i32)
     }
 
     pub const fn distance_squared(self, other: Self) -> u64 {

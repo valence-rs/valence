@@ -82,22 +82,44 @@ pub enum GlobalMsg {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum LocalMsg {
     /// Send packet data to all clients viewing the layer in view of `pos`.
-    PacketAt { pos: ChunkPos },
+    PacketAt {
+        pos: ChunkPos,
+    },
+    PacketAtExcept {
+        pos: ChunkPos,
+        except: Entity,
+    },
+    RadiusAt {
+        center: BlockPos,
+        radius_squared: u32,
+    },
+    RadiusAtExcept {
+        center: BlockPos,
+        radius_squared: u32,
+        except: Entity,
+    },
     /// Instruct clients to load or unload the chunk at `pos`. Loading and
     /// unloading are combined into a single message so that load/unload order
     /// is not lost when messages are sorted.
     ///
     /// Message content is a single byte indicating load (1) or unload (0).
-    ChangeChunkState { pos: ChunkPos },
+    ChangeChunkState {
+        pos: ChunkPos,
+    },
     /// Message content is the data for a single biome in the "change biomes"
     /// packet.
-    ChangeBiome { pos: ChunkPos },
+    ChangeBiome {
+        pos: ChunkPos,
+    },
 }
 
 impl GetChunkPos for LocalMsg {
     fn chunk_pos(&self) -> ChunkPos {
         match *self {
             LocalMsg::PacketAt { pos } => pos,
+            LocalMsg::PacketAtExcept { pos, .. } => pos,
+            LocalMsg::RadiusAt { center, .. } => center.to_chunk_pos(),
+            LocalMsg::RadiusAtExcept { center, .. } => center.to_chunk_pos(),
             LocalMsg::ChangeBiome { pos } => pos,
             LocalMsg::ChangeChunkState { pos } => pos,
         }
@@ -365,7 +387,7 @@ impl ChunkLayer {
     ) {
         let position = position.into();
 
-        self.view_writer(ChunkPos::from_dvec3(position))
+        self.view_writer(ChunkPos::from_pos(position))
             .write_packet(&ParticleS2c {
                 particle: Cow::Borrowed(particle),
                 long_distance,
@@ -390,7 +412,7 @@ impl ChunkLayer {
     ) {
         let position = position.into();
 
-        self.view_writer(ChunkPos::from_dvec3(position))
+        self.view_writer(ChunkPos::from_pos(position))
             .write_packet(&PlaySoundS2c {
                 id: sound.to_id(),
                 category,
@@ -403,12 +425,65 @@ impl ChunkLayer {
 }
 
 impl Layer for ChunkLayer {
+    type ExceptWriter<'a> = ExceptWriter<'a>;
+
     type ViewWriter<'a> = ViewWriter<'a>;
+
+    type ViewExceptWriter<'a> = ViewExceptWriter<'a>;
+
+    type RadiusWriter<'a> = RadiusWriter<'a>;
+
+    type RadiusExceptWriter<'a> = RadiusExceptWriter<'a>;
+
+    fn except_writer(&mut self, except: Entity) -> Self::ExceptWriter<'_> {
+        ExceptWriter {
+            layer: self,
+            except,
+        }
+    }
 
     fn view_writer(&mut self, pos: impl Into<ChunkPos>) -> Self::ViewWriter<'_> {
         ViewWriter {
             layer: self,
             pos: pos.into(),
+        }
+    }
+
+    fn view_except_writer(
+        &mut self,
+        pos: impl Into<ChunkPos>,
+        except: Entity,
+    ) -> Self::ViewExceptWriter<'_> {
+        ViewExceptWriter {
+            layer: self,
+            pos: pos.into(),
+            except,
+        }
+    }
+
+    fn radius_writer(
+        &mut self,
+        center: impl Into<BlockPos>,
+        radius: u32,
+    ) -> Self::RadiusWriter<'_> {
+        RadiusWriter {
+            layer: self,
+            center: center.into(),
+            radius,
+        }
+    }
+
+    fn radius_except_writer(
+        &mut self,
+        center: impl Into<BlockPos>,
+        radius: u32,
+        except: Entity,
+    ) -> Self::RadiusExceptWriter<'_> {
+        RadiusExceptWriter {
+            layer: self,
+            center: center.into(),
+            radius,
+            except,
         }
     }
 }
@@ -429,12 +504,43 @@ impl WritePacket for ChunkLayer {
     }
 }
 
+pub struct ExceptWriter<'a> {
+    layer: &'a mut ChunkLayer,
+    except: Entity,
+}
+
+impl WritePacket for ExceptWriter<'_> {
+    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
+    where
+        P: Packet + Encode,
+    {
+        self.layer.messages.send_global(
+            GlobalMsg::PacketExcept {
+                except: self.except,
+            },
+            |b| {
+                PacketWriter::new(b, self.layer.info.compression_threshold)
+                    .write_packet_fallible(packet)
+            },
+        )
+    }
+
+    fn write_packet_bytes(&mut self, bytes: &[u8]) {
+        self.layer.messages.send_global_infallible(
+            GlobalMsg::PacketExcept {
+                except: self.except,
+            },
+            |b| b.extend_from_slice(bytes),
+        )
+    }
+}
+
 pub struct ViewWriter<'a> {
     layer: &'a mut ChunkLayer,
     pos: ChunkPos,
 }
 
-impl<'a> WritePacket for ViewWriter<'a> {
+impl WritePacket for ViewWriter<'_> {
     fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
     where
         P: Packet + Encode,
@@ -453,6 +559,111 @@ impl<'a> WritePacket for ViewWriter<'a> {
             .send_local_infallible(LocalMsg::PacketAt { pos: self.pos }, |b| {
                 b.extend_from_slice(bytes)
             });
+    }
+}
+
+pub struct ViewExceptWriter<'a> {
+    layer: &'a mut ChunkLayer,
+    pos: ChunkPos,
+    except: Entity,
+}
+
+impl WritePacket for ViewExceptWriter<'_> {
+    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
+    where
+        P: Packet + Encode,
+    {
+        self.layer.messages.send_local(
+            LocalMsg::PacketAtExcept {
+                pos: self.pos,
+                except: self.except,
+            },
+            |b| {
+                PacketWriter::new(b, self.layer.info.compression_threshold)
+                    .write_packet_fallible(packet)
+            },
+        )
+    }
+
+    fn write_packet_bytes(&mut self, bytes: &[u8]) {
+        self.layer.messages.send_local_infallible(
+            LocalMsg::PacketAtExcept {
+                pos: self.pos,
+                except: self.except,
+            },
+            |b| b.extend_from_slice(bytes),
+        );
+    }
+}
+
+pub struct RadiusWriter<'a> {
+    layer: &'a mut ChunkLayer,
+    center: BlockPos,
+    radius: u32,
+}
+
+impl WritePacket for RadiusWriter<'_> {
+    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
+    where
+        P: Packet + Encode,
+    {
+        self.layer.messages.send_local(
+            LocalMsg::RadiusAt {
+                center: self.center,
+                radius_squared: self.radius,
+            },
+            |b| {
+                PacketWriter::new(b, self.layer.info.compression_threshold)
+                    .write_packet_fallible(packet)
+            },
+        )
+    }
+
+    fn write_packet_bytes(&mut self, bytes: &[u8]) {
+        self.layer.messages.send_local_infallible(
+            LocalMsg::RadiusAt {
+                center: self.center,
+                radius_squared: self.radius,
+            },
+            |b| b.extend_from_slice(bytes),
+        );
+    }
+}
+
+pub struct RadiusExceptWriter<'a> {
+    layer: &'a mut ChunkLayer,
+    center: BlockPos,
+    radius: u32,
+    except: Entity,
+}
+
+impl WritePacket for RadiusExceptWriter<'_> {
+    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
+    where
+        P: Packet + Encode,
+    {
+        self.layer.messages.send_local(
+            LocalMsg::RadiusAtExcept {
+                center: self.center,
+                radius_squared: self.radius,
+                except: self.except,
+            },
+            |b| {
+                PacketWriter::new(b, self.layer.info.compression_threshold)
+                    .write_packet_fallible(packet)
+            },
+        )
+    }
+
+    fn write_packet_bytes(&mut self, bytes: &[u8]) {
+        self.layer.messages.send_local_infallible(
+            LocalMsg::RadiusAtExcept {
+                center: self.center,
+                radius_squared: self.radius,
+                except: self.except,
+            },
+            |b| b.extend_from_slice(bytes),
+        );
     }
 }
 

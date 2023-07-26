@@ -32,6 +32,7 @@ pub use manager::EntityManager;
 use paste::paste;
 use tracing::warn;
 use tracked_data::TrackedData;
+use valence_core::block_pos::BlockPos;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::despawn::Despawned;
 use valence_core::protocol::var_int::VarInt;
@@ -227,8 +228,12 @@ impl Position {
         Self(pos.into())
     }
 
-    pub fn chunk_pos(&self) -> ChunkPos {
-        ChunkPos::from_dvec3(self.0)
+    pub fn to_chunk_pos(self) -> ChunkPos {
+        ChunkPos::from_pos(self.0)
+    }
+
+    pub fn to_block_pos(self) -> BlockPos {
+        BlockPos::from_pos(self.0)
     }
 
     pub fn get(self) -> DVec3 {
@@ -249,7 +254,7 @@ impl PartialEq<OldPosition> for Position {
 /// The value of [`Position`] from the end of the previous tick.
 ///
 /// **NOTE**: You should not modify this component after the entity is spawned.
-#[derive(Component, Copy, Clone, PartialEq, Default, Debug)]
+#[derive(Component, Clone, PartialEq, Default, Debug)]
 pub struct OldPosition(DVec3);
 
 impl OldPosition {
@@ -257,12 +262,16 @@ impl OldPosition {
         Self(pos.into())
     }
 
-    pub fn get(self) -> DVec3 {
+    pub fn get(&self) -> DVec3 {
         self.0
     }
 
-    pub fn chunk_pos(self) -> ChunkPos {
-        ChunkPos::from_dvec3(self.0)
+    pub fn chunk_pos(&self) -> ChunkPos {
+        ChunkPos::from_pos(self.0)
+    }
+
+    pub fn to_block_pos(&self) -> BlockPos {
+        BlockPos::from_pos(self.0)
     }
 }
 
