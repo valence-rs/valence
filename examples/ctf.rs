@@ -10,7 +10,8 @@ use valence_entity::cow::CowEntityBundle;
 use valence_entity::entity::Flags;
 use valence_entity::pig::PigEntityBundle;
 use valence_entity::player::PlayerEntityBundle;
-use valence_entity::EntityId;
+use valence_entity::tracked_data::TrackedData;
+use valence_entity::{EntityId, Velocity};
 
 const ARENA_Y: i32 = 64;
 const ARENA_MID_WIDTH: i32 = 2;
@@ -42,6 +43,7 @@ pub fn main() {
                 update_flag_visuals,
                 do_flag_capturing,
                 // visualize_triggers,
+                update_clones,
             ),
         )
         .run();
@@ -475,6 +477,7 @@ fn do_team_selector_portals(
     portals: Res<Portals>,
     mut commands: Commands,
     ctf_layers: Res<CtfLayers>,
+    main_layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
     mut player_list: ResMut<PlayerList>,
 ) {
     for player in players.iter_mut() {
@@ -499,10 +502,20 @@ fn do_team_selector_portals(
             let chat_text: Text = "You are on team ".into_text() + team.team_text() + "!";
             client.send_chat_message(chat_text);
 
+            let main_layer = main_layers.single();
+            ent_layers.as_mut().0.remove(&main_layer);
+            for t in Team::iter() {
+                let enemy_layer = ctf_layers.enemy_layers[&t];
+                if t == team {
+                    ent_layers.as_mut().0.remove(&enemy_layer);
+                } else {
+                    ent_layers.as_mut().0.insert(enemy_layer);
+                }
+            }
             let friendly_layer = ctf_layers.friendly_layers[&team];
             ent_layers.as_mut().0.insert(friendly_layer);
 
-            // TODO: Copy the player entity to the friendly layer, and make them glow.
+            // Copy the player entity to the friendly layer, and make them glow.
             let mut flags = Flags::default();
             flags.set_glowing(true);
             let mut player_glowing = commands.spawn(PlayerEntityBundle {
@@ -512,6 +525,16 @@ fn do_team_selector_portals(
                 position: pos.clone(),
                 ..Default::default()
             });
+            player_glowing.insert(ClonedEntity(player));
+
+            let enemy_layer = ctf_layers.enemy_layers[&team];
+            let mut player_enemy = commands.spawn(PlayerEntityBundle {
+                layer: EntityLayerId(enemy_layer),
+                uuid: *unique_id,
+                position: pos.clone(),
+                ..Default::default()
+            });
+            player_enemy.insert(ClonedEntity(player));
         }
     }
 }
@@ -667,17 +690,57 @@ struct CtfLayers {
     ///
     /// This is used to make friendly players glow.
     pub friendly_layers: HashMap<Team, Entity>,
+    /// Ditto, but for enemy players.
+    pub enemy_layers: HashMap<Team, Entity>,
 }
 
 impl CtfLayers {
     pub fn init(commands: &mut Commands, server: &Server) -> Self {
         let mut friendly_layers = HashMap::new();
+        let mut enemy_layers = HashMap::new();
 
         for team in Team::iter() {
             let friendly_layer = commands.spawn((EntityLayer::new(server), team)).id();
             friendly_layers.insert(team, friendly_layer);
+            let enemy_layer = commands.spawn((EntityLayer::new(server), team)).id();
+            enemy_layers.insert(team, enemy_layer);
         }
 
-        Self { friendly_layers }
+        Self {
+            friendly_layers,
+            enemy_layers,
+        }
+    }
+}
+
+/// A marker component for entities that have been cloned, and the primary
+/// entity they were cloned from.
+#[derive(Debug, Component)]
+struct ClonedEntity(Entity);
+
+fn update_clones(
+    ents: Query<(&Position, &HeadYaw, &Velocity, &Look), Without<ClonedEntity>>,
+    mut clone_ents: Query<(
+        &mut Position,
+        &mut HeadYaw,
+        &mut Velocity,
+        &mut Look,
+        &ClonedEntity,
+        Entity,
+    )>,
+    mut commands: Commands,
+) {
+    for clone in clone_ents.iter_mut() {
+        let (mut pos, mut head_yaw, mut vel, mut look, cloned_from, ent) = clone;
+        let Ok((pos_src, head_yaw_src, vel_src, look_src)) = ents
+            .get(cloned_from.0) else {
+                commands.entity(ent).insert(Despawned);
+                return;
+            };
+
+        *pos = *pos_src;
+        *head_yaw = *head_yaw_src;
+        *vel = *vel_src;
+        *look = *look_src;
     }
 }
