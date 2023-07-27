@@ -10,6 +10,7 @@ use valence::inventory::HeldItem;
 use valence::prelude::*;
 use valence_client::interact_block::InteractBlockEvent;
 use valence_client::message::SendMessage;
+use valence_client::status::RequestRespawnEvent;
 use valence_entity::cow::CowEntityBundle;
 use valence_entity::entity::Flags;
 use valence_entity::living::Health;
@@ -50,6 +51,7 @@ pub fn main() {
                 // visualize_triggers,
                 update_clones,
                 teleport_oob_clients,
+                necromancy,
             ),
         )
         .run();
@@ -878,6 +880,32 @@ fn teleport_oob_clients(mut clients: Query<(&mut Position, &Team), With<Client>>
     for (mut pos, team) in &mut clients {
         if pos.0.y < 0.0 {
             pos.set(team.spawn_pos());
+        }
+    }
+}
+
+/// Handles respawning dead players.
+fn necromancy(
+    mut clients: Query<(
+        &mut VisibleChunkLayer,
+        &mut RespawnPosition,
+        &Team,
+        &mut Health,
+    )>,
+    mut events: EventReader<RequestRespawnEvent>,
+    layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
+) {
+    for event in events.iter() {
+        if let Ok((mut visible_chunk_layer, mut respawn_pos, team, mut health)) =
+            clients.get_mut(event.client)
+        {
+            respawn_pos.pos = BlockPos::from_pos(team.spawn_pos());
+            health.0 = 20.0;
+
+            let main_layer = layers.single();
+
+            // this gets the client to get rid of the respawn screen
+            visible_chunk_layer.0 = main_layer;
         }
     }
 }
