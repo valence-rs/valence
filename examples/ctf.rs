@@ -507,6 +507,17 @@ fn do_team_selector_portals(
             *game_mode = GameMode::Survival;
             let mut inventory = Inventory::new(InventoryKind::Player);
             inventory.set_slot(36, Some(ItemStack::new(ItemKind::WoodenSword, 1, None)));
+            inventory.set_slot(
+                37,
+                Some(ItemStack::new(
+                    match team {
+                        Team::Red => ItemKind::RedWool,
+                        Team::Blue => ItemKind::BlueWool,
+                    },
+                    64,
+                    None,
+                )),
+            );
             let combat_state = CombatState::default();
             commands
                 .entity(player)
