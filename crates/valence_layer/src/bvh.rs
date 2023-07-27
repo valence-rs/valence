@@ -3,6 +3,7 @@ use std::ops::Range;
 
 use valence_core::chunk_pos::{ChunkPos, ChunkView};
 
+/// A bounding volume hierarchy for chunk positions.
 #[derive(Clone, Debug)]
 pub struct ChunkBvh<T, const MAX_SURFACE_AREA: i32 = { 8 * 4 }> {
     nodes: Vec<Node>,
@@ -81,6 +82,7 @@ impl Aabb {
     }
 }
 
+/// Obtains a chunk position for the purpose of placement in the BVH.
 pub trait GetChunkPos {
     fn chunk_pos(&self) -> ChunkPos;
 }

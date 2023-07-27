@@ -82,46 +82,64 @@ impl<Client: Component> Plugin for LayerPlugin<Client> {
     }
 }
 
+/// Common functionality for layers. Notable implementors are [`ChunkLayer`] and
+/// [`EntityLayer`].
+///
+/// Layers support sending packets to viewers of the layer under various
+/// conditions. These are the "packet writers" exposed by this trait.
+///
+/// Layers themselves implement the [`WritePacket`] trait. Writing directly to a
+/// layer will send packets to all viewers unconditionally.
 pub trait Layer: WritePacket {
+    /// Packet writer returned by [`except_writer`](Self::except_writer).
     type ExceptWriter<'a>: WritePacket
     where
         Self: 'a;
 
+    /// Packet writer returned by [`view_writer`](Self::ViewWriter).
     type ViewWriter<'a>: WritePacket
     where
         Self: 'a;
 
+    /// Packet writer returned by
+    /// [`view_except_writer`](Self::ViewExceptWriter).
     type ViewExceptWriter<'a>: WritePacket
     where
         Self: 'a;
 
+    /// Packet writer returned by [`radius_writer`](Self::radius_writer).
     type RadiusWriter<'a>: WritePacket
     where
         Self: 'a;
 
+    /// Packet writer returned by
+    /// [`radius_except_writer`](Self::radius_except_writer).
     type RadiusExceptWriter<'a>: WritePacket
     where
         Self: 'a;
 
-    /// Returns a packet writer which sends packet data to all clients viewing
-    /// the layer, except the client identified by `except`.
+    /// Returns a packet writer which sends packets to all viewers not
+    /// identified by `except`.
     fn except_writer(&mut self, except: Entity) -> Self::ExceptWriter<'_>;
 
-    /// When writing packets to the view writer, only clients in view of `pos`
-    /// will receive the packet.
+    /// Returns a packet writer which sends packets to viewers in view of
+    /// the chunk position `pos`.
     fn view_writer(&mut self, pos: impl Into<ChunkPos>) -> Self::ViewWriter<'_>;
 
-    /// Like [`view_writer`](Self::view_writer), but packets written to the
-    /// returned [`ViewExceptWriter`](Self::ViewExceptWriter) are not sent to
-    /// the client identified by `except`.
+    /// Returns a packet writer which sends packets to viewers in
+    /// view of the chunk position `pos` and not identified by `except`.
     fn view_except_writer(
         &mut self,
         pos: impl Into<ChunkPos>,
         except: Entity,
     ) -> Self::ViewExceptWriter<'_>;
 
+    /// Returns a packet writer which sends packets to viewers within `radius`
+    /// blocks of the block position `pos`.
     fn radius_writer(&mut self, pos: impl Into<BlockPos>, radius: u32) -> Self::RadiusWriter<'_>;
 
+    /// Returns a packet writer which sends packets to viewers within `radius`
+    /// blocks of the block position `pos` and not identified by `except`.
     fn radius_except_writer(
         &mut self,
         pos: impl Into<BlockPos>,
@@ -139,6 +157,7 @@ pub struct LayerBundle {
 }
 
 impl LayerBundle {
+    /// Returns a new layer bundle.
     pub fn new(
         dimension_type_name: impl Into<Ident<String>>,
         dimensions: &DimensionTypeRegistry,

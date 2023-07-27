@@ -1,3 +1,4 @@
+/*
 //! # World border
 //! This module contains Components and Systems needed to handle world border.
 //!
@@ -75,9 +76,6 @@
 
 pub mod packet;
 
-// TODO: fix.
-
-/*
 use std::time::{Duration, Instant};
 
 use bevy_app::prelude::*;

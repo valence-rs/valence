@@ -18,6 +18,7 @@ use crate::bvh::GetChunkPos;
 use crate::message::Messages;
 use crate::{Layer, UpdateLayersPostClientSet, UpdateLayersPreClientSet};
 
+/// A [`Component`] containing Minecraft entities.
 #[derive(Component, Debug)]
 pub struct EntityLayer {
     messages: EntityLayerMessages,
@@ -90,6 +91,7 @@ impl GetChunkPos for LocalMsg {
 }
 
 impl EntityLayer {
+    /// Creates a new entity layer.
     pub fn new(server: &Server) -> Self {
         Self {
             messages: Messages::new(),
@@ -98,8 +100,8 @@ impl EntityLayer {
         }
     }
 
-    /// Returns a list of entities with positions within the provided chunk
-    /// position on this layer.
+    /// Returns an iterator over all entities contained within the given chunk
+    /// position in this layer.
     pub fn entities_at(
         &self,
         pos: impl Into<ChunkPos>,

@@ -1,5 +1,3 @@
-//! Contains the [`Instance`] component and methods.
-
 mod chunk;
 pub mod loaded;
 mod paletted_container;
@@ -34,6 +32,8 @@ use crate::bvh::GetChunkPos;
 use crate::message::Messages;
 use crate::{Layer, UpdateLayersPostClientSet, UpdateLayersPreClientSet};
 
+/// A [`Component`] containing the [chunks](LoadedChunk) and [dimension
+/// information](valence_dimension::DimensionTypeId) of a Minecraft world.
 #[derive(Component, Debug)]
 pub struct ChunkLayer {
     messages: ChunkLayerMessages,
@@ -41,6 +41,7 @@ pub struct ChunkLayer {
     info: ChunkLayerInfo,
 }
 
+/// Chunk layer information. Not public API.
 #[doc(hidden)]
 pub struct ChunkLayerInfo {
     dimension_type_name: Ident<String>,
@@ -134,6 +135,7 @@ impl ChunkLayer {
     #[doc(hidden)]
     pub const OVERWRITE: u8 = 2;
 
+    /// Creates a new chunk layer.
     #[track_caller]
     pub fn new(
         dimension_type_name: impl Into<Ident<String>>,
@@ -175,6 +177,7 @@ impl ChunkLayer {
         }
     }
 
+    /// The name of the dimension this chunk layer is using.
     pub fn dimension_type_name(&self) -> Ident<&str> {
         self.info.dimension_type_name.as_str_ident()
     }

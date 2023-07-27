@@ -368,11 +368,6 @@ impl Client {
     }
 
     /// Puts a particle effect at the given position, only for this client.
-    ///
-    /// If you want to show a particle effect to all players, use
-    /// [`Instance::play_particle`]
-    ///
-    /// [`Instance::play_particle`]: Instance::play_particle
     pub fn play_particle(
         &mut self,
         particle: &Particle,
@@ -393,11 +388,6 @@ impl Client {
     }
 
     /// Plays a sound effect at the given position, only for this client.
-    ///
-    /// If you want to play a sound effect to all players, use
-    /// [`Instance::play_sound`]
-    ///
-    /// [`Instance::play_sound`]: Instance::play_sound
     pub fn play_sound(
         &mut self,
         sound: Sound,
@@ -605,6 +595,11 @@ impl Default for Ping {
     }
 }
 
+/// A [`Component`] containing a handle to the [`ChunkLayer`] a client can
+/// see.
+///
+/// A client can only see one chunk layer at a time. Mutating this component
+/// will cause the client to respawn in the new chunk layer.
 #[derive(Component, Copy, Clone, PartialEq, Eq, Debug)]
 pub struct VisibleChunkLayer(pub Entity);
 
@@ -614,6 +609,7 @@ impl Default for VisibleChunkLayer {
     }
 }
 
+/// The value of [`VisibleChunkLayer`] from the end of the previous tick.
 #[derive(Component, PartialEq, Eq, Debug)]
 pub struct OldVisibleChunkLayer(Entity);
 
@@ -623,9 +619,17 @@ impl OldVisibleChunkLayer {
     }
 }
 
+/// A [`Component`] containing the set of [`EntityLayer`]s a client can see.
+/// All Minecraft entities from all layers in this set are potentially visible
+/// to the client.
+///
+/// This set can be mutated at any time to change which entity layers are
+/// visible to the client. [`Despawned`] entity layers are automatically
+/// removed.
 #[derive(Component, Default, Debug)]
 pub struct VisibleEntityLayers(pub BTreeSet<Entity>);
 
+/// The value of [`VisibleEntityLayers`] from the end of the previous tick.
 #[derive(Component, Default, Debug)]
 pub struct OldVisibleEntityLayers(BTreeSet<Entity>);
 

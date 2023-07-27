@@ -1,3 +1,4 @@
+/*
 //! The weather system.
 //!
 //! This module contains the systems and components needed to handle
@@ -15,7 +16,6 @@
 //! New joined players are handled, so that they are get weather events from
 //! the instance.
 
-/*
 use super::*;
 use crate::packet::{GameEventKind, GameStateChangeS2c};
 
