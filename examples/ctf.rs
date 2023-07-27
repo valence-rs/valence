@@ -11,7 +11,7 @@ use valence_entity::entity::Flags;
 use valence_entity::pig::PigEntityBundle;
 use valence_entity::player::PlayerEntityBundle;
 use valence_entity::tracked_data::TrackedData;
-use valence_entity::{EntityId, Velocity};
+use valence_entity::{EntityAnimations, EntityId, Velocity};
 
 const ARENA_Y: i32 = 64;
 const ARENA_MID_WIDTH: i32 = 2;
@@ -478,7 +478,6 @@ fn do_team_selector_portals(
     mut commands: Commands,
     ctf_layers: Res<CtfLayers>,
     main_layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
-    mut player_list: ResMut<PlayerList>,
 ) {
     for player in players.iter_mut() {
         let (player, mut pos, mut game_mode, mut client, mut ent_layers, unique_id) = player;
@@ -719,20 +718,21 @@ impl CtfLayers {
 struct ClonedEntity(Entity);
 
 fn update_clones(
-    ents: Query<(&Position, &HeadYaw, &Velocity, &Look), Without<ClonedEntity>>,
+    ents: Query<(&Position, &HeadYaw, &Velocity, &Look, &EntityAnimations), Without<ClonedEntity>>,
     mut clone_ents: Query<(
         &mut Position,
         &mut HeadYaw,
         &mut Velocity,
         &mut Look,
+        &mut EntityAnimations,
         &ClonedEntity,
         Entity,
     )>,
     mut commands: Commands,
 ) {
     for clone in clone_ents.iter_mut() {
-        let (mut pos, mut head_yaw, mut vel, mut look, cloned_from, ent) = clone;
-        let Ok((pos_src, head_yaw_src, vel_src, look_src)) = ents
+        let (mut pos, mut head_yaw, mut vel, mut look, mut anims, cloned_from, ent) = clone;
+        let Ok((pos_src, head_yaw_src, vel_src, look_src, anims_src)) = ents
             .get(cloned_from.0) else {
                 commands.entity(ent).insert(Despawned);
                 return;
@@ -742,5 +742,6 @@ fn update_clones(
         *head_yaw = *head_yaw_src;
         *vel = *vel_src;
         *look = *look_src;
+        *anims = anims_src.clone();
     }
 }

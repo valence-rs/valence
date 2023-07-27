@@ -364,7 +364,7 @@ impl EntityStatuses {
     }
 }
 
-#[derive(Component, Default, Debug)]
+#[derive(Component, Default, Debug, Copy, Clone)]
 pub struct EntityAnimations(pub u8);
 
 impl EntityAnimations {
