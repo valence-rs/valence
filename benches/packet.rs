@@ -7,14 +7,17 @@ use valence::prelude::*;
 use valence::protocol::array::LengthPrefixedArray;
 use valence::protocol::byte_angle::ByteAngle;
 use valence::protocol::decode::PacketDecoder;
-use valence::protocol::encode::{encode_packet, encode_packet_compressed, PacketEncoder};
+use valence::protocol::encode::PacketEncoder;
 use valence::protocol::var_int::VarInt;
-use valence::text::TextFormat;
+use valence::text::IntoText;
+use valence_core::protocol::encode::{PacketWriter, WritePacket};
 use valence_entity::packet::EntitySpawnS2c;
 use valence_instance::packet::ChunkDataS2c;
 use valence_player_list::packet::PlayerListHeaderS2c;
 
 pub fn packet(c: &mut Criterion) {
+    let mut group = c.benchmark_group("packet");
+
     let mut encoder = PacketEncoder::new();
 
     const BLOCKS_AND_BIOMES: [u8; 2000] = [0x80; 2000];
@@ -58,7 +61,7 @@ pub fn packet(c: &mut Criterion) {
         velocity: [12, 34, 56],
     };
 
-    c.bench_function("encode_chunk_data", |b| {
+    group.bench_function("encode_chunk_data", |b| {
         b.iter(|| {
             let encoder = black_box(&mut encoder);
 
@@ -69,7 +72,7 @@ pub fn packet(c: &mut Criterion) {
         });
     });
 
-    c.bench_function("encode_player_list_header", |b| {
+    group.bench_function("encode_player_list_header", |b| {
         b.iter(|| {
             let encoder = black_box(&mut encoder);
 
@@ -80,7 +83,7 @@ pub fn packet(c: &mut Criterion) {
         });
     });
 
-    c.bench_function("encode_spawn_entity", |b| {
+    group.bench_function("encode_spawn_entity", |b| {
         b.iter(|| {
             let encoder = black_box(&mut encoder);
 
@@ -93,7 +96,7 @@ pub fn packet(c: &mut Criterion) {
 
     encoder.set_compression(Some(256));
 
-    c.bench_function("encode_chunk_data_compressed", |b| {
+    group.bench_function("encode_chunk_data_compressed", |b| {
         b.iter(|| {
             let encoder = black_box(&mut encoder);
 
@@ -104,7 +107,7 @@ pub fn packet(c: &mut Criterion) {
         });
     });
 
-    c.bench_function("encode_player_list_header_compressed", |b| {
+    group.bench_function("encode_player_list_header_compressed", |b| {
         b.iter(|| {
             let encoder = black_box(&mut encoder);
 
@@ -115,7 +118,7 @@ pub fn packet(c: &mut Criterion) {
         });
     });
 
-    c.bench_function("encode_spawn_entity_compressed", |b| {
+    group.bench_function("encode_spawn_entity_compressed", |b| {
         b.iter(|| {
             let encoder = black_box(&mut encoder);
 
@@ -129,9 +132,9 @@ pub fn packet(c: &mut Criterion) {
     let mut decoder = PacketDecoder::new();
     let mut packet_buf = vec![];
 
-    encode_packet(&mut packet_buf, &chunk_data_packet).unwrap();
+    PacketWriter::new(&mut packet_buf, None).write_packet(&chunk_data_packet);
 
-    c.bench_function("decode_chunk_data", |b| {
+    group.bench_function("decode_chunk_data", |b| {
         b.iter(|| {
             let decoder = black_box(&mut decoder);
 
@@ -148,9 +151,9 @@ pub fn packet(c: &mut Criterion) {
     });
 
     packet_buf.clear();
-    encode_packet(&mut packet_buf, &player_list_header_packet).unwrap();
+    PacketWriter::new(&mut packet_buf, None).write_packet(&player_list_header_packet);
 
-    c.bench_function("decode_player_list_header", |b| {
+    group.bench_function("decode_player_list_header", |b| {
         b.iter(|| {
             let decoder = black_box(&mut decoder);
 
@@ -167,9 +170,9 @@ pub fn packet(c: &mut Criterion) {
     });
 
     packet_buf.clear();
-    encode_packet(&mut packet_buf, &spawn_entity_packet).unwrap();
+    PacketWriter::new(&mut packet_buf, None).write_packet(&spawn_entity_packet);
 
-    c.bench_function("decode_entity_spawn", |b| {
+    group.bench_function("decode_entity_spawn", |b| {
         b.iter(|| {
             let decoder = black_box(&mut decoder);
 
@@ -187,12 +190,10 @@ pub fn packet(c: &mut Criterion) {
 
     decoder.set_compression(Some(256));
 
-    let mut scratch = vec![];
-
     packet_buf.clear();
-    encode_packet_compressed(&mut packet_buf, &chunk_data_packet, 256, &mut scratch).unwrap();
+    PacketWriter::new(&mut packet_buf, Some(256)).write_packet(&chunk_data_packet);
 
-    c.bench_function("decode_chunk_data_compressed", |b| {
+    group.bench_function("decode_chunk_data_compressed", |b| {
         b.iter(|| {
             let decoder = black_box(&mut decoder);
 
@@ -209,15 +210,9 @@ pub fn packet(c: &mut Criterion) {
     });
 
     packet_buf.clear();
-    encode_packet_compressed(
-        &mut packet_buf,
-        &player_list_header_packet,
-        256,
-        &mut scratch,
-    )
-    .unwrap();
+    PacketWriter::new(&mut packet_buf, Some(256)).write_packet(&player_list_header_packet);
 
-    c.bench_function("decode_player_list_header_compressed", |b| {
+    group.bench_function("decode_player_list_header_compressed", |b| {
         b.iter(|| {
             let decoder = black_box(&mut decoder);
 
@@ -234,9 +229,9 @@ pub fn packet(c: &mut Criterion) {
     });
 
     packet_buf.clear();
-    encode_packet_compressed(&mut packet_buf, &spawn_entity_packet, 256, &mut scratch).unwrap();
+    PacketWriter::new(&mut packet_buf, Some(256)).write_packet(&spawn_entity_packet);
 
-    c.bench_function("decode_spawn_entity_compressed", |b| {
+    group.bench_function("decode_spawn_entity_compressed", |b| {
         b.iter(|| {
             let decoder = black_box(&mut decoder);
 

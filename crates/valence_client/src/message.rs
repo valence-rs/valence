@@ -4,7 +4,7 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use valence_core::protocol::encode::WritePacket;
 use valence_core::protocol::packet::chat::{ChatMessageC2s, GameMessageS2c};
-use valence_core::text::Text;
+use valence_core::text::IntoText;
 
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 
@@ -15,22 +15,22 @@ pub(super) fn build(app: &mut App) {
 
 pub trait SendMessage {
     /// Sends a system message visible in the chat.
-    fn send_chat_message(&mut self, msg: impl Into<Text>);
+    fn send_chat_message<'a>(&mut self, msg: impl IntoText<'a>);
     /// Displays a message in the player's action bar (text above the hotbar).
-    fn send_action_bar_message(&mut self, msg: impl Into<Text>);
+    fn send_action_bar_message<'a>(&mut self, msg: impl IntoText<'a>);
 }
 
 impl<T: WritePacket> SendMessage for T {
-    fn send_chat_message(&mut self, msg: impl Into<Text>) {
+    fn send_chat_message<'a>(&mut self, msg: impl IntoText<'a>) {
         self.write_packet(&GameMessageS2c {
-            chat: msg.into().into(),
+            chat: msg.into_cow_text(),
             overlay: false,
         });
     }
 
-    fn send_action_bar_message(&mut self, msg: impl Into<Text>) {
+    fn send_action_bar_message<'a>(&mut self, msg: impl IntoText<'a>) {
         self.write_packet(&GameMessageS2c {
-            chat: msg.into().into(),
+            chat: msg.into_cow_text(),
             overlay: true,
         });
     }

@@ -23,6 +23,7 @@
 
 use bevy_app::{PluginGroup, PluginGroupBuilder};
 
+pub mod testing;
 #[cfg(test)]
 mod tests;
 
@@ -57,16 +58,16 @@ pub use {
 /// use valence::prelude::*; // Glob import.
 ///
 /// let mut app = App::new();
-/// app.add_system(|| println!("yippee!"));
+/// app.add_systems(Update, || println!("yippee!"));
 /// // ...
 /// ```
 pub mod prelude {
-    pub use ::uuid::Uuid;
     pub use bevy_app::prelude::*;
     pub use bevy_ecs; // Needed for bevy_ecs macros to function correctly.
     pub use bevy_ecs::prelude::*;
     pub use glam::{DVec2, DVec3, Vec2, Vec3};
     pub use ident::Ident;
+    pub use uuid::Uuid;
     #[cfg(feature = "advancement")]
     pub use valence_advancement::{
         event::AdvancementTabChangeEvent, Advancement, AdvancementBundle, AdvancementClientUpdate,
@@ -85,9 +86,9 @@ pub mod prelude {
     pub use valence_client::interact_entity::{EntityInteraction, InteractEntityEvent};
     pub use valence_client::title::SetTitle as _;
     pub use valence_client::{
-        despawn_disconnected_clients, Client, CompassPos, DeathLocation, HasRespawnScreen,
-        HashedSeed, Ip, IsDebug, IsFlat, IsHardcore, OldView, OldViewDistance, PrevGameMode,
-        Properties, ReducedDebugInfo, Username, View, ViewDistance,
+        despawn_disconnected_clients, Client, DeathLocation, HasRespawnScreen, HashedSeed, Ip,
+        IsDebug, IsFlat, IsHardcore, OldView, OldViewDistance, PrevGameMode, Properties,
+        ReducedDebugInfo, RespawnPosition, Username, View, ViewDistance,
     };
     pub use valence_core::block_pos::BlockPos;
     pub use valence_core::chunk_pos::{ChunkPos, ChunkView};
@@ -98,7 +99,7 @@ pub mod prelude {
     pub use valence_core::ident; // Export the `ident!` macro.
     pub use valence_core::item::{ItemKind, ItemStack};
     pub use valence_core::particle::Particle;
-    pub use valence_core::text::{Color, Text, TextFormat};
+    pub use valence_core::text::{Color, IntoText, Text};
     pub use valence_core::uuid::UniqueId;
     pub use valence_core::{translation_key, CoreSettings, Server};
     pub use valence_dimension::{DimensionType, DimensionTypeRegistry};
@@ -107,7 +108,8 @@ pub mod prelude {
         EntityAnimation, EntityKind, EntityManager, EntityStatus, HeadYaw, Location, Look,
         OldLocation, OldPosition, Position,
     };
-    pub use valence_instance::{Block, BlockMut, BlockRef, Chunk, Instance};
+    pub use valence_instance::chunk::{Chunk, LoadedChunk, UnloadedChunk};
+    pub use valence_instance::{Block, BlockRef, Instance};
     #[cfg(feature = "inventory")]
     pub use valence_inventory::{
         CursorItem, Inventory, InventoryKind, InventoryWindow, InventoryWindowMut, OpenInventory,

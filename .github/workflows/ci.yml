@@ -103,6 +103,9 @@ jobs:
       - name: Run tests
         run: cargo test --workspace ${{ matrix.flags }}--all-features --all-targets
 
+      - name: Run doctests
+        run: cargo test --workspace ${{ matrix.flags }}--all-features --doc
+
       - name: Run valence_nbt tests without preserve_order feature
         run: cargo test -p valence_nbt --all-targets
 

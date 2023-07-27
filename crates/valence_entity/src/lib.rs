@@ -406,7 +406,7 @@ impl EntityAnimations {
 #[derive(Component, Default, Debug)]
 pub struct ObjectData(pub i32);
 
-/// The range of packet bytes for this entity within the cell the entity is
+/// The range of packet bytes for this entity within the chunk the entity is
 /// located in. For internal use only.
 #[derive(Component, Default, Debug)]
 pub struct PacketByteRange(pub Range<usize>);

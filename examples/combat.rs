@@ -42,7 +42,7 @@ fn setup(
 
     for z in -5..5 {
         for x in -5..5 {
-            instance.insert_chunk([x, z], Chunk::default());
+            instance.insert_chunk([x, z], UnloadedChunk::new());
         }
     }
 
@@ -113,9 +113,10 @@ fn handle_combat_events(
         ..
     } in interact_entity.iter()
     {
-        let Ok([mut attacker, mut victim]) = clients.get_many_mut([attacker_client, victim_client]) else {
+        let Ok([mut attacker, mut victim]) = clients.get_many_mut([attacker_client, victim_client])
+        else {
             // Victim or attacker does not exist, or the attacker is attacking itself.
-            continue
+            continue;
         };
 
         if server.current_tick() - victim.state.last_attacked_tick < 10 {

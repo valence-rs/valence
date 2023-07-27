@@ -65,9 +65,7 @@ pub(crate) fn cache_tags_packet(server: Res<Server>, tags: ResMut<TagsRegistry>)
         let tags = tags.into_inner();
         let packet = tags.build_synchronize_tags();
         let mut bytes = vec![];
-        let mut scratch = vec![];
-        let mut writer =
-            PacketWriter::new(&mut bytes, server.compression_threshold(), &mut scratch);
+        let mut writer = PacketWriter::new(&mut bytes, server.compression_threshold());
         writer.write_packet(&packet);
         tags.cached_packet = bytes;
     }
@@ -81,7 +79,7 @@ mod tests {
     #[test]
     fn smoke_test() {
         let mut app = bevy_app::App::new();
-        app.add_plugin(RegistryPlugin);
+        app.add_plugins(RegistryPlugin);
         app.insert_resource(Server::default());
         app.update();
 

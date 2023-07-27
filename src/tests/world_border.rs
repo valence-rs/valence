@@ -7,21 +7,21 @@ use valence_registry::{Entity, Mut};
 use valence_world_border::packet::*;
 use valence_world_border::*;
 
-use super::{create_mock_client, scenario_single_client, MockClientHelper};
+use crate::testing::{create_mock_client, scenario_single_client, MockClientHelper};
 
 #[test]
 fn test_intialize_on_join() {
     let mut app = App::new();
     let (_, instance_ent) = prepare(&mut app);
 
-    let (client, mut client_helper) = create_mock_client();
+    let (client, mut client_helper) = create_mock_client("test");
     let client_ent = app.world.spawn(client).id();
 
     app.world.get_mut::<Location>(client_ent).unwrap().0 = instance_ent;
     app.update();
 
     client_helper
-        .collect_sent()
+        .collect_received()
         .assert_count::<WorldBorderInitializeS2c>(1);
 }
 
@@ -37,7 +37,7 @@ fn test_resizing() {
     });
 
     app.update();
-    let frames = client_helper.collect_sent();
+    let frames = client_helper.collect_received();
     frames.assert_count::<WorldBorderSizeChangedS2c>(1);
 }
 
@@ -53,7 +53,7 @@ fn test_center() {
     center.0 = [10.0, 10.0].into();
 
     app.update();
-    let frames = client_helper.collect_sent();
+    let frames = client_helper.collect_received();
     frames.assert_count::<WorldBorderCenterChangedS2c>(1);
 }
 
@@ -69,7 +69,7 @@ fn test_warn_time() {
     wt.0 = 100;
     app.update();
 
-    let frames = client_helper.collect_sent();
+    let frames = client_helper.collect_received();
     frames.assert_count::<WorldBorderWarningTimeChangedS2c>(1);
 }
 
@@ -85,7 +85,7 @@ fn test_warn_blocks() {
     wb.0 = 100;
     app.update();
 
-    let frames = client_helper.collect_sent();
+    let frames = client_helper.collect_received();
     frames.assert_count::<WorldBorderWarningBlocksChangedS2c>(1);
 }
 
@@ -101,7 +101,7 @@ fn test_portal_tp_boundary() {
     tp.0 = 100;
     app.update();
 
-    let frames = client_helper.collect_sent();
+    let frames = client_helper.collect_received();
     frames.assert_count::<WorldBorderInitializeS2c>(1);
 }
 
@@ -110,7 +110,7 @@ fn prepare(app: &mut App) -> (MockClientHelper, Entity) {
 
     // Process a tick to get past the "on join" logic.
     app.update();
-    client_helper.clear_sent();
+    client_helper.clear_received();
 
     // Get the instance entity.
     let instance_ent = app
@@ -128,6 +128,6 @@ fn prepare(app: &mut App) -> (MockClientHelper, Entity) {
         app.update();
     }
 
-    client_helper.clear_sent();
+    client_helper.clear_received();
     (client_helper, instance_ent)
 }

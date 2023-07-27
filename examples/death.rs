@@ -28,12 +28,16 @@ fn setup(
     dimensions: Res<DimensionTypeRegistry>,
     biomes: Res<BiomeRegistry>,
 ) {
-    for block in [BlockState::GRASS_BLOCK, BlockState::DEEPSLATE] {
+    for block in [
+        BlockState::GRASS_BLOCK,
+        BlockState::DEEPSLATE,
+        BlockState::MAGMA_BLOCK,
+    ] {
         let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
         for z in -5..5 {
             for x in -5..5 {
-                instance.insert_chunk([x, z], Chunk::default());
+                instance.insert_chunk([x, z], UnloadedChunk::new());
             }
         }
 
@@ -48,21 +52,12 @@ fn setup(
 }
 
 fn init_clients(
-    mut clients: Query<
-        (
-            &mut Client,
-            &mut Location,
-            &mut Position,
-            &mut HasRespawnScreen,
-        ),
-        Added<Client>,
-    >,
+    mut clients: Query<(&mut Client, &mut Location, &mut Position), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
 ) {
-    for (mut client, mut loc, mut pos, mut has_respawn_screen) in &mut clients {
+    for (mut client, mut loc, mut pos) in &mut clients {
         loc.0 = instances.iter().next().unwrap();
         pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
-        has_respawn_screen.0 = true;
 
         client.send_chat_message(
             "Welcome to Valence! Sneak to die in the game (but not in real life).".italic(),
@@ -81,15 +76,13 @@ fn squat_and_die(mut clients: Query<&mut Client>, mut events: EventReader<SneakE
 }
 
 fn necromancy(
-    mut clients: Query<(&mut Position, &mut Look, &mut Location)>,
+    mut clients: Query<(&mut Location, &mut RespawnPosition)>,
     mut events: EventReader<RequestRespawnEvent>,
     instances: Query<Entity, With<Instance>>,
 ) {
     for event in events.iter() {
-        if let Ok((mut pos, mut look, mut loc)) = clients.get_mut(event.client) {
-            pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
-            look.yaw = 0.0;
-            look.pitch = 0.0;
+        if let Ok((mut loc, mut spawn_pos)) = clients.get_mut(event.client) {
+            spawn_pos.pos = BlockPos::new(0, SPAWN_Y, 0);
 
             // make the client respawn in another instance
             let idx = instances.iter().position(|i| i == loc.0).unwrap();

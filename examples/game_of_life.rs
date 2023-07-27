@@ -52,7 +52,7 @@ fn setup(
 
     for z in -10..10 {
         for x in -10..10 {
-            instance.insert_chunk([x, z], Chunk::default());
+            instance.insert_chunk([x, z], UnloadedChunk::new());
         }
     }
 

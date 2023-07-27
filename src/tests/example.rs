@@ -9,11 +9,13 @@ use bevy_app::App;
 use glam::DVec3;
 use valence_client::movement::PositionAndOnGroundC2s;
 use valence_client::Client;
+use valence_core::Server;
 use valence_entity::Position;
 use valence_inventory::packet::{InventoryS2c, OpenScreenS2c};
 use valence_inventory::{Inventory, InventoryKind, OpenInventory};
 
-use super::*;
+use crate::testing::scenario_single_client;
+use crate::DefaultPlugins;
 
 /// The server's tick should increment every update.
 #[test]
@@ -63,7 +65,7 @@ fn example_test_open_inventory() {
 
     // Process a tick to get past the "on join" logic.
     app.update();
-    client_helper.clear_sent();
+    client_helper.clear_received();
 
     // Open the inventory.
     let open_inventory = OpenInventory::new(inventory_ent);
@@ -80,7 +82,7 @@ fn example_test_open_inventory() {
         .get::<Client>(client_ent)
         .expect("client not found");
 
-    let sent_packets = client_helper.collect_sent();
+    let sent_packets = client_helper.collect_received();
 
     sent_packets.assert_count::<OpenScreenS2c>(1);
     sent_packets.assert_count::<InventoryS2c>(1);

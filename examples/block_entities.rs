@@ -30,7 +30,7 @@ fn setup(
 
     for z in -5..5 {
         for x in -5..5 {
-            instance.insert_chunk([x, z], Chunk::default());
+            instance.insert_chunk([x, z], UnloadedChunk::new());
         }
     }
 
@@ -44,15 +44,17 @@ fn setup(
         [3, FLOOR_Y + 1, 1],
         BlockState::CHEST.set(PropName::Facing, PropValue::West),
     );
+
     instance.set_block(
         SIGN_POS,
-        Block::with_nbt(
-            BlockState::OAK_SIGN.set(PropName::Rotation, PropValue::_4),
-            compound! {
+        Block {
+            state: BlockState::OAK_SIGN.set(PropName::Rotation, PropValue::_4),
+            nbt: Some(compound! {
                 "Text1" => "Type in chat:".color(Color::RED),
-            },
-        ),
+            }),
+        },
     );
+
     instance.set_block(
         SKULL_POS,
         BlockState::PLAYER_HEAD.set(PropName::Rotation, PropValue::_12),
@@ -86,13 +88,13 @@ fn event_handler(
     } in messages.iter()
     {
         let Ok((username, _, _)) = clients.get(*client) else {
-            continue
+            continue;
         };
 
-        let mut sign = instance.block_mut(SIGN_POS).unwrap();
-        let nbt = sign.nbt_mut().unwrap();
+        let nbt = instance.block_entity_mut(SIGN_POS).unwrap();
+
         nbt.insert("Text2", message.to_string().color(Color::DARK_GREEN));
-        nbt.insert("Text3", format!("~{}", username).italic());
+        nbt.insert("Text3", format!("~{username}").italic());
     }
 
     for InteractBlockEvent {
@@ -104,16 +106,14 @@ fn event_handler(
     {
         if *hand == Hand::Main && *position == SKULL_POS {
             let Ok((_, properties, uuid)) = clients.get(*client) else {
-                continue
+                continue;
             };
 
             let Some(textures) = properties.textures() else {
                 continue;
             };
 
-            let mut skull = instance.block_mut(SKULL_POS).unwrap();
-            let nbt = skull.nbt_mut().unwrap();
-            *nbt = compound! {
+            *instance.block_entity_mut(SKULL_POS).unwrap() = compound! {
                 "SkullOwner" => compound! {
                     "Id" => uuid.0,
                     "Properties" => compound! {

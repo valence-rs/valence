@@ -9,7 +9,10 @@ use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 pub(super) fn build(app: &mut App) {
     app.add_systems(
         PostUpdate,
-        teleport.after(update_view).in_set(UpdateClientsSet),
+        teleport
+            .after(update_view)
+            .before(update_respawn_position)
+            .in_set(UpdateClientsSet),
     )
     .add_systems(EventLoopPreUpdate, handle_teleport_confirmations);
 }
@@ -31,11 +34,12 @@ impl TeleportState {
         Self {
             teleport_id_counter: 0,
             pending_teleports: 0,
-            synced_pos: DVec3::ZERO,
+            // Set initial synced pos and look to NaN so a teleport always happens when first
+            // joining.
+            synced_pos: DVec3::NAN,
             synced_look: Look {
-                // Client starts facing north.
-                yaw: 180.0,
-                pitch: 0.0,
+                yaw: f32::NAN,
+                pitch: f32::NAN,
             },
         }
     }

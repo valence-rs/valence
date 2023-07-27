@@ -18,16 +18,16 @@ use sha2::{Digest, Sha256};
 use tokio::net::{TcpListener, TcpStream};
 use tracing::{error, info, trace, warn};
 use uuid::Uuid;
-use valence_client::is_valid_username;
 use valence_core::property::Property;
 use valence_core::protocol::decode::PacketDecoder;
 use valence_core::protocol::encode::PacketEncoder;
 use valence_core::protocol::raw::RawBytes;
 use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::Decode;
-use valence_core::text::Text;
+use valence_core::text::{Color, IntoText, Text};
 use valence_core::{ident, translation_key, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
+use crate::legacy_ping::try_handle_legacy_ping;
 use crate::packet::{
     HandshakeC2s, HandshakeNextState, LoginCompressionS2c, LoginDisconnectS2c, LoginHelloC2s,
     LoginHelloS2c, LoginKeyC2s, LoginQueryRequestS2c, LoginQueryResponseC2s, LoginSuccessS2c,
@@ -46,6 +46,8 @@ pub(super) async fn do_accept_loop(shared: SharedNetworkState) {
         }
     };
 
+    let timeout = Duration::from_secs(5);
+
     loop {
         match shared.0.connection_sema.clone().acquire_owned().await {
             Ok(permit) => match listener.accept().await {
@@ -53,7 +55,15 @@ pub(super) async fn do_accept_loop(shared: SharedNetworkState) {
                     let shared = shared.clone();
 
                     tokio::spawn(async move {
-                        handle_connection(shared, stream, remote_addr).await;
+                        if let Err(e) = tokio::time::timeout(
+                            timeout,
+                            handle_connection(shared, stream, remote_addr),
+                        )
+                        .await
+                        {
+                            warn!("initial connection timed out: {e}");
+                        }
+
                         drop(permit);
                     });
                 }
@@ -67,23 +77,29 @@ pub(super) async fn do_accept_loop(shared: SharedNetworkState) {
     }
 }
 
-async fn handle_connection(shared: SharedNetworkState, stream: TcpStream, remote_addr: SocketAddr) {
+async fn handle_connection(
+    shared: SharedNetworkState,
+    mut stream: TcpStream,
+    remote_addr: SocketAddr,
+) {
     trace!("handling connection");
 
     if let Err(e) = stream.set_nodelay(true) {
         error!("failed to set TCP_NODELAY: {e}");
     }
 
-    let conn = PacketIo::new(
-        stream,
-        PacketEncoder::new(),
-        PacketDecoder::new(),
-        Duration::from_secs(5),
-    );
+    match try_handle_legacy_ping(&shared, &mut stream, remote_addr).await {
+        Ok(true) => return, // Legacy ping succeeded.
+        Ok(false) => {}     // No legacy ping.
+        Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => {}
+        Err(e) => {
+            warn!("legacy ping ended with error: {e:#}");
+        }
+    }
 
-    // TODO: peek stream for 0xFE legacy ping
+    let io = PacketIo::new(stream, PacketEncoder::new(), PacketDecoder::new());
 
-    if let Err(e) = handle_handshake(shared, conn, remote_addr).await {
+    if let Err(e) = handle_handshake(shared, io, remote_addr).await {
         // EOF can happen if the client disconnects while joining, which isn't
         // very erroneous.
         if let Some(e) = e.downcast_ref::<io::Error>() {
@@ -95,10 +111,16 @@ async fn handle_connection(shared: SharedNetworkState, stream: TcpStream, remote
     }
 }
 
-struct HandshakeData {
-    protocol_version: i32,
-    server_address: String,
-    next_state: HandshakeNextState,
+/// Basic information about a client, provided at the beginning of the
+/// connection
+#[derive(Default, Debug)]
+pub struct HandshakeData {
+    /// The protocol version of the client.
+    pub protocol_version: i32,
+    /// The address that the client used to connect.
+    pub server_address: String,
+    /// The port that the client used to connect.
+    pub server_port: u16,
 }
 
 async fn handle_handshake(
@@ -108,10 +130,12 @@ async fn handle_handshake(
 ) -> anyhow::Result<()> {
     let handshake = io.recv_packet::<HandshakeC2s>().await?;
 
+    let next_state = handshake.next_state;
+
     let handshake = HandshakeData {
         protocol_version: handshake.protocol_version.0,
         server_address: handshake.server_address.to_owned(),
-        next_state: handshake.next_state,
+        server_port: handshake.server_port,
     };
 
     ensure!(
@@ -120,7 +144,7 @@ async fn handle_handshake(
         "handshake server address is too long"
     );
 
-    match handshake.next_state {
+    match next_state {
         HandshakeNextState::Status => handle_status(shared, io, remote_addr, handshake)
             .await
             .context("error handling status"),
@@ -159,20 +183,38 @@ async fn handle_status(
         .0
         .callbacks
         .inner
-        .server_list_ping(&shared, remote_addr, handshake.protocol_version)
+        .server_list_ping(&shared, remote_addr, &handshake)
         .await
     {
         ServerListPing::Respond {
             online_players,
             max_players,
             player_sample,
-            description,
+            mut description,
             favicon_png,
+            version_name,
+            protocol,
         } => {
+            // For pre-1.16 clients, replace all webcolors with their closest
+            // normal colors Because webcolor support was only
+            // added at 1.16.
+            if handshake.protocol_version < 735 {
+                fn fallback_webcolors(txt: &mut Text) {
+                    if let Some(Color::Rgb(ref color)) = txt.color {
+                        txt.color = Some(Color::Named(color.to_named_lossy()));
+                    }
+                    for child in &mut txt.extra {
+                        fallback_webcolors(child);
+                    }
+                }
+
+                fallback_webcolors(&mut description);
+            }
+
             let mut json = json!({
                 "version": {
-                    "name": MINECRAFT_VERSION,
-                    "protocol": PROTOCOL_VERSION
+                    "name": version_name,
+                    "protocol": protocol,
                 },
                 "players": {
                     "online": online_players,
@@ -206,47 +248,52 @@ async fn handle_status(
 /// Handle the login process and return the new client's data if successful.
 async fn handle_login(
     shared: &SharedNetworkState,
-    conn: &mut PacketIo,
+    io: &mut PacketIo,
     remote_addr: SocketAddr,
     handshake: HandshakeData,
 ) -> anyhow::Result<Option<(NewClientInfo, CleanupOnDrop)>> {
     if handshake.protocol_version != PROTOCOL_VERSION {
-        // TODO: send translated disconnect msg.
+        io.send_packet(&LoginDisconnectS2c {
+            // TODO: use correct translation key.
+            reason: format!("Mismatched Minecraft version (server is on {MINECRAFT_VERSION})")
+                .color(Color::RED)
+                .into(),
+        })
+        .await?;
+
         return Ok(None);
     }
 
     let LoginHelloC2s {
         username,
         profile_id: _, // TODO
-    } = conn.recv_packet().await?;
-
-    ensure!(is_valid_username(username), "invalid username");
+    } = io.recv_packet().await?;
 
     let username = username.to_owned();
 
     let info = match shared.connection_mode() {
-        ConnectionMode::Online { .. } => login_online(shared, conn, remote_addr, username).await?,
+        ConnectionMode::Online { .. } => login_online(shared, io, remote_addr, username).await?,
         ConnectionMode::Offline => login_offline(remote_addr, username)?,
         ConnectionMode::BungeeCord => {
             login_bungeecord(remote_addr, &handshake.server_address, username)?
         }
-        ConnectionMode::Velocity { secret } => login_velocity(conn, username, secret).await?,
+        ConnectionMode::Velocity { secret } => login_velocity(io, username, secret).await?,
     };
 
     if let Some(threshold) = shared.0.compression_threshold {
-        conn.send_packet(&LoginCompressionS2c {
+        io.send_packet(&LoginCompressionS2c {
             threshold: VarInt(threshold as i32),
         })
         .await?;
 
-        conn.set_compression(Some(threshold));
+        io.set_compression(Some(threshold));
     }
 
     let cleanup = match shared.0.callbacks.inner.login(shared, &info).await {
         Ok(f) => CleanupOnDrop(Some(f)),
         Err(reason) => {
             info!("disconnect at login: \"{reason}\"");
-            conn.send_packet(&LoginDisconnectS2c {
+            io.send_packet(&LoginDisconnectS2c {
                 reason: reason.into(),
             })
             .await?;
@@ -254,7 +301,7 @@ async fn handle_login(
         }
     };
 
-    conn.send_packet(&LoginSuccessS2c {
+    io.send_packet(&LoginSuccessS2c {
         uuid: info.uuid,
         username: &info.username,
         properties: Default::default(),
@@ -267,13 +314,13 @@ async fn handle_login(
 /// Login procedure for online mode.
 async fn login_online(
     shared: &SharedNetworkState,
-    conn: &mut PacketIo,
+    io: &mut PacketIo,
     remote_addr: SocketAddr,
     username: String,
 ) -> anyhow::Result<NewClientInfo> {
     let my_verify_token: [u8; 16] = rand::random();
 
-    conn.send_packet(&LoginHelloS2c {
+    io.send_packet(&LoginHelloS2c {
         server_id: "", // Always empty
         public_key: &shared.0.public_key_der,
         verify_token: &my_verify_token,
@@ -283,7 +330,7 @@ async fn login_online(
     let LoginKeyC2s {
         shared_secret,
         verify_token: encrypted_verify_token,
-    } = conn.recv_packet().await?;
+    } = io.recv_packet().await?;
 
     let shared_secret = shared
         .0
@@ -307,7 +354,7 @@ async fn login_online(
         .try_into()
         .context("shared secret has the wrong length")?;
 
-    conn.enable_encryption(&crypt_key);
+    io.enable_encryption(&crypt_key);
 
     let hash = Sha1::new()
         .chain(&shared_secret)
@@ -335,7 +382,7 @@ async fn login_online(
                 translation_key::MULTIPLAYER_DISCONNECT_UNVERIFIED_USERNAME,
                 [],
             );
-            conn.send_packet(&LoginDisconnectS2c {
+            io.send_packet(&LoginDisconnectS2c {
                 reason: reason.into(),
             })
             .await?;
@@ -354,11 +401,6 @@ async fn login_online(
     }
 
     let profile: GameProfile = resp.json().await.context("parsing game profile")?;
-
-    ensure!(
-        is_valid_username(&profile.name),
-        "invalid game profile username"
-    );
 
     ensure!(profile.name == username, "usernames do not match");
 

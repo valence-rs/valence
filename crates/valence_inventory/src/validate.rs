@@ -206,9 +206,10 @@ pub(super) fn validate_click_slot_packet(
                 .iter()
                 .filter_map(|s| s.item.as_ref())
                 .next()
-                .map(|s| s.item) else {
-                    bail!("shift click must move an item");
-                };
+                .map(|s| s.item)
+            else {
+                bail!("shift click must move an item");
+            };
 
             let Some(old_slot_kind) = window.slot(packet.slot_idx as u16).map(|s| s.item) else {
                 bail!("shift click must move an item");

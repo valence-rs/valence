@@ -12,10 +12,10 @@ use tracing::info;
 use valence::prelude::*;
 
 const SPAWN_POS: DVec3 = DVec3::new(0.0, 200.0, 0.0);
-const SECTION_COUNT: usize = 24;
+const HEIGHT: u32 = 384;
 
 struct ChunkWorkerState {
-    sender: Sender<(ChunkPos, Chunk)>,
+    sender: Sender<(ChunkPos, UnloadedChunk)>,
     receiver: Receiver<ChunkPos>,
     // Noise functions
     density: SuperSimplex,
@@ -31,7 +31,7 @@ struct GameState {
     /// been sent to the thread pool.
     pending: HashMap<ChunkPos, Option<Priority>>,
     sender: Sender<ChunkPos>,
-    receiver: Receiver<(ChunkPos, Chunk)>,
+    receiver: Receiver<(ChunkPos, UnloadedChunk)>,
 }
 
 /// The order in which chunks should be processed by the thread pool. Smaller
@@ -195,7 +195,7 @@ fn send_recv_chunks(mut instances: Query<&mut Instance>, state: ResMut<GameState
 
 fn chunk_worker(state: Arc<ChunkWorkerState>) {
     while let Ok(pos) = state.receiver.recv() {
-        let mut chunk = Chunk::new(SECTION_COUNT);
+        let mut chunk = UnloadedChunk::with_height(HEIGHT);
 
         for offset_z in 0..16 {
             for offset_x in 0..16 {
@@ -206,7 +206,7 @@ fn chunk_worker(state: Arc<ChunkWorkerState>) {
                 let mut depth = 0;
 
                 // Fill in the terrain column.
-                for y in (0..chunk.section_count() as i32 * 16).rev() {
+                for y in (0..chunk.height() as i32).rev() {
                     const WATER_HEIGHT: i32 = 55;
 
                     let p = DVec3::new(x as f64, y as f64, z as f64);
@@ -251,11 +251,11 @@ fn chunk_worker(state: Arc<ChunkWorkerState>) {
                         }
                     };
 
-                    chunk.set_block_state(offset_x, y as usize, offset_z, block);
+                    chunk.set_block_state(offset_x, y as u32, offset_z, block);
                 }
 
                 // Add grass on top of grass blocks.
-                for y in (0..chunk.section_count() * 16).rev() {
+                for y in (0..chunk.height()).rev() {
                     if chunk.block_state(offset_x, y, offset_z).is_air()
                         && chunk.block_state(offset_x, y - 1, offset_z) == BlockState::GRASS_BLOCK
                     {
