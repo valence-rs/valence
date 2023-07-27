@@ -1,9 +1,16 @@
 #![allow(clippy::type_complexity)]
 
+use std::collections::HashMap;
+
 use valence::inventory::HeldItem;
 use valence::prelude::*;
 use valence_client::interact_block::InteractBlockEvent;
 use valence_client::message::SendMessage;
+use valence_entity::cow::CowEntityBundle;
+use valence_entity::entity::Flags;
+use valence_entity::pig::PigEntityBundle;
+use valence_entity::player::PlayerEntityBundle;
+use valence_entity::EntityId;
 
 const ARENA_Y: i32 = 64;
 const ARENA_MID_WIDTH: i32 = 2;
@@ -18,6 +25,10 @@ const SPAWN_BOX_HEIGHT: i32 = 4;
 
 pub fn main() {
     App::new()
+        .insert_resource(NetworkSettings {
+            connection_mode: ConnectionMode::Offline,
+            ..Default::default()
+        })
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
         .add_systems(
@@ -104,7 +115,30 @@ fn setup(
     commands.insert_resource(FlagManager {
         red: None,
         blue: None,
-    })
+    });
+
+    let ctf_team_layers = CtfLayers::init(&mut commands, &server);
+
+    // add some debug entities to the ctf entity layers
+    let mut flags = Flags::default();
+    flags.set_glowing(true);
+    let mut pig = commands.spawn(PigEntityBundle {
+        layer: EntityLayerId(ctf_team_layers.friendly_layers[&Team::Red]),
+        position: Position([-30.0, 66.0, 0.0].into()),
+        entity_flags: flags.clone(),
+        ..Default::default()
+    });
+    pig.insert(Team::Red);
+
+    let mut cow = commands.spawn(CowEntityBundle {
+        layer: EntityLayerId(ctf_team_layers.friendly_layers[&Team::Blue]),
+        position: Position([30.0, 66.0, 0.0].into()),
+        entity_flags: flags,
+        ..Default::default()
+    });
+    cow.insert(Team::Blue);
+
+    commands.insert_resource(ctf_team_layers);
 }
 
 /// Build a flag at the given position. `pos` should be the position of the
@@ -270,7 +304,7 @@ fn init_clients(
         ),
         Added<Client>,
     >,
-    layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
+    main_layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
 ) {
     for (
         mut client,
@@ -281,7 +315,7 @@ fn init_clients(
         mut game_mode,
     ) in &mut clients
     {
-        let layer = layers.single();
+        let layer = main_layers.single();
 
         layer_id.0 = layer;
         visible_chunk_layer.0 = layer;
@@ -289,7 +323,9 @@ fn init_clients(
         pos.set(SPAWN_POS);
         *game_mode = GameMode::Adventure;
 
-        client.send_chat_message("Welcome to Valence! Select a team.".italic());
+        client.send_chat_message(
+            "Welcome to Valence! Select a team by jumping in team's portal.".italic(),
+        );
     }
 }
 
@@ -317,6 +353,10 @@ impl Team {
             Team::Red => "RED".color(Color::RED).bold(),
             Team::Blue => "BLUE".color(Color::BLUE).bold(),
         }
+    }
+
+    pub fn iter() -> impl Iterator<Item = Self> {
+        [Team::Red, Team::Blue].iter().copied()
     }
 }
 
@@ -421,12 +461,24 @@ struct Portals {
 }
 
 fn do_team_selector_portals(
-    mut players: Query<(Entity, &mut Position, &mut GameMode, &mut Client), Without<Team>>,
+    mut players: Query<
+        (
+            Entity,
+            &mut Position,
+            &mut GameMode,
+            &mut Client,
+            &mut VisibleEntityLayers,
+            &UniqueId,
+        ),
+        Without<Team>,
+    >,
     portals: Res<Portals>,
     mut commands: Commands,
+    ctf_layers: Res<CtfLayers>,
+    mut player_list: ResMut<PlayerList>,
 ) {
     for player in players.iter_mut() {
-        let (player, mut pos, mut game_mode, mut client) = player;
+        let (player, mut pos, mut game_mode, mut client, mut ent_layers, unique_id) = player;
         if pos.0.y < SPAWN_BOX[1] as f64 - 5.0 {
             pos.0 = SPAWN_POS.into();
             continue;
@@ -446,6 +498,20 @@ fn do_team_selector_portals(
             pos.0 = team.spawn_pos();
             let chat_text: Text = "You are on team ".into_text() + team.team_text() + "!";
             client.send_chat_message(chat_text);
+
+            let friendly_layer = ctf_layers.friendly_layers[&team];
+            ent_layers.as_mut().0.insert(friendly_layer);
+
+            // TODO: Copy the player entity to the friendly layer, and make them glow.
+            let mut flags = Flags::default();
+            flags.set_glowing(true);
+            let mut player_glowing = commands.spawn(PlayerEntityBundle {
+                layer: EntityLayerId(friendly_layer),
+                uuid: *unique_id,
+                entity_flags: flags,
+                position: pos.clone(),
+                ..Default::default()
+            });
         }
     }
 }
@@ -590,5 +656,28 @@ fn visualize_triggers(globals: Res<CtfGlobals>, mut layers: Query<&mut ChunkLaye
     for mut layer in layers.iter_mut() {
         vis_trigger(&globals.red_capture_trigger, &mut layer);
         vis_trigger(&globals.blue_capture_trigger, &mut layer);
+    }
+}
+
+/// Keeps track of the entity layers per team.
+#[derive(Debug, Resource)]
+struct CtfLayers {
+    /// Maps a team to the entity layer that contains how friendly players
+    /// should be viewed.
+    ///
+    /// This is used to make friendly players glow.
+    pub friendly_layers: HashMap<Team, Entity>,
+}
+
+impl CtfLayers {
+    pub fn init(commands: &mut Commands, server: &Server) -> Self {
+        let mut friendly_layers = HashMap::new();
+
+        for team in Team::iter() {
+            let friendly_layer = commands.spawn((EntityLayer::new(server), team)).id();
+            friendly_layers.insert(team, friendly_layer);
+        }
+
+        Self { friendly_layers }
     }
 }
