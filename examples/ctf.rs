@@ -2,16 +2,20 @@
 
 use std::collections::HashMap;
 
+use bevy_ecs::query::WorldQuery;
+use glam::Vec3Swizzles;
+use tracing::debug;
+use valence::entity::EntityStatuses;
 use valence::inventory::HeldItem;
 use valence::prelude::*;
 use valence_client::interact_block::InteractBlockEvent;
 use valence_client::message::SendMessage;
 use valence_entity::cow::CowEntityBundle;
 use valence_entity::entity::Flags;
+use valence_entity::living::Health;
 use valence_entity::pig::PigEntityBundle;
 use valence_entity::player::PlayerEntityBundle;
-use valence_entity::tracked_data::TrackedData;
-use valence_entity::{EntityAnimations, EntityId, Velocity};
+use valence_entity::{EntityAnimations, Velocity};
 
 const ARENA_Y: i32 = 64;
 const ARENA_MID_WIDTH: i32 = 2;
@@ -32,6 +36,7 @@ pub fn main() {
         })
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
+        .add_systems(EventLoopUpdate, handle_combat_events)
         .add_systems(
             Update,
             (
@@ -44,6 +49,7 @@ pub fn main() {
                 do_flag_capturing,
                 // visualize_triggers,
                 update_clones,
+                teleport_oob_clients,
             ),
         )
         .run();
@@ -303,6 +309,7 @@ fn init_clients(
             &mut VisibleEntityLayers,
             &mut Position,
             &mut GameMode,
+            &mut Health,
         ),
         Added<Client>,
     >,
@@ -315,6 +322,7 @@ fn init_clients(
         mut visible_entity_layers,
         mut pos,
         mut game_mode,
+        mut health,
     ) in &mut clients
     {
         let layer = main_layers.single();
@@ -324,6 +332,7 @@ fn init_clients(
         visible_entity_layers.0.insert(layer);
         pos.set(SPAWN_POS);
         *game_mode = GameMode::Adventure;
+        health.0 = 20.0;
 
         client.send_chat_message(
             "Welcome to Valence! Select a team by jumping in team's portal.".italic(),
@@ -496,7 +505,12 @@ fn do_team_selector_portals(
 
         if let Some(team) = team {
             *game_mode = GameMode::Survival;
-            commands.entity(player).insert(team);
+            let mut inventory = Inventory::new(InventoryKind::Player);
+            inventory.set_slot(36, Some(ItemStack::new(ItemKind::WoodenSword, 1, None)));
+            let combat_state = CombatState::default();
+            commands
+                .entity(player)
+                .insert((team, inventory, combat_state));
             pos.0 = team.spawn_pos();
             let chat_text: Text = "You are on team ".into_text() + team.team_text() + "!";
             client.send_chat_message(chat_text);
@@ -743,5 +757,116 @@ fn update_clones(
         *vel = *vel_src;
         *look = *look_src;
         *anims = anims_src.clone();
+    }
+}
+
+/// Attached to every client.
+#[derive(Component, Default)]
+struct CombatState {
+    /// The tick the client was last attacked.
+    last_attacked_tick: i64,
+    has_bonus_knockback: bool,
+}
+
+#[derive(WorldQuery)]
+#[world_query(mutable)]
+struct CombatQuery {
+    client: &'static mut Client,
+    pos: &'static Position,
+    state: &'static mut CombatState,
+    statuses: &'static mut EntityStatuses,
+    health: &'static mut Health,
+    inventory: &'static Inventory,
+    held_item: &'static HeldItem,
+    team: &'static Team,
+}
+
+fn handle_combat_events(
+    server: Res<Server>,
+    mut clients: Query<CombatQuery>,
+    mut sprinting: EventReader<SprintEvent>,
+    mut interact_entity: EventReader<InteractEntityEvent>,
+    clones: Query<&ClonedEntity>,
+) {
+    for &SprintEvent { client, state } in sprinting.iter() {
+        if let Ok(mut client) = clients.get_mut(client) {
+            client.state.has_bonus_knockback = state == SprintState::Start;
+        }
+    }
+
+    for &InteractEntityEvent {
+        client: attacker_client,
+        entity: victim_client,
+        ..
+    } in interact_entity.iter()
+    {
+        let true_victim_ent = clones
+            .get(victim_client)
+            .map(|cloned| cloned.0)
+            .unwrap_or(victim_client);
+        let Ok([mut attacker, mut victim]) = clients.get_many_mut([attacker_client, true_victim_ent])
+        else {
+            debug!("Failed to get clients for combat event");
+            // Victim or attacker does not exist, or the attacker is attacking itself.
+            continue;
+        };
+
+        if attacker.team == victim.team {
+            // Attacker and victim are on the same team.
+            continue;
+        }
+
+        if server.current_tick() - victim.state.last_attacked_tick < 10 {
+            // Victim is still on attack cooldown.
+            continue;
+        }
+
+        victim.state.last_attacked_tick = server.current_tick();
+
+        let victim_pos = victim.pos.0.xz();
+        let attacker_pos = attacker.pos.0.xz();
+
+        let dir = (victim_pos - attacker_pos).normalize().as_vec2();
+
+        let knockback_xz = if attacker.state.has_bonus_knockback {
+            18.0
+        } else {
+            8.0
+        };
+        let knockback_y = if attacker.state.has_bonus_knockback {
+            8.432
+        } else {
+            6.432
+        };
+
+        victim
+            .client
+            .set_velocity([dir.x * knockback_xz, knockback_y, dir.y * knockback_xz]);
+
+        attacker.state.has_bonus_knockback = false;
+
+        victim.client.trigger_status(EntityStatus::PlayAttackSound);
+        victim.statuses.trigger(EntityStatus::PlayAttackSound);
+
+        let damage = if let Some(item) = attacker.inventory.slot(attacker.held_item.slot()) {
+            match item.item {
+                ItemKind::WoodenSword => 4.0,
+                ItemKind::StoneSword => 5.0,
+                ItemKind::IronSword => 6.0,
+                ItemKind::DiamondSword => 7.0,
+                _ => 1.0,
+            }
+        } else {
+            1.0
+        };
+        victim.health.0 -= damage;
+    }
+}
+
+fn teleport_oob_clients(mut clients: Query<(&mut Position, &Team), With<Client>>) {
+    for (mut pos, team) in &mut clients {
+        if pos.0.y < 0.0 {
+            pos.set(team.spawn_pos());
+        }
     }
 }
