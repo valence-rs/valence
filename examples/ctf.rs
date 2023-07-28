@@ -29,6 +29,7 @@ const SPAWN_POS: [f64; 3] = [
 ];
 const SPAWN_BOX_WIDTH: i32 = 5;
 const SPAWN_BOX_HEIGHT: i32 = 4;
+const PLAYER_MAX_HEALTH: f32 = 20.0;
 
 pub fn main() {
     App::new()
@@ -389,7 +390,7 @@ fn init_clients(
         visible_entity_layers.0.insert(layer);
         pos.set(SPAWN_POS);
         *game_mode = GameMode::Adventure;
-        health.0 = 20.0;
+        health.0 = PLAYER_MAX_HEALTH;
 
         client.send_chat_message(
             "Welcome to Valence! Select a team by jumping in team's portal.".italic(),
@@ -957,7 +958,7 @@ fn necromancy(
             clients.get_mut(event.client)
         {
             respawn_pos.pos = BlockPos::from_pos(team.spawn_pos());
-            health.0 = 20.0;
+            health.0 = PLAYER_MAX_HEALTH;
 
             let main_layer = layers.single();
 
