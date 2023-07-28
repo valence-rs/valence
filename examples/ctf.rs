@@ -835,57 +835,38 @@ impl CtfLayers {
 #[derive(Debug, Component)]
 struct ClonedEntity(Entity);
 
+#[derive(Debug, WorldQuery)]
+#[world_query(mutable)]
+struct CloneQuery {
+    position: &'static mut Position,
+    head_yaw: &'static mut HeadYaw,
+    velocity: &'static mut Velocity,
+    look: &'static mut Look,
+    animations: &'static mut EntityAnimations,
+    on_ground: &'static mut OnGround,
+    statuses: &'static mut EntityStatuses,
+}
+
 fn update_clones(
-    ents: Query<
-        (
-            &Position,
-            &HeadYaw,
-            &Velocity,
-            &Look,
-            &EntityAnimations,
-            &OnGround,
-            &EntityStatuses,
-        ),
-        Without<ClonedEntity>,
-    >,
-    mut clone_ents: Query<(
-        &mut Position,
-        &mut HeadYaw,
-        &mut Velocity,
-        &mut Look,
-        &mut EntityAnimations,
-        &mut OnGround,
-        &mut EntityStatuses,
-        &ClonedEntity,
-        Entity,
-    )>,
+    ents: Query<CloneQueryReadOnly, Without<ClonedEntity>>,
+    mut clone_ents: Query<(CloneQuery, &ClonedEntity, Entity)>,
     mut commands: Commands,
 ) {
     for clone in clone_ents.iter_mut() {
-        let (
-            mut pos,
-            mut head_yaw,
-            mut vel,
-            mut look,
-            mut anims,
-            mut on_ground,
-            mut statuses,
-            cloned_from,
-            ent,
-        ) = clone;
-        let Ok((pos_src, head_yaw_src, vel_src, look_src, anims_src, on_ground_src, statuses_src)) = ents
+        let (mut clone, cloned_from, ent) = clone;
+        let Ok(src) = ents
             .get(cloned_from.0) else {
                 commands.entity(ent).insert(Despawned);
                 return;
             };
 
-        *pos = *pos_src;
-        *head_yaw = *head_yaw_src;
-        *vel = *vel_src;
-        *look = *look_src;
-        *anims = anims_src.clone();
-        *on_ground = *on_ground_src;
-        *statuses = *statuses_src;
+        *clone.position = *src.position;
+        *clone.head_yaw = *src.head_yaw;
+        *clone.velocity = *src.velocity;
+        *clone.look = *src.look;
+        *clone.animations = src.animations.clone();
+        *clone.on_ground = *src.on_ground;
+        *clone.statuses = *src.statuses;
     }
 }
 
