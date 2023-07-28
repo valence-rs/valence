@@ -430,7 +430,7 @@ impl Team {
 }
 
 fn digging(
-    mut clients: Query<(&GameMode, &Team, Entity, &mut Client)>,
+    mut clients: Query<(&GameMode, &Team, Entity, &mut Client, &mut Inventory)>,
     mut layers: Query<&mut ChunkLayer>,
     mut events: EventReader<DiggingEvent>,
     mut commands: Commands,
@@ -440,7 +440,7 @@ fn digging(
     let mut layer = layers.single_mut();
 
     for event in events.iter() {
-        let Ok((game_mode, team, ent, mut client)) = clients.get_mut(event.client) else {
+        let Ok((game_mode, team, ent, mut client, mut inv)) = clients.get_mut(event.client) else {
             continue;
         };
 
@@ -476,7 +476,22 @@ fn digging(
                 continue;
             }
 
-            layer.set_block(event.position, BlockState::AIR);
+            let prev = layer.set_block(event.position, BlockState::AIR);
+
+            if let Some(prev) = prev {
+                let kind: ItemKind = prev.state.to_kind().to_item_kind();
+                if let Some(slot) = inv.first_slot_with_item_in(kind, 64, 9..45) {
+                    let count = inv.slot(slot).unwrap().count();
+                    inv.set_slot_amount(slot, count + 1);
+                } else {
+                    let stack = ItemStack::new(kind, 1, None);
+                    if let Some(empty_slot) = inv.first_empty_slot_in(9..45) {
+                        inv.set_slot(empty_slot, Some(stack));
+                    } else {
+                        debug!("No empty slot to give item to player: {:?}", kind);
+                    }
+                }
+            }
         }
     }
 }
