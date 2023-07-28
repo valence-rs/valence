@@ -62,6 +62,7 @@ clap.workspace = true
 criterion.workspace = true
 flume.workspace = true
 noise.workspace = true              # For the terrain example.
+serde_json.workspace = true
 tracing.workspace = true
 
 [dev-dependencies.reqwest]

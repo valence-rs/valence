@@ -7,6 +7,7 @@ use glam::Vec3Swizzles;
 use tracing::debug;
 use valence::entity::EntityStatuses;
 use valence::inventory::HeldItem;
+use valence::nbt::{compound, List};
 use valence::prelude::*;
 use valence_client::interact_block::InteractBlockEvent;
 use valence_client::message::SendMessage;
@@ -300,6 +301,60 @@ fn build_spawn_box(layer: &mut LayerBundle, pos: impl Into<BlockPos>, commands: 
         .set_block(portals.blue.a - BlockPos::new(0, 1, 0), BlockState::BARRIER);
 
     commands.insert_resource(portals);
+
+    // build instruction signs
+
+    let sign_pos = pos + BlockPos::from([0, 2, SPAWN_BOX_WIDTH - 1]);
+    layer.chunk.set_block(
+        sign_pos,
+        Block {
+            state: BlockState::OAK_WALL_SIGN.set(PropName::Rotation, PropValue::_3),
+            nbt: Some(compound! {
+                "front_text" => compound! {
+                    "messages" => List::String(vec![
+                        serde_json::to_string(&"Capture".color(Color::YELLOW).bold()).unwrap(),
+                        serde_json::to_string(&"the".color(Color::YELLOW).bold()).unwrap(),
+                        serde_json::to_string(&"Flag!".color(Color::YELLOW).bold()).unwrap(),
+                        serde_json::to_string(&"Select a Team".color(Color::WHITE).italic()).unwrap(),
+                    ])
+                },
+            }),
+        },
+    );
+
+    layer.chunk.set_block(
+        sign_pos + BlockPos::from([-1, 0, 0]),
+        Block {
+            state: BlockState::OAK_WALL_SIGN.set(PropName::Rotation, PropValue::_3),
+            nbt: Some(compound! {
+                "front_text" => compound! {
+                    "messages" => List::String(vec![
+                        serde_json::to_string(&"".into_text()).unwrap(),
+                        serde_json::to_string(&("Join ".bold().color(Color::WHITE) + Team::Red.team_text())).unwrap(),
+                        serde_json::to_string(&"=>".bold().color(Color::WHITE)).unwrap(),
+                        serde_json::to_string(&"".into_text()).unwrap(),
+                    ])
+                },
+            }),
+        },
+    );
+
+    layer.chunk.set_block(
+        sign_pos + BlockPos::from([1, 0, 0]),
+        Block {
+            state: BlockState::OAK_WALL_SIGN.set(PropName::Rotation, PropValue::_3),
+            nbt: Some(compound! {
+                "front_text" => compound! {
+                    "messages" => List::String(vec![
+                        serde_json::to_string(&"".into_text()).unwrap(),
+                        serde_json::to_string(&("Join ".bold().color(Color::WHITE) + Team::Blue.team_text())).unwrap(),
+                        serde_json::to_string(&"<=".bold().color(Color::WHITE)).unwrap(),
+                        serde_json::to_string(&"".into_text()).unwrap(),
+                    ])
+                },
+            }),
+        },
+    );
 }
 
 fn init_clients(
@@ -688,6 +743,8 @@ fn do_flag_capturing(
     }
 }
 
+#[allow(dead_code)]
+/// Visualizes the trigger areas, for debugging.
 fn visualize_triggers(globals: Res<CtfGlobals>, mut layers: Query<&mut ChunkLayer>) {
     fn vis_trigger(trigger: &TriggerArea, layer: &mut ChunkLayer) {
         for pos in trigger.iter_block_pos() {
