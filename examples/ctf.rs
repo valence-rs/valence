@@ -393,7 +393,7 @@ fn init_clients(
         health.0 = PLAYER_MAX_HEALTH;
 
         client.send_chat_message(
-            "Welcome to Valence! Select a team by jumping in team's portal.".italic(),
+            "Welcome to Valence! Select a team by jumping in the team's portal.".italic(),
         );
     }
 }
@@ -549,6 +549,8 @@ fn do_team_selector_portals(
         (
             Entity,
             &mut Position,
+            &mut Look,
+            &mut HeadYaw,
             &mut GameMode,
             &mut Client,
             &mut VisibleEntityLayers,
@@ -562,7 +564,16 @@ fn do_team_selector_portals(
     main_layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
 ) {
     for player in players.iter_mut() {
-        let (player, mut pos, mut game_mode, mut client, mut ent_layers, unique_id) = player;
+        let (
+            player,
+            mut pos,
+            mut look,
+            mut head_yaw,
+            mut game_mode,
+            mut client,
+            mut ent_layers,
+            unique_id,
+        ) = player;
         if pos.0.y < SPAWN_BOX[1] as f64 - 5.0 {
             pos.0 = SPAWN_POS.into();
             continue;
@@ -596,6 +607,13 @@ fn do_team_selector_portals(
                 .entity(player)
                 .insert((team, inventory, combat_state));
             pos.0 = team.spawn_pos();
+            let yaw = match team {
+                Team::Red => -90.0,
+                Team::Blue => 90.0,
+            };
+            look.yaw = yaw;
+            look.pitch = 0.0;
+            head_yaw.0 = yaw;
             let chat_text: Text = "You are on team ".into_text() + team.team_text() + "!";
             client.send_chat_message(chat_text);
 
