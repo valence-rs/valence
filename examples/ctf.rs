@@ -136,7 +136,7 @@ fn setup(
     flags.set_glowing(true);
     let mut pig = commands.spawn(PigEntityBundle {
         layer: EntityLayerId(ctf_team_layers.friendly_layers[&Team::Red]),
-        position: Position([-30.0, 66.0, 0.0].into()),
+        position: Position([-30.0, 65.0, 2.0].into()),
         entity_flags: flags.clone(),
         ..Default::default()
     });
@@ -144,7 +144,7 @@ fn setup(
 
     let mut cow = commands.spawn(CowEntityBundle {
         layer: EntityLayerId(ctf_team_layers.friendly_layers[&Team::Blue]),
-        position: Position([30.0, 66.0, 0.0].into()),
+        position: Position([30.0, 65.0, 2.0].into()),
         entity_flags: flags,
         ..Default::default()
     });
