@@ -844,6 +844,7 @@ fn update_clones(
             &Look,
             &EntityAnimations,
             &OnGround,
+            &EntityStatuses,
         ),
         Without<ClonedEntity>,
     >,
@@ -854,15 +855,25 @@ fn update_clones(
         &mut Look,
         &mut EntityAnimations,
         &mut OnGround,
+        &mut EntityStatuses,
         &ClonedEntity,
         Entity,
     )>,
     mut commands: Commands,
 ) {
     for clone in clone_ents.iter_mut() {
-        let (mut pos, mut head_yaw, mut vel, mut look, mut anims, mut on_ground, cloned_from, ent) =
-            clone;
-        let Ok((pos_src, head_yaw_src, vel_src, look_src, anims_src, on_ground_src)) = ents
+        let (
+            mut pos,
+            mut head_yaw,
+            mut vel,
+            mut look,
+            mut anims,
+            mut on_ground,
+            mut statuses,
+            cloned_from,
+            ent,
+        ) = clone;
+        let Ok((pos_src, head_yaw_src, vel_src, look_src, anims_src, on_ground_src, statuses_src)) = ents
             .get(cloned_from.0) else {
                 commands.entity(ent).insert(Despawned);
                 return;
@@ -874,6 +885,7 @@ fn update_clones(
         *look = *look_src;
         *anims = anims_src.clone();
         *on_ground = *on_ground_src;
+        *statuses = *statuses_src;
     }
 }
 
