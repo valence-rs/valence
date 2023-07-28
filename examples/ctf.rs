@@ -17,7 +17,7 @@ use valence_entity::entity::Flags;
 use valence_entity::living::Health;
 use valence_entity::pig::PigEntityBundle;
 use valence_entity::player::PlayerEntityBundle;
-use valence_entity::{EntityAnimations, Velocity};
+use valence_entity::{EntityAnimations, OnGround, Velocity};
 
 const ARENA_Y: i32 = 64;
 const ARENA_MID_WIDTH: i32 = 2;
@@ -836,21 +836,33 @@ impl CtfLayers {
 struct ClonedEntity(Entity);
 
 fn update_clones(
-    ents: Query<(&Position, &HeadYaw, &Velocity, &Look, &EntityAnimations), Without<ClonedEntity>>,
+    ents: Query<
+        (
+            &Position,
+            &HeadYaw,
+            &Velocity,
+            &Look,
+            &EntityAnimations,
+            &OnGround,
+        ),
+        Without<ClonedEntity>,
+    >,
     mut clone_ents: Query<(
         &mut Position,
         &mut HeadYaw,
         &mut Velocity,
         &mut Look,
         &mut EntityAnimations,
+        &mut OnGround,
         &ClonedEntity,
         Entity,
     )>,
     mut commands: Commands,
 ) {
     for clone in clone_ents.iter_mut() {
-        let (mut pos, mut head_yaw, mut vel, mut look, mut anims, cloned_from, ent) = clone;
-        let Ok((pos_src, head_yaw_src, vel_src, look_src, anims_src)) = ents
+        let (mut pos, mut head_yaw, mut vel, mut look, mut anims, mut on_ground, cloned_from, ent) =
+            clone;
+        let Ok((pos_src, head_yaw_src, vel_src, look_src, anims_src, on_ground_src)) = ents
             .get(cloned_from.0) else {
                 commands.entity(ent).insert(Despawned);
                 return;
@@ -861,6 +873,7 @@ fn update_clones(
         *vel = *vel_src;
         *look = *look_src;
         *anims = anims_src.clone();
+        *on_ground = *on_ground_src;
     }
 }
 
