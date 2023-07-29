@@ -473,7 +473,10 @@ fn digging(
                 _ => {}
             }
 
-            if event.position.y <= ARENA_Y || block.state == BlockState::OAK_FENCE || is_flag {
+            if event.position.y <= ARENA_Y
+                || block.state.to_kind() == BlockKind::OakFence
+                || is_flag
+            {
                 continue;
             }
 
