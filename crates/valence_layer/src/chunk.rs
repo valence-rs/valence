@@ -1,3 +1,4 @@
+#[allow(clippy::module_inception)]
 mod chunk;
 pub mod loaded;
 mod paletted_container;

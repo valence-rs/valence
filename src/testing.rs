@@ -22,7 +22,6 @@ use valence_network::NetworkPlugin;
 
 use crate::client::{ClientBundle, ClientConnection, ReceivedPacket};
 use crate::DefaultPlugins;
-
 pub struct ScenarioSingleClient {
     /// The new bevy application.
     pub app: App,
@@ -76,6 +75,12 @@ impl ScenarioSingleClient {
             helper,
             layer,
         }
+    }
+}
+
+impl Default for ScenarioSingleClient {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

@@ -73,11 +73,17 @@ where
     }
 
     pub(crate) fn send_global_infallible(&mut self, msg: G, f: impl FnOnce(&mut Vec<u8>)) {
-        let _ = self.send_global::<Infallible>(msg, |b| Ok(f(b)));
+        let _ = self.send_global::<Infallible>(msg, |b| {
+            f(b);
+            Ok(())
+        });
     }
 
     pub(crate) fn send_local_infallible(&mut self, msg: L, f: impl FnOnce(&mut Vec<u8>)) {
-        let _ = self.send_local::<Infallible>(msg, |b| Ok(f(b)));
+        let _ = self.send_local::<Infallible>(msg, |b| {
+            f(b);
+            Ok(())
+        });
     }
 
     /// Readies messages to be read by clients.

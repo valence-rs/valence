@@ -142,10 +142,7 @@ impl<T: Bounded3D> Bounded3D for Node<'_, T> {
 
 impl<T> Clone for Node<'_, T> {
     fn clone(&self) -> Self {
-        match self {
-            Node::Internal(int) => Node::Internal(*int),
-            Node::Leaf(t) => Node::Leaf(t),
-        }
+        *self
     }
 }
 
@@ -177,10 +174,7 @@ impl<T> Bounded3D for Internal<'_, T> {
 
 impl<T> Clone for Internal<'_, T> {
     fn clone(&self) -> Self {
-        Self {
-            bvh: self.bvh,
-            idx: self.idx,
-        }
+        *self
     }
 }
 
