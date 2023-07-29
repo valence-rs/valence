@@ -151,6 +151,7 @@ fn setup(
     cow.insert(Team::Blue);
 
     commands.insert_resource(ctf_team_layers);
+    commands.insert_resource(Score::default());
 }
 
 /// Build a flag at the given position. `pos` should be the position of the
@@ -759,6 +760,7 @@ fn do_flag_capturing(
     mut players: Query<(Entity, &mut Client, &Team, &Position, &HasFlag)>,
     mut commands: Commands,
     mut flag_manager: ResMut<FlagManager>,
+    mut score: ResMut<Score>,
 ) {
     for (ent, mut client, team, position, has_flag) in players.iter_mut() {
         let capture_trigger = match team {
@@ -768,12 +770,34 @@ fn do_flag_capturing(
 
         if capture_trigger.contains_pos(position.0) {
             client.send_chat_message("You captured the flag!".italic());
+            score
+                .scores
+                .entry(*team)
+                .and_modify(|score| *score += 1)
+                .or_insert(1);
+            client.send_chat_message(score.render_scores());
             commands.entity(ent).remove::<HasFlag>();
             match has_flag.0 {
                 Team::Red => flag_manager.red = None,
                 Team::Blue => flag_manager.blue = None,
             }
         }
+    }
+}
+
+#[derive(Debug, Default, Resource)]
+struct Score {
+    pub scores: HashMap<Team, u32>,
+}
+
+impl Score {
+    pub fn render_scores(&self) -> Text {
+        let mut text = "Scores:\n".into_text();
+        for team in Team::iter() {
+            let score = self.scores.get(&team).unwrap_or(&0);
+            text += team.team_text() + ": " + score.to_string() + "\n";
+        }
+        text
     }
 }
 
