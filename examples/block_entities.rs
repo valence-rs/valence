@@ -11,10 +11,6 @@ const SKULL_POS: BlockPos = BlockPos::new(3, FLOOR_Y + 1, 3);
 
 pub fn main() {
     App::new()
-        .insert_resource(NetworkSettings {
-            connection_mode: ConnectionMode::Offline,
-            ..Default::default()
-        })
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
         .add_systems(
@@ -57,10 +53,10 @@ fn setup(
                 "front_text" => compound! {
                     "messages" => List::String(vec![
                         // All 4 lines are required, otherwise no text is displayed.
-                        serde_json::to_string(&"Type in chat:".color(Color::RED)).unwrap(),
-                        serde_json::to_string(&"".into_text()).unwrap(),
-                        serde_json::to_string(&"".into_text()).unwrap(),
-                        serde_json::to_string(&"".into_text()).unwrap()
+                        "Type in chat:".color(Color::RED).into(),
+                        "".into_text().into(),
+                        "".into_text().into(),
+                        "".into_text().into(),
                     ]),
                 }
             }),
@@ -107,10 +103,10 @@ fn event_handler(
         nbt.merge(compound! {
             "front_text" => compound! {
                 "messages" => List::String(vec![
-                    serde_json::to_string(&"Type in chat:".color(Color::RED)).unwrap(),
-                    serde_json::to_string(&message.to_string().color(Color::DARK_GREEN)).unwrap(),
-                    serde_json::to_string(&format!("~{}", username).italic()).unwrap(),
-                    serde_json::to_string(&"".into_text()).unwrap(),
+                    "Type in chat:".color(Color::RED).into(),
+                    message.to_string().color(Color::DARK_GREEN).into(),
+                    format!("~{username}").italic().into(),
+                    "".into_text().into(),
                 ]),
             },
         });
