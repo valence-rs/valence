@@ -972,6 +972,7 @@ mod test {
     fn schematic_copy_paste() {
         let mut app = App::new();
         app.add_plugins(DefaultPlugins);
+        app.update();
         let mut instance = Instance::new(
             ident!("overworld"),
             app.world.resource(),
