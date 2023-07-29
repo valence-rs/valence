@@ -44,7 +44,14 @@ pub enum GlobalMsg {
 
 #[doc(hidden)]
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
+// NOTE: Variant order is significant. Despawns should be ordered before spawns.
 pub enum LocalMsg {
+    /// Despawn entities if the client is not already viewing `dest_layer`.
+    /// Message data is the serialized form of `EntityId`.
+    DespawnEntity { pos: ChunkPos, dest_layer: Entity },
+    /// Despawn entities if the client is not in view of `dest_pos`. Message
+    /// data is the serialized form of `EntityId`.
+    DespawnEntityTransition { pos: ChunkPos, dest_pos: ChunkPos },
     /// Spawn entities if the client is not already viewing `src_layer`. Message
     /// data is the serialized form of [`Entity`].
     SpawnEntity { pos: ChunkPos, src_layer: Entity },
@@ -58,21 +65,17 @@ pub enum LocalMsg {
     /// except the client identified by `except`. Message data is serialized
     /// packet data.
     PacketAtExcept { pos: ChunkPos, except: Entity },
+    /// Send packet data to all clients in a sphere.
     RadiusAt {
         center: BlockPos,
         radius_squared: u32,
     },
+    /// Send packet data to all clients in a sphere, except the client `except`.
     RadiusAtExcept {
         center: BlockPos,
         radius_squared: u32,
         except: Entity,
     },
-    /// Despawn entities if the client is not already viewing `dest_layer`.
-    /// Message data is the serialized form of `EntityId`.
-    DespawnEntity { pos: ChunkPos, dest_layer: Entity },
-    /// Despawn entities if the client is not in view of `dest_pos`. Message
-    /// data is the serialized form of `EntityId`.
-    DespawnEntityTransition { pos: ChunkPos, dest_pos: ChunkPos },
 }
 
 impl GetChunkPos for LocalMsg {

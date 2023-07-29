@@ -84,7 +84,7 @@ impl Plugin for EntityPlugin {
             )
             .add_systems(
                 PostUpdate,
-                (init_entities, remove_despawned_from_manager)
+                (remove_despawned_from_manager, init_entities)
                     .chain()
                     .in_set(InitEntitiesSet),
             )
@@ -116,8 +116,17 @@ fn update_old_layer_id(mut query: Query<(&EntityLayerId, &mut OldEntityLayerId)>
     }
 }
 
+fn remove_despawned_from_manager(
+    entities: Query<&EntityId, (With<EntityKind>, With<Despawned>)>,
+    mut manager: ResMut<EntityManager>,
+) {
+    for id in &entities {
+        manager.id_to_entity.remove(&id.0);
+    }
+}
+
 fn init_entities(
-    mut entities: Query<(Entity, &mut EntityId, &Position, &mut OldPosition), Added<EntityKind>>,
+    mut entities: Query<(Entity, &mut EntityId, &Position, &mut OldPosition), (Added<EntityKind>, Without<Despawned>)>,
     mut manager: ResMut<EntityManager>,
 ) {
     for (entity, mut id, pos, mut old_pos) in &mut entities {
@@ -133,15 +142,6 @@ fn init_entities(
                 id.0
             );
         }
-    }
-}
-
-fn remove_despawned_from_manager(
-    entities: Query<&EntityId, (With<EntityKind>, With<Despawned>)>,
-    mut manager: ResMut<EntityManager>,
-) {
-    for id in &entities {
-        manager.id_to_entity.remove(&id.0);
     }
 }
 

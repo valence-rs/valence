@@ -125,7 +125,6 @@ impl Plugin for ClientPlugin {
                     cleanup_chunks_after_client_despawn.after(update_view_and_layers),
                     spawn::update_respawn_position.after(update_view_and_layers),
                     spawn::respawn.after(spawn::update_respawn_position),
-                    remove_entities.after(update_view_and_layers),
                     update_old_view_dist.after(update_view_and_layers),
                     update_game_mode,
                     update_tracked_data,
@@ -462,12 +461,19 @@ impl EntityRemoveBuf {
             "removing entity with protocol ID 0 (which should be reserved for clients)"
         );
 
-        debug_assert!(
-            !self.0.contains(&VarInt(entity_id)),
-            "removing entity ID {entity_id} multiple times in a single tick!"
-        );
-
         self.0.push(VarInt(entity_id));
+    }
+
+    /// Sends the entity remove packet and clears the buffer. Does nothing if
+    /// the buffer is empty.
+    pub fn send_and_clear(&mut self, mut w: impl WritePacket) {
+        if !self.0.is_empty() {
+            w.write_packet(&EntitiesDestroyS2c {
+                entity_ids: Cow::Borrowed(&self.0),
+            });
+
+            self.0.clear();
+        }
     }
 }
 
@@ -817,6 +823,74 @@ fn handle_layer_messages(
 
                     // Local messages
                     messages.query_local(old_view, |msg, range| match msg {
+                        valence_layer::entity::LocalMsg::DespawnEntity { pos: _, dest_layer } => {
+                            if !old_visible_entity_layers.0.contains(&dest_layer) {
+                                let mut bytes = &bytes[range];
+
+                                while let Ok(id) = bytes.read_i32::<NativeEndian>() {
+                                    if self_entity_id.get() != id {
+                                        remove_buf.push(id);
+                                    }
+                                }
+                            }
+                        }
+                        valence_layer::entity::LocalMsg::DespawnEntityTransition {
+                            pos: _,
+                            dest_pos,
+                        } => {
+                            if !old_view.contains(dest_pos) {
+                                let mut bytes = &bytes[range];
+
+                                while let Ok(id) = bytes.read_i32::<NativeEndian>() {
+                                    if self_entity_id.get() != id {
+                                        remove_buf.push(id);
+                                    }
+                                }
+                            }
+                        }
+                        valence_layer::entity::LocalMsg::SpawnEntity { pos: _, src_layer } => {
+                            if !old_visible_entity_layers.0.contains(&src_layer) {
+                                let mut bytes = &bytes[range];
+
+                                while let Ok(u64) = bytes.read_u64::<NativeEndian>() {
+                                    let entity = Entity::from_bits(u64);
+
+                                    if self_entity != entity {
+                                        if let Ok((init, old_pos)) = entities.get(entity) {
+                                            remove_buf.send_and_clear(&mut *client);
+
+                                            // Spawn at the entity's old position since we may get a
+                                            // relative movement packet for this entity in a later
+                                            // iteration of the loop.
+                                            init.write_init_packets(old_pos.get(), &mut *client);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        valence_layer::entity::LocalMsg::SpawnEntityTransition {
+                            pos: _,
+                            src_pos,
+                        } => {
+                            if !old_view.contains(src_pos) {
+                                let mut bytes = &bytes[range];
+
+                                while let Ok(u64) = bytes.read_u64::<NativeEndian>() {
+                                    let entity = Entity::from_bits(u64);
+
+                                    if self_entity != entity {
+                                        if let Ok((init, old_pos)) = entities.get(entity) {
+                                            remove_buf.send_and_clear(&mut *client);
+
+                                            // Spawn at the entity's old position since we may get a
+                                            // relative movement packet for this entity in a later
+                                            // iteration of the loop.
+                                            init.write_init_packets(old_pos.get(), &mut *client);
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         valence_layer::entity::LocalMsg::PacketAt { pos: _ } => {
                             client.write_packet_bytes(&bytes[range]);
                         }
@@ -843,71 +917,9 @@ fn handle_layer_messages(
                                 client.write_packet_bytes(&bytes[range]);
                             }
                         }
-                        valence_layer::entity::LocalMsg::SpawnEntity { pos: _, src_layer } => {
-                            if !old_visible_entity_layers.0.contains(&src_layer) {
-                                let mut bytes = &bytes[range];
-
-                                while let Ok(u64) = bytes.read_u64::<NativeEndian>() {
-                                    let entity = Entity::from_bits(u64);
-
-                                    if self_entity != entity {
-                                        if let Ok((init, old_pos)) = entities.get(entity) {
-                                            // Spawn at the entity's old position since we may get a
-                                            // relative movement packet for this entity in a later
-                                            // iteration of the loop.
-                                            init.write_init_packets(old_pos.get(), &mut *client);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        valence_layer::entity::LocalMsg::SpawnEntityTransition {
-                            pos: _,
-                            src_pos,
-                        } => {
-                            if !old_view.contains(src_pos) {
-                                let mut bytes = &bytes[range];
-
-                                while let Ok(u64) = bytes.read_u64::<NativeEndian>() {
-                                    let entity = Entity::from_bits(u64);
-
-                                    if self_entity != entity {
-                                        if let Ok((init, old_pos)) = entities.get(entity) {
-                                            // Spawn at the entity's old position since we may get a
-                                            // relative movement packet for this entity in a later
-                                            // iteration of the loop.
-                                            init.write_init_packets(old_pos.get(), &mut *client);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        valence_layer::entity::LocalMsg::DespawnEntity { pos: _, dest_layer } => {
-                            if !old_visible_entity_layers.0.contains(&dest_layer) {
-                                let mut bytes = &bytes[range];
-
-                                while let Ok(id) = bytes.read_i32::<NativeEndian>() {
-                                    if self_entity_id.get() != id {
-                                        remove_buf.push(id);
-                                    }
-                                }
-                            }
-                        }
-                        valence_layer::entity::LocalMsg::DespawnEntityTransition {
-                            pos: _,
-                            dest_pos,
-                        } => {
-                            if !old_view.contains(dest_pos) {
-                                let mut bytes = &bytes[range];
-
-                                while let Ok(id) = bytes.read_i32::<NativeEndian>() {
-                                    if self_entity_id.get() != id {
-                                        remove_buf.push(id);
-                                    }
-                                }
-                            }
-                        }
                     });
+
+                    remove_buf.send_and_clear(&mut *client);
                 }
             }
         },
@@ -1006,6 +1018,8 @@ fn update_view_and_layers(
                     }
                 }
 
+                remove_buf.send_and_clear(&mut *client);
+
                 // Load all entities in the new view from all new visible entity layers.
                 for &layer in &visible_entity_layers.0 {
                     if let Ok(layer) = entity_layers.get(layer) {
@@ -1040,6 +1054,8 @@ fn update_view_and_layers(
                             }
                         }
                     }
+
+                    remove_buf.send_and_clear(&mut *client);
 
                     // Load all entity layers that are newly visible in the old view.
                     for &layer in visible_entity_layers
@@ -1129,21 +1145,6 @@ fn update_view_and_layers(
             }
         },
     );
-}
-
-/// Removes all the entities that are queued to be removed for each client.
-fn remove_entities(
-    mut clients: Query<(&mut Client, &mut EntityRemoveBuf), Changed<EntityRemoveBuf>>,
-) {
-    for (mut client, mut buf) in &mut clients {
-        if !buf.0.is_empty() {
-            client.write_packet(&EntitiesDestroyS2c {
-                entity_ids: Cow::Borrowed(&buf.0),
-            });
-
-            buf.0.clear();
-        }
-    }
 }
 
 fn update_game_mode(mut clients: Query<(&mut Client, &GameMode), Changed<GameMode>>) {
