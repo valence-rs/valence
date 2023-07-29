@@ -284,23 +284,17 @@ fn build_spawn_box(layer: &mut LayerBundle, pos: impl Into<BlockPos>, commands: 
     ];
     let blue_area = TriggerArea::new(blue, blue);
     let portals = Portals {
-        red: red_area,
-        blue: blue_area,
+        portals: HashMap::from_iter(vec![(Team::Red, red_area), (Team::Blue, blue_area)]),
     };
 
-    for pos in portals.red.iter_block_pos() {
-        layer.chunk.set_block(pos, BlockState::AIR);
+    for area in portals.portals.values() {
+        for pos in area.iter_block_pos() {
+            layer.chunk.set_block(pos, BlockState::AIR);
+        }
+        layer
+            .chunk
+            .set_block(area.a - BlockPos::new(0, 1, 0), BlockState::BARRIER);
     }
-    for pos in portals.blue.iter_block_pos() {
-        layer.chunk.set_block(pos, BlockState::AIR);
-    }
-
-    layer
-        .chunk
-        .set_block(portals.red.a - BlockPos::new(0, 1, 0), BlockState::BARRIER);
-    layer
-        .chunk
-        .set_block(portals.blue.a - BlockPos::new(0, 1, 0), BlockState::BARRIER);
 
     commands.insert_resource(portals);
 
@@ -544,8 +538,7 @@ fn place_blocks(
 
 #[derive(Debug, Resource)]
 struct Portals {
-    red: TriggerArea,
-    blue: TriggerArea,
+    portals: HashMap<Team, TriggerArea>,
 }
 
 fn do_team_selector_portals(
@@ -583,13 +576,13 @@ fn do_team_selector_portals(
             continue;
         }
 
-        let team = if portals.red.contains_pos(pos.0) {
-            Some(Team::Red)
-        } else if portals.blue.contains_pos(pos.0) {
-            Some(Team::Blue)
-        } else {
-            None
-        };
+        let team = portals
+            .portals
+            .iter()
+            .filter(|(_, area)| area.contains_pos(pos.0))
+            .map(|(team, _)| team)
+            .next()
+            .copied();
 
         if let Some(team) = team {
             *game_mode = GameMode::Survival;
