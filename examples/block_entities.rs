@@ -52,7 +52,15 @@ fn setup(
         Block {
             state: BlockState::OAK_SIGN.set(PropName::Rotation, PropValue::_4),
             nbt: Some(compound! {
-                "Text1" => "Type in chat:".color(Color::RED),
+                "front_text" => compound! {
+                    "messages" => List::String(vec![
+                        // All 4 lines are required, otherwise no text is displayed.
+                        "Type in chat:".color(Color::RED).into(),
+                        "".into_text().into(),
+                        "".into_text().into(),
+                        "".into_text().into(),
+                    ]),
+                }
             }),
         },
     );
@@ -113,9 +121,16 @@ fn event_handler(
         };
 
         let nbt = layer.block_entity_mut(SIGN_POS).unwrap();
-
-        nbt.insert("Text2", message.to_string().color(Color::DARK_GREEN));
-        nbt.insert("Text3", format!("~{username}").italic());
+        nbt.merge(compound! {
+            "front_text" => compound! {
+                "messages" => List::String(vec![
+                    "Type in chat:".color(Color::RED).into(),
+                    message.to_string().color(Color::DARK_GREEN).into(),
+                    format!("~{username}").italic().into(),
+                    "".into_text().into(),
+                ]),
+            },
+        });
     }
 
     for InteractBlockEvent {
