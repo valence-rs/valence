@@ -3,7 +3,6 @@ use std::num::Wrapping;
 use bevy_ecs::prelude::*;
 use rustc_hash::FxHashMap;
 use tracing::warn;
-use uuid::Uuid;
 
 use super::EntityId;
 
@@ -13,7 +12,6 @@ use super::EntityId;
 pub struct EntityManager {
     /// Maps protocol IDs to ECS entities.
     pub(super) id_to_entity: FxHashMap<i32, Entity>,
-    pub(super) uuid_to_entity: FxHashMap<Uuid, Entity>,
     next_id: Wrapping<i32>,
 }
 
@@ -21,7 +19,6 @@ impl EntityManager {
     pub(super) fn new() -> Self {
         Self {
             id_to_entity: FxHashMap::default(),
-            uuid_to_entity: FxHashMap::default(),
             next_id: Wrapping(1), // Skip 0.
         }
     }
@@ -44,10 +41,5 @@ impl EntityManager {
     /// Gets the entity with the given entity ID.
     pub fn get_by_id(&self, entity_id: i32) -> Option<Entity> {
         self.id_to_entity.get(&entity_id).cloned()
-    }
-
-    /// Gets the entity with the given UUID.
-    pub fn get_by_uuid(&self, uuid: Uuid) -> Option<Entity> {
-        self.uuid_to_entity.get(&uuid).cloned()
     }
 }

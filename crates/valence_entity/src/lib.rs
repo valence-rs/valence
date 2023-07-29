@@ -117,19 +117,10 @@ fn update_old_layer_id(mut query: Query<(&EntityLayerId, &mut OldEntityLayerId)>
 }
 
 fn init_entities(
-    mut entities: Query<
-        (
-            Entity,
-            &mut EntityId,
-            &mut UniqueId,
-            &Position,
-            &mut OldPosition,
-        ),
-        Added<EntityKind>,
-    >,
+    mut entities: Query<(Entity, &mut EntityId, &Position, &mut OldPosition), Added<EntityKind>>,
     mut manager: ResMut<EntityManager>,
 ) {
-    for (entity, mut id, uuid, pos, mut old_pos) in &mut entities {
+    for (entity, mut id, pos, mut old_pos) in &mut entities {
         *old_pos = OldPosition::new(pos.0);
 
         if *id == EntityId::default() {
@@ -142,23 +133,15 @@ fn init_entities(
                 id.0
             );
         }
-
-        if let Some(conflict) = manager.uuid_to_entity.insert(uuid.0, entity) {
-            warn!(
-                "entity {entity:?} has conflicting UUID of {} with entity {conflict:?}",
-                uuid.0
-            );
-        }
     }
 }
 
 fn remove_despawned_from_manager(
-    entities: Query<(&EntityId, &UniqueId), (With<EntityKind>, With<Despawned>)>,
+    entities: Query<&EntityId, (With<EntityKind>, With<Despawned>)>,
     mut manager: ResMut<EntityManager>,
 ) {
-    for (id, uuid) in &entities {
+    for id in &entities {
         manager.id_to_entity.remove(&id.0);
-        manager.uuid_to_entity.remove(&uuid.0);
     }
 }
 
