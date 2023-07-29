@@ -30,7 +30,7 @@ use valence_client::{Client, Ping, Properties, Username};
 use valence_core::despawn::Despawned;
 use valence_core::game_mode::GameMode;
 use valence_core::protocol::encode::{PacketWriter, WritePacket};
-use valence_core::text::Text;
+use valence_core::text::{IntoText, Text};
 use valence_core::uuid::UniqueId;
 use valence_core::Server;
 use valence_instance::WriteUpdatePacketsToInstancesSet;
@@ -46,24 +46,25 @@ struct PlayerListSet;
 impl Plugin for PlayerListPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(PlayerList::new())
+            .configure_set(
+                PostUpdate,
+                // Needs to happen before player entities are initialized. Otherwise, they will
+                // appear invisible.
+                PlayerListSet.before(WriteUpdatePacketsToInstancesSet),
+            )
             .add_systems(
+                PostUpdate,
                 (
                     update_header_footer,
                     add_new_clients_to_player_list,
-                    apply_system_buffers, // So new clients get the packets for their own entry.
+                    apply_deferred, // So new clients get the packets for their own entry.
                     update_entries,
                     init_player_list_for_clients,
                     remove_despawned_entries,
                     write_player_list_changes,
                 )
-                    .chain()
-                    .in_set(PlayerListSet),
-            )
-            .configure_set(
-                PlayerListSet
-                    .in_base_set(CoreSet::PostUpdate)
-                    // Needs to happen before player entities are initialized. Otherwise, they will appear invisible.
-                    .before(WriteUpdatePacketsToInstancesSet),
+                    .in_set(PlayerListSet)
+                    .chain(),
             );
     }
 }
@@ -71,7 +72,6 @@ impl Plugin for PlayerListPlugin {
 #[derive(Resource)]
 pub struct PlayerList {
     cached_update_packets: Vec<u8>,
-    scratch: Vec<u8>,
     header: Text,
     footer: Text,
     changed_header_or_footer: bool,
@@ -84,7 +84,6 @@ impl PlayerList {
     fn new() -> Self {
         Self {
             cached_update_packets: vec![],
-            scratch: vec![],
             header: Text::default(),
             footer: Text::default(),
             changed_header_or_footer: false,
@@ -100,8 +99,8 @@ impl PlayerList {
         &self.footer
     }
 
-    pub fn set_header(&mut self, txt: impl Into<Text>) {
-        let txt = txt.into();
+    pub fn set_header<'a>(&mut self, txt: impl IntoText<'a>) {
+        let txt = txt.into_cow_text().into_owned();
 
         if txt != self.header {
             self.changed_header_or_footer = true;
@@ -110,8 +109,8 @@ impl PlayerList {
         self.header = txt;
     }
 
-    pub fn set_footer(&mut self, txt: impl Into<Text>) {
-        let txt = txt.into();
+    pub fn set_footer<'a>(&mut self, txt: impl IntoText<'a>) {
+        let txt = txt.into_cow_text().into_owned();
 
         if txt != self.footer {
             self.changed_header_or_footer = true;
@@ -165,7 +164,6 @@ fn update_header_footer(player_list: ResMut<PlayerList>, server: Res<Server>) {
         let mut w = PacketWriter::new(
             &mut player_list.cached_update_packets,
             server.compression_threshold(),
-            &mut player_list.scratch,
         );
 
         w.write_packet(&PlayerListHeaderS2c {
@@ -270,7 +268,6 @@ fn remove_despawned_entries(
             let mut w = PacketWriter::new(
                 &mut player_list.cached_update_packets,
                 server.compression_threshold(),
-                &mut player_list.scratch,
             );
 
             w.write_packet(&PlayerRemoveS2c {
@@ -314,7 +311,6 @@ fn update_entries(
     let mut writer = PacketWriter::new(
         &mut player_list.cached_update_packets,
         server.compression_threshold(),
-        &mut player_list.scratch,
     );
 
     for (uuid, username, props, game_mode, ping, display_name, listed) in &entries {

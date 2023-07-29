@@ -4,17 +4,14 @@ use valence_core::hand::Hand;
 use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 use valence_entity::{EntityAnimation, EntityAnimations};
 
-use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
+use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 
 pub(super) fn build(app: &mut App) {
-    app.add_event::<HandSwingEvent>().add_system(
-        handle_hand_swing
-            .in_schedule(EventLoopSchedule)
-            .in_base_set(EventLoopSet::PreUpdate),
-    );
+    app.add_event::<HandSwingEvent>()
+        .add_systems(EventLoopPreUpdate, handle_hand_swing);
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Event, Copy, Clone, PartialEq, Eq, Debug)]
 pub struct HandSwingEvent {
     pub client: Entity,
     pub hand: Hand,

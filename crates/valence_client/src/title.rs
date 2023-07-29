@@ -1,4 +1,5 @@
 use valence_core::protocol::{packet_id, Decode, Encode};
+use valence_core::text::IntoText;
 
 use super::*;
 
@@ -9,11 +10,11 @@ pub trait SetTitle {
     /// which may also include a subtitle underneath it. The title can be
     /// configured to fade in and out using
     /// [`set_title_times`](Self::set_title_times).
-    fn set_title(&mut self, text: impl Into<Text>);
+    fn set_title<'a>(&mut self, text: impl IntoText<'a>);
 
-    fn set_subtitle(&mut self, text: impl Into<Text>);
+    fn set_subtitle<'a>(&mut self, text: impl IntoText<'a>);
 
-    fn set_action_bar(&mut self, text: impl Into<Text>);
+    fn set_action_bar<'a>(&mut self, text: impl IntoText<'a>);
 
     /// - `fade_in`: Ticks to spend fading in.
     /// - `stay`: Ticks to keep the title displayed.
@@ -26,21 +27,21 @@ pub trait SetTitle {
 }
 
 impl<T: WritePacket> SetTitle for T {
-    fn set_title(&mut self, text: impl Into<Text>) {
+    fn set_title<'a>(&mut self, text: impl IntoText<'a>) {
         self.write_packet(&TitleS2c {
-            title_text: text.into().into(),
+            title_text: text.into_cow_text(),
         });
     }
 
-    fn set_subtitle(&mut self, text: impl Into<Text>) {
+    fn set_subtitle<'a>(&mut self, text: impl IntoText<'a>) {
         self.write_packet(&SubtitleS2c {
-            subtitle_text: text.into().into(),
+            subtitle_text: text.into_cow_text(),
         });
     }
 
-    fn set_action_bar(&mut self, text: impl Into<Text>) {
+    fn set_action_bar<'a>(&mut self, text: impl IntoText<'a>) {
         self.write_packet(&OverlayMessageS2c {
-            action_bar_text: text.into().into(),
+            action_bar_text: text.into_cow_text(),
         });
     }
 

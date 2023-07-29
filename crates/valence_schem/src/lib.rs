@@ -36,6 +36,7 @@ use valence_core::chunk_pos::ChunkPos;
 use valence_core::ident::Ident;
 use valence_core::protocol::var_int::{VarInt, VarIntDecodeError};
 use valence_core::protocol::Encode;
+use valence_instance::chunk::Chunk;
 use valence_instance::{Block as ValenceBlock, Instance};
 use valence_nbt::{compound, Compound, List, Value};
 
@@ -274,7 +275,12 @@ impl Schematic {
         };
         let length = length as u16;
         let offset = {
-            let &[x, y, z] = root.get("Offset").and_then(|val| val.as_int_array()).map(|arr| arr.as_slice()).unwrap_or(&[0; 3]) else {
+            let &[x, y, z] = root
+                .get("Offset")
+                .and_then(|val| val.as_int_array())
+                .map(|arr| arr.as_slice())
+                .unwrap_or(&[0; 3])
+            else {
                 return Err(LoadSchematicError::InvalidOffset);
             };
             IVec3::new(x, y, z)
@@ -463,11 +469,11 @@ impl Schematic {
                     .iter()
                     .map(|(biome, value)| {
                         let &Value::Int(i) = value else {
-                                return Err(LoadSchematicError::InvalidBiomePalette);
-                            };
+                            return Err(LoadSchematicError::InvalidBiomePalette);
+                        };
                         let Ok(ident) = Ident::new(biome) else {
-                                return Err(LoadSchematicError::InvalidBiomeIdent(biome.clone()));
-                            };
+                            return Err(LoadSchematicError::InvalidBiomeIdent(biome.clone()));
+                        };
                         Ok((i, ident.to_string_ident()))
                     })
                     .collect();
@@ -796,18 +802,16 @@ impl Schematic {
                 let chunk = instance
                     .chunk_entry(ChunkPos::from_block_pos(block_pos))
                     .or_default();
-                let block = match block_entity {
-                    Some(BlockEntity { kind, data: nbt })
-                        if Some(*kind) == state.block_entity_kind() =>
-                    {
-                        ValenceBlock::with_nbt(*state, nbt.clone())
-                    }
-                    _ => ValenceBlock::new(*state),
-                };
+                let block = ValenceBlock::new(
+                    *state,
+                    block_entity
+                        .as_ref()
+                        .map(|block_entity| block_entity.data.clone()),
+                );
                 chunk.set_block(
-                    block_pos.x.rem_euclid(16) as usize,
-                    (block_pos.y - min_y) as usize,
-                    block_pos.z.rem_euclid(16) as usize,
+                    block_pos.x.rem_euclid(16) as u32,
+                    (block_pos.y - min_y) as u32,
+                    block_pos.z.rem_euclid(16) as u32,
                     block,
                 );
             }
@@ -852,9 +856,9 @@ impl Schematic {
                     .or_default();
 
                 chunk.set_biome(
-                    (x / 4).rem_euclid(4) as usize,
-                    ((y - min_y) / 4) as usize,
-                    (z / 4).rem_euclid(4) as usize,
+                    (x / 4).rem_euclid(4) as u32,
+                    ((y - min_y) / 4) as u32,
+                    (z / 4).rem_euclid(4) as u32,
                     biome,
                 );
             }
@@ -893,11 +897,13 @@ impl Schematic {
                         let Some(block) = instance.block([x, y, z]) else {
                             panic!("coordinates ({x} {y} {z}) are out of bounds");
                         };
-                        let state = block.state();
-                        let block_entity = block
-                            .nbt()
-                            .and_then(|data| Some((state.block_entity_kind()?, data.clone())))
-                            .map(|(kind, data)| BlockEntity { kind, data });
+                        let state = block.state;
+                        let block_entity = block.nbt.and_then(|data| {
+                            Some(BlockEntity {
+                                kind: state.block_entity_kind()?,
+                                data: data.clone(),
+                            })
+                        });
                         Block {
                             state,
                             block_entity,
@@ -917,9 +923,9 @@ impl Schematic {
                                 .chunk(ChunkPos::from_block_pos(BlockPos::new(x, y, z)))
                                 .unwrap()
                                 .biome(
-                                    x.rem_euclid(16) as usize / 4,
-                                    (y - instance.min_y()) as usize / 4,
-                                    z.rem_euclid(16) as usize / 4,
+                                    x.rem_euclid(16) as u32 / 4,
+                                    (y - instance.min_y()) as u32 / 4,
+                                    z.rem_euclid(16) as u32 / 4,
                                 )
                         })
                     })
@@ -966,11 +972,16 @@ mod test {
     fn schematic_copy_paste() {
         let mut app = App::new();
         app.add_plugins(DefaultPlugins);
-        let mut instance = Instance::new_unit_testing(ident!("overworld"), app.world.resource());
+        let mut instance = Instance::new(
+            ident!("overworld"),
+            app.world.resource(),
+            app.world.resource(),
+            app.world.resource(),
+        );
 
         for x in -1..=0 {
             for z in -1..=0 {
-                instance.insert_chunk([x, z], Chunk::default());
+                instance.insert_chunk([x, z], UnloadedChunk::default());
             }
         }
 
@@ -981,9 +992,9 @@ mod test {
         instance.set_block([6, 2, -1], BlockState::STONE);
         instance.set_block(
             [5, 3, -1],
-            ValenceBlock::with_nbt(
+            ValenceBlock::new(
                 BlockState::OAK_SIGN,
-                compound! {"Text1" => "abc".into_text()},
+                Some(compound! {"Text1" => "abc".into_text()}),
             ),
         );
         instance.set_block(
@@ -1005,37 +1016,37 @@ mod test {
         });
 
         let block = instance.block([15, 18, 15]).unwrap();
-        assert_eq!(block.state(), BlockState::OAK_SIGN);
-        assert_eq!(block.nbt(), Some(&compound! {"Text1" => "abc".into_text()}));
+        assert_eq!(block.state, BlockState::OAK_SIGN);
+        assert_eq!(block.nbt, Some(&compound! {"Text1" => "abc".into_text()}));
 
         let block = instance.block([15, 17, 16]).unwrap();
         assert_eq!(
-            block.state(),
+            block.state,
             BlockState::ANDESITE_WALL
                 .set(PropName::Up, PropValue::True)
                 .set(PropName::North, PropValue::Low)
         );
-        assert_eq!(block.nbt(), None);
+        assert_eq!(block.nbt, None);
 
         let block = instance.block([15, 17, 15]).unwrap();
-        assert_eq!(block.state(), BlockState::STONE);
-        assert_eq!(block.nbt(), None);
+        assert_eq!(block.state, BlockState::STONE);
+        assert_eq!(block.nbt, None);
 
         let block = instance.block([15, 17, 14]).unwrap();
-        assert_eq!(block.state(), BlockState::AIR);
-        assert_eq!(block.nbt(), None);
+        assert_eq!(block.state, BlockState::AIR);
+        assert_eq!(block.nbt, None);
 
         let block = instance.block([14, 17, 15]).unwrap();
-        assert_eq!(block.state(), BlockState::LAPIS_BLOCK);
-        assert_eq!(block.nbt(), None);
+        assert_eq!(block.state, BlockState::LAPIS_BLOCK);
+        assert_eq!(block.nbt, None);
 
         let block = instance.block([16, 17, 15]).unwrap();
-        assert_eq!(block.state(), BlockState::STONE);
-        assert_eq!(block.nbt(), None);
+        assert_eq!(block.state, BlockState::STONE);
+        assert_eq!(block.nbt, None);
 
         let block = instance.block([15, 16, 15]).unwrap();
-        assert_eq!(block.state(), BlockState::GLOWSTONE);
-        assert_eq!(block.nbt(), None);
+        assert_eq!(block.state, BlockState::GLOWSTONE);
+        assert_eq!(block.nbt, None);
 
         let mut schematic = schematic;
         schematic.metadata.replace(compound! {"A" => 123});

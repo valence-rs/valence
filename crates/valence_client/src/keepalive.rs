@@ -1,23 +1,35 @@
+use std::time::Duration;
+
 use valence_core::protocol::{packet_id, Decode, Encode, Packet};
-use valence_core::CoreSettings;
 
 use super::*;
-use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
+use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 
 pub(super) fn build(app: &mut App) {
-    app.add_system(send_keepalive.in_set(UpdateClientsSet))
-        .add_system(
-            handle_keepalive_response
-                .in_base_set(EventLoopSet::PreUpdate)
-                .in_schedule(EventLoopSchedule),
-        );
+    app.init_resource::<KeepaliveSettings>()
+        .add_systems(PostUpdate, send_keepalive.in_set(UpdateClientsSet))
+        .add_systems(EventLoopPreUpdate, handle_keepalive_response);
+}
+
+#[derive(Resource, Debug)]
+pub struct KeepaliveSettings {
+    // How long to wait before sending keepalives and how long to wait for a response.
+    pub period: Duration,
+}
+
+impl Default for KeepaliveSettings {
+    fn default() -> Self {
+        Self {
+            period: Duration::from_secs(8),
+        }
+    }
 }
 
 #[derive(Component, Debug)]
 pub struct KeepaliveState {
     got_keepalive: bool,
     last_keepalive_id: u64,
-    keepalive_sent_time: Instant,
+    last_send: Instant,
 }
 
 impl KeepaliveState {
@@ -25,31 +37,35 @@ impl KeepaliveState {
         Self {
             got_keepalive: true,
             last_keepalive_id: 0,
-            keepalive_sent_time: Instant::now(),
+            last_send: Instant::now(),
         }
+    }
+
+    /// When the last keepalive was sent for this client.
+    pub fn last_send(&self) -> Instant {
+        self.last_send
     }
 }
 
 fn send_keepalive(
     mut clients: Query<(Entity, &mut Client, &mut KeepaliveState)>,
-    server: Res<Server>,
-    settings: Res<CoreSettings>,
+    settings: Res<KeepaliveSettings>,
     mut commands: Commands,
 ) {
-    if server.current_tick() % (settings.tick_rate.get() * 10) as i64 == 0 {
-        let mut rng = rand::thread_rng();
-        let now = Instant::now();
+    let now = Instant::now();
 
-        for (entity, mut client, mut state) in &mut clients {
+    for (entity, mut client, mut state) in &mut clients {
+        if now.duration_since(state.last_send) >= settings.period {
             if state.got_keepalive {
-                let id = rng.gen();
+                let id = rand::random();
                 client.write_packet(&KeepAliveS2c { id });
 
                 state.got_keepalive = false;
                 state.last_keepalive_id = id;
-                state.keepalive_sent_time = now;
+                state.last_send = now;
             } else {
-                warn!("Client {entity:?} timed out (no keepalive response)");
+                let millis = settings.period.as_millis();
+                warn!("Client {entity:?} timed out: no keepalive response after {millis}ms");
                 commands.entity(entity).remove::<Client>();
             }
         }
@@ -75,7 +91,7 @@ fn handle_keepalive_response(
                     commands.entity(client).remove::<Client>();
                 } else {
                     state.got_keepalive = true;
-                    ping.0 = state.keepalive_sent_time.elapsed().as_millis() as i32;
+                    ping.0 = state.last_send.elapsed().as_millis() as i32;
                 }
             }
         }

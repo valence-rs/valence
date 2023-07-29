@@ -21,7 +21,7 @@
         "name": "item",
         "index": 8,
         "type": "item_stack",
-        "default_value": "1 air"
+        "default_value": "0 air"
       }
     ]
   },
@@ -997,7 +997,7 @@
         "name": "item",
         "index": 8,
         "type": "item_stack",
-        "default_value": "1 air"
+        "default_value": "0 air"
       }
     ],
     "default_bounding_box": {
@@ -1048,7 +1048,7 @@
         "name": "item",
         "index": 8,
         "type": "item_stack",
-        "default_value": "1 air"
+        "default_value": "0 air"
       },
       {
         "name": "shooter_entity_id",
@@ -1436,7 +1436,7 @@
         "name": "item",
         "index": 22,
         "type": "item_stack",
-        "default_value": "1 air"
+        "default_value": "0 air"
       },
       {
         "name": "item_display",
@@ -1460,7 +1460,7 @@
         "name": "stack",
         "index": 8,
         "type": "item_stack",
-        "default_value": "1 air"
+        "default_value": "0 air"
       }
     ],
     "default_bounding_box": {
@@ -1478,7 +1478,7 @@
         "name": "item_stack",
         "index": 8,
         "type": "item_stack",
-        "default_value": "1 air"
+        "default_value": "0 air"
       },
       {
         "name": "rotation",
@@ -1528,7 +1528,7 @@
         "name": "health",
         "index": 9,
         "type": "float",
-        "default_value": 20.0
+        "default_value": 200.0
       },
       {
         "name": "potion_swirls_color",
@@ -2302,9 +2302,9 @@
       }
     ],
     "default_bounding_box": {
-      "size_x": 0.699999988079071,
-      "size_y": 0.5,
-      "size_z": 0.699999988079071
+      "size_x": 1.399999976158142,
+      "size_y": 0.8999999761581421,
+      "size_z": 1.399999976158142
     }
   },
   "SquidEntity": {
@@ -2448,7 +2448,7 @@
         "name": "item",
         "index": 8,
         "type": "item_stack",
-        "default_value": "1 air"
+        "default_value": "0 air"
       }
     ]
   },
@@ -2863,7 +2863,7 @@
         "type": "villager_data",
         "default_value": {
           "type": "plains",
-          "profession": "none",
+          "profession": "toolsmith",
           "level": 1
         }
       }

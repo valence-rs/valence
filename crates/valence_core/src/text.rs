@@ -2,16 +2,24 @@
 
 use std::borrow::Cow;
 use std::io::Write;
+use std::ops::{Deref, DerefMut};
+use std::str::FromStr;
 use std::{fmt, ops};
 
 use anyhow::Context;
 use serde::de::Visitor;
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{de, Deserialize, Deserializer, Serialize};
 use uuid::Uuid;
 use valence_nbt::Value;
 
 use crate::ident::Ident;
 use crate::protocol::{Decode, Encode};
+
+pub mod color;
+mod into_text;
+
+pub use color::Color;
+pub use into_text::IntoText;
 
 /// Represents formatted text in Minecraft's JSON text format.
 ///
@@ -24,9 +32,9 @@ use crate::protocol::{Decode, Encode};
 ///
 /// # Examples
 ///
-/// With [`TextFormat`] in scope, you can write the following:
+/// With [`IntoText`] in scope, you can write the following:
 /// ```
-/// use valence_core::text::{Color, Text, TextFormat};
+/// use valence_core::text::{Color, IntoText, Text};
 ///
 /// let txt = "The text is ".into_text()
 ///     + "Red".color(Color::RED)
@@ -34,125 +42,66 @@ use crate::protocol::{Decode, Encode};
 ///     + "Green".color(Color::GREEN)
 ///     + ", and also "
 ///     + "Blue".color(Color::BLUE)
-///     + "!\nAnd maybe even "
+///     + "! And maybe even "
 ///     + "Italic".italic()
 ///     + ".";
 ///
 /// assert_eq!(
 ///     txt.to_string(),
-///     "The text is Red, Green, and also Blue!\nAnd maybe even Italic."
+///     r#"{"text":"The text is ","extra":[{"text":"Red","color":"red"},{"text":", "},{"text":"Green","color":"green"},{"text":", and also "},{"text":"Blue","color":"blue"},{"text":"! And maybe even "},{"text":"Italic","italic":true},{"text":"."}]}"#
 /// );
 /// ```
 #[derive(Clone, PartialEq, Default, Serialize)]
 #[serde(transparent)]
 pub struct Text(Box<TextInner>);
 
-impl<'de> Deserialize<'de> for Text {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        struct TextVisitor;
-
-        impl<'de> Visitor<'de> for TextVisitor {
-            type Value = Text;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                write!(formatter, "a text component data type")
-            }
-
-            fn visit_bool<E: de::Error>(self, v: bool) -> Result<Self::Value, E> {
-                Ok(Text::text(v.to_string()))
-            }
-
-            fn visit_i64<E: de::Error>(self, v: i64) -> Result<Self::Value, E> {
-                Ok(Text::text(v.to_string()))
-            }
-
-            fn visit_u64<E: de::Error>(self, v: u64) -> Result<Self::Value, E> {
-                Ok(Text::text(v.to_string()))
-            }
-
-            fn visit_f64<E: de::Error>(self, v: f64) -> Result<Self::Value, E> {
-                Ok(Text::text(v.to_string()))
-            }
-
-            fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
-                Ok(Text::text(v.to_string()))
-            }
-
-            fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
-                Ok(Text::text(v))
-            }
-
-            fn visit_seq<A: de::SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
-                let Some(mut res) = seq.next_element()? else {
-                    return Ok(Text::default())
-                };
-
-                while let Some(child) = seq.next_element::<Text>()? {
-                    res += child;
-                }
-
-                Ok(res)
-            }
-
-            fn visit_map<A: de::MapAccess<'de>>(self, map: A) -> Result<Self::Value, A::Error> {
-                use de::value::MapAccessDeserializer;
-
-                Ok(Text(Box::new(TextInner::deserialize(
-                    MapAccessDeserializer::new(map),
-                )?)))
-            }
-        }
-
-        deserializer.deserialize_any(TextVisitor)
-    }
-}
-
+/// Text data and formatting.
 #[derive(Clone, PartialEq, Default, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct TextInner {
+pub struct TextInner {
     #[serde(flatten)]
-    content: TextContent,
+    pub content: TextContent,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    color: Option<Color>,
+    pub color: Option<Color>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    font: Option<Cow<'static, str>>,
+    pub font: Option<Font>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    bold: Option<bool>,
+    pub bold: Option<bool>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    italic: Option<bool>,
+    pub italic: Option<bool>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    underlined: Option<bool>,
+    pub underlined: Option<bool>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    strikethrough: Option<bool>,
+    pub strikethrough: Option<bool>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    obfuscated: Option<bool>,
+    pub obfuscated: Option<bool>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    insertion: Option<Cow<'static, str>>,
+    pub insertion: Option<Cow<'static, str>>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    click_event: Option<ClickEvent>,
+    pub click_event: Option<ClickEvent>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    hover_event: Option<HoverEvent>,
+    pub hover_event: Option<HoverEvent>,
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    extra: Vec<Text>,
+    pub extra: Vec<Text>,
 }
 
+/// The text content of a Text object.
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(untagged)]
-enum TextContent {
-    Text {
-        text: Cow<'static, str>,
-    },
+pub enum TextContent {
+    /// Normal text
+    Text { text: Cow<'static, str> },
     /// A piece of text that will be translated on the client based on the
     /// client language. If no corresponding translation can be found, the
     /// identifier itself is used as the translated text.
@@ -166,9 +115,7 @@ enum TextContent {
         with: Vec<Text>,
     },
     /// Displays a score holder's current score in an objective.
-    ScoreboardValue {
-        score: ScoreboardValueContent,
-    },
+    ScoreboardValue { score: ScoreboardValueContent },
     /// Displays the name of one or more entities found by a [`selector`].
     ///
     /// [`selector`]: https://minecraft.fandom.com/wiki/Target_selectors
@@ -211,7 +158,7 @@ enum TextContent {
     },
     /// Displays NBT values from command storage.
     StorageNbt {
-        storage: Ident<String>,
+        storage: Ident<Cow<'static, str>>,
         nbt: Cow<'static, str>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         interpret: Option<bool>,
@@ -220,60 +167,85 @@ enum TextContent {
     },
 }
 
+/// Scoreboard value.
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
-struct ScoreboardValueContent {
+pub struct ScoreboardValueContent {
     /// The name of the score holder whose score should be displayed. This
     /// can be a [`selector`] or an explicit name.
     ///
     /// [`selector`]: https://minecraft.fandom.com/wiki/Target_selectors
-    name: Cow<'static, str>,
+    pub name: Cow<'static, str>,
     /// The internal name of the objective to display the player's score in.
-    objective: Cow<'static, str>,
+    pub objective: Cow<'static, str>,
     /// If present, this value is displayed regardless of what the score
     /// would have been.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    value: Option<Cow<'static, str>>,
+    pub value: Option<Cow<'static, str>>,
 }
 
-/// Text color
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub struct Color {
-    /// Red channel
-    pub r: u8,
-    /// Green channel
-    pub g: u8,
-    /// Blue channel
-    pub b: u8,
-}
-
+/// Action to take on click of the text.
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(tag = "action", content = "value", rename_all = "snake_case")]
-enum ClickEvent {
+pub enum ClickEvent {
+    /// Opens an URL
     OpenUrl(Cow<'static, str>),
     /// Only usable by internal servers for security reasons.
     OpenFile(Cow<'static, str>),
+    /// Sends a chat command. Doesn't actually have to be a command, can be a
+    /// normal chat message.
     RunCommand(Cow<'static, str>),
+    /// Replaces the contents of the chat box with the text, not necessarily a
+    /// command.
     SuggestCommand(Cow<'static, str>),
+    /// Only usable within written books. Changes the page of the book. Indexing
+    /// starts at 1.
     ChangePage(i32),
+    /// Copies the given text to clipboard
     CopyToClipboard(Cow<'static, str>),
 }
 
+/// Action to take when mouse-hovering on the text.
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(tag = "action", content = "contents", rename_all = "snake_case")]
 #[allow(clippy::enum_variant_names)]
-enum HoverEvent {
+pub enum HoverEvent {
+    /// Displays a tooltip with the given text.
     ShowText(Text),
+    /// Shows an item.
     ShowItem {
-        id: Ident<String>,
+        /// Resource identifier of the item
+        id: Ident<Cow<'static, str>>,
+        /// Number of the items in the stack
         count: Option<i32>,
-        // TODO: tag
+        /// NBT information about the item (sNBT format)
+        tag: Cow<'static, str>, // TODO replace with newtype for sNBT?
     },
+    /// Shows an entity.
     ShowEntity {
-        name: Text,
-        #[serde(rename = "type")]
-        kind: Ident<String>,
+        /// The entity's UUID
         id: Uuid,
+        /// Resource identifier of the entity
+        #[serde(rename = "type")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        kind: Option<Ident<Cow<'static, str>>>,
+        /// Optional custom name for the entity
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        name: Option<Text>,
     },
+}
+
+/// The font of the text.
+#[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
+pub enum Font {
+    /// The default font.
+    #[serde(rename = "minecraft:default")]
+    Default,
+    /// Unicode font.
+    #[serde(rename = "minecraft:uniform")]
+    Uniform,
+    /// Enchanting table font.
+    #[serde(rename = "minecraft:alt")]
+    Alt,
 }
 
 #[allow(clippy::self_named_constructors)]
@@ -379,7 +351,7 @@ impl Text {
 
     /// Creates a text component for a command storage NBT tag.
     pub fn storage_nbt(
-        storage: impl Into<Ident<String>>,
+        storage: impl Into<Ident<Cow<'static, str>>>,
         nbt: impl Into<Cow<'static, str>>,
         interpret: Option<bool>,
         separator: Option<Text>,
@@ -393,140 +365,6 @@ impl Text {
             },
             ..Default::default()
         }))
-    }
-
-    /// Writes the string representation of this text object to the provided
-    /// writer.
-    pub fn write_string(&self, mut w: impl fmt::Write) -> fmt::Result {
-        fn write_string_inner(this: &Text, w: &mut impl fmt::Write) -> fmt::Result {
-            match &this.0.content {
-                TextContent::Text { text } => w.write_str(text.as_ref())?,
-                TextContent::Translate { translate, with } => {
-                    w.write_str(translate.as_ref())?;
-
-                    if !with.is_empty() {
-                        w.write_char('[')?;
-                        for (i, slot) in with.iter().enumerate() {
-                            if i > 0 {
-                                w.write_str(", ")?;
-                            }
-                            w.write_char(char::from_digit((i + 1) as u32, 10).unwrap_or('?'))?;
-                            w.write_char('=')?;
-                            write_string_inner(slot, w)?;
-                        }
-                        w.write_char(']')?;
-                    }
-                }
-                TextContent::ScoreboardValue { score } => {
-                    let ScoreboardValueContent {
-                        name,
-                        objective,
-                        value,
-                    } = score;
-
-                    write!(w, "scoreboard_value[name={name}, objective={objective}")?;
-
-                    if let Some(value) = value {
-                        if !value.is_empty() {
-                            w.write_str(", value=")?;
-                            w.write_str(value)?;
-                        }
-                    }
-
-                    w.write_char(']')?;
-                }
-                TextContent::EntityNames {
-                    selector,
-                    separator,
-                } => {
-                    write!(w, "entity_names[selector={selector}")?;
-
-                    if let Some(separator) = separator {
-                        if !separator.is_empty() {
-                            w.write_str(", separator={separator}")?;
-                        }
-                    }
-
-                    w.write_char(']')?;
-                }
-                TextContent::Keybind { keybind } => write!(w, "keybind[{keybind}]")?,
-                TextContent::BlockNbt {
-                    block,
-                    nbt,
-                    interpret,
-                    separator,
-                } => {
-                    write!(w, "block_nbt[nbt={nbt}")?;
-
-                    if let Some(interpret) = interpret {
-                        write!(w, ", interpret={interpret}")?;
-                    }
-
-                    if let Some(separator) = separator {
-                        if !separator.is_empty() {
-                            write!(w, "separator={separator}")?;
-                        }
-                    }
-
-                    write!(w, "block={block}")?;
-
-                    w.write_char(']')?;
-                }
-                TextContent::EntityNbt {
-                    entity,
-                    nbt,
-                    interpret,
-                    separator,
-                } => {
-                    write!(w, "entity_nbt[nbt={nbt}")?;
-
-                    if let Some(interpret) = interpret {
-                        write!(w, ", interpret={interpret}")?;
-                    }
-
-                    if let Some(separator) = separator {
-                        if !separator.is_empty() {
-                            write!(w, "separator={separator}")?;
-                        }
-                    }
-
-                    write!(w, ", entity={entity}")?;
-
-                    w.write_char(']')?;
-                }
-                TextContent::StorageNbt {
-                    storage,
-                    nbt,
-                    interpret,
-                    separator,
-                } => {
-                    write!(w, "storage_nbt[nbt={nbt}")?;
-
-                    if let Some(interpret) = interpret {
-                        write!(w, ", interpret={interpret}")?;
-                    }
-
-                    if let Some(separator) = separator {
-                        if !separator.is_empty() {
-                            write!(w, "separator=")?;
-                            write_string_inner(separator, w)?;
-                        }
-                    }
-
-                    write!(w, ", storage={storage}")?;
-
-                    w.write_char(']')?;
-                }
-            }
-
-            for child in &this.0.extra {
-                write_string_inner(child, w)?;
-            }
-
-            Ok(())
-        }
-
-        write_string_inner(self, &mut w)
     }
 
     /// Returns `true` if the text contains no characters. Returns `false`
@@ -555,203 +393,130 @@ impl Text {
             TextContent::StorageNbt { nbt, .. } => nbt.is_empty(),
         }
     }
-}
 
-/// Provides the methods necessary for working with [`Text`] objects.
-///
-/// This trait exists to allow using `Into<Text>` types without having to first
-/// convert the type into [`Text`]. A blanket implementation exists for all
-/// `Into<Text>` types, including [`Text`] itself.
-pub trait TextFormat: Into<Text> {
-    /// Converts this type into a [`Text`] object.
-    fn into_text(self) -> Text {
-        self.into()
-    }
+    /// Converts the [`Text`] object to a plain string with the [legacy formatting (`§` and format codes)](https://wiki.vg/Chat#Old_system)
+    ///
+    /// Removes everything that can't be represented with a `§` and a modifier.
+    /// Any colors not on the [the legacy color list](https://wiki.vg/Chat#Colors) will be replaced with their closest equivalent.
+    pub fn to_legacy_lossy(&self) -> String {
+        // For keeping track of the currently active modifiers
+        #[derive(Default, Clone)]
+        struct Modifiers {
+            obfuscated: Option<bool>,
+            bold: Option<bool>,
+            strikethrough: Option<bool>,
+            underlined: Option<bool>,
+            italic: Option<bool>,
+            color: Option<Color>,
+        }
 
-    fn color(self, color: Color) -> Text {
-        let mut t = self.into();
-        t.0.color = Some(color);
-        t
-    }
+        impl Modifiers {
+            // Writes all active modifiers to a String as `§<mod>`
+            fn write(&self, output: &mut String) {
+                if let Some(color) = self.color {
+                    let code = match color {
+                        Color::Rgb(rgb) => rgb.to_named_lossy().hex_digit(),
+                        Color::Named(normal) => normal.hex_digit(),
+                        Color::Reset => return,
+                    };
 
-    fn clear_color(self) -> Text {
-        let mut t = self.into();
-        t.0.color = None;
-        t
-    }
+                    output.push('§');
+                    output.push(code);
+                }
+                if let Some(true) = self.obfuscated {
+                    output.push_str("§k");
+                }
+                if let Some(true) = self.bold {
+                    output.push_str("§l");
+                }
+                if let Some(true) = self.strikethrough {
+                    output.push_str("§m");
+                }
+                if let Some(true) = self.underlined {
+                    output.push_str("§n");
+                }
+                if let Some(true) = self.italic {
+                    output.push_str("§o");
+                }
+            }
+            // Merges 2 Modifiers. The result is what you would get if you applied them both
+            // sequentially.
+            fn add(&self, other: &Self) -> Self {
+                Self {
+                    obfuscated: other.obfuscated.or(self.obfuscated),
+                    bold: other.bold.or(self.bold),
+                    strikethrough: other.strikethrough.or(self.strikethrough),
+                    underlined: other.underlined.or(self.underlined),
+                    italic: other.italic.or(self.italic),
+                    color: other.color.or(self.color),
+                }
+            }
+        }
 
-    fn font(self, font: impl Into<Cow<'static, str>>) -> Text {
-        let mut t = self.into();
-        t.0.font = Some(font.into());
-        t
-    }
+        fn to_legacy_inner(this: &Text, result: &mut String, mods: &mut Modifiers) {
+            let new_mods = Modifiers {
+                obfuscated: this.0.obfuscated,
+                bold: this.0.bold,
+                strikethrough: this.0.strikethrough,
+                underlined: this.0.underlined,
+                italic: this.0.italic,
+                color: this.0.color,
+            };
 
-    fn clear_font(self) -> Text {
-        let mut t = self.into();
-        t.0.font = None;
-        t
-    }
+            // If any modifiers were removed
+            if [
+                this.0.obfuscated,
+                this.0.bold,
+                this.0.strikethrough,
+                this.0.underlined,
+                this.0.italic,
+            ]
+            .iter()
+            .any(|m| *m == Some(false))
+                || this.0.color == Some(Color::Reset)
+            {
+                // Reset and print sum of old and new modifiers
+                result.push_str("§r");
+                mods.add(&new_mods).write(result);
+            } else {
+                // Print only new modifiers
+                new_mods.write(result);
+            }
 
-    fn bold(self) -> Text {
-        let mut t = self.into();
-        t.0.bold = Some(true);
-        t
-    }
+            *mods = mods.add(&new_mods);
 
-    fn not_bold(self) -> Text {
-        let mut t = self.into();
-        t.0.bold = Some(false);
-        t
-    }
+            if let TextContent::Text { text } = &this.0.content {
+                result.push_str(text);
+            }
 
-    fn clear_bold(self) -> Text {
-        let mut t = self.into();
-        t.0.bold = None;
-        t
-    }
+            for child in &this.0.extra {
+                to_legacy_inner(child, result, mods);
+            }
+        }
 
-    fn italic(self) -> Text {
-        let mut t = self.into();
-        t.0.italic = Some(true);
-        t
-    }
+        let mut result = String::new();
+        let mut mods = Modifiers::default();
+        to_legacy_inner(self, &mut result, &mut mods);
 
-    fn not_italic(self) -> Text {
-        let mut t = self.into();
-        t.0.italic = Some(false);
-        t
-    }
-
-    fn clear_italic(self) -> Text {
-        let mut t = self.into();
-        t.0.italic = None;
-        t
-    }
-
-    fn underlined(self) -> Text {
-        let mut t = self.into();
-        t.0.underlined = Some(true);
-        t
-    }
-
-    fn not_underlined(self) -> Text {
-        let mut t = self.into();
-        t.0.underlined = Some(false);
-        t
-    }
-
-    fn clear_underlined(self) -> Text {
-        let mut t = self.into();
-        t.0.underlined = None;
-        t
-    }
-
-    fn strikethrough(self) -> Text {
-        let mut t = self.into();
-        t.0.strikethrough = Some(true);
-        t
-    }
-
-    fn not_strikethrough(self) -> Text {
-        let mut t = self.into();
-        t.0.strikethrough = Some(false);
-        t
-    }
-
-    fn clear_strikethrough(self) -> Text {
-        let mut t = self.into();
-        t.0.strikethrough = None;
-        t
-    }
-
-    fn obfuscated(self) -> Text {
-        let mut t = self.into();
-        t.0.obfuscated = Some(true);
-        t
-    }
-
-    fn not_obfuscated(self) -> Text {
-        let mut t = self.into();
-        t.0.obfuscated = Some(false);
-        t
-    }
-
-    fn clear_obfuscated(self) -> Text {
-        let mut t = self.into();
-        t.0.obfuscated = None;
-        t
-    }
-
-    fn insertion(self, insertion: impl Into<Cow<'static, str>>) -> Text {
-        let mut t = self.into();
-        t.0.insertion = Some(insertion.into());
-        t
-    }
-
-    fn clear_insertion(self) -> Text {
-        let mut t = self.into();
-        t.0.insertion = None;
-        t
-    }
-
-    fn on_click_open_url(self, url: impl Into<Cow<'static, str>>) -> Text {
-        let mut t = self.into();
-        t.0.click_event = Some(ClickEvent::OpenUrl(url.into()));
-        t
-    }
-
-    fn on_click_run_command(self, command: impl Into<Cow<'static, str>>) -> Text {
-        let mut t = self.into();
-        t.0.click_event = Some(ClickEvent::RunCommand(command.into()));
-        t
-    }
-
-    fn on_click_suggest_command(self, command: impl Into<Cow<'static, str>>) -> Text {
-        let mut t = self.into();
-        t.0.click_event = Some(ClickEvent::SuggestCommand(command.into()));
-        t
-    }
-
-    fn on_click_change_page(self, page: impl Into<i32>) -> Text {
-        let mut t = self.into();
-        t.0.click_event = Some(ClickEvent::ChangePage(page.into()));
-        t
-    }
-
-    fn on_click_copy_to_clipboard(self, text: impl Into<Cow<'static, str>>) -> Text {
-        let mut t = self.into();
-        t.0.click_event = Some(ClickEvent::CopyToClipboard(text.into()));
-        t
-    }
-
-    fn clear_click_event(self) -> Text {
-        let mut t = self.into();
-        t.0.click_event = None;
-        t
-    }
-
-    fn on_hover_show_text(self, text: impl Into<Text>) -> Text {
-        let mut t = self.into();
-        t.0.hover_event = Some(HoverEvent::ShowText(text.into()));
-        t
-    }
-
-    fn clear_hover_event(self) -> Text {
-        let mut t = self.into();
-        t.0.hover_event = None;
-        t
-    }
-
-    fn add_child(self, text: impl Into<Text>) -> Text {
-        let mut t = self.into();
-        t.0.extra.push(text.into());
-        t
+        result
     }
 }
 
-impl<T: Into<Text>> TextFormat for T {}
+impl Deref for Text {
+    type Target = TextInner;
 
-impl<T: Into<Text>> ops::Add<T> for Text {
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Text {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl<T: IntoText<'static>> ops::Add<T> for Text {
     type Output = Self;
 
     fn add(self, rhs: T) -> Self::Output {
@@ -759,63 +524,9 @@ impl<T: Into<Text>> ops::Add<T> for Text {
     }
 }
 
-impl<T: Into<Text>> ops::AddAssign<T> for Text {
+impl<T: IntoText<'static>> ops::AddAssign<T> for Text {
     fn add_assign(&mut self, rhs: T) {
-        self.0.extra.push(rhs.into());
-    }
-}
-
-impl From<char> for Text {
-    fn from(c: char) -> Self {
-        Text::text(String::from(c))
-    }
-}
-
-impl From<String> for Text {
-    fn from(s: String) -> Self {
-        Text::text(s)
-    }
-}
-
-impl From<&'static str> for Text {
-    fn from(s: &'static str) -> Self {
-        Text::text(s)
-    }
-}
-
-impl From<Cow<'static, str>> for Text {
-    fn from(s: Cow<'static, str>) -> Self {
-        Text::text(s)
-    }
-}
-
-impl From<i32> for Text {
-    fn from(value: i32) -> Self {
-        Text::text(value.to_string())
-    }
-}
-
-impl From<i64> for Text {
-    fn from(value: i64) -> Self {
-        Text::text(value.to_string())
-    }
-}
-
-impl From<u64> for Text {
-    fn from(value: u64) -> Self {
-        Text::text(value.to_string())
-    }
-}
-
-impl From<f64> for Text {
-    fn from(value: f64) -> Self {
-        Text::text(value.to_string())
-    }
-}
-
-impl From<bool> for Text {
-    fn from(value: bool) -> Self {
-        Text::text(value.to_string())
+        self.extra.push(rhs.into_text());
     }
 }
 
@@ -831,24 +542,52 @@ impl<'a> From<&'a Text> for Cow<'a, Text> {
     }
 }
 
+impl FromStr for Text {
+    type Err = serde_json::error::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.is_empty() {
+            Ok(Text::default())
+        } else {
+            serde_json::from_str(s)
+        }
+    }
+}
+
+impl From<Text> for String {
+    fn from(value: Text) -> Self {
+        format!("{value}")
+    }
+}
+
 impl From<Text> for Value {
     fn from(value: Text) -> Self {
-        Value::String(
-            serde_json::to_string(&value)
-                .unwrap_or_else(|err| panic!("failed to jsonify text {value:?}\n{err}")),
-        )
+        Value::String(value.into())
     }
 }
 
 impl fmt::Debug for Text {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.write_string(f)
+        fmt::Display::fmt(self, f)
     }
 }
 
 impl fmt::Display for Text {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.write_string(f)
+        let string = if f.alternate() {
+            serde_json::to_string_pretty(self)
+        } else {
+            serde_json::to_string(self)
+        }
+        .map_err(|_| fmt::Error)?;
+
+        f.write_str(&string)
+    }
+}
+
+impl Default for TextContent {
+    fn default() -> Self {
+        Self::Text { text: "".into() }
     }
 }
 
@@ -860,104 +599,69 @@ impl Encode for Text {
 
 impl Decode<'_> for Text {
     fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
-        let string = <&str>::decode(r)?;
-        if string.is_empty() {
-            Ok(Self::default())
-        } else {
-            serde_json::from_str(string).context("decoding text JSON")
-        }
+        let str = <&str>::decode(r)?;
+
+        Self::from_str(str).context("decoding text JSON")
     }
 }
 
-impl Default for TextContent {
-    fn default() -> Self {
-        Self::Text { text: "".into() }
-    }
-}
-
-impl Color {
-    pub const AQUA: Color = Color::new(85, 255, 255);
-    pub const BLACK: Color = Color::new(0, 0, 0);
-    pub const BLUE: Color = Color::new(85, 85, 255);
-    pub const DARK_AQUA: Color = Color::new(0, 170, 170);
-    pub const DARK_BLUE: Color = Color::new(0, 0, 170);
-    pub const DARK_GRAY: Color = Color::new(85, 85, 85);
-    pub const DARK_GREEN: Color = Color::new(0, 170, 0);
-    pub const DARK_PURPLE: Color = Color::new(170, 0, 170);
-    pub const DARK_RED: Color = Color::new(170, 0, 0);
-    pub const GOLD: Color = Color::new(255, 170, 0);
-    pub const GRAY: Color = Color::new(170, 170, 170);
-    pub const GREEN: Color = Color::new(85, 255, 85);
-    pub const LIGHT_PURPLE: Color = Color::new(255, 85, 255);
-    pub const RED: Color = Color::new(255, 85, 85);
-    pub const WHITE: Color = Color::new(255, 255, 255);
-    pub const YELLOW: Color = Color::new(255, 255, 85);
-
-    /// Constructs a new color from red, green, and blue components.
-    pub const fn new(r: u8, g: u8, b: u8) -> Self {
-        Self { r, g, b }
-    }
-}
-
-impl Serialize for Color {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        format!("#{:02x}{:02x}{:02x}", self.r, self.g, self.b).serialize(serializer)
-    }
-}
-
-impl<'de> Deserialize<'de> for Color {
+impl<'de> Deserialize<'de> for Text {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_str(ColorVisitor)
-    }
-}
+        struct TextVisitor;
 
-struct ColorVisitor;
+        impl<'de> Visitor<'de> for TextVisitor {
+            type Value = Text;
 
-impl<'de> Visitor<'de> for ColorVisitor {
-    type Value = Color;
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                write!(formatter, "a text component data type")
+            }
 
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "a hex color of the form #rrggbb")
-    }
+            fn visit_bool<E: de::Error>(self, v: bool) -> Result<Self::Value, E> {
+                Ok(Text::text(v.to_string()))
+            }
 
-    fn visit_str<E: de::Error>(self, s: &str) -> Result<Self::Value, E> {
-        color_from_str(s).ok_or_else(|| E::custom("invalid hex color"))
-    }
-}
+            fn visit_i64<E: de::Error>(self, v: i64) -> Result<Self::Value, E> {
+                Ok(Text::text(v.to_string()))
+            }
 
-fn color_from_str(s: &str) -> Option<Color> {
-    let to_num = |d| match d {
-        b'0'..=b'9' => Some(d - b'0'),
-        b'a'..=b'f' => Some(d - b'a' + 0xa),
-        b'A'..=b'F' => Some(d - b'A' + 0xa),
-        _ => None,
-    };
+            fn visit_u64<E: de::Error>(self, v: u64) -> Result<Self::Value, E> {
+                Ok(Text::text(v.to_string()))
+            }
 
-    match s.as_bytes() {
-        [b'#', r0, r1, g0, g1, b0, b1] => Some(Color {
-            r: to_num(*r0)? << 4 | to_num(*r1)?,
-            g: to_num(*g0)? << 4 | to_num(*g1)?,
-            b: to_num(*b0)? << 4 | to_num(*b1)?,
-        }),
-        _ => match s {
-            "aqua" => Some(Color::AQUA),
-            "black" => Some(Color::BLACK),
-            "blue" => Some(Color::BLUE),
-            "dark_aqua" => Some(Color::DARK_AQUA),
-            "dark_blue" => Some(Color::DARK_BLUE),
-            "dark_gray" => Some(Color::DARK_GRAY),
-            "dark_green" => Some(Color::DARK_GREEN),
-            "dark_purple" => Some(Color::DARK_PURPLE),
-            "dark_red" => Some(Color::DARK_RED),
-            "gold" => Some(Color::GOLD),
-            "gray" => Some(Color::GRAY),
-            "green" => Some(Color::GREEN),
-            "light_purple" => Some(Color::LIGHT_PURPLE),
-            "red" => Some(Color::RED),
-            "white" => Some(Color::WHITE),
-            "yellow" => Some(Color::YELLOW),
-            _ => None,
-        },
+            fn visit_f64<E: de::Error>(self, v: f64) -> Result<Self::Value, E> {
+                Ok(Text::text(v.to_string()))
+            }
+
+            fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+                Ok(Text::text(v.to_string()))
+            }
+
+            fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
+                Ok(Text::text(v))
+            }
+
+            fn visit_seq<A: de::SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+                let Some(mut res) = seq.next_element()? else {
+                    return Ok(Text::default());
+                };
+
+                while let Some(child) = seq.next_element::<Text>()? {
+                    res += child;
+                }
+
+                Ok(res)
+            }
+
+            fn visit_map<A: de::MapAccess<'de>>(self, map: A) -> Result<Self::Value, A::Error> {
+                use de::value::MapAccessDeserializer;
+
+                Ok(Text(Box::new(TextInner::deserialize(
+                    MapAccessDeserializer::new(map),
+                )?)))
+            }
+        }
+
+        deserializer.deserialize_any(TextVisitor)
     }
 }
 
@@ -972,11 +676,9 @@ mod tests {
             + ("bar".obfuscated().color(Color::YELLOW)
                 + "baz".underlined().not_bold().italic().color(Color::BLACK));
 
-        assert_eq!(before.to_string(), "foobarbaz");
+        let json = format!("{before:#}");
 
-        let json = serde_json::to_string_pretty(&before).unwrap();
-
-        let after: Text = serde_json::from_str(&json).unwrap();
+        let after = Text::from_str(&json).unwrap();
 
         println!("==== Before ====\n");
         println!("{before:#?}");
@@ -985,20 +687,6 @@ mod tests {
 
         assert_eq!(before, after);
         assert_eq!(before.to_string(), after.to_string());
-    }
-
-    #[test]
-    fn text_color() {
-        assert_eq!(
-            color_from_str("#aBcDeF"),
-            Some(Color::new(0xab, 0xcd, 0xef))
-        );
-        assert_eq!(color_from_str("#fFfFfF"), Some(Color::new(255, 255, 255)));
-        assert_eq!(color_from_str("#00000000"), None);
-        assert_eq!(color_from_str("#000000"), Some(Color::BLACK));
-        assert_eq!(color_from_str("#"), None);
-        assert_eq!(color_from_str("red"), Some(Color::RED));
-        assert_eq!(color_from_str("blue"), Some(Color::BLUE));
     }
 
     #[test]
@@ -1013,10 +701,10 @@ mod tests {
     fn translate() {
         let txt = Text::translate(
             translation_key::CHAT_TYPE_ADVANCEMENT_TASK,
-            ["arg1".into(), "arg2".into()],
+            ["arg1".into_text(), "arg2".into_text()],
         );
-        let serialized = serde_json::to_string(&txt).unwrap();
-        let deserialized: Text = serde_json::from_str(&serialized).unwrap();
+        let serialized = txt.to_string();
+        let deserialized = Text::from_str(&serialized).unwrap();
         assert_eq!(
             serialized,
             r#"{"translate":"chat.type.advancement.task","with":[{"text":"arg1"},{"text":"arg2"}]}"#
@@ -1027,8 +715,8 @@ mod tests {
     #[test]
     fn score() {
         let txt = Text::score("foo", "bar", Some(Cow::from("baz")));
-        let serialized = serde_json::to_string(&txt).unwrap();
-        let deserialized: Text = serde_json::from_str(&serialized).unwrap();
+        let serialized = txt.to_string();
+        let deserialized = Text::from_str(&serialized).unwrap();
         assert_eq!(
             serialized,
             r#"{"score":{"name":"foo","objective":"bar","value":"baz"}}"#
@@ -1040,11 +728,11 @@ mod tests {
     fn selector() {
         let separator = Text::text("bar").color(Color::RED).bold();
         let txt = Text::selector("foo", Some(separator));
-        let serialized = serde_json::to_string(&txt).unwrap();
-        let deserialized: Text = serde_json::from_str(&serialized).unwrap();
+        let serialized = txt.to_string();
+        let deserialized = Text::from_str(&serialized).unwrap();
         assert_eq!(
             serialized,
-            r##"{"selector":"foo","separator":{"text":"bar","color":"#ff5555","bold":true}}"##
+            r##"{"selector":"foo","separator":{"text":"bar","color":"red","bold":true}}"##
         );
         assert_eq!(txt, deserialized);
     }
@@ -1052,17 +740,17 @@ mod tests {
     #[test]
     fn keybind() {
         let txt = Text::keybind("foo");
-        let serialized = serde_json::to_string(&txt).unwrap();
-        let deserialized: Text = serde_json::from_str(&serialized).unwrap();
+        let serialized = txt.to_string();
+        let deserialized = Text::from_str(&serialized).unwrap();
         assert_eq!(serialized, r#"{"keybind":"foo"}"#);
         assert_eq!(txt, deserialized);
     }
 
     #[test]
     fn block_nbt() {
-        let txt = Text::block_nbt("foo", "bar", Some(true), Some("baz".into()));
-        let serialized = serde_json::to_string(&txt).unwrap();
-        let deserialized: Text = serde_json::from_str(&serialized).unwrap();
+        let txt = Text::block_nbt("foo", "bar", Some(true), Some("baz".into_text()));
+        let serialized = txt.to_string();
+        let deserialized = Text::from_str(&serialized).unwrap();
         let expected = r#"{"block":"foo","nbt":"bar","interpret":true,"separator":{"text":"baz"}}"#;
         assert_eq!(serialized, expected);
         assert_eq!(txt, deserialized);
@@ -1070,9 +758,9 @@ mod tests {
 
     #[test]
     fn entity_nbt() {
-        let txt = Text::entity_nbt("foo", "bar", Some(true), Some("baz".into()));
-        let serialized = serde_json::to_string(&txt).unwrap();
-        let deserialized: Text = serde_json::from_str(&serialized).unwrap();
+        let txt = Text::entity_nbt("foo", "bar", Some(true), Some("baz".into_text()));
+        let serialized = txt.to_string();
+        let deserialized = Text::from_str(&serialized).unwrap();
         let expected =
             r#"{"entity":"foo","nbt":"bar","interpret":true,"separator":{"text":"baz"}}"#;
         assert_eq!(serialized, expected);
@@ -1081,11 +769,37 @@ mod tests {
 
     #[test]
     fn storage_nbt() {
-        let txt = Text::storage_nbt(ident!("foo"), "bar", Some(true), Some("baz".into()));
-        let serialized = serde_json::to_string(&txt).unwrap();
-        let deserialized: Text = serde_json::from_str(&serialized).unwrap();
+        let txt = Text::storage_nbt(ident!("foo"), "bar", Some(true), Some("baz".into_text()));
+        let serialized = txt.to_string();
+        let deserialized = Text::from_str(&serialized).unwrap();
         let expected = r#"{"storage":"minecraft:foo","nbt":"bar","interpret":true,"separator":{"text":"baz"}}"#;
         assert_eq!(serialized, expected);
         assert_eq!(txt, deserialized);
+    }
+
+    #[test]
+    fn text_to_legacy_lossy() {
+        let text = "Heavily formatted green text\n"
+            .bold()
+            .italic()
+            .strikethrough()
+            .underlined()
+            .obfuscated()
+            .color(Color::GREEN)
+            + "Lightly formatted red text\n"
+                .not_bold()
+                .not_strikethrough()
+                .not_obfuscated()
+                .color(Color::RED)
+            + "Not formatted blue text"
+                .not_italic()
+                .not_underlined()
+                .color(Color::BLUE);
+
+        assert_eq!(
+            text.to_legacy_lossy(),
+            "§a§k§l§m§n§oHeavily formatted green text\n§r§c§n§oLightly formatted red \
+             text\n§r§9Not formatted blue text"
+        );
     }
 }

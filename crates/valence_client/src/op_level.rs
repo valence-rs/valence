@@ -3,7 +3,7 @@ use valence_entity::packet::EntityStatusS2c;
 use super::*;
 
 pub(super) fn build(app: &mut App) {
-    app.add_system(update_op_level.in_set(UpdateClientsSet));
+    app.add_systems(PostUpdate, update_op_level.in_set(UpdateClientsSet));
 }
 
 #[derive(Component, Clone, PartialEq, Eq, Default, Debug)]

@@ -1,10 +1,94 @@
+[package]
+name = "valence"
+version.workspace = true
+edition.workspace = true
+description = "A framework for building Minecraft servers in Rust."
+documentation.workspace = true
+repository.workspace = true
+readme = "README.md"
+license.workspace = true
+keywords = ["minecraft", "gamedev", "server", "ecs"]
+categories = ["game-engines"]
+
+[features]
+default = [
+    "advancement",
+    "anvil",
+    "boss_bar",
+    "inventory",
+    "log",
+    "network",
+    "player_list",
+    "world_border",
+    "schem",
+]
+advancement = ["dep:valence_advancement"]
+anvil = ["dep:valence_anvil"]
+boss_bar = ["dep:valence_boss_bar"]
+inventory = ["dep:valence_inventory"]
+log = ["dep:bevy_log"]
+network = ["dep:valence_network"]
+player_list = ["dep:valence_player_list"]
+world_border = ["dep:valence_world_border"]
+schem = ["dep:valence_schem"]
+
+[dependencies]
+anyhow.workspace = true
+bevy_app.workspace = true
+bevy_ecs.workspace = true
+bevy_log = { workspace = true, optional = true }
+glam.workspace = true
+uuid.workspace = true
+bytes.workspace = true
+rand.workspace = true
+valence_advancement = { workspace = true, optional = true }
+valence_anvil = { workspace = true, optional = true }
+valence_biome.workspace = true
+valence_block.workspace = true
+valence_boss_bar = { workspace = true, optional = true }
+valence_client.workspace = true
+valence_core.workspace = true
+valence_dimension.workspace = true
+valence_entity.workspace = true
+valence_instance.workspace = true
+valence_inventory = { workspace = true, optional = true }
+valence_nbt.workspace = true
+valence_network = { workspace = true, optional = true }
+valence_player_list = { workspace = true, optional = true }
+valence_registry.workspace = true
+valence_world_border = { workspace = true, optional = true }
+valence_schem = { workspace = true, optional = true }
+
+[dev-dependencies]
+anyhow.workspace = true
+clap.workspace = true
+criterion.workspace = true
+flume.workspace = true
+noise.workspace = true              # For the terrain example.
+tracing.workspace = true
+
+[dev-dependencies.reqwest]
+workspace = true
+default-features = false
+features = ["rustls-tls", "blocking", "stream"]
+
+[[bench]]
+name = "main"
+harness = false
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.dev]
+opt-level = 1
+
 [workspace]
 members = ["crates/*", "tools/*"]
-exclude = ["rust-mc-bot", "tools/stresser", "tools/packet_inspector"]
+exclude = []
 resolver = "2"
 
 [workspace.package]
-version = "0.2.0-dev+mc.1.19.4"
+version = "0.2.0-dev+mc.1.20.1"
 edition = "2021"
 repository = "https://github.com/valence-rs/valence"
 documentation = "https://docs.rs/valence/"
@@ -12,16 +96,18 @@ license = "MIT"
 
 [workspace.dependencies]
 aes = "0.8.2"
-anyhow = "1.0.70"
+anyhow = { version = "1.0.70", features = ["backtrace"] }
 approx = "0.5.1"
 arrayvec = "0.7.2"
 async-trait = "0.1.60"
 atty = "0.2.14"
 base64 = "0.21.0"
-bevy_app = { version = "0.10.1", default-features = false }
-bevy_ecs = { version = "0.10.1", default-features = false, features = ["trace"] }
-bevy_hierarchy = { version = "0.10.1", default-features = false }
-bevy_mod_debugdump = "0.7.0"
+bevy_app = { version = "0.11", default-features = false }
+bevy_ecs = { version = "0.11", default-features = false }
+bevy_hierarchy = { version = "0.11", default-features = false }
+bevy_log = { version = "0.11" }
+bevy_mod_debugdump = { version =  "0.8.0", default-features = false }
+bevy_utils = { version = "0.11" }
 bitfield-struct = "0.3.1"
 byteorder = "1.4.3"
 bytes = "1.2.1"
@@ -30,9 +116,10 @@ cfb8 = "0.8.1"
 clap = { version = "4.0.30", features = ["derive"] }
 criterion = "0.4.0"
 directories = "5.0.0"
-eframe = { version = "0.21.0", default-features = false }
-egui = "0.21.0"
-enum-map = "2.4.2"
+eframe = { version = "0.22.0", default-features = false }
+egui = "0.22.0"
+egui_dock = "0.6"
+enum-map = "2.5.0"
 flate2 = "1.0.24"
 flume = "0.10.14"
 fs_extra = "1.2.0"
@@ -40,6 +127,9 @@ glam = "0.23.0"
 heck = "0.4.0"
 hmac = "0.12.1"
 indexmap = "1.9.3"
+image = "0.24.6"
+itertools = "0.10.5"
+lru = "0.10.0"
 noise = "0.8.2"
 num = "0.4.0"
 num-bigint = "0.4.3"
@@ -86,15 +176,11 @@ valence_dimension.path = "crates/valence_dimension"
 valence_entity.path = "crates/valence_entity"
 valence_instance.path = "crates/valence_instance"
 valence_inventory.path = "crates/valence_inventory"
-valence_nbt = { path = "crates/valence_nbt" }
+valence_nbt = { path = "crates/valence_nbt", features = ["uuid"] }
 valence_network.path = "crates/valence_network"
 valence_player_list.path = "crates/valence_player_list"
 valence_registry.path = "crates/valence_registry"
-valence.path = "crates/valence"
+valence_world_border.path = "crates/valence_world_border"
+valence_boss_bar.path = "crates/valence_boss_bar"
+valence.path = "."
 zip = "0.6.3"
-
-[profile.dev.package."*"]
-opt-level = 3
-
-[profile.dev]
-opt-level = 1

@@ -170,7 +170,7 @@ impl Value {
                 quote!(None)
             }
             Value::ItemStack(stack) => {
-                assert_eq!(stack, "1 air");
+                assert_eq!(stack, "0 air");
                 quote!(valence_core::item::ItemStack::default())
             }
             Value::Boolean(b) => quote!(#b),
@@ -402,7 +402,6 @@ fn build() -> anyhow::Result<TokenStream> {
                 pub animations: super::EntityAnimations,
                 pub object_data: super::ObjectData,
                 pub tracked_data: super::TrackedData,
-                pub packet_byte_range: super::PacketByteRange,
             }]);
 
             bundle_init_fields.extend([quote! {
@@ -421,7 +420,6 @@ fn build() -> anyhow::Result<TokenStream> {
                 animations: Default::default(),
                 object_data: Default::default(),
                 tracked_data: Default::default(),
-                packet_byte_range: Default::default(),
             }]);
 
             let bundle_name_ident = ident(format!("{entity_name}Bundle"));
@@ -478,6 +476,7 @@ fn build() -> anyhow::Result<TokenStream> {
 
             systems.extend([quote! {
                 #[allow(clippy::needless_borrow)]
+                #[allow(clippy::suspicious_else_formatting)]
                 fn #system_name_ident(
                     mut query: Query<(&#component_path, &mut TrackedData), Changed<#component_path>>
                 ) {
@@ -597,7 +596,8 @@ fn build() -> anyhow::Result<TokenStream> {
             #systems
 
             #(
-                app.add_system(
+                app.add_systems(
+                    PostUpdate,
                     #system_names
                         .in_set(UpdateTrackedDataSet)
                         .ambiguous_with(UpdateTrackedDataSet)

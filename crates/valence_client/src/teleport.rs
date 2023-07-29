@@ -4,15 +4,17 @@ use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 
 use super::*;
-use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
+use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 
 pub(super) fn build(app: &mut App) {
-    app.add_system(teleport.after(update_view).in_set(UpdateClientsSet))
-        .add_system(
-            handle_teleport_confirmations
-                .in_schedule(EventLoopSchedule)
-                .in_base_set(EventLoopSet::PreUpdate),
-        );
+    app.add_systems(
+        PostUpdate,
+        teleport
+            .after(update_view)
+            .before(update_respawn_position)
+            .in_set(UpdateClientsSet),
+    )
+    .add_systems(EventLoopPreUpdate, handle_teleport_confirmations);
 }
 
 #[derive(Component, Debug)]
@@ -32,11 +34,12 @@ impl TeleportState {
         Self {
             teleport_id_counter: 0,
             pending_teleports: 0,
-            synced_pos: DVec3::ZERO,
+            // Set initial synced pos and look to NaN so a teleport always happens when first
+            // joining.
+            synced_pos: DVec3::NAN,
             synced_look: Look {
-                // Client starts facing north.
-                yaw: 180.0,
-                pitch: 0.0,
+                yaw: f32::NAN,
+                pitch: f32::NAN,
             },
         }
     }

@@ -185,6 +185,17 @@ pub trait WritePacket {
     /// discarded.
     fn write_packet<P>(&mut self, packet: &P)
     where
+        P: Packet + Encode,
+    {
+        if let Err(e) = self.write_packet_fallible(packet) {
+            warn!("failed to write packet '{}': {e:#}", P::NAME);
+        }
+    }
+
+    /// Writes a packet to this object. The result of encoding the packet is
+    /// returned.
+    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
+    where
         P: Packet + Encode;
 
     /// Copies raw packet data directly into this object. Don't use this unless
@@ -193,11 +204,11 @@ pub trait WritePacket {
 }
 
 impl<W: WritePacket> WritePacket for &mut W {
-    fn write_packet<P>(&mut self, packet: &P)
+    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
     where
         P: Packet + Encode,
     {
-        (*self).write_packet(packet)
+        (*self).write_packet_fallible(packet)
     }
 
     fn write_packet_bytes(&mut self, bytes: &[u8]) {
@@ -206,11 +217,11 @@ impl<W: WritePacket> WritePacket for &mut W {
 }
 
 impl<T: WritePacket> WritePacket for Mut<'_, T> {
-    fn write_packet<P>(&mut self, packet: &P)
+    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
     where
         P: Packet + Encode,
     {
-        self.as_mut().write_packet(packet)
+        self.as_mut().write_packet_fallible(packet)
     }
 
     fn write_packet_bytes(&mut self, bytes: &[u8]) {
@@ -222,37 +233,28 @@ impl<T: WritePacket> WritePacket for Mut<'_, T> {
 pub struct PacketWriter<'a> {
     pub buf: &'a mut Vec<u8>,
     pub threshold: Option<u32>,
-    pub scratch: &'a mut Vec<u8>,
 }
 
 impl<'a> PacketWriter<'a> {
-    pub fn new(buf: &'a mut Vec<u8>, threshold: Option<u32>, scratch: &'a mut Vec<u8>) -> Self {
-        Self {
-            buf,
-            threshold,
-            scratch,
-        }
+    pub fn new(buf: &'a mut Vec<u8>, threshold: Option<u32>) -> Self {
+        Self { buf, threshold }
     }
 }
 
 impl WritePacket for PacketWriter<'_> {
-    fn write_packet<P>(&mut self, pkt: &P)
+    fn write_packet_fallible<P>(&mut self, pkt: &P) -> anyhow::Result<()>
     where
         P: Packet + Encode,
     {
         #[cfg(feature = "compression")]
-        let res = if let Some(threshold) = self.threshold {
-            encode_packet_compressed(self.buf, pkt, threshold, self.scratch)
+        if let Some(threshold) = self.threshold {
+            encode_packet_compressed(self.buf, pkt, threshold)
         } else {
             encode_packet(self.buf, pkt)
-        };
+        }
 
         #[cfg(not(feature = "compression"))]
-        let res = encode_packet(self.buf, pkt);
-
-        if let Err(e) = res {
-            warn!("failed to write packet: {e:#}");
-        }
+        encode_packet(self.buf, pkt)
     }
 
     fn write_packet_bytes(&mut self, bytes: &[u8]) {
@@ -263,13 +265,11 @@ impl WritePacket for PacketWriter<'_> {
 }
 
 impl WritePacket for PacketEncoder {
-    fn write_packet<P>(&mut self, packet: &P)
+    fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
     where
         P: Packet + Encode,
     {
-        if let Err(e) = self.append_packet(packet) {
-            warn!("failed to write packet: {e:#}");
-        }
+        self.append_packet(packet)
     }
 
     fn write_packet_bytes(&mut self, bytes: &[u8]) {
@@ -277,7 +277,7 @@ impl WritePacket for PacketEncoder {
     }
 }
 
-pub fn encode_packet<P>(buf: &mut Vec<u8>, pkt: &P) -> anyhow::Result<()>
+fn encode_packet<P>(buf: &mut Vec<u8>, pkt: &P) -> anyhow::Result<()>
 where
     P: Packet + Encode,
 {
@@ -307,12 +307,7 @@ where
 }
 
 #[cfg(feature = "compression")]
-pub fn encode_packet_compressed<P>(
-    buf: &mut Vec<u8>,
-    pkt: &P,
-    threshold: u32,
-    scratch: &mut Vec<u8>,
-) -> anyhow::Result<()>
+fn encode_packet_compressed<P>(buf: &mut Vec<u8>, pkt: &P, threshold: u32) -> anyhow::Result<()>
 where
     P: Packet + Encode,
 {
@@ -330,11 +325,9 @@ where
     if data_len > threshold as usize {
         let mut z = ZlibEncoder::new(&buf[start_len..], Compression::new(4));
 
-        scratch.clear();
+        let mut scratch = vec![];
 
-        let data_len_size = VarInt(data_len as i32).written_size();
-
-        let packet_len = data_len_size + z.read_to_end(scratch)?;
+        let packet_len = VarInt(data_len as i32).written_size() + z.read_to_end(&mut scratch)?;
 
         ensure!(
             packet_len <= MAX_PACKET_SIZE as usize,
@@ -347,7 +340,7 @@ where
 
         VarInt(packet_len as i32).encode(&mut *buf)?;
         VarInt(data_len as i32).encode(&mut *buf)?;
-        buf.extend_from_slice(scratch);
+        buf.extend_from_slice(&scratch);
     } else {
         let data_len_size = 1;
         let packet_len = data_len_size + data_len;

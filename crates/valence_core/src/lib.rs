@@ -41,7 +41,7 @@ use std::num::NonZeroU32;
 use std::time::Duration;
 
 use bevy_app::prelude::*;
-use bevy_app::{ScheduleRunnerPlugin, ScheduleRunnerSettings};
+use bevy_app::ScheduleRunnerPlugin;
 use bevy_ecs::prelude::*;
 
 use crate::despawn::despawn_marked_entities;
@@ -59,11 +59,11 @@ pub mod __private {
 extern crate self as valence_core;
 
 /// The Minecraft protocol version this library currently targets.
-pub const PROTOCOL_VERSION: i32 = 762;
+pub const PROTOCOL_VERSION: i32 = 763;
 
 /// The stringified name of the Minecraft version this library currently
 /// targets.
-pub const MINECRAFT_VERSION: &str = "1.19.4";
+pub const MINECRAFT_VERSION: &str = "1.20.1";
 
 /// Minecraft's standard ticks per second (TPS).
 pub const DEFAULT_TPS: NonZeroU32 = match NonZeroU32::new(20) {
@@ -88,16 +88,13 @@ impl Plugin for CorePlugin {
         let tick_period = Duration::from_secs_f64((tick_rate.get() as f64).recip());
 
         // Make the app loop forever at the configured TPS.
-        app.insert_resource(ScheduleRunnerSettings::run_loop(tick_period))
-            .add_plugin(ScheduleRunnerPlugin);
+        app.add_plugins(ScheduleRunnerPlugin::run_loop(tick_period));
 
         fn increment_tick_counter(mut server: ResMut<Server>) {
             server.current_tick += 1;
         }
 
-        app.add_systems(
-            (increment_tick_counter, despawn_marked_entities).in_base_set(CoreSet::Last),
-        );
+        app.add_systems(Last, (increment_tick_counter, despawn_marked_entities));
     }
 }
 

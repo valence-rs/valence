@@ -30,7 +30,6 @@ import rs.valence.extractor.DummyPlayerEntity;
 import rs.valence.extractor.DummyWorld;
 import rs.valence.extractor.Main;
 import rs.valence.extractor.Main.Pair;
-
 import java.lang.reflect.ParameterizedType;
 import java.util.*;
 
