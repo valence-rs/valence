@@ -1,8 +1,8 @@
 use anyhow::{bail, ensure};
 use valence_core::item::ItemStack;
+use valence_packet::inventory::{ClickMode, ClickSlotC2s};
 
 use super::{CursorItem, Inventory, InventoryWindow, PLAYER_INVENTORY_MAIN_SLOTS_COUNT};
-use valence_packet::inventory::{ClickMode, ClickSlotC2s};
 
 /// Validates a click slot packet enforcing that all fields are valid.
 pub(super) fn validate_click_slot_packet(
@@ -359,9 +359,9 @@ fn calculate_net_item_delta(
 mod tests {
     use valence_core::item::{ItemKind, ItemStack};
     use valence_core::protocol::var_int::VarInt;
+    use valence_packet::inventory::SlotChange;
 
     use super::*;
-    use valence_packet::inventory::SlotChange;
     use crate::InventoryKind;
 
     #[test]

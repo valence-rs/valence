@@ -2,8 +2,8 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use valence_block::BlockState;
 use valence_instance::chunk::UnloadedChunk;
-use valence_packet::instance::{BlockEntityUpdateS2c, ChunkDeltaUpdateS2c};
 use valence_instance::Instance;
+use valence_packet::instance::{BlockEntityUpdateS2c, ChunkDeltaUpdateS2c};
 
 use crate::testing::scenario_single_client;
 

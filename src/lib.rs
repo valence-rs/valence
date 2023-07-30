@@ -36,7 +36,6 @@ pub use valence_anvil as anvil;
 #[cfg(feature = "boss_bar")]
 pub use valence_boss_bar as boss_bar;
 pub use valence_core::*;
-pub use valence_packet as packet;
 #[cfg(feature = "inventory")]
 pub use valence_inventory as inventory;
 #[cfg(feature = "network")]
@@ -48,7 +47,8 @@ pub use valence_world_border as world_border;
 pub use {
     bevy_app as app, bevy_ecs as ecs, glam, valence_biome as biome, valence_block as block,
     valence_client as client, valence_dimension as dimension, valence_entity as entity,
-    valence_instance as instance, valence_nbt as nbt, valence_registry as registry,
+    valence_instance as instance, valence_nbt as nbt, valence_packet as packet,
+    valence_registry as registry,
 };
 
 /// Contains the most frequently used items in Valence projects.

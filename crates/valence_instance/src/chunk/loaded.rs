@@ -17,16 +17,16 @@ use valence_core::protocol::var_long::VarLong;
 use valence_core::protocol::{Encode, Packet};
 use valence_entity::EntityKind;
 use valence_nbt::{compound, Compound};
+use valence_packet::instance::{
+    BlockEntityUpdateS2c, BlockUpdateS2c, ChunkBiome, ChunkBiomeDataS2c, ChunkDataBlockEntity,
+    ChunkDataS2c, ChunkDeltaUpdateS2c,
+};
 use valence_registry::RegistryIdx;
 
 use super::paletted_container::PalettedContainer;
 use super::{
     bit_width, check_biome_oob, check_block_oob, check_section_oob, unloaded, BiomeContainer,
     BlockStateContainer, Chunk, UnloadedChunk, SECTION_BLOCK_COUNT,
-};
-use valence_packet::instance::{
-    BlockEntityUpdateS2c, BlockUpdateS2c, ChunkBiome, ChunkBiomeDataS2c, ChunkDataBlockEntity,
-    ChunkDataS2c, ChunkDeltaUpdateS2c,
 };
 use crate::{InstanceInfo, UpdateEntityQuery};
 

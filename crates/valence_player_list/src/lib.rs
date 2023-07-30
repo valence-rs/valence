@@ -32,7 +32,7 @@ use valence_core::uuid::UniqueId;
 use valence_core::Server;
 use valence_instance::WriteUpdatePacketsToInstancesSet;
 use valence_packet::player_list::{
-    PlayerListActions, PlayerListHeaderS2c, PlayerListS2c, PlayerRemoveS2c, PlayerListEntryPkt,
+    PlayerListActions, PlayerListEntryPkt, PlayerListHeaderS2c, PlayerListS2c, PlayerRemoveS2c,
 };
 
 pub struct PlayerListPlugin;

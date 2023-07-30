@@ -77,13 +77,13 @@ use std::time::{Duration, Instant};
 
 use bevy_app::prelude::*;
 use glam::DVec2;
-use valence_packet::world_border::*;
 use valence_client::{Client, FlushPacketsSet};
 use valence_core::protocol::encode::WritePacket;
 use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::var_long::VarLong;
 use valence_entity::Location;
 use valence_instance::{Instance, WriteUpdatePacketsToInstancesSet};
+use valence_packet::world_border::*;
 use valence_registry::*;
 
 // https://minecraft.fandom.com/wiki/World_border

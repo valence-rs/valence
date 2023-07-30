@@ -30,10 +30,6 @@ use bevy_ecs::query::WorldQuery;
 use bevy_ecs::system::Command;
 use bytes::{Bytes, BytesMut};
 use glam::{DVec3, Vec3};
-use valence_packet::client::{
-    DeathMessageS2c, DisconnectS2c, GameEventKind, GameJoinS2c, GameStateChangeS2c,
-    PlayerRespawnS2c, PlayerSpawnPositionS2c, PlayerSpawnS2c,
-};
 use tracing::{debug, warn};
 use uuid::Uuid;
 use valence_biome::BiomeRegistry;
@@ -47,26 +43,30 @@ use valence_core::property::Property;
 use valence_core::protocol::byte_angle::ByteAngle;
 use valence_core::protocol::encode::{PacketEncoder, WritePacket};
 use valence_core::protocol::global_pos::GlobalPos;
-use valence_packet::sound::PlaySoundS2c;
-use valence_core::sound::{Sound, SoundCategory};
 use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::{Encode, Packet};
+use valence_core::sound::{Sound, SoundCategory};
 use valence_core::text::{IntoText, Text};
 use valence_core::uuid::UniqueId;
-use valence_packet::entity::{
-    EntitiesDestroyS2c, EntitySetHeadYawS2c, EntitySpawnS2c, EntityStatusS2c,
-    EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, ExperienceOrbSpawnS2c,
-};
 use valence_entity::player::PlayerEntityBundle;
 use valence_entity::{
     ClearEntityChangesSet, EntityId, EntityKind, EntityStatus, HeadYaw, Location, Look, ObjectData,
     OldLocation, OldPosition, OnGround, PacketByteRange, Position, TrackedData, Velocity,
 };
 use valence_instance::chunk::loaded::ChunkState;
+use valence_instance::{ClearInstanceChangesSet, Instance, WriteUpdatePacketsToInstancesSet};
+use valence_packet::client::{
+    DeathMessageS2c, DisconnectS2c, GameEventKind, GameJoinS2c, GameStateChangeS2c,
+    PlayerRespawnS2c, PlayerSpawnPositionS2c, PlayerSpawnS2c,
+};
+use valence_packet::entity::{
+    EntitiesDestroyS2c, EntitySetHeadYawS2c, EntitySpawnS2c, EntityStatusS2c,
+    EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, ExperienceOrbSpawnS2c,
+};
 use valence_packet::instance::{
     ChunkLoadDistanceS2c, ChunkRenderDistanceCenterS2c, UnloadChunkS2c,
 };
-use valence_instance::{ClearInstanceChangesSet, Instance, WriteUpdatePacketsToInstancesSet};
+use valence_packet::sound::PlaySoundS2c;
 use valence_registry::codec::RegistryCodec;
 use valence_registry::tags::TagsRegistry;
 use valence_registry::RegistrySet;

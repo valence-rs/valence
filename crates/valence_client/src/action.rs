@@ -2,10 +2,10 @@ use valence_core::block_pos::BlockPos;
 use valence_core::direction::Direction;
 use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::{packet_id, Decode, Encode, Packet};
+use valence_packet::client::{PlayerAction, PlayerActionC2s};
 
 use super::*;
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
-use valence_packet::client::{PlayerAction, PlayerActionC2s};
 
 pub(super) fn build(app: &mut App) {
     app.add_event::<DiggingEvent>()

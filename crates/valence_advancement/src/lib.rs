@@ -13,9 +13,6 @@ use bevy_ecs::system::SystemParam;
 pub use bevy_hierarchy;
 use bevy_hierarchy::{Children, HierarchyPlugin, Parent};
 use event::{handle_advancement_tab_change, AdvancementTabChangeEvent};
-use valence_packet::advancement::{SelectAdvancementTabS2c, AdvancementRequirementsPkt, GenericAdvancementUpdateS2c, AdvancementCriteriaPkt};
-use valence_packet::advancement::AdvancementPkt;
-use valence_packet::advancement::AdvancementDisplayPkt;
 use rustc_hash::FxHashMap;
 use valence_client::{Client, FlushPacketsSet, SpawnClientsSet};
 use valence_core::ident::Ident;
@@ -25,6 +22,10 @@ use valence_core::protocol::raw::RawBytes;
 use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::{packet_id, Encode, Packet, PacketSide, PacketState};
 use valence_core::text::Text;
+use valence_packet::advancement::{
+    AdvancementCriteriaPkt, AdvancementDisplayPkt, AdvancementPkt, AdvancementRequirementsPkt,
+    GenericAdvancementUpdateS2c, SelectAdvancementTabS2c,
+};
 
 pub struct AdvancementPlugin;
 
@@ -93,8 +94,7 @@ struct UpdateAdvancementCachedBytesQuery<'w, 's> {
 impl<'w, 's> UpdateAdvancementCachedBytesQuery<'w, 's> {
     fn write(
         &self,
-        a_identifier: &Advancement
-,
+        a_identifier: &Advancement,
         a_requirements: &AdvancementRequirements,
         a_display: Option<&AdvancementDisplay>,
         a_children: Option<&Children>,
@@ -106,8 +106,7 @@ impl<'w, 's> UpdateAdvancementCachedBytesQuery<'w, 's> {
             criteria_query,
         } = self;
 
-        let mut pkt = AdvancementPkt
- {
+        let mut pkt = AdvancementPkt {
             parent_id: None,
             display_data: None,
             criteria: vec![],
@@ -160,8 +159,7 @@ impl<'w, 's> UpdateAdvancementCachedBytesQuery<'w, 's> {
 fn update_advancement_cached_bytes(
     mut query: Query<
         (
-            &Advancement
-    ,
+            &Advancement,
             &AdvancementRequirements,
             &mut AdvancementCachedBytes,
             Option<&AdvancementDisplay>,
@@ -436,8 +434,7 @@ impl AdvancementClientUpdate {
     pub(crate) fn walk_advancements(
         root: Entity,
         children_query: &Query<&Children>,
-        advancement_check_query: &Query<(), With<Advancement
->>,
+        advancement_check_query: &Query<(), With<Advancement>>,
         func: &mut impl FnMut(Entity),
     ) {
         func(root);
@@ -456,8 +453,7 @@ impl AdvancementClientUpdate {
         &mut self,
         root: Entity,
         children_query: &Query<&Children>,
-        advancement_check_query: &Query<(), With<Advancement
->>,
+        advancement_check_query: &Query<(), With<Advancement>>,
     ) {
         Self::walk_advancements(root, children_query, advancement_check_query, &mut |e| {
             self.new_advancements.push(e)
@@ -469,8 +465,7 @@ impl AdvancementClientUpdate {
         &mut self,
         root: Entity,
         children_query: &Query<&Children>,
-        advancement_check_query: &Query<(), With<Advancement
->>,
+        advancement_check_query: &Query<(), With<Advancement>>,
     ) {
         Self::walk_advancements(root, children_query, advancement_check_query, &mut |e| {
             self.remove_advancements.push(e)

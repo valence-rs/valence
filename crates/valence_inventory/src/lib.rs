@@ -25,20 +25,20 @@ use std::ops::Range;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use valence_packet::inventory::{
-    ClickMode, ClickSlotC2s, CloseHandledScreenC2s, CloseScreenS2c, CreativeInventoryActionC2s,
-    InventoryS2c, OpenScreenS2c, ScreenHandlerSlotUpdateS2c, SlotChange, UpdateSelectedSlotC2s,
-    WindowType,
-};
 use tracing::{debug, warn};
 use valence_client::event_loop::{EventLoopPreUpdate, PacketEvent};
-use valence_packet::client::{PlayerAction, PlayerActionC2s};
 use valence_client::{Client, FlushPacketsSet, SpawnClientsSet};
 use valence_core::game_mode::GameMode;
 use valence_core::item::ItemStack;
 use valence_core::protocol::encode::WritePacket;
 use valence_core::protocol::var_int::VarInt;
 use valence_core::text::{IntoText, Text};
+use valence_packet::client::{PlayerAction, PlayerActionC2s};
+use valence_packet::inventory::{
+    ClickMode, ClickSlotC2s, CloseHandledScreenC2s, CloseScreenS2c, CreativeInventoryActionC2s,
+    InventoryS2c, OpenScreenS2c, ScreenHandlerSlotUpdateS2c, SlotChange, UpdateSelectedSlotC2s,
+    WindowType,
+};
 
 mod validate;
 

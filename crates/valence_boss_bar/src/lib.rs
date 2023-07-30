@@ -33,10 +33,10 @@ use valence_packet::boss_bar::{BossBarAction, BossBarS2c};
 
 #[derive(Clone, Debug)]
 enum BossBarUpdate {
-    UpdateHealth(f32),
-    UpdateTitle(Text),
-    UpdateStyle(BossBarColor, BossBarDivision),
-    UpdateFlags(BossBarFlags),
+    Health(f32),
+    Title(Text),
+    Style(BossBarColor, BossBarDivision),
+    Flags(BossBarFlags),
 }
 
 #[derive(Clone, Debug, Component)]
@@ -71,13 +71,13 @@ impl BossBar {
 
     pub fn update_health(&mut self, health: f32) {
         self.health = health;
-        self.update.push(BossBarUpdate::UpdateHealth(health));
+        self.update.push(BossBarUpdate::Health(health));
     }
 
     pub fn update_title(&mut self, title: Text) {
         let cloned_title = title.clone();
         self.title = title;
-        self.update.push(BossBarUpdate::UpdateTitle(cloned_title));
+        self.update.push(BossBarUpdate::Title(cloned_title));
     }
 
     pub fn update_style(&mut self, color: Option<BossBarColor>, division: Option<BossBarDivision>) {
@@ -88,12 +88,12 @@ impl BossBar {
             self.division = division;
         }
         self.update
-            .push(BossBarUpdate::UpdateStyle(self.color, self.division));
+            .push(BossBarUpdate::Style(self.color, self.division));
     }
 
     pub fn update_flags(&mut self, flags: BossBarFlags) {
         self.flags = flags;
-        self.update.push(BossBarUpdate::UpdateFlags(flags));
+        self.update.push(BossBarUpdate::Flags(flags));
     }
 }
 
@@ -178,25 +178,25 @@ fn update_boss_bar(
             if let Ok(mut client) = clients.get_mut(*viewer) {
                 for update in boss_bar.update.clone().into_iter() {
                     match update {
-                        BossBarUpdate::UpdateHealth(health) => {
+                        BossBarUpdate::Health(health) => {
                             client.write_packet(&BossBarS2c {
                                 id: id.0,
                                 action: BossBarAction::UpdateHealth(health),
                             });
                         }
-                        BossBarUpdate::UpdateTitle(title) => {
+                        BossBarUpdate::Title(title) => {
                             client.write_packet(&BossBarS2c {
                                 id: id.0,
                                 action: BossBarAction::UpdateTitle(Cow::Borrowed(&title)),
                             });
                         }
-                        BossBarUpdate::UpdateStyle(color, division) => {
+                        BossBarUpdate::Style(color, division) => {
                             client.write_packet(&BossBarS2c {
                                 id: id.0,
                                 action: BossBarAction::UpdateStyle(color, division),
                             });
                         }
-                        BossBarUpdate::UpdateFlags(flags) => {
+                        BossBarUpdate::Flags(flags) => {
                             client.write_packet(&BossBarS2c {
                                 id: id.0,
                                 action: BossBarAction::UpdateFlags(flags),

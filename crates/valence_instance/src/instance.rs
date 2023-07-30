@@ -14,12 +14,12 @@ use valence_core::ident::Ident;
 use valence_core::particle::{Particle, ParticleS2c};
 use valence_core::protocol::array::LengthPrefixedArray;
 use valence_core::protocol::encode::{PacketWriter, WritePacket};
-use valence_packet::sound::PlaySoundS2c;
-use valence_core::sound::{Sound, SoundCategory};
 use valence_core::protocol::{Encode, Packet};
+use valence_core::sound::{Sound, SoundCategory};
 use valence_core::Server;
 use valence_dimension::DimensionTypeRegistry;
 use valence_nbt::Compound;
+use valence_packet::sound::PlaySoundS2c;
 
 use crate::chunk::{Block, BlockRef, Chunk, IntoBlock, LoadedChunk, UnloadedChunk, MAX_HEIGHT};
 

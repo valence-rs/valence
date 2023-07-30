@@ -1,4 +1,5 @@
-use valence_core::{chunk_pos::ChunkPos, protocol::array::LengthPrefixedArray};
+use valence_core::chunk_pos::ChunkPos;
+use valence_core::protocol::array::LengthPrefixedArray;
 
 use super::*;
 

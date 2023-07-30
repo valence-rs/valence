@@ -1,8 +1,8 @@
 use bevy_app::App;
-use valence_packet::client::GameStateChangeS2c;
 use valence_client::weather::{Rain, Thunder};
 use valence_client::Client;
 use valence_instance::Instance;
+use valence_packet::client::GameStateChangeS2c;
 
 use crate::testing::{scenario_single_client, PacketFrames};
 
