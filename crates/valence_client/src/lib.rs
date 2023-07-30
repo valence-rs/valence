@@ -89,7 +89,6 @@ pub mod spawn;
 pub mod status;
 pub mod teleport;
 pub mod title;
-pub mod weather;
 
 pub struct ClientPlugin;
 
@@ -106,7 +105,7 @@ pub struct FlushPacketsSet;
 pub struct SpawnClientsSet;
 
 /// The system set where various facets of the client are updated. Systems that
-/// modify chunks should run _before_ this.
+/// modify layers should run _before_ this.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct UpdateClientsSet;
 

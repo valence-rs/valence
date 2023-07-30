@@ -42,6 +42,8 @@ pub use valence_inventory as inventory;
 pub use valence_network as network;
 #[cfg(feature = "player_list")]
 pub use valence_player_list as player_list;
+#[cfg(feature = "weather")]
+pub use valence_weather as weather;
 #[cfg(feature = "world_border")]
 pub use valence_world_border as world_border;
 pub use {
@@ -177,6 +179,11 @@ impl PluginGroup for DefaultPlugins {
         #[cfg(feature = "advancement")]
         {
             group = group.add(valence_advancement::AdvancementPlugin)
+        }
+
+        #[cfg(feature = "weather")]
+        {
+            group = group.add(valence_weather::WeatherPlugin);
         }
 
         // TODO

@@ -20,6 +20,7 @@ default = [
     "network",
     "player_list",
     "world_border",
+    "weather",
 ]
 advancement = ["dep:valence_advancement"]
 anvil = ["dep:valence_anvil"]
@@ -29,6 +30,7 @@ log = ["dep:bevy_log"]
 network = ["dep:valence_network"]
 player_list = ["dep:valence_player_list"]
 world_border = ["dep:valence_world_border"]
+weather = ["dep:valence_weather"]
 
 [dependencies]
 anyhow.workspace = true
@@ -55,13 +57,14 @@ valence_network = { workspace = true, optional = true }
 valence_player_list = { workspace = true, optional = true }
 valence_registry.workspace = true
 valence_world_border = { workspace = true, optional = true }
+valence_weather = { workspace = true, optional = true }
 
 [dev-dependencies]
 anyhow.workspace = true
 clap.workspace = true
 criterion.workspace = true
 flume.workspace = true
-noise.workspace = true              # For the terrain example.
+noise.workspace = true     # For the terrain example.
 tracing.workspace = true
 
 [dev-dependencies.reqwest]
@@ -103,7 +106,7 @@ bevy_app = { version = "0.11", default-features = false }
 bevy_ecs = { version = "0.11", default-features = false }
 bevy_hierarchy = { version = "0.11", default-features = false }
 bevy_log = { version = "0.11" }
-bevy_mod_debugdump = { version =  "0.8.0", default-features = false }
+bevy_mod_debugdump = { version = "0.8.0", default-features = false }
 bevy_utils = { version = "0.11" }
 bitfield-struct = "0.3.1"
 byteorder = "1.4.3"
@@ -178,5 +181,6 @@ valence_player_list.path = "crates/valence_player_list"
 valence_registry.path = "crates/valence_registry"
 valence_world_border.path = "crates/valence_world_border"
 valence_boss_bar.path = "crates/valence_boss_bar"
+valence_weather.path = "crates/valence_weather"
 valence.path = "."
 zip = "0.6.3"
