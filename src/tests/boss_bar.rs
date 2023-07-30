@@ -1,12 +1,10 @@
 use bevy_app::App;
 use bevy_ecs::entity::Entity;
-use valence_boss_bar::packet::BossBarS2c;
-use valence_boss_bar::{
-    BossBarBundle, BossBarColor, BossBarDivision, BossBarFlags, BossBarHealth, BossBarStyle,
-    BossBarTitle, BossBarViewers,
-};
+use valence_boss_bar::{BossBar, BossBarBundle, BossBarViewers};
+use valence_core::boss_bar::{BossBarColor, BossBarDivision, BossBarFlags};
 use valence_core::despawn::Despawned;
 use valence_core::text::Text;
+use valence_packet::boss_bar::BossBarS2c;
 
 use crate::testing::{scenario_single_client, MockClientHelper};
 
@@ -55,17 +53,17 @@ fn test_title_update() {
     let mut app = App::new();
     let (client_ent, mut client_helper, instance_ent) = prepare(&mut app);
 
-    // Fetch the boss bar component
-    let mut boss_bar = app.world.get_mut::<BossBarViewers>(instance_ent).unwrap();
+    // Fetch the boss bar viewers component
+    let mut boss_bar_viewers = app.world.get_mut::<BossBarViewers>(instance_ent).unwrap();
     // Add our mock client to the viewers list
-    assert!(boss_bar.viewers.insert(client_ent));
+    assert!(boss_bar_viewers.viewers.insert(client_ent));
 
     app.update();
 
-    // Update the title
-    app.world
-        .entity_mut(instance_ent)
-        .insert(BossBarTitle(Text::text("Test 2")));
+    // Update the bossbar component
+    let mut boss_bar = app.world.get_mut::<BossBar>(instance_ent).unwrap();
+
+    boss_bar.update_title(Text::text("New title"));
 
     app.update();
 
@@ -87,10 +85,10 @@ fn test_health_update() {
 
     app.update();
 
-    // Update the health
-    app.world
-        .entity_mut(instance_ent)
-        .insert(BossBarHealth(0.5));
+    // Update the bossbar component
+    let mut boss_bar = app.world.get_mut::<BossBar>(instance_ent).unwrap();
+
+    boss_bar.update_health(0.5);
 
     app.update();
 
@@ -107,16 +105,16 @@ fn test_style_update() {
 
     // Fetch the boss bar component
     let mut boss_bar = app.world.get_mut::<BossBarViewers>(instance_ent).unwrap();
+
     // Add our mock client to the viewers list
     assert!(boss_bar.viewers.insert(client_ent));
 
     app.update();
 
-    // Update the style
-    app.world.entity_mut(instance_ent).insert(BossBarStyle {
-        color: BossBarColor::Red,
-        division: BossBarDivision::TenNotches,
-    });
+    // Update the bossbar component
+    let mut boss_bar = app.world.get_mut::<BossBar>(instance_ent).unwrap();
+
+    boss_bar.update_style(Some(BossBarColor::Red), Some(BossBarDivision::TenNotches));
 
     app.update();
 
@@ -138,10 +136,10 @@ fn test_flags_update() {
 
     app.update();
 
-    // Update the flags
-    let mut new_flags = BossBarFlags::new();
-    new_flags.set_create_fog(true);
-    app.world.entity_mut(instance_ent).insert(new_flags);
+    // Update the bossbar component
+    let mut boss_bar = app.world.get_mut::<BossBar>(instance_ent).unwrap();
+
+    boss_bar.update_flags(BossBarFlags::new().with_create_fog(true));
 
     app.update();
 
@@ -192,7 +190,8 @@ fn prepare(app: &mut App) -> (Entity, MockClientHelper, Entity) {
     let boss_bar = app
         .world
         .spawn(BossBarBundle::new(
-            Text::text("Test"),
+            Text::text("Test boss bar"),
+            1.0,
             BossBarColor::Blue,
             BossBarDivision::SixNotches,
             BossBarFlags::new(),
