@@ -24,7 +24,7 @@ use super::{
     bit_width, check_biome_oob, check_block_oob, check_section_oob, unloaded, BiomeContainer,
     BlockStateContainer, Chunk, UnloadedChunk, SECTION_BLOCK_COUNT,
 };
-use crate::packet::{
+use valence_packet::instance::{
     BlockEntityUpdateS2c, BlockUpdateS2c, ChunkBiome, ChunkBiomeDataS2c, ChunkDataBlockEntity,
     ChunkDataS2c, ChunkDeltaUpdateS2c,
 };

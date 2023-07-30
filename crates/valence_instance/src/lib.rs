@@ -29,7 +29,7 @@ use valence_core::despawn::Despawned;
 use valence_core::protocol::byte_angle::ByteAngle;
 use valence_core::protocol::encode::WritePacket;
 use valence_core::protocol::var_int::VarInt;
-use valence_entity::packet::{
+use valence_packet::entity::{
     EntityAnimationS2c, EntityPositionS2c, EntitySetHeadYawS2c, EntityStatusS2c,
     EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, MoveRelativeS2c, RotateAndMoveRelativeS2c,
     RotateS2c,
@@ -42,7 +42,6 @@ use valence_entity::{
 
 pub mod chunk;
 mod instance;
-pub mod packet;
 
 pub use chunk::{Block, BlockRef};
 pub use instance::*;

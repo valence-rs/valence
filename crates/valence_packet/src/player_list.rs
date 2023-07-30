@@ -1,13 +1,4 @@
-use std::borrow::Cow;
-use std::io::Write;
-
-use bitfield_struct::bitfield;
-use uuid::Uuid;
-use valence_core::game_mode::GameMode;
-use valence_core::property::Property;
-use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::{packet_id, Decode, Encode, Packet};
-use valence_core::text::Text;
+use super::*;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 #[packet(id = packet_id::PLAYER_LIST_HEADER_S2C)]
@@ -20,7 +11,7 @@ pub struct PlayerListHeaderS2c<'a> {
 #[packet(id = packet_id::PLAYER_LIST_S2C)]
 pub struct PlayerListS2c<'a> {
     pub actions: PlayerListActions,
-    pub entries: Cow<'a, [PlayerListEntry<'a>]>,
+    pub entries: Cow<'a, [PlayerListEntryPkt<'a>]>,
 }
 
 #[bitfield(u8)]
@@ -36,7 +27,7 @@ pub struct PlayerListActions {
 }
 
 #[derive(Clone, Default, Debug)]
-pub struct PlayerListEntry<'a> {
+pub struct PlayerListEntryPkt<'a> {
     pub player_uuid: Uuid,
     pub username: &'a str,
     pub properties: Cow<'a, [Property]>,
@@ -103,7 +94,7 @@ impl<'a> Decode<'a> for PlayerListS2c<'a> {
         let mut entries = vec![];
 
         for _ in 0..VarInt::decode(r)?.0 {
-            let mut entry = PlayerListEntry {
+            let mut entry = PlayerListEntryPkt {
                 player_uuid: Uuid::decode(r)?,
                 ..Default::default()
             };

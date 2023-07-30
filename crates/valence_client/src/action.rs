@@ -5,7 +5,7 @@ use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 
 use super::*;
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
-use crate::packet::{PlayerAction, PlayerActionC2s};
+use valence_packet::client::{PlayerAction, PlayerActionC2s};
 
 pub(super) fn build(app: &mut App) {
     app.add_event::<DiggingEvent>()

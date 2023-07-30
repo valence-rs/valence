@@ -2,7 +2,7 @@ use anyhow::{bail, ensure};
 use valence_core::item::ItemStack;
 
 use super::{CursorItem, Inventory, InventoryWindow, PLAYER_INVENTORY_MAIN_SLOTS_COUNT};
-use crate::packet::{ClickMode, ClickSlotC2s};
+use valence_packet::inventory::{ClickMode, ClickSlotC2s};
 
 /// Validates a click slot packet enforcing that all fields are valid.
 pub(super) fn validate_click_slot_packet(
@@ -361,7 +361,7 @@ mod tests {
     use valence_core::protocol::var_int::VarInt;
 
     use super::*;
-    use crate::packet::SlotChange;
+    use valence_packet::inventory::SlotChange;
     use crate::InventoryKind;
 
     #[test]

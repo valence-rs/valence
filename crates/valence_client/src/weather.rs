@@ -16,7 +16,7 @@
 //! the instance.
 
 use super::*;
-use crate::packet::{GameEventKind, GameStateChangeS2c};
+use valence_packet::client::{GameEventKind, GameStateChangeS2c};
 
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 struct UpdateWeatherPerInstanceSet;

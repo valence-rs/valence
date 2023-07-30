@@ -32,6 +32,7 @@ uuid.workspace = true
 valence_client.workspace = true
 valence_core.workspace = true
 valence_entity.workspace = true
+valence_packet.workspace = true
 
 [dependencies.reqwest]
 workspace = true

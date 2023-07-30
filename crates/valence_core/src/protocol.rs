@@ -6,7 +6,6 @@ pub mod decode;
 pub mod encode;
 pub mod global_pos;
 pub mod impls;
-pub mod packet;
 pub mod raw;
 pub mod var_int;
 pub mod var_long;

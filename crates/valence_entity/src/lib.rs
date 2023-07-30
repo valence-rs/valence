@@ -18,7 +18,6 @@
 )]
 
 pub mod hitbox;
-pub mod packet;
 
 use std::num::Wrapping;
 use std::ops::Range;

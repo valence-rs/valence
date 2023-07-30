@@ -1,14 +1,7 @@
-use std::borrow::Cow;
-use std::io::Write;
-
-use valence_core::ident::Ident;
-use valence_core::item::ItemStack;
-use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::{packet_id, Decode, Encode, Packet};
-use valence_core::text::Text;
+use super::*;
 
 pub type AdvancementUpdateS2c<'a> =
-    GenericAdvancementUpdateS2c<'a, (Ident<Cow<'a, str>>, Advancement<'a, Option<ItemStack>>)>;
+    GenericAdvancementUpdateS2c<'a, (Ident<Cow<'a, str>>, AdvancementPkt<'a, Option<ItemStack>>)>;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 #[packet(id = packet_id::ADVANCEMENT_UPDATE_S2C)]
@@ -16,25 +9,25 @@ pub struct GenericAdvancementUpdateS2c<'a, AM: 'a> {
     pub reset: bool,
     pub advancement_mapping: Vec<AM>,
     pub identifiers: Vec<Ident<Cow<'a, str>>>,
-    pub progress_mapping: Vec<(Ident<Cow<'a, str>>, Vec<AdvancementCriteria<'a>>)>,
+    pub progress_mapping: Vec<(Ident<Cow<'a, str>>, Vec<AdvancementCriteriaPkt<'a>>)>,
 }
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
-pub struct Advancement<'a, I> {
+pub struct AdvancementPkt<'a, I> {
     pub parent_id: Option<Ident<Cow<'a, str>>>,
-    pub display_data: Option<AdvancementDisplay<'a, I>>,
+    pub display_data: Option<AdvancementDisplayPkt<'a, I>>,
     pub criteria: Vec<(Ident<Cow<'a, str>>, ())>,
-    pub requirements: Vec<AdvancementRequirements<'a>>,
+    pub requirements: Vec<AdvancementRequirementsPkt<'a>>,
     pub sends_telemetry_data: bool,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Encode, Decode)]
-pub struct AdvancementRequirements<'a> {
+pub struct AdvancementRequirementsPkt<'a> {
     pub requirement: Vec<&'a str>,
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct AdvancementDisplay<'a, I> {
+pub struct AdvancementDisplayPkt<'a, I> {
     pub title: Cow<'a, Text>,
     pub description: Cow<'a, Text>,
     pub icon: I,
@@ -46,14 +39,14 @@ pub struct AdvancementDisplay<'a, I> {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Encode, Decode)]
-pub struct AdvancementCriteria<'a> {
+pub struct AdvancementCriteriaPkt<'a> {
     pub criterion_identifier: Ident<Cow<'a, str>>,
     /// If present, the criteria has been achieved at the
     /// time wrapped; time represented as millis since epoch
     pub criterion_progress: Option<i64>,
 }
 
-impl<I: Encode> Encode for AdvancementDisplay<'_, I> {
+impl<I: Encode> Encode for AdvancementDisplayPkt<'_, I> {
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         self.title.encode(&mut w)?;
         self.description.encode(&mut w)?;
@@ -73,7 +66,7 @@ impl<I: Encode> Encode for AdvancementDisplay<'_, I> {
     }
 }
 
-impl<'a, I: Decode<'a>> Decode<'a> for AdvancementDisplay<'a, I> {
+impl<'a, I: Decode<'a>> Decode<'a> for AdvancementDisplayPkt<'a, I> {
     fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
         let title = <Cow<'a, Text>>::decode(r)?;
         let description = <Cow<'a, Text>>::decode(r)?;

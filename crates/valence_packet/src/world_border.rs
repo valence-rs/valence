@@ -1,6 +1,4 @@
-use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::var_long::VarLong;
-use valence_core::protocol::{packet_id, Decode, Encode, Packet};
+use super::*;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 #[packet(id = packet_id::WORLD_BORDER_CENTER_CHANGED_S2C)]

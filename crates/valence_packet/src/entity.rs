@@ -1,16 +1,4 @@
-use std::borrow::Cow;
-use std::io::Write;
-
-use bitfield_struct::bitfield;
-use glam::DVec3;
-use uuid::Uuid;
-use valence_core::ident::Ident;
-use valence_core::item::ItemStack;
-use valence_core::protocol::byte_angle::ByteAngle;
-use valence_core::protocol::raw::RawBytes;
-use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::{packet_id, Decode, Encode, Packet};
-use valence_nbt::Compound;
+use super::*;
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode, Packet)]
 #[packet(id = packet_id::ENTITIES_DESTROY_S2C)]

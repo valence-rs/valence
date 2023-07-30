@@ -1,12 +1,6 @@
-use std::borrow::Cow;
+use valence_core::protocol::PacketState;
 
-use uuid::Uuid;
-use valence_core::ident::Ident;
-use valence_core::property::Property;
-use valence_core::protocol::raw::RawBytes;
-use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::{packet_id, Decode, Encode, Packet, PacketState};
-use valence_core::text::Text;
+use super::*;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 #[packet(id = packet_id::HANDSHAKE_C2S, state = PacketState::Handshaking)]

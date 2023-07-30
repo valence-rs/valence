@@ -1,4 +1,4 @@
-use valence_entity::packet::EntityStatusS2c;
+use valence_packet::entity::EntityStatusS2c;
 
 use super::*;
 

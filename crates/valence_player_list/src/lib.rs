@@ -18,13 +18,10 @@
 )]
 #![allow(clippy::type_complexity)]
 
-pub mod packet;
-
 use std::borrow::Cow;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use packet::{PlayerListActions, PlayerListHeaderS2c, PlayerListS2c};
 use uuid::Uuid;
 use valence_client::{Client, Ping, Properties, Username};
 use valence_core::despawn::Despawned;
@@ -34,13 +31,13 @@ use valence_core::text::{IntoText, Text};
 use valence_core::uuid::UniqueId;
 use valence_core::Server;
 use valence_instance::WriteUpdatePacketsToInstancesSet;
-
-use crate::packet::PlayerRemoveS2c;
+use valence_packet::player_list::{
+    PlayerListActions, PlayerListHeaderS2c, PlayerListS2c, PlayerRemoveS2c, PlayerListEntryPkt,
+};
 
 pub struct PlayerListPlugin;
 
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
-
 struct PlayerListSet;
 
 impl Plugin for PlayerListPlugin {
@@ -220,7 +217,7 @@ fn init_player_list_for_clients(
                 .iter()
                 .map(
                     |(uuid, username, props, game_mode, ping, display_name, listed)| {
-                        packet::PlayerListEntry {
+                        PlayerListEntryPkt {
                             player_uuid: uuid.0,
                             username: &username.0,
                             properties: Cow::Borrowed(&props.0),
@@ -356,7 +353,7 @@ fn update_entries(
             debug_assert_ne!(u8::from(actions), 0);
         }
 
-        let entry = packet::PlayerListEntry {
+        let entry = PlayerListEntryPkt {
             player_uuid: uuid.0,
             username: &username.0,
             properties: (&props.0).into(),

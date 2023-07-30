@@ -3,7 +3,7 @@ use bevy_ecs::prelude::*;
 use valence_core::game_mode::GameMode;
 use valence_core::item::{ItemKind, ItemStack};
 use valence_core::protocol::var_int::VarInt;
-use valence_inventory::packet::{
+use valence_packet::inventory::{
     ClickMode, ClickSlotC2s, CloseScreenS2c, CreativeInventoryActionC2s, InventoryS2c,
     OpenScreenS2c, ScreenHandlerSlotUpdateS2c, SlotChange, UpdateSelectedSlotC2s,
 };
@@ -517,7 +517,7 @@ fn should_not_increment_state_id_on_cursor_item_change() {
 }
 
 mod dropping_items {
-    use valence_client::packet::{PlayerAction, PlayerActionC2s};
+    use valence_packet::client::{PlayerAction, PlayerActionC2s};
     use valence_core::block_pos::BlockPos;
     use valence_core::direction::Direction;
     use valence_inventory::convert_to_player_slot_id;

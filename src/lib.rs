@@ -36,6 +36,7 @@ pub use valence_anvil as anvil;
 #[cfg(feature = "boss_bar")]
 pub use valence_boss_bar as boss_bar;
 pub use valence_core::*;
+pub use valence_packet as packet;
 #[cfg(feature = "inventory")]
 pub use valence_inventory as inventory;
 #[cfg(feature = "network")]

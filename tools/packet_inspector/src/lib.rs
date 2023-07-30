@@ -7,7 +7,7 @@ use std::sync::{Arc, OnceLock};
 pub use packet_registry::Packet;
 use tokio::net::TcpStream;
 use tokio::sync::RwLock;
-use valence::network::packet::{
+use valence::packet::network::{
     HandshakeC2s, HandshakeNextState, LoginCompressionS2c, LoginSuccessS2c,
 };
 use valence::protocol::decode::PacketFrame;

@@ -1,14 +1,6 @@
-//! Inventory packets
-
-use std::borrow::Cow;
-use std::io::Write;
-
-use anyhow::bail;
-use valence_core::ident::Ident;
 use valence_core::item::ItemStack;
-use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::{packet_id, Decode, Encode, Packet};
-use valence_core::text::Text;
+
+use super::*;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 #[packet(id = packet_id::CLICK_SLOT_C2S)]

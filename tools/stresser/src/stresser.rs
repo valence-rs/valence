@@ -13,7 +13,7 @@ use valence_core::protocol::encode::PacketEncoder;
 use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::Packet;
 use valence_core::PROTOCOL_VERSION;
-use valence_network::packet::{
+use valence_packet::network::{
     HandshakeC2s, HandshakeNextState, LoginCompressionS2c, LoginHelloC2s, LoginHelloS2c,
     LoginSuccessS2c,
 };

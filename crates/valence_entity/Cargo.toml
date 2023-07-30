@@ -16,6 +16,7 @@ uuid.workspace = true
 valence_block.workspace = true
 valence_core.workspace = true
 valence_nbt.workspace = true
+valence_packet.workspace = true
 
 [build-dependencies]
 anyhow.workspace = true

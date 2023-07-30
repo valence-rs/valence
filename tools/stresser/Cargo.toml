@@ -13,3 +13,4 @@ uuid = { workspace = true, features = ["v4"] }
 valence_network = { workspace = true, features = ["compression"] }
 valence_core = { workspace = true }
 valence_client = { workspace = true }
+valence_packet.workspace = true

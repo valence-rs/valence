@@ -2,7 +2,7 @@ use bevy_ecs::prelude::*;
 use valence_client::event_loop::PacketEvent;
 use valence_core::ident::Ident;
 
-use crate::packet::AdvancementTabC2s;
+use valence_packet::advancement::AdvancementTabC2s;
 
 /// This event sends when the client changes or closes advancement's tab.
 #[derive(Event, Clone, PartialEq, Eq, Debug)]

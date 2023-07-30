@@ -36,6 +36,7 @@ pub mod scratch;
 pub mod text;
 pub mod translation_key;
 pub mod uuid;
+pub mod sound;
 
 use std::num::NonZeroU32;
 use std::time::Duration;

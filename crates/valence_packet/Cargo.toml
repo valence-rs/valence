@@ -1,0 +1,13 @@
+[package]
+name = "valence_packet"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+valence_core.workspace = true
+valence_nbt.workspace = true
+anyhow.workspace = true
+bitfield-struct.workspace = true
+byteorder.workspace = true
+glam.workspace = true
+uuid = { workspace = true, features = ["serde"] }

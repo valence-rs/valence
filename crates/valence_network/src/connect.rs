@@ -28,7 +28,7 @@ use valence_core::text::{Color, IntoText, Text};
 use valence_core::{ident, translation_key, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
 use crate::legacy_ping::try_handle_legacy_ping;
-use crate::packet::{
+use valence_packet::network::{
     HandshakeC2s, HandshakeNextState, LoginCompressionS2c, LoginDisconnectS2c, LoginHelloC2s,
     LoginHelloS2c, LoginKeyC2s, LoginQueryRequestS2c, LoginQueryResponseC2s, LoginSuccessS2c,
     QueryPingC2s, QueryPongS2c, QueryRequestC2s, QueryResponseS2c,

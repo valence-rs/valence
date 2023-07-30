@@ -1,9 +1,9 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use valence_client::packet::PlayerSpawnS2c;
+use valence_packet::client::PlayerSpawnS2c;
 use valence_instance::chunk::UnloadedChunk;
 use valence_instance::Instance;
-use valence_player_list::packet::PlayerListS2c;
+use valence_packet::player_list::PlayerListS2c;
 
 use crate::testing::{create_mock_client, scenario_single_client};
 
