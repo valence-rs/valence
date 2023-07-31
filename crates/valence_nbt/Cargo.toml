@@ -10,7 +10,6 @@ version = "0.5.0"
 edition.workspace = true
 
 [features]
-default = ["snbt"] # TODO: remove me
 binary = ["dep:byteorder", "dep:cesu8"]
 snbt = []
 # When enabled, the order of fields in compounds are preserved.
