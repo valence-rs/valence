@@ -96,43 +96,6 @@ fn init_clients(
     }
 }
 
-// fn border_center_avg(
-//     clients: Query<(&EntityLayerId, &Position)>,
-//     mut layers: Query<(Entity, &mut WorldBorderCenter), With<ChunkLayer>>,
-// ) { for (entity, mut center) in layers.iter_mut() { let new_center = { let
-//   (count, x, z) = clients .iter() .filter(|(loc, _)| loc.0 == entity)
-//   .fold((0, 0.0, 0.0), |(count, x, z), (_, pos)| { (count + 1, x + pos.0.x, z
-//   + pos.0.z) });
-
-//             DVec2 {
-//                 x: x / count.max(1) as f64,
-//                 y: z / count.max(1) as f64,
-//             }
-//         };
-
-//         center.0 = new_center;
-//     }
-// }
-
-// fn border_expand(
-//     mut events: EventReader<DiggingEvent>,
-//     clients: Query<&EntityLayerId, With<Client>>,
-//     wbs: Query<&WorldBorderDiameter, With<Instance>>,
-// ) { for digging in events.iter().filter(|d| d.state == DiggingState::Stop) {
-//   let Ok(loc) = clients.get(digging.client) else { continue; };
-
-//         let Ok(size) = wbs.get(loc.0) else {
-//             continue;
-//         };
-
-//         event_writer.send(SetWorldBorderSizeEvent {
-//             entity_layer: loc.0,
-//             new_diameter: size.get() + 1.0,
-//             duration: Duration::from_secs(1),
-//         });
-//     }
-// }
-
 fn display_diameter(mut layers: Query<(&mut ChunkLayer, &WorldBorderLerp)>) {
     for (mut layer, lerp) in &mut layers {
         if lerp.remaining_ticks > 0 {
