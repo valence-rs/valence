@@ -3,6 +3,7 @@
 use std::borrow::Cow;
 use std::io::Write;
 use std::ops::{Deref, DerefMut};
+use std::str::FromStr;
 use std::{fmt, ops};
 
 use anyhow::Context;
@@ -41,13 +42,13 @@ pub use into_text::IntoText;
 ///     + "Green".color(Color::GREEN)
 ///     + ", and also "
 ///     + "Blue".color(Color::BLUE)
-///     + "!\nAnd maybe even "
+///     + "! And maybe even "
 ///     + "Italic".italic()
 ///     + ".";
 ///
 /// assert_eq!(
 ///     txt.to_string(),
-///     "The text is Red, Green, and also Blue!\nAnd maybe even Italic."
+///     r#"{"text":"The text is ","extra":[{"text":"Red","color":"red"},{"text":", "},{"text":"Green","color":"green"},{"text":", and also "},{"text":"Blue","color":"blue"},{"text":"! And maybe even "},{"text":"Italic","italic":true},{"text":"."}]}"#
 /// );
 /// ```
 #[derive(Clone, PartialEq, Default, Serialize)]
@@ -366,140 +367,6 @@ impl Text {
         }))
     }
 
-    /// Writes the string representation of this text object to the provided
-    /// writer.
-    pub fn write_string(&self, mut w: impl fmt::Write) -> fmt::Result {
-        fn write_string_inner(this: &Text, w: &mut impl fmt::Write) -> fmt::Result {
-            match &this.0.content {
-                TextContent::Text { text } => w.write_str(text.as_ref())?,
-                TextContent::Translate { translate, with } => {
-                    w.write_str(translate.as_ref())?;
-
-                    if !with.is_empty() {
-                        w.write_char('[')?;
-                        for (i, slot) in with.iter().enumerate() {
-                            if i > 0 {
-                                w.write_str(", ")?;
-                            }
-                            w.write_char(char::from_digit((i + 1) as u32, 10).unwrap_or('?'))?;
-                            w.write_char('=')?;
-                            write_string_inner(slot, w)?;
-                        }
-                        w.write_char(']')?;
-                    }
-                }
-                TextContent::ScoreboardValue { score } => {
-                    let ScoreboardValueContent {
-                        name,
-                        objective,
-                        value,
-                    } = score;
-
-                    write!(w, "scoreboard_value[name={name}, objective={objective}")?;
-
-                    if let Some(value) = value {
-                        if !value.is_empty() {
-                            w.write_str(", value=")?;
-                            w.write_str(value)?;
-                        }
-                    }
-
-                    w.write_char(']')?;
-                }
-                TextContent::EntityNames {
-                    selector,
-                    separator,
-                } => {
-                    write!(w, "entity_names[selector={selector}")?;
-
-                    if let Some(separator) = separator {
-                        if !separator.is_empty() {
-                            w.write_str(", separator={separator}")?;
-                        }
-                    }
-
-                    w.write_char(']')?;
-                }
-                TextContent::Keybind { keybind } => write!(w, "keybind[{keybind}]")?,
-                TextContent::BlockNbt {
-                    block,
-                    nbt,
-                    interpret,
-                    separator,
-                } => {
-                    write!(w, "block_nbt[nbt={nbt}")?;
-
-                    if let Some(interpret) = interpret {
-                        write!(w, ", interpret={interpret}")?;
-                    }
-
-                    if let Some(separator) = separator {
-                        if !separator.is_empty() {
-                            write!(w, "separator={separator}")?;
-                        }
-                    }
-
-                    write!(w, "block={block}")?;
-
-                    w.write_char(']')?;
-                }
-                TextContent::EntityNbt {
-                    entity,
-                    nbt,
-                    interpret,
-                    separator,
-                } => {
-                    write!(w, "entity_nbt[nbt={nbt}")?;
-
-                    if let Some(interpret) = interpret {
-                        write!(w, ", interpret={interpret}")?;
-                    }
-
-                    if let Some(separator) = separator {
-                        if !separator.is_empty() {
-                            write!(w, "separator={separator}")?;
-                        }
-                    }
-
-                    write!(w, ", entity={entity}")?;
-
-                    w.write_char(']')?;
-                }
-                TextContent::StorageNbt {
-                    storage,
-                    nbt,
-                    interpret,
-                    separator,
-                } => {
-                    write!(w, "storage_nbt[nbt={nbt}")?;
-
-                    if let Some(interpret) = interpret {
-                        write!(w, ", interpret={interpret}")?;
-                    }
-
-                    if let Some(separator) = separator {
-                        if !separator.is_empty() {
-                            write!(w, "separator=")?;
-                            write_string_inner(separator, w)?;
-                        }
-                    }
-
-                    write!(w, ", storage={storage}")?;
-
-                    w.write_char(']')?;
-                }
-            }
-
-            for child in &this.0.extra {
-                write_string_inner(child, w)?;
-            }
-
-            Ok(())
-        }
-
-        write_string_inner(self, &mut w)
-    }
-
     /// Returns `true` if the text contains no characters. Returns `false`
     /// otherwise.
     pub fn is_empty(&self) -> bool {
@@ -675,24 +542,46 @@ impl<'a> From<&'a Text> for Cow<'a, Text> {
     }
 }
 
+impl FromStr for Text {
+    type Err = serde_json::error::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.is_empty() {
+            Ok(Text::default())
+        } else {
+            serde_json::from_str(s)
+        }
+    }
+}
+
+impl From<Text> for String {
+    fn from(value: Text) -> Self {
+        format!("{value}")
+    }
+}
+
 impl From<Text> for Value {
     fn from(value: Text) -> Self {
-        Value::String(
-            serde_json::to_string(&value)
-                .unwrap_or_else(|err| panic!("failed to jsonify text {value:?}\n{err}")),
-        )
+        Value::String(value.into())
     }
 }
 
 impl fmt::Debug for Text {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.write_string(f)
+        fmt::Display::fmt(self, f)
     }
 }
 
 impl fmt::Display for Text {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.write_string(f)
+        let string = if f.alternate() {
+            serde_json::to_string_pretty(self)
+        } else {
+            serde_json::to_string(self)
+        }
+        .map_err(|_| fmt::Error)?;
+
+        f.write_str(&string)
     }
 }
 
@@ -710,12 +599,9 @@ impl Encode for Text {
 
 impl Decode<'_> for Text {
     fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
-        let string = <&str>::decode(r)?;
-        if string.is_empty() {
-            Ok(Self::default())
-        } else {
-            serde_json::from_str(string).context("decoding text JSON")
-        }
+        let str = <&str>::decode(r)?;
+
+        Self::from_str(str).context("decoding text JSON")
     }
 }
 
@@ -790,11 +676,9 @@ mod tests {
             + ("bar".obfuscated().color(Color::YELLOW)
                 + "baz".underlined().not_bold().italic().color(Color::BLACK));
 
-        assert_eq!(before.to_string(), "foobarbaz");
+        let json = format!("{before:#}");
 
-        let json = serde_json::to_string_pretty(&before).unwrap();
-
-        let after: Text = serde_json::from_str(&json).unwrap();
+        let after = Text::from_str(&json).unwrap();
 
         println!("==== Before ====\n");
         println!("{before:#?}");
@@ -819,8 +703,8 @@ mod tests {
             translation_key::CHAT_TYPE_ADVANCEMENT_TASK,
             ["arg1".into_text(), "arg2".into_text()],
         );
-        let serialized = serde_json::to_string(&txt).unwrap();
-        let deserialized: Text = serde_json::from_str(&serialized).unwrap();
+        let serialized = txt.to_string();
+        let deserialized = Text::from_str(&serialized).unwrap();
         assert_eq!(
             serialized,
             r#"{"translate":"chat.type.advancement.task","with":[{"text":"arg1"},{"text":"arg2"}]}"#
@@ -831,8 +715,8 @@ mod tests {
     #[test]
     fn score() {
         let txt = Text::score("foo", "bar", Some(Cow::from("baz")));
-        let serialized = serde_json::to_string(&txt).unwrap();
-        let deserialized: Text = serde_json::from_str(&serialized).unwrap();
+        let serialized = txt.to_string();
+        let deserialized = Text::from_str(&serialized).unwrap();
         assert_eq!(
             serialized,
             r#"{"score":{"name":"foo","objective":"bar","value":"baz"}}"#
@@ -844,8 +728,8 @@ mod tests {
     fn selector() {
         let separator = Text::text("bar").color(Color::RED).bold();
         let txt = Text::selector("foo", Some(separator));
-        let serialized = serde_json::to_string(&txt).unwrap();
-        let deserialized: Text = serde_json::from_str(&serialized).unwrap();
+        let serialized = txt.to_string();
+        let deserialized = Text::from_str(&serialized).unwrap();
         assert_eq!(
             serialized,
             r##"{"selector":"foo","separator":{"text":"bar","color":"red","bold":true}}"##
@@ -856,8 +740,8 @@ mod tests {
     #[test]
     fn keybind() {
         let txt = Text::keybind("foo");
-        let serialized = serde_json::to_string(&txt).unwrap();
-        let deserialized: Text = serde_json::from_str(&serialized).unwrap();
+        let serialized = txt.to_string();
+        let deserialized = Text::from_str(&serialized).unwrap();
         assert_eq!(serialized, r#"{"keybind":"foo"}"#);
         assert_eq!(txt, deserialized);
     }
@@ -865,8 +749,8 @@ mod tests {
     #[test]
     fn block_nbt() {
         let txt = Text::block_nbt("foo", "bar", Some(true), Some("baz".into_text()));
-        let serialized = serde_json::to_string(&txt).unwrap();
-        let deserialized: Text = serde_json::from_str(&serialized).unwrap();
+        let serialized = txt.to_string();
+        let deserialized = Text::from_str(&serialized).unwrap();
         let expected = r#"{"block":"foo","nbt":"bar","interpret":true,"separator":{"text":"baz"}}"#;
         assert_eq!(serialized, expected);
         assert_eq!(txt, deserialized);
@@ -875,8 +759,8 @@ mod tests {
     #[test]
     fn entity_nbt() {
         let txt = Text::entity_nbt("foo", "bar", Some(true), Some("baz".into_text()));
-        let serialized = serde_json::to_string(&txt).unwrap();
-        let deserialized: Text = serde_json::from_str(&serialized).unwrap();
+        let serialized = txt.to_string();
+        let deserialized = Text::from_str(&serialized).unwrap();
         let expected =
             r#"{"entity":"foo","nbt":"bar","interpret":true,"separator":{"text":"baz"}}"#;
         assert_eq!(serialized, expected);
@@ -886,8 +770,8 @@ mod tests {
     #[test]
     fn storage_nbt() {
         let txt = Text::storage_nbt(ident!("foo"), "bar", Some(true), Some("baz".into_text()));
-        let serialized = serde_json::to_string(&txt).unwrap();
-        let deserialized: Text = serde_json::from_str(&serialized).unwrap();
+        let serialized = txt.to_string();
+        let deserialized = Text::from_str(&serialized).unwrap();
         let expected = r#"{"storage":"minecraft:foo","nbt":"bar","interpret":true,"separator":{"text":"baz"}}"#;
         assert_eq!(serialized, expected);
         assert_eq!(txt, deserialized);
