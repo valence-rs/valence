@@ -126,7 +126,10 @@ fn remove_despawned_from_manager(
 }
 
 fn init_entities(
-    mut entities: Query<(Entity, &mut EntityId, &Position, &mut OldPosition), (Added<EntityKind>, Without<Despawned>)>,
+    mut entities: Query<
+        (Entity, &mut EntityId, &Position, &mut OldPosition),
+        (Added<EntityKind>, Without<Despawned>),
+    >,
     mut manager: ResMut<EntityManager>,
 ) {
     for (entity, mut id, pos, mut old_pos) in &mut entities {

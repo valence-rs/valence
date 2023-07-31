@@ -1,10 +1,3 @@
-// TODO: fix
-
-fn main() {}
-
-/*
-use std::time::Duration;
-
 use bevy_app::App;
 use valence::client::despawn_disconnected_clients;
 use valence::client::message::ChatMessageEvent;
@@ -22,11 +15,10 @@ fn main() {
         .add_systems(
             Update,
             (
-                init_clients,
                 despawn_disconnected_clients,
-                border_center_avg,
-                border_expand,
+                init_clients,
                 border_controls,
+                display_diameter,
             ),
         )
         .run();
@@ -54,9 +46,16 @@ fn setup(
         }
     }
 
-    commands
-        .spawn(layer)
-        .insert(WorldBorderBundle::new([0.0, 0.0], 1.0));
+    commands.spawn((
+        layer,
+        WorldBorderBundle {
+            lerp: WorldBorderLerp {
+                target_diameter: 10.0,
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+    ));
 }
 
 fn init_clients(
@@ -64,74 +63,87 @@ fn init_clients(
         (
             &mut Client,
             &mut EntityLayerId,
+            &mut VisibleChunkLayer,
+            &mut VisibleEntityLayers,
             &mut Position,
             &mut Inventory,
             &HeldItem,
         ),
         Added<Client>,
     >,
-    instances: Query<Entity, With<Instance>>,
+    layers: Query<Entity, With<ChunkLayer>>,
 ) {
-    for (mut client, mut loc, mut pos, mut inv, main_slot) in &mut clients {
-        loc.0 = instances.single();
+    for (
+        mut client,
+        mut layer_id,
+        mut visible_chunk_layer,
+        mut visible_entity_layers,
+        mut pos,
+        mut inv,
+        main_slot,
+    ) in &mut clients
+    {
+        let layer = layers.single();
+
+        layer_id.0 = layer;
+        visible_chunk_layer.0 = layer;
+        visible_entity_layers.0.insert(layer);
         pos.set([0.5, SPAWN_Y as f64 + 1.0, 0.5]);
         let pickaxe = Some(ItemStack::new(ItemKind::WoodenPickaxe, 1, None));
         inv.set_slot(main_slot.slot(), pickaxe);
-        client.send_chat_message("Break block to increase border size!");
+        client
+            .send_chat_message("Use `add` and `center` chat messages to change the world border.");
     }
 }
 
-fn border_center_avg(
-    clients: Query<(&EntityLayerId, &Position)>,
-    mut instances: Query<(Entity, &mut WorldBorderCenter), With<Instance>>,
-) {
-    for (entity, mut center) in instances.iter_mut() {
-        let new_center = {
-            let (count, x, z) = clients
-                .iter()
-                .filter(|(loc, _)| loc.0 == entity)
-                .fold((0, 0.0, 0.0), |(count, x, z), (_, pos)| {
-                    (count + 1, x + pos.0.x, z + pos.0.z)
-                });
+// fn border_center_avg(
+//     clients: Query<(&EntityLayerId, &Position)>,
+//     mut layers: Query<(Entity, &mut WorldBorderCenter), With<ChunkLayer>>,
+// ) { for (entity, mut center) in layers.iter_mut() { let new_center = { let
+//   (count, x, z) = clients .iter() .filter(|(loc, _)| loc.0 == entity)
+//   .fold((0, 0.0, 0.0), |(count, x, z), (_, pos)| { (count + 1, x + pos.0.x, z
+//   + pos.0.z) });
 
-            DVec2 {
-                x: x / count.max(1) as f64,
-                y: z / count.max(1) as f64,
-            }
-        };
+//             DVec2 {
+//                 x: x / count.max(1) as f64,
+//                 y: z / count.max(1) as f64,
+//             }
+//         };
 
-        center.0 = new_center;
+//         center.0 = new_center;
+//     }
+// }
+
+// fn border_expand(
+//     mut events: EventReader<DiggingEvent>,
+//     clients: Query<&EntityLayerId, With<Client>>,
+//     wbs: Query<&WorldBorderDiameter, With<Instance>>,
+// ) { for digging in events.iter().filter(|d| d.state == DiggingState::Stop) {
+//   let Ok(loc) = clients.get(digging.client) else { continue; };
+
+//         let Ok(size) = wbs.get(loc.0) else {
+//             continue;
+//         };
+
+//         event_writer.send(SetWorldBorderSizeEvent {
+//             entity_layer: loc.0,
+//             new_diameter: size.get() + 1.0,
+//             duration: Duration::from_secs(1),
+//         });
+//     }
+// }
+
+fn display_diameter(mut layers: Query<(&mut ChunkLayer, &WorldBorderLerp)>) {
+    for (mut layer, lerp) in &mut layers {
+        if lerp.remaining_ticks > 0 {
+            layer.send_chat_message(format!("diameter = {}", lerp.current_diameter));
+        }
     }
 }
 
-fn border_expand(
-    mut events: EventReader<DiggingEvent>,
-    clients: Query<&EntityLayerId, With<Client>>,
-    wbs: Query<&WorldBorderDiameter, With<Instance>>,
-    mut event_writer: EventWriter<SetWorldBorderSizeEvent>,
-) {
-    for digging in events.iter().filter(|d| d.state == DiggingState::Stop) {
-        let Ok(loc) = clients.get(digging.client) else {
-            continue;
-        };
-
-        let Ok(size) = wbs.get(loc.0) else {
-            continue;
-        };
-
-        event_writer.send(SetWorldBorderSizeEvent {
-            entity_layer: loc.0,
-            new_diameter: size.get() + 1.0,
-            duration: Duration::from_secs(1),
-        });
-    }
-}
-
-// Not needed for this demo, but useful for debugging
 fn border_controls(
     mut events: EventReader<ChatMessageEvent>,
-    mut instances: Query<(Entity, &WorldBorderDiameter, &mut WorldBorderCenter), With<Instance>>,
-    mut event_writer: EventWriter<SetWorldBorderSizeEvent>,
+    mut layers: Query<(&mut WorldBorderCenter, &mut WorldBorderLerp), With<ChunkLayer>>,
 ) {
     for x in events.iter() {
         let parts: Vec<&str> = x.message.split(' ').collect();
@@ -141,19 +153,14 @@ fn border_controls(
                     return;
                 };
 
-                let Ok(speed) = parts[2].parse::<i64>() else {
+                let Ok(ticks) = parts[2].parse::<u64>() else {
                     return;
                 };
 
-                let Ok((entity, diameter, _)) = instances.get_single_mut() else {
-                    return;
-                };
+                let (_, mut lerp) = layers.single_mut();
 
-                event_writer.send(SetWorldBorderSizeEvent {
-                    entity_layer: entity,
-                    new_diameter: diameter.get() + value,
-                    duration: Duration::from_millis(speed as u64),
-                })
+                lerp.target_diameter = lerp.current_diameter + value;
+                lerp.remaining_ticks = ticks;
             }
             "center" => {
                 let Ok(x) = parts[1].parse::<f64>() else {
@@ -164,10 +171,11 @@ fn border_controls(
                     return;
                 };
 
-                instances.single_mut().2 .0 = DVec2 { x, y: z };
+                let (mut center, _) = layers.single_mut();
+                center.x = x;
+                center.z = z;
             }
             _ => (),
         }
     }
 }
-*/

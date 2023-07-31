@@ -186,11 +186,10 @@ impl PluginGroup for DefaultPlugins {
             group = group.add(valence_weather::WeatherPlugin);
         }
 
-        // TODO
-        // #[cfg(feature = "world_border")]
-        // {
-        //     group = group.add(valence_world_border::WorldBorderPlugin);
-        // }
+        #[cfg(feature = "world_border")]
+        {
+            group = group.add(valence_world_border::WorldBorderPlugin);
+        }
 
         #[cfg(feature = "boss_bar")]
         {
