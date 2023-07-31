@@ -3,7 +3,6 @@ use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
 use std::str::Chars;
 
-use crate::tag::Tag;
 use crate::{Compound, List, Value};
 
 const STRING_MAX_LEN: usize = 32767;
@@ -123,7 +122,9 @@ impl<'a> SnbtReader<'a> {
             self.pushed_back = None;
             return;
         }
+
         let result = self.iter.next();
+
         if let Some(c) = result {
             if c == '\n' {
                 self.line += 1;
@@ -143,7 +144,9 @@ impl<'a> SnbtReader<'a> {
         } else {
             self.column -= 1;
         }
+
         self.index -= c.len_utf8();
+
         match self.pushed_back {
             Some(_) => panic!("Can't push back two chars"),
             None => self.pushed_back = Some(c),
@@ -161,18 +164,22 @@ impl<'a> SnbtReader<'a> {
 
     fn read_string(&mut self) -> Result<String> {
         let first = self.peek()?;
+
         let str = match first {
             '\"' | '\'' => self.read_quoted_string(),
             _ => self.read_unquoted_string(),
         }?;
+
         if str.len() > STRING_MAX_LEN {
             return Err(self.make_error(SnbtErrorKind::LongString));
         }
+
         Ok(str)
     }
 
     fn read_unquoted_string(&mut self) -> Result<String> {
         let mut result = String::new();
+
         loop {
             let input = self.peek();
             match input {
@@ -183,12 +190,14 @@ impl<'a> SnbtReader<'a> {
                 _ => break,
             }
         }
+
         Ok(result)
     }
 
     fn read_quoted_string(&mut self) -> Result<String> {
         let quote = self.peek()?;
         self.next();
+
         let mut result = String::new();
         loop {
             let input = self.peek();
@@ -199,12 +208,14 @@ impl<'a> SnbtReader<'a> {
                 }
                 Ok('\\') => {
                     self.next();
+
                     let escape = self.peek()?;
                     if escape == quote || escape == '\\' {
                         result.push(escape);
                     } else {
                         return Err(self.make_error(SnbtErrorKind::InvalidEscapeSequence));
                     }
+
                     self.next();
                 }
                 Ok(c) => {
@@ -223,19 +234,26 @@ impl<'a> SnbtReader<'a> {
     fn parse_compound(&mut self) -> Result<Compound> {
         self.next();
         self.skip_whitespace();
+
         let mut cpd = Compound::new();
         while self.peek()? != '}' {
             let key = self.read_string()?;
+
             self.skip_whitespace();
+
             if key.is_empty() {
                 return Err(self.make_error(SnbtErrorKind::EmptyKeyInCompound));
             }
+
             if self.peek()? != ':' {
                 return Err(self.make_error(SnbtErrorKind::ExpectColon));
             }
+
             self.next();
             self.skip_whitespace();
+
             let value = self.parse_element()?;
+
             self.skip_whitespace();
             if self.peek()? == ',' {
                 self.next();
@@ -243,6 +261,7 @@ impl<'a> SnbtReader<'a> {
             } else if self.peek()? != '}' {
                 return Err(self.make_error(SnbtErrorKind::ExpectComma));
             }
+
             cpd.insert(key, value);
         }
         self.next();
@@ -251,99 +270,74 @@ impl<'a> SnbtReader<'a> {
 
     fn continue_parse_list(&mut self) -> Result<List> {
         self.skip_whitespace();
-        let mut list = vec![];
-        let mut element_type = Tag::End;
+
+        let mut list = List::End;
+
         while self.peek()? != ']' {
             let value = self.parse_element()?;
             self.skip_whitespace();
-            if element_type == Tag::End {
-                element_type = value.get_tag();
-            } else if value.get_tag() != element_type {
-                return Err(self.make_error(SnbtErrorKind::DifferentTypesInList));
+
+            match (&mut list, value) {
+                (list @ List::End, value) => *list = value.into(),
+                (List::Byte(l), Value::Byte(v)) => l.push(v),
+                (List::Short(l), Value::Short(v)) => l.push(v),
+                (List::Int(l), Value::Int(v)) => l.push(v),
+                (List::Long(l), Value::Long(v)) => l.push(v),
+                (List::Float(l), Value::Float(v)) => l.push(v),
+                (List::Double(l), Value::Double(v)) => l.push(v),
+                (List::ByteArray(l), Value::ByteArray(v)) => l.push(v),
+                (List::String(l), Value::String(v)) => l.push(v),
+                (List::List(l), Value::List(v)) => l.push(v),
+                (List::Compound(l), Value::Compound(v)) => l.push(v),
+                (List::IntArray(l), Value::IntArray(v)) => l.push(v),
+                (List::LongArray(l), Value::LongArray(v)) => l.push(v),
+                _ => return Err(self.make_error(SnbtErrorKind::DifferentTypesInList)),
             }
+
             if self.peek()? == ',' {
                 self.next();
                 self.skip_whitespace();
             } else if self.peek()? != ']' {
                 return Err(self.make_error(SnbtErrorKind::ExpectComma));
             }
-            list.push(value);
         }
         self.next();
 
-        // Since the type of elements is known, feel free to unwrap them
-        match element_type {
-            Tag::End => Ok(List::End),
-            Tag::Byte => Ok(List::Byte(
-                list.into_iter().map(|v| v.into_byte().unwrap()).collect(),
-            )),
-            Tag::Short => Ok(List::Short(
-                list.into_iter().map(|v| v.into_short().unwrap()).collect(),
-            )),
-            Tag::Int => Ok(List::Int(
-                list.into_iter().map(|v| v.into_int().unwrap()).collect(),
-            )),
-            Tag::Long => Ok(List::Long(
-                list.into_iter().map(|v| v.into_long().unwrap()).collect(),
-            )),
-            Tag::Float => Ok(List::Float(
-                list.into_iter().map(|v| v.into_float().unwrap()).collect(),
-            )),
-            Tag::Double => Ok(List::Double(
-                list.into_iter().map(|v| v.into_double().unwrap()).collect(),
-            )),
-            Tag::String => Ok(List::String(
-                list.into_iter().map(|v| v.into_string().unwrap()).collect(),
-            )),
-            Tag::ByteArray => Ok(List::ByteArray(
-                list.into_iter()
-                    .map(|v| v.into_byte_array().unwrap())
-                    .collect(),
-            )),
-            Tag::List => Ok(List::List(
-                list.into_iter().map(|v| v.into_list().unwrap()).collect(),
-            )),
-            Tag::Compound => Ok(List::Compound(
-                list.into_iter()
-                    .map(|v| v.into_compound().unwrap())
-                    .collect(),
-            )),
-            Tag::IntArray => Ok(List::IntArray(
-                list.into_iter()
-                    .map(|v| v.into_int_array().unwrap())
-                    .collect(),
-            )),
-            Tag::LongArray => Ok(List::LongArray(
-                list.into_iter()
-                    .map(|v| v.into_long_array().unwrap())
-                    .collect(),
-            )),
-        }
+        Ok(list)
     }
 
     fn parse_list_like(&mut self) -> Result<Value> {
         self.next();
+
         let type_char = self.peek()?;
-        let etype = match type_char {
-            'B' => Tag::Byte,
-            'I' => Tag::Int,
-            'L' => Tag::Long,
+
+        let mut values = match type_char {
+            'B' => Value::ByteArray(vec![]),
+            'I' => Value::IntArray(vec![]),
+            'L' => Value::LongArray(vec![]),
             _ => return self.check_depth(|v| Ok(v.continue_parse_list()?.into())),
         };
+
         self.next();
+
         if self.peek()? != ';' {
             self.push_back(type_char);
             return self.check_depth(|v| Ok(v.continue_parse_list()?.into()));
         }
+
         self.next();
         self.skip_whitespace();
-        let mut values = vec![];
+
         while self.peek()? != ']' {
             let value = self.parse_element()?;
-            if value.get_tag() != etype {
-                return Err(self.make_error(SnbtErrorKind::WrongTypeInArray));
+
+            match (&mut values, value) {
+                (Value::ByteArray(l), Value::Byte(v)) => l.push(v),
+                (Value::IntArray(l), Value::Int(v)) => l.push(v),
+                (Value::LongArray(l), Value::Long(v)) => l.push(v),
+                _ => return Err(self.make_error(SnbtErrorKind::WrongTypeInArray)),
             }
-            values.push(value);
+
             self.skip_whitespace();
             if self.peek()? == ',' {
                 self.next();
@@ -352,19 +346,10 @@ impl<'a> SnbtReader<'a> {
                 return Err(self.make_error(SnbtErrorKind::ExpectComma));
             }
         }
+
         self.next();
-        match etype {
-            Tag::Byte => Ok(Value::ByteArray(
-                values.into_iter().map(|v| v.into_byte().unwrap()).collect(),
-            )),
-            Tag::Int => Ok(Value::IntArray(
-                values.into_iter().map(|v| v.into_int().unwrap()).collect(),
-            )),
-            Tag::Long => Ok(Value::LongArray(
-                values.into_iter().map(|v| v.into_long().unwrap()).collect(),
-            )),
-            _ => unreachable!(),
-        }
+
+        Ok(values)
     }
 
     fn parse_primitive(&mut self) -> Result<Value> {
@@ -377,7 +362,9 @@ impl<'a> SnbtReader<'a> {
                 }
             }};
         }
+
         let target = self.read_unquoted_string()?;
+
         match target
             .bytes()
             .last()
@@ -390,6 +377,7 @@ impl<'a> SnbtReader<'a> {
             b'd' | b'D' => try_ret!(target[..target.len() - 1].parse::<f64>()),
             _ => (),
         }
+
         match target.as_str() {
             "true" => return Ok(Value::Byte(1)),
             "false" => return Ok(Value::Byte(0)),
@@ -398,9 +386,11 @@ impl<'a> SnbtReader<'a> {
                 try_ret!(target.parse::<f64>());
             }
         };
+
         if target.len() > STRING_MAX_LEN {
             return Err(self.make_error(SnbtErrorKind::LongString));
         }
+
         Ok(Value::String(target))
     }
 
@@ -409,6 +399,7 @@ impl<'a> SnbtReader<'a> {
     /// considered to be an error.
     pub fn parse_element(&mut self) -> Result<Value> {
         self.skip_whitespace();
+
         match self.peek()? {
             '{' => self.check_depth(|v| Ok(v.parse_compound()?.into())),
             '[' => self.parse_list_like(),
@@ -419,10 +410,12 @@ impl<'a> SnbtReader<'a> {
 
     pub fn read(&mut self) -> Result<Value> {
         let value = self.parse_element()?;
+
         self.skip_whitespace();
         if self.peek().is_ok() {
             return Err(self.make_error(SnbtErrorKind::TrailingData));
         }
+
         Ok(value)
     }
 
@@ -468,6 +461,7 @@ impl<'a> SnbtWriter<'a> {
                 break;
             }
         }
+
         if need_quote {
             self.output.push('"');
             for c in s.chars() {
@@ -490,14 +484,18 @@ impl<'a> SnbtWriter<'a> {
     ) {
         self.output.push('[');
         self.output.push_str(prefix);
+
         let mut first = true;
+
         for v in iter {
             if !first {
                 self.output.push(',');
             }
             first = false;
+
             self.write_element(&(*v).into());
         }
+
         self.output.push(']');
     }
 
@@ -510,6 +508,7 @@ impl<'a> SnbtWriter<'a> {
         macro_rules! variant_impl {
             ($v:expr, $handle:expr) => {{
                 self.output.push('[');
+
                 let mut first = true;
                 for v in $v.iter() {
                     if !first {
@@ -518,6 +517,7 @@ impl<'a> SnbtWriter<'a> {
                     first = false;
                     $handle(v);
                 }
+
                 self.output.push(']');
             }};
         }
@@ -546,16 +546,20 @@ impl<'a> SnbtWriter<'a> {
 
     fn write_compound(&mut self, compound: &Compound) {
         self.output.push('{');
+
         let mut first = true;
         for (k, v) in compound.iter() {
             if !first {
                 self.output.push(',');
             }
+
             first = false;
+
             self.write_string(k);
             self.output.push(':');
             self.write_element(v);
         }
+
         self.output.push('}');
     }
 
@@ -583,7 +587,9 @@ impl<'a> SnbtWriter<'a> {
 pub fn to_snbt_string(value: &Value) -> String {
     let mut output = String::new();
     let mut writer = SnbtWriter::new(&mut output);
+
     writer.write_element(value);
+
     output
 }
 
@@ -617,79 +623,89 @@ mod tests {
 				empty: [Bibabo ],
 			}
 		"#;
+
         let value = from_snbt_str(str).unwrap();
-        let cpd = value.as_compound().unwrap();
-        assert_eq!(*cpd.get("foo").unwrap().as_int().unwrap(), 1);
-        assert_eq!(*cpd.get("bar").unwrap().as_double().unwrap(), 1.0);
-        assert_eq!(*cpd.get("baz").unwrap().as_float().unwrap(), 1.0);
-        assert_eq!(
-            *cpd.get("hello'").unwrap().as_string().unwrap(),
-            "hello world"
-        );
-        assert_eq!(
-            *cpd.get("world").unwrap().as_string().unwrap(),
-            "hello\"world"
-        );
-        assert_eq!(*cpd.get("1.5f").unwrap().as_double().unwrap(), 1.5);
-        assert_eq!(*cpd.get("3b").unwrap().as_float().unwrap(), 2.0);
-        assert_eq!(*cpd.get("bool").unwrap().as_byte().unwrap(), 0);
-        let more = cpd.get("more").unwrap().as_compound().unwrap();
-        assert_eq!(
-            *more.get("iarr").unwrap().as_int_array().unwrap(),
-            vec![1, 2, 3]
-        );
-        assert_eq!(
-            *more.get("larr").unwrap().as_long_array().unwrap(),
-            vec![1, 2, 3]
-        );
-        let List::String(list) = cpd.get("empty").unwrap().as_list().unwrap() else {
-            panic!()
+        let Value::Compound(cpd) = &value else {
+            unreachable!()
         };
+
+        assert_eq!(*cpd.get("foo").unwrap(), 1_i32.into());
+        assert_eq!(*cpd.get("bar").unwrap(), 1_f64.into());
+        assert_eq!(*cpd.get("baz").unwrap(), 1_f32.into());
+        assert_eq!(*cpd.get("hello'").unwrap(), "hello world".into());
+        assert_eq!(*cpd.get("world").unwrap(), "hello\"world".into());
+        assert_eq!(*cpd.get("1.5f").unwrap(), 1.5_f64.into());
+        assert_eq!(*cpd.get("3b").unwrap(), 2_f32.into());
+        assert_eq!(*cpd.get("bool").unwrap(), 0_i8.into());
+
+        let Some(Value::Compound(more)) = cpd.get("more") else {
+            unreachable!()
+        };
+
+        assert_eq!(*more.get("iarr").unwrap(), vec![1, 2, 3].into());
+
+        assert_eq!(*more.get("larr").unwrap(), vec![1_i64, 2, 3].into());
+
+        let Value::List(List::String(list)) = cpd.get("empty").unwrap() else {
+            unreachable!()
+        };
+
         assert_eq!(list[0], "Bibabo");
+
         assert_eq!(
             from_snbt_str("\"\\n\"").unwrap_err().error_type,
             SnbtErrorKind::InvalidEscapeSequence
         );
+
         assert_eq!(
             from_snbt_str("[L; 1]").unwrap_err().error_type,
             SnbtErrorKind::WrongTypeInArray
         );
+
         assert_eq!(
             from_snbt_str("[L; 1L, 2L, 3L").unwrap_err().error_type,
             SnbtErrorKind::ReachEndOfStream
         );
+
         assert_eq!(
             from_snbt_str("[L; 1L, 2L, 3L,]dewdwe")
                 .unwrap_err()
                 .error_type,
             SnbtErrorKind::TrailingData
         );
+
         assert_eq!(
             from_snbt_str("{ foo: }").unwrap_err().error_type,
             SnbtErrorKind::ExpectValue
         );
+
         assert_eq!(
             from_snbt_str("{ {}, }").unwrap_err().error_type,
             SnbtErrorKind::EmptyKeyInCompound
         );
+
         assert_eq!(
             from_snbt_str("{ foo 1 }").unwrap_err().error_type,
             SnbtErrorKind::ExpectColon
         );
+
         assert_eq!(
             from_snbt_str("{ foo: 1 bar: 2 }").unwrap_err().error_type,
             SnbtErrorKind::ExpectComma
         );
+
         assert_eq!(
             from_snbt_str("[{}, []]").unwrap_err().error_type,
             SnbtErrorKind::DifferentTypesInList
         );
+
         assert_eq!(
             from_snbt_str(&String::from_utf8(vec![b'e'; 32768]).unwrap())
                 .unwrap_err()
                 .error_type,
             SnbtErrorKind::LongString
         );
+
         assert_eq!(
             from_snbt_str(
                 &String::from_utf8([[b'['; MAX_DEPTH + 1], [b']'; MAX_DEPTH + 1]].concat())
@@ -699,12 +715,11 @@ mod tests {
             .error_type,
             SnbtErrorKind::DepthLimitExceeded
         );
+
         #[cfg(feature = "preserve_order")]
         assert_eq!(
             to_snbt_string(&value),
-            "{foo:1,bar:1d,baz:1f,\"hello'\":\"hello \
-             world\",world:\"hello\\\"world\",1.5f:1.5d,3b:2f,bool:0b,more:{iarr:[I;1,2,3],larr:\
-             [L;1l,2l,3l]},empty:[Bibabo]}"
+            r#"{foo:1,bar:1d,baz:1f,"hello'":"hello world",world:"hello\"world",1.5f:1.5d,3b:2f,bool:0b,more:{iarr:[I;1,2,3],larr:[L;1l,2l,3l]},empty:[Bibabo]}"#
         );
     }
 }

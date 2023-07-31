@@ -300,3 +300,23 @@ impl From<Vec<Vec<i64>>> for List {
         List::LongArray(v)
     }
 }
+
+/// Converts a value to a singleton list.
+impl From<Value> for List {
+    fn from(value: Value) -> Self {
+        match value {
+            Value::Byte(v) => List::Byte(vec![v]),
+            Value::Short(v) => List::Short(vec![v]),
+            Value::Int(v) => List::Int(vec![v]),
+            Value::Long(v) => List::Long(vec![v]),
+            Value::Float(v) => List::Float(vec![v]),
+            Value::Double(v) => List::Double(vec![v]),
+            Value::ByteArray(v) => List::ByteArray(vec![v]),
+            Value::String(v) => List::String(vec![v]),
+            Value::List(v) => List::List(vec![v]),
+            Value::Compound(v) => List::Compound(vec![v]),
+            Value::IntArray(v) => List::IntArray(vec![v]),
+            Value::LongArray(v) => List::LongArray(vec![v]),
+        }
+    }
+}
