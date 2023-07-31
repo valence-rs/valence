@@ -5,8 +5,8 @@ mod utils {
     use packet_inspector::{PacketSide, PacketState};
     use valence::protocol::{Decode, Packet};
 
-    use valence::advancement::packet::*;
-    use valence::boss_bar::packet::*;
+    use valence::packet::advancement::*;
+    use valence::packet::boss_bar::*;
     use valence::client::action::*;
     use valence::client::command::*;
     use valence::client::custom_payload::*;
@@ -16,27 +16,27 @@ mod utils {
     use valence::client::interact_item::*;
     use valence::client::keepalive::*;
     use valence::client::movement::*;
-    use valence::client::packet::structure_block::*;
-    use valence::client::packet::*;
+    use valence::packet::client::structure_block::*;
+    use valence::packet::client::*;
     use valence::client::resource_pack::*;
     use valence::client::settings::*;
     use valence::client::status::*;
     use valence::client::teleport::*;
     use valence::client::title::*;
-    use valence::entity::packet::*;
-    use valence::instance::packet::*;
-    use valence::inventory::packet::synchronize_recipes::*;
-    use valence::inventory::packet::*;
-    use valence::network::packet::*;
+    use valence::packet::entity::*;
+    use valence::packet::instance::*;
+    use valence::packet::inventory::synchronize_recipes::*;
+    use valence::packet::inventory::*;
+    use valence::packet::network::*;
     use valence::particle::*;
-    use valence::player_list::packet::*;
-    use valence::protocol::packet::chat::*;
-    use valence::protocol::packet::command::*;
-    use valence::protocol::packet::map::*;
-    use valence::protocol::packet::scoreboard::*;
-    use valence::protocol::packet::sound::*;
+    use valence::packet::player_list::*;
+    use valence::packet::chat::*;
+    use valence::packet::command::*;
+    use valence::packet::map::*;
+    use valence::packet::scoreboard::*;
+    use valence::packet::sound::*;
     use valence::registry::tags::*;
-    use valence::world_border::packet::*;
+    use valence::packet::world_border::*;
 
     include!(concat!(env!("OUT_DIR"), "/packet_to_string.rs"));
 }

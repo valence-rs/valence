@@ -413,7 +413,7 @@ pub struct PacketByteRange(pub Range<usize>);
 /// Cache for all the tracked data of an entity. Used for the
 /// [`EntityTrackerUpdateS2c`][packet] packet.
 ///
-/// [packet]: crate::packet::EntityTrackerUpdateS2c
+/// [packet]: valence_packet::entity::EntityTrackerUpdateS2c
 #[derive(Component, Default, Debug)]
 pub struct TrackedData {
     init_data: Vec<u8>,
@@ -428,7 +428,7 @@ impl TrackedData {
     /// [`EntityTrackerUpdateS2c`][packet] packet. This is used when the entity
     /// enters the view of a client.
     ///
-    /// [packet]: crate::packet::EntityTrackerUpdateS2c
+    /// [packet]: valence_packet::entity::EntityTrackerUpdateS2c
     pub fn init_data(&self) -> Option<&[u8]> {
         if self.init_data.len() > 1 {
             Some(&self.init_data)
@@ -441,7 +441,7 @@ impl TrackedData {
     /// [`EntityTrackerUpdateS2c`][packet] packet. This is used when tracked
     /// data is changed and the client is already in view of the entity.
     ///
-    /// [packet]: crate::packet::EntityTrackerUpdateS2c
+    /// [packet]: valence_packet::entity::EntityTrackerUpdateS2c
     pub fn update_data(&self) -> Option<&[u8]> {
         if self.update_data.len() > 1 {
             Some(&self.update_data)
