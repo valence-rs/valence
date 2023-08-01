@@ -247,7 +247,7 @@ impl<W: Write> EncodeState<W> {
 
     fn write_compound(&mut self, c: &Compound) -> Result<()> {
         for (k, v) in c.iter() {
-            self.write_tag(Tag::element_type(v))?;
+            self.write_tag(v.tag())?;
             self.write_string(k)?;
             self.write_value(v)?;
         }
