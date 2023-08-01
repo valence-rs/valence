@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use std::collections::HashMap;
 
 use bevy_app::App;

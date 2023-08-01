@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use bevy_app::App;
 use valence::client::despawn_disconnected_clients;
 use valence::client::message::ChatMessageEvent;
