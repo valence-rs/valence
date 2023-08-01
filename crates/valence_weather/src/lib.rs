@@ -1,3 +1,4 @@
+#![doc = include_str!("../README.md")]
 #![allow(clippy::type_complexity)]
 #![deny(
     rustdoc::broken_intra_doc_links,

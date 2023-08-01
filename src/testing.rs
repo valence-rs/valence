@@ -25,7 +25,7 @@ use crate::DefaultPlugins;
 pub struct ScenarioSingleClient {
     /// The new bevy application.
     pub app: App,
-    /// Entity handle of the single [`Client`].
+    /// Entity handle for the single client.
     pub client: Entity,
     /// Helper for sending and receiving packets from the mock client.
     pub helper: MockClientHelper,
