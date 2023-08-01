@@ -11,16 +11,18 @@ use valence_block::BlockState;
 use valence_core::block_pos::BlockPos;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::despawn::Despawned;
-use valence_core::protocol::encode::{PacketWriter, WritePacket};
 use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::var_long::VarLong;
-use valence_core::protocol::{Encode, Packet};
+use valence_core::protocol::Encode;
 use valence_entity::EntityKind;
 use valence_nbt::{compound, Compound};
-use valence_packet::instance::{
-    BlockEntityUpdateS2c, BlockUpdateS2c, ChunkBiome, ChunkBiomeDataS2c, ChunkDataBlockEntity,
-    ChunkDataS2c, ChunkDeltaUpdateS2c,
+use valence_packet::packets::play::chunk_biome_data_s2c::ChunkBiome;
+use valence_packet::packets::play::chunk_data_s2c::ChunkDataBlockEntity;
+use valence_packet::packets::play::{
+    BlockEntityUpdateS2c, BlockUpdateS2c, ChunkBiomeDataS2c, ChunkDataS2c, ChunkDeltaUpdateS2c,
 };
+use valence_packet::protocol::encode::{PacketWriter, WritePacket};
+use valence_packet::protocol::Packet;
 use valence_registry::RegistryIdx;
 
 use super::paletted_container::PalettedContainer;

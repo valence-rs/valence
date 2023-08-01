@@ -1,5 +1,3 @@
-use valence_packet::entity::EntityStatusS2c;
-
 use super::*;
 
 pub(super) fn build(app: &mut App) {
@@ -21,7 +19,7 @@ impl OpLevel {
 }
 
 fn update_op_level(mut clients: Query<(&mut Client, &OpLevel), Changed<OpLevel>>) {
-    for (mut client, lvl) in &mut clients {
+    for (mut client, lvl) in &mut clients.iter_mut() {
         client.write_packet(&EntityStatusS2c {
             entity_id: 0,
             entity_status: 24 + lvl.0,

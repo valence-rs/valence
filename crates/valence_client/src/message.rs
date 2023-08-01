@@ -2,9 +2,9 @@
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use valence_core::protocol::encode::WritePacket;
+use valence_packet::protocol::encode::WritePacket;
 use valence_core::text::IntoText;
-use valence_packet::chat::{ChatMessageC2s, GameMessageS2c};
+use valence_packet::packets::play::{ChatMessageC2s, GameMessageS2c};
 
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 

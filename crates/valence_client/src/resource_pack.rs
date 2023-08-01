@@ -1,13 +1,10 @@
-use std::borrow::Cow;
-
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use valence_core::protocol::encode::WritePacket;
-use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 use valence_core::text::Text;
+use valence_packet::packets::play::{ResourcePackStatusC2s, ResourcePackSendS2c};
 
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
-use crate::Client;
+use super::*;
 
 pub(super) fn build(app: &mut App) {
     app.add_event::<ResourcePackStatusEvent>()
@@ -17,10 +14,8 @@ pub(super) fn build(app: &mut App) {
 #[derive(Event, Copy, Clone, PartialEq, Eq, Debug)]
 pub struct ResourcePackStatusEvent {
     pub client: Entity,
-    pub status: ResourcePackStatus,
+    pub status: ResourcePackStatusC2s,
 }
-
-pub use ResourcePackStatusC2s as ResourcePackStatus;
 
 impl Client {
     /// Requests that the client download and enable a resource pack.
@@ -61,26 +56,4 @@ fn handle_resource_pack_status(
             })
         }
     }
-}
-
-#[derive(Clone, PartialEq, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::RESOURCE_PACK_SEND_S2C)]
-pub struct ResourcePackSendS2c<'a> {
-    pub url: &'a str,
-    pub hash: &'a str,
-    pub forced: bool,
-    pub prompt_message: Option<Cow<'a, Text>>,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::RESOURCE_PACK_STATUS_C2S)]
-pub enum ResourcePackStatusC2s {
-    /// The client has successfully loaded the server's resource pack.
-    SuccessfullyLoaded,
-    /// The client has declined the server's resource pack.
-    Declined,
-    /// The client has failed to download the server's resource pack.
-    FailedDownload,
-    /// The client has accepted the server's resource pack.
-    Accepted,
 }

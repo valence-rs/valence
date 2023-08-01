@@ -27,14 +27,13 @@ use chunk::loaded::ChunkState;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::despawn::Despawned;
 use valence_core::protocol::byte_angle::ByteAngle;
-use valence_core::protocol::encode::WritePacket;
 use valence_core::protocol::var_int::VarInt;
 use valence_entity::{
     EntityAnimations, EntityId, EntityKind, EntityStatuses, HeadYaw, InitEntitiesSet, Location,
     Look, OldLocation, OldPosition, OnGround, PacketByteRange, Position, TrackedData,
     UpdateTrackedDataSet, Velocity,
 };
-use valence_packet::entity::{
+use valence_packet::packets::play::{
     EntityAnimationS2c, EntityPositionS2c, EntitySetHeadYawS2c, EntityStatusS2c,
     EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, MoveRelativeS2c, RotateAndMoveRelativeS2c,
     RotateS2c,
@@ -45,6 +44,7 @@ mod instance;
 
 pub use chunk::{Block, BlockRef};
 pub use instance::*;
+use valence_packet::protocol::encode::WritePacket;
 
 pub struct InstancePlugin;
 

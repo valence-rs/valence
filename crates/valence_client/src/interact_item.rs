@@ -1,8 +1,7 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use valence_core::hand::Hand;
-use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::{packet_id, Decode, Encode, Packet};
+use valence_packet::packets::play::PlayerInteractItemC2s;
 
 use crate::action::ActionSequence;
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
@@ -37,11 +36,4 @@ fn handle_player_interact_item(
             });
         }
     }
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::PLAYER_INTERACT_ITEM_C2S)]
-pub struct PlayerInteractItemC2s {
-    pub hand: Hand,
-    pub sequence: VarInt,
 }

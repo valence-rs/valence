@@ -1,5 +1,5 @@
 use valence_core::protocol::raw::RawBytes;
-use valence_core::protocol::{packet_id, Decode, Encode};
+use valence_packet::packets::play::{CustomPayloadC2s, CustomPayloadS2c};
 
 use super::*;
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
@@ -38,18 +38,4 @@ fn handle_custom_payload(
             })
         }
     }
-}
-
-#[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::CUSTOM_PAYLOAD_C2S)]
-pub struct CustomPayloadC2s<'a> {
-    pub channel: Ident<Cow<'a, str>>,
-    pub data: RawBytes<'a>,
-}
-
-#[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::CUSTOM_PAYLOAD_S2C)]
-pub struct CustomPayloadS2c<'a> {
-    pub channel: Ident<Cow<'a, str>>,
-    pub data: RawBytes<'a>,
 }

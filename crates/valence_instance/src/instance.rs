@@ -11,15 +11,16 @@ use valence_biome::BiomeRegistry;
 use valence_core::block_pos::BlockPos;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::ident::Ident;
-use valence_core::particle::{Particle, ParticleS2c};
 use valence_core::protocol::array::LengthPrefixedArray;
-use valence_core::protocol::encode::{PacketWriter, WritePacket};
-use valence_core::protocol::{Encode, Packet};
+use valence_core::protocol::Encode;
 use valence_core::sound::{Sound, SoundCategory};
 use valence_core::Server;
 use valence_dimension::DimensionTypeRegistry;
 use valence_nbt::Compound;
-use valence_packet::sound::PlaySoundS2c;
+use valence_packet::packets::play::particle_s2c::Particle;
+use valence_packet::packets::play::{ParticleS2c, PlaySoundS2c};
+use valence_packet::protocol::encode::{PacketWriter, WritePacket};
+use valence_packet::protocol::Packet;
 
 use crate::chunk::{Block, BlockRef, Chunk, IntoBlock, LoadedChunk, UnloadedChunk, MAX_HEIGHT};
 

@@ -2,12 +2,10 @@ use std::borrow::Cow;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use serde::Deserialize;
-use valence_core::ident::Ident;
-use valence_packet::protocol::encode::{PacketWriter, WritePacket};
-use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::{Decode, Encode};
 use valence_core::Server;
+pub use valence_packet::packets::play::synchronize_tags_s2c::Registry;
+use valence_packet::packets::play::SynchronizeTagsS2c;
+use valence_packet::protocol::encode::{PacketWriter, WritePacket};
 
 use crate::RegistrySet;
 
@@ -21,18 +19,6 @@ pub(super) fn build(app: &mut App) {
 pub struct TagsRegistry {
     pub registries: Vec<Registry>,
     cached_packet: Vec<u8>,
-}
-
-#[derive(Debug, Deserialize, Clone, PartialEq, Eq, Encode, Decode)]
-pub struct Registry {
-    pub registry: Ident<String>,
-    pub tags: Vec<TagEntry>,
-}
-
-#[derive(Debug, Deserialize, Clone, PartialEq, Eq, Encode, Decode)]
-pub struct TagEntry {
-    pub name: Ident<String>,
-    pub entries: Vec<VarInt>,
 }
 
 impl TagsRegistry {

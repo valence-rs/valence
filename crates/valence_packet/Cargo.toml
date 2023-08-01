@@ -16,6 +16,7 @@ uuid = { workspace = true, features = ["serde"] }
 bytes.workspace = true
 tracing.workspace = true
 bevy_ecs.workspace = true
+serde = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
 rand.workspace = true

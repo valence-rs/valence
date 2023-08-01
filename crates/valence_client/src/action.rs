@@ -1,8 +1,10 @@
 use valence_core::block_pos::BlockPos;
 use valence_core::direction::Direction;
 use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::{packet_id, Decode, Encode, Packet};
-use valence_packet::client::{PlayerAction, PlayerActionC2s};
+use valence_core::protocol::{Decode, Encode};
+use valence_packet::packets::play::player_action_c2s::PlayerAction;
+use valence_packet::packets::play::{PlayerActionC2s, PlayerActionResponseS2c};
+use valence_packet::protocol::Packet;
 
 use super::*;
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
@@ -98,10 +100,4 @@ fn acknowledge_player_actions(
             action_seq.0 = 0;
         }
     }
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::PLAYER_ACTION_RESPONSE_S2C)]
-pub struct PlayerActionResponseS2c {
-    pub sequence: VarInt,
 }

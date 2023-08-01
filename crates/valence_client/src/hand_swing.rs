@@ -1,8 +1,8 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use valence_core::hand::Hand;
-use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 use valence_entity::{EntityAnimation, EntityAnimations};
+use valence_packet::packets::play::HandSwingC2s;
 
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 
@@ -37,10 +37,4 @@ fn handle_hand_swing(
             });
         }
     }
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::HAND_SWING_C2S)]
-pub struct HandSwingC2s {
-    pub hand: Hand,
 }

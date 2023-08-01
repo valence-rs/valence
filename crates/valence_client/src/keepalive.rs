@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use valence_core::protocol::{packet_id, Decode, Encode, Packet};
+use valence_packet::packets::play::{KeepAliveS2c, KeepAliveC2s};
 
 use super::*;
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
@@ -96,16 +96,4 @@ fn handle_keepalive_response(
             }
         }
     }
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::KEEP_ALIVE_C2S)]
-pub struct KeepAliveC2s {
-    pub id: u64,
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::KEEP_ALIVE_S2C)]
-pub struct KeepAliveS2c {
-    pub id: u64,
 }

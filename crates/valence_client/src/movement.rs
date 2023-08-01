@@ -1,8 +1,8 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use glam::DVec3;
-use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 use valence_entity::{HeadYaw, Look, OnGround, Position};
+use valence_packet::packets::play::{VehicleMoveC2s, OnGroundOnlyC2s, LookAndOnGroundC2s, FullC2s, PositionAndOnGroundC2s};
 
 use super::teleport::TeleportState;
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
@@ -200,42 +200,4 @@ fn handle(
     on_ground.set_if_neq(OnGround(mov.on_ground));
 
     movement_events.send(mov);
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::POSITION_AND_ON_GROUND)]
-pub struct PositionAndOnGroundC2s {
-    pub position: DVec3,
-    pub on_ground: bool,
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::FULL)]
-pub struct FullC2s {
-    pub position: DVec3,
-    pub yaw: f32,
-    pub pitch: f32,
-    pub on_ground: bool,
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::LOOK_AND_ON_GROUND)]
-pub struct LookAndOnGroundC2s {
-    pub yaw: f32,
-    pub pitch: f32,
-    pub on_ground: bool,
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::ON_GROUND_ONLY)]
-pub struct OnGroundOnlyC2s {
-    pub on_ground: bool,
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::VEHICLE_MOVE_C2S)]
-pub struct VehicleMoveC2s {
-    pub position: DVec3,
-    pub yaw: f32,
-    pub pitch: f32,
 }
