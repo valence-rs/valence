@@ -34,12 +34,12 @@ use flume::{Receiver, Sender};
 use lru::LruCache;
 use tracing::warn;
 use valence_biome::{BiomeId, BiomeRegistry};
-use valence_client::{Client, OldView, UpdateClientsSet, View};
+use valence_client::{Client, OldView, View};
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::ident::Ident;
 use valence_entity::{EntityLayerId, OldEntityLayerId};
 use valence_layer::chunk::UnloadedChunk;
-use valence_layer::ChunkLayer;
+use valence_layer::{ChunkLayer, UpdateLayersPreClientSet};
 use valence_nbt::Compound;
 
 mod parse_chunk;
@@ -280,7 +280,7 @@ impl Plugin for AnvilPlugin {
                 PostUpdate,
                 (init_anvil, update_client_views, send_recv_chunks)
                     .chain()
-                    .before(UpdateClientsSet),
+                    .before(UpdateLayersPreClientSet),
             );
     }
 }
@@ -358,11 +358,11 @@ fn update_client_views(
 }
 
 fn send_recv_chunks(
-    mut instances: Query<(Entity, &mut ChunkLayer, &mut AnvilLevel)>,
+    mut layers: Query<(Entity, &mut ChunkLayer, &mut AnvilLevel)>,
     mut to_send: Local<Vec<(Priority, ChunkPos)>>,
     mut load_events: EventWriter<ChunkLoadEvent>,
 ) {
-    for (entity, mut layer, anvil) in &mut instances {
+    for (entity, mut layer, anvil) in &mut layers {
         let anvil = anvil.into_inner();
 
         // Insert the chunks that are finished loading into the chunk layer and send
@@ -380,7 +380,7 @@ fn send_recv_chunks(
             };
 
             load_events.send(ChunkLoadEvent {
-                instance: entity,
+                chunk_layer: entity,
                 pos,
                 status,
             });
@@ -424,16 +424,16 @@ fn anvil_worker(mut state: ChunkWorkerState) {
 /// An event sent by `valence_anvil` after an attempt to load a chunk is made.
 #[derive(Event, Debug)]
 pub struct ChunkLoadEvent {
-    /// The [`Instance`] where the chunk is located.
-    pub instance: Entity,
-    /// The position of the chunk in the instance.
+    /// The [`ChunkLayer`] where the chunk is located.
+    pub chunk_layer: Entity,
+    /// The position of the chunk in the layer.
     pub pos: ChunkPos,
     pub status: ChunkLoadStatus,
 }
 
 #[derive(Debug)]
 pub enum ChunkLoadStatus {
-    /// A new chunk was successfully loaded and inserted into the instance.
+    /// A new chunk was successfully loaded and inserted into the layer.
     Success {
         /// The time this chunk was last modified, measured in seconds since the
         /// epoch.
@@ -446,10 +446,10 @@ pub enum ChunkLoadStatus {
     Failed(anyhow::Error),
 }
 
-/// An event sent by `valence_anvil` when a chunk is unloaded from an instance.
+/// An event sent by `valence_anvil` when a chunk is unloaded from an layer.
 #[derive(Event, Debug)]
 pub struct ChunkUnloadEvent {
-    /// The [`Instance`] where the chunk was unloaded.
+    /// The [`ChunkLayer`] where the chunk was unloaded.
     pub chunk_layer: Entity,
     /// The position of the chunk that was unloaded.
     pub pos: ChunkPos,
