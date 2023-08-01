@@ -187,6 +187,11 @@ impl PluginGroup for DefaultPlugins {
             group = group.add(valence_boss_bar::BossBarPlugin);
         }
 
+        #[cfg(feature = "command")]
+        {
+            group = group.add(valence_command::CommandPlugin);
+        }
+
         group
     }
 }

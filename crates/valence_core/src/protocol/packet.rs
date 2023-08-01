@@ -242,7 +242,7 @@ pub mod chat {
         pub id: VarInt,
         pub start: VarInt,
         pub length: VarInt,
-        pub matches: Vec<CommandSuggestionsMatch<'a>>,
+        pub matches: Cow<'a, [CommandSuggestionsMatch<'a>]>,
     }
 
     #[derive(Clone, PartialEq, Debug, Encode, Decode)]
@@ -763,7 +763,6 @@ pub mod sound {
     }
 }
 
-// TODO: move to valence_command
 pub mod command {
 
     use super::*;
