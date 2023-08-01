@@ -2,9 +2,11 @@ use std::collections::BTreeSet;
 
 use bevy_ecs::world::EntityMut;
 use valence_block::BlockState;
-use valence_client::ViewDistance;
+use valence_client::{ViewDistance, VisibleEntityLayers};
 use valence_core::chunk_pos::ChunkView;
+use valence_core::despawn::Despawned;
 use valence_core::protocol::Packet;
+use valence_core::Server;
 use valence_entity::cow::CowEntityBundle;
 use valence_entity::packet::{EntitiesDestroyS2c, EntitySpawnS2c, MoveRelativeS2c};
 use valence_entity::{EntityLayerId, Position};
@@ -12,7 +14,7 @@ use valence_layer::chunk::UnloadedChunk;
 use valence_layer::packet::{
     BlockEntityUpdateS2c, ChunkDataS2c, ChunkDeltaUpdateS2c, UnloadChunkS2c,
 };
-use valence_layer::ChunkLayer;
+use valence_layer::{ChunkLayer, EntityLayer};
 
 use crate::testing::ScenarioSingleClient;
 
@@ -147,6 +149,186 @@ fn layer_chunk_view_change() {
 }
 
 #[test]
+fn chunk_viewer_count() {
+    let ScenarioSingleClient {
+        mut app,
+        client: client_ent,
+        mut helper,
+        layer: layer_ent,
+    } = ScenarioSingleClient::new();
+
+    let mut client = app.world.entity_mut(client_ent);
+
+    client.get_mut::<Position>().unwrap().set([8.0, 64.0, 8.0]);
+    client.get_mut::<ViewDistance>().unwrap().set(2);
+
+    let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
+
+    // Create chunk at (0, 0).
+    layer.insert_chunk([0, 0], UnloadedChunk::new());
+
+    app.update(); // Tick.
+
+    helper.collect_received().assert_count::<ChunkDataS2c>(1);
+
+    let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
+
+    assert_eq!(layer.chunk_mut([0, 0]).unwrap().viewer_count(), 1);
+
+    // Create new chunk next to the first chunk and move the client away from it on
+    // the same tick.
+    layer.insert_chunk([0, 1], UnloadedChunk::new());
+
+    let mut client = app.world.entity_mut(client_ent);
+    client.get_mut::<Position>().unwrap().set([100.0, 0.0, 0.0]);
+
+    app.update(); // Tick.
+
+    {
+        let recvd = helper.collect_received();
+
+        recvd.assert_count::<ChunkDataS2c>(1);
+        recvd.assert_count::<UnloadChunkS2c>(2);
+    }
+
+    let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
+
+    // Viewer count of both chunks should be zero.
+    assert_eq!(layer.chunk([0, 0]).unwrap().viewer_count(), 0);
+    assert_eq!(layer.chunk([0, 1]).unwrap().viewer_count(), 0);
+
+    // Create a third chunk adjacent to the others.
+    layer.insert_chunk([1, 0], UnloadedChunk::new());
+
+    // Move the client back in view of all three chunks.
+    let mut client = app.world.entity_mut(client_ent);
+    client.get_mut::<Position>().unwrap().set([8.0, 0.0, 8.0]);
+
+    app.update(); // Tick.
+
+    let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
+
+    // All three chunks should have viewer count of one.
+    assert_eq!(layer.chunk_mut([0, 0]).unwrap().viewer_count(), 1);
+    assert_eq!(layer.chunk_mut([1, 0]).unwrap().viewer_count(), 1);
+    assert_eq!(layer.chunk_mut([0, 1]).unwrap().viewer_count(), 1);
+
+    // Client should have received load packet for all three.
+    helper.collect_received().assert_count::<ChunkDataS2c>(3);
+}
+
+#[test]
+fn entity_layer_switching() {
+    let ScenarioSingleClient {
+        mut app,
+        client: client_ent,
+        mut helper,
+        layer: l1,
+    } = ScenarioSingleClient::new();
+
+    let server = app.world.resource::<Server>();
+
+    let l2 = EntityLayer::new(server);
+    let l3 = EntityLayer::new(server);
+
+    let l2 = app.world.spawn(l2).id();
+    let _l3 = app.world.spawn(l3).id();
+
+    // Spawn three entities and put them all on the main layer to start.
+
+    let e1 = CowEntityBundle {
+        layer: EntityLayerId(l1),
+        ..Default::default()
+    };
+
+    let e2 = CowEntityBundle {
+        layer: EntityLayerId(l1),
+        ..Default::default()
+    };
+
+    let e3 = CowEntityBundle {
+        layer: EntityLayerId(l1),
+        ..Default::default()
+    };
+
+    let e1 = app.world.spawn(e1).id();
+    let _e2 = app.world.spawn(e2).id();
+    let _e3 = app.world.spawn(e3).id();
+
+    app.update(); // Tick.
+
+    // Can the client see all the new entities?
+    helper.collect_received().assert_count::<EntitySpawnS2c>(3);
+
+    // Move e1 to l2 and add l2 to the visible layers set.
+    app.world.get_mut::<EntityLayerId>(e1).unwrap().0 = l2;
+    app.world
+        .get_mut::<VisibleEntityLayers>(client_ent)
+        .unwrap()
+        .0
+        .insert(l2);
+
+    app.update(); // Tick.
+
+    {
+        let recvd = helper.collect_received();
+
+        // Client received packets to despawn and then spawn the entity in the new
+        // layer. (this could be optimized away in the future)
+        recvd.assert_count::<EntitiesDestroyS2c>(1);
+        recvd.assert_count::<EntitySpawnS2c>(1);
+        recvd.assert_order::<(EntitiesDestroyS2c, EntitySpawnS2c)>();
+    }
+
+    // Remove the original layer from the visible layer set.
+    assert!(app
+        .world
+        .get_mut::<VisibleEntityLayers>(client_ent)
+        .unwrap()
+        .0
+        .remove(&l1));
+
+    app.update(); // Tick.
+
+    // Both entities on the original layer should be removed.
+    {
+        let recvd = helper.collect_received();
+        recvd.assert_count::<EntitiesDestroyS2c>(1);
+    }
+
+    // Despawn l2.
+    app.world.entity_mut(l2).insert(Despawned);
+
+    app.update(); // Tick.
+
+    // e1 should be removed.
+    helper
+        .collect_received()
+        .assert_count::<EntitiesDestroyS2c>(1);
+
+    let mut visible_entity_layers = app
+        .world
+        .get_mut::<VisibleEntityLayers>(client_ent)
+        .unwrap();
+
+    // l2 should be automatically removed from the visible layers set.
+    assert!(!visible_entity_layers.0.contains(&e1));
+
+    // Add back the original layer.
+    assert!(visible_entity_layers.0.insert(l1));
+
+    app.update(); // Tick.
+
+    // e2 and e3 should be spawned.
+
+    {
+        let recvd = helper.collect_received();
+
+        recvd.assert_count::<EntitySpawnS2c>(2);
+    }
+}
+
+#[test]
 fn chunk_entity_spawn_despawn() {
     let ScenarioSingleClient {
         mut app,
@@ -155,10 +337,10 @@ fn chunk_entity_spawn_despawn() {
         layer: layer_ent,
     } = ScenarioSingleClient::new();
 
-    let mut chunks = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
+    let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
 
     // Insert an empty chunk at (0, 0).
-    chunks.insert_chunk([0, 0], UnloadedChunk::new());
+    layer.insert_chunk([0, 0], UnloadedChunk::new());
 
     // Put an entity in the new chunk.
     let cow_ent = app
