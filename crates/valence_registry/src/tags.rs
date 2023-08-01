@@ -4,9 +4,9 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use serde::Deserialize;
 use valence_core::ident::Ident;
-use valence_core::protocol::encode::{PacketWriter, WritePacket};
+use valence_packet::protocol::encode::{PacketWriter, WritePacket};
 use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::{packet_id, Decode, Encode, Packet};
+use valence_core::protocol::{Decode, Encode};
 use valence_core::Server;
 
 use crate::RegistrySet;
@@ -15,12 +15,6 @@ pub(super) fn build(app: &mut App) {
     app.init_resource::<TagsRegistry>()
         .add_systems(PreStartup, init_tags_registry)
         .add_systems(PostUpdate, cache_tags_packet.in_set(RegistrySet));
-}
-
-#[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::SYNCHRONIZE_TAGS_S2C)]
-pub struct SynchronizeTagsS2c<'a> {
-    pub registries: Cow<'a, [Registry]>,
 }
 
 #[derive(Debug, Resource, Default)]

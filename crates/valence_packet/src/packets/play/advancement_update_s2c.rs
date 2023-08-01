@@ -2,7 +2,7 @@ use super::*;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 #[packet(id = packet_id::ADVANCEMENT_UPDATE_S2C)]
-pub struct GenericAdvancementUpdateS2c<'a, AM: 'a> {
+pub struct AdvancementUpdateS2c<'a, AM: 'a> {
     pub reset: bool,
     pub advancement_mapping: Vec<AM>,
     pub identifiers: Vec<Ident<Cow<'a, str>>>,

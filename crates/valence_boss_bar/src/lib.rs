@@ -19,86 +19,61 @@
 )]
 
 use std::borrow::Cow;
-use std::collections::BTreeSet;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use valence_client::{Client, FlushPacketsSet};
-use valence_core::boss_bar::{BossBarColor, BossBarDivision, BossBarFlags};
 use valence_core::despawn::Despawned;
 use valence_core::protocol::encode::WritePacket;
-use valence_core::text::Text;
 use valence_core::uuid::UniqueId;
-use valence_packet::boss_bar::{BossBarAction, BossBarS2c};
 
-#[derive(Clone, Debug)]
-enum BossBarUpdate {
-    Health(f32),
-    Title(Text),
-    Style(BossBarColor, BossBarDivision),
-    Flags(BossBarFlags),
-}
-
-#[derive(Clone, Debug, Component)]
-pub struct BossBar {
-    pub title: Text,
-    /// From 0 to 1. Values greater than 1 do not crash a Notchian client, and
-    /// start rendering part of a second health bar at around 1.5
-    pub health: f32,
-    pub color: BossBarColor,
-    pub division: BossBarDivision,
+/// The bundle of components that make up a boss bar.
+#[derive(Bundle)]
+pub struct BossBarBundle {
+    pub id: UniqueId,
+    pub title: BossBarTitle,
+    pub health: BossBarHealth,
+    pub style: BossBarStyle,
     pub flags: BossBarFlags,
-    update: Vec<BossBarUpdate>,
+    pub viewers: BossBarViewers,
 }
 
-impl BossBar {
-    fn new(
+impl BossBarBundle {
+    pub fn new(
         title: Text,
-        health: f32,
         color: BossBarColor,
         division: BossBarDivision,
         flags: BossBarFlags,
-    ) -> Self {
-        Self {
-            title,
-            health,
-            color,
-            division,
+    ) -> BossBarBundle {
+        BossBarBundle {
+            id: UniqueId::default(),
+            title: BossBarTitle(title),
+            health: BossBarHealth(1.0),
+            style: BossBarStyle { color, division },
             flags,
-            update: Vec::new(),
+            viewers: BossBarViewers::default(),
         }
-    }
-
-    pub fn update_health(&mut self, health: f32) {
-        self.health = health;
-        self.update.push(BossBarUpdate::Health(health));
-    }
-
-    pub fn update_title(&mut self, title: Text) {
-        let cloned_title = title.clone();
-        self.title = title;
-        self.update.push(BossBarUpdate::Title(cloned_title));
-    }
-
-    pub fn update_style(&mut self, color: Option<BossBarColor>, division: Option<BossBarDivision>) {
-        if let Some(color) = color {
-            self.color = color;
-        }
-        if let Some(division) = division {
-            self.division = division;
-        }
-        self.update
-            .push(BossBarUpdate::Style(self.color, self.division));
-    }
-
-    pub fn update_flags(&mut self, flags: BossBarFlags) {
-        self.flags = flags;
-        self.update.push(BossBarUpdate::Flags(flags));
     }
 }
 
+/// The title of a boss bar.
+#[derive(Component, Clone)]
+pub struct BossBarTitle(pub Text);
+
+/// The health of a boss bar.
+#[derive(Component)]
+pub struct BossBarHealth(pub f32);
+
+/// The style of a boss bar. This includes the color and division of the boss
+/// bar.
+#[derive(Component)]
+pub struct BossBarStyle {
+    pub color: BossBarColor,
+    pub division: BossBarDivision,
+}
+
 /// The viewers of a boss bar.
-#[derive(Component, Default, Debug, Clone)]
+#[derive(Component, Default)]
 pub struct BossBarViewers {
     /// The current viewers of the boss bar. It is the list that should be
     /// updated.
@@ -108,49 +83,6 @@ pub struct BossBarViewers {
     pub(crate) old_viewers: BTreeSet<Entity>,
 }
 
-#[derive(Bundle, Debug)]
-pub struct BossBarBundle {
-    boss_bar: BossBar,
-    unique_id: UniqueId,
-    viewers: BossBarViewers,
-}
-
-impl BossBarBundle {
-    pub fn new(
-        title: Text,
-        health: f32,
-        color: BossBarColor,
-        division: BossBarDivision,
-        flags: BossBarFlags,
-    ) -> Self {
-        Self {
-            boss_bar: BossBar::new(title, health, color, division, flags),
-            unique_id: UniqueId::default(),
-            viewers: BossBarViewers::default(),
-        }
-    }
-}
-
-// #[derive(Debug, Component, Default)]
-// struct VisibleBossBar(pub BTreeSet<Entity>);
-
-// #[derive(Debug, Component, Default)]
-// struct OldVisibleBossBar(BTreeSet<Entity>);
-
-// #[derive(Debug, Bundle, Default)]
-// pub struct VisibleBossBarBundle {
-//     visible_boss_bar: VisibleBossBar,
-//     old_visible_boss_bar: OldVisibleBossBar,
-// }
-
-// impl VisibleBossBarBundle {
-//     pub fn new(boss_bar_ids: Vec<Entity>) -> Self {
-//         Self {
-//             visible_boss_bar:
-// VisibleBossBar(boss_bar_ids.into_iter().collect()),
-// ..Default::default()         }
-//     }
-// }
 
 pub struct BossBarPlugin;
 
@@ -159,7 +91,10 @@ impl Plugin for BossBarPlugin {
         app.add_systems(
             PostUpdate,
             (
-                update_boss_bar,
+                boss_bar_title_update,
+                boss_bar_health_update,
+                boss_bar_style_update,
+                boss_bar_flags_update,
                 boss_bar_viewers_update,
                 boss_bar_despawn,
                 client_disconnection.before(boss_bar_viewers_update),
@@ -169,54 +104,95 @@ impl Plugin for BossBarPlugin {
     }
 }
 
-fn update_boss_bar(
-    mut boss_bars: Query<(&UniqueId, &mut BossBar, &BossBarViewers), Changed<BossBar>>,
+/// System that sends a bossbar update title packet to all viewers of a boss bar
+/// that has had its title updated.
+fn boss_bar_title_update(
+    boss_bars: Query<(&UniqueId, &BossBarTitle, &BossBarViewers), Changed<BossBarTitle>>,
     mut clients: Query<&mut Client>,
 ) {
-    for (id, mut boss_bar, boss_bar_viewers) in boss_bars.iter_mut() {
+    for (id, title, boss_bar_viewers) in boss_bars.iter() {
         for viewer in boss_bar_viewers.viewers.iter() {
             if let Ok(mut client) = clients.get_mut(*viewer) {
-                for update in boss_bar.update.clone().into_iter() {
-                    match update {
-                        BossBarUpdate::Health(health) => {
-                            client.write_packet(&BossBarS2c {
-                                id: id.0,
-                                action: BossBarAction::UpdateHealth(health),
-                            });
-                        }
-                        BossBarUpdate::Title(title) => {
-                            client.write_packet(&BossBarS2c {
-                                id: id.0,
-                                action: BossBarAction::UpdateTitle(Cow::Borrowed(&title)),
-                            });
-                        }
-                        BossBarUpdate::Style(color, division) => {
-                            client.write_packet(&BossBarS2c {
-                                id: id.0,
-                                action: BossBarAction::UpdateStyle(color, division),
-                            });
-                        }
-                        BossBarUpdate::Flags(flags) => {
-                            client.write_packet(&BossBarS2c {
-                                id: id.0,
-                                action: BossBarAction::UpdateFlags(flags),
-                            });
-                        }
-                    }
-                }
+                client.write_packet(&BossBarS2c {
+                    id: id.0,
+                    action: BossBarAction::UpdateTitle(Cow::Borrowed(&title.0)),
+                });
             }
         }
-        boss_bar.update.clear();
+    }
+}
+
+/// System that sends a bossbar update health packet to all viewers of a boss
+/// bar that has had its health updated.
+fn boss_bar_health_update(
+    boss_bars: Query<(&UniqueId, &BossBarHealth, &BossBarViewers), Changed<BossBarHealth>>,
+    mut clients: Query<&mut Client>,
+) {
+    for (id, health, boss_bar_viewers) in boss_bars.iter() {
+        for viewer in boss_bar_viewers.viewers.iter() {
+            if let Ok(mut client) = clients.get_mut(*viewer) {
+                client.write_packet(&BossBarS2c {
+                    id: id.0,
+                    action: BossBarAction::UpdateHealth(health.0),
+                });
+            }
+        }
+    }
+}
+
+/// System that sends a bossbar update style packet to all viewers of a boss bar
+/// that has had its style updated.
+fn boss_bar_style_update(
+    boss_bars: Query<(&UniqueId, &BossBarStyle, &BossBarViewers), Changed<BossBarStyle>>,
+    mut clients: Query<&mut Client>,
+) {
+    for (id, style, boss_bar_viewers) in boss_bars.iter() {
+        for viewer in boss_bar_viewers.viewers.iter() {
+            if let Ok(mut client) = clients.get_mut(*viewer) {
+                client.write_packet(&BossBarS2c {
+                    id: id.0,
+                    action: BossBarAction::UpdateStyle(style.color, style.division),
+                });
+            }
+        }
+    }
+}
+
+/// System that sends a bossbar update flags packet to all viewers of a boss bar
+/// that has had its flags updated.
+fn boss_bar_flags_update(
+    boss_bars: Query<(&UniqueId, &BossBarFlags, &BossBarViewers), Changed<BossBarFlags>>,
+    mut clients: Query<&mut Client>,
+) {
+    for (id, flags, boss_bar_viewers) in boss_bars.iter() {
+        for viewer in boss_bar_viewers.viewers.iter() {
+            if let Ok(mut client) = clients.get_mut(*viewer) {
+                client.write_packet(&BossBarS2c {
+                    id: id.0,
+                    action: BossBarAction::UpdateFlags(*flags),
+                });
+            }
+        }
     }
 }
 
 /// System that sends a bossbar add/remove packet to all viewers of a boss bar
 /// that just have been added/removed.
 fn boss_bar_viewers_update(
-    mut boss_bars: Query<(&UniqueId, &BossBar, &mut BossBarViewers), Changed<BossBarViewers>>,
+    mut boss_bars: Query<
+        (
+            &UniqueId,
+            &BossBarTitle,
+            &BossBarHealth,
+            &BossBarStyle,
+            &BossBarFlags,
+            &mut BossBarViewers,
+        ),
+        Changed<BossBarViewers>,
+    >,
     mut clients: Query<&mut Client>,
 ) {
-    for (id, boss_bar, mut boss_bar_viewers) in boss_bars.iter_mut() {
+    for (id, title, health, style, flags, mut boss_bar_viewers) in boss_bars.iter_mut() {
         let old_viewers = &boss_bar_viewers.old_viewers;
         let current_viewers = &boss_bar_viewers.viewers;
 
@@ -225,11 +201,11 @@ fn boss_bar_viewers_update(
                 client.write_packet(&BossBarS2c {
                     id: id.0,
                     action: BossBarAction::Add {
-                        title: Cow::Borrowed(&boss_bar.title),
-                        health: boss_bar.health,
-                        color: boss_bar.color,
-                        division: boss_bar.division,
-                        flags: boss_bar.flags,
+                        title: Cow::Borrowed(&title.0),
+                        health: health.0,
+                        color: style.color,
+                        division: style.division,
+                        flags: *flags,
                     },
                 });
             }

@@ -11,4 +11,5 @@ serde_json.workspace = true
 serde.workspace = true
 tracing.workspace = true
 valence_core.workspace = true
+valence_packet.workspace = true
 valence_nbt.workspace = true

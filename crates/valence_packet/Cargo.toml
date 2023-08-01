@@ -6,9 +6,25 @@ edition.workspace = true
 [dependencies]
 valence_core.workspace = true
 valence_nbt.workspace = true
-valence_registry.workspace = true
+valence_build_utils.workspace = true
+valence_packet_macros.workspace = true
 anyhow.workspace = true
 bitfield-struct.workspace = true
 byteorder.workspace = true
 glam.workspace = true
 uuid = { workspace = true, features = ["serde"] }
+bytes.workspace = true
+tracing.workspace = true
+bevy_ecs.workspace = true
+
+[dev-dependencies]
+rand.workspace = true
+
+[build-dependencies]
+anyhow.workspace = true
+heck.workspace = true
+proc-macro2.workspace = true
+quote.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+valence_build_utils.workspace = true

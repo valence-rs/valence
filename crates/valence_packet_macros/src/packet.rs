@@ -34,9 +34,9 @@ pub(super) fn derive_packet(item: TokenStream) -> Result<TokenStream> {
     let side = if let Some(side_attr) = packet_attr.side {
         side_attr
     } else if name_str.to_lowercase().contains("s2c") {
-        parse_quote!(::valence_core::protocol::PacketSide::Clientbound)
+        parse_quote!(::valence_packet::protocol::PacketSide::Clientbound)
     } else if name_str.to_lowercase().contains("c2s") {
-        parse_quote!(::valence_core::protocol::PacketSide::Serverbound)
+        parse_quote!(::valence_packet::protocol::PacketSide::Serverbound)
     } else {
         return Err(Error::new(
             input.span(),
@@ -46,16 +46,16 @@ pub(super) fn derive_packet(item: TokenStream) -> Result<TokenStream> {
 
     let state = packet_attr
         .state
-        .unwrap_or_else(|| parse_quote!(::valence_core::protocol::PacketState::Play));
+        .unwrap_or_else(|| parse_quote!(::valence_packet::protocol::PacketState::Play));
 
     Ok(quote! {
-        impl #impl_generics ::valence_core::__private::Packet for #name #ty_generics
+        impl #impl_generics ::valence_packet::__private::Packet for #name #ty_generics
         #where_clause
         {
             const ID: i32 = #packet_id;
             const NAME: &'static str = #name_str;
-            const SIDE: ::valence_core::protocol::PacketSide = #side;
-            const STATE: ::valence_core::protocol::PacketState = #state;
+            const SIDE: ::valence_packet::protocol::PacketSide = #side;
+            const STATE: ::valence_packet::protocol::PacketState = #state;
         }
     })
 }

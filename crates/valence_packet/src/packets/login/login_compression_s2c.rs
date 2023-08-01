@@ -1,5 +1,3 @@
-use valence_core::protocol::PacketState;
-
 use super::*;
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]

@@ -1,40 +1,10 @@
-use std::borrow::Cow;
-use std::io::Write;
-
-use anyhow::bail;
-use bitfield_struct::bitfield;
-use byteorder::WriteBytesExt;
-use glam::{DVec3, IVec3};
-use uuid::Uuid;
-use valence_core::block_pos::BlockPos;
-use valence_core::difficulty::Difficulty;
-use valence_core::direction::Direction;
-use valence_core::game_mode::GameMode;
-use valence_core::hand::Hand;
-use valence_core::ident::Ident;
-use valence_core::item::ItemStack;
-use valence_core::property::Property;
-use valence_core::protocol::byte_angle::ByteAngle;
-use valence_core::protocol::global_pos::GlobalPos;
-use valence_core::protocol::raw::RawBytes;
-use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::var_long::VarLong;
-use valence_core::protocol::{packet_id, Decode, Encode, Packet};
-use valence_core::text::Text;
-use valence_nbt::Compound;
-
-pub mod advancement;
-pub mod boss_bar;
-pub mod chat;
-pub mod client;
-pub mod command;
-pub mod entity;
-pub mod instance;
-pub mod inventory;
-pub mod map;
-pub mod network;
 pub mod packets;
-pub mod player_list;
-pub mod scoreboard;
-pub mod sound;
-pub mod world_border;
+pub mod protocol;
+
+/// Used only by macros. Not public API.
+#[doc(hidden)]
+pub mod __private {
+    pub use crate::protocol::Packet;
+}
+
+extern crate self as valence_packet;
