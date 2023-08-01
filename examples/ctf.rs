@@ -208,7 +208,7 @@ fn build_flag(layer: &mut LayerBundle, team: Team, pos: impl Into<BlockPos>) -> 
         },
     );
 
-    return pos;
+    pos
 }
 
 fn build_spawn_box(layer: &mut LayerBundle, pos: impl Into<BlockPos>, commands: &mut Commands) {
@@ -634,7 +634,7 @@ fn do_team_selector_portals(
                 layer: EntityLayerId(friendly_layer),
                 uuid: *unique_id,
                 entity_flags: flags,
-                position: pos.clone(),
+                position: *pos,
                 ..Default::default()
             });
             player_glowing.insert(ClonedEntity(player));
@@ -643,7 +643,7 @@ fn do_team_selector_portals(
             let mut player_enemy = commands.spawn(PlayerEntityBundle {
                 layer: EntityLayerId(enemy_layer),
                 uuid: *unique_id,
-                position: pos.clone(),
+                position: *pos,
                 ..Default::default()
             });
             player_enemy.insert(ClonedEntity(player));
@@ -884,7 +884,7 @@ fn update_clones(
         *clone.head_yaw = *src.head_yaw;
         *clone.velocity = *src.velocity;
         *clone.look = *src.look;
-        *clone.animations = src.animations.clone();
+        *clone.animations = *src.animations;
         *clone.on_ground = *src.on_ground;
         *clone.statuses = *src.statuses;
     }
