@@ -99,8 +99,7 @@ impl ChunkView {
     }
 
     /// Returns an iterator over all the chunk positions in this view. Positions
-    /// are sorted by the distance to [`pos`](Self::pos), with closer positions
-    /// appearing first.
+    /// are sorted by the distance to [`pos`](Self::pos) in ascending order.
     pub fn iter(self) -> impl DoubleEndedIterator<Item = ChunkPos> + ExactSizeIterator + Clone {
         CHUNK_VIEW_LUT[self.dist as usize]
             .iter()
@@ -112,20 +111,33 @@ impl ChunkView {
 
     /// Returns an iterator over all the chunk positions in `self`, excluding
     /// the positions that overlap with `other`. Positions are sorted by the
-    /// distance to [`pos`](Self::pos), with closer positions
-    /// appearing first.
+    /// distance to [`pos`](Self::pos) in ascending order.
     pub fn diff(self, other: Self) -> impl DoubleEndedIterator<Item = ChunkPos> + Clone {
         self.iter().filter(move |&p| !other.contains(p))
     }
 
-    /// Returns a `(min, max)` tuple of a tight bounding box containing this
-    /// view.
+    /// Returns a `(min, max)` tuple describing the tight axis-aligned bounding
+    /// box for this view. All chunk positions in the view are contained in the
+    /// bounding box.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use valence_core::chunk_pos::{ChunkPos, ChunkView};
+    ///
+    /// let view = ChunkView::new(ChunkPos::new(5, -4), 16);
+    /// let (min, max) = view.bounding_box();
+    ///
+    /// for pos in view.iter() {
+    ///     assert!(pos.x >= min.x && pos.x <= max.x && pos.z >= min.z && pos.z <= max.z);
+    /// }
+    /// ```
     pub fn bounding_box(self) -> (ChunkPos, ChunkPos) {
         let r = self.dist as i32 + EXTRA_VIEW_RADIUS;
 
         (
             ChunkPos::new(self.pos.x - r, self.pos.z - r),
-            ChunkPos::new(self.pos.x + r, self.pos.x + r),
+            ChunkPos::new(self.pos.x + r, self.pos.z + r),
         )
     }
 }
@@ -155,18 +167,5 @@ mod tests {
 
         assert_eq!(ChunkPos::from(<(i32, i32)>::from(p)), p);
         assert_eq!(ChunkPos::from(<[i32; 2]>::from(p)), p);
-    }
-
-    #[test]
-    fn view_bounding_box() {
-        let view = ChunkView::new(ChunkPos::new(5, -4), 32);
-
-        let (min, max) = view.bounding_box();
-
-        for z in min.z..=max.z {
-            for x in min.x..=max.x {
-                assert!(view.contains(ChunkPos::new(x, z)));
-            }
-        }
     }
 }

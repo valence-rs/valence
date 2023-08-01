@@ -143,8 +143,4 @@ fn display_loaded_chunk_count(mut layers: Query<&mut ChunkLayer>, mut last_count
         *last_count = cnt;
         layer.send_action_bar_message("Chunk Count: ".into_text() + cnt.color(Color::LIGHT_PURPLE));
     }
-
-    for (pos, chunk) in layer.chunks() {
-        assert_eq!(chunk.viewer_count(), 1, "bad! {pos:?}");
-    }
 }
