@@ -1,4 +1,5 @@
 use std::io::Write;
+use std::ops::{Add, Sub};
 
 use anyhow::bail;
 use glam::DVec3;
@@ -105,6 +106,30 @@ impl From<[i32; 3]> for BlockPos {
 impl From<BlockPos> for [i32; 3] {
     fn from(pos: BlockPos) -> Self {
         [pos.x, pos.y, pos.z]
+    }
+}
+
+impl Add for BlockPos {
+    type Output = BlockPos;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+            z: self.z + rhs.z,
+        }
+    }
+}
+
+impl Sub for BlockPos {
+    type Output = BlockPos;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+            z: self.z - rhs.z,
+        }
     }
 }
 

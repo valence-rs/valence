@@ -64,7 +64,7 @@ anyhow.workspace = true
 clap.workspace = true
 criterion.workspace = true
 flume.workspace = true
-noise.workspace = true     # For the terrain example.
+noise.workspace = true              # For the terrain example.
 tracing.workspace = true
 
 [dev-dependencies.reqwest]
