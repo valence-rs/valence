@@ -308,10 +308,10 @@ fn build_spawn_box(layer: &mut LayerBundle, pos: impl Into<BlockPos>, commands: 
             nbt: Some(compound! {
                 "front_text" => compound! {
                     "messages" => List::String(vec![
-                        serde_json::to_string(&"Capture".color(Color::YELLOW).bold()).unwrap(),
-                        serde_json::to_string(&"the".color(Color::YELLOW).bold()).unwrap(),
-                        serde_json::to_string(&"Flag!".color(Color::YELLOW).bold()).unwrap(),
-                        serde_json::to_string(&"Select a Team".color(Color::WHITE).italic()).unwrap(),
+                        "Capture".color(Color::YELLOW).bold().to_string(),
+                        "the".color(Color::YELLOW).bold().to_string(),
+                        "Flag!".color(Color::YELLOW).bold().to_string(),
+                        "Select a Team".color(Color::WHITE).italic().to_string(),
                     ])
                 },
             }),
@@ -325,10 +325,10 @@ fn build_spawn_box(layer: &mut LayerBundle, pos: impl Into<BlockPos>, commands: 
             nbt: Some(compound! {
                 "front_text" => compound! {
                     "messages" => List::String(vec![
-                        serde_json::to_string(&"".into_text()).unwrap(),
-                        serde_json::to_string(&("Join ".bold().color(Color::WHITE) + Team::Red.team_text())).unwrap(),
-                        serde_json::to_string(&"=>".bold().color(Color::WHITE)).unwrap(),
-                        serde_json::to_string(&"".into_text()).unwrap(),
+                        "".into_text().to_string(),
+                        ("Join ".bold().color(Color::WHITE) + Team::Red.team_text()).to_string(),
+                        "=>".bold().color(Color::WHITE).to_string(),
+                        "".into_text().to_string(),
                     ])
                 },
             }),
@@ -342,10 +342,10 @@ fn build_spawn_box(layer: &mut LayerBundle, pos: impl Into<BlockPos>, commands: 
             nbt: Some(compound! {
                 "front_text" => compound! {
                     "messages" => List::String(vec![
-                        serde_json::to_string(&"".into_text()).unwrap(),
-                        serde_json::to_string(&("Join ".bold().color(Color::WHITE) + Team::Blue.team_text())).unwrap(),
-                        serde_json::to_string(&"<=".bold().color(Color::WHITE)).unwrap(),
-                        serde_json::to_string(&"".into_text()).unwrap(),
+                        "".into_text().to_string(),
+                        ("Join ".bold().color(Color::WHITE) + Team::Blue.team_text()).to_string(),
+                        "<=".bold().color(Color::WHITE).to_string(),
+                        "".into_text().to_string(),
                     ])
                 },
             }),
