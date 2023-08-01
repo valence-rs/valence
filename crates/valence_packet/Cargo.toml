@@ -6,6 +6,7 @@ edition.workspace = true
 [dependencies]
 valence_core.workspace = true
 valence_nbt.workspace = true
+valence_registry.workspace = true
 anyhow.workspace = true
 bitfield-struct.workspace = true
 byteorder.workspace = true

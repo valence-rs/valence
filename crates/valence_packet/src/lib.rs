@@ -33,6 +33,7 @@ pub mod instance;
 pub mod inventory;
 pub mod map;
 pub mod network;
+pub mod packets;
 pub mod player_list;
 pub mod scoreboard;
 pub mod sound;
