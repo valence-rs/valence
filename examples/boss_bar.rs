@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use rand::seq::SliceRandom;
 use valence::prelude::*;
 use valence_boss_bar::{

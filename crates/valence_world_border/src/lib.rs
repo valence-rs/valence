@@ -1,60 +1,4 @@
-/*
-//! # World border
-//! This module contains Components and Systems needed to handle world border.
-//!
-//! The world border is the current edge of a Minecraft dimension. It appears as
-//! a series of animated, diagonal, narrow stripes. For more information, refer to the [wiki](https://minecraft.fandom.com/wiki/World_border)
-//!
-//! ## Enable world border per instance
-//! By default, world border is not enabled. It can be enabled by inserting the
-//! [`WorldBorderBundle`] bundle into a [`Instance`].
-//! Use [`WorldBorderBundle::default()`] to use Minecraft Vanilla border default
-//! ```
-//! # use valence_world_border::WorldBorderBundle;
-//! # fn example(commands: &mut bevy_ecs::system::Commands, instance_entity: bevy_ecs::entity::Entity) {
-//! commands
-//!     .entity(instance_entity)
-//!     .insert(WorldBorderBundle::new([0.0, 0.0], 10.0));
-//! # }
-//! ```
-//!
-//!
-//! ## Modify world border diameter
-//! World border diameter can be changed using [`SetWorldBorderSizeEvent`].
-//! Setting duration to 0 will move the border to `new_diameter` immediately,
-//! otherwise, it will interpolate to `new_diameter` over `duration` time.
-//! ```
-//! # use bevy_ecs::event::EventWriter;
-//! # use valence_world_border::SetWorldBorderSizeEvent;
-//! # use core::time::Duration;
-//! fn change_diameter(
-//!     mut event_writer: EventWriter<SetWorldBorderSizeEvent>,
-//!     instance: bevy_ecs::entity::Entity,
-//!     diameter: f64,
-//!     duration: Duration,
-//! ) {
-//!     event_writer.send(SetWorldBorderSizeEvent {
-//!         instance,
-//!         new_diameter: diameter,
-//!         duration,
-//!     })
-//! }
-//! ```
-//!
-//! You can also modify the [`MovingWorldBorder`] if you want more control. But
-//! it is not recommended.
-//!
-//! ## Querying world border diameter
-//! World border diameter can be read by querying
-//! [`WorldBorderDiameter::get()`]. Note: If you want to modify the
-//! diameter size, do not modify the value directly! Use
-//! [`SetWorldBorderSizeEvent`] instead.
-//!
-//! ## Access other world border properties.
-//! Access to the rest of the world border properties is fairly straightforward
-//! by querying their respective component. [`WorldBorderBundle`] contains
-//! references for all properties of the world border and their respective
-//! component
+#![doc = include_str!("../README.md")]
 #![allow(clippy::type_complexity)]
 #![deny(
     rustdoc::broken_intra_doc_links,
@@ -76,17 +20,12 @@
 
 pub mod packet;
 
-use std::time::{Duration, Instant};
-
 use bevy_app::prelude::*;
-use glam::DVec2;
 use packet::*;
-use valence_client::{Client, FlushPacketsSet};
+use valence_client::{Client, UpdateClientsSet, VisibleChunkLayer};
 use valence_core::protocol::encode::WritePacket;
-use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::var_long::VarLong;
-use valence_entity::EntityLayerId;
-use valence_layer::UpdateLayersPreClientSet;
+use valence_core::CoreSettings;
+use valence_layer::ChunkLayer;
 use valence_registry::*;
 
 // https://minecraft.fandom.com/wiki/World_border
@@ -95,318 +34,215 @@ pub const DEFAULT_DIAMETER: f64 = (DEFAULT_PORTAL_LIMIT * 2) as f64;
 pub const DEFAULT_WARN_TIME: i32 = 15;
 pub const DEFAULT_WARN_BLOCKS: i32 = 5;
 
-#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct UpdateWorldBorderPerInstanceSet;
-
-#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct UpdateWorldBorderPerClientSet;
-
 pub struct WorldBorderPlugin;
+
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct UpdateWorldBorderSet;
 
 impl Plugin for WorldBorderPlugin {
     fn build(&self, app: &mut App) {
-        app.configure_sets(
-            PostUpdate,
-            (
-                UpdateWorldBorderPerInstanceSet.before(UpdateLayersPreClientSet),
-                UpdateWorldBorderPerClientSet.before(FlushPacketsSet),
-            ),
-        )
-        .add_event::<SetWorldBorderSizeEvent>()
-        .add_systems(
-            PostUpdate,
-            (
-                wb_size_change.before(diameter_change),
-                diameter_change,
-                lerp_transition,
-                center_change,
-                warn_time_change,
-                warn_blocks_change,
-                portal_teleport_boundary_change,
-            )
-                .in_set(UpdateWorldBorderPerInstanceSet),
-        )
-        .add_systems(
-            PostUpdate,
-            border_for_player.in_set(UpdateWorldBorderPerClientSet),
-        );
+        app.configure_set(PostUpdate, UpdateWorldBorderSet.before(UpdateClientsSet))
+            .add_systems(
+                PostUpdate,
+                (
+                    init_world_border_for_new_clients,
+                    tick_world_border_lerp,
+                    change_world_border_center,
+                    change_world_border_warning_blocks,
+                    change_world_border_warning_time,
+                    change_world_border_portal_tp_boundary,
+                )
+                    .in_set(UpdateWorldBorderSet),
+            );
     }
 }
 
-/// A bundle contains necessary component to enable world border.
-/// This struct implements [`Default`] trait that returns a bundle using
-/// Minecraft Vanilla defaults.
-#[derive(Bundle)]
+/// A bundle containing necessary components to enable world border
+/// functionality. Add this to an entity with the [`ChunkLayer`] component.
+#[derive(Bundle, Default, Debug)]
 pub struct WorldBorderBundle {
     pub center: WorldBorderCenter,
-    pub diameter: WorldBorderDiameter,
+    pub lerp: WorldBorderLerp,
     pub portal_teleport_boundary: WorldBorderPortalTpBoundary,
-    pub warning_time: WorldBorderWarnTime,
-    pub warning_blocks: WorldBorderWarnBlocks,
-    pub moving: MovingWorldBorder,
+    pub warn_time: WorldBorderWarnTime,
+    pub warn_blocks: WorldBorderWarnBlocks,
 }
 
-impl WorldBorderBundle {
-    /// Create a new world border with specified center and diameter
-    pub fn new(center: impl Into<DVec2>, diameter: f64) -> Self {
-        Self {
-            center: WorldBorderCenter(center.into()),
-            diameter: WorldBorderDiameter(diameter),
-            portal_teleport_boundary: WorldBorderPortalTpBoundary(DEFAULT_PORTAL_LIMIT),
-            warning_time: WorldBorderWarnTime(DEFAULT_WARN_TIME),
-            warning_blocks: WorldBorderWarnBlocks(DEFAULT_WARN_BLOCKS),
-            moving: MovingWorldBorder {
-                old_diameter: diameter,
-                new_diameter: diameter,
-                duration: 0,
-                timestamp: Instant::now(),
-            },
-        }
-    }
+#[derive(Component, Default, Copy, Clone, PartialEq, Debug)]
+pub struct WorldBorderCenter {
+    pub x: f64,
+    pub z: f64,
 }
 
-impl Default for WorldBorderBundle {
-    fn default() -> Self {
-        Self::new([0.0, 0.0], DEFAULT_DIAMETER)
-    }
+/// Component containing information to linearly interpolate the world border.
+/// Contains the world border's diameter.
+#[derive(Component, Clone, Copy, Debug)]
+pub struct WorldBorderLerp {
+    /// The current diameter of the world border. This is updated automatically
+    /// as the remaining ticks count down.
+    pub current_diameter: f64,
+    /// The desired diameter of the world border after lerping has finished.
+    /// Modify this if you want to change the world border diameter.
+    pub target_diameter: f64,
+    /// Server ticks until the target diameter is reached. This counts down
+    /// automatically.
+    pub remaining_ticks: u64,
 }
-
-#[derive(Component)]
-pub struct WorldBorderCenter(pub DVec2);
-
-#[derive(Component)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct WorldBorderWarnTime(pub i32);
 
-#[derive(Component)]
+impl Default for WorldBorderWarnTime {
+    fn default() -> Self {
+        Self(DEFAULT_WARN_TIME)
+    }
+}
+
+#[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct WorldBorderWarnBlocks(pub i32);
 
-#[derive(Component)]
+impl Default for WorldBorderWarnBlocks {
+    fn default() -> Self {
+        Self(DEFAULT_WARN_BLOCKS)
+    }
+}
+
+#[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct WorldBorderPortalTpBoundary(pub i32);
 
-/// The world border diameter can be read by calling
-/// [`WorldBorderDiameter::get()`]. If you want to modify the diameter
-/// size, do not modify the value directly! Use [`SetWorldBorderSizeEvent`]
-/// instead.
-#[derive(Component)]
-pub struct WorldBorderDiameter(f64);
-
-impl WorldBorderDiameter {
-    pub fn get(&self) -> f64 {
-        self.0
+impl Default for WorldBorderPortalTpBoundary {
+    fn default() -> Self {
+        Self(DEFAULT_PORTAL_LIMIT)
     }
 }
 
-/// This component represents the `Set Border Lerp Size` packet with timestamp.
-/// It is used for actually lerping the world border diameter.
-/// If you need to set the diameter, it is much better to use the
-/// [`SetWorldBorderSizeEvent`] event
-#[derive(Component)]
-pub struct MovingWorldBorder {
-    pub old_diameter: f64,
-    pub new_diameter: f64,
-    /// equivalent to `speed` on wiki.vg
-    pub duration: i64,
-    pub timestamp: Instant,
-}
-
-impl MovingWorldBorder {
-    pub fn current_diameter(&self) -> f64 {
-        if self.duration == 0 {
-            self.new_diameter
-        } else {
-            let t = self.current_duration() as f64 / self.duration as f64;
-            lerp(self.new_diameter, self.old_diameter, t)
-        }
-    }
-
-    pub fn current_duration(&self) -> i64 {
-        let speed = self.duration - self.timestamp.elapsed().as_millis() as i64;
-        speed.max(0)
-    }
-}
-
-/// An event for controlling world border diameter.
-/// Setting duration to 0 will move the border to `new_diameter` immediately,
-/// otherwise it will interpolate to `new_diameter` over `duration` time.
-///
-/// ```
-/// # use bevy_ecs::event::EventWriter;
-/// # use valence_world_border::SetWorldBorderSizeEvent;
-/// # use core::time::Duration;
-/// fn change_diameter(
-///     mut event_writer: EventWriter<SetWorldBorderSizeEvent>,
-///     instance: bevy_ecs::entity::Entity,
-///     diameter: f64,
-///     duration: Duration,
-/// ) {
-///     event_writer.send(SetWorldBorderSizeEvent {
-///         entity_layer: entity,
-///         new_diameter: diameter,
-///         duration,
-///     });
-/// }
-/// ```
-#[derive(Event, Clone, Debug)]
-pub struct SetWorldBorderSizeEvent {
-    /// The [`EntityLayer`] to change border size. Note that this entity layer must contain
-    /// the [`WorldBorderBundle`] bundle.
-    pub entity_layer: Entity,
-    /// The new diameter of the world border
-    pub new_diameter: f64,
-    /// How long the border takes to reach it new_diameter in millisecond. Set
-    /// to 0 to move immediately.
-    pub duration: Duration,
-}
-
-fn wb_size_change(
-    mut events: EventReader<SetWorldBorderSizeEvent>,
-    mut instances: Query<(&WorldBorderDiameter, Option<&mut MovingWorldBorder>)>,
-) {
-    for SetWorldBorderSizeEvent {
-        entity_layer: instance,
-        new_diameter,
-        duration,
-    } in events.iter()
-    {
-        let Ok((diameter, mwb_opt)) = instances.get_mut(*instance) else {
-            continue;
-        };
-
-        if let Some(mut mvb) = mwb_opt {
-            mvb.new_diameter = *new_diameter;
-            mvb.old_diameter = diameter.get();
-            mvb.duration = duration.as_millis() as i64;
-            mvb.timestamp = Instant::now();
+impl Default for WorldBorderLerp {
+    fn default() -> Self {
+        Self {
+            current_diameter: DEFAULT_DIAMETER,
+            target_diameter: DEFAULT_DIAMETER,
+            remaining_ticks: 0,
         }
     }
 }
 
-fn border_for_player(
-    mut clients: Query<(&mut Client, &EntityLayerId), Changed<EntityLayerId>>,
-    wbs: Query<
-        (
-            &WorldBorderCenter,
-            &WorldBorderWarnTime,
-            &WorldBorderWarnBlocks,
-            &WorldBorderDiameter,
-            &WorldBorderPortalTpBoundary,
-            Option<&MovingWorldBorder>,
-        ),
-        With<Instance>,
-    >,
+fn init_world_border_for_new_clients(
+    mut clients: Query<(&mut Client, &VisibleChunkLayer), Changed<VisibleChunkLayer>>,
+    wbs: Query<(
+        &WorldBorderCenter,
+        &WorldBorderLerp,
+        &WorldBorderPortalTpBoundary,
+        &WorldBorderWarnTime,
+        &WorldBorderWarnBlocks,
+    )>,
+    settings: Res<CoreSettings>,
 ) {
-    for (mut client, location) in clients.iter_mut() {
-        if let Ok((c, wt, wb, diameter, ptb, wbl)) = wbs.get(location.0) {
-            let (new_diameter, speed) = if let Some(lerping) = wbl {
-                (lerping.new_diameter, lerping.current_duration())
-            } else {
-                (diameter.0, 0)
-            };
+    for (mut client, layer) in &mut clients {
+        if let Ok((center, lerp, portal_tp_boundary, warn_time, warn_blocks)) = wbs.get(layer.0) {
+            let millis = lerp.remaining_ticks as i64 * 1000 / settings.tick_rate.get() as i64;
 
             client.write_packet(&WorldBorderInitializeS2c {
-                x: c.0.x,
-                z: c.0.y,
-                old_diameter: diameter.0,
-                new_diameter,
-                portal_teleport_boundary: VarInt(ptb.0),
-                speed: VarLong(speed),
-                warning_blocks: VarInt(wb.0),
-                warning_time: VarInt(wt.0),
+                x: center.x,
+                z: center.z,
+                old_diameter: lerp.current_diameter,
+                new_diameter: lerp.target_diameter,
+                duration_millis: millis.into(),
+                portal_teleport_boundary: portal_tp_boundary.0.into(),
+                warning_blocks: warn_blocks.0.into(),
+                warning_time: warn_time.0.into(),
             });
         }
     }
 }
 
-fn diameter_change(
-    mut wbs: Query<(&mut Instance, &MovingWorldBorder), Changed<MovingWorldBorder>>,
+fn tick_world_border_lerp(
+    mut wbs: Query<(&mut ChunkLayer, &mut WorldBorderLerp)>,
+    settings: Res<CoreSettings>,
 ) {
-    for (mut ins, lerping) in wbs.iter_mut() {
-        if lerping.duration == 0 {
-            ins.write_packet(&WorldBorderSizeChangedS2c {
-                diameter: lerping.new_diameter,
-            })
-        } else {
-            ins.write_packet(&WorldBorderInterpolateSizeS2c {
-                old_diameter: lerping.current_diameter(),
-                new_diameter: lerping.new_diameter,
-                speed: VarLong(lerping.current_duration()),
-            });
+    for (mut layer, mut lerp) in &mut wbs {
+        if lerp.is_changed() {
+            if lerp.remaining_ticks == 0 {
+                layer.write_packet(&WorldBorderSizeChangedS2c {
+                    diameter: lerp.target_diameter,
+                });
+
+                lerp.current_diameter = lerp.target_diameter;
+            } else {
+                let millis = lerp.remaining_ticks as i64 * 1000 / settings.tick_rate.get() as i64;
+
+                layer.write_packet(&WorldBorderInterpolateSizeS2c {
+                    old_diameter: lerp.current_diameter,
+                    new_diameter: lerp.target_diameter,
+                    duration_millis: millis.into(),
+                });
+            }
+        }
+
+        if lerp.remaining_ticks > 0 {
+            let diff = lerp.target_diameter - lerp.current_diameter;
+            lerp.current_diameter += diff / lerp.remaining_ticks as f64;
+
+            lerp.remaining_ticks -= 1;
         }
     }
 }
 
-fn lerp_transition(mut wbs: Query<(&mut WorldBorderDiameter, &MovingWorldBorder)>) {
-    for (mut diameter, moving_wb) in wbs.iter_mut() {
-        if diameter.0 != moving_wb.new_diameter {
-            diameter.0 = moving_wb.current_diameter();
-        }
-    }
-}
-
-fn center_change(mut wbs: Query<(&mut Instance, &WorldBorderCenter), Changed<WorldBorderCenter>>) {
-    for (mut ins, center) in wbs.iter_mut() {
-        ins.write_packet(&WorldBorderCenterChangedS2c {
-            x_pos: center.0.x,
-            z_pos: center.0.y,
-        })
-    }
-}
-
-fn warn_time_change(
-    mut wb_query: Query<(&mut Instance, &WorldBorderWarnTime), Changed<WorldBorderWarnTime>>,
+fn change_world_border_center(
+    mut wbs: Query<(&mut ChunkLayer, &WorldBorderCenter), Changed<WorldBorderCenter>>,
 ) {
-    for (mut ins, wt) in wb_query.iter_mut() {
-        ins.write_packet(&WorldBorderWarningTimeChangedS2c {
-            warning_time: VarInt(wt.0),
-        })
-    }
-}
-
-fn warn_blocks_change(
-    mut wb_query: Query<(&mut Instance, &WorldBorderWarnBlocks), Changed<WorldBorderWarnBlocks>>,
-) {
-    for (mut ins, wb) in wb_query.iter_mut() {
-        ins.write_packet(&WorldBorderWarningBlocksChangedS2c {
-            warning_blocks: VarInt(wb.0),
-        })
-    }
-}
-
-fn portal_teleport_boundary_change(
-    mut wbs: Query<
-        (
-            &mut Instance,
-            &WorldBorderCenter,
-            &WorldBorderWarnTime,
-            &WorldBorderWarnBlocks,
-            &WorldBorderDiameter,
-            &WorldBorderPortalTpBoundary,
-            Option<&MovingWorldBorder>,
-        ),
-        Changed<WorldBorderPortalTpBoundary>,
-    >,
-) {
-    for (mut ins, c, wt, wb, diameter, ptb, wbl) in wbs.iter_mut() {
-        let (new_diameter, speed) = if let Some(lerping) = wbl {
-            (lerping.new_diameter, lerping.current_duration())
-        } else {
-            (diameter.0, 0)
-        };
-
-        ins.write_packet(&WorldBorderInitializeS2c {
-            x: c.0.x,
-            z: c.0.y,
-            old_diameter: diameter.0,
-            new_diameter,
-            portal_teleport_boundary: VarInt(ptb.0),
-            speed: VarLong(speed),
-            warning_blocks: VarInt(wb.0),
-            warning_time: VarInt(wt.0),
+    for (mut layer, center) in &mut wbs {
+        layer.write_packet(&WorldBorderCenterChangedS2c {
+            x_pos: center.x,
+            z_pos: center.z,
         });
     }
 }
 
-fn lerp(start: f64, end: f64, t: f64) -> f64 {
-    start + (end - start) * t
+fn change_world_border_warning_blocks(
+    mut wbs: Query<(&mut ChunkLayer, &WorldBorderWarnBlocks), Changed<WorldBorderWarnBlocks>>,
+) {
+    for (mut layer, warn_blocks) in &mut wbs {
+        layer.write_packet(&WorldBorderWarningBlocksChangedS2c {
+            warning_blocks: warn_blocks.0.into(),
+        });
+    }
 }
-*/
+
+fn change_world_border_warning_time(
+    mut wbs: Query<(&mut ChunkLayer, &WorldBorderWarnTime), Changed<WorldBorderWarnTime>>,
+) {
+    for (mut layer, warn_time) in &mut wbs {
+        layer.write_packet(&WorldBorderWarningTimeChangedS2c {
+            warning_time: warn_time.0.into(),
+        });
+    }
+}
+
+fn change_world_border_portal_tp_boundary(
+    mut wbs: Query<
+        (
+            &mut ChunkLayer,
+            &WorldBorderCenter,
+            &WorldBorderLerp,
+            &WorldBorderPortalTpBoundary,
+            &WorldBorderWarnTime,
+            &WorldBorderWarnBlocks,
+        ),
+        Changed<WorldBorderPortalTpBoundary>,
+    >,
+    settings: Res<CoreSettings>,
+) {
+    for (mut layer, center, lerp, portal_tp_boundary, warn_time, warn_blocks) in &mut wbs {
+        let millis = lerp.remaining_ticks as i64 * 1000 / settings.tick_rate.get() as i64;
+
+        layer.write_packet(&WorldBorderInitializeS2c {
+            x: center.x,
+            z: center.z,
+            old_diameter: lerp.current_diameter,
+            new_diameter: lerp.target_diameter,
+            duration_millis: millis.into(),
+            portal_teleport_boundary: portal_tp_boundary.0.into(),
+            warning_blocks: warn_blocks.0.into(),
+            warning_time: warn_time.0.into(),
+        });
+    }
+}

@@ -89,7 +89,6 @@ pub mod spawn;
 pub mod status;
 pub mod teleport;
 pub mod title;
-pub mod weather;
 
 pub struct ClientPlugin;
 
@@ -106,7 +105,7 @@ pub struct FlushPacketsSet;
 pub struct SpawnClientsSet;
 
 /// The system set where various facets of the client are updated. Systems that
-/// modify chunks should run _before_ this.
+/// modify layers should run _before_ this.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct UpdateClientsSet;
 
@@ -771,17 +770,18 @@ fn handle_layer_messages(
                             [ChunkLayer::LOAD, .., ChunkLayer::UNLOAD] => {
                                 // Chunk is being loaded and unloaded on the
                                 // same tick, so there's no need to do anything.
+                                debug_assert!(chunk_layer.chunk(pos).is_none());
                             }
                             [.., ChunkLayer::LOAD | ChunkLayer::OVERWRITE] => {
                                 // Load chunk.
-                                if let Some(chunk) = chunk_layer.chunk(pos) {
-                                    chunk.write_init_packets(&mut *client, pos, chunk_layer.info());
-                                    chunk.inc_viewer_count();
-                                }
+                                let chunk = chunk_layer.chunk(pos).expect("chunk must exist");
+                                chunk.write_init_packets(&mut *client, pos, chunk_layer.info());
+                                chunk.inc_viewer_count();
                             }
                             [.., ChunkLayer::UNLOAD] => {
                                 // Unload chunk.
                                 client.write_packet(&UnloadChunkS2c { pos });
+                                debug_assert!(chunk_layer.chunk(pos).is_none());
                             }
                             _ => unreachable!("invalid message data while changing chunk state"),
                         }

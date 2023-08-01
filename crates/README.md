@@ -24,4 +24,5 @@ graph TD
 	advancement --> client
 	world_border --> client
 	boss_bar --> client
+	weather --> client
 ```
