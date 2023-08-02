@@ -74,6 +74,13 @@ pub struct WorldBorderCenter {
     pub z: f64,
 }
 
+impl WorldBorderCenter {
+    pub fn set(&mut self, x: f64, z: f64) {
+        self.x = x;
+        self.z = z;
+    }
+}
+
 /// Component containing information to linearly interpolate the world border.
 /// Contains the world border's diameter.
 #[derive(Component, Clone, Copy, Debug)]
