@@ -372,11 +372,11 @@ impl LoadedChunk {
                     heightmaps: Cow::Owned(heightmaps),
                     blocks_and_biomes: &blocks_and_biomes,
                     block_entities: Cow::Owned(block_entities),
-                    sky_light_mask: Cow::Borrowed(&info.sky_light_mask),
+                    sky_light_mask: Cow::Borrowed(&[]),
                     block_light_mask: Cow::Borrowed(&[]),
                     empty_sky_light_mask: Cow::Borrowed(&[]),
                     empty_block_light_mask: Cow::Borrowed(&[]),
-                    sky_light_arrays: Cow::Borrowed(&info.sky_light_arrays),
+                    sky_light_arrays: Cow::Borrowed(&[]),
                     block_light_arrays: Cow::Borrowed(&[]),
                 },
             )

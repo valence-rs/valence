@@ -10,6 +10,7 @@ use flume::{Receiver, Sender};
 use noise::{NoiseFn, SuperSimplex};
 use tracing::info;
 use valence::prelude::*;
+use valence_client::spawn::IsFlat;
 
 const SPAWN_POS: DVec3 = DVec3::new(0.0, 200.0, 0.0);
 const HEIGHT: u32 = 384;
@@ -117,6 +118,7 @@ fn init_clients(
             &mut VisibleEntityLayers,
             &mut Position,
             &mut GameMode,
+            &mut IsFlat,
         ),
         Added<Client>,
     >,
@@ -128,6 +130,7 @@ fn init_clients(
         mut visible_entity_layers,
         mut pos,
         mut game_mode,
+        mut is_flat,
     ) in &mut clients
     {
         let layer = layers.single();
@@ -137,6 +140,7 @@ fn init_clients(
         visible_entity_layers.0.insert(layer);
         pos.set(SPAWN_POS);
         *game_mode = GameMode::Creative;
+        is_flat.0 = true;
     }
 }
 

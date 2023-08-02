@@ -11,14 +11,12 @@ use std::fmt;
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use glam::{DVec3, Vec3};
-use num_integer::div_ceil;
 use rustc_hash::FxHashMap;
 use valence_biome::{BiomeId, BiomeRegistry};
 use valence_core::block_pos::BlockPos;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::ident::Ident;
 use valence_core::particle::{Particle, ParticleS2c};
-use valence_core::protocol::array::LengthPrefixedArray;
 use valence_core::protocol::encode::{PacketWriter, WritePacket};
 use valence_core::protocol::packet::sound::{PlaySoundS2c, Sound, SoundCategory};
 use valence_core::protocol::{Encode, Packet};
@@ -50,9 +48,6 @@ pub struct ChunkLayerInfo {
     min_y: i32,
     biome_registry_len: usize,
     compression_threshold: Option<u32>,
-    // We don't have a proper lighting engine yet, so we just fill chunks with full brightness.
-    sky_light_mask: Box<[u64]>,
-    sky_light_arrays: Box<[LengthPrefixedArray<u8, 2048>]>,
 }
 
 impl fmt::Debug for ChunkLayerInfo {
@@ -154,14 +149,6 @@ impl ChunkLayer {
             dim.height
         );
 
-        let light_section_count = (dim.height / 16 + 2) as usize;
-
-        let mut sky_light_mask = vec![0; div_ceil(light_section_count, 16)];
-
-        for i in 0..light_section_count {
-            sky_light_mask[i / 64] |= 1 << (i % 64);
-        }
-
         Self {
             messages: Messages::new(),
             chunks: Default::default(),
@@ -171,9 +158,6 @@ impl ChunkLayer {
                 min_y: dim.min_y,
                 biome_registry_len: biomes.iter().len(),
                 compression_threshold: server.compression_threshold(),
-                sky_light_mask: sky_light_mask.into(),
-                sky_light_arrays: vec![LengthPrefixedArray([0xff; 2048]); light_section_count]
-                    .into(),
             },
         }
     }
