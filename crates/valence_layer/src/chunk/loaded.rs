@@ -639,8 +639,6 @@ mod tests {
                 min_y: -16,
                 biome_registry_len: 200,
                 compression_threshold: None,
-                sky_light_mask: vec![].into(),
-                sky_light_arrays: vec![].into(),
             };
 
             let mut buf = vec![];
