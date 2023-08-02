@@ -12,7 +12,7 @@ use valence::protocol::var_int::VarInt;
 use valence::text::IntoText;
 use valence_core::protocol::encode::{PacketWriter, WritePacket};
 use valence_entity::packet::EntitySpawnS2c;
-use valence_instance::packet::ChunkDataS2c;
+use valence_layer::packet::ChunkDataS2c;
 use valence_player_list::packet::PlayerListHeaderS2c;
 
 pub fn packet(c: &mut Criterion) {

@@ -11,7 +11,6 @@ use valence_core::direction::Direction;
 use valence_core::game_mode::GameMode;
 use valence_core::hand::Hand;
 use valence_core::ident::Ident;
-use valence_core::protocol::byte_angle::ByteAngle;
 use valence_core::protocol::global_pos::GlobalPos;
 use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::var_long::VarLong;
@@ -395,16 +394,6 @@ pub struct PlayerRespawnS2c<'a> {
 pub struct PlayerSpawnPositionS2c {
     pub position: BlockPos,
     pub angle: f32,
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::PLAYER_SPAWN_S2C)]
-pub struct PlayerSpawnS2c {
-    pub entity_id: VarInt,
-    pub player_uuid: Uuid,
-    pub position: DVec3,
-    pub yaw: ByteAngle,
-    pub pitch: ByteAngle,
 }
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]

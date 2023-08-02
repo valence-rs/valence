@@ -6,7 +6,7 @@ use thiserror::Error;
 use valence_biome::BiomeId;
 use valence_block::{BlockKind, PropName, PropValue};
 use valence_core::ident::Ident;
-use valence_instance::chunk::{Chunk, UnloadedChunk};
+use valence_layer::chunk::{Chunk, UnloadedChunk};
 use valence_nbt::{Compound, List, Value};
 
 #[derive(Clone, Debug, Error)]

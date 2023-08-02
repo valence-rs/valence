@@ -33,31 +33,54 @@ fn setup(
         BlockState::DEEPSLATE,
         BlockState::MAGMA_BLOCK,
     ] {
-        let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
+        let mut layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
 
         for z in -5..5 {
             for x in -5..5 {
-                instance.insert_chunk([x, z], UnloadedChunk::new());
+                layer.chunk.insert_chunk([x, z], UnloadedChunk::new());
             }
         }
 
         for z in -25..25 {
             for x in -25..25 {
-                instance.set_block([x, SPAWN_Y, z], block);
+                layer.chunk.set_block([x, SPAWN_Y, z], block);
             }
         }
 
-        commands.spawn(instance);
+        commands.spawn(layer);
     }
 }
 
 fn init_clients(
-    mut clients: Query<(&mut Client, &mut Location, &mut Position), Added<Client>>,
-    instances: Query<Entity, With<Instance>>,
+    mut clients: Query<
+        (
+            &mut Client,
+            &mut EntityLayerId,
+            &mut VisibleChunkLayer,
+            &mut VisibleEntityLayers,
+            &mut Position,
+            &mut GameMode,
+        ),
+        Added<Client>,
+    >,
+    layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
 ) {
-    for (mut client, mut loc, mut pos) in &mut clients {
-        loc.0 = instances.iter().next().unwrap();
+    for (
+        mut client,
+        mut layer_id,
+        mut visible_chunk_layer,
+        mut visible_entity_layers,
+        mut pos,
+        mut game_mode,
+    ) in &mut clients
+    {
+        let layer = layers.iter().next().unwrap();
+
+        layer_id.0 = layer;
+        visible_chunk_layer.0 = layer;
+        visible_entity_layers.0.insert(layer);
         pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
+        *game_mode = GameMode::Creative;
 
         client.send_chat_message(
             "Welcome to Valence! Sneak to die in the game (but not in real life).".italic(),
@@ -76,20 +99,35 @@ fn squat_and_die(mut clients: Query<&mut Client>, mut events: EventReader<SneakE
 }
 
 fn necromancy(
-    mut clients: Query<(&mut Location, &mut RespawnPosition)>,
+    mut clients: Query<(
+        &mut EntityLayerId,
+        &mut VisibleChunkLayer,
+        &mut VisibleEntityLayers,
+        &mut RespawnPosition,
+    )>,
     mut events: EventReader<RequestRespawnEvent>,
-    instances: Query<Entity, With<Instance>>,
+    layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
 ) {
     for event in events.iter() {
-        if let Ok((mut loc, mut spawn_pos)) = clients.get_mut(event.client) {
-            spawn_pos.pos = BlockPos::new(0, SPAWN_Y, 0);
+        if let Ok((
+            mut layer_id,
+            mut visible_chunk_layer,
+            mut visible_entity_layers,
+            mut respawn_pos,
+        )) = clients.get_mut(event.client)
+        {
+            respawn_pos.pos = BlockPos::new(0, SPAWN_Y, 0);
 
-            // make the client respawn in another instance
-            let idx = instances.iter().position(|i| i == loc.0).unwrap();
+            // make the client respawn in another chunk layer.
 
-            let count = instances.iter().len();
+            let idx = layers.iter().position(|l| l == layer_id.0).unwrap();
+            let count = layers.iter().len();
+            let layer = layers.into_iter().nth((idx + 1) % count).unwrap();
 
-            loc.0 = instances.into_iter().nth((idx + 1) % count).unwrap();
+            layer_id.0 = layer;
+            visible_chunk_layer.0 = layer;
+            visible_entity_layers.0.clear();
+            visible_entity_layers.0.insert(layer);
         }
     }
 }

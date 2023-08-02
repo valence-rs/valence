@@ -26,30 +26,53 @@ fn setup(
     biomes: Res<BiomeRegistry>,
     dimensions: Res<DimensionTypeRegistry>,
 ) {
-    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let mut layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {
-            instance.insert_chunk([x, z], UnloadedChunk::new());
+            layer.chunk.insert_chunk([x, z], UnloadedChunk::new());
         }
     }
 
     for z in -25..25 {
         for x in -25..25 {
-            instance.set_block([x, SPAWN_Y, z], BlockState::GRASS_BLOCK);
+            layer
+                .chunk
+                .set_block([x, SPAWN_Y, z], BlockState::GRASS_BLOCK);
         }
     }
 
-    commands.spawn(instance);
+    commands.spawn(layer);
 }
 
 fn init_clients(
-    mut clients: Query<(&mut Location, &mut Position), Added<Client>>,
-    instances: Query<Entity, With<Instance>>,
+    mut clients: Query<
+        (
+            &mut EntityLayerId,
+            &mut VisibleChunkLayer,
+            &mut VisibleEntityLayers,
+            &mut Position,
+            &mut GameMode,
+        ),
+        Added<Client>,
+    >,
+    layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
 ) {
-    for (mut loc, mut pos) in &mut clients {
-        loc.0 = instances.single();
-        pos.set([0.5, SPAWN_Y as f64 + 1.0, 0.5]);
+    for (
+        mut layer_id,
+        mut visible_chunk_layer,
+        mut visible_entity_layers,
+        mut pos,
+        mut game_mode,
+    ) in &mut clients
+    {
+        let layer = layers.single();
+
+        layer_id.0 = layer;
+        visible_chunk_layer.0 = layer;
+        visible_entity_layers.0.insert(layer);
+        pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
+        *game_mode = GameMode::Creative;
     }
 }
 

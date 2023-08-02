@@ -16,7 +16,7 @@ pub struct WorldBorderInitializeS2c {
     pub z: f64,
     pub old_diameter: f64,
     pub new_diameter: f64,
-    pub speed: VarLong,
+    pub duration_millis: VarLong,
     pub portal_teleport_boundary: VarInt,
     pub warning_blocks: VarInt,
     pub warning_time: VarInt,
@@ -27,7 +27,7 @@ pub struct WorldBorderInitializeS2c {
 pub struct WorldBorderInterpolateSizeS2c {
     pub old_diameter: f64,
     pub new_diameter: f64,
-    pub speed: VarLong,
+    pub duration_millis: VarLong,
 }
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]

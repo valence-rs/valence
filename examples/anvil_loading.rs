@@ -52,12 +52,12 @@ fn setup(
     server: Res<Server>,
     cli: Res<Cli>,
 ) {
-    let instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
     let mut level = AnvilLevel::new(&cli.path, &biomes);
 
-    // Force a 16x16 area of chunks around the origin to be loaded at all times,
-    // similar to spawn chunks in vanilla. This isn't necessary, but it is done to
-    // demonstrate that it is possible.
+    // Force a 16x16 area of chunks around the origin to be loaded at all times.
+    // This is similar to "spawn chunks" in vanilla. This isn't necessary for the
+    // example to function, but it's done to demonstrate that it's possible.
     for z in -8..8 {
         for x in -8..8 {
             let pos = ChunkPos::new(x, z);
@@ -67,26 +67,45 @@ fn setup(
         }
     }
 
-    commands.spawn((instance, level));
+    commands.spawn((layer, level));
 }
 
 fn init_clients(
-    mut clients: Query<(&mut Location, &mut Position, &mut GameMode, &mut IsFlat), Added<Client>>,
-    instances: Query<Entity, With<Instance>>,
+    mut clients: Query<
+        (
+            &mut EntityLayerId,
+            &mut VisibleChunkLayer,
+            &mut VisibleEntityLayers,
+            &mut Position,
+            &mut GameMode,
+        ),
+        Added<Client>,
+    >,
+    layers: Query<Entity, With<ChunkLayer>>,
 ) {
-    for (mut loc, mut pos, mut game_mode, mut is_flat) in &mut clients {
-        loc.0 = instances.single();
+    for (
+        mut layer_id,
+        mut visible_chunk_layer,
+        mut visible_entity_layers,
+        mut pos,
+        mut game_mode,
+    ) in &mut clients
+    {
+        let layer = layers.single();
+
+        layer_id.0 = layer;
+        visible_chunk_layer.0 = layer;
+        visible_entity_layers.0.insert(layer);
         pos.set(SPAWN_POS);
-        *game_mode = GameMode::Creative;
-        is_flat.0 = true;
+        *game_mode = GameMode::Spectator;
     }
 }
 
 fn handle_chunk_loads(
     mut events: EventReader<ChunkLoadEvent>,
-    mut instances: Query<&mut Instance, With<AnvilLevel>>,
+    mut layers: Query<&mut ChunkLayer, With<AnvilLevel>>,
 ) {
-    let mut inst = instances.single_mut();
+    let mut layer = layers.single_mut();
 
     for event in events.iter() {
         match &event.status {
@@ -96,7 +115,7 @@ fn handle_chunk_loads(
             ChunkLoadStatus::Empty => {
                 // There's no chunk here so let's insert an empty chunk. If we were doing
                 // terrain generation we would prepare that here.
-                inst.insert_chunk(event.pos, UnloadedChunk::new());
+                layer.insert_chunk(event.pos, UnloadedChunk::new());
             }
             ChunkLoadStatus::Failed(e) => {
                 // Something went wrong.
@@ -106,24 +125,22 @@ fn handle_chunk_loads(
                 );
 
                 eprintln!("{errmsg}");
-                inst.send_chat_message(errmsg.color(Color::RED));
+                layer.send_chat_message(errmsg.color(Color::RED));
 
-                inst.insert_chunk(event.pos, UnloadedChunk::new());
+                layer.insert_chunk(event.pos, UnloadedChunk::new());
             }
         }
     }
 }
 
 // Display the number of loaded chunks in the action bar of all clients.
-fn display_loaded_chunk_count(mut instances: Query<&mut Instance>, mut last_count: Local<usize>) {
-    let mut inst = instances.single_mut();
+fn display_loaded_chunk_count(mut layers: Query<&mut ChunkLayer>, mut last_count: Local<usize>) {
+    let mut layer = layers.single_mut();
 
-    let cnt = inst.chunks().count();
+    let cnt = layer.chunks().count();
 
     if *last_count != cnt {
         *last_count = cnt;
-        inst.send_action_bar_message(
-            "Chunk Count: ".into_text() + (cnt as i32).color(Color::LIGHT_PURPLE),
-        );
+        layer.send_action_bar_message("Chunk Count: ".into_text() + cnt.color(Color::LIGHT_PURPLE));
     }
 }

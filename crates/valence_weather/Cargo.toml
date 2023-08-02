@@ -1,0 +1,14 @@
+[package]
+name = "valence_weather"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+documentation.workspace = true
+license.workspace = true
+
+[dependencies]
+valence_client.workspace = true
+valence_layer.workspace = true
+valence_core.workspace = true
+bevy_ecs.workspace = true
+bevy_app.workspace = true

@@ -6,7 +6,7 @@ use num_integer::div_ceil;
 use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::Encode;
 
-use crate::chunk::bit_width;
+use super::chunk::bit_width;
 
 /// `HALF_LEN` must be equal to `ceil(LEN / 2)`.
 #[derive(Clone, Debug)]
@@ -89,7 +89,7 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>
         }
     }
 
-    pub(super) fn optimize(&mut self) {
+    pub(super) fn shrink_to_fit(&mut self) {
         match self {
             Self::Single(_) => {}
             Self::Indirect(ind) => {
@@ -332,7 +332,7 @@ mod tests {
                 assert_eq!(val, p.get(idx));
                 a[idx] = val;
 
-                p.optimize();
+                p.shrink_to_fit();
 
                 assert!(check(&p, &a));
             }

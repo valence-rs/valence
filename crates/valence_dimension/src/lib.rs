@@ -46,7 +46,11 @@ impl Plugin for DimensionPlugin {
 fn load_default_dimension_types(mut reg: ResMut<DimensionTypeRegistry>, codec: Res<RegistryCodec>) {
     let mut helper = move || -> anyhow::Result<()> {
         for value in codec.registry(DimensionTypeRegistry::KEY) {
-            let dimension_type = DimensionType::deserialize(value.element.clone())?;
+            let mut dimension_type = DimensionType::deserialize(value.element.clone())?;
+
+            // HACK: We don't have a lighting engine implemented. To avoid shrouding the
+            // world in darkness, give all dimensions the max ambient light.
+            dimension_type.ambient_light = 1.0;
 
             reg.insert(value.name.clone(), dimension_type);
         }

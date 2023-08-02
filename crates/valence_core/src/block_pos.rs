@@ -1,12 +1,15 @@
 use std::io::Write;
+use std::ops::{Add, Sub};
 
 use anyhow::bail;
+use glam::DVec3;
 
+use crate::chunk_pos::ChunkPos;
 use crate::direction::Direction;
 use crate::protocol::{Decode, Encode};
 
 /// Represents an absolute block position in world space.
-#[derive(Clone, Copy, Default, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct BlockPos {
     pub x: i32,
     pub y: i32,
@@ -19,9 +22,17 @@ impl BlockPos {
         Self { x, y, z }
     }
 
-    /// Returns the block position a point is contained within.
-    pub fn at(pos: impl Into<[f64; 3]>) -> Self {
-        pos.into().map(|a| a.floor() as i32).into()
+    /// Returns the block position a point in world space is contained within.
+    pub fn from_pos(pos: DVec3) -> Self {
+        Self {
+            x: pos.x.floor() as i32,
+            y: pos.y.floor() as i32,
+            z: pos.z.floor() as i32,
+        }
+    }
+
+    pub const fn to_chunk_pos(self) -> ChunkPos {
+        ChunkPos::from_block_pos(self)
     }
 
     /// Get a new [`BlockPos`] that is adjacent to this position in `dir`
@@ -35,7 +46,7 @@ impl BlockPos {
     /// let adj = pos.get_in_direction(Direction::South);
     /// assert_eq!(adj, BlockPos::new(0, 0, 1));
     /// ```
-    pub fn get_in_direction(self, dir: Direction) -> BlockPos {
+    pub const fn get_in_direction(self, dir: Direction) -> BlockPos {
         match dir {
             Direction::Down => BlockPos::new(self.x, self.y - 1, self.z),
             Direction::Up => BlockPos::new(self.x, self.y + 1, self.z),
@@ -95,6 +106,30 @@ impl From<[i32; 3]> for BlockPos {
 impl From<BlockPos> for [i32; 3] {
     fn from(pos: BlockPos) -> Self {
         [pos.x, pos.y, pos.z]
+    }
+}
+
+impl Add for BlockPos {
+    type Output = BlockPos;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+            z: self.z + rhs.z,
+        }
+    }
+}
+
+impl Sub for BlockPos {
+    type Output = BlockPos;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+            z: self.z - rhs.z,
+        }
     }
 }
 

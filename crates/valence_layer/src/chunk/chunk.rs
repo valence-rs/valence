@@ -1,17 +1,12 @@
-pub mod loaded;
-mod paletted_container;
-pub mod unloaded;
-
-pub use loaded::LoadedChunk;
-pub use unloaded::UnloadedChunk;
 use valence_biome::BiomeId;
 use valence_block::BlockState;
 use valence_nbt::Compound;
 
-use self::paletted_container::PalettedContainer;
+use super::paletted_container::PalettedContainer;
 
-/// Common operations on chunks. Notable implementors are [`LoadedChunk`] and
-/// [`UnloadedChunk`].
+/// Common operations on chunks. Notable implementors are
+/// [`LoadedChunk`](super::loaded::LoadedChunk) and
+/// [`UnloadedChunk`](super::unloaded::UnloadedChunk).
 pub trait Chunk {
     /// Gets the height of this chunk in meters or blocks.
     fn height(&self) -> u32;
@@ -213,7 +208,7 @@ pub trait Chunk {
     ///
     /// This method must not alter the semantics of the chunk in any observable
     /// way.
-    fn optimize(&mut self);
+    fn shrink_to_fit(&mut self);
 }
 
 /// Represents a complete block, which is a pair of block state and optional NBT
@@ -274,20 +269,21 @@ impl IntoBlock for BlockState {
     }
 }
 
-const SECTION_BLOCK_COUNT: usize = 16 * 16 * 16;
-const SECTION_BIOME_COUNT: usize = 4 * 4 * 4;
+pub(super) const SECTION_BLOCK_COUNT: usize = 16 * 16 * 16;
+pub(super) const SECTION_BIOME_COUNT: usize = 4 * 4 * 4;
 
 /// The maximum height of a chunk.
 pub const MAX_HEIGHT: u32 = 4096;
 
-type BlockStateContainer =
+pub(super) type BlockStateContainer =
     PalettedContainer<BlockState, SECTION_BLOCK_COUNT, { SECTION_BLOCK_COUNT / 2 }>;
 
-type BiomeContainer = PalettedContainer<BiomeId, SECTION_BIOME_COUNT, { SECTION_BIOME_COUNT / 2 }>;
+pub(super) type BiomeContainer =
+    PalettedContainer<BiomeId, SECTION_BIOME_COUNT, { SECTION_BIOME_COUNT / 2 }>;
 
 #[inline]
 #[track_caller]
-fn check_block_oob(chunk: &impl Chunk, x: u32, y: u32, z: u32) {
+pub(super) fn check_block_oob(chunk: &impl Chunk, x: u32, y: u32, z: u32) {
     assert!(
         x < 16 && y < chunk.height() && z < 16,
         "chunk block offsets of ({x}, {y}, {z}) are out of bounds"
@@ -296,7 +292,7 @@ fn check_block_oob(chunk: &impl Chunk, x: u32, y: u32, z: u32) {
 
 #[inline]
 #[track_caller]
-fn check_biome_oob(chunk: &impl Chunk, x: u32, y: u32, z: u32) {
+pub(super) fn check_biome_oob(chunk: &impl Chunk, x: u32, y: u32, z: u32) {
     assert!(
         x < 4 && y < chunk.height() / 4 && z < 4,
         "chunk biome offsets of ({x}, {y}, {z}) are out of bounds"
@@ -305,7 +301,7 @@ fn check_biome_oob(chunk: &impl Chunk, x: u32, y: u32, z: u32) {
 
 #[inline]
 #[track_caller]
-fn check_section_oob(chunk: &impl Chunk, sect_y: u32) {
+pub(super) fn check_section_oob(chunk: &impl Chunk, sect_y: u32) {
     assert!(
         sect_y < chunk.height() / 16,
         "chunk section offset of {sect_y} is out of bounds"
@@ -313,13 +309,15 @@ fn check_section_oob(chunk: &impl Chunk, sect_y: u32) {
 }
 
 /// Returns the minimum number of bits needed to represent the integer `n`.
-const fn bit_width(n: usize) -> usize {
+pub(super) const fn bit_width(n: usize) -> usize {
     (usize::BITS - n.leading_zeros()) as _
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::chunk::loaded::LoadedChunk;
+    use crate::chunk::unloaded::UnloadedChunk;
 
     #[test]
     fn chunk_get_set() {
@@ -338,7 +336,7 @@ mod tests {
         }
 
         let unloaded = UnloadedChunk::with_height(512);
-        let loaded = LoadedChunk::new(512, None);
+        let loaded = LoadedChunk::new(512);
 
         check(unloaded);
         check(loaded);
@@ -356,7 +354,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn chunk_debug_oob_1() {
-        let mut chunk = LoadedChunk::new(512, None);
+        let mut chunk = LoadedChunk::new(512);
         chunk.set_block_state(0, 0, 16, BlockState::AIR);
     }
 
@@ -372,7 +370,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn chunk_debug_oob_3() {
-        let mut chunk = LoadedChunk::new(512, None);
+        let mut chunk = LoadedChunk::new(512);
         chunk.set_block_entity(0, 0, 16, None);
     }
 
@@ -388,7 +386,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn chunk_debug_oob_5() {
-        let mut chunk = LoadedChunk::new(512, None);
+        let mut chunk = LoadedChunk::new(512);
         chunk.set_biome(0, 0, 4, BiomeId::DEFAULT);
     }
 
@@ -404,7 +402,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn chunk_debug_oob_7() {
-        let mut chunk = LoadedChunk::new(512, None);
+        let mut chunk = LoadedChunk::new(512);
         chunk.fill_block_state_section(chunk.height() / 16, BlockState::AIR);
     }
 
@@ -420,7 +418,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn chunk_debug_oob_9() {
-        let mut chunk = LoadedChunk::new(512, None);
+        let mut chunk = LoadedChunk::new(512);
         chunk.fill_biome_section(chunk.height() / 16, BiomeId::DEFAULT);
     }
 }
