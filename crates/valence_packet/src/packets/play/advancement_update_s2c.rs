@@ -1,20 +1,29 @@
 use super::*;
 
+pub type AdvancementUpdateS2c<'a> =
+    GenericAdvancementUpdateS2c<'a, (Ident<Cow<'a, str>>, Advancement<'a, Option<ItemStack>>)>;
+
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 #[packet(id = packet_id::ADVANCEMENT_UPDATE_S2C)]
-pub struct AdvancementUpdateS2c<'a> {
+pub struct GenericAdvancementUpdateS2c<'a, AM: 'a> {
     pub reset: bool,
-    pub advancement_mapping: Vec<(Ident<Cow<'a, str>>, Advancement<'a, Option<ItemStack>>)>,
+    pub advancement_mapping: Vec<AM>,
     pub identifiers: Vec<Ident<Cow<'a, str>>>,
     pub progress_mapping: Vec<(Ident<Cow<'a, str>>, Vec<AdvancementCriteria<'a>>)>,
 }
 
+#[derive(Clone, PartialEq, Debug, Encode, Decode)]
+pub struct Advancement<'a, I> {
+    pub parent_id: Option<Ident<Cow<'a, str>>>,
+    pub display_data: Option<AdvancementDisplay<'a, I>>,
+    pub criteria: Vec<(Ident<Cow<'a, str>>, ())>,
+    pub requirements: Vec<AdvancementRequirements<'a>>,
+    pub sends_telemetry_data: bool,
+}
+
 #[derive(Clone, PartialEq, Eq, Debug, Encode, Decode)]
-pub struct AdvancementCriteria<'a> {
-    pub criterion_identifier: Ident<Cow<'a, str>>,
-    /// If present, the criteria has been achieved at the
-    /// time wrapped; time represented as millis since epoch
-    pub criterion_progress: Option<i64>,
+pub struct AdvancementRequirements<'a> {
+    pub requirement: Vec<&'a str>,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -27,6 +36,14 @@ pub struct AdvancementDisplay<'a, I> {
     pub background_texture: Option<Ident<Cow<'a, str>>>,
     pub x_coord: f32,
     pub y_coord: f32,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode)]
+pub struct AdvancementCriteria<'a> {
+    pub criterion_identifier: Ident<Cow<'a, str>>,
+    /// If present, the criteria has been achieved at the
+    /// time wrapped; time represented as millis since epoch
+    pub criterion_progress: Option<i64>,
 }
 
 impl<I: Encode> Encode for AdvancementDisplay<'_, I> {
@@ -77,18 +94,4 @@ impl<'a, I: Decode<'a>> Decode<'a> for AdvancementDisplay<'a, I> {
             y_coord,
         })
     }
-}
-
-#[derive(Clone, PartialEq, Debug, Encode, Decode)]
-pub struct Advancement<'a, I> {
-    pub parent_id: Option<Ident<Cow<'a, str>>>,
-    pub display_data: Option<AdvancementDisplay<'a, I>>,
-    pub criteria: Vec<(Ident<Cow<'a, str>>, ())>,
-    pub requirements: Vec<AdvancementRequirements<'a>>,
-    pub sends_telemetry_data: bool,
-}
-
-#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode)]
-pub struct AdvancementRequirements<'a> {
-    pub requirement: Vec<&'a str>,
 }

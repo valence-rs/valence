@@ -21,9 +21,7 @@ use valence_core::protocol::raw::RawBytes;
 use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::Encode;
 use valence_core::text::Text;
-use valence_packet::packets::play::{
-    advancement_update_s2c as packet, AdvancementUpdateS2c, SelectAdvancementTabS2c,
-};
+use valence_packet::packets::play::{advancement_update_s2c as packet, SelectAdvancementTabS2c};
 use valence_packet::protocol::encode::WritePacket;
 use valence_packet::protocol::{packet_id, Packet, PacketSide, PacketState};
 
@@ -224,7 +222,7 @@ impl<'w, 's, 'a> Encode for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
             reset,
         } = &self.client_update;
 
-        let mut pkt = AdvancementUpdateS2c {
+        let mut pkt = packet::GenericAdvancementUpdateS2c {
             reset: *reset,
             advancement_mapping: vec![],
             identifiers: vec![],
