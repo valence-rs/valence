@@ -30,7 +30,7 @@ use crate::packet::{
 pub struct LoadedChunk {
     /// A count of the clients viewing this chunk. Useful for knowing if it's
     /// necessary to record changes, since no client would be in view to receive
-    /// the changes if this were nonzero.
+    /// the changes if this were zero.
     viewer_count: AtomicU32,
     /// Block and biome data for the chunk.
     sections: Box<[Section]>,
