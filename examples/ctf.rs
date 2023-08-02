@@ -874,11 +874,10 @@ fn update_clones(
 ) {
     for clone in clone_ents.iter_mut() {
         let (mut clone, cloned_from, ent) = clone;
-        let Ok(src) = ents
-            .get(cloned_from.0) else {
-                commands.entity(ent).insert(Despawned);
-                return;
-            };
+        let Ok(src) = ents.get(cloned_from.0) else {
+            commands.entity(ent).insert(Despawned);
+            return;
+        };
 
         *clone.position = *src.position;
         *clone.head_yaw = *src.head_yaw;
@@ -934,7 +933,8 @@ fn handle_combat_events(
             .get(victim_client)
             .map(|cloned| cloned.0)
             .unwrap_or(victim_client);
-        let Ok([mut attacker, mut victim]) = clients.get_many_mut([attacker_client, true_victim_ent])
+        let Ok([mut attacker, mut victim]) =
+            clients.get_many_mut([attacker_client, true_victim_ent])
         else {
             debug!("Failed to get clients for combat event");
             // Victim or attacker does not exist, or the attacker is attacking itself.
