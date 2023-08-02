@@ -2,7 +2,9 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use glam::DVec3;
 use valence_entity::{HeadYaw, Look, OnGround, Position};
-use valence_packet::packets::play::{VehicleMoveC2s, OnGroundOnlyC2s, LookAndOnGroundC2s, FullC2s, PositionAndOnGroundC2s};
+use valence_packet::packets::play::{
+    FullC2s, LookAndOnGroundC2s, OnGroundOnlyC2s, PositionAndOnGroundC2s, VehicleMoveC2s,
+};
 
 use super::teleport::TeleportState;
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};

@@ -99,7 +99,6 @@ pub mod prelude {
     pub use valence_core::hand::Hand;
     pub use valence_core::ident; // Export the `ident!` macro.
     pub use valence_core::item::{ItemKind, ItemStack};
-    pub use valence_core::particle::Particle;
     pub use valence_core::text::{Color, IntoText, Text};
     pub use valence_core::uuid::UniqueId;
     pub use valence_core::{translation_key, CoreSettings, Server};
@@ -121,6 +120,7 @@ pub mod prelude {
         ConnectionMode, ErasedNetworkCallbacks, NetworkCallbacks, NetworkSettings, NewClientInfo,
         SharedNetworkState,
     };
+    pub use valence_packet::packets::play::particle_s2c::Particle;
     #[cfg(feature = "player_list")]
     pub use valence_player_list::{PlayerList, PlayerListEntry};
 

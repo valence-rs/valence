@@ -19,18 +19,17 @@ use tokio::net::{TcpListener, TcpStream};
 use tracing::{error, info, trace, warn};
 use uuid::Uuid;
 use valence_core::property::Property;
-use valence_core::protocol::decode::PacketDecoder;
-use valence_core::protocol::encode::PacketEncoder;
 use valence_core::protocol::raw::RawBytes;
 use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::Decode;
 use valence_core::text::{Color, IntoText, Text};
 use valence_core::{ident, translation_key, MINECRAFT_VERSION, PROTOCOL_VERSION};
-use valence_packet::network::{
-    HandshakeC2s, HandshakeNextState, LoginCompressionS2c, LoginDisconnectS2c, LoginHelloC2s,
-    LoginHelloS2c, LoginKeyC2s, LoginQueryRequestS2c, LoginQueryResponseC2s, LoginSuccessS2c,
-    QueryPingC2s, QueryPongS2c, QueryRequestC2s, QueryResponseS2c,
-};
+use valence_packet::packets::handshaking::handshake_c2s::HandshakeNextState;
+use valence_packet::packets::handshaking::*;
+use valence_packet::packets::login::*;
+use valence_packet::packets::status::*;
+use valence_packet::protocol::decode::PacketDecoder;
+use valence_packet::protocol::encode::PacketEncoder;
 
 use crate::legacy_ping::try_handle_legacy_ping;
 use crate::packet_io::PacketIo;

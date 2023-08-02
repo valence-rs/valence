@@ -19,9 +19,7 @@
 
 use proc_macro::TokenStream as StdTokenStream;
 use proc_macro2::TokenStream;
-use syn::{
-    parse_quote, GenericParam, Generics,
-};
+use syn::{parse_quote, GenericParam, Generics};
 
 mod packet;
 

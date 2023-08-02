@@ -39,10 +39,10 @@ use valence_core::despawn::Despawned;
 use valence_core::game_mode::GameMode;
 use valence_core::ident::Ident;
 use valence_core::property::Property;
-use valence_core::protocol::Encode;
 use valence_core::protocol::byte_angle::ByteAngle;
 use valence_core::protocol::global_pos::GlobalPos;
 use valence_core::protocol::var_int::VarInt;
+use valence_core::protocol::Encode;
 use valence_core::sound::{Sound, SoundCategory};
 use valence_core::text::{IntoText, Text};
 use valence_core::uuid::UniqueId;
@@ -59,10 +59,11 @@ use valence_packet::packets::play::{
     ChunkLoadDistanceS2c, ChunkRenderDistanceCenterS2c, DeathMessageS2c, DisconnectS2c,
     EntitiesDestroyS2c, EntitySetHeadYawS2c, EntitySpawnS2c, EntityStatusS2c,
     EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, ExperienceOrbSpawnS2c, GameJoinS2c,
-    GameStateChangeS2c, PlayerRespawnS2c, PlayerSpawnPositionS2c, PlayerSpawnS2c, UnloadChunkS2c, ParticleS2c, PlaySoundS2c,
+    GameStateChangeS2c, ParticleS2c, PlaySoundS2c, PlayerRespawnS2c, PlayerSpawnPositionS2c,
+    PlayerSpawnS2c, UnloadChunkS2c,
 };
-use valence_packet::protocol::Packet;
 use valence_packet::protocol::encode::{PacketEncoder, WritePacket};
+use valence_packet::protocol::Packet;
 use valence_registry::codec::RegistryCodec;
 use valence_registry::tags::TagsRegistry;
 use valence_registry::RegistrySet;

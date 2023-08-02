@@ -1,5 +1,7 @@
 use valence_core::text::IntoText;
-use valence_packet::packets::play::{TitleS2c, SubtitleS2c, OverlayMessageS2c, TitleFadeS2c, ClearTitleS2c};
+use valence_packet::packets::play::{
+    ClearTitleS2c, OverlayMessageS2c, SubtitleS2c, TitleFadeS2c, TitleS2c,
+};
 
 use super::*;
 

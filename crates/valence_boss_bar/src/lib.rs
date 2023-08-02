@@ -19,13 +19,19 @@
 )]
 
 use std::borrow::Cow;
+use std::collections::BTreeSet;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use valence_client::{Client, FlushPacketsSet};
 use valence_core::despawn::Despawned;
-use valence_core::protocol::encode::WritePacket;
+use valence_core::text::Text;
 use valence_core::uuid::UniqueId;
+pub use valence_packet::packets::play::boss_bar_s2c::{
+    BossBarAction, BossBarColor, BossBarDivision, BossBarFlags,
+};
+use valence_packet::packets::play::BossBarS2c;
+use valence_packet::protocol::encode::WritePacket;
 
 /// The bundle of components that make up a boss bar.
 #[derive(Bundle)]
@@ -82,7 +88,6 @@ pub struct BossBarViewers {
     /// been added and removed.
     pub(crate) old_viewers: BTreeSet<Entity>,
 }
-
 
 pub struct BossBarPlugin;
 

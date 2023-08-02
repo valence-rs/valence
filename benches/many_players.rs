@@ -7,9 +7,7 @@ use rand::Rng;
 use valence::testing::create_mock_client;
 use valence::DefaultPlugins;
 use valence_biome::BiomeRegistry;
-use valence_client::hand_swing::HandSwingC2s;
 use valence_client::keepalive::KeepaliveSettings;
-use valence_client::movement::FullC2s;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::{ident, CoreSettings, Server};
 use valence_dimension::DimensionTypeRegistry;
@@ -17,6 +15,7 @@ use valence_entity::Position;
 use valence_instance::chunk::UnloadedChunk;
 use valence_instance::Instance;
 use valence_network::NetworkPlugin;
+use valence_packet::packets::play::{FullC2s, HandSwingC2s};
 
 const CLIENT_COUNT: usize = 3000;
 const VIEW_DIST: u8 = 20;

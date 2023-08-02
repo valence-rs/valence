@@ -11,9 +11,10 @@ use tokio::sync::Semaphore;
 use tokio::task::JoinHandle;
 use tracing::{debug, warn};
 use valence_client::{ClientBundleArgs, ClientConnection, ReceivedPacket};
-use valence_core::protocol::decode::{PacketDecoder, PacketFrame};
-use valence_core::protocol::encode::PacketEncoder;
-use valence_core::protocol::{Decode, Encode, Packet};
+use valence_core::protocol::{Decode, Encode};
+use valence_packet::protocol::decode::{PacketDecoder, PacketFrame};
+use valence_packet::protocol::encode::PacketEncoder;
+use valence_packet::protocol::Packet;
 
 use crate::byte_channel::{byte_channel, ByteSender, TrySendError};
 use crate::{CleanupOnDrop, NewClientInfo};

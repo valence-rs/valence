@@ -4,7 +4,6 @@ use glam::Vec3;
 use valence_core::block_pos::BlockPos;
 use valence_core::direction::Direction;
 use valence_core::hand::Hand;
-use valence_core::protocol::var_int::VarInt;
 use valence_packet::packets::play::PlayerInteractBlockC2s;
 
 use crate::action::ActionSequence;

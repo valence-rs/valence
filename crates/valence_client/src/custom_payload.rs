@@ -1,4 +1,3 @@
-use valence_core::protocol::raw::RawBytes;
 use valence_packet::packets::play::{CustomPayloadC2s, CustomPayloadS2c};
 
 use super::*;

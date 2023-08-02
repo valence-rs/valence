@@ -20,7 +20,6 @@
 
 pub mod aabb;
 pub mod block_pos;
-pub mod boss_bar;
 pub mod chunk_pos;
 pub mod despawn;
 pub mod difficulty;

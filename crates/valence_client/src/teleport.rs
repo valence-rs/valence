@@ -1,5 +1,6 @@
 use glam::DVec3;
-use valence_packet::packets::play::{TeleportConfirmC2s, PlayerPositionLookS2c, player_position_look_s2c::PlayerPositionLookFlags};
+use valence_packet::packets::play::player_position_look_s2c::PlayerPositionLookFlags;
+use valence_packet::packets::play::{PlayerPositionLookS2c, TeleportConfirmC2s};
 
 use super::*;
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};

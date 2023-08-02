@@ -2,9 +2,9 @@ use super::*;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 #[packet(id = packet_id::ADVANCEMENT_UPDATE_S2C)]
-pub struct AdvancementUpdateS2c<'a, AM: 'a> {
+pub struct AdvancementUpdateS2c<'a> {
     pub reset: bool,
-    pub advancement_mapping: Vec<AM>,
+    pub advancement_mapping: Vec<(Ident<Cow<'a, str>>, Advancement<'a, Option<ItemStack>>)>,
     pub identifiers: Vec<Ident<Cow<'a, str>>>,
     pub progress_mapping: Vec<(Ident<Cow<'a, str>>, Vec<AdvancementCriteria<'a>>)>,
 }
@@ -77,4 +77,18 @@ impl<'a, I: Decode<'a>> Decode<'a> for AdvancementDisplay<'a, I> {
             y_coord,
         })
     }
+}
+
+#[derive(Clone, PartialEq, Debug, Encode, Decode)]
+pub struct Advancement<'a, I> {
+    pub parent_id: Option<Ident<Cow<'a, str>>>,
+    pub display_data: Option<AdvancementDisplay<'a, I>>,
+    pub criteria: Vec<(Ident<Cow<'a, str>>, ())>,
+    pub requirements: Vec<AdvancementRequirements<'a>>,
+    pub sends_telemetry_data: bool,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode)]
+pub struct AdvancementRequirements<'a> {
+    pub requirement: Vec<&'a str>,
 }

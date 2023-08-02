@@ -7,12 +7,11 @@
 
 use bevy_app::App;
 use glam::DVec3;
-use valence_client::movement::PositionAndOnGroundC2s;
 use valence_client::Client;
 use valence_core::Server;
 use valence_entity::Position;
 use valence_inventory::{Inventory, InventoryKind, OpenInventory};
-use valence_packet::inventory::{InventoryS2c, OpenScreenS2c};
+use valence_packet::packets::play::{InventoryS2c, OpenScreenS2c, PositionAndOnGroundC2s};
 
 use crate::testing::scenario_single_client;
 use crate::DefaultPlugins;

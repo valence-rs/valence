@@ -1,8 +1,8 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use valence_entity::player::{self, PlayerModelParts};
-use valence_packet::packets::play::ClientSettingsC2s;
 use valence_packet::packets::play::client_settings_c2s::ChatMode;
+use valence_packet::packets::play::ClientSettingsC2s;
 
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 use crate::ViewDistance;

@@ -3,6 +3,10 @@ name = "valence_packet"
 version.workspace = true
 edition.workspace = true
 
+[features]
+encryption = ["dep:aes", "dep:cfb8"]
+compression =  ["dep:flate2"]
+
 [dependencies]
 valence_core.workspace = true
 valence_nbt.workspace = true
@@ -17,6 +21,9 @@ bytes.workspace = true
 tracing.workspace = true
 bevy_ecs.workspace = true
 serde = { workspace = true, features = ["derive"] }
+cfb8 = { workspace = true, optional = true }
+flate2 = { workspace = true, optional = true }
+aes = { workspace = true, optional = true }
 
 [dev-dependencies]
 rand.workspace = true

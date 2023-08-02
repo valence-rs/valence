@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use valence_packet::packets::play::{KeepAliveS2c, KeepAliveC2s};
+use valence_packet::packets::play::{KeepAliveC2s, KeepAliveS2c};
 
 use super::*;
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};

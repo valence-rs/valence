@@ -3,7 +3,10 @@ use std::time::Duration;
 use bevy_app::App;
 use valence_entity::Location;
 use valence_instance::Instance;
-use valence_packet::world_border::*;
+use valence_packet::packets::play::{
+    WorldBorderCenterChangedS2c, WorldBorderInitializeS2c, WorldBorderSizeChangedS2c,
+    WorldBorderWarningBlocksChangedS2c, WorldBorderWarningTimeChangedS2c,
+};
 use valence_registry::{Entity, Mut};
 use valence_world_border::*;
 

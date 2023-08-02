@@ -26,14 +26,14 @@ use uuid::Uuid;
 use valence_client::{Client, Ping, Properties, Username};
 use valence_core::despawn::Despawned;
 use valence_core::game_mode::GameMode;
-use valence_core::protocol::encode::{PacketWriter, WritePacket};
 use valence_core::text::{IntoText, Text};
 use valence_core::uuid::UniqueId;
 use valence_core::Server;
 use valence_instance::WriteUpdatePacketsToInstancesSet;
-use valence_packet::player_list::{
-    PlayerListActions, PlayerListEntryPkt, PlayerListHeaderS2c, PlayerListS2c, PlayerRemoveS2c,
+use valence_packet::packets::play::{
+    player_list_s2c as packet, PlayerListHeaderS2c, PlayerListS2c, PlayerRemoveS2c,
 };
+use valence_packet::protocol::encode::{PacketWriter, WritePacket};
 
 pub struct PlayerListPlugin;
 
@@ -206,7 +206,7 @@ fn init_player_list_for_clients(
 ) {
     if player_list.manage_clients {
         for mut client in &mut clients {
-            let actions = PlayerListActions::new()
+            let actions = packet::PlayerListActions::new()
                 .with_add_player(true)
                 .with_update_game_mode(true)
                 .with_update_listed(true)
@@ -217,7 +217,7 @@ fn init_player_list_for_clients(
                 .iter()
                 .map(
                     |(uuid, username, props, game_mode, ping, display_name, listed)| {
-                        PlayerListEntryPkt {
+                        packet::PlayerListEntry {
                             player_uuid: uuid.0,
                             username: &username.0,
                             properties: Cow::Borrowed(&props.0),
@@ -311,7 +311,7 @@ fn update_entries(
     );
 
     for (uuid, username, props, game_mode, ping, display_name, listed) in &entries {
-        let mut actions = PlayerListActions::new();
+        let mut actions = packet::PlayerListActions::new();
 
         // Did a change occur that would force us to overwrite the entry? This also adds
         // new entries.
@@ -353,7 +353,7 @@ fn update_entries(
             debug_assert_ne!(u8::from(actions), 0);
         }
 
-        let entry = PlayerListEntryPkt {
+        let entry = packet::PlayerListEntry {
             player_uuid: uuid.0,
             username: &username.0,
             properties: (&props.0).into(),

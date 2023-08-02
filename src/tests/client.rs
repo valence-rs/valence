@@ -4,17 +4,17 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_ecs::world::EntityMut;
 use glam::DVec3;
-use valence_client::movement::FullC2s;
-use valence_client::teleport::{PlayerPositionLookS2c, TeleportConfirmC2s};
 use valence_client::ViewDistance;
 use valence_core::chunk_pos::{ChunkPos, ChunkView};
-use valence_core::protocol::Packet;
 use valence_entity::cow::CowEntityBundle;
 use valence_entity::{Location, Position};
 use valence_instance::chunk::UnloadedChunk;
 use valence_instance::Instance;
-use valence_packet::entity::{EntitiesDestroyS2c, EntitySpawnS2c, MoveRelativeS2c};
-use valence_packet::instance::{ChunkDataS2c, UnloadChunkS2c};
+use valence_packet::packets::play::{
+    ChunkDataS2c, EntitiesDestroyS2c, EntitySpawnS2c, FullC2s, MoveRelativeS2c,
+    PlayerPositionLookS2c, TeleportConfirmC2s, UnloadChunkS2c,
+};
+use valence_packet::protocol::Packet;
 
 use crate::testing::{create_mock_client, scenario_single_client};
 

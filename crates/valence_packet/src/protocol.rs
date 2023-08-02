@@ -4,10 +4,9 @@ pub mod encode;
 use std::io::Write;
 
 use anyhow::Context;
-pub use valence_packet_macros::Packet;
-
-use valence_core::protocol::*;
 use valence_core::protocol::var_int::VarInt;
+use valence_core::protocol::*;
+pub use valence_packet_macros::Packet;
 
 /// Types considered to be Minecraft packets.
 ///

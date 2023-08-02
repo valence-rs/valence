@@ -3,7 +3,7 @@ use std::sync::RwLock;
 
 use bytes::Bytes;
 use time::OffsetDateTime;
-use valence::protocol::decode::PacketFrame;
+use valence::packet::protocol::decode::PacketFrame;
 
 pub struct PacketRegistry {
     packets: RwLock<Vec<Packet>>,

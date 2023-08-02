@@ -4,11 +4,10 @@ use aes::cipher::generic_array::GenericArray;
 use aes::cipher::{BlockDecryptMut, BlockSizeUser, KeyIvInit};
 use anyhow::{bail, ensure, Context};
 use bytes::{Buf, BytesMut};
+use valence_core::protocol::Decode;
 
 use crate::protocol::var_int::{VarInt, VarIntDecodeError};
 use crate::protocol::{Packet, MAX_PACKET_SIZE};
-
-use valence_core::protocol::Decode;
 
 /// The AES block cipher with a 128 bit key, using the CFB-8 mode of
 /// operation.

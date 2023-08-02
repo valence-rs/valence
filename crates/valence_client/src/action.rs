@@ -1,10 +1,8 @@
 use valence_core::block_pos::BlockPos;
 use valence_core::direction::Direction;
 use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::{Decode, Encode};
 use valence_packet::packets::play::player_action_c2s::PlayerAction;
 use valence_packet::packets::play::{PlayerActionC2s, PlayerActionResponseS2c};
-use valence_packet::protocol::Packet;
 
 use super::*;
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};

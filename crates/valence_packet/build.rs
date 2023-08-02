@@ -2,8 +2,7 @@ use heck::ToShoutySnakeCase;
 use proc_macro2::TokenStream;
 use quote::quote;
 use serde::Deserialize;
-use valence_build_utils::ident;
-use valence_build_utils::{rerun_if_changed, write_generated_file};
+use valence_build_utils::{ident, rerun_if_changed, write_generated_file};
 
 #[derive(Deserialize)]
 struct Packet {
@@ -14,19 +13,15 @@ struct Packet {
 }
 
 pub fn main() -> anyhow::Result<()> {
-  rerun_if_changed([
-      "../../extracted/packets.json",
-  ]);
+    rerun_if_changed(["../../extracted/packets.json"]);
 
-  write_generated_file(build()?, "packet_id.rs")?;
+    write_generated_file(build()?, "packet_id.rs")?;
 
-  Ok(())
+    Ok(())
 }
 
-
 pub fn build() -> anyhow::Result<TokenStream> {
-    let packets: Vec<Packet> =
-        serde_json::from_str(include_str!("../../extracted/packets.json"))?;
+    let packets: Vec<Packet> = serde_json::from_str(include_str!("../../extracted/packets.json"))?;
 
     let mut consts = TokenStream::new();
 

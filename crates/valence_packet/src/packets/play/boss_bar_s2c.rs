@@ -1,3 +1,5 @@
+use bevy_ecs::prelude::Component;
+
 use super::*;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
@@ -24,7 +26,7 @@ pub enum BossBarAction<'a> {
 }
 
 /// The color of a boss bar.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Component)]
 pub enum BossBarColor {
     Pink,
     Blue,
@@ -36,7 +38,7 @@ pub enum BossBarColor {
 }
 
 /// The division of a boss bar.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Component)]
 pub enum BossBarDivision {
     NoDivision,
     SixNotches,
@@ -47,7 +49,7 @@ pub enum BossBarDivision {
 
 /// The flags of a boss bar (darken sky, dragon bar, create fog).
 #[bitfield(u8)]
-#[derive(PartialEq, Eq, Encode, Decode)]
+#[derive(PartialEq, Eq, Encode, Decode, Component)]
 pub struct BossBarFlags {
     pub darken_sky: bool,
     pub dragon_bar: bool,

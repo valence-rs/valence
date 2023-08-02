@@ -17,15 +17,15 @@ use rustc_hash::FxHashMap;
 use valence_client::{Client, FlushPacketsSet, SpawnClientsSet};
 use valence_core::ident::Ident;
 use valence_core::item::ItemStack;
-use valence_core::protocol::encode::WritePacket;
 use valence_core::protocol::raw::RawBytes;
 use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::{packet_id, Encode, Packet, PacketSide, PacketState};
+use valence_core::protocol::Encode;
 use valence_core::text::Text;
-use valence_packet::advancement::{
-    AdvancementCriteriaPkt, AdvancementDisplayPkt, AdvancementPkt, AdvancementRequirementsPkt,
-    GenericAdvancementUpdateS2c, SelectAdvancementTabS2c,
+use valence_packet::packets::play::{
+    advancement_update_s2c as packet, AdvancementUpdateS2c, SelectAdvancementTabS2c,
 };
+use valence_packet::protocol::encode::WritePacket;
+use valence_packet::protocol::{packet_id, Packet, PacketSide, PacketState};
 
 pub struct AdvancementPlugin;
 
@@ -56,8 +56,8 @@ impl Plugin for AdvancementPlugin {
             .add_systems(
                 PostUpdate,
                 (
-                    update_advancement_cached_bytes,
-                    send_advancement_update_packet,
+                    update_advancement_cached_bytes.in_set(WriteAdvancementToCacheSet),
+                    send_advancement_update_packet.in_set(WriteAdvancementPacketToClientsSet),
                 ),
             );
     }
@@ -106,7 +106,7 @@ impl<'w, 's> UpdateAdvancementCachedBytesQuery<'w, 's> {
             criteria_query,
         } = self;
 
-        let mut pkt = AdvancementPkt {
+        let mut pkt = packet::Advancement {
             parent_id: None,
             display_data: None,
             criteria: vec![],
@@ -120,7 +120,7 @@ impl<'w, 's> UpdateAdvancementCachedBytesQuery<'w, 's> {
         }
 
         if let Some(a_display) = a_display {
-            pkt.display_data = Some(AdvancementDisplayPkt {
+            pkt.display_data = Some(packet::AdvancementDisplay {
                 title: Cow::Borrowed(&a_display.title),
                 description: Cow::Borrowed(&a_display.description),
                 icon: &a_display.icon,
@@ -147,7 +147,7 @@ impl<'w, 's> UpdateAdvancementCachedBytesQuery<'w, 's> {
                 let c_identifier = criteria_query.get(*requirement)?;
                 requirements_p.push(c_identifier.0.as_str());
             }
-            pkt.requirements.push(AdvancementRequirementsPkt {
+            pkt.requirements.push(packet::AdvancementRequirements {
                 requirement: requirements_p,
             });
         }
@@ -224,7 +224,7 @@ impl<'w, 's, 'a> Encode for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
             reset,
         } = &self.client_update;
 
-        let mut pkt = GenericAdvancementUpdateS2c {
+        let mut pkt = AdvancementUpdateS2c {
             reset: *reset,
             advancement_mapping: vec![],
             identifiers: vec![],
@@ -257,7 +257,7 @@ impl<'w, 's, 'a> Encode for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
             let mut c_progresses_p = vec![];
             for (c, c_progress) in c_progresses {
                 let c_identifier = criteria_query.get(c)?;
-                c_progresses_p.push(AdvancementCriteriaPkt {
+                c_progresses_p.push(packet::AdvancementCriteria {
                     criterion_identifier: c_identifier.0.borrowed(),
                     criterion_progress: c_progress,
                 });

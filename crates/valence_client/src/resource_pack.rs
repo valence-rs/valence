@@ -1,10 +1,10 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use valence_core::text::Text;
-use valence_packet::packets::play::{ResourcePackStatusC2s, ResourcePackSendS2c};
+use valence_packet::packets::play::{ResourcePackSendS2c, ResourcePackStatusC2s};
 
-use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 use super::*;
+use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 
 pub(super) fn build(app: &mut App) {
     app.add_event::<ResourcePackStatusEvent>()
