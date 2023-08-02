@@ -6,6 +6,26 @@ use valence_core::chunk_pos::{ChunkPos, ChunkView};
 
 use crate::bvh::{ChunkBvh, GetChunkPos};
 
+/// A message buffer of global messages (`G`) and local messages (`L`) meant for
+/// consumption by clients. Local messages are those that have some spatial
+/// component to them and implement the [`GetChunkPos`] trait. Local messages
+/// are placed in a bounding volume hierarchy for fast queries via
+/// [`Self::query_local`]. Global messages do not necessarily have a spatial
+/// component and all globals will be visited when using [`Self::iter_global`].
+///
+/// Every message is associated with an arbitrary span of bytes. The meaning of
+/// the bytes is whatever the message needs it to be.
+///
+/// At the end of the tick and before clients have access to the buffer, all
+/// messages are sorted and then deduplicated by concatenating byte spans
+/// together. This is done for a couple of reasons:
+/// - Messages may rely on sorted message order for correctness, like in the
+///   case of entity spawn & despawn messages. Sorting also makes deduplication
+///   easy.
+/// - Deduplication reduces the total number of messages that all clients must
+///   examine. Consider the case of a message such as "send all clients in view
+///   of this chunk position these packet bytes". If two of these messages have
+///   the same chunk position, then they can just be combined together.
 pub struct Messages<G, L> {
     global: Vec<(G, Range<u32>)>,
     local: Vec<(L, Range<u32>)>,
@@ -17,13 +37,14 @@ pub struct Messages<G, L> {
 
 impl<G, L> Messages<G, L>
 where
-    G: Copy + Ord,
-    L: Copy + Ord + GetChunkPos,
+    G: Clone + Ord,
+    L: Clone + Ord + GetChunkPos,
 {
     pub(crate) fn new() -> Self {
         Self::default()
     }
 
+    /// Adds a global message to this message buffer.
     pub(crate) fn send_global<E>(
         &mut self,
         msg: G,
@@ -48,6 +69,7 @@ where
         Ok(())
     }
 
+    /// Adds a local message to this message buffer.
     pub(crate) fn send_local<E>(
         &mut self,
         msg: L,
@@ -72,6 +94,7 @@ where
         Ok(())
     }
 
+    /// Like [`Self::send_global`] but writing bytes cannot fail.
     pub(crate) fn send_global_infallible(&mut self, msg: G, f: impl FnOnce(&mut Vec<u8>)) {
         let _ = self.send_global::<Infallible>(msg, |b| {
             f(b);
@@ -79,6 +102,7 @@ where
         });
     }
 
+    /// Like [`Self::send_local`] but writing bytes cannot fail.
     pub(crate) fn send_local_infallible(&mut self, msg: L, f: impl FnOnce(&mut Vec<u8>)) {
         let _ = self.send_local::<Infallible>(msg, |b| {
             f(b);
@@ -95,13 +119,13 @@ where
 
         self.ready.reserve_exact(self.staging.len());
 
-        fn sort_and_merge<M: Ord + Copy>(
+        fn sort_and_merge<M: Clone + Ord>(
             msgs: &mut Vec<(M, Range<u32>)>,
             staging: &[u8],
             ready: &mut Vec<u8>,
         ) {
             // Sort must be stable.
-            msgs.sort_by_key(|(msg, _)| *msg);
+            msgs.sort_by_key(|(msg, _)| msg.clone());
 
             // Make sure the first element is already copied to "ready".
             if let Some((_, range)) = msgs.first_mut() {
@@ -171,25 +195,35 @@ where
         self.ready.shrink_to_fit();
     }
 
+    /// All message bytes. Use this in conjunction with [`Self::iter_global`]
+    /// and [`Self::query_local`].
     pub fn bytes(&self) -> &[u8] {
         debug_assert!(self.is_ready);
 
         &self.ready
     }
 
+    /// Returns an iterator over all global messages and their span of bytes in
+    /// [`Self::bytes`].
     pub fn iter_global(&self) -> impl Iterator<Item = (G, Range<usize>)> + '_ {
         debug_assert!(self.is_ready);
 
         self.global
             .iter()
-            .map(|(m, r)| (*m, r.start as usize..r.end as usize))
+            .map(|(m, r)| (m.clone(), r.start as usize..r.end as usize))
     }
 
+    /// Takes a visitor function `f` and visits all local messages contained
+    /// within the chunk view `view`. `f` is called with the local
+    /// message and its span of bytes in [`Self::bytes`].
     pub fn query_local(&self, view: ChunkView, mut f: impl FnMut(L, Range<usize>)) {
         debug_assert!(self.is_ready);
 
         self.bvh.query(view, |pair| {
-            f(pair.msg, pair.range.start as usize..pair.range.end as usize)
+            f(
+                pair.msg.clone(),
+                pair.range.start as usize..pair.range.end as usize,
+            )
         });
     }
 }
