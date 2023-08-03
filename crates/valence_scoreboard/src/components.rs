@@ -1,9 +1,11 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use valence_core::text::Text;
 use valence_core::uuid::UniqueId;
+use valence_entity::EntityLayerId;
+use valence_packet::packets::play::scoreboard_objective_update_s2c::ObjectiveRenderType;
 
 /// A string that identifies an objective. There is one scoreboard per
 /// objective.It's generally not safe to modify this after it's been created.
@@ -11,11 +13,11 @@ use valence_core::uuid::UniqueId;
 ///
 /// Directly analogous to an Objective's Name.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Component)]
-pub struct Objective(String);
+pub struct Objective(pub(crate) String);
 
 impl Objective {
-    pub fn new(name: String) -> Self {
-        Self(name)
+    pub fn new(name: impl ToOwned<Owned = String>) -> Self {
+        Self(name.to_owned())
     }
 }
 
@@ -24,8 +26,14 @@ impl Objective {
 #[derive(Debug, Clone, PartialEq, Component)]
 pub struct ObjectiveDisplay(pub Text);
 
-#[derive(Debug, Clone, PartialEq, Eq, Component, Default)]
-pub struct ObjectiveEntities(HashSet<Entity>);
+#[derive(Debug, Clone, Component, Default)]
+pub enum ObjectiveValueType {
+    /// Display the value as a number.
+    #[default]
+    Integer,
+    /// Display the value as hearts.
+    Hearts,
+}
 
 /// A mapping of entity UUIDs to their scores.
 #[derive(Debug, Clone, Component, Default)]
@@ -35,6 +43,7 @@ pub struct ObjectiveScores(HashMap<UniqueId, i32>);
 pub struct ObjectiveBundle {
     pub name: Objective,
     pub display: ObjectiveDisplay,
-    pub entities: ObjectiveEntities,
+    pub render_type: ObjectiveRenderType,
     pub scores: ObjectiveScores,
+    pub layer: EntityLayerId,
 }
