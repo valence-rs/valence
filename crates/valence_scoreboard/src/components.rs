@@ -17,8 +17,8 @@ use valence_packet::packets::play::scoreboard_objective_update_s2c::ObjectiveRen
 pub struct Objective(pub(crate) String);
 
 impl Objective {
-    pub fn new(name: impl ToOwned<Owned = String>) -> Self {
-        Self(name.to_owned())
+    pub fn new(name: impl Into<String>) -> Self {
+        Self(name.into())
     }
 }
 
@@ -39,6 +39,16 @@ pub enum ObjectiveValueType {
 /// A mapping of entity UUIDs to their scores.
 #[derive(Debug, Clone, Component, Default)]
 pub struct ObjectiveScores(HashMap<UniqueId, i32>);
+
+impl ObjectiveScores {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn with_map(map: impl Into<HashMap<UniqueId, i32>>) -> Self {
+        Self(map.into())
+    }
+}
 
 #[derive(Bundle)]
 pub struct ObjectiveBundle {
