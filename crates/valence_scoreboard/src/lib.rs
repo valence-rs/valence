@@ -5,6 +5,7 @@ use tracing::warn;
 
 mod components;
 pub use components::*;
+use valence_client::{Client, VisibleEntityLayers};
 use valence_core::despawn::Despawned;
 use valence_core::text::IntoText;
 use valence_core::uuid::UniqueId;
@@ -24,8 +25,9 @@ impl Plugin for ScoreboardPlugin {
         app.add_systems(
             PostUpdate,
             (create_or_update_objectives, display_objectives),
-        );
-        app.add_systems(PostUpdate, remove_despawned_objectives);
+        )
+        .add_systems(PostUpdate, remove_despawned_objectives)
+        .add_systems(PostUpdate, handle_new_clients);
     }
 }
 
@@ -105,5 +107,35 @@ fn remove_despawned_objectives(
             objective_name: &objective.0,
             mode: ObjectiveMode::Remove,
         });
+    }
+}
+
+fn handle_new_clients(
+    mut clients: Query<(&mut Client, &VisibleEntityLayers), Added<Client>>,
+    objectives: Query<(
+        &Objective,
+        &ObjectiveDisplay,
+        &ObjectiveRenderType,
+        &ScoreboardPosition,
+        &EntityLayerId,
+    )>,
+) {
+    for (objective, display, render_type, position, entity_layer) in objectives.iter() {
+        for (mut client, visible_layers) in clients.iter_mut() {
+            if !visible_layers.0.contains(&entity_layer.0) {
+                continue;
+            }
+            client.write_packet(&ScoreboardObjectiveUpdateS2c {
+                objective_name: &objective.0,
+                mode: ObjectiveMode::Create {
+                    objective_display_name: (&display.0).into_cow_text(),
+                    render_type: *render_type,
+                },
+            });
+            client.write_packet(&ScoreboardDisplayS2c {
+                score_name: &objective.0,
+                position: *position,
+            });
+        }
     }
 }
