@@ -6,8 +6,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use rand::seq::SliceRandom;
 use rand::Rng;
 use valence::prelude::*;
-use valence::protocol::packet::sound::{Sound, SoundCategory};
+use valence::sound::{Sound, SoundCategory};
 use valence_client::message::SendMessage;
+use valence_client::spawn::IsFlat;
 
 const START_POS: BlockPos = BlockPos::new(0, 100, 0);
 const VIEW_DIST: u8 = 10;
@@ -52,7 +53,7 @@ fn init_clients(
         (
             Entity,
             &mut Client,
-            &mut Location,
+            &mut VisibleChunkLayer,
             &mut IsFlat,
             &mut GameMode,
         ),
@@ -63,8 +64,10 @@ fn init_clients(
     biomes: Res<BiomeRegistry>,
     mut commands: Commands,
 ) {
-    for (entity, mut client, mut loc, mut is_flat, mut game_mode) in clients.iter_mut() {
-        loc.0 = entity;
+    for (entity, mut client, mut visible_chunk_layer, mut is_flat, mut game_mode) in
+        clients.iter_mut()
+    {
+        visible_chunk_layer.0 = entity;
         is_flat.0 = true;
         *game_mode = GameMode::Adventure;
 
@@ -78,9 +81,9 @@ fn init_clients(
             last_block_timestamp: 0,
         };
 
-        let instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
+        let layer = ChunkLayer::new(ident!("overworld"), &dimensions, &biomes, &server);
 
-        commands.entity(entity).insert((state, instance));
+        commands.entity(entity).insert((state, layer));
     }
 }
 
@@ -90,10 +93,10 @@ fn reset_clients(
         &mut Position,
         &mut Look,
         &mut GameState,
-        &mut Instance,
+        &mut ChunkLayer,
     )>,
 ) {
-    for (mut client, mut pos, mut look, mut state, mut instance) in clients.iter_mut() {
+    for (mut client, mut pos, mut look, mut state, mut layer) in clients.iter_mut() {
         let out_of_bounds = (pos.0.y as i32) < START_POS.y - 32;
 
         if out_of_bounds || state.is_added() {
@@ -111,21 +114,21 @@ fn reset_clients(
 
             // Init chunks.
             for pos in ChunkView::new(ChunkPos::from_block_pos(START_POS), VIEW_DIST).iter() {
-                instance.insert_chunk(pos, UnloadedChunk::new());
+                layer.insert_chunk(pos, UnloadedChunk::new());
             }
 
             state.score = 0;
             state.combo = 0;
 
             for block in &state.blocks {
-                instance.set_block(*block, BlockState::AIR);
+                layer.set_block(*block, BlockState::AIR);
             }
             state.blocks.clear();
             state.blocks.push_back(START_POS);
-            instance.set_block(START_POS, BlockState::STONE);
+            layer.set_block(START_POS, BlockState::STONE);
 
             for _ in 0..10 {
-                generate_next_block(&mut state, &mut instance, false);
+                generate_next_block(&mut state, &mut layer, false);
             }
 
             pos.set([
@@ -139,8 +142,8 @@ fn reset_clients(
     }
 }
 
-fn manage_blocks(mut clients: Query<(&mut Client, &Position, &mut GameState, &mut Instance)>) {
-    for (mut client, pos, mut state, mut instance) in clients.iter_mut() {
+fn manage_blocks(mut clients: Query<(&mut Client, &Position, &mut GameState, &mut ChunkLayer)>) {
+    for (mut client, pos, mut state, mut layer) in clients.iter_mut() {
         let pos_under_player = BlockPos::new(
             (pos.0.x - 0.5).round() as i32,
             pos.0.y as i32 - 1,
@@ -168,7 +171,7 @@ fn manage_blocks(mut clients: Query<(&mut Client, &Position, &mut GameState, &mu
                 }
 
                 for _ in 0..index {
-                    generate_next_block(&mut state, &mut instance, true)
+                    generate_next_block(&mut state, &mut layer, true)
                 }
 
                 let pitch = 0.9 + ((state.combo as f32) - 1.0) * 0.05;
@@ -187,27 +190,27 @@ fn manage_blocks(mut clients: Query<(&mut Client, &Position, &mut GameState, &mu
     }
 }
 
-fn manage_chunks(mut clients: Query<(&Position, &OldPosition, &mut Instance), With<Client>>) {
-    for (pos, old_pos, mut instance) in &mut clients {
+fn manage_chunks(mut clients: Query<(&Position, &OldPosition, &mut ChunkLayer), With<Client>>) {
+    for (pos, old_pos, mut layer) in &mut clients {
         let old_view = ChunkView::new(old_pos.chunk_pos(), VIEW_DIST);
-        let view = ChunkView::new(pos.chunk_pos(), VIEW_DIST);
+        let view = ChunkView::new(pos.to_chunk_pos(), VIEW_DIST);
 
         if old_view != view {
             for pos in old_view.diff(view) {
-                instance.remove_chunk(pos);
+                layer.remove_chunk(pos);
             }
 
             for pos in view.diff(old_view) {
-                instance.chunk_entry(pos).or_default();
+                layer.chunk_entry(pos).or_default();
             }
         }
     }
 }
 
-fn generate_next_block(state: &mut GameState, instance: &mut Instance, in_game: bool) {
+fn generate_next_block(state: &mut GameState, layer: &mut ChunkLayer, in_game: bool) {
     if in_game {
         let removed_block = state.blocks.pop_front().unwrap();
-        instance.set_block(removed_block, BlockState::AIR);
+        layer.set_block(removed_block, BlockState::AIR);
 
         state.score += 1
     }
@@ -223,7 +226,7 @@ fn generate_next_block(state: &mut GameState, instance: &mut Instance, in_game: 
 
     let mut rng = rand::thread_rng();
 
-    instance.set_block(block_pos, *BLOCK_TYPES.choose(&mut rng).unwrap());
+    layer.set_block(block_pos, *BLOCK_TYPES.choose(&mut rng).unwrap());
     state.blocks.push_back(block_pos);
 
     // Combo System

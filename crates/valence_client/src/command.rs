@@ -1,9 +1,9 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 use valence_entity::entity::Flags;
 use valence_entity::{entity, Pose};
+pub use valence_packet::packets::play::client_command_c2s::ClientCommand;
+use valence_packet::packets::play::ClientCommandC2s;
 
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 
@@ -140,25 +140,4 @@ fn handle_client_command(
             }
         }
     }
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::CLIENT_COMMAND_C2S)]
-pub struct ClientCommandC2s {
-    pub entity_id: VarInt,
-    pub action: ClientCommand,
-    pub jump_boost: VarInt,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
-pub enum ClientCommand {
-    StartSneaking,
-    StopSneaking,
-    LeaveBed,
-    StartSprinting,
-    StopSprinting,
-    StartJumpWithHorse,
-    StopJumpWithHorse,
-    OpenHorseInventory,
-    StartFlyingWithElytra,
 }

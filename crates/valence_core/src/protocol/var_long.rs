@@ -110,6 +110,12 @@ impl Decode<'_> for VarLong {
     }
 }
 
+impl From<i64> for VarLong {
+    fn from(value: i64) -> Self {
+        Self(value)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use rand::{thread_rng, Rng};

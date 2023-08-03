@@ -1,0 +1,24 @@
+[package]
+name = "valence_layer"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+arrayvec.workspace = true
+bevy_app.workspace = true
+bevy_ecs.workspace = true
+glam.workspace = true
+num-integer.workspace = true
+parking_lot.workspace = true
+rand.workspace = true
+rustc-hash.workspace = true
+valence_biome.workspace = true
+valence_block.workspace = true
+valence_core.workspace = true
+valence_dimension.workspace = true
+valence_entity.workspace = true
+valence_nbt.workspace = true
+valence_registry.workspace = true
+valence_packet.workspace = true
+tracing.workspace = true

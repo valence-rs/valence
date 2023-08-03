@@ -25,22 +25,22 @@ use std::ops::Range;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use packet::{
-    ClickMode, ClickSlotC2s, CloseHandledScreenC2s, CloseScreenS2c, CreativeInventoryActionC2s,
-    InventoryS2c, OpenScreenS2c, ScreenHandlerSlotUpdateS2c, SlotChange, UpdateSelectedSlotC2s,
-    WindowType,
-};
 use tracing::{debug, warn};
 use valence_client::event_loop::{EventLoopPreUpdate, PacketEvent};
-use valence_client::packet::{PlayerAction, PlayerActionC2s};
 use valence_client::{Client, FlushPacketsSet, SpawnClientsSet};
 use valence_core::game_mode::GameMode;
-use valence_core::item::ItemStack;
-use valence_core::protocol::encode::WritePacket;
+use valence_core::item::{ItemKind, ItemStack};
 use valence_core::protocol::var_int::VarInt;
 use valence_core::text::{IntoText, Text};
+pub use valence_packet::packets::play::click_slot_c2s::{ClickMode, SlotChange};
+pub use valence_packet::packets::play::open_screen_s2c::WindowType;
+pub use valence_packet::packets::play::player_action_c2s::PlayerAction;
+use valence_packet::packets::play::{
+    ClickSlotC2s, CloseHandledScreenC2s, CloseScreenS2c, CreativeInventoryActionC2s, InventoryS2c,
+    OpenScreenS2c, PlayerActionC2s, ScreenHandlerSlotUpdateS2c, UpdateSelectedSlotC2s,
+};
+use valence_packet::protocol::encode::WritePacket;
 
-pub mod packet;
 mod validate;
 
 pub struct InventoryPlugin;
@@ -316,8 +316,62 @@ impl Inventory {
     /// inv.set_slot(3, ItemStack::new(ItemKind::IronIngot, 1, None));
     /// assert_eq!(inv.first_empty_slot(), Some(1));
     /// ```
+    #[inline]
     pub fn first_empty_slot(&self) -> Option<u16> {
         self.first_empty_slot_in(0..self.slot_count())
+    }
+
+    /// Returns the first slot with the given [`ItemKind`] in the inventory
+    /// where `count() < stack_max`, or `None` if there are no empty slots.
+    /// ```
+    /// # use valence_inventory::*;
+    /// # use valence_core::item::*;
+    /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
+    /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
+    /// inv.set_slot(2, ItemStack::new(ItemKind::GoldIngot, 64, None));
+    /// inv.set_slot(3, ItemStack::new(ItemKind::IronIngot, 1, None));
+    /// inv.set_slot(4, ItemStack::new(ItemKind::GoldIngot, 1, None));
+    /// assert_eq!(
+    ///     inv.first_slot_with_item_in(ItemKind::GoldIngot, 64, 0..5),
+    ///     Some(4)
+    /// );
+    /// ```
+    pub fn first_slot_with_item_in(
+        &self,
+        item: ItemKind,
+        stack_max: u8,
+        mut range: Range<u16>,
+    ) -> Option<u16> {
+        assert!(
+            (0..=self.slot_count()).contains(&range.start)
+                && (0..=self.slot_count()).contains(&range.end),
+            "slot range out of range"
+        );
+        assert!(stack_max > 0, "stack_max must be greater than 0");
+
+        range.find(|&idx| {
+            self.slots[idx as usize]
+                .as_ref()
+                .map(|stack| stack.item == item && stack.count() < stack_max)
+                .unwrap_or(false)
+        })
+    }
+
+    /// Returns the first slot with the given [`ItemKind`] in the inventory
+    /// where `count() < stack_max`, or `None` if there are no empty slots.
+    /// ```
+    /// # use valence_inventory::*;
+    /// # use valence_core::item::*;
+    /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
+    /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
+    /// inv.set_slot(2, ItemStack::new(ItemKind::GoldIngot, 64, None));
+    /// inv.set_slot(3, ItemStack::new(ItemKind::IronIngot, 1, None));
+    /// inv.set_slot(4, ItemStack::new(ItemKind::GoldIngot, 1, None));
+    /// assert_eq!(inv.first_slot_with_item(ItemKind::GoldIngot, 64), Some(4));
+    /// ```
+    #[inline]
+    pub fn first_slot_with_item(&self, item: ItemKind, stack_max: u8) -> Option<u16> {
+        self.first_slot_with_item_in(item, stack_max, 0..self.slot_count())
     }
 }
 
@@ -1168,7 +1222,7 @@ fn handle_creative_inventory_action(
 #[derive(Event, Clone, Debug)]
 pub struct UpdateSelectedSlotEvent {
     pub client: Entity,
-    pub slot: i16,
+    pub slot: u8,
 }
 
 fn handle_update_selected_slot(
@@ -1179,7 +1233,7 @@ fn handle_update_selected_slot(
     for packet in packets.iter() {
         if let Some(pkt) = packet.decode::<UpdateSelectedSlotC2s>() {
             if let Ok(mut held) = clients.get_mut(packet.client) {
-                if pkt.slot < 0 || pkt.slot > 8 {
+                if pkt.slot > 8 {
                     // The client is trying to interact with a slot that does not exist, ignore.
                     continue;
                 }

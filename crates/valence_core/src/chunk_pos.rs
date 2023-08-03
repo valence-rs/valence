@@ -20,18 +20,12 @@ impl ChunkPos {
 
     /// Constructs a chunk position from a position in world space. Only the `x`
     /// and `z` components are used.
-    pub fn from_dvec3(pos: DVec3) -> Self {
-        Self::at(pos.x, pos.z)
+    pub fn from_pos(pos: DVec3) -> Self {
+        Self::new((pos.x / 16.0).floor() as i32, (pos.z / 16.0).floor() as i32)
     }
 
-    pub fn from_block_pos(pos: BlockPos) -> Self {
+    pub const fn from_block_pos(pos: BlockPos) -> Self {
         Self::new(pos.x.div_euclid(16), pos.z.div_euclid(16))
-    }
-
-    /// Takes an X and Z position in world space and returns the chunk position
-    /// containing the point.
-    pub fn at(x: f64, z: f64) -> Self {
-        Self::new((x / 16.0).floor() as i32, (z / 16.0).floor() as i32)
     }
 
     pub const fn distance_squared(self, other: Self) -> u64 {
@@ -105,8 +99,7 @@ impl ChunkView {
     }
 
     /// Returns an iterator over all the chunk positions in this view. Positions
-    /// are sorted by the distance to [`pos`](Self::pos), with closer positions
-    /// appearing first.
+    /// are sorted by the distance to [`pos`](Self::pos) in ascending order.
     pub fn iter(self) -> impl DoubleEndedIterator<Item = ChunkPos> + ExactSizeIterator + Clone {
         CHUNK_VIEW_LUT[self.dist as usize]
             .iter()
@@ -118,10 +111,34 @@ impl ChunkView {
 
     /// Returns an iterator over all the chunk positions in `self`, excluding
     /// the positions that overlap with `other`. Positions are sorted by the
-    /// distance to [`pos`](Self::pos), with closer positions
-    /// appearing first.
+    /// distance to [`pos`](Self::pos) in ascending order.
     pub fn diff(self, other: Self) -> impl DoubleEndedIterator<Item = ChunkPos> + Clone {
         self.iter().filter(move |&p| !other.contains(p))
+    }
+
+    /// Returns a `(min, max)` tuple describing the tight axis-aligned bounding
+    /// box for this view. All chunk positions in the view are contained in the
+    /// bounding box.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use valence_core::chunk_pos::{ChunkPos, ChunkView};
+    ///
+    /// let view = ChunkView::new(ChunkPos::new(5, -4), 16);
+    /// let (min, max) = view.bounding_box();
+    ///
+    /// for pos in view.iter() {
+    ///     assert!(pos.x >= min.x && pos.x <= max.x && pos.z >= min.z && pos.z <= max.z);
+    /// }
+    /// ```
+    pub fn bounding_box(self) -> (ChunkPos, ChunkPos) {
+        let r = self.dist as i32 + EXTRA_VIEW_RADIUS;
+
+        (
+            ChunkPos::new(self.pos.x - r, self.pos.z - r),
+            ChunkPos::new(self.pos.x + r, self.pos.z + r),
+        )
     }
 }
 

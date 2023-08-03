@@ -21,6 +21,7 @@ default = [
     "player_list",
     "world_border",
     "schem",
+    "weather",
 ]
 advancement = ["dep:valence_advancement"]
 anvil = ["dep:valence_anvil"]
@@ -31,6 +32,7 @@ network = ["dep:valence_network"]
 player_list = ["dep:valence_player_list"]
 world_border = ["dep:valence_world_border"]
 schem = ["dep:valence_schem"]
+weather = ["dep:valence_weather"]
 
 [dependencies]
 anyhow.workspace = true
@@ -50,7 +52,7 @@ valence_client.workspace = true
 valence_core.workspace = true
 valence_dimension.workspace = true
 valence_entity.workspace = true
-valence_instance.workspace = true
+valence_layer.workspace = true
 valence_inventory = { workspace = true, optional = true }
 valence_nbt.workspace = true
 valence_network = { workspace = true, optional = true }
@@ -58,6 +60,8 @@ valence_player_list = { workspace = true, optional = true }
 valence_registry.workspace = true
 valence_world_border = { workspace = true, optional = true }
 valence_schem = { workspace = true, optional = true }
+valence_packet.workspace = true
+valence_weather = { workspace = true, optional = true }
 
 [dev-dependencies]
 anyhow.workspace = true
@@ -106,7 +110,7 @@ bevy_app = { version = "0.11", default-features = false }
 bevy_ecs = { version = "0.11", default-features = false }
 bevy_hierarchy = { version = "0.11", default-features = false }
 bevy_log = { version = "0.11" }
-bevy_mod_debugdump = { version =  "0.8.0", default-features = false }
+bevy_mod_debugdump = { version = "0.8.0", default-features = false }
 bevy_utils = { version = "0.11" }
 bitfield-struct = "0.3.1"
 byteorder = "1.4.3"
@@ -171,10 +175,11 @@ valence_block.path = "crates/valence_block"
 valence_build_utils.path = "crates/valence_build_utils"
 valence_client.path = "crates/valence_client"
 valence_core_macros.path = "crates/valence_core_macros"
+valence_packet_macros.path = "crates/valence_packet_macros"
 valence_core.path = "crates/valence_core"
 valence_dimension.path = "crates/valence_dimension"
 valence_entity.path = "crates/valence_entity"
-valence_instance.path = "crates/valence_instance"
+valence_layer.path = "crates/valence_layer"
 valence_inventory.path = "crates/valence_inventory"
 valence_nbt = { path = "crates/valence_nbt", features = ["uuid"] }
 valence_network.path = "crates/valence_network"
@@ -182,5 +187,7 @@ valence_player_list.path = "crates/valence_player_list"
 valence_registry.path = "crates/valence_registry"
 valence_world_border.path = "crates/valence_world_border"
 valence_boss_bar.path = "crates/valence_boss_bar"
+valence_packet.path = "crates/valence_packet"
+valence_weather.path = "crates/valence_weather"
 valence.path = "."
 zip = "0.6.3"

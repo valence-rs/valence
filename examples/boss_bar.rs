@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use rand::seq::SliceRandom;
 use valence::prelude::*;
 use valence_boss_bar::{
@@ -25,28 +27,33 @@ fn setup(
     dimensions: Res<DimensionTypeRegistry>,
     biomes: Res<BiomeRegistry>,
 ) {
-    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let mut layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {
-            instance.insert_chunk([x, z], UnloadedChunk::new());
+            layer.chunk.insert_chunk([x, z], UnloadedChunk::new());
         }
     }
 
     for z in -25..25 {
         for x in -25..25 {
-            instance.set_block([x, SPAWN_Y, z], BlockState::GRASS_BLOCK);
+            layer
+                .chunk
+                .set_block([x, SPAWN_Y, z], BlockState::GRASS_BLOCK);
         }
     }
 
-    commands.spawn(BossBarBundle::new(
-        Text::text("Boss bar"),
-        BossBarColor::Blue,
-        BossBarDivision::TenNotches,
-        BossBarFlags::new(),
-    ));
+    commands.spawn(layer);
 
-    commands.spawn(instance);
+    commands.spawn(BossBarBundle {
+        title: BossBarTitle("Boss Bar".into_text()),
+        health: BossBarHealth(1.0),
+        style: BossBarStyle {
+            color: BossBarColor::Blue,
+            division: BossBarDivision::TenNotches,
+        },
+        ..Default::default()
+    });
 }
 
 fn init_clients(
@@ -54,18 +61,34 @@ fn init_clients(
         (
             Entity,
             &mut Client,
-            &mut Location,
+            &mut EntityLayerId,
+            &mut VisibleChunkLayer,
+            &mut VisibleEntityLayers,
             &mut Position,
             &mut GameMode,
         ),
         Added<Client>,
     >,
     mut boss_bar_viewers: Query<&mut BossBarViewers>,
-    instances: Query<Entity, With<Instance>>,
+    layers: Query<Entity, With<ChunkLayer>>,
 ) {
     let mut boss_bar_viewers = boss_bar_viewers.single_mut();
-    for (entity, mut client, mut loc, mut pos, mut game_mode) in &mut clients {
-        loc.0 = instances.single();
+
+    for (
+        entity,
+        mut client,
+        mut layer_id,
+        mut visible_chunk_layer,
+        mut visible_entity_layers,
+        mut pos,
+        mut game_mode,
+    ) in &mut clients
+    {
+        let layer = layers.single();
+
+        layer_id.0 = layer;
+        visible_chunk_layer.0 = layer;
+        visible_entity_layers.0.insert(layer);
         pos.set([0.5, SPAWN_Y as f64 + 1.0, 0.5]);
         *game_mode = GameMode::Creative;
 

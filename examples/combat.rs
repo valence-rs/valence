@@ -2,6 +2,7 @@
 
 use bevy_ecs::query::WorldQuery;
 use glam::Vec3Swizzles;
+use rand::Rng;
 use valence::entity::EntityStatuses;
 use valence::prelude::*;
 
@@ -38,13 +39,15 @@ fn setup(
     dimensions: Res<DimensionTypeRegistry>,
     biomes: Res<BiomeRegistry>,
 ) {
-    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let mut layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {
-            instance.insert_chunk([x, z], UnloadedChunk::new());
+            layer.chunk.insert_chunk([x, z], UnloadedChunk::new());
         }
     }
+
+    let mut rng = rand::thread_rng();
 
     // Create circular arena.
     for z in -ARENA_RADIUS..ARENA_RADIUS {
@@ -55,34 +58,49 @@ fn setup(
                 continue;
             }
 
-            let block = if rand::random::<f64>() < dist {
+            let block = if rng.gen::<f64>() < dist {
                 BlockState::STONE
             } else {
                 BlockState::DEEPSLATE
             };
 
             for y in 0..SPAWN_Y {
-                instance.set_block([x, y, z], block);
+                layer.chunk.set_block([x, y, z], block);
             }
         }
     }
 
-    commands.spawn(instance);
+    commands.spawn(layer);
 }
 
 fn init_clients(
-    mut clients: Query<(Entity, &mut Location, &mut Position), Added<Client>>,
-    instances: Query<Entity, With<Instance>>,
-    mut commands: Commands,
+    mut clients: Query<
+        (
+            &mut EntityLayerId,
+            &mut VisibleChunkLayer,
+            &mut VisibleEntityLayers,
+            &mut Position,
+            &mut GameMode,
+        ),
+        Added<Client>,
+    >,
+    layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
 ) {
-    for (entity, mut loc, mut pos) in &mut clients {
-        loc.0 = instances.single();
-        pos.set([0.5, SPAWN_Y as f64, 0.5]);
+    for (
+        mut layer_id,
+        mut visible_chunk_layer,
+        mut visible_entity_layers,
+        mut pos,
+        mut game_mode,
+    ) in &mut clients
+    {
+        let layer = layers.single();
 
-        commands.entity(entity).insert((CombatState {
-            last_attacked_tick: 0,
-            has_bonus_knockback: false,
-        },));
+        layer_id.0 = layer;
+        visible_chunk_layer.0 = layer;
+        visible_entity_layers.0.insert(layer);
+        pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
+        *game_mode = GameMode::Creative;
     }
 }
 

@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use valence_core::protocol::{packet_id, Decode, Encode, Packet};
+use valence_packet::packets::play::{KeepAliveC2s, KeepAliveS2c};
 
 use super::*;
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
@@ -79,16 +79,16 @@ fn handle_keepalive_response(
 ) {
     for packet in packets.iter() {
         if let Some(pkt) = packet.decode::<KeepAliveC2s>() {
-            if let Ok((client, mut state, mut ping)) = clients.get_mut(packet.client) {
+            if let Ok((entity, mut state, mut ping)) = clients.get_mut(packet.client) {
                 if state.got_keepalive {
-                    warn!("unexpected keepalive from client {client:?}");
-                    commands.entity(client).remove::<Client>();
+                    warn!("unexpected keepalive from client {entity:?}");
+                    commands.entity(entity).remove::<Client>();
                 } else if pkt.id != state.last_keepalive_id {
                     warn!(
-                        "keepalive IDs don't match for client {client:?} (expected {}, got {})",
+                        "keepalive IDs don't match for client {entity:?} (expected {}, got {})",
                         state.last_keepalive_id, pkt.id,
                     );
-                    commands.entity(client).remove::<Client>();
+                    commands.entity(entity).remove::<Client>();
                 } else {
                     state.got_keepalive = true;
                     ping.0 = state.last_send.elapsed().as_millis() as i32;
@@ -96,16 +96,4 @@ fn handle_keepalive_response(
             }
         }
     }
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::KEEP_ALIVE_C2S)]
-pub struct KeepAliveC2s {
-    pub id: u64,
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::KEEP_ALIVE_S2C)]
-pub struct KeepAliveS2c {
-    pub id: u64,
 }

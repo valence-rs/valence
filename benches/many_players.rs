@@ -7,22 +7,28 @@ use rand::Rng;
 use valence::testing::create_mock_client;
 use valence::DefaultPlugins;
 use valence_biome::BiomeRegistry;
-use valence_client::hand_swing::HandSwingC2s;
 use valence_client::keepalive::KeepaliveSettings;
-use valence_client::movement::FullC2s;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::{ident, CoreSettings, Server};
 use valence_dimension::DimensionTypeRegistry;
 use valence_entity::Position;
-use valence_instance::chunk::UnloadedChunk;
-use valence_instance::Instance;
+use valence_layer::chunk::UnloadedChunk;
+use valence_layer::LayerBundle;
 use valence_network::NetworkPlugin;
-
-const CLIENT_COUNT: usize = 3000;
-const VIEW_DIST: u8 = 20;
-const INST_SIZE: i32 = 16;
+use valence_packet::packets::play::{FullC2s, HandSwingC2s};
 
 pub fn many_players(c: &mut Criterion) {
+    run_many_players(c, "many_players", 3000, 16, 16);
+    run_many_players(c, "many_players_spread_out", 3000, 8, 200);
+}
+
+fn run_many_players(
+    c: &mut Criterion,
+    func_name: &str,
+    client_count: usize,
+    view_dist: u8,
+    world_size: i32,
+) {
     let mut app = App::new();
 
     app.insert_resource(CoreSettings {
@@ -38,33 +44,37 @@ pub fn many_players(c: &mut Criterion) {
 
     app.update(); // Initialize plugins.
 
-    let mut inst = Instance::new(
+    let mut layer = LayerBundle::new(
         ident!("overworld"),
         app.world.resource::<DimensionTypeRegistry>(),
         app.world.resource::<BiomeRegistry>(),
         app.world.resource::<Server>(),
     );
 
-    for z in -INST_SIZE..INST_SIZE {
-        for x in -INST_SIZE..INST_SIZE {
-            inst.insert_chunk(ChunkPos::new(x, z), UnloadedChunk::new());
+    for z in -world_size..world_size {
+        for x in -world_size..world_size {
+            layer
+                .chunk
+                .insert_chunk(ChunkPos::new(x, z), UnloadedChunk::new());
         }
     }
 
-    let inst_ent = app.world.spawn(inst).id();
+    let layer = app.world.spawn(layer).id();
 
     let mut clients = vec![];
 
     // Spawn a bunch of clients in at random initial positions in the instance.
-    for i in 0..CLIENT_COUNT {
+    for i in 0..client_count {
         let (mut bundle, helper) = create_mock_client(format!("client_{i}"));
 
-        bundle.player.location.0 = inst_ent;
-        bundle.view_distance.set(VIEW_DIST);
+        bundle.visible_chunk_layer.0 = layer;
+        bundle.visible_entity_layers.0.insert(layer);
+        bundle.player.layer.0 = layer;
+        bundle.view_distance.set(view_dist);
 
         let mut rng = rand::thread_rng();
-        let x = rng.gen_range(-INST_SIZE as f64 * 16.0..=INST_SIZE as f64 * 16.0);
-        let z = rng.gen_range(-INST_SIZE as f64 * 16.0..=INST_SIZE as f64 * 16.0);
+        let x = rng.gen_range(-world_size as f64 * 16.0..=world_size as f64 * 16.0);
+        let z = rng.gen_range(-world_size as f64 * 16.0..=world_size as f64 * 16.0);
 
         bundle.player.position.set(DVec3::new(x, 64.0, z));
 
@@ -83,7 +93,7 @@ pub fn many_players(c: &mut Criterion) {
 
     app.update();
 
-    c.bench_function("many_players", |b| {
+    c.bench_function(func_name, |b| {
         b.iter(|| {
             let mut rng = rand::thread_rng();
 
@@ -92,7 +102,7 @@ pub fn many_players(c: &mut Criterion) {
             for (id, helper) in &mut clients {
                 let pos = query.get(&app.world, *id).unwrap().get();
 
-                let offset = DVec3::new(rng.gen_range(-2.0..=2.0), 0.0, rng.gen_range(-2.0..=2.0));
+                let offset = DVec3::new(rng.gen_range(-1.0..=1.0), 0.0, rng.gen_range(-1.0..=1.0));
 
                 helper.send(&FullC2s {
                     position: pos + offset,

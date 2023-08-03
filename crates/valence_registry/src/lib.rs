@@ -91,6 +91,10 @@ impl<I: RegistryIdx, V> Registry<I, V> {
         self.items.shift_remove(name.as_str())
     }
 
+    pub fn clear(&mut self) {
+        self.items.clear();
+    }
+
     pub fn get(&self, name: Ident<&str>) -> Option<&V> {
         self.items.get(name.as_str())
     }

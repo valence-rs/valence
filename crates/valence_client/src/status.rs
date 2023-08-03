@@ -1,6 +1,6 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use valence_core::protocol::{packet_id, Decode, Encode, Packet};
+use valence_packet::packets::play::ClientStatusC2s;
 
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 
@@ -37,11 +37,4 @@ fn handle_status(
             }
         }
     }
-}
-
-#[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::CLIENT_STATUS_C2S)]
-pub enum ClientStatusC2s {
-    PerformRespawn,
-    RequestStats,
 }

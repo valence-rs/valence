@@ -3,17 +3,14 @@ use std::hint::black_box;
 
 use criterion::Criterion;
 use valence::nbt::{compound, List};
+use valence::packet::packets::play::{ChunkDataS2c, EntitySpawnS2c, PlayerListHeaderS2c};
+use valence::packet::protocol::decode::PacketDecoder;
+use valence::packet::protocol::encode::{PacketEncoder, PacketWriter, WritePacket};
 use valence::prelude::*;
 use valence::protocol::array::LengthPrefixedArray;
 use valence::protocol::byte_angle::ByteAngle;
-use valence::protocol::decode::PacketDecoder;
-use valence::protocol::encode::PacketEncoder;
 use valence::protocol::var_int::VarInt;
 use valence::text::IntoText;
-use valence_core::protocol::encode::{PacketWriter, WritePacket};
-use valence_entity::packet::EntitySpawnS2c;
-use valence_instance::packet::ChunkDataS2c;
-use valence_player_list::packet::PlayerListHeaderS2c;
 
 pub fn packet(c: &mut Criterion) {
     let mut group = c.benchmark_group("packet");

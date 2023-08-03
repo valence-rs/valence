@@ -6,7 +6,7 @@ repository = "https://github.com/valence-rs/valence/tree/main/crates/valence_nbt
 readme = "README.md"
 license.workspace = true
 keywords = ["nbt", "minecraft", "serialization"]
-version = "0.5.0"
+version = "0.7.0"
 edition.workspace = true
 
 [features]

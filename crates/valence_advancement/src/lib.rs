@@ -2,7 +2,6 @@
 #![allow(clippy::type_complexity)]
 
 pub mod event;
-pub mod packet;
 
 use std::borrow::Cow;
 use std::io::Write;
@@ -14,16 +13,17 @@ use bevy_ecs::system::SystemParam;
 pub use bevy_hierarchy;
 use bevy_hierarchy::{Children, HierarchyPlugin, Parent};
 use event::{handle_advancement_tab_change, AdvancementTabChangeEvent};
-use packet::SelectAdvancementTabS2c;
 use rustc_hash::FxHashMap;
 use valence_client::{Client, FlushPacketsSet, SpawnClientsSet};
 use valence_core::ident::Ident;
 use valence_core::item::ItemStack;
-use valence_core::protocol::encode::WritePacket;
 use valence_core::protocol::raw::RawBytes;
 use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::{packet_id, Encode, Packet, PacketSide, PacketState};
+use valence_core::protocol::Encode;
 use valence_core::text::Text;
+use valence_packet::packets::play::{advancement_update_s2c as packet, SelectAdvancementTabS2c};
+use valence_packet::protocol::encode::WritePacket;
+use valence_packet::protocol::{packet_id, Packet, PacketSide, PacketState};
 
 pub struct AdvancementPlugin;
 
@@ -54,8 +54,8 @@ impl Plugin for AdvancementPlugin {
             .add_systems(
                 PostUpdate,
                 (
-                    update_advancement_cached_bytes,
-                    send_advancement_update_packet,
+                    update_advancement_cached_bytes.in_set(WriteAdvancementToCacheSet),
+                    send_advancement_update_packet.in_set(WriteAdvancementPacketToClientsSet),
                 ),
             );
     }

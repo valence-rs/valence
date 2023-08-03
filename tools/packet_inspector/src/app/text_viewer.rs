@@ -1,42 +1,13 @@
 use super::{SharedState, Tab, View};
 
 mod utils {
-    use packet_inspector::Packet as ProxyPacket;
-    use packet_inspector::{PacketSide, PacketState};
-    use valence::protocol::{Decode, Packet};
-
-    use valence::advancement::packet::*;
-    use valence::boss_bar::packet::*;
-    use valence::client::action::*;
-    use valence::client::command::*;
-    use valence::client::custom_payload::*;
-    use valence::client::hand_swing::*;
-    use valence::client::interact_block::*;
-    use valence::client::interact_entity::*;
-    use valence::client::interact_item::*;
-    use valence::client::keepalive::*;
-    use valence::client::movement::*;
-    use valence::client::packet::structure_block::*;
-    use valence::client::packet::*;
-    use valence::client::resource_pack::*;
-    use valence::client::settings::*;
-    use valence::client::status::*;
-    use valence::client::teleport::*;
-    use valence::client::title::*;
-    use valence::entity::packet::*;
-    use valence::instance::packet::*;
-    use valence::inventory::packet::synchronize_recipes::*;
-    use valence::inventory::packet::*;
-    use valence::network::packet::*;
-    use valence::particle::*;
-    use valence::player_list::packet::*;
-    use valence::protocol::packet::chat::*;
-    use valence::protocol::packet::command::*;
-    use valence::protocol::packet::map::*;
-    use valence::protocol::packet::scoreboard::*;
-    use valence::protocol::packet::sound::*;
-    use valence::registry::tags::*;
-    use valence::world_border::packet::*;
+    use packet_inspector::{Packet as ProxyPacket, PacketSide, PacketState};
+    use valence::packet::packets::play::*;
+    use valence::packet::packets::status::*;
+    use valence::packet::packets::login::*;
+    use valence::packet::packets::handshaking::*;
+    use valence::packet::protocol::Packet;
+    use valence::protocol::Decode;
 
     include!(concat!(env!("OUT_DIR"), "/packet_to_string.rs"));
 }

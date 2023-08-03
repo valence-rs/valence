@@ -32,7 +32,7 @@ rand.workspace = true
 
 [dev-dependencies]
 rand.workspace = true
-valence_core = { workspace = true, features = ["compression"] }
+# valence_core = { workspace = true, features = ["compression"] }
 
 [build-dependencies]
 anyhow.workspace = true

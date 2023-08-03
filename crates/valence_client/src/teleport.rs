@@ -1,16 +1,16 @@
-use bitfield_struct::bitfield;
 use glam::DVec3;
-use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::{packet_id, Decode, Encode, Packet};
+use valence_packet::packets::play::player_position_look_s2c::PlayerPositionLookFlags;
+use valence_packet::packets::play::{PlayerPositionLookS2c, TeleportConfirmC2s};
 
 use super::*;
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
+use crate::spawn::update_respawn_position;
 
 pub(super) fn build(app: &mut App) {
     app.add_systems(
         PostUpdate,
         teleport
-            .after(update_view)
+            .after(update_view_and_layers)
             .before(update_respawn_position)
             .in_set(UpdateClientsSet),
     )
@@ -127,32 +127,4 @@ fn handle_teleport_confirmations(
             }
         }
     }
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::TELEPORT_CONFIRM_C2S)]
-pub struct TeleportConfirmC2s {
-    pub teleport_id: VarInt,
-}
-
-#[derive(Copy, Clone, PartialEq, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::PLAYER_POSITION_LOOK_S2C)]
-pub struct PlayerPositionLookS2c {
-    pub position: DVec3,
-    pub yaw: f32,
-    pub pitch: f32,
-    pub flags: PlayerPositionLookFlags,
-    pub teleport_id: VarInt,
-}
-
-#[bitfield(u8)]
-#[derive(PartialEq, Eq, Encode, Decode)]
-pub struct PlayerPositionLookFlags {
-    pub x: bool,
-    pub y: bool,
-    pub z: bool,
-    pub y_rot: bool,
-    pub x_rot: bool,
-    #[bits(3)]
-    _pad: u8,
 }

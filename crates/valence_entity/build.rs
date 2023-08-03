@@ -140,7 +140,7 @@ impl Value {
             Value::BlockState(_) => quote!(valence_block::BlockState),
             Value::OptionalBlockState(_) => quote!(valence_block::BlockState),
             Value::NbtCompound(_) => quote!(valence_nbt::Compound),
-            Value::Particle(_) => quote!(valence_core::particle::Particle),
+            Value::Particle(_) => quote!(valence_packet::packets::play::particle_s2c::Particle),
             Value::VillagerData { .. } => quote!(crate::VillagerData),
             Value::OptionalInt(_) => quote!(Option<i32>),
             Value::EntityPose(_) => quote!(crate::Pose),
@@ -209,7 +209,7 @@ impl Value {
             }
             Value::Particle(p) => {
                 let variant = ident(p.replace('.', "_").to_pascal_case());
-                quote!(valence_core::particle::Particle::#variant)
+                quote!(valence_packet::packets::play::particle_s2c::Particle::#variant)
             }
             Value::VillagerData {
                 typ,
@@ -390,8 +390,8 @@ fn build() -> anyhow::Result<TokenStream> {
                 pub kind: super::EntityKind,
                 pub id: super::EntityId,
                 pub uuid: super::UniqueId,
-                pub location: super::Location,
-                pub old_location: super::OldLocation,
+                pub layer: super::EntityLayerId,
+                pub old_layer: super::OldEntityLayerId,
                 pub position: super::Position,
                 pub old_position: super::OldPosition,
                 pub look: super::Look,
@@ -401,15 +401,15 @@ fn build() -> anyhow::Result<TokenStream> {
                 pub statuses: super::EntityStatuses,
                 pub animations: super::EntityAnimations,
                 pub object_data: super::ObjectData,
-                pub tracked_data: super::TrackedData,
+                pub tracked_data: super::tracked_data::TrackedData,
             }]);
 
             bundle_init_fields.extend([quote! {
                 kind: super::EntityKind::#stripped_shouty_entity_name_ident,
                 id: Default::default(),
                 uuid: Default::default(),
-                location: Default::default(),
-                old_location: Default::default(),
+                layer: Default::default(),
+                old_layer: Default::default(),
                 position: Default::default(),
                 old_position: Default::default(),
                 look: Default::default(),
@@ -478,7 +478,7 @@ fn build() -> anyhow::Result<TokenStream> {
                 #[allow(clippy::needless_borrow)]
                 #[allow(clippy::suspicious_else_formatting)]
                 fn #system_name_ident(
-                    mut query: Query<(&#component_path, &mut TrackedData), Changed<#component_path>>
+                    mut query: Query<(&#component_path, &mut tracked_data::TrackedData), Changed<#component_path>>
                 ) {
                     for (value, mut tracked_data) in &mut query {
                         if *value == Default::default() {
