@@ -199,6 +199,11 @@ impl PluginGroup for DefaultPlugins {
             group = group.add(valence_boss_bar::BossBarPlugin);
         }
 
+        #[cfg(feature = "scoreboard")]
+        {
+            group = group.add(valence_scoreboard::ScoreboardPlugin);
+        }
+
         group
     }
 }
