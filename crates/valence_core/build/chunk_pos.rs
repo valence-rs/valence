@@ -33,7 +33,7 @@ pub fn build() -> TokenStream {
         /// The maximum view distance for a [`ChunkView`].
         pub const MAX_VIEW_DIST: u8 = #MAX_VIEW_DIST;
 
-        const EXTRA_VIEW_RADIUS: i32 = 2;
+        const EXTRA_VIEW_RADIUS: i32 = #EXTRA_VIEW_RADIUS;
 
         static CHUNK_VIEW_LUT: [&[(i8, i8)]; #array_len] = [ #(#entries),* ];
     }

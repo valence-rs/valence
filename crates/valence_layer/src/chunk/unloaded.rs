@@ -5,7 +5,7 @@ use valence_biome::BiomeId;
 use valence_block::BlockState;
 use valence_nbt::Compound;
 
-use super::{
+use super::chunk::{
     check_biome_oob, check_block_oob, check_section_oob, BiomeContainer, BlockStateContainer,
     Chunk, MAX_HEIGHT, SECTION_BLOCK_COUNT,
 };
@@ -149,10 +149,10 @@ impl Chunk for UnloadedChunk {
         self.sections[sect_y as usize].biomes.fill(biome);
     }
 
-    fn optimize(&mut self) {
+    fn shrink_to_fit(&mut self) {
         for sect in &mut self.sections {
-            sect.block_states.optimize();
-            sect.biomes.optimize();
+            sect.block_states.shrink_to_fit();
+            sect.biomes.shrink_to_fit();
         }
     }
 }

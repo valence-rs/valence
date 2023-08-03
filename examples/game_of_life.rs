@@ -48,21 +48,21 @@ fn setup(
         biome.effects.grass_color = Some(0x00ff00);
     }
 
-    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let mut layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     for z in -10..10 {
         for x in -10..10 {
-            instance.insert_chunk([x, z], UnloadedChunk::new());
+            layer.chunk.insert_chunk([x, z], UnloadedChunk::new());
         }
     }
 
     for z in BOARD_MIN_Z..=BOARD_MAX_Z {
         for x in BOARD_MIN_X..=BOARD_MAX_X {
-            instance.set_block([x, BOARD_Y, z], BlockState::DIRT);
+            layer.chunk.set_block([x, BOARD_Y, z], BlockState::DIRT);
         }
     }
 
-    commands.spawn(instance);
+    commands.spawn(layer);
 
     commands.insert_resource(LifeBoard {
         paused: true,
@@ -72,19 +72,42 @@ fn setup(
 }
 
 fn init_clients(
-    mut clients: Query<(&mut Client, &mut Location, &mut Position), Added<Client>>,
-    instances: Query<Entity, With<Instance>>,
+    mut clients: Query<
+        (
+            &mut Client,
+            &mut EntityLayerId,
+            &mut VisibleChunkLayer,
+            &mut VisibleEntityLayers,
+            &mut Position,
+            &mut GameMode,
+        ),
+        Added<Client>,
+    >,
+    layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
 ) {
-    for (mut client, mut loc, mut pos) in &mut clients {
+    for (
+        mut client,
+        mut layer_id,
+        mut visible_chunk_layer,
+        mut visible_entity_layers,
+        mut pos,
+        mut game_mode,
+    ) in &mut clients
+    {
+        let layer = layers.single();
+
+        layer_id.0 = layer;
+        visible_chunk_layer.0 = layer;
+        visible_entity_layers.0.insert(layer);
+        pos.set([0.0, 65.0, 0.0]);
+        *game_mode = GameMode::Survival;
+
         client.send_chat_message("Welcome to Conway's game of life in Minecraft!".italic());
         client.send_chat_message(
             "Sneak to toggle running the simulation and the left mouse button to bring blocks to \
              life."
                 .italic(),
         );
-
-        loc.0 = instances.single();
-        pos.set(SPAWN_POS);
     }
 }
 
@@ -163,14 +186,14 @@ fn toggle_cell_on_dig(mut events: EventReader<DiggingEvent>, mut board: ResMut<L
 
 fn update_board(
     mut board: ResMut<LifeBoard>,
-    mut instances: Query<&mut Instance>,
+    mut layers: Query<&mut ChunkLayer>,
     server: Res<Server>,
 ) {
     if !board.paused && server.current_tick() % 2 == 0 {
         board.update();
     }
 
-    let mut instance = instances.single_mut();
+    let mut layer = layers.single_mut();
 
     for z in BOARD_MIN_Z..=BOARD_MAX_Z {
         for x in BOARD_MIN_X..=BOARD_MAX_X {
@@ -180,7 +203,7 @@ fn update_board(
                 BlockState::DIRT
             };
 
-            instance.set_block([x, BOARD_Y, z], block);
+            layer.set_block([x, BOARD_Y, z], block);
         }
     }
 }

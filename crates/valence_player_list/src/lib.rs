@@ -29,7 +29,7 @@ use valence_core::game_mode::GameMode;
 use valence_core::text::{IntoText, Text};
 use valence_core::uuid::UniqueId;
 use valence_core::Server;
-use valence_instance::WriteUpdatePacketsToInstancesSet;
+use valence_layer::UpdateLayersPreClientSet;
 use valence_packet::packets::play::{
     player_list_s2c as packet, PlayerListHeaderS2c, PlayerListS2c, PlayerRemoveS2c,
 };
@@ -47,7 +47,7 @@ impl Plugin for PlayerListPlugin {
                 PostUpdate,
                 // Needs to happen before player entities are initialized. Otherwise, they will
                 // appear invisible.
-                PlayerListSet.before(WriteUpdatePacketsToInstancesSet),
+                PlayerListSet.before(UpdateLayersPreClientSet),
             )
             .add_systems(
                 PostUpdate,

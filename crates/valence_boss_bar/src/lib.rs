@@ -34,7 +34,7 @@ use valence_packet::packets::play::BossBarS2c;
 use valence_packet::protocol::encode::WritePacket;
 
 /// The bundle of components that make up a boss bar.
-#[derive(Bundle)]
+#[derive(Bundle, Debug, Default)]
 pub struct BossBarBundle {
     pub id: UniqueId,
     pub title: BossBarTitle,
@@ -63,23 +63,23 @@ impl BossBarBundle {
 }
 
 /// The title of a boss bar.
-#[derive(Component, Clone)]
+#[derive(Component, Clone, Debug, Default)]
 pub struct BossBarTitle(pub Text);
 
 /// The health of a boss bar.
-#[derive(Component)]
+#[derive(Component, Debug, Default)]
 pub struct BossBarHealth(pub f32);
 
 /// The style of a boss bar. This includes the color and division of the boss
 /// bar.
-#[derive(Component)]
+#[derive(Component, Debug, Default)]
 pub struct BossBarStyle {
     pub color: BossBarColor,
     pub division: BossBarDivision,
 }
 
 /// The viewers of a boss bar.
-#[derive(Component, Default)]
+#[derive(Component, Default, Debug)]
 pub struct BossBarViewers {
     /// The current viewers of the boss bar. It is the list that should be
     /// updated.

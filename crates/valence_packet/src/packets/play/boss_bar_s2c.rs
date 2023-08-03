@@ -26,8 +26,9 @@ pub enum BossBarAction<'a> {
 }
 
 /// The color of a boss bar.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Component)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Component, Default)]
 pub enum BossBarColor {
+    #[default]
     Pink,
     Blue,
     Red,
@@ -38,8 +39,9 @@ pub enum BossBarColor {
 }
 
 /// The division of a boss bar.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Component)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Component, Default)]
 pub enum BossBarDivision {
+    #[default]
     NoDivision,
     SixNotches,
     TenNotches,
@@ -49,7 +51,7 @@ pub enum BossBarDivision {
 
 /// The flags of a boss bar (darken sky, dragon bar, create fog).
 #[bitfield(u8)]
-#[derive(PartialEq, Eq, Encode, Decode, Component)]
+#[derive(PartialEq, Eq, Encode, Decode, Component, Default)]
 pub struct BossBarFlags {
     pub darken_sky: bool,
     pub dragon_bar: bool,

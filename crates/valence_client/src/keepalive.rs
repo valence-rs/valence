@@ -79,16 +79,16 @@ fn handle_keepalive_response(
 ) {
     for packet in packets.iter() {
         if let Some(pkt) = packet.decode::<KeepAliveC2s>() {
-            if let Ok((client, mut state, mut ping)) = clients.get_mut(packet.client) {
+            if let Ok((entity, mut state, mut ping)) = clients.get_mut(packet.client) {
                 if state.got_keepalive {
-                    warn!("unexpected keepalive from client {client:?}");
-                    commands.entity(client).remove::<Client>();
+                    warn!("unexpected keepalive from client {entity:?}");
+                    commands.entity(entity).remove::<Client>();
                 } else if pkt.id != state.last_keepalive_id {
                     warn!(
-                        "keepalive IDs don't match for client {client:?} (expected {}, got {})",
+                        "keepalive IDs don't match for client {entity:?} (expected {}, got {})",
                         state.last_keepalive_id, pkt.id,
                     );
-                    commands.entity(client).remove::<Client>();
+                    commands.entity(entity).remove::<Client>();
                 } else {
                     state.got_keepalive = true;
                     ping.0 = state.last_send.elapsed().as_millis() as i32;
