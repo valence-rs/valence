@@ -3,7 +3,8 @@
 use valence::entity::sheep::SheepEntityBundle;
 use valence::prelude::*;
 use valence_client::message::SendMessage;
-use valence_client::resource_pack::{ResourcePackStatus, ResourcePackStatusEvent};
+use valence_client::resource_pack::ResourcePackStatusEvent;
+use valence_packet::packets::play::ResourcePackStatusC2s;
 
 const SPAWN_Y: i32 = 64;
 
@@ -111,16 +112,16 @@ fn on_resource_pack_status(
     for event in events.iter() {
         if let Ok(mut client) = clients.get_mut(event.client) {
             match event.status {
-                ResourcePackStatus::Accepted => {
+                ResourcePackStatusC2s::Accepted => {
                     client.send_chat_message("Resource pack accepted.".color(Color::GREEN));
                 }
-                ResourcePackStatus::Declined => {
+                ResourcePackStatusC2s::Declined => {
                     client.send_chat_message("Resource pack declined.".color(Color::RED));
                 }
-                ResourcePackStatus::FailedDownload => {
+                ResourcePackStatusC2s::FailedDownload => {
                     client.send_chat_message("Resource pack failed to download.".color(Color::RED));
                 }
-                ResourcePackStatus::SuccessfullyLoaded => {
+                ResourcePackStatusC2s::SuccessfullyLoaded => {
                     client.send_chat_message(
                         "Resource pack successfully downloaded.".color(Color::BLUE),
                     );

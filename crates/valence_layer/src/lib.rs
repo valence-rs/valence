@@ -22,7 +22,6 @@ pub mod bvh;
 pub mod chunk;
 pub mod entity;
 pub mod message;
-pub mod packet;
 
 use std::marker::PhantomData;
 
@@ -34,10 +33,10 @@ use valence_biome::BiomeRegistry;
 use valence_core::block_pos::BlockPos;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::ident::Ident;
-use valence_core::protocol::encode::WritePacket;
 use valence_core::Server;
 use valence_dimension::DimensionTypeRegistry;
 use valence_entity::{InitEntitiesSet, UpdateTrackedDataSet};
+use valence_packet::protocol::encode::WritePacket;
 
 // Plugin is generic over the client type for hacky reasons.
 pub struct LayerPlugin<Client: Component>(PhantomData<Client>);

@@ -5,16 +5,16 @@ use valence_block::BlockState;
 use valence_client::{ViewDistance, VisibleEntityLayers};
 use valence_core::chunk_pos::ChunkView;
 use valence_core::despawn::Despawned;
-use valence_core::protocol::Packet;
 use valence_core::Server;
 use valence_entity::cow::CowEntityBundle;
-use valence_entity::packet::{EntitiesDestroyS2c, EntitySpawnS2c, MoveRelativeS2c};
 use valence_entity::{EntityLayerId, Position};
 use valence_layer::chunk::UnloadedChunk;
-use valence_layer::packet::{
-    BlockEntityUpdateS2c, ChunkDataS2c, ChunkDeltaUpdateS2c, UnloadChunkS2c,
-};
 use valence_layer::{ChunkLayer, EntityLayer};
+use valence_packet::packets::play::{
+    BlockEntityUpdateS2c, ChunkDataS2c, ChunkDeltaUpdateS2c, EntitiesDestroyS2c, EntitySpawnS2c,
+    MoveRelativeS2c, UnloadChunkS2c,
+};
+use valence_packet::protocol::Packet;
 
 use crate::testing::ScenarioSingleClient;
 

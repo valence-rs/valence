@@ -57,6 +57,7 @@ valence_network = { workspace = true, optional = true }
 valence_player_list = { workspace = true, optional = true }
 valence_registry.workspace = true
 valence_world_border = { workspace = true, optional = true }
+valence_packet.workspace = true
 valence_weather = { workspace = true, optional = true }
 
 [dev-dependencies]
@@ -170,6 +171,7 @@ valence_block.path = "crates/valence_block"
 valence_build_utils.path = "crates/valence_build_utils"
 valence_client.path = "crates/valence_client"
 valence_core_macros.path = "crates/valence_core_macros"
+valence_packet_macros.path = "crates/valence_packet_macros"
 valence_core.path = "crates/valence_core"
 valence_dimension.path = "crates/valence_dimension"
 valence_entity.path = "crates/valence_entity"
@@ -181,6 +183,7 @@ valence_player_list.path = "crates/valence_player_list"
 valence_registry.path = "crates/valence_registry"
 valence_world_border.path = "crates/valence_world_border"
 valence_boss_bar.path = "crates/valence_boss_bar"
+valence_packet.path = "crates/valence_packet"
 valence_weather.path = "crates/valence_weather"
 valence.path = "."
 zip = "0.6.3"

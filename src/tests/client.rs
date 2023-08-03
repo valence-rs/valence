@@ -1,10 +1,10 @@
 use glam::DVec3;
-use valence_client::movement::FullC2s;
-use valence_client::teleport::{PlayerPositionLookS2c, TeleportConfirmC2s};
 use valence_core::chunk_pos::ChunkPos;
-use valence_entity::packet::MoveRelativeS2c;
 use valence_layer::chunk::UnloadedChunk;
 use valence_layer::ChunkLayer;
+use valence_packet::packets::play::{
+    FullC2s, MoveRelativeS2c, PlayerPositionLookS2c, TeleportConfirmC2s,
+};
 
 use crate::testing::{create_mock_client, ScenarioSingleClient};
 

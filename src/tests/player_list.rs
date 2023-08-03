@@ -1,7 +1,6 @@
-use valence_entity::packet::PlayerSpawnS2c;
 use valence_layer::chunk::UnloadedChunk;
 use valence_layer::ChunkLayer;
-use valence_player_list::packet::PlayerListS2c;
+use valence_packet::packets::play::{PlayerListS2c, PlayerSpawnS2c};
 
 use crate::testing::{create_mock_client, ScenarioSingleClient};
 

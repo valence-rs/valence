@@ -19,19 +19,75 @@
 )]
 
 use std::borrow::Cow;
+use std::collections::BTreeSet;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use packet::{BossBarAction, BossBarS2c};
 use valence_client::{Client, FlushPacketsSet};
 use valence_core::despawn::Despawned;
-use valence_core::protocol::encode::WritePacket;
+use valence_core::text::Text;
 use valence_core::uuid::UniqueId;
+pub use valence_packet::packets::play::boss_bar_s2c::{
+    BossBarAction, BossBarColor, BossBarDivision, BossBarFlags,
+};
+use valence_packet::packets::play::BossBarS2c;
+use valence_packet::protocol::encode::WritePacket;
 
-mod components;
-pub use components::*;
+/// The bundle of components that make up a boss bar.
+#[derive(Bundle, Debug, Default)]
+pub struct BossBarBundle {
+    pub id: UniqueId,
+    pub title: BossBarTitle,
+    pub health: BossBarHealth,
+    pub style: BossBarStyle,
+    pub flags: BossBarFlags,
+    pub viewers: BossBarViewers,
+}
 
-pub mod packet;
+impl BossBarBundle {
+    pub fn new(
+        title: Text,
+        color: BossBarColor,
+        division: BossBarDivision,
+        flags: BossBarFlags,
+    ) -> BossBarBundle {
+        BossBarBundle {
+            id: UniqueId::default(),
+            title: BossBarTitle(title),
+            health: BossBarHealth(1.0),
+            style: BossBarStyle { color, division },
+            flags,
+            viewers: BossBarViewers::default(),
+        }
+    }
+}
+
+/// The title of a boss bar.
+#[derive(Component, Clone, Debug, Default)]
+pub struct BossBarTitle(pub Text);
+
+/// The health of a boss bar.
+#[derive(Component, Debug, Default)]
+pub struct BossBarHealth(pub f32);
+
+/// The style of a boss bar. This includes the color and division of the boss
+/// bar.
+#[derive(Component, Debug, Default)]
+pub struct BossBarStyle {
+    pub color: BossBarColor,
+    pub division: BossBarDivision,
+}
+
+/// The viewers of a boss bar.
+#[derive(Component, Default, Debug)]
+pub struct BossBarViewers {
+    /// The current viewers of the boss bar. It is the list that should be
+    /// updated.
+    pub viewers: BTreeSet<Entity>,
+    /// The viewers of the last tick in order to determine which viewers have
+    /// been added and removed.
+    pub(crate) old_viewers: BTreeSet<Entity>,
+}
 
 pub struct BossBarPlugin;
 

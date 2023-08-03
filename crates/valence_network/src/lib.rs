@@ -20,7 +20,6 @@
 mod byte_channel;
 mod connect;
 mod legacy_ping;
-pub mod packet;
 mod packet_io;
 
 use std::borrow::Cow;

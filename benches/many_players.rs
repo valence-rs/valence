@@ -7,9 +7,7 @@ use rand::Rng;
 use valence::testing::create_mock_client;
 use valence::DefaultPlugins;
 use valence_biome::BiomeRegistry;
-use valence_client::hand_swing::HandSwingC2s;
 use valence_client::keepalive::KeepaliveSettings;
-use valence_client::movement::FullC2s;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::{ident, CoreSettings, Server};
 use valence_dimension::DimensionTypeRegistry;
@@ -17,6 +15,7 @@ use valence_entity::Position;
 use valence_layer::chunk::UnloadedChunk;
 use valence_layer::LayerBundle;
 use valence_network::NetworkPlugin;
+use valence_packet::packets::play::{FullC2s, HandSwingC2s};
 
 pub fn many_players(c: &mut Criterion) {
     run_many_players(c, "many_players", 3000, 16, 16);

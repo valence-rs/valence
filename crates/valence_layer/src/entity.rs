@@ -8,11 +8,12 @@ use rustc_hash::FxHashMap;
 use valence_core::block_pos::BlockPos;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::despawn::Despawned;
-use valence_core::protocol::encode::{PacketWriter, WritePacket};
-use valence_core::protocol::{Encode, Packet};
+use valence_core::protocol::Encode;
 use valence_core::Server;
 use valence_entity::query::UpdateEntityQuery;
 use valence_entity::{EntityId, EntityLayerId, OldEntityLayerId, OldPosition, Position};
+use valence_packet::protocol::encode::{PacketWriter, WritePacket};
+use valence_packet::protocol::Packet;
 
 use crate::bvh::GetChunkPos;
 use crate::message::Messages;

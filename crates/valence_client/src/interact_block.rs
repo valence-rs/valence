@@ -4,8 +4,7 @@ use glam::Vec3;
 use valence_core::block_pos::BlockPos;
 use valence_core::direction::Direction;
 use valence_core::hand::Hand;
-use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::{packet_id, Decode, Encode, Packet};
+use valence_packet::packets::play::PlayerInteractBlockC2s;
 
 use crate::action::ActionSequence;
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
@@ -56,15 +55,4 @@ fn handle_interact_block(
             });
         }
     }
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::PLAYER_INTERACT_BLOCK_C2S)]
-pub struct PlayerInteractBlockC2s {
-    pub hand: Hand,
-    pub position: BlockPos,
-    pub face: Direction,
-    pub cursor_pos: Vec3,
-    pub head_inside_block: bool,
-    pub sequence: VarInt,
 }

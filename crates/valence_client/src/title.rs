@@ -1,5 +1,7 @@
-use valence_core::protocol::{packet_id, Decode, Encode};
 use valence_core::text::IntoText;
+use valence_packet::packets::play::{
+    ClearTitleS2c, OverlayMessageS2c, SubtitleS2c, TitleFadeS2c, TitleS2c,
+};
 
 use super::*;
 
@@ -60,36 +62,4 @@ impl<T: WritePacket> SetTitle for T {
     fn reset_title(&mut self) {
         self.write_packet(&ClearTitleS2c { reset: true });
     }
-}
-
-#[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::TITLE_S2C)]
-pub struct TitleS2c<'a> {
-    pub title_text: Cow<'a, Text>,
-}
-
-#[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::SUBTITLE_S2C)]
-pub struct SubtitleS2c<'a> {
-    pub subtitle_text: Cow<'a, Text>,
-}
-
-#[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::OVERLAY_MESSAGE_S2C)]
-pub struct OverlayMessageS2c<'a> {
-    pub action_bar_text: Cow<'a, Text>,
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::TITLE_FADE_S2C)]
-pub struct TitleFadeS2c {
-    pub fade_in: i32,
-    pub stay: i32,
-    pub fade_out: i32,
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::CLEAR_TITLE_S2C)]
-pub struct ClearTitleS2c {
-    pub reset: bool,
 }

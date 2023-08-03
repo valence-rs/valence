@@ -21,7 +21,6 @@
 mod flags;
 pub mod hitbox;
 pub mod manager;
-pub mod packet;
 pub mod query;
 pub mod tracked_data;
 

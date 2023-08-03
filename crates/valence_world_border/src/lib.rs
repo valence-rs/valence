@@ -18,14 +18,16 @@
     clippy::dbg_macro
 )]
 
-pub mod packet;
-
 use bevy_app::prelude::*;
-use packet::*;
 use valence_client::{Client, UpdateClientsSet, VisibleChunkLayer};
-use valence_core::protocol::encode::WritePacket;
 use valence_core::CoreSettings;
 use valence_layer::ChunkLayer;
+use valence_packet::packets::play::{
+    WorldBorderCenterChangedS2c, WorldBorderInitializeS2c, WorldBorderInterpolateSizeS2c,
+    WorldBorderSizeChangedS2c, WorldBorderWarningBlocksChangedS2c,
+    WorldBorderWarningTimeChangedS2c,
+};
+use valence_packet::protocol::encode::WritePacket;
 use valence_registry::*;
 
 // https://minecraft.fandom.com/wiki/World_border

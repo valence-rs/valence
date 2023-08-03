@@ -8,11 +8,15 @@ use valence_biome::BiomeId;
 use valence_block::BlockState;
 use valence_core::block_pos::BlockPos;
 use valence_core::chunk_pos::ChunkPos;
-use valence_core::protocol::encode::{PacketWriter, WritePacket};
 use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::var_long::VarLong;
 use valence_core::protocol::Encode;
 use valence_nbt::{compound, Compound};
+use valence_packet::packets::play::chunk_data_s2c::ChunkDataBlockEntity;
+use valence_packet::packets::play::{
+    BlockEntityUpdateS2c, BlockUpdateS2c, ChunkDataS2c, ChunkDeltaUpdateS2c,
+};
+use valence_packet::protocol::encode::{PacketWriter, WritePacket};
 use valence_registry::RegistryIdx;
 
 use super::chunk::{
@@ -22,9 +26,6 @@ use super::chunk::{
 use super::paletted_container::PalettedContainer;
 use super::unloaded::{self, UnloadedChunk};
 use super::{ChunkLayerInfo, ChunkLayerMessages, LocalMsg};
-use crate::packet::{
-    BlockEntityUpdateS2c, BlockUpdateS2c, ChunkDataBlockEntity, ChunkDataS2c, ChunkDeltaUpdateS2c,
-};
 
 #[derive(Debug)]
 pub struct LoadedChunk {

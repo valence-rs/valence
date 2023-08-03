@@ -20,10 +20,11 @@
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use valence_client::packet::{GameEventKind, GameStateChangeS2c};
 use valence_client::{Client, FlushPacketsSet, UpdateClientsSet, VisibleChunkLayer};
-use valence_core::protocol::encode::WritePacket;
 use valence_layer::ChunkLayer;
+use valence_packet::packets::play::game_state_change_s2c::GameEventKind;
+use valence_packet::packets::play::GameStateChangeS2c;
+use valence_packet::protocol::encode::WritePacket;
 
 pub struct WeatherPlugin;
 

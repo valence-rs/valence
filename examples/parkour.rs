@@ -6,7 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use rand::seq::SliceRandom;
 use rand::Rng;
 use valence::prelude::*;
-use valence::protocol::packet::sound::{Sound, SoundCategory};
+use valence::sound::{Sound, SoundCategory};
 use valence_client::message::SendMessage;
 use valence_client::spawn::IsFlat;
 

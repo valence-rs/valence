@@ -28,11 +28,11 @@ pub mod game_mode;
 pub mod hand;
 pub mod ident;
 pub mod item;
-pub mod particle;
 pub mod player_textures;
 pub mod property;
 pub mod protocol;
 pub mod scratch;
+pub mod sound;
 pub mod text;
 pub mod translation_key;
 pub mod uuid;
@@ -52,7 +52,7 @@ pub mod __private {
     pub use anyhow::{anyhow, bail, ensure, Context, Result};
 
     pub use crate::protocol::var_int::VarInt;
-    pub use crate::protocol::{Decode, Encode, Packet};
+    pub use crate::protocol::{Decode, Encode};
 }
 
 // Needed to make proc macros work.

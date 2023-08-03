@@ -5,8 +5,8 @@ edition.workspace = true
 
 [features]
 default = ["encryption", "compression"] # TODO: remove this.
-encryption = ["valence_core/encryption"]
-compression = ["valence_core/compression"]
+encryption = ["valence_packet/encryption"]
+compression = ["valence_packet/compression"]
 
 [dependencies]
 anyhow.workspace = true
@@ -32,6 +32,7 @@ uuid.workspace = true
 valence_client.workspace = true
 valence_core.workspace = true
 valence_entity.workspace = true
+valence_packet.workspace = true
 
 [dependencies.reqwest]
 workspace = true

@@ -49,7 +49,8 @@ pub use valence_world_border as world_border;
 pub use {
     bevy_app as app, bevy_ecs as ecs, glam, valence_biome as biome, valence_block as block,
     valence_client as client, valence_dimension as dimension, valence_entity as entity,
-    valence_layer as layer, valence_nbt as nbt, valence_registry as registry,
+    valence_layer as layer, valence_nbt as nbt, valence_packet as packet,
+    valence_registry as registry,
 };
 
 /// Contains the most frequently used items in Valence projects.
@@ -100,7 +101,6 @@ pub mod prelude {
     pub use valence_core::hand::Hand;
     pub use valence_core::ident; // Export the `ident!` macro.
     pub use valence_core::item::{ItemKind, ItemStack};
-    pub use valence_core::particle::Particle;
     pub use valence_core::text::{Color, IntoText, Text};
     pub use valence_core::uuid::UniqueId;
     pub use valence_core::{translation_key, CoreSettings, Server};
@@ -124,6 +124,7 @@ pub mod prelude {
         ConnectionMode, ErasedNetworkCallbacks, NetworkCallbacks, NetworkSettings, NewClientInfo,
         SharedNetworkState,
     };
+    pub use valence_packet::packets::play::particle_s2c::Particle;
     #[cfg(feature = "player_list")]
     pub use valence_player_list::{PlayerList, PlayerListEntry};
 

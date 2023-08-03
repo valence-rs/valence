@@ -12,3 +12,4 @@ valence_core.workspace = true
 valence_client.workspace = true
 valence_layer.workspace = true
 uuid.workspace = true
+valence_packet.workspace = true

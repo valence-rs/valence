@@ -25,22 +25,22 @@ use std::ops::Range;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use packet::{
-    ClickMode, ClickSlotC2s, CloseHandledScreenC2s, CloseScreenS2c, CreativeInventoryActionC2s,
-    InventoryS2c, OpenScreenS2c, ScreenHandlerSlotUpdateS2c, SlotChange, UpdateSelectedSlotC2s,
-    WindowType,
-};
 use tracing::{debug, warn};
 use valence_client::event_loop::{EventLoopPreUpdate, PacketEvent};
-use valence_client::packet::{PlayerAction, PlayerActionC2s};
 use valence_client::{Client, FlushPacketsSet, SpawnClientsSet};
 use valence_core::game_mode::GameMode;
 use valence_core::item::{ItemKind, ItemStack};
-use valence_core::protocol::encode::WritePacket;
 use valence_core::protocol::var_int::VarInt;
 use valence_core::text::{IntoText, Text};
+pub use valence_packet::packets::play::click_slot_c2s::{ClickMode, SlotChange};
+pub use valence_packet::packets::play::open_screen_s2c::WindowType;
+pub use valence_packet::packets::play::player_action_c2s::PlayerAction;
+use valence_packet::packets::play::{
+    ClickSlotC2s, CloseHandledScreenC2s, CloseScreenS2c, CreativeInventoryActionC2s, InventoryS2c,
+    OpenScreenS2c, PlayerActionC2s, ScreenHandlerSlotUpdateS2c, UpdateSelectedSlotC2s,
+};
+use valence_packet::protocol::encode::WritePacket;
 
-pub mod packet;
 mod validate;
 
 pub struct InventoryPlugin;
@@ -1222,7 +1222,7 @@ fn handle_creative_inventory_action(
 #[derive(Event, Clone, Debug)]
 pub struct UpdateSelectedSlotEvent {
     pub client: Entity,
-    pub slot: i16,
+    pub slot: u8,
 }
 
 fn handle_update_selected_slot(
@@ -1233,7 +1233,7 @@ fn handle_update_selected_slot(
     for packet in packets.iter() {
         if let Some(pkt) = packet.decode::<UpdateSelectedSlotC2s>() {
             if let Ok(mut held) = clients.get_mut(packet.client) {
-                if pkt.slot < 0 || pkt.slot > 8 {
+                if pkt.slot > 8 {
                     // The client is trying to interact with a slot that does not exist, ignore.
                     continue;
                 }

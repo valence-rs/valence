@@ -18,29 +18,26 @@
 )]
 #![allow(clippy::type_complexity)]
 
-pub mod packet;
-
 use std::borrow::Cow;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use packet::{PlayerListActions, PlayerListHeaderS2c, PlayerListS2c};
 use uuid::Uuid;
 use valence_client::{Client, Ping, Properties, Username};
 use valence_core::despawn::Despawned;
 use valence_core::game_mode::GameMode;
-use valence_core::protocol::encode::{PacketWriter, WritePacket};
 use valence_core::text::{IntoText, Text};
 use valence_core::uuid::UniqueId;
 use valence_core::Server;
 use valence_layer::UpdateLayersPreClientSet;
-
-use crate::packet::PlayerRemoveS2c;
+use valence_packet::packets::play::{
+    player_list_s2c as packet, PlayerListHeaderS2c, PlayerListS2c, PlayerRemoveS2c,
+};
+use valence_packet::protocol::encode::{PacketWriter, WritePacket};
 
 pub struct PlayerListPlugin;
 
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
-
 struct PlayerListSet;
 
 impl Plugin for PlayerListPlugin {
@@ -209,7 +206,7 @@ fn init_player_list_for_clients(
 ) {
     if player_list.manage_clients {
         for mut client in &mut clients {
-            let actions = PlayerListActions::new()
+            let actions = packet::PlayerListActions::new()
                 .with_add_player(true)
                 .with_update_game_mode(true)
                 .with_update_listed(true)
@@ -314,7 +311,7 @@ fn update_entries(
     );
 
     for (uuid, username, props, game_mode, ping, display_name, listed) in &entries {
-        let mut actions = PlayerListActions::new();
+        let mut actions = packet::PlayerListActions::new();
 
         // Did a change occur that would force us to overwrite the entry? This also adds
         // new entries.

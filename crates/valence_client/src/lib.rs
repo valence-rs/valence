@@ -32,10 +32,6 @@ use bevy_ecs::system::Command;
 use byteorder::{NativeEndian, ReadBytesExt};
 use bytes::{Bytes, BytesMut};
 use glam::{DVec3, Vec3};
-use packet::{
-    DeathMessageS2c, DisconnectS2c, GameEventKind, GameJoinS2c, GameStateChangeS2c,
-    PlayerRespawnS2c, PlayerSpawnPositionS2c,
-};
 use tracing::warn;
 use uuid::Uuid;
 use valence_biome::BiomeRegistry;
@@ -44,18 +40,13 @@ use valence_core::chunk_pos::{ChunkPos, ChunkView};
 use valence_core::despawn::Despawned;
 use valence_core::game_mode::GameMode;
 use valence_core::ident::Ident;
-use valence_core::particle::{Particle, ParticleS2c};
 use valence_core::property::Property;
-use valence_core::protocol::encode::{PacketEncoder, WritePacket};
 use valence_core::protocol::global_pos::GlobalPos;
-use valence_core::protocol::packet::sound::{PlaySoundS2c, Sound, SoundCategory};
 use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::{Encode, Packet};
+use valence_core::protocol::Encode;
+use valence_core::sound::{Sound, SoundCategory};
 use valence_core::text::{IntoText, Text};
 use valence_core::uuid::UniqueId;
-use valence_entity::packet::{
-    EntitiesDestroyS2c, EntityStatusS2c, EntityTrackerUpdateS2c, EntityVelocityUpdateS2c,
-};
 use valence_entity::player::PlayerEntityBundle;
 use valence_entity::query::EntityInitQuery;
 use valence_entity::tracked_data::TrackedData;
@@ -63,11 +54,18 @@ use valence_entity::{
     ClearEntityChangesSet, EntityId, EntityLayerId, EntityStatus, Look, OldPosition, Position,
     Velocity,
 };
-use valence_layer::packet::{
-    ChunkBiome, ChunkBiomeDataS2c, ChunkLoadDistanceS2c, ChunkRenderDistanceCenterS2c,
-    UnloadChunkS2c,
-};
 use valence_layer::{ChunkLayer, EntityLayer, UpdateLayersPostClientSet, UpdateLayersPreClientSet};
+use valence_packet::packets::play::chunk_biome_data_s2c::ChunkBiome;
+use valence_packet::packets::play::game_state_change_s2c::GameEventKind;
+use valence_packet::packets::play::particle_s2c::Particle;
+use valence_packet::packets::play::{
+    ChunkBiomeDataS2c, ChunkLoadDistanceS2c, ChunkRenderDistanceCenterS2c, DeathMessageS2c,
+    DisconnectS2c, EntitiesDestroyS2c, EntityStatusS2c, EntityTrackerUpdateS2c,
+    EntityVelocityUpdateS2c, GameJoinS2c, GameStateChangeS2c, ParticleS2c, PlaySoundS2c,
+    PlayerRespawnS2c, PlayerSpawnPositionS2c, UnloadChunkS2c,
+};
+use valence_packet::protocol::encode::{PacketEncoder, WritePacket};
+use valence_packet::protocol::Packet;
 use valence_registry::RegistrySet;
 
 pub mod action;
@@ -82,7 +80,6 @@ pub mod keepalive;
 pub mod message;
 pub mod movement;
 pub mod op_level;
-pub mod packet;
 pub mod resource_pack;
 pub mod settings;
 pub mod spawn;
