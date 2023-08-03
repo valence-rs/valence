@@ -6,6 +6,7 @@ use tracing::warn;
 mod components;
 pub use components::*;
 use valence_client::{Client, VisibleEntityLayers};
+use valence_core::__private::VarInt;
 use valence_core::despawn::Despawned;
 use valence_core::text::IntoText;
 use valence_core::uuid::UniqueId;
@@ -15,6 +16,7 @@ pub use valence_packet::packets::play::scoreboard_display_s2c::ScoreboardPositio
 use valence_packet::packets::play::scoreboard_display_s2c::*;
 pub use valence_packet::packets::play::scoreboard_objective_update_s2c::ObjectiveRenderType;
 use valence_packet::packets::play::scoreboard_objective_update_s2c::*;
+use valence_packet::packets::play::scoreboard_player_update_s2c::*;
 use valence_packet::protocol::encode::WritePacket;
 
 /// Provides all necessary systems to manage scoreboards.
@@ -27,7 +29,8 @@ impl Plugin for ScoreboardPlugin {
             (create_or_update_objectives, display_objectives),
         )
         .add_systems(PostUpdate, remove_despawned_objectives)
-        .add_systems(PostUpdate, handle_new_clients);
+        .add_systems(PostUpdate, handle_new_clients)
+        .add_systems(PostUpdate, update_scores.after(create_or_update_objectives));
     }
 }
 
@@ -117,10 +120,11 @@ fn handle_new_clients(
         &ObjectiveDisplay,
         &ObjectiveRenderType,
         &ScoreboardPosition,
+        &ObjectiveScores,
         &EntityLayerId,
     )>,
 ) {
-    for (objective, display, render_type, position, entity_layer) in objectives.iter() {
+    for (objective, display, render_type, position, scores, entity_layer) in objectives.iter() {
         for (mut client, visible_layers) in clients.iter_mut() {
             if !visible_layers.0.contains(&entity_layer.0) {
                 continue;
@@ -136,6 +140,43 @@ fn handle_new_clients(
                 score_name: &objective.0,
                 position: *position,
             });
+
+            for (uuid, score) in &scores.0 {
+                let packet = ScoreboardPlayerUpdateS2c {
+                    entity_name: &uuid.0.to_string(),
+                    action: ScoreboardPlayerUpdateAction::Update {
+                        objective_name: &objective.0,
+                        objective_score: VarInt(*score),
+                    },
+                };
+
+                client.write_packet(&packet);
+            }
+        }
+    }
+}
+
+fn update_scores(
+    objectives: Query<(&Objective, &ObjectiveScores, &EntityLayerId), Changed<ObjectiveScores>>,
+    mut layers: Query<&mut EntityLayer>,
+) {
+    for (objective, scores, entity_layer) in objectives.iter() {
+        let Ok(mut layer) = layers.get_mut(entity_layer.0) else {
+            warn!("No layer found for entity layer ID {:?}, can't update scores", entity_layer);
+            continue;
+        };
+
+        // TODO: send only the difference between the old and new scores.
+        for (uuid, score) in &scores.0 {
+            let packet = ScoreboardPlayerUpdateS2c {
+                entity_name: &uuid.0.to_string(),
+                action: ScoreboardPlayerUpdateAction::Update {
+                    objective_name: &objective.0,
+                    objective_score: VarInt(*score),
+                },
+            };
+
+            layer.write_packet(&packet);
         }
     }
 }

@@ -38,7 +38,7 @@ pub enum ObjectiveValueType {
 
 /// A mapping of entity UUIDs to their scores.
 #[derive(Debug, Clone, Component, Default)]
-pub struct ObjectiveScores(HashMap<UniqueId, i32>);
+pub struct ObjectiveScores(pub(crate) HashMap<UniqueId, i32>);
 
 impl ObjectiveScores {
     pub fn new() -> Self {
