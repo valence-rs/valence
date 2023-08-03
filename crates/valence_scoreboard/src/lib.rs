@@ -5,6 +5,7 @@ use tracing::warn;
 
 mod components;
 pub use components::*;
+use valence_core::despawn::Despawned;
 use valence_core::text::IntoText;
 use valence_core::uuid::UniqueId;
 use valence_entity::EntityLayerId;
@@ -24,6 +25,7 @@ impl Plugin for ScoreboardPlugin {
             PostUpdate,
             (create_or_update_objectives, display_objectives),
         );
+        app.add_systems(PostUpdate, remove_despawned_objectives);
     }
 }
 
@@ -57,12 +59,10 @@ fn create_or_update_objectives(
             continue;
         };
 
-        layer
-            .write_packet_fallible(&ScoreboardObjectiveUpdateS2c {
-                objective_name: &objective.0,
-                mode,
-            })
-            .expect("Failed to write scoreboard objective update packet");
+        layer.write_packet(&ScoreboardObjectiveUpdateS2c {
+            objective_name: &objective.0,
+            mode,
+        });
     }
 }
 
@@ -85,8 +85,25 @@ fn display_objectives(
             continue;
         };
 
-        layer
-            .write_packet_fallible(&packet)
-            .expect("Failed to write scoreboard display packet");
+        layer.write_packet(&packet);
+    }
+}
+
+fn remove_despawned_objectives(
+    mut commands: Commands,
+    objectives: Query<(Entity, &Objective, &EntityLayerId), With<Despawned>>,
+    mut layers: Query<&mut EntityLayer>,
+) {
+    for (entity, objective, entity_layer) in objectives.iter() {
+        commands.entity(entity).despawn();
+        let Ok(mut layer) = layers.get_mut(entity_layer.0) else {
+            warn!("No layer found for entity layer ID {:?}, can't remove scoreboard objective", entity_layer);
+            continue;
+        };
+
+        layer.write_packet(&ScoreboardObjectiveUpdateS2c {
+            objective_name: &objective.0,
+            mode: ObjectiveMode::Remove,
+        });
     }
 }
