@@ -4,15 +4,15 @@ use super::*;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 #[packet(id = packet_id::BOSS_BAR_S2C)]
-pub struct BossBarS2c<'a> {
+pub struct BossBarS2c {
     pub id: Uuid,
-    pub action: BossBarAction<'a>,
+    pub action: BossBarAction,
 }
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
-pub enum BossBarAction<'a> {
+pub enum BossBarAction {
     Add {
-        title: Cow<'a, Text>,
+        title: Text,
         health: f32,
         color: BossBarColor,
         division: BossBarDivision,
@@ -20,13 +20,13 @@ pub enum BossBarAction<'a> {
     },
     Remove,
     UpdateHealth(f32),
-    UpdateTitle(Cow<'a, Text>),
+    UpdateTitle(Text),
     UpdateStyle(BossBarColor, BossBarDivision),
     UpdateFlags(BossBarFlags),
 }
 
 /// The color of a boss bar.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Component, Default)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Default)]
 pub enum BossBarColor {
     #[default]
     Pink,
@@ -39,7 +39,7 @@ pub enum BossBarColor {
 }
 
 /// The division of a boss bar.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Component, Default)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Default)]
 pub enum BossBarDivision {
     #[default]
     NoDivision,
@@ -58,4 +58,15 @@ pub struct BossBarFlags {
     pub create_fog: bool,
     #[bits(5)]
     _pad: u8,
+}
+
+impl ToPacketAction for BossBarFlags {
+    fn to_packet_action(&self) -> BossBarAction {
+        BossBarAction::UpdateFlags(*self)
+    }
+}
+
+/// Trait for converting a component to a boss bar action.
+pub trait ToPacketAction {
+    fn to_packet_action(&self) -> BossBarAction;
 }

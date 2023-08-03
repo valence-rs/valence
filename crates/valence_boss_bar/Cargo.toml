@@ -13,6 +13,7 @@ valence_network.workspace = true
 valence_entity.workspace = true
 valence_client.workspace = true
 valence_packet.workspace = true
+valence_layer.workspace = true
 uuid.workspace = true
 bitfield-struct.workspace = true
 bevy_app.workspace = true

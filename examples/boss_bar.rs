@@ -2,11 +2,9 @@
 
 use rand::seq::SliceRandom;
 use valence::prelude::*;
-use valence_boss_bar::{
-    BossBarBundle, BossBarColor, BossBarDivision, BossBarFlags, BossBarHealth, BossBarStyle,
-    BossBarTitle, BossBarViewers,
-};
+use valence_boss_bar::{BossBarBundle, BossBarFlags, BossBarHealth, BossBarStyle, BossBarTitle};
 use valence_client::message::{ChatMessageEvent, SendMessage};
+use valence_packet::packets::play::boss_bar_s2c::{BossBarColor, BossBarDivision};
 
 const SPAWN_Y: i32 = 64;
 
@@ -43,23 +41,19 @@ fn setup(
         }
     }
 
-    commands.spawn(layer);
+    let layer_id = commands.spawn(layer).id();
 
-    commands.spawn(BossBarBundle {
+    commands.spawn((BossBarBundle {
         title: BossBarTitle("Boss Bar".into_text()),
-        health: BossBarHealth(1.0),
-        style: BossBarStyle {
-            color: BossBarColor::Blue,
-            division: BossBarDivision::TenNotches,
-        },
+        health: BossBarHealth(0.5),
+        entity_layer_id: EntityLayerId(layer_id),
         ..Default::default()
-    });
+    },));
 }
 
 fn init_clients(
-    mut clients: Query<
+    mut clients_query: Query<
         (
-            Entity,
             &mut Client,
             &mut EntityLayerId,
             &mut VisibleChunkLayer,
@@ -69,23 +63,19 @@ fn init_clients(
         ),
         Added<Client>,
     >,
-    mut boss_bar_viewers: Query<&mut BossBarViewers>,
-    layers: Query<Entity, With<ChunkLayer>>,
+    layers_query: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
 ) {
-    let mut boss_bar_viewers = boss_bar_viewers.single_mut();
+    let layer = layers_query.single();
 
     for (
-        entity,
         mut client,
         mut layer_id,
         mut visible_chunk_layer,
         mut visible_entity_layers,
         mut pos,
         mut game_mode,
-    ) in &mut clients
+    ) in &mut clients_query
     {
-        let layer = layers.single();
-
         layer_id.0 = layer;
         visible_chunk_layer.0 = layer;
         visible_entity_layers.0.insert(layer);
@@ -118,40 +108,40 @@ fn init_clients(
         client.send_chat_message(
             "Type any number between 0 and 1 to set the health".on_click_suggest_command("health"),
         );
-
-        boss_bar_viewers.viewers.insert(entity);
     }
 }
 
 fn listen_messages(
     mut message_events: EventReader<ChatMessageEvent>,
-    mut boss_bar: Query<(
-        &mut BossBarViewers,
+    mut boss_bars_query: Query<(
         &mut BossBarStyle,
         &mut BossBarFlags,
         &mut BossBarHealth,
         &mut BossBarTitle,
+        &EntityLayerId,
     )>,
+    mut clients_query: Query<&mut VisibleEntityLayers, With<Client>>,
 ) {
     let (
-        mut boss_bar_viewers,
         mut boss_bar_style,
         mut boss_bar_flags,
         mut boss_bar_health,
         mut boss_bar_title,
-    ) = boss_bar.single_mut();
+        entity_layer_id,
+    ) = boss_bars_query.single_mut();
 
-    let events: Vec<ChatMessageEvent> = message_events.iter().cloned().collect();
     for ChatMessageEvent {
         client, message, ..
-    } in events.iter()
+    } in message_events.iter()
     {
         match message.as_ref() {
             "view" => {
-                if boss_bar_viewers.viewers.contains(client) {
-                    boss_bar_viewers.viewers.remove(client);
-                } else {
-                    boss_bar_viewers.viewers.insert(*client);
+                if let Ok(mut visible_entity_layers) = clients_query.get_mut(*client) {
+                    if visible_entity_layers.0.contains(&entity_layer_id.0) {
+                        visible_entity_layers.0.remove(&entity_layer_id.0);
+                    } else {
+                        visible_entity_layers.0.insert(entity_layer_id.0);
+                    }
                 }
             }
             "color" => {
@@ -197,7 +187,7 @@ fn listen_messages(
                         boss_bar_health.0 = health;
                     }
                 } else {
-                    boss_bar_title.0 = message.to_string().into();
+                    boss_bar_title.0 = message.to_string().into_text();
                 }
             }
         };
