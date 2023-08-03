@@ -9,6 +9,8 @@ use valence_core::text::IntoText;
 use valence_core::uuid::UniqueId;
 use valence_entity::EntityLayerId;
 use valence_layer::{EntityLayer, Layer};
+pub use valence_packet::packets::play::scoreboard_display_s2c::ScoreboardPosition;
+use valence_packet::packets::play::scoreboard_display_s2c::*;
 pub use valence_packet::packets::play::scoreboard_objective_update_s2c::ObjectiveRenderType;
 use valence_packet::packets::play::scoreboard_objective_update_s2c::*;
 use valence_packet::protocol::encode::WritePacket;
@@ -18,7 +20,10 @@ pub struct ScoreboardPlugin;
 
 impl Plugin for ScoreboardPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PostUpdate, create_or_update_objectives);
+        app.add_systems(
+            PostUpdate,
+            (create_or_update_objectives, display_objectives),
+        );
     }
 }
 
@@ -58,5 +63,30 @@ fn create_or_update_objectives(
                 mode,
             })
             .expect("Failed to write scoreboard objective update packet");
+    }
+}
+
+/// Must occur after `create_or_update_objectives`.
+fn display_objectives(
+    objectives: Query<
+        (&Objective, Ref<ScoreboardPosition>, &EntityLayerId),
+        Changed<ScoreboardPosition>,
+    >,
+    mut layers: Query<&mut EntityLayer>,
+) {
+    for (objective, position, entity_layer) in objectives.iter() {
+        let packet = ScoreboardDisplayS2c {
+            score_name: &objective.0,
+            position: *position,
+        };
+
+        let Ok(mut layer) = layers.get_mut(entity_layer.0) else {
+            warn!("No layer found for entity layer ID {:?}, can't update scoreboard display", entity_layer);
+            continue;
+        };
+
+        layer
+            .write_packet_fallible(&packet)
+            .expect("Failed to write scoreboard display packet");
     }
 }

@@ -5,6 +5,7 @@ use bevy_ecs::prelude::*;
 use valence_core::text::Text;
 use valence_core::uuid::UniqueId;
 use valence_entity::EntityLayerId;
+use valence_packet::packets::play::scoreboard_display_s2c::ScoreboardPosition;
 use valence_packet::packets::play::scoreboard_objective_update_s2c::ObjectiveRenderType;
 
 /// A string that identifies an objective. There is one scoreboard per
@@ -45,5 +46,6 @@ pub struct ObjectiveBundle {
     pub display: ObjectiveDisplay,
     pub render_type: ObjectiveRenderType,
     pub scores: ObjectiveScores,
+    pub position: ScoreboardPosition,
     pub layer: EntityLayerId,
 }

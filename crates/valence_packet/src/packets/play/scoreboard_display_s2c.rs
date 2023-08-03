@@ -1,3 +1,5 @@
+use bevy_ecs::prelude::Component;
+
 use super::team_s2c::TeamColor;
 use super::*;
 
@@ -8,7 +10,7 @@ pub struct ScoreboardDisplayS2c<'a> {
     pub score_name: &'a str,
 }
 
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Component)]
 pub enum ScoreboardPosition {
     List,
     Sidebar,
