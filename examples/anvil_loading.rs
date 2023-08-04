@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use clap::Parser;
 use valence::prelude::*;
 use valence_anvil::{AnvilLevel, ChunkLoadEvent, ChunkLoadStatus};
-use valence_client::message::SendMessage;
+use valence_client::{message::SendMessage, abilities::{PlayerAbilitiesFlags, FlyingSpeed, FovModifier}};
 
 const SPAWN_POS: DVec3 = DVec3::new(0.0, 256.0, 0.0);
 
@@ -78,6 +78,9 @@ fn init_clients(
             &mut VisibleEntityLayers,
             &mut Position,
             &mut GameMode,
+            &mut PlayerAbilitiesFlags,
+            &mut FlyingSpeed,
+            &mut FovModifier,
         ),
         Added<Client>,
     >,
@@ -89,6 +92,9 @@ fn init_clients(
         mut visible_entity_layers,
         mut pos,
         mut game_mode,
+        mut abilities,
+        mut flying_speed,
+        mut fov_modifier,
     ) in &mut clients
     {
         let layer = layers.single();
@@ -97,7 +103,10 @@ fn init_clients(
         visible_chunk_layer.0 = layer;
         visible_entity_layers.0.insert(layer);
         pos.set(SPAWN_POS);
-        *game_mode = GameMode::Spectator;
+        *game_mode = GameMode::Adventure;
+        abilities.set_allow_flying(true);
+        flying_speed.0 = 0.1;
+        fov_modifier.0 = 0.05;
     }
 }
 

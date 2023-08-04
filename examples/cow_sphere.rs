@@ -4,7 +4,7 @@ use std::f64::consts::TAU;
 
 use glam::{DQuat, EulerRot};
 use valence::prelude::*;
-use valence_client::abilities::{FlyingSpeed, FovModifier, PlayerAbilitiesFlags};
+use valence_client::{abilities::PlayerAbilitiesFlags, message::SendMessage};
 
 type SpherePartBundle = valence::entity::cow::CowEntityBundle;
 
@@ -26,7 +26,7 @@ fn main() {
         .add_systems(Startup, setup)
         .add_systems(
             Update,
-            (init_clients, update_sphere, despawn_disconnected_clients),
+            (init_clients, update_sphere, despawn_disconnected_clients, display_is_flying),
         )
         .run();
 }
@@ -68,9 +68,6 @@ fn init_clients(
             &mut VisibleEntityLayers,
             &mut Position,
             &mut GameMode,
-            &mut PlayerAbilitiesFlags,
-            &mut FlyingSpeed,
-            &mut FovModifier,
         ),
         Added<Client>,
     >,
@@ -82,9 +79,6 @@ fn init_clients(
         mut visible_entity_layers,
         mut pos,
         mut game_mode,
-        mut abilities,
-        mut flying_speed,
-        mut fov_modifier,
     ) in &mut clients
     {
         let layer = layers.single();
@@ -97,10 +91,7 @@ fn init_clients(
             SPAWN_POS.y as f64 + 1.0,
             SPAWN_POS.z as f64 + 0.5,
         ]);
-        *game_mode = GameMode::Adventure;
-        abilities.set_allow_flying(true);
-        flying_speed.0 = 0.1;
-        fov_modifier.0 = 0.05;
+        *game_mode = GameMode::Creative;
     }
 }
 
@@ -152,3 +143,16 @@ fn fibonacci_spiral(n: usize) -> impl Iterator<Item = DVec3> {
 fn lerp(a: f64, b: f64, t: f64) -> f64 {
     a * (1.0 - t) + b * t
 }
+
+fn display_is_flying(
+    mut clients: Query<(&mut Client, &PlayerAbilitiesFlags), Changed<PlayerAbilitiesFlags>>,
+) {
+    for (mut client, abilities_flags) in clients.iter_mut() {
+        if abilities_flags.flying() {
+            client.send_action_bar_message("You are flying!".into_text().color(Color::GREEN));
+        } else {
+            client.send_action_bar_message("You are not flying!".into_text().color(Color::RED));
+        }
+    }
+}
+
