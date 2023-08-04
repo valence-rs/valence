@@ -202,9 +202,9 @@ fn handle_new_clients(
                 position: *position,
             });
 
-            for (uuid, score) in &scores.0 {
+            for (key, score) in &scores.0 {
                 let packet = ScoreboardPlayerUpdateS2c {
-                    entity_name: &uuid.0.to_string(),
+                    entity_name: &key,
                     action: ScoreboardPlayerUpdateAction::Update {
                         objective_name: &objective.0,
                         objective_score: VarInt(*score),
@@ -231,9 +231,9 @@ fn update_scores(
         };
 
         // TODO: send only the difference between the old and new scores.
-        for (uuid, score) in &scores.0 {
+        for (key, score) in &scores.0 {
             let packet = ScoreboardPlayerUpdateS2c {
-                entity_name: &uuid.0.to_string(),
+                entity_name: &key,
                 action: ScoreboardPlayerUpdateAction::Update {
                     objective_name: &objective.0,
                     objective_score: VarInt(*score),

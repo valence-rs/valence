@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use bevy_ecs::prelude::*;
 use valence_core::text::Text;
-use valence_core::uuid::UniqueId;
 use valence_entity::EntityLayerId;
 use valence_packet::packets::play::scoreboard_display_s2c::ScoreboardPosition;
 use valence_packet::packets::play::scoreboard_objective_update_s2c::ObjectiveRenderType;
@@ -37,16 +36,16 @@ impl Objective {
 #[derive(Debug, Clone, PartialEq, Component)]
 pub struct ObjectiveDisplay(pub Text);
 
-/// A mapping of entity [`UniqueId`]s to their scores.
+/// A mapping of keys to their scores.
 #[derive(Debug, Clone, Component, Default)]
-pub struct ObjectiveScores(pub(crate) HashMap<UniqueId, i32>);
+pub struct ObjectiveScores(pub(crate) HashMap<String, i32>);
 
 impl ObjectiveScores {
     pub fn new() -> Self {
         Default::default()
     }
 
-    pub fn with_map(map: impl Into<HashMap<UniqueId, i32>>) -> Self {
+    pub fn with_map(map: impl Into<HashMap<String, i32>>) -> Self {
         Self(map.into())
     }
 }
