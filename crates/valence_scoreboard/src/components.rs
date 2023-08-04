@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use bevy_ecs::prelude::*;
-use valence_core::text::Text;
+use valence_core::text::{IntoText, Text};
 use valence_entity::EntityLayerId;
 use valence_packet::packets::play::scoreboard_display_s2c::ScoreboardPosition;
 use valence_packet::packets::play::scoreboard_objective_update_s2c::ObjectiveRenderType;
@@ -62,12 +62,58 @@ impl ObjectiveScores {
     }
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Component)]
+pub struct OldObjectiveScores(pub(crate) HashMap<String, i32>);
+
+impl OldObjectiveScores {
+    pub fn diff<'a>(&'a self, scores: &'a ObjectiveScores) -> Vec<&'a str> {
+        let mut diff = Vec::new();
+
+        for (key, value) in &self.0 {
+            if scores.0.get(key) != Some(value) {
+                diff.push(key.as_str());
+            }
+        }
+
+        let new_keys = scores
+            .0
+            .keys()
+            .filter(|key| !self.0.contains_key(key.as_str()))
+            .map(|key| key.as_str());
+
+        let removed_keys = self
+            .0
+            .keys()
+            .filter(|key| !scores.0.contains_key(key.as_str()))
+            .map(|key| key.as_str());
+
+        diff.extend(new_keys);
+        diff.extend(removed_keys);
+        diff
+    }
+}
+
 #[derive(Bundle)]
 pub struct ObjectiveBundle {
     pub name: Objective,
     pub display: ObjectiveDisplay,
     pub render_type: ObjectiveRenderType,
     pub scores: ObjectiveScores,
+    pub old_scores: OldObjectiveScores,
     pub position: ScoreboardPosition,
     pub layer: EntityLayerId,
+}
+
+impl Default for ObjectiveBundle {
+    fn default() -> Self {
+        Self {
+            name: Objective::new(""),
+            display: ObjectiveDisplay("".into_text()),
+            render_type: Default::default(),
+            scores: Default::default(),
+            old_scores: Default::default(),
+            position: Default::default(),
+            layer: Default::default(),
+        }
+    }
 }

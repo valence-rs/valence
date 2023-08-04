@@ -73,6 +73,9 @@ fn create_or_update_objectives(
     mut layers: Query<&mut EntityLayer>,
 ) {
     for (objective, display, render_type, entity_layer) in objectives.iter() {
+        if objective.name().is_empty() {
+            warn!("Objective name is empty");
+        }
         let mode = if objective.is_added() {
             ObjectiveMode::Create {
                 objective_display_name: (&display.0).into_cow_text(),
@@ -223,29 +226,42 @@ fn handle_new_clients(
 }
 
 fn update_scores(
-    objectives: Query<
-        (&Objective, &ObjectiveScores, &EntityLayerId),
+    mut objectives: Query<
+        (
+            &Objective,
+            &ObjectiveScores,
+            &mut OldObjectiveScores,
+            &EntityLayerId,
+        ),
         (Changed<ObjectiveScores>, Without<Despawned>),
     >,
     mut layers: Query<&mut EntityLayer>,
 ) {
-    for (objective, scores, entity_layer) in objectives.iter() {
+    for (objective, scores, mut old_scores, entity_layer) in objectives.iter_mut() {
         let Ok(mut layer) = layers.get_mut(entity_layer.0) else {
             warn!("No layer found for entity layer ID {:?}, can't update scores", entity_layer);
             continue;
         };
 
-        // TODO: send only the difference between the old and new scores.
-        for (key, score) in &scores.0 {
-            let packet = ScoreboardPlayerUpdateS2c {
-                entity_name: &key,
-                action: ScoreboardPlayerUpdateAction::Update {
+        for changed_key in old_scores.diff(scores) {
+            let action = match scores.0.get(changed_key) {
+                Some(score) => ScoreboardPlayerUpdateAction::Update {
                     objective_name: &objective.0,
                     objective_score: VarInt(*score),
                 },
+                None => ScoreboardPlayerUpdateAction::Remove {
+                    objective_name: &objective.0,
+                },
+            };
+
+            let packet = ScoreboardPlayerUpdateS2c {
+                entity_name: &changed_key,
+                action,
             };
 
             layer.write_packet(&packet);
         }
+
+        old_scores.0 = scores.0.clone();
     }
 }

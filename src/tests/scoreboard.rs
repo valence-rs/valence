@@ -37,10 +37,9 @@ fn show_scoreboard_when_added_to_layer() {
     app.world.spawn(ObjectiveBundle {
         name: Objective::new("foo"),
         display: ObjectiveDisplay("Foo".into_text()),
-        render_type: ObjectiveRenderType::Integer,
         scores: ObjectiveScores::new(),
-        position: ScoreboardPosition::Sidebar,
         layer: EntityLayerId(obj_layer),
+        ..Default::default()
     });
 
     app.update();
@@ -78,10 +77,9 @@ fn show_scoreboard_when_client_join() {
     app.world.spawn(ObjectiveBundle {
         name: Objective::new("foo"),
         display: ObjectiveDisplay("Foo".into_text()),
-        render_type: ObjectiveRenderType::Integer,
         scores: ObjectiveScores::new(),
-        position: ScoreboardPosition::Sidebar,
         layer: EntityLayerId(obj_layer),
+        ..Default::default()
     });
 
     // Process a tick to get past the "on join" logic.
@@ -122,10 +120,9 @@ fn should_update_score() {
         .spawn(ObjectiveBundle {
             name: Objective::new("foo"),
             display: ObjectiveDisplay("Foo".into_text()),
-            render_type: ObjectiveRenderType::Integer,
             scores: ObjectiveScores::with_map([("foo".to_owned(), 0)]),
-            position: ScoreboardPosition::Sidebar,
             layer: EntityLayerId(obj_layer),
+            ..Default::default()
         })
         .id();
 
@@ -171,10 +168,9 @@ fn should_only_update_score_diff() {
         .spawn(ObjectiveBundle {
             name: Objective::new("foo"),
             display: ObjectiveDisplay("Foo".into_text()),
-            render_type: ObjectiveRenderType::Integer,
             scores: ObjectiveScores::with_map([("foo".to_owned(), 0), ("bar".to_owned(), 0)]),
-            position: ScoreboardPosition::Sidebar,
             layer: EntityLayerId(obj_layer),
+            ..Default::default()
         })
         .id();
 
