@@ -21,7 +21,7 @@ fn show_scoreboard_when_added_to_layer() {
 
     // Add a new entity layer for the objective.
     let server = app.world.get_resource::<Server>().unwrap();
-    let obj_layer = app.world.spawn(EntityLayer::new(&server)).id();
+    let obj_layer = app.world.spawn(EntityLayer::new(server)).id();
     app.world
         .entity_mut(client)
         .get_mut::<VisibleEntityLayers>()
@@ -65,7 +65,7 @@ fn show_scoreboard_when_client_join() {
 
     // Add a new entity layer for the objective.
     let server = app.world.get_resource::<Server>().unwrap();
-    let obj_layer = app.world.spawn(EntityLayer::new(&server)).id();
+    let obj_layer = app.world.spawn(EntityLayer::new(server)).id();
     app.world
         .entity_mut(client)
         .get_mut::<VisibleEntityLayers>()
@@ -106,7 +106,7 @@ fn should_update_score() {
 
     // Add a new entity layer for the objective.
     let server = app.world.get_resource::<Server>().unwrap();
-    let obj_layer = app.world.spawn(EntityLayer::new(&server)).id();
+    let obj_layer = app.world.spawn(EntityLayer::new(server)).id();
     app.world
         .entity_mut(client)
         .get_mut::<VisibleEntityLayers>()
@@ -154,7 +154,7 @@ fn should_only_update_score_diff() {
 
     // Add a new entity layer for the objective.
     let server = app.world.get_resource::<Server>().unwrap();
-    let obj_layer = app.world.spawn(EntityLayer::new(&server)).id();
+    let obj_layer = app.world.spawn(EntityLayer::new(server)).id();
     app.world
         .entity_mut(client)
         .get_mut::<VisibleEntityLayers>()
