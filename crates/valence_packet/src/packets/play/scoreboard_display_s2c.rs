@@ -10,11 +10,17 @@ pub struct ScoreboardDisplayS2c<'a> {
     pub score_name: &'a str,
 }
 
+/// Defines where a scoreboard is displayed.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Component)]
 pub enum ScoreboardPosition {
+    /// Display the scoreboard in the player list (the one you see when you
+    /// press tab), as a yellow number next to players' names.
     List,
+    /// Display the scoreboard on the sidebar.
     Sidebar,
+    /// Display the scoreboard below players' name tags in the world.
     BelowName,
+    /// Display the scoreboard on the sidebar, visible only to one team.
     SidebarTeam(TeamColor),
 }
 

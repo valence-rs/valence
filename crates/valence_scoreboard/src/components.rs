@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use valence_core::text::Text;
 use valence_core::uuid::UniqueId;
@@ -18,7 +17,18 @@ pub struct Objective(pub(crate) String);
 
 impl Objective {
     pub fn new(name: impl Into<String>) -> Self {
-        Self(name.into())
+        let name = name.into();
+        debug_assert!(
+            name.len() <= 16,
+            "Objective name {} is too long ({} > 16)",
+            name,
+            name.len()
+        );
+        Self(name)
+    }
+
+    pub fn name(&self) -> &str {
+        &self.0
     }
 }
 
@@ -27,16 +37,7 @@ impl Objective {
 #[derive(Debug, Clone, PartialEq, Component)]
 pub struct ObjectiveDisplay(pub Text);
 
-#[derive(Debug, Clone, Component, Default)]
-pub enum ObjectiveValueType {
-    /// Display the value as a number.
-    #[default]
-    Integer,
-    /// Display the value as hearts.
-    Hearts,
-}
-
-/// A mapping of entity UUIDs to their scores.
+/// A mapping of entity [`UniqueId`]s to their scores.
 #[derive(Debug, Clone, Component, Default)]
 pub struct ObjectiveScores(pub(crate) HashMap<UniqueId, i32>);
 

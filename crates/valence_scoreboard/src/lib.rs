@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 use std::collections::BTreeSet;
 
 use bevy_app::prelude::*;
@@ -11,7 +13,6 @@ use valence_client::{Client, OldVisibleEntityLayers, VisibleEntityLayers};
 use valence_core::__private::VarInt;
 use valence_core::despawn::Despawned;
 use valence_core::text::IntoText;
-use valence_core::uuid::UniqueId;
 use valence_entity::EntityLayerId;
 use valence_layer::EntityLayer;
 pub use valence_packet::packets::play::scoreboard_display_s2c::ScoreboardPosition;
