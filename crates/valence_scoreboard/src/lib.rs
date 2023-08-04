@@ -212,7 +212,7 @@ fn handle_new_clients(
 
             for (key, score) in &scores.0 {
                 let packet = ScoreboardPlayerUpdateS2c {
-                    entity_name: &key,
+                    entity_name: key,
                     action: ScoreboardPlayerUpdateAction::Update {
                         objective_name: &objective.0,
                         objective_score: VarInt(*score),
@@ -255,7 +255,7 @@ fn update_scores(
             };
 
             let packet = ScoreboardPlayerUpdateS2c {
-                entity_name: &changed_key,
+                entity_name: changed_key,
                 action,
             };
 
