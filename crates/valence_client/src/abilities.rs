@@ -2,7 +2,7 @@ pub use valence_packet::packets::play::player_abilities_s2c::PlayerAbilitiesFlag
 use valence_packet::packets::play::{PlayerAbilitiesS2c, UpdatePlayerAbilitiesC2s};
 
 use super::*;
-use crate::event_loop::{PacketEvent, EventLoopPreUpdate};
+use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 
 /// [`Component`] that stores the player's flying speed ability.
 ///
@@ -32,11 +32,14 @@ impl Default for FovModifier {
 pub(super) fn build(app: &mut App) {
     app.add_systems(
         PostUpdate,
-        (update_client_player_abilities, update_player_abilities.before(update_client_player_abilities))
+        (
+            update_client_player_abilities,
+            update_player_abilities.before(update_client_player_abilities),
+        )
             .in_set(UpdateClientsSet)
             .after(update_game_mode),
-    ).add_systems(EventLoopPreUpdate, update_server_player_abilities)
-    ;
+    )
+    .add_systems(EventLoopPreUpdate, update_server_player_abilities);
 }
 
 fn update_client_player_abilities(
@@ -84,7 +87,6 @@ fn update_player_abilities(
                 flags.set_allow_flying(false);
                 flags.set_instant_break(false);
             }
-
         }
     }
 }
@@ -95,9 +97,7 @@ fn update_server_player_abilities(
 ) {
     for packets in packet_events.iter() {
         if let Some(pkt) = packets.decode::<UpdatePlayerAbilitiesC2s>() {
-            if let Ok(mut flags) =
-                client_query.get_mut(packets.client)
-            {
+            if let Ok(mut flags) = client_query.get_mut(packets.client) {
                 flags.set_flying(UpdatePlayerAbilitiesC2s::StartFlying.eq(&pkt));
                 flags.bypass_change_detection();
             }

@@ -4,7 +4,8 @@ use std::f64::consts::TAU;
 
 use glam::{DQuat, EulerRot};
 use valence::prelude::*;
-use valence_client::{abilities::PlayerAbilitiesFlags, message::SendMessage};
+use valence_client::abilities::PlayerAbilitiesFlags;
+use valence_client::message::SendMessage;
 
 type SpherePartBundle = valence::entity::cow::CowEntityBundle;
 
@@ -26,7 +27,12 @@ fn main() {
         .add_systems(Startup, setup)
         .add_systems(
             Update,
-            (init_clients, update_sphere, despawn_disconnected_clients, display_is_flying),
+            (
+                init_clients,
+                update_sphere,
+                despawn_disconnected_clients,
+                display_is_flying,
+            ),
         )
         .run();
 }
@@ -144,6 +150,7 @@ fn lerp(a: f64, b: f64, t: f64) -> f64 {
     a * (1.0 - t) + b * t
 }
 
+// Send an actionbar message to all clients when their flying state changes.
 fn display_is_flying(
     mut clients: Query<(&mut Client, &PlayerAbilitiesFlags), Changed<PlayerAbilitiesFlags>>,
 ) {
@@ -155,4 +162,3 @@ fn display_is_flying(
         }
     }
 }
-

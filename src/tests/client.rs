@@ -1,9 +1,11 @@
 use glam::DVec3;
+use valence_client::abilities::PlayerAbilitiesFlags;
 use valence_core::chunk_pos::ChunkPos;
+use valence_core::game_mode::GameMode;
 use valence_layer::chunk::UnloadedChunk;
 use valence_layer::ChunkLayer;
 use valence_packet::packets::play::{
-    FullC2s, MoveRelativeS2c, PlayerPositionLookS2c, TeleportConfirmC2s,
+    FullC2s, MoveRelativeS2c, PlayerPositionLookS2c, TeleportConfirmC2s, UpdatePlayerAbilitiesC2s,
 };
 
 use crate::testing::{create_mock_client, ScenarioSingleClient};
@@ -59,4 +61,92 @@ fn client_teleport_and_move() {
     helper_2
         .collect_received()
         .assert_count::<MoveRelativeS2c>(1);
+}
+
+#[test]
+fn client_start_flying() {
+    let mut senario = ScenarioSingleClient::new();
+
+    assert_eq!(
+        senario
+            .app
+            .world
+            .get::<PlayerAbilitiesFlags>(senario.client)
+            .unwrap()
+            .flying(),
+        false
+    );
+
+    senario
+        .helper
+        .send::<UpdatePlayerAbilitiesC2s>(&UpdatePlayerAbilitiesC2s::StartFlying);
+
+    senario.app.update();
+
+    assert_eq!(
+        senario
+            .app
+            .world
+            .get::<PlayerAbilitiesFlags>(senario.client)
+            .unwrap()
+            .flying(),
+        true
+    );
+
+    senario
+        .helper
+        .send::<UpdatePlayerAbilitiesC2s>(&UpdatePlayerAbilitiesC2s::StopFlying);
+
+    senario.app.update();
+
+    assert_eq!(
+        senario
+            .app
+            .world
+            .get::<PlayerAbilitiesFlags>(senario.client)
+            .unwrap()
+            .flying(),
+        false
+    );
+}
+
+#[test]
+fn client_gamemode_changed() {
+    let mut senario = ScenarioSingleClient::new();
+
+    *senario
+        .app
+        .world
+        .get_mut::<GameMode>(senario.client)
+        .unwrap() = GameMode::Creative;
+
+    senario.app.update();
+
+    let abilities = senario
+        .app
+        .world
+        .get::<PlayerAbilitiesFlags>(senario.client)
+        .unwrap();
+
+    assert_eq!(abilities.allow_flying(), true);
+    assert_eq!(abilities.instant_break(), true);
+    assert_eq!(abilities.invulnerable(), true);
+
+    *senario
+        .app
+        .world
+        .get_mut::<GameMode>(senario.client)
+        .unwrap() = GameMode::Adventure;
+
+    senario.app.update();
+
+    let abilities = senario
+        .app
+        .world
+        .get::<PlayerAbilitiesFlags>(senario.client)
+        .unwrap();
+
+    assert_eq!(abilities.allow_flying(), false);
+    assert_eq!(abilities.instant_break(), false);
+    assert_eq!(abilities.invulnerable(), false);
 }
