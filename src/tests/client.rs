@@ -67,14 +67,13 @@ fn client_teleport_and_move() {
 fn client_start_flying() {
     let mut senario = ScenarioSingleClient::new();
 
-    assert_eq!(
-        senario
+    assert!(
+        !senario
             .app
             .world
             .get::<PlayerAbilitiesFlags>(senario.client)
             .unwrap()
-            .flying(),
-        false
+            .flying()
     );
 
     senario
@@ -83,14 +82,13 @@ fn client_start_flying() {
 
     senario.app.update();
 
-    assert_eq!(
+    assert!(
         senario
             .app
             .world
             .get::<PlayerAbilitiesFlags>(senario.client)
             .unwrap()
-            .flying(),
-        true
+            .flying()
     );
 
     senario
@@ -99,19 +97,18 @@ fn client_start_flying() {
 
     senario.app.update();
 
-    assert_eq!(
-        senario
+    assert!(
+        !senario
             .app
             .world
             .get::<PlayerAbilitiesFlags>(senario.client)
             .unwrap()
-            .flying(),
-        false
+            .flying()
     );
 }
 
 #[test]
-fn client_gamemode_changed() {
+fn client_gamemode_changed_ability() {
     let mut senario = ScenarioSingleClient::new();
 
     *senario
@@ -128,9 +125,9 @@ fn client_gamemode_changed() {
         .get::<PlayerAbilitiesFlags>(senario.client)
         .unwrap();
 
-    assert_eq!(abilities.allow_flying(), true);
-    assert_eq!(abilities.instant_break(), true);
-    assert_eq!(abilities.invulnerable(), true);
+    assert!(abilities.allow_flying());
+    assert!(abilities.instant_break());
+    assert!(abilities.invulnerable());
 
     *senario
         .app
@@ -146,7 +143,7 @@ fn client_gamemode_changed() {
         .get::<PlayerAbilitiesFlags>(senario.client)
         .unwrap();
 
-    assert_eq!(abilities.allow_flying(), false);
-    assert_eq!(abilities.instant_break(), false);
-    assert_eq!(abilities.invulnerable(), false);
+    assert!(!abilities.allow_flying());
+    assert!(!abilities.instant_break());
+    assert!(!abilities.invulnerable());
 }
