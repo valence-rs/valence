@@ -67,14 +67,12 @@ fn client_teleport_and_move() {
 fn client_start_flying() {
     let mut senario = ScenarioSingleClient::new();
 
-    assert!(
-        !senario
-            .app
-            .world
-            .get::<PlayerAbilitiesFlags>(senario.client)
-            .unwrap()
-            .flying()
-    );
+    assert!(!senario
+        .app
+        .world
+        .get::<PlayerAbilitiesFlags>(senario.client)
+        .unwrap()
+        .flying());
 
     senario
         .helper
@@ -82,14 +80,12 @@ fn client_start_flying() {
 
     senario.app.update();
 
-    assert!(
-        senario
-            .app
-            .world
-            .get::<PlayerAbilitiesFlags>(senario.client)
-            .unwrap()
-            .flying()
-    );
+    assert!(senario
+        .app
+        .world
+        .get::<PlayerAbilitiesFlags>(senario.client)
+        .unwrap()
+        .flying());
 
     senario
         .helper
@@ -97,14 +93,12 @@ fn client_start_flying() {
 
     senario.app.update();
 
-    assert!(
-        !senario
-            .app
-            .world
-            .get::<PlayerAbilitiesFlags>(senario.client)
-            .unwrap()
-            .flying()
-    );
+    assert!(!senario
+        .app
+        .world
+        .get::<PlayerAbilitiesFlags>(senario.client)
+        .unwrap()
+        .flying());
 }
 
 #[test]
