@@ -17,7 +17,7 @@ pub struct BossBarBundle {
     pub health: BossBarHealth,
     pub style: BossBarStyle,
     pub flags: BossBarFlags,
-    pub entity_layer_id: EntityLayerId,
+    pub layer: EntityLayerId,
 }
 
 /// The title of a boss bar.

@@ -4,9 +4,14 @@ use rand::seq::SliceRandom;
 use valence::prelude::*;
 use valence_boss_bar::{BossBarBundle, BossBarFlags, BossBarHealth, BossBarStyle, BossBarTitle};
 use valence_client::message::{ChatMessageEvent, SendMessage};
+use valence_core::text::color::NamedColor;
+use valence_entity::cow::CowEntityBundle;
 use valence_packet::packets::play::boss_bar_s2c::{BossBarColor, BossBarDivision};
 
 const SPAWN_Y: i32 = 64;
+
+#[derive(Component)]
+struct CustomBossBar;
 
 pub fn main() {
     App::new()
@@ -43,12 +48,30 @@ fn setup(
 
     let layer_id = commands.spawn(layer).id();
 
-    commands.spawn((BossBarBundle {
-        title: BossBarTitle("Boss Bar".into_text()),
-        health: BossBarHealth(0.5),
-        entity_layer_id: EntityLayerId(layer_id),
-        ..Default::default()
-    },));
+    commands.spawn((
+        BossBarBundle {
+            title: BossBarTitle("Boss Bar".into_text()),
+            health: BossBarHealth(0.5),
+            layer: EntityLayerId(layer_id),
+            ..Default::default()
+        },
+        CustomBossBar,
+    ));
+
+    commands.spawn((
+        CowEntityBundle {
+            position: Position::new([0.0, SPAWN_Y as f64 + 1.0, 0.0]),
+            layer: EntityLayerId(layer_id),
+            ..Default::default()
+        },
+        BossBarTitle("BigCow".color(NamedColor::Red)),
+        BossBarHealth(0.5),
+        BossBarStyle {
+            color: BossBarColor::Red,
+            division: BossBarDivision::default(),
+        },
+        BossBarFlags::default(),
+    ));
 }
 
 fn init_clients(
@@ -113,13 +136,16 @@ fn init_clients(
 
 fn listen_messages(
     mut message_events: EventReader<ChatMessageEvent>,
-    mut boss_bars_query: Query<(
-        &mut BossBarStyle,
-        &mut BossBarFlags,
-        &mut BossBarHealth,
-        &mut BossBarTitle,
-        &EntityLayerId,
-    )>,
+    mut boss_bars_query: Query<
+        (
+            &mut BossBarStyle,
+            &mut BossBarFlags,
+            &mut BossBarHealth,
+            &mut BossBarTitle,
+            &EntityLayerId,
+        ),
+        With<CustomBossBar>,
+    >,
     mut clients_query: Query<&mut VisibleEntityLayers, With<Client>>,
 ) {
     let (

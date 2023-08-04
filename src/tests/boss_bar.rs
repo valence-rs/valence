@@ -22,7 +22,7 @@ fn test_intialize_on_join() {
         .insert(BossBarBundle {
             title: BossBarTitle("Boss Bar".into_text()),
             health: BossBarHealth(0.5),
-            entity_layer_id: EntityLayerId(scenario.layer),
+            layer: EntityLayerId(scenario.layer),
             ..Default::default()
         });
 
@@ -182,7 +182,7 @@ fn prepare() -> ScenarioSingleClient {
     s.app.world.entity_mut(s.layer).insert(BossBarBundle {
         title: BossBarTitle("Boss Bar".into_text()),
         health: BossBarHealth(0.5),
-        entity_layer_id: EntityLayerId(s.layer),
+        layer: EntityLayerId(s.layer),
         ..Default::default()
     });
 
