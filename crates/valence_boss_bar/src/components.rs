@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use bevy_ecs::prelude::{Bundle, Component};
 use valence_core::text::Text;
 use valence_core::uuid::UniqueId;
@@ -24,7 +26,7 @@ pub struct BossBarTitle(pub Text);
 
 impl ToPacketAction for BossBarTitle {
     fn to_packet_action(&self) -> BossBarAction {
-        BossBarAction::UpdateTitle(self.0.to_owned())
+        BossBarAction::UpdateTitle(Cow::Borrowed(&self.0))
     }
 }
 

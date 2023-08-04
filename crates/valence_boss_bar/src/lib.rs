@@ -18,9 +18,11 @@
     clippy::dbg_macro
 )]
 
+use std::borrow::Cow;
+
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use valence_client::{Client, FlushPacketsSet, OldVisibleEntityLayers, VisibleEntityLayers};
+use valence_client::{Client, OldVisibleEntityLayers, VisibleEntityLayers};
 use valence_core::despawn::Despawned;
 use valence_core::uuid::UniqueId;
 use valence_packet::packets::play::boss_bar_s2c::{BossBarAction, ToPacketAction};
@@ -30,7 +32,7 @@ use valence_packet::protocol::encode::WritePacket;
 mod components;
 pub use components::*;
 use valence_entity::{EntityLayerId, Position};
-use valence_layer::{EntityLayer, Layer};
+use valence_layer::{EntityLayer, Layer, UpdateLayersPreClientSet};
 
 pub struct BossBarPlugin;
 
@@ -46,7 +48,7 @@ impl Plugin for BossBarPlugin {
                 update_boss_bar_view,
                 boss_bar_despawn,
             )
-                .before(FlushPacketsSet),
+                .before(UpdateLayersPreClientSet),
         );
     }
 }
@@ -98,7 +100,7 @@ fn update_boss_bar_view(
                 client.write_packet(&BossBarS2c {
                     id: id.0,
                     action: BossBarAction::Add {
-                        title: title.0.to_owned(),
+                        title: Cow::Borrowed(&title.0),
                         health: health.0,
                         color: style.color,
                         division: style.division,
@@ -123,7 +125,7 @@ fn update_boss_bar_view(
 }
 
 fn boss_bar_despawn(
-    boss_bars_query: Query<(&UniqueId, &EntityLayerId), Added<Despawned>>,
+    boss_bars_query: Query<(&UniqueId, &EntityLayerId), With<Despawned>>,
     mut clients_query: Query<(&mut Client, &VisibleEntityLayers)>,
 ) {
     for (id, entity_layer_id) in boss_bars_query.iter() {
