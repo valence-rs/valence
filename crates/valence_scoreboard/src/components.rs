@@ -48,6 +48,18 @@ impl ObjectiveScores {
     pub fn with_map(map: impl Into<HashMap<String, i32>>) -> Self {
         Self(map.into())
     }
+
+    pub fn get(&self, key: &str) -> Option<&i32> {
+        self.0.get(key)
+    }
+
+    pub fn get_mut(&mut self, key: &str) -> Option<&mut i32> {
+        self.0.get_mut(key)
+    }
+
+    pub fn insert(&mut self, key: impl Into<String>, value: i32) -> Option<i32> {
+        self.0.insert(key.into(), value)
+    }
 }
 
 #[derive(Bundle)]

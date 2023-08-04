@@ -51,7 +51,12 @@ impl Plugin for ScoreboardPlugin {
         )
         .add_systems(PostUpdate, remove_despawned_objectives)
         .add_systems(PostUpdate, handle_new_clients)
-        .add_systems(PostUpdate, update_scores.after(create_or_update_objectives));
+        .add_systems(
+            PostUpdate,
+            update_scores
+                .after(create_or_update_objectives)
+                .after(handle_new_clients),
+        );
     }
 }
 

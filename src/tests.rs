@@ -4,3 +4,4 @@ mod example;
 mod inventory;
 mod layer;
 mod player_list;
+mod scoreboard;
