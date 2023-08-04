@@ -4,6 +4,7 @@ use std::f64::consts::TAU;
 
 use glam::{DQuat, EulerRot};
 use valence::prelude::*;
+use valence_client::abilities::{FlyingSpeed, FovModifier, PlayerAbilitiesFlags};
 
 type SpherePartBundle = valence::entity::cow::CowEntityBundle;
 
@@ -67,6 +68,9 @@ fn init_clients(
             &mut VisibleEntityLayers,
             &mut Position,
             &mut GameMode,
+            &mut PlayerAbilitiesFlags,
+            &mut FlyingSpeed,
+            &mut FovModifier,
         ),
         Added<Client>,
     >,
@@ -78,6 +82,9 @@ fn init_clients(
         mut visible_entity_layers,
         mut pos,
         mut game_mode,
+        mut abilities,
+        mut flying_speed,
+        mut fov_modifier,
     ) in &mut clients
     {
         let layer = layers.single();
@@ -90,7 +97,10 @@ fn init_clients(
             SPAWN_POS.y as f64 + 1.0,
             SPAWN_POS.z as f64 + 0.5,
         ]);
-        *game_mode = GameMode::Creative;
+        *game_mode = GameMode::Adventure;
+        abilities.set_allow_flying(true);
+        flying_speed.0 = 0.1;
+        fov_modifier.0 = 0.05;
     }
 }
 

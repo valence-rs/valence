@@ -1,3 +1,5 @@
+use bevy_ecs::prelude::Component;
+
 use super::*;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
@@ -8,8 +10,9 @@ pub struct PlayerAbilitiesS2c {
     pub fov_modifier: f32,
 }
 
+/// [`Component`] that stores the player's abilities flags.
 #[bitfield(u8)]
-#[derive(PartialEq, Eq, Encode, Decode)]
+#[derive(PartialEq, Eq, Encode, Decode, Component, Default)]
 pub struct PlayerAbilitiesFlags {
     pub invulnerable: bool,
     pub flying: bool,

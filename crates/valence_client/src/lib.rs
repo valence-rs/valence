@@ -68,6 +68,7 @@ use valence_packet::protocol::encode::{PacketEncoder, WritePacket};
 use valence_packet::protocol::Packet;
 use valence_registry::RegistrySet;
 
+pub mod abilities;
 pub mod action;
 pub mod command;
 pub mod custom_payload;
@@ -160,6 +161,7 @@ impl Plugin for ClientPlugin {
         op_level::build(app);
         resource_pack::build(app);
         status::build(app);
+        abilities::build(app);
     }
 }
 
@@ -196,6 +198,9 @@ pub struct ClientBundle {
     pub is_debug: spawn::IsDebug,
     pub is_flat: spawn::IsFlat,
     pub portal_cooldown: spawn::PortalCooldown,
+    pub player_abilities_flags: abilities::PlayerAbilitiesFlags,
+    pub flying_speed: abilities::FlyingSpeed,
+    pub fov_modifier: abilities::FovModifier,
     pub player: PlayerEntityBundle,
 }
 
@@ -234,6 +239,9 @@ impl ClientBundle {
             reduced_debug_info: spawn::ReducedDebugInfo::default(),
             is_debug: spawn::IsDebug::default(),
             portal_cooldown: spawn::PortalCooldown::default(),
+            player_abilities_flags: abilities::PlayerAbilitiesFlags::default(),
+            flying_speed: abilities::FlyingSpeed::default(),
+            fov_modifier: abilities::FovModifier::default(),
             player: PlayerEntityBundle {
                 uuid: UniqueId(args.uuid),
                 ..Default::default()
