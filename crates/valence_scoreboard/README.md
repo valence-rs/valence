@@ -11,11 +11,12 @@ Example:
 ```rust
 # use bevy_ecs::prelude::*;
 use valence_scoreboard::*;
+use valence_core::text::IntoText;
 
 fn spawn_scoreboard(mut commands: Commands) {
 	commands.spawn(ObjectiveBundle {
 		name: Objective::new("foo"),
-		display: ObjectiveDisplay("Foo".bold())
+		display: ObjectiveDisplay("Foo".bold()),
 		..Default::default()
 	});
 }
