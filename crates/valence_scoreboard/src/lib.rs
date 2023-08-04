@@ -47,7 +47,10 @@ impl Plugin for ScoreboardPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             PostUpdate,
-            (create_or_update_objectives, display_objectives),
+            (
+                create_or_update_objectives,
+                display_objectives.after(create_or_update_objectives),
+            ),
         )
         .add_systems(PostUpdate, remove_despawned_objectives)
         .add_systems(PostUpdate, handle_new_clients)
