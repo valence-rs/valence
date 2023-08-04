@@ -1,17 +1,19 @@
+use std::collections::BTreeSet;
+
 use bevy_app::prelude::*;
 use bevy_ecs::change_detection::DetectChanges;
 use bevy_ecs::prelude::*;
-use tracing::warn;
+use tracing::{debug, warn};
 
 mod components;
 pub use components::*;
-use valence_client::{Client, VisibleEntityLayers};
+use valence_client::{Client, OldVisibleEntityLayers, VisibleEntityLayers};
 use valence_core::__private::VarInt;
 use valence_core::despawn::Despawned;
 use valence_core::text::IntoText;
 use valence_core::uuid::UniqueId;
 use valence_entity::EntityLayerId;
-use valence_layer::{EntityLayer, Layer};
+use valence_layer::EntityLayer;
 pub use valence_packet::packets::play::scoreboard_display_s2c::ScoreboardPosition;
 use valence_packet::packets::play::scoreboard_display_s2c::*;
 pub use valence_packet::packets::play::scoreboard_objective_update_s2c::ObjectiveRenderType;
@@ -114,21 +116,61 @@ fn remove_despawned_objectives(
 }
 
 fn handle_new_clients(
-    mut clients: Query<(&mut Client, &VisibleEntityLayers), Added<Client>>,
-    objectives: Query<(
-        &Objective,
-        &ObjectiveDisplay,
-        &ObjectiveRenderType,
-        &ScoreboardPosition,
-        &ObjectiveScores,
-        &EntityLayerId,
-    )>,
+    mut clients: Query<
+        (&mut Client, &VisibleEntityLayers, &OldVisibleEntityLayers),
+        Or<(Added<Client>, Changed<VisibleEntityLayers>)>,
+    >,
+    objectives: Query<
+        (
+            &Objective,
+            &ObjectiveDisplay,
+            &ObjectiveRenderType,
+            &ScoreboardPosition,
+            &ObjectiveScores,
+            &EntityLayerId,
+        ),
+        Without<Despawned>,
+    >,
 ) {
-    for (objective, display, render_type, position, scores, entity_layer) in objectives.iter() {
-        for (mut client, visible_layers) in clients.iter_mut() {
-            if !visible_layers.0.contains(&entity_layer.0) {
+    // Remove objectives from the old visible layers that are not in the new visible
+    // layers.
+    for (mut client, visible_layers, old_visible_layers) in clients.iter_mut() {
+        let removed_layers: BTreeSet<_> = old_visible_layers
+            .get()
+            .difference(&visible_layers.0)
+            .collect();
+
+        for (objective, _, _, _, _, layer) in objectives.iter() {
+            if !removed_layers.contains(&layer.0) {
                 continue;
             }
+            client.write_packet(&ScoreboardObjectiveUpdateS2c {
+                objective_name: &objective.0,
+                mode: ObjectiveMode::Remove,
+            });
+        }
+    }
+
+    // Add objectives from the new visible layers that are not in the old visible
+    // layers, or send all objectives if the client is new.
+    for (mut client, visible_layers, old_visible_layers) in clients.iter_mut() {
+        // not sure how to avoid the clone here
+        let added_layers = if client.is_added() {
+            debug!("client is new, sending all objectives");
+            visible_layers.0.clone()
+        } else {
+            visible_layers
+                .0
+                .difference(&old_visible_layers.get())
+                .copied()
+                .collect::<BTreeSet<_>>()
+        };
+
+        for (objective, display, render_type, position, scores, layer) in objectives.iter() {
+            if !added_layers.contains(&layer.0) {
+                continue;
+            }
+
             client.write_packet(&ScoreboardObjectiveUpdateS2c {
                 objective_name: &objective.0,
                 mode: ObjectiveMode::Create {
@@ -157,7 +199,10 @@ fn handle_new_clients(
 }
 
 fn update_scores(
-    objectives: Query<(&Objective, &ObjectiveScores, &EntityLayerId), Changed<ObjectiveScores>>,
+    objectives: Query<
+        (&Objective, &ObjectiveScores, &EntityLayerId),
+        (Changed<ObjectiveScores>, Without<Despawned>),
+    >,
     mut layers: Query<&mut EntityLayer>,
 ) {
     for (objective, scores, entity_layer) in objectives.iter() {
