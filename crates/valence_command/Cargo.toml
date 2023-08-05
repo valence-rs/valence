@@ -1,0 +1,16 @@
+[package]
+name = "valence_command"
+version.workspace = true
+edition.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+valence_core.workspace = true
+valence_client.workspace = true
+bevy_app.workspace = true
+bevy_ecs.workspace = true
+anyhow.workspace = true
+byteorder.workspace = true
+petgraph.workspace = true
+thiserror.workspace = true
