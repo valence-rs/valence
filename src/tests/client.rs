@@ -5,7 +5,7 @@ use valence_core::game_mode::GameMode;
 use valence_layer::chunk::UnloadedChunk;
 use valence_layer::ChunkLayer;
 use valence_packet::packets::play::{
-    FullC2s, MoveRelativeS2c, PlayerPositionLookS2c, TeleportConfirmC2s, UpdatePlayerAbilitiesC2s,
+    FullC2s, MoveRelativeS2c, PlayerPositionLookS2c, TeleportConfirmC2s,
 };
 
 use crate::testing::{create_mock_client, ScenarioSingleClient};
