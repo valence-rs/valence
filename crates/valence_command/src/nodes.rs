@@ -2,21 +2,20 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 
 use bevy_ecs::prelude::{Component, DetectChanges, Entity};
-use bevy_ecs::query::{Added, Changed, Has, Or, With};
+use bevy_ecs::query::{Added, Changed, Or, With};
 use bevy_ecs::removal_detection::RemovedComponents;
-use bevy_ecs::system::{Local, ParamSet, Query, System, SystemParam};
-use bevy_ecs::world::Ref;
+use bevy_ecs::system::{Local, ParamSet, Query, System, SystemParam, SystemState};
+use bevy_ecs::world::{Ref, World};
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 use valence_client::Client;
 use valence_core::__private::VarInt;
 use valence_core::protocol::encode::WritePacket;
-use valence_core::protocol::{Encode, Packet};
+use valence_core::protocol::Encode;
 
 use crate::command::CommandArguments;
 use crate::parse::{Parse, ParseObject, ParseWithData};
 use crate::pkt::{self, RawCommandTreeS2c};
-use crate::suggestions::RawParseSuggestions;
 
 pub(crate) type PCRelationVec = SmallVec<[Entity; 2]>;
 
@@ -72,47 +71,18 @@ pub struct NodeChildrenFlow {
     pub(crate) parsers: Vec<Entity>,
 }
 
-impl NodeChildrenFlow {
-    pub(crate) fn new(
-        children: impl Iterator<Item = Entity>,
-        node_query: &Query<(&NodeName, Option<&NodeParser>)>,
-    ) -> Self {
-        let mut result = Self {
-            literal: HashMap::new(),
-            parsers: vec![],
-        };
-        result.update(children, node_query);
-        result
-    }
-
-    pub(crate) fn update(
-        &mut self,
-        children: impl Iterator<Item = Entity>,
-        node_query: &Query<(&NodeName, Option<&NodeParser>)>,
-    ) {
-        self.parsers.clear();
-        self.literal.clear();
-        for child in children {
-            let (node_name, node_parser) = node_query.get(child).unwrap();
-            match node_parser {
-                Some(_) => self.parsers.push(child),
-                None => {
-                    self.literal.insert(node_name.cloned(), child);
-                }
-            }
-        }
-    }
-}
-
 #[derive(Component)]
-pub struct NodeParser(pub(crate) Box<dyn ParseObject>);
+pub struct NodeParser(pub(crate) Option<Box<dyn ParseObject>>);
 
 impl NodeParser {
-    pub fn new<T>(data: <T as Parse<'static>>::Data) -> Self
+    pub fn new<T>(data: <T as Parse<'static>>::Data, world: &mut World) -> Self
     where
-        for<'a> T: Parse<'a> + RawParseSuggestions<'a>,
+        for<'a> T: Parse<'a>,
     {
-        Self(Box::new(ParseWithData::<'static, T>(data)))
+        Self(Some(Box::new(ParseWithData::<T> {
+            data,
+            state: SystemState::new(world),
+        })))
     }
 }
 
@@ -127,7 +97,8 @@ pub enum NodeSuggestion {
 
 #[derive(Component)]
 pub struct NodeSystem {
-    pub(crate) system: Box<dyn System<In = CommandArguments, Out = ()>>,
+    /// [`None`] means that this system was already moved to the system's pool
+    pub(crate) system: Option<Box<dyn System<In = CommandArguments, Out = ()>>>,
 }
 
 #[derive(Component)]
@@ -222,9 +193,7 @@ impl<'w, 's> SingleRootWrite<'w, 's> {
         let id = nodes.len() as i32;
 
         if entity2id.insert(node, id).is_some() {
-            panic!(
-                "Node's children loop, use redirect if you want to redirect call to another node"
-            );
+            unreachable!();
         }
 
         let (node_parser, node_execute, node_name, node_flow, node_suggestion) =
@@ -239,21 +208,23 @@ impl<'w, 's> SingleRootWrite<'w, 's> {
         nodes.push(pkt::Node {
             children: vec![],
             data: match (node_parser, node_name) {
-                (Some(node_parser), Some(node_name)) => match node_parser.0.obj_brigadier() {
-                    Some(parser) => pkt::NodeData::Argument {
-                        name: Cow::Borrowed(&node_name.0),
-                        parser,
-                        suggestion: node_suggestion.copied(),
-                    },
-                    None => {
-                        children_redirect_skip = true;
-                        pkt::NodeData::Argument {
+                (Some(node_parser), Some(node_name)) => {
+                    match node_parser.0.as_ref().unwrap().obj_brigadier() {
+                        Some(parser) => pkt::NodeData::Argument {
                             name: Cow::Borrowed(&node_name.0),
-                            parser: pkt::Parser::String(pkt::StringArg::GreedyPhrase),
-                            suggestion: Some(NodeSuggestion::AskServer),
+                            parser,
+                            suggestion: node_suggestion.copied(),
+                        },
+                        None => {
+                            children_redirect_skip = true;
+                            pkt::NodeData::Argument {
+                                name: Cow::Borrowed(&node_name.0),
+                                parser: pkt::Parser::String(pkt::StringArg::GreedyPhrase),
+                                suggestion: Some(NodeSuggestion::AskServer),
+                            }
                         }
                     }
-                },
+                }
                 (None, Some(node_name)) => pkt::NodeData::Literal {
                     name: Cow::Borrowed(&node_name.0),
                 },
@@ -326,7 +297,7 @@ pub fn update_root_nodes(
         Entity,
         Or<(
             Added<NodeName>, // Added because NodeName is constant for each node
-            Added<NodeSystem>, /* If the function of NodeExecute changes, we don't care because we
+            Added<NodeSystem>, /* If the function of NodeSystem changes, we don't care because we
                               * are telling only if the node is
                               * executable */
             Changed<NodeFlow>,

@@ -1,15 +1,19 @@
 use std::any::TypeId;
+use std::borrow::Cow;
 
+use bevy_ecs::system::SystemParamItem;
 use valence_core::text::Text;
 use valence_core::translation_key::{
     ARGUMENT_FLOAT_BIG, ARGUMENT_FLOAT_LOW, ARGUMENT_INTEGER_BIG, ARGUMENT_INTEGER_LOW,
     PARSING_FLOAT_EXPECTED, PARSING_FLOAT_INVALID, PARSING_INT_EXPECTED, PARSING_INT_INVALID,
 };
 
+use crate::command::CommandExecutorBase;
+use crate::nodes::NodeSuggestion;
 use crate::parse::{Parse, ParseResult};
 use crate::pkt;
-use crate::reader::StrReader;
-use crate::suggestions::RawParseSuggestions;
+use crate::reader::{ArcStrReader, StrLocated, StrReader, StrSpan};
+use crate::suggestions::Suggestion;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct NumberBounds<T> {
@@ -28,10 +32,17 @@ impl<T> Default for NumberBounds<T> {
 
 macro_rules! num_parse {
     ($ty:ty, $parser:ident, $low:expr, $big:expr, $expected:expr, $invalid:expr) => {
+        #[async_trait::async_trait]
         impl<'a> Parse<'a> for $ty {
             type Data = NumberBounds<Self>;
 
             type Suggestions = ();
+
+            type SuggestionsAsyncData = ();
+
+            type SuggestionsParam = ();
+
+            const VANILLA: bool = true;
 
             fn id() -> TypeId {
                 TypeId::of::<Self>()
@@ -72,23 +83,29 @@ macro_rules! num_parse {
                 })
             }
 
-            fn vanilla(_data: &Self::Data) -> bool {
-                true
+            fn brigadier_suggestions(_data: &Self::Data) -> Option<NodeSuggestion> {
+                None
             }
-        }
 
-        impl<'a> RawParseSuggestions<'a> for $ty {
-            fn call_suggestions(
-                data: &Self::Data,
-                real: crate::command::RealCommandExecutor,
-                transaction: crate::suggestions::SuggestionsTransaction,
-                executor: crate::command::CommandExecutor,
-                answer: &mut crate::suggestions::SuggestionAnswerer,
-                suggestions: Self::Suggestions,
-                command: String,
-                world: &bevy_ecs::world::World,
-            ) {
-                todo!()
+            /// Creates a data which will be passed then to
+            /// [`Parse::suggestions`] method
+            fn create_suggestions_data(
+                _data: &Self::Data,
+                _command: ArcStrReader,
+                _executor: CommandExecutorBase,
+                _suggestion: &Self::Suggestions,
+                _param: SystemParamItem<Self::SuggestionsParam>,
+            ) -> Self::SuggestionsAsyncData {
+                ()
+            }
+
+            async fn suggestions(
+                _command: ArcStrReader,
+                _executor: CommandExecutorBase,
+                _suggestion: Box<Self::Suggestions>,
+                _async_data: Self::SuggestionsAsyncData,
+            ) -> StrLocated<Cow<'static, [Suggestion<'static>]>> {
+                StrLocated::new(StrSpan::ZERO, Cow::Borrowed(&[]))
             }
         }
     };

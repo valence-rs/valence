@@ -24,3 +24,5 @@ casey.workspace = true
 paste.workspace = true
 rustc-hash.workspace = true
 smallvec.workspace = true
+parking_lot.workspace = true
+tokio.workspace = true

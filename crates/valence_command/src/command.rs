@@ -1,20 +1,13 @@
-use std::any::Any;
-use std::marker::PhantomData;
 use std::ptr::NonNull;
 
-use bevy_ecs::archetype::Archetype;
-use bevy_ecs::component::Tick;
-use bevy_ecs::prelude::{Entity, EventReader};
-use bevy_ecs::system::{In, Query, System, SystemMeta, SystemParam};
-use bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell;
-use bevy_ecs::world::World;
+use bevy_ecs::prelude::Entity;
+use bevy_ecs::system::{Query, SystemParam};
 use glam::DVec3;
 use valence_client::message::SendMessage;
 use valence_client::Client;
 use valence_core::block_pos::BlockPos;
 use valence_core::text::Text;
 
-use crate::exec::CommandExecutionEvent;
 use crate::nodes::EntityNode;
 use crate::parse::ParseResultsRead;
 
@@ -33,17 +26,7 @@ pub struct CommandExecutor {
 
 impl CommandExecutor {
     pub fn node_entity(&self, query: &Query<Option<&EntityNode>>) -> Option<Entity> {
-        match self.base {
-            CommandExecutorBase::Block { instance, .. } => Some(instance),
-            CommandExecutorBase::Console => None,
-            CommandExecutorBase::Entity { entity } => Some(entity),
-        }
-        .and_then(|v| {
-            query
-                .get(v)
-                .expect("The given entity does not exist in the world of this query")
-                .map(|v| v.0)
-        })
+        self.base.node_entity(query)
     }
 }
 
@@ -56,7 +39,7 @@ impl<'w, 's> CommandExecutorBridge<'w, 's> {
     pub fn send_message(&mut self, executor: RealCommandExecutor, text: Text) {
         match executor {
             RealCommandExecutor::Console => todo!(),
-            RealCommandExecutor::Misc(id) => todo!(),
+            RealCommandExecutor::Misc(_id) => todo!(),
             RealCommandExecutor::Player(entity) => {
                 self.client.get_mut(entity).unwrap().send_chat_message(text)
             }
@@ -84,6 +67,22 @@ pub enum CommandExecutorBase {
         instance: Entity,
         pos: BlockPos,
     },
+}
+
+impl CommandExecutorBase {
+    pub fn node_entity(&self, query: &Query<Option<&EntityNode>>) -> Option<Entity> {
+        match self {
+            Self::Block { instance, .. } => Some(instance),
+            Self::Console => None,
+            Self::Entity { entity } => Some(entity),
+        }
+        .and_then(|v| {
+            query
+                .get(*v)
+                .expect("The given entity does not exist in the world of this query")
+                .map(|v| v.0)
+        })
+    }
 }
 
 /// Usage of 'static lifetime is necessary because In argument of bevy can not

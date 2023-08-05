@@ -1,27 +1,22 @@
-use std::marker::PhantomData;
 use std::ptr::NonNull;
 
-use bevy_ecs::archetype::{Archetype, ArchetypeComponentId, ArchetypeGeneration};
 use bevy_ecs::component::{ComponentId, Tick};
 use bevy_ecs::prelude::{Entity, Event, EventReader, EventWriter};
-use bevy_ecs::query::{Access, With, Without};
+use bevy_ecs::query::{Access, Changed};
+use bevy_ecs::removal_detection::RemovedComponents;
 use bevy_ecs::system::{
-    Commands, IntoSystem, ParamSet, Query, Res, Resource, System, SystemMeta, SystemParam,
-    SystemParamFunction, SystemState,
+    IntoSystem, Local, ParamSet, Query, Res, Resource, System, SystemMeta, SystemParam,
 };
 use bevy_ecs::world::unsafe_world_cell::UnsafeWorldCell;
-use bevy_ecs::world::{FromWorld, World, WorldId};
+use bevy_ecs::world::World;
 use rustc_hash::FxHashMap;
 use valence_client::event_loop::PacketEvent;
 use valence_core::protocol::packet::chat::CommandExecutionC2s;
 
 use crate::command::{CommandArguments, CommandExecutor, CommandExecutorBase, RealCommandExecutor};
 use crate::compile::CompiledCommandExecutionEvent;
-use crate::nodes::{
-    EntityNode, InitializedNodeSystem, NodeExclude, NodeFlow, NodeName, NodeParents, NodeParser,
-    NodeSystem, PrimaryNodeRoot,
-};
-use crate::parse::{ParseResultsRead, ParseResultsWrite};
+use crate::nodes::NodeSystem;
+use crate::parse::ParseResultsRead;
 use crate::reader::StrReader;
 
 #[derive(Event, Debug)]
@@ -56,19 +51,19 @@ pub fn command_execution_packet(
 
 #[derive(Resource)]
 pub struct NodeCommandExecutionInnerSystem {
-    pub(crate) execution: Box<dyn System<Out = (), In = ()>>,
+    pub(crate) execution: Option<Box<dyn System<Out = (), In = ()>>>,
 }
 
 #[derive(Resource)]
 pub struct NodeCommandExecutionInnerSystemAccess {
     cid: Access<ComponentId>,
-    acid: Access<ArchetypeComponentId>,
 }
 
-pub(crate) struct NCEUnsafe<'w>(pub UnsafeWorldCell<'w>);
+#[doc(hidden)]
+pub struct WorldUnsafeParam<'w>(pub(crate) UnsafeWorldCell<'w>);
 
-unsafe impl SystemParam for NCEUnsafe<'_> {
-    type Item<'world, 'state> = NCEUnsafe<'world>;
+unsafe impl SystemParam for WorldUnsafeParam<'_> {
+    type Item<'world, 'state> = WorldUnsafeParam<'world>;
 
     type State = ();
 
@@ -82,33 +77,26 @@ unsafe impl SystemParam for NCEUnsafe<'_> {
         world: UnsafeWorldCell<'world>,
         _change_tick: Tick,
     ) -> Self::Item<'world, 'state> {
-        NCEUnsafe::<'world>(world)
+        WorldUnsafeParam::<'world>(world)
     }
 }
 
 pub fn node_command_execution(world: &mut World) {
     fn node_execution(
-        nce_unsafe: NCEUnsafe,
+        nce_unsafe: WorldUnsafeParam,
         mut execution_events: EventReader<CompiledCommandExecutionEvent>,
-        mut node_system: Query<&mut NodeSystem>,
+        mut node_system: ParamSet<(
+            Query<(Entity, &mut NodeSystem), Changed<NodeSystem>>,
+            RemovedComponents<NodeSystem>,
+        )>,
         access: Res<NodeCommandExecutionInnerSystemAccess>,
+        // we need to own this systems in order to apply systems (Commands)
+        // Locals doesn't require anything from the world, so it will be safe to have &mut World
+        // and this
+        mut systems: Local<FxHashMap<Entity, Box<dyn System<In = CommandArguments, Out = ()>>>>,
     ) {
-        for event in execution_events.iter() {
-            let mut executor = event.executor.clone();
-            let real_executor = event.real_executor;
-            let read = event.results.to_read();
-
-            // SAFETY: safety is given by system, that we are calling
-            let executor_ptr = NonNull::new(&mut executor as *mut CommandExecutor).unwrap();
-
-            // SAFETY: above
-            let read_static: ParseResultsRead<'static> = unsafe { std::mem::transmute(read) };
-
-            for path in event.path.iter() {
-                // TODO: handle this
-                let node_system_component = node_system.get_mut(*path).unwrap().into_inner();
-                let node_system = &mut node_system_component.system;
-
+        for (entity, mut node_system_component) in node_system.p0().iter_mut() {
+            if let Some(ref mut node_system) = node_system_component.system {
                 let conflicts = access.cid.get_conflicts(node_system.component_access());
 
                 if !conflicts.is_empty() {
@@ -118,7 +106,34 @@ pub fn node_command_execution(world: &mut World) {
                     )
                 }
 
-                node_system.update_archetype_component_access(nce_unsafe.0);
+                systems.insert(
+                    entity,
+                    std::mem::replace(&mut node_system_component.system, None).unwrap(),
+                );
+            }
+        }
+
+        for entity in node_system.p1().iter() {
+            systems.remove(&entity);
+        }
+
+        for system in systems.values_mut() {
+            system.update_archetype_component_access(nce_unsafe.0);
+        }
+
+        for event in execution_events.iter() {
+            let mut executor = event.executor.clone();
+            let real_executor = event.real_executor;
+            let read = event.compiled.results.to_read();
+
+            // SAFETY: safety is given by system, that we are calling
+            let executor_ptr = NonNull::new(&mut executor as *mut CommandExecutor).unwrap();
+
+            // SAFETY: above
+            let read_static: ParseResultsRead<'static> = unsafe { std::mem::transmute(read) };
+
+            for path in event.compiled.path.iter() {
+                let node_system = systems.get_mut(path).unwrap();
 
                 // SAFETY: we checked for conflicts, if there are conflicts this system would
                 // already panic
@@ -129,6 +144,19 @@ pub fn node_command_execution(world: &mut World) {
                     );
                 }
             }
+        }
+
+        // We want to ensure that nothing will be used further (Also drop, which can in
+        // theory use UnsafeWorldCell)
+        drop(execution_events);
+        drop(node_system);
+        drop(access);
+
+        // SAFETY: no SystemParams, which require any world, will be used further
+        let world = unsafe { nce_unsafe.0.world_mut() };
+
+        for system in systems.values_mut() {
+            system.apply_deferred(world);
         }
     }
 
@@ -142,23 +170,23 @@ pub fn node_command_execution(world: &mut World) {
     {
         Some(inner_system) => inner_system.into_inner(),
         None => {
-            let mut inner_system = NodeCommandExecutionInnerSystem {
-                execution: Box::new(IntoSystem::into_system(node_execution)),
-            };
+            let mut inner_system = Box::new(IntoSystem::into_system(node_execution));
 
-            inner_system
-                .execution
-                .initialize(unsafe { unsafe_world_cell.world_mut() });
+            inner_system.initialize(unsafe { unsafe_world_cell.world_mut() });
 
-            let cid = inner_system.execution.component_access().clone();
-            let acid = inner_system.execution.archetype_component_access().clone();
+            let cid = inner_system.component_access().clone();
+            // let acid = inner_system.archetype_component_access().clone();
 
             // SAFETY: There is no references from this world
-            unsafe { unsafe_world_cell.world_mut() }.insert_resource(inner_system);
+            unsafe { unsafe_world_cell.world_mut() }.insert_resource(
+                NodeCommandExecutionInnerSystem {
+                    execution: Some(inner_system),
+                },
+            );
 
             // SAFETY: we are not using any old resource references after this
             unsafe { unsafe_world_cell.world_mut() }
-                .insert_resource(NodeCommandExecutionInnerSystemAccess { cid, acid });
+                .insert_resource(NodeCommandExecutionInnerSystemAccess { cid });
 
             // SAFETY: all previous references are dropped
             unsafe { unsafe_world_cell.world_mut() }
@@ -167,18 +195,23 @@ pub fn node_command_execution(world: &mut World) {
         }
     };
 
+    let mut execution_system = std::mem::replace(&mut inner_system.execution, None).unwrap();
+
+    // SAFETY:
+    // - we don't have anything from the world
+    let world = unsafe { unsafe_world_cell.world_mut() };
+
     // launching system
 
-    // SAFETY: There is only one mutable resource and it is not used in inner system
-    // and in any others system because it is private
-    unsafe {
-        inner_system.execution.run_unsafe((), unsafe_world_cell);
-    }
+    execution_system.run((), world);
 
     // applying system
 
     // SAFETY: the same as above
-    inner_system
-        .execution
-        .apply_deferred(unsafe { unsafe_world_cell.world_mut() });
+    execution_system.apply_deferred(world);
+
+    // we are returning our system to the resource
+    world
+        .resource_mut::<NodeCommandExecutionInnerSystem>()
+        .execution = Some(execution_system);
 }

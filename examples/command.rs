@@ -3,8 +3,9 @@
 use std::borrow::Cow;
 
 use valence::prelude::*;
-use valence_command::command::{CommandArguments, RealCommandExecutor, CommandExecutorBridge};
+use valence_command::command::{CommandArguments, CommandExecutorBridge, RealCommandExecutor};
 use valence_command::entity::NodeEntityCommandGet;
+use valence_command::nodes::NodeSuggestion;
 
 const SPAWN_Y: i32 = 64;
 
@@ -30,7 +31,7 @@ fn setup(
 
     for z in -5..5 {
         for x in -5..5 {
-            instance.insert_chunk([x, z], Chunk::default());
+            instance.insert_chunk([x, z], UnloadedChunk::new());
         }
     }
 
@@ -68,7 +69,7 @@ fn setup(
         })
         .with_child(|child| {
             child.name(Cow::Borrowed("spectator")).with_child(|child| {
-                child.name(Cow::Borrowed("set_spectator")).parser::<bool>(()).executor(
+                child.name(Cow::Borrowed("set_spectator")).parser::<bool>(()).suggestions(Some(NodeSuggestion::AskServer)).executor(
                     |In(mut arguments): In<CommandArguments>, mut query: Query<&mut GameMode>| {
                         let enable = arguments.0.read::<bool>();
                         if *enable {
@@ -87,19 +88,19 @@ fn setup(
                 child.name(Cow::Borrowed("tp.x")).parser::<i32>(Default::default()).with_child(|child| {
                     child.name(Cow::Borrowed("tp.y")).parser::<i32>(Default::default())
                         .with_child(|child| {
-                        child.name(Cow::Borrowed("tp.z")).parser::<i32>(Default::default())
-                            .executor(|In(mut arguments): In<CommandArguments>, mut query: Query<&mut Position>, mut cebridge: CommandExecutorBridge| {
-                                // CommandExecutorBridge is a SystemParam
-                                if let RealCommandExecutor::Player(client) = arguments.1 {
-                                    let x = arguments.0.read::<i32>();
-                                    let y = arguments.0.read::<i32>();
-                                    let z = arguments.0.read::<i32>();    
-                                    if let Ok(mut position) = query.get_mut(client) {
-                                        position.0 = DVec3::new(*x as _, *y as _, *z as _);
-                                        cebridge.send_message(arguments.1, Text::text(format!("We teleported you to ({x} {y} {z})")));
+                            child.name(Cow::Borrowed("tp.z")).parser::<i32>(Default::default())
+                                .executor(|In(mut arguments): In<CommandArguments>, mut query: Query<&mut Position>, mut cebridge: CommandExecutorBridge| {
+                                    // CommandExecutorBridge is a SystemParam
+                                    if let RealCommandExecutor::Player(client) = arguments.1 {
+                                        let x = arguments.0.read::<i32>();
+                                        let y = arguments.0.read::<i32>();
+                                        let z = arguments.0.read::<i32>();
+                                        if let Ok(mut position) = query.get_mut(client) {
+                                            position.0 = DVec3::new(*x as _, *y as _, *z as _);
+                                            cebridge.send_message(arguments.1, Text::text(format!("We teleported you to ({x} {y} {z})")));
+                                        }
                                     }
-                                }
-                            });
+                                });
                         })
                         .with_child(|child| {
                             child.name(Cow::Borrowed("tp.zfloat")).parser::<f32>(Default::default())
@@ -108,10 +109,10 @@ fn setup(
                                     if let RealCommandExecutor::Player(client) = arguments.1 {
                                         let x = arguments.0.read::<i32>();
                                         let y = arguments.0.read::<i32>();
-                                        let z = arguments.0.read::<f32>();    
+                                        let z = arguments.0.read::<f32>();
                                         if let Ok(mut position) = query.get_mut(client) {
                                             position.0 = DVec3::new(*x as _, *y as _, *z as _);
-                                            cebridge.send_message(arguments.1, Text::text(format!("We teleported you to with float ({x} {y} {z})")));
+                                            cebridge.send_message(arguments.1, Text::text(format!("We teleported you to ({x} {y} {z} (f32))")));
                                         }
                                     }
                                 });

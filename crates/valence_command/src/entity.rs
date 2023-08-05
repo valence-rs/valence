@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::collections::HashSet;
 
 use bevy_ecs::prelude::Entity;
 use bevy_ecs::system::{Commands, IntoSystem};
@@ -9,7 +8,6 @@ use rustc_hash::FxHashSet;
 use crate::command::CommandArguments;
 use crate::nodes::{NodeExclude, NodeRoot, NodeSuggestion, PrimaryNodeRoot};
 use crate::parse::Parse;
-use crate::suggestions::RawParseSuggestions;
 use crate::world::NodeEntityMut;
 
 pub trait NodeEntityCommandGet<'w, 's> {
@@ -79,7 +77,7 @@ impl<'w, 's, 'c> NodeEntityCommands<'w, 's, 'c> {
 
     pub fn parser<P>(&mut self, data: <P as Parse<'static>>::Data) -> &mut Self
     where
-        for<'a> P: Parse<'a> + RawParseSuggestions<'a>,
+        for<'a> P: Parse<'a>,
     {
         self.add(move |entity| {
             entity.parser::<P>(data);

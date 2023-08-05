@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 
 use bevy_ecs::prelude::Entity;
-use bevy_ecs::system::{In, IntoSystem, System};
+use bevy_ecs::system::{IntoSystem, System};
 use bevy_ecs::world::EntityMut;
 use smallvec::smallvec;
 
@@ -12,7 +12,6 @@ use crate::nodes::{
     NodeSystem, PCRelationVec,
 };
 use crate::parse::Parse;
-use crate::suggestions::RawParseSuggestions;
 
 /// Trait with all functions to create a command node
 pub trait NodeEntityMut<'w>: Sized {
@@ -30,7 +29,7 @@ pub trait NodeEntityMut<'w>: Sized {
 
     fn parser<P>(&mut self, data: <P as Parse<'static>>::Data) -> &mut Self
     where
-        for<'a> P: Parse<'a> + RawParseSuggestions<'a>;
+        for<'a> P: Parse<'a>;
 
     /// Inserts a suggestion component.
     /// [`None`] means that the suggestion will be based on brigadier parser
@@ -60,7 +59,7 @@ impl<'w> NodeEntityMut<'w> for EntityMut<'w> {
     where
         S: IntoSystem<CommandArguments, (), Marker>,
     {
-        let mut system: Box<S::System> = Box::new(IntoSystem::into_system(executor));
+        let system: Box<S::System> = Box::new(IntoSystem::into_system(executor));
         self.executor_system(system)
     }
 
@@ -72,16 +71,20 @@ impl<'w> NodeEntityMut<'w> for EntityMut<'w> {
             executor.initialize(world);
         });
 
-        self.insert(NodeSystem { system: executor });
+        self.insert(NodeSystem {
+            system: Some(executor),
+        });
 
         self
     }
 
     fn parser<P>(&mut self, data: <P as Parse<'static>>::Data) -> &mut Self
     where
-        for<'a> P: Parse<'a> + RawParseSuggestions<'a>,
+        for<'a> P: Parse<'a>,
     {
-        self.insert(NodeParser::new::<P>(data))
+        let node_parser = self.world_scope(|world| NodeParser::new::<P>(data, world));
+
+        self.insert(node_parser)
     }
 
     fn suggestions(&mut self, suggestion: Option<NodeSuggestion>) -> &mut Self {
@@ -158,7 +161,7 @@ impl<'w> NodeEntityMut<'w> for EntityMut<'w> {
             unique_children
         });
 
-        let mut flow = self.get_mut::<NodeFlow>().unwrap().into_inner();
+        let flow = self.get_mut::<NodeFlow>().unwrap().into_inner();
 
         if let NodeFlow(NodeFlowInner::Children(children)) = flow {
             children.extend(unique_children);

@@ -1,11 +1,14 @@
-
-use std::{borrow::Cow, io::Write};
+use std::borrow::Cow;
+use std::io::Write;
 
 use anyhow::bail;
 use byteorder::WriteBytesExt;
-use valence_core::{__private::VarInt, protocol::{Encode, Decode, Packet, packet_id}, ident::Ident};
+use valence_core::__private::VarInt;
+use valence_core::ident::Ident;
+use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 
 use crate::nodes::NodeSuggestion;
+use crate::suggestions::Suggestion;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 #[packet(id = packet_id::COMMAND_TREE_S2C)]
@@ -443,4 +446,13 @@ impl<'a> Decode<'a> for Parser<'a> {
             n => bail!("unknown command parser ID of {n}"),
         })
     }
+}
+
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::COMMAND_SUGGESTIONS_S2C)]
+pub struct CommandSuggestionsS2c<'a> {
+    pub id: VarInt,
+    pub start: VarInt,
+    pub length: VarInt,
+    pub matches: Cow<'a, [Suggestion<'a>]>,
 }

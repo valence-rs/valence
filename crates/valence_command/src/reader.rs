@@ -1,5 +1,7 @@
+use std::cmp::Ordering;
 use std::ops::{Add, AddAssign, Range, Sub, SubAssign};
 use std::str::Chars;
+use std::sync::Arc;
 
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct StrCursor {
@@ -64,6 +66,12 @@ pub struct StrSpan {
 }
 
 impl StrSpan {
+    /// Valid for any string
+    pub const ZERO: Self = StrSpan {
+        begin: StrCursor::new(0, 0),
+        end: StrCursor::new(0, 0),
+    };
+
     pub const fn new(begin: StrCursor, end: StrCursor) -> Self {
         debug_assert!(begin.bytes <= end.bytes);
         Self { begin, end }
@@ -91,6 +99,14 @@ impl StrSpan {
     pub fn in_str<'a>(&self, str: &'a str) -> Option<&'a str> {
         str.get(self.begin.bytes..self.end.bytes)
     }
+
+    pub fn is_deeper(&self, o: StrSpan) -> bool {
+        match self.begin().bytes().cmp(&o.begin().bytes()) {
+            Ordering::Equal if self.end().bytes() < o.end().bytes() => false,
+            Ordering::Less => false,
+            _ => true,
+        }
+    }
 }
 
 impl From<Range<StrCursor>> for StrSpan {
@@ -115,6 +131,78 @@ impl<T> StrLocated<T> {
             span: self.span,
             object: func(self.object),
         }
+    }
+}
+
+/// [`std::future::Future`] does not support borrowed values, so we need
+/// something that has 'static lifetime in order to use borrowed string in an
+/// async function
+#[derive(Clone, Debug, PartialEq)]
+pub struct ArcStrReader {
+    str: Arc<str>, // TODO: change to weak arc?
+    cursor: StrCursor,
+}
+
+impl ArcStrReader {
+    /// # Safety
+    /// cursor must be a valid cursor for given str
+    pub unsafe fn new(str: Arc<str>, cursor: StrCursor) -> Self {
+        Self { str, cursor }
+    }
+
+    pub fn new_command(str: Arc<str>) -> Self {
+        let cursor = if str.starts_with('/') {
+            StrCursor::start() + '/'
+        } else {
+            StrCursor::start()
+        };
+
+        Self { str, cursor }
+    }
+
+    pub fn reader(&self) -> StrReader {
+        StrReader {
+            str: &self.str,
+            cursor: self.cursor,
+        }
+    }
+
+    pub fn cursor(&self) -> StrCursor {
+        self.cursor
+    }
+
+    /// # Safety
+    /// cursor must be a valid cursor for str
+    pub unsafe fn set_cursor(&mut self, cursor: StrCursor) {
+        self.cursor = cursor;
+    }
+
+    pub fn str(&self) -> Arc<str> {
+        Arc::clone(&self.str)
+    }
+
+    pub fn span(&self, span: StrSpan) -> ArcStrReaderSpan {
+        let str_span = ArcStrReaderSpan {
+            str: Arc::clone(&self.str),
+            span,
+        };
+        let _ = str_span.str();
+        str_span
+    }
+}
+
+pub struct ArcStrReaderSpan {
+    str: Arc<str>, // TODO: change to weak arc?
+    span: StrSpan,
+}
+
+impl ArcStrReaderSpan {
+    pub fn str(&self) -> &str {
+        self.span.in_str(&self.str).unwrap()
+    }
+
+    pub fn span(&self) -> StrSpan {
+        self.span
     }
 }
 

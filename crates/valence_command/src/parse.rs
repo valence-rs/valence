@@ -1,18 +1,22 @@
-use std::any::TypeId;
-use std::mem::{ManuallyDrop, MaybeUninit};
-use std::ptr::NonNull;
+use std::any::{Any, TypeId};
+use std::borrow::Cow;
+use std::future::Future;
+use std::pin::Pin;
 
+use bevy_ecs::system::{ReadOnlySystemParam, SystemParamItem, SystemState};
 use bevy_ecs::world::World;
 use valence_core::text::Text;
 
-use crate::command::{CommandExecutor, RealCommandExecutor};
+use crate::command::CommandExecutorBase;
+use crate::nodes::NodeSuggestion;
 use crate::pkt;
-use crate::reader::{StrLocated, StrReader};
-use crate::suggestions::{RawParseSuggestions, SuggestionAnswerer, SuggestionsTransaction};
+use crate::reader::{ArcStrReader, StrLocated, StrReader};
+use crate::suggestions::Suggestion;
 
 pub type ParseResult<T> = Result<T, StrLocated<Text>>;
 
 /// Identifies any object that can be parsed in a command
+#[async_trait::async_trait]
 pub trait Parse<'a>: 'a + Send + Sized {
     /// Any data that can be possibly passed to [`Parse`] to change it's
     /// behaviour.
@@ -20,7 +24,16 @@ pub trait Parse<'a>: 'a + Send + Sized {
 
     /// A type which is used to calculate suggestions after [`Parse::parse`] or
     /// [`Parse::skip`] methods were called.
-    type Suggestions: 'a + Default;
+    type Suggestions: 'static + Sync + Send + Default;
+
+    /// A param which is used to calculate [`Parse::SuggestionsAsyncData`]    
+    type SuggestionsParam: ReadOnlySystemParam;
+
+    /// A data which will be then given to the async function
+    /// [`Parse::suggestions`]
+    type SuggestionsAsyncData: Send + 'static;
+
+    const VANILLA: bool;
 
     fn id() -> TypeId;
 
@@ -28,7 +41,6 @@ pub trait Parse<'a>: 'a + Send + Sized {
     /// value is ended.
     /// ### May not
     /// - give different results on the same data and reader string
-    /// - panic if data is valid. Error should be passed as an [`Result::Err`]
     fn parse(
         data: &Self::Data,
         suggestions: &mut Self::Suggestions,
@@ -47,17 +59,30 @@ pub trait Parse<'a>: 'a + Send + Sized {
 
     fn brigadier(data: &Self::Data) -> Option<pkt::Parser<'static>>;
 
-    #[allow(unused_variables)]
-    /// Returns true if this [`Parse`] is provided by vanilla minecraft
-    fn vanilla(data: &Self::Data) -> bool {
-        false
-    }
+    fn brigadier_suggestions(data: &Self::Data) -> Option<NodeSuggestion>;
+
+    /// Creates a data which will be passed then to
+    /// [`Parse::suggestions`] method
+    fn create_suggestions_data(
+        data: &Self::Data,
+        command: ArcStrReader,
+        executor: CommandExecutorBase,
+        suggestions: &Self::Suggestions,
+        param: SystemParamItem<Self::SuggestionsParam>,
+    ) -> Self::SuggestionsAsyncData;
+
+    async fn suggestions(
+        command: ArcStrReader,
+        executor: CommandExecutorBase,
+        suggestions: Box<Self::Suggestions>,
+        async_data: Self::SuggestionsAsyncData,
+    ) -> StrLocated<Cow<'static, [Suggestion<'static>]>>;
 }
 
 #[derive(Clone, Debug)]
 pub(crate) struct ParseResultsWrite(pub Vec<u64>);
 
-// we don't want rust to change variables places in the struct
+// we don't want rust to change variable's places in the struct
 #[repr(C)]
 pub(crate) struct RawAny<T> {
     obj_drop: Option<unsafe fn(*mut T)>,
@@ -127,14 +152,15 @@ impl<T> RawAny<T> {
 
         let slice_ptr = slice.as_ptr();
 
-        // SAFETY: caller
+        // SAFETY: the caller
         let empty_any_ptr = unsafe { &*(slice_ptr as *const (usize, RawAny<()>)) };
 
         if empty_any_ptr.1.tid != T::id() {
             panic!("Tried to read the wrong object");
         }
 
-        // SAFETY: we have checked if the type caller has gave to us is the right one.
+        // SAFETY: we have checked if the type the caller has gave to us is the right
+        // one.
         let right_any_ptr =
             unsafe { &*(empty_any_ptr as *const (usize, RawAny<()>) as *const (usize, RawAny<T>)) };
 
@@ -193,20 +219,10 @@ pub(crate) struct ParseResults {
 }
 
 impl ParseResults {
-
-    /// # Safety
-    /// Given [`ParseResultsWrite`] must be made from given command [`String`]
-    pub unsafe fn new(command: String, results: ParseResultsWrite) -> Self {
-        Self {
-            command,
-            results
-        }
-    }
-
     pub fn new_empty(command: String) -> Self {
         Self {
             command,
-            results: ParseResultsWrite(vec![])
+            results: ParseResultsWrite(vec![]),
         }
     }
 
@@ -217,55 +233,46 @@ impl ParseResults {
     pub fn to_read(&self) -> ParseResultsRead {
         ParseResultsRead(&self.results.0)
     }
-
 }
 
 pub(crate) trait ParseObject: Sync + Send {
-    /// Parses an object and writes it into the `fill` vec. Returns bytes which
-    /// represents suggestions
-    /// # Safety
-    /// The implementation must write type id first into the `fill` vec and then
-    /// the object itself. Returned pointer. Also the implementation must ensure
-    /// that the parsed object has 'a lifetime
-    unsafe fn obj_parse<'a>(
+    fn obj_parse<'a>(
         &self,
         reader: &mut StrReader<'a>,
         fill: &mut ParseResultsWrite,
-    ) -> (ParseResult<()>, NonNull<u8>);
+    ) -> (ParseResult<()>, Box<dyn Any>);
 
-    unsafe fn obj_skip<'a>(&self, reader: &mut StrReader<'a>) -> (ParseResult<()>, NonNull<u8>);
+    fn obj_skip<'a>(&self, reader: &mut StrReader<'a>) -> (ParseResult<()>, Box<dyn Any>);
 
     fn obj_brigadier(&self) -> Option<pkt::Parser<'static>>;
 
-    /// # Safety
-    /// Suggestions must be dropped and suggestions pointer must point to valid
-    /// suggestions object.
-    unsafe fn obj_call_suggestions(
-        &self,
-        suggestions: NonNull<u8>,
-        real: RealCommandExecutor,
-        transaction: SuggestionsTransaction,
-        executor: CommandExecutor,
-        answer: &mut SuggestionAnswerer,
-        command: String,
+    fn obj_suggestions<'f>(
+        &mut self,
+        suggestions: Box<dyn Any>,
+        command: ArcStrReader,
+        executor: CommandExecutorBase,
         world: &World,
-    );
+    ) -> Pin<Box<dyn Future<Output = StrLocated<Cow<'static, [Suggestion<'static>]>>> + Send + 'f>>;
 
-    unsafe fn obj_drop_suggestions(&self, suggestions: NonNull<u8>);
+    fn obj_apply_deferred(&mut self, world: &mut World);
 }
 
-pub(crate) struct ParseWithData<'a, T: Parse<'a>>(pub T::Data);
+pub(crate) struct ParseWithData<T: Parse<'static>> {
+    pub data: T::Data,
+    pub state: SystemState<T::SuggestionsParam>,
+}
 
-impl<T: Parse<'static> + RawParseSuggestions<'static>> ParseObject
-    for ParseWithData<'static, T>
+impl<T> ParseObject for ParseWithData<T>
+where
+    for<'a> T: Parse<'a>,
 {
-    unsafe fn obj_parse<'a>(
+    fn obj_parse<'a>(
         &self,
         reader: &mut StrReader<'a>,
         fill: &mut ParseResultsWrite,
-    ) -> (ParseResult<()>, NonNull<u8>) {
+    ) -> (ParseResult<()>, Box<dyn Any>) {
         let mut suggestions = T::Suggestions::default();
-        let result = T::parse(&self.0, &mut suggestions, unsafe {
+        let result = T::parse(&self.data, &mut suggestions, unsafe {
             std::mem::transmute(reader)
         });
         (
@@ -276,55 +283,38 @@ impl<T: Parse<'static> + RawParseSuggestions<'static>> ParseObject
                 }
                 Err(e) => Err(e),
             },
-            // SAFETY: drop provided by next methods
-            unsafe { std::mem::transmute(Box::new(suggestions)) },
+            Box::new(suggestions),
         )
     }
 
-    unsafe fn obj_skip<'a>(&self, reader: &mut StrReader<'a>) -> (ParseResult<()>, NonNull<u8>) {
+    fn obj_skip<'a>(&self, reader: &mut StrReader<'a>) -> (ParseResult<()>, Box<dyn Any>) {
         let mut suggestions = T::Suggestions::default();
-        let result = T::skip(&self.0, &mut suggestions, unsafe {
+        let result = T::skip(&self.data, &mut suggestions, unsafe {
             std::mem::transmute(reader)
         });
-        (
-            result,
-            // SAFETY: drop provided by next methods
-            unsafe { std::mem::transmute(Box::new(suggestions)) },
-        )
+        (result, Box::new(suggestions))
     }
 
     fn obj_brigadier(&self) -> Option<pkt::Parser<'static>> {
-        T::brigadier(&self.0)
+        T::brigadier(&self.data)
     }
 
-    unsafe fn obj_call_suggestions(
-        &self,
-        suggestions: NonNull<u8>,
-        real: RealCommandExecutor,
-        transaction: SuggestionsTransaction,
-        executor: CommandExecutor,
-        answer: &mut SuggestionAnswerer,
-        command: String,
+    fn obj_suggestions<'f>(
+        &mut self,
+        suggestion: Box<dyn Any>,
+        command: ArcStrReader,
+        executor: CommandExecutorBase,
         world: &World,
-    ) {
-        // SAFETY: Box is a boxed NonNull and method accepts only valid T::Suggestions
-        // pointers
-        let suggestions: Box<T::Suggestions> = std::mem::transmute(suggestions);
-        let suggestions = *suggestions;
-        T::call_suggestions(
-            &self.0,
-            real,
-            transaction,
-            executor,
-            answer,
-            suggestions,
-            command,
-            world,
-        )
+    ) -> Pin<Box<dyn Future<Output = StrLocated<Cow<'static, [Suggestion<'static>]>>> + Send + 'f>>
+    {
+        let suggestion: Box<T::Suggestions> = suggestion.downcast().unwrap();
+        let param = self.state.get(world);
+        let data =
+            T::create_suggestions_data(&self.data, command.clone(), executor, &suggestion, param);
+        T::suggestions(command, executor, suggestion, data)
     }
 
-    unsafe fn obj_drop_suggestions(&self, suggestions: NonNull<u8>) {
-        // SAFETY: provided by caller
-        let _: Box<T::Suggestions> = std::mem::transmute(suggestions);
+    fn obj_apply_deferred(&mut self, world: &mut World) {
+        self.state.apply(world);
     }
 }
