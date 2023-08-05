@@ -13,8 +13,10 @@ use crate::reader::{ArcStrReader, StrLocated, StrReader, StrSpan};
 use crate::suggestions::Suggestion;
 
 #[async_trait::async_trait]
-impl<'a> Parse<'a> for bool {
-    type Data = ();
+impl Parse for bool {
+    type Item<'a> = bool;
+
+    type Data<'a> = ();
 
     type Suggestions = StrSpan;
 
@@ -24,12 +26,16 @@ impl<'a> Parse<'a> for bool {
 
     const VANILLA: bool = true;
 
-    fn id() -> TypeId {
+    fn parse_id() -> TypeId {
         TypeId::of::<Self>()
     }
 
-    fn parse(
-        _data: &Self::Data,
+    fn item_id() -> TypeId {
+        TypeId::of::<Self>()
+    }
+
+    fn parse<'a>(
+        _data: &Self::Data<'a>,
         suggestions: &mut Self::Suggestions,
         reader: &mut StrReader<'a>,
     ) -> ParseResult<Self> {
@@ -50,16 +56,16 @@ impl<'a> Parse<'a> for bool {
         })
     }
 
-    fn brigadier(_data: &Self::Data) -> Option<pkt::Parser<'static>> {
+    fn brigadier(_data: &Self::Data<'_>) -> Option<pkt::Parser<'static>> {
         Some(pkt::Parser::Bool)
     }
 
-    fn brigadier_suggestions(_data: &Self::Data) -> Option<NodeSuggestion> {
+    fn brigadier_suggestions(_data: &Self::Data<'_>) -> Option<NodeSuggestion> {
         None
     }
 
     fn create_suggestions_data(
-        _data: &Self::Data,
+        _data: &Self::Data<'_>,
         command: ArcStrReader,
         _executor: CommandExecutorBase,
         suggestions: &Self::Suggestions,

@@ -75,10 +75,7 @@ impl<'w, 's, 'c> NodeEntityCommands<'w, 's, 'c> {
         self
     }
 
-    pub fn parser<P>(&mut self, data: <P as Parse<'static>>::Data) -> &mut Self
-    where
-        for<'a> P: Parse<'a>,
-    {
+    pub fn parser<P: Parse>(&mut self, data: P::Data<'static>) -> &mut Self {
         self.add(move |entity| {
             entity.parser::<P>(data);
         });

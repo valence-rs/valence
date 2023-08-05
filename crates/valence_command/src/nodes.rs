@@ -75,10 +75,7 @@ pub struct NodeChildrenFlow {
 pub struct NodeParser(pub(crate) Option<Box<dyn ParseObject>>);
 
 impl NodeParser {
-    pub fn new<T>(data: <T as Parse<'static>>::Data, world: &mut World) -> Self
-    where
-        for<'a> T: Parse<'a>,
-    {
+    pub fn new<T: Parse>(data: T::Data<'static>, world: &mut World) -> Self {
         Self(Some(Box::new(ParseWithData::<T> {
             data,
             state: SystemState::new(world),

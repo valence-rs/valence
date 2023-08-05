@@ -149,6 +149,7 @@ impl<'w, 's> CommandCompiler<'w, 's> {
             }
             Some(NodeFlowInner::Stop) | None => {
                 purpose.path(node, reader, executable)?;
+                purpose.last_entity(node);
                 Ok(())
             }
         }

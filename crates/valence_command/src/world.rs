@@ -27,9 +27,7 @@ pub trait NodeEntityMut<'w>: Sized {
         executor: Box<dyn System<In = CommandArguments, Out = ()>>,
     ) -> &mut Self;
 
-    fn parser<P>(&mut self, data: <P as Parse<'static>>::Data) -> &mut Self
-    where
-        for<'a> P: Parse<'a>;
+    fn parser<P: Parse>(&mut self, data: P::Data<'static>) -> &mut Self;
 
     /// Inserts a suggestion component.
     /// [`None`] means that the suggestion will be based on brigadier parser
@@ -78,10 +76,7 @@ impl<'w> NodeEntityMut<'w> for EntityMut<'w> {
         self
     }
 
-    fn parser<P>(&mut self, data: <P as Parse<'static>>::Data) -> &mut Self
-    where
-        for<'a> P: Parse<'a>,
-    {
+    fn parser<P: Parse>(&mut self, data: P::Data<'static>) -> &mut Self {
         let node_parser = self.world_scope(|world| NodeParser::new::<P>(data, world));
 
         self.insert(node_parser)

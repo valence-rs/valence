@@ -17,54 +17,60 @@ pub type ParseResult<T> = Result<T, StrLocated<Text>>;
 
 /// Identifies any object that can be parsed in a command
 #[async_trait::async_trait]
-pub trait Parse<'a>: 'a + Send + Sized {
+pub trait Parse: 'static {
+    type Item<'a>: 'a + Send + Sized;
+
     /// Any data that can be possibly passed to [`Parse`] to change it's
     /// behaviour.
-    type Data: 'a + Sync + Send;
+    type Data<'a>: 'a + Sync + Send;
 
     /// A type which is used to calculate suggestions after [`Parse::parse`] or
     /// [`Parse::skip`] methods were called.
     type Suggestions: 'static + Sync + Send + Default;
 
     /// A param which is used to calculate [`Parse::SuggestionsAsyncData`]    
-    type SuggestionsParam: ReadOnlySystemParam;
+    type SuggestionsParam: 'static + ReadOnlySystemParam;
 
     /// A data which will be then given to the async function
     /// [`Parse::suggestions`]
-    type SuggestionsAsyncData: Send + 'static;
+    type SuggestionsAsyncData: 'static + Send;
 
     const VANILLA: bool;
 
-    fn id() -> TypeId;
+    fn parse_id() -> TypeId;
+
+    fn item_id() -> TypeId {
+        TypeId::of::<Self::Item<'static>>()
+    }
 
     /// Parses value from a given string and moves reader to the place where the
     /// value is ended.
     /// ### May not
     /// - give different results on the same data and reader string
-    fn parse(
-        data: &Self::Data,
+    fn parse<'a>(
+        data: &Self::Data<'a>,
         suggestions: &mut Self::Suggestions,
         reader: &mut StrReader<'a>,
-    ) -> ParseResult<Self>;
+    ) -> ParseResult<Self::Item<'a>>;
 
     /// Does the same as [`Parse::parse`] but doesn't return any value. Useful
     /// for values, which contain some stuff that needs heap allocation
-    fn skip(
-        data: &Self::Data,
+    fn skip<'a>(
+        data: &Self::Data<'a>,
         suggestions: &mut Self::Suggestions,
         reader: &mut StrReader<'a>,
     ) -> ParseResult<()> {
         Self::parse(data, suggestions, reader).map(|_| ())
     }
 
-    fn brigadier(data: &Self::Data) -> Option<pkt::Parser<'static>>;
+    fn brigadier(data: &Self::Data<'_>) -> Option<pkt::Parser<'static>>;
 
-    fn brigadier_suggestions(data: &Self::Data) -> Option<NodeSuggestion>;
+    fn brigadier_suggestions(data: &Self::Data<'_>) -> Option<NodeSuggestion>;
 
     /// Creates a data which will be passed then to
     /// [`Parse::suggestions`] method
     fn create_suggestions_data(
-        data: &Self::Data,
+        data: &Self::Data<'_>,
         command: ArcStrReader,
         executor: CommandExecutorBase,
         suggestions: &Self::Suggestions,
@@ -84,33 +90,30 @@ pub(crate) struct ParseResultsWrite(pub Vec<u64>);
 
 // we don't want rust to change variable's places in the struct
 #[repr(C)]
-pub(crate) struct RawAny<T> {
-    obj_drop: Option<unsafe fn(*mut T)>,
+pub(crate) struct RawAny<I> {
+    obj_drop: Option<unsafe fn(*mut I)>,
     tid: TypeId,
-    obj: T,
+    obj: I,
 }
 
-impl<T> Drop for RawAny<T> {
+impl<I> Drop for RawAny<I> {
     fn drop(&mut self) {
         if let Some(obj_drop) = self.obj_drop {
             // SAFETY: Guarantied by struct
-            unsafe { obj_drop(&mut self.obj as *mut T) }
+            unsafe { obj_drop(&mut self.obj as *mut I) }
         }
     }
 }
 
-impl<T> RawAny<T> {
-    pub fn new<'a>(obj: T) -> Self
-    where
-        T: Parse<'a>,
-    {
+impl<I> RawAny<I> {
+    pub fn new<T: Parse>(obj: I) -> Self {
         Self {
-            obj_drop: if std::mem::needs_drop::<T>() {
+            obj_drop: if std::mem::needs_drop::<I>() {
                 Some(std::ptr::drop_in_place)
             } else {
                 None
             },
-            tid: T::id(),
+            tid: T::item_id(),
             obj,
         }
     }
@@ -120,14 +123,14 @@ impl<T> RawAny<T> {
 
         // Depends on system. if less than 64bit then the size does not change otherwise
         // changes
-        let len = std::mem::size_of::<(usize, RawAny<T>)>() / 8;
+        let len = std::mem::size_of::<(usize, RawAny<I>)>() / 8;
 
         to_write.0 = len;
 
         // TypeId is an u64, so it shouldn't panic
-        debug_assert!(std::mem::size_of::<(usize, RawAny<T>)>() % 8 == 0);
+        debug_assert!(std::mem::size_of::<(usize, RawAny<I>)>() % 8 == 0);
 
-        let self_ptr = &to_write as *const (usize, RawAny<T>) as *const u64;
+        let self_ptr = &to_write as *const (usize, RawAny<I>) as *const u64;
 
         // SAFETY: self_ptr is the pointer to our struct, the size of u64 we can put
         // into the struct is equal to len variable
@@ -142,10 +145,7 @@ impl<T> RawAny<T> {
 
     /// # Safety
     /// - Slice must be created using [`Self::write`] method
-    pub unsafe fn read<'a>(slice: &mut &'a [u64]) -> &'a Self
-    where
-        T: Parse<'a>,
-    {
+    pub unsafe fn read<'a, T: Parse>(slice: &mut &'a [u64]) -> &'a Self {
         if slice.len() <= std::mem::size_of::<(usize, RawAny<()>)>() / 8 {
             panic!("Slice doesn't contain essential information as length, drop and tid");
         }
@@ -155,14 +155,14 @@ impl<T> RawAny<T> {
         // SAFETY: the caller
         let empty_any_ptr = unsafe { &*(slice_ptr as *const (usize, RawAny<()>)) };
 
-        if empty_any_ptr.1.tid != T::id() {
+        if empty_any_ptr.1.tid != T::item_id() {
             panic!("Tried to read the wrong object");
         }
 
         // SAFETY: we have checked if the type the caller has gave to us is the right
         // one.
         let right_any_ptr =
-            unsafe { &*(empty_any_ptr as *const (usize, RawAny<()>) as *const (usize, RawAny<T>)) };
+            unsafe { &*(empty_any_ptr as *const (usize, RawAny<()>) as *const (usize, RawAny<I>)) };
 
         *slice = &slice[right_any_ptr.0..];
 
@@ -191,8 +191,8 @@ impl<T> RawAny<T> {
 }
 
 impl ParseResultsWrite {
-    pub fn write<'a, T: Parse<'a>>(&mut self, obj: T) {
-        RawAny::new(obj).write(&mut self.0);
+    pub fn write<'a, T: Parse>(&mut self, obj: T::Item<'a>) {
+        RawAny::<T::Item<'a>>::new::<T>(obj).write(&mut self.0);
     }
 }
 
@@ -207,9 +207,9 @@ impl Drop for ParseResultsWrite {
 pub struct ParseResultsRead<'a>(&'a [u64]);
 
 impl<'a> ParseResultsRead<'a> {
-    pub fn read<T: Parse<'a>>(&mut self) -> &'a T {
+    pub fn read<T: Parse>(&mut self) -> &'a T::Item<'a> {
         // SAFETY: slice is from ParseResultsWrite
-        unsafe { &RawAny::read(&mut self.0).obj }
+        unsafe { &RawAny::<T::Item<'a>>::read::<T>(&mut self.0).obj }
     }
 }
 
@@ -258,15 +258,12 @@ pub(crate) trait ParseObject: Sync + Send {
     fn obj_apply_deferred(&mut self, world: &mut World);
 }
 
-pub(crate) struct ParseWithData<T: Parse<'static>> {
-    pub data: T::Data,
+pub(crate) struct ParseWithData<T: Parse> {
+    pub data: T::Data<'static>,
     pub state: SystemState<T::SuggestionsParam>,
 }
 
-impl<T> ParseObject for ParseWithData<T>
-where
-    for<'a> T: Parse<'a>,
-{
+impl<T: Parse> ParseObject for ParseWithData<T> {
     fn obj_parse<'a>(
         &self,
         reader: &mut StrReader<'a>,
@@ -279,7 +276,7 @@ where
         (
             match result {
                 Ok(obj) => {
-                    fill.write(obj);
+                    fill.write::<T>(obj);
                     Ok(())
                 }
                 Err(e) => Err(e),

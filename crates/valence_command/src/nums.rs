@@ -33,8 +33,10 @@ impl<T> Default for NumberBounds<T> {
 macro_rules! num_parse {
     ($ty:ty, $parser:ident, $low:expr, $big:expr, $expected:expr, $invalid:expr) => {
         #[async_trait::async_trait]
-        impl<'a> Parse<'a> for $ty {
-            type Data = NumberBounds<Self>;
+        impl Parse for $ty {
+            type Item<'a> = Self;
+
+            type Data<'a> = NumberBounds<Self>;
 
             type Suggestions = ();
 
@@ -44,12 +46,16 @@ macro_rules! num_parse {
 
             const VANILLA: bool = true;
 
-            fn id() -> TypeId {
+            fn parse_id() -> TypeId {
                 TypeId::of::<Self>()
             }
 
-            fn parse(
-                data: &Self::Data,
+            fn item_id() -> TypeId {
+                TypeId::of::<Self>()
+            }
+
+            fn parse<'a>(
+                data: &Self::Data<'a>,
                 _suggestions: &mut Self::Suggestions,
                 reader: &mut StrReader<'a>,
             ) -> ParseResult<Self> {
@@ -76,21 +82,21 @@ macro_rules! num_parse {
                 })
             }
 
-            fn brigadier(data: &Self::Data) -> Option<pkt::Parser<'static>> {
+            fn brigadier(data: &Self::Data<'_>) -> Option<pkt::Parser<'static>> {
                 Some(pkt::Parser::$parser {
                     min: data.min,
                     max: data.max,
                 })
             }
 
-            fn brigadier_suggestions(_data: &Self::Data) -> Option<NodeSuggestion> {
+            fn brigadier_suggestions(_data: &Self::Data<'_>) -> Option<NodeSuggestion> {
                 None
             }
 
             /// Creates a data which will be passed then to
             /// [`Parse::suggestions`] method
             fn create_suggestions_data(
-                _data: &Self::Data,
+                _data: &Self::Data<'_>,
                 _command: ArcStrReader,
                 _executor: CommandExecutorBase,
                 _suggestion: &Self::Suggestions,
