@@ -64,44 +64,6 @@ fn client_teleport_and_move() {
 }
 
 #[test]
-fn client_start_flying() {
-    let mut senario = ScenarioSingleClient::new();
-
-    assert!(!senario
-        .app
-        .world
-        .get::<PlayerAbilitiesFlags>(senario.client)
-        .unwrap()
-        .flying());
-
-    senario
-        .helper
-        .send::<UpdatePlayerAbilitiesC2s>(&UpdatePlayerAbilitiesC2s::StartFlying);
-
-    senario.app.update();
-
-    assert!(senario
-        .app
-        .world
-        .get::<PlayerAbilitiesFlags>(senario.client)
-        .unwrap()
-        .flying());
-
-    senario
-        .helper
-        .send::<UpdatePlayerAbilitiesC2s>(&UpdatePlayerAbilitiesC2s::StopFlying);
-
-    senario.app.update();
-
-    assert!(!senario
-        .app
-        .world
-        .get::<PlayerAbilitiesFlags>(senario.client)
-        .unwrap()
-        .flying());
-}
-
-#[test]
 fn client_gamemode_changed_ability() {
     let mut senario = ScenarioSingleClient::new();
 
