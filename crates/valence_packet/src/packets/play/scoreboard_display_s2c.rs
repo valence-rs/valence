@@ -1,3 +1,5 @@
+use bevy_ecs::prelude::Component;
+
 use super::team_s2c::TeamColor;
 use super::*;
 
@@ -8,11 +10,18 @@ pub struct ScoreboardDisplayS2c<'a> {
     pub score_name: &'a str,
 }
 
-#[derive(Copy, Clone, PartialEq, Debug)]
+/// Defines where a scoreboard is displayed.
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Component, Default)]
 pub enum ScoreboardPosition {
+    /// Display the scoreboard in the player list (the one you see when you
+    /// press tab), as a yellow number next to players' names.
     List,
+    /// Display the scoreboard on the sidebar.
+    #[default]
     Sidebar,
+    /// Display the scoreboard below players' name tags in the world.
     BelowName,
+    /// Display the scoreboard on the sidebar, visible only to one team.
     SidebarTeam(TeamColor),
 }
 
