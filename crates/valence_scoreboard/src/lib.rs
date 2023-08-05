@@ -32,7 +32,7 @@ use valence_core::__private::VarInt;
 use valence_core::despawn::Despawned;
 use valence_core::text::IntoText;
 use valence_entity::EntityLayerId;
-use valence_layer::EntityLayer;
+use valence_layer::{EntityLayer, UpdateLayersPreClientSet};
 pub use valence_packet::packets::play::scoreboard_display_s2c::ScoreboardPosition;
 use valence_packet::packets::play::scoreboard_display_s2c::*;
 pub use valence_packet::packets::play::scoreboard_objective_update_s2c::ObjectiveRenderType;
@@ -45,23 +45,33 @@ pub struct ScoreboardPlugin;
 
 impl Plugin for ScoreboardPlugin {
     fn build(&self, app: &mut App) {
+        app.configure_set(PostUpdate, ScoreboardSet.before(UpdateLayersPreClientSet));
+
         app.add_systems(
             PostUpdate,
             (
                 create_or_update_objectives,
                 display_objectives.after(create_or_update_objectives),
-            ),
+            )
+                .in_set(ScoreboardSet),
         )
-        .add_systems(PostUpdate, remove_despawned_objectives)
-        .add_systems(PostUpdate, handle_new_clients)
+        .add_systems(
+            PostUpdate,
+            remove_despawned_objectives.in_set(ScoreboardSet),
+        )
+        .add_systems(PostUpdate, handle_new_clients.in_set(ScoreboardSet))
         .add_systems(
             PostUpdate,
             update_scores
                 .after(create_or_update_objectives)
-                .after(handle_new_clients),
+                .after(handle_new_clients)
+                .in_set(ScoreboardSet),
         );
     }
 }
+
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct ScoreboardSet;
 
 fn create_or_update_objectives(
     objectives: Query<
