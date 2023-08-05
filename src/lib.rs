@@ -42,6 +42,8 @@ pub use valence_inventory as inventory;
 pub use valence_network as network;
 #[cfg(feature = "player_list")]
 pub use valence_player_list as player_list;
+#[cfg(feature = "scoreboard")]
+pub use valence_scoreboard as scoreboard;
 #[cfg(feature = "weather")]
 pub use valence_weather as weather;
 #[cfg(feature = "world_border")]
@@ -195,6 +197,11 @@ impl PluginGroup for DefaultPlugins {
         #[cfg(feature = "boss_bar")]
         {
             group = group.add(valence_boss_bar::BossBarPlugin);
+        }
+
+        #[cfg(feature = "scoreboard")]
+        {
+            group = group.add(valence_scoreboard::ScoreboardPlugin);
         }
 
         group
