@@ -213,6 +213,7 @@ impl<'a> ParseResultsRead<'a> {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct ParseResults {
     command: String,
     results: ParseResultsWrite,

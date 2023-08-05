@@ -169,10 +169,7 @@ impl<'w, 's> CommandCompiler<'w, 's> {
             if let Some(node) = children_flow.literal.get(literal) {
                 if exclude.map(|v| !v.contains(node)).unwrap_or(true) {
                     if reader.is_ended() {
-                        return Ok(());
-                    }
-
-                    if reader.skip_char(' ') {
+                    } else if reader.skip_char(' ') {
                         purpose.last_entity(*node);
                     } else {
                         return Err(StrLocated::new(
@@ -180,6 +177,7 @@ impl<'w, 's> CommandCompiler<'w, 's> {
                             Text::translate(COMMAND_EXPECTED_SEPARATOR, vec![]),
                         ));
                     }
+
                     return self.node(*node, exclude, reader, purpose, root);
                 }
             }
@@ -198,10 +196,7 @@ impl<'w, 's> CommandCompiler<'w, 's> {
             match result {
                 Ok(()) => {
                     if reader.is_ended() {
-                        return Ok(());
-                    }
-
-                    if reader.skip_char(' ') {
+                    } else if reader.skip_char(' ') {
                         purpose.last_entity(entity);
                     } else {
                         return Err(StrLocated::new(
