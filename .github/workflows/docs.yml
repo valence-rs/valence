@@ -1,0 +1,29 @@
+name: Publish Docs
+on:
+  push:
+    branches:
+      - 'main'
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Git repository
+        uses: actions/checkout@v3
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v3
+      - name: Build Cargo docs
+        run: cargo doc --no-deps --all-features --workspace
+      - name: Redirect root of docs to 'valence' crate
+        run: echo '<html><head><meta http-equiv="refresh" content="0; URL=./valence" /></head></html>' > target/doc/index.html
+      - name: Upload site artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: ./target/doc
+      - name: Deploy site
+        uses: actions/deploy-pages@v1
