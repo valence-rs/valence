@@ -4,18 +4,34 @@ use std::borrow::{Borrow, Cow};
 use std::cmp::Ordering;
 use std::fmt;
 use std::fmt::Formatter;
-use std::io::Write;
 use std::str::FromStr;
 
 use serde::de::Error as _;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
-
-use crate::protocol::{Decode, Encode};
-
+/// Used internally by the `ident` macro. Not public API.
 #[doc(hidden)]
-pub mod __private {
-    pub use valence_core_macros::parse_ident_str;
+pub use valence_ident_macros::parse_ident_str;
+
+/// Creates a new [`Ident`] at compile time from a string literal. A compile
+/// error is raised if the string is not a valid resource identifier.
+///
+/// The type of the expression returned by this macro is `Ident<&'static str>`.
+/// The expression is usable in a `const` context.
+///
+/// # Examples
+///
+/// ```
+/// # use valence_ident::{ident, Ident};
+/// let my_ident: Ident<&'static str> = ident!("apple");
+///
+/// println!("{my_ident}");
+/// ```
+#[macro_export]
+macro_rules! ident {
+    ($string:literal) => {
+        $crate::Ident::<&'static str>::new_unchecked($crate::parse_ident_str!($string))
+    };
 }
 
 /// A wrapper around a string type `S` which guarantees the wrapped string is a
@@ -34,28 +50,6 @@ pub struct Ident<S> {
     string: S,
 }
 
-/// Creates a new [`Ident`] at compile time from a string literal. A compile
-/// error is raised if the string is not a valid resource identifier.
-///
-/// The type of the expression returned by this macro is `Ident<&'static str>`.
-///
-/// # Examples
-///
-/// ```
-/// # use valence_core::{ident, ident::Ident};
-/// let my_ident: Ident<&'static str> = ident!("apple");
-///
-/// println!("{my_ident}");
-/// ```
-#[macro_export]
-macro_rules! ident {
-    ($string:literal) => {
-        $crate::ident::Ident::<&'static str>::new_unchecked(
-            $crate::ident::__private::parse_ident_str!($string),
-        )
-    };
-}
-
 /// The error type created when an [`Ident`] cannot be parsed from a
 /// string. Contains the string that failed to parse.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Error)]
@@ -69,7 +63,7 @@ impl<'a> Ident<Cow<'a, str>> {
 }
 
 impl<S> Ident<S> {
-    /// Internal API. Do not use.
+    /// Used internally by the `ident` macro. Not public API.
     #[doc(hidden)]
     pub const fn new_unchecked(string: S) -> Self {
         Self { string }
@@ -321,31 +315,6 @@ where
 {
     fn partial_cmp(&self, other: &Ident<T>) -> Option<Ordering> {
         self.string.partial_cmp(&other.string)
-    }
-}
-
-impl<S: Encode> Encode for Ident<S> {
-    fn encode(&self, w: impl Write) -> anyhow::Result<()> {
-        self.as_ref().encode(w)
-    }
-}
-
-impl<'a, S> Decode<'a> for Ident<S>
-where
-    S: Decode<'a>,
-    Ident<S>: TryFrom<S, Error = IdentError>,
-{
-    fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
-        Ok(Ident::try_from(S::decode(r)?)?)
-    }
-}
-
-impl<S> From<Ident<S>> for valence_nbt::Value
-where
-    S: Into<valence_nbt::Value>,
-{
-    fn from(value: Ident<S>) -> Self {
-        value.into_inner().into()
     }
 }
 
