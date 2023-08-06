@@ -1,22 +1,22 @@
 //! Formatted text.
 
 use std::borrow::Cow;
-use std::io::Write;
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 use std::{fmt, ops};
 
-use anyhow::Context;
 use serde::de::Visitor;
 use serde::{de, Deserialize, Deserializer, Serialize};
 use uuid::Uuid;
+use valence_ident::Ident;
 use valence_nbt::Value;
-
-use crate::ident::Ident;
-use crate::protocol::{Decode, Encode};
 
 pub mod color;
 mod into_text;
+#[cfg(all(test, feature = "translate"))]
+mod tests;
+#[cfg(feature = "translate")]
+pub mod translate;
 
 pub use color::Color;
 pub use into_text::IntoText;
@@ -34,7 +34,7 @@ pub use into_text::IntoText;
 ///
 /// With [`IntoText`] in scope, you can write the following:
 /// ```
-/// use valence_core::text::{Color, IntoText, Text};
+/// use valence_text::{Color, IntoText, Text};
 ///
 /// let txt = "The text is ".into_text()
 ///     + "Red".color(Color::RED)
@@ -218,7 +218,7 @@ pub enum HoverEvent {
         /// Number of the items in the stack
         count: Option<i32>,
         /// NBT information about the item (sNBT format)
-        tag: Cow<'static, str>, // TODO replace with newtype for sNBT?
+        tag: Cow<'static, str>,
     },
     /// Shows an entity.
     ShowEntity {
@@ -591,20 +591,6 @@ impl Default for TextContent {
     }
 }
 
-impl Encode for Text {
-    fn encode(&self, w: impl Write) -> anyhow::Result<()> {
-        serde_json::to_string(self)?.encode(w)
-    }
-}
-
-impl Decode<'_> for Text {
-    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
-        let str = <&str>::decode(r)?;
-
-        Self::from_str(str).context("decoding text JSON")
-    }
-}
-
 impl<'de> Deserialize<'de> for Text {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         struct TextVisitor;
@@ -662,144 +648,5 @@ impl<'de> Deserialize<'de> for Text {
         }
 
         deserializer.deserialize_any(TextVisitor)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{ident, translation_key};
-
-    #[test]
-    fn text_round_trip() {
-        let before = "foo".color(Color::RED).bold()
-            + ("bar".obfuscated().color(Color::YELLOW)
-                + "baz".underlined().not_bold().italic().color(Color::BLACK));
-
-        let json = format!("{before:#}");
-
-        let after = Text::from_str(&json).unwrap();
-
-        println!("==== Before ====\n");
-        println!("{before:#?}");
-        println!("==== After ====\n");
-        println!("{after:#?}");
-
-        assert_eq!(before, after);
-        assert_eq!(before.to_string(), after.to_string());
-    }
-
-    #[test]
-    fn non_object_data_types() {
-        let input = r#"["foo", true, false, 1.9E10, 9999]"#;
-        let txt: Text = serde_json::from_str(input).unwrap();
-
-        assert_eq!(txt, "foo".into_text() + true + false + 1.9E10 + 9999);
-    }
-
-    #[test]
-    fn translate() {
-        let txt = Text::translate(
-            translation_key::CHAT_TYPE_ADVANCEMENT_TASK,
-            ["arg1".into_text(), "arg2".into_text()],
-        );
-        let serialized = txt.to_string();
-        let deserialized = Text::from_str(&serialized).unwrap();
-        assert_eq!(
-            serialized,
-            r#"{"translate":"chat.type.advancement.task","with":[{"text":"arg1"},{"text":"arg2"}]}"#
-        );
-        assert_eq!(txt, deserialized);
-    }
-
-    #[test]
-    fn score() {
-        let txt = Text::score("foo", "bar", Some(Cow::from("baz")));
-        let serialized = txt.to_string();
-        let deserialized = Text::from_str(&serialized).unwrap();
-        assert_eq!(
-            serialized,
-            r#"{"score":{"name":"foo","objective":"bar","value":"baz"}}"#
-        );
-        assert_eq!(txt, deserialized);
-    }
-
-    #[test]
-    fn selector() {
-        let separator = Text::text("bar").color(Color::RED).bold();
-        let txt = Text::selector("foo", Some(separator));
-        let serialized = txt.to_string();
-        let deserialized = Text::from_str(&serialized).unwrap();
-        assert_eq!(
-            serialized,
-            r##"{"selector":"foo","separator":{"text":"bar","color":"red","bold":true}}"##
-        );
-        assert_eq!(txt, deserialized);
-    }
-
-    #[test]
-    fn keybind() {
-        let txt = Text::keybind("foo");
-        let serialized = txt.to_string();
-        let deserialized = Text::from_str(&serialized).unwrap();
-        assert_eq!(serialized, r#"{"keybind":"foo"}"#);
-        assert_eq!(txt, deserialized);
-    }
-
-    #[test]
-    fn block_nbt() {
-        let txt = Text::block_nbt("foo", "bar", Some(true), Some("baz".into_text()));
-        let serialized = txt.to_string();
-        let deserialized = Text::from_str(&serialized).unwrap();
-        let expected = r#"{"block":"foo","nbt":"bar","interpret":true,"separator":{"text":"baz"}}"#;
-        assert_eq!(serialized, expected);
-        assert_eq!(txt, deserialized);
-    }
-
-    #[test]
-    fn entity_nbt() {
-        let txt = Text::entity_nbt("foo", "bar", Some(true), Some("baz".into_text()));
-        let serialized = txt.to_string();
-        let deserialized = Text::from_str(&serialized).unwrap();
-        let expected =
-            r#"{"entity":"foo","nbt":"bar","interpret":true,"separator":{"text":"baz"}}"#;
-        assert_eq!(serialized, expected);
-        assert_eq!(txt, deserialized);
-    }
-
-    #[test]
-    fn storage_nbt() {
-        let txt = Text::storage_nbt(ident!("foo"), "bar", Some(true), Some("baz".into_text()));
-        let serialized = txt.to_string();
-        let deserialized = Text::from_str(&serialized).unwrap();
-        let expected = r#"{"storage":"minecraft:foo","nbt":"bar","interpret":true,"separator":{"text":"baz"}}"#;
-        assert_eq!(serialized, expected);
-        assert_eq!(txt, deserialized);
-    }
-
-    #[test]
-    fn text_to_legacy_lossy() {
-        let text = "Heavily formatted green text\n"
-            .bold()
-            .italic()
-            .strikethrough()
-            .underlined()
-            .obfuscated()
-            .color(Color::GREEN)
-            + "Lightly formatted red text\n"
-                .not_bold()
-                .not_strikethrough()
-                .not_obfuscated()
-                .color(Color::RED)
-            + "Not formatted blue text"
-                .not_italic()
-                .not_underlined()
-                .color(Color::BLUE);
-
-        assert_eq!(
-            text.to_legacy_lossy(),
-            "§a§k§l§m§n§oHeavily formatted green text\n§r§c§n§oLightly formatted red \
-             text\n§r§9Not formatted blue text"
-        );
     }
 }
