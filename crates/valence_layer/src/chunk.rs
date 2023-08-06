@@ -10,7 +10,6 @@ use std::fmt;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use glam::{DVec3, Vec3};
 use rustc_hash::FxHashMap;
 use valence_biome::{BiomeId, BiomeRegistry};
 use valence_core::block_pos::BlockPos;
@@ -20,6 +19,7 @@ use valence_core::protocol::Encode;
 use valence_core::sound::{Sound, SoundCategory};
 use valence_core::Server;
 use valence_dimension::DimensionTypeRegistry;
+use valence_math::{DVec3, Vec3};
 use valence_nbt::Compound;
 use valence_packet::packets::play::particle_s2c::Particle;
 use valence_packet::packets::play::{ParticleS2c, PlaySoundS2c};

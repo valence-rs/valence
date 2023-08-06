@@ -18,7 +18,6 @@
 )]
 #![allow(clippy::unusual_byte_groupings)]
 
-pub mod aabb;
 pub mod block_pos;
 pub mod chunk_pos;
 pub mod despawn;

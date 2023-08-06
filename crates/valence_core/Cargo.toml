@@ -18,7 +18,7 @@ byteorder.workspace = true
 bytes.workspace = true
 cfb8 = { workspace = true, optional = true }
 flate2 = { workspace = true, optional = true }
-glam.workspace = true
+valence_math.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 thiserror.workspace = true

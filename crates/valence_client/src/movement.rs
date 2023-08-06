@@ -1,7 +1,7 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use glam::DVec3;
 use valence_entity::{HeadYaw, Look, OnGround, Position};
+use valence_math::DVec3;
 use valence_packet::packets::play::{
     FullC2s, LookAndOnGroundC2s, OnGroundOnlyC2s, PositionAndOnGroundC2s, VehicleMoveC2s,
 };

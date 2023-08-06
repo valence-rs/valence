@@ -49,9 +49,9 @@ pub use valence_weather as weather;
 #[cfg(feature = "world_border")]
 pub use valence_world_border as world_border;
 pub use {
-    bevy_app as app, bevy_ecs as ecs, glam, valence_biome as biome, valence_block as block,
+    bevy_app as app, bevy_ecs as ecs, valence_biome as biome, valence_block as block,
     valence_client as client, valence_dimension as dimension, valence_entity as entity,
-    valence_layer as layer, valence_nbt as nbt, valence_packet as packet,
+    valence_layer as layer, valence_math as math, valence_nbt as nbt, valence_packet as packet,
     valence_registry as registry,
 };
 

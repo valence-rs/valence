@@ -31,7 +31,6 @@ use bevy_ecs::query::WorldQuery;
 use bevy_ecs::system::Command;
 use byteorder::{NativeEndian, ReadBytesExt};
 use bytes::{Bytes, BytesMut};
-use glam::{DVec3, Vec3};
 use tracing::warn;
 use uuid::Uuid;
 use valence_biome::BiomeRegistry;
@@ -55,6 +54,7 @@ use valence_entity::{
     Velocity,
 };
 use valence_layer::{ChunkLayer, EntityLayer, UpdateLayersPostClientSet, UpdateLayersPreClientSet};
+use valence_math::{DVec3, Vec3};
 use valence_packet::packets::play::chunk_biome_data_s2c::ChunkBiome;
 use valence_packet::packets::play::game_state_change_s2c::GameEventKind;
 use valence_packet::packets::play::particle_s2c::Particle;

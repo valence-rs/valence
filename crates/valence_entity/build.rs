@@ -149,8 +149,8 @@ impl Value {
             Value::OptionalGlobalPos(_) => quote!(()), // TODO
             Value::PaintingVariant(_) => quote!(crate::PaintingKind),
             Value::SnifferState(_) => quote!(crate::SnifferState),
-            Value::Vector3f { .. } => quote!(glam::f32::Vec3),
-            Value::Quaternionf { .. } => quote!(glam::f32::Quat),
+            Value::Vector3f { .. } => quote!(valence_math::Vec3),
+            Value::Quaternionf { .. } => quote!(valence_math::Quat),
         }
     }
 
@@ -251,9 +251,9 @@ impl Value {
                 let state = ident(s.replace('.', "_").to_pascal_case());
                 quote!(crate::SnifferState::#state)
             }
-            Value::Vector3f { x, y, z } => quote!(glam::f32::Vec3::new(#x, #y, #z)),
+            Value::Vector3f { x, y, z } => quote!(valence_math::Vec3::new(#x, #y, #z)),
             Value::Quaternionf { x, y, z, w } => quote! {
-                glam::f32::Quat::from_xyzw(#x, #y, #z, #w)
+                valence_math::Quat::from_xyzw(#x, #y, #z, #w)
             },
         }
     }

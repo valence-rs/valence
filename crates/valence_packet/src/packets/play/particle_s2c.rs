@@ -1,4 +1,4 @@
-use glam::Vec3;
+use valence_math::Vec3;
 
 use super::*;
 

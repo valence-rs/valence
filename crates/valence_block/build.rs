@@ -161,10 +161,10 @@ fn build() -> anyhow::Result<TokenStream> {
         let max_y = s.max_y;
         let max_z = s.max_z;
         quote! {
-            Aabb {
-                min: dvec3(#min_x, #min_y, #min_z),
-                max: dvec3(#max_x, #max_y, #max_z),
-            }
+            Aabb::new_unchecked(
+                DVec3::new(#min_x, #min_y, #min_z),
+                DVec3::new(#max_x, #max_y, #max_z),
+            )
         }
     });
 
@@ -573,8 +573,7 @@ fn build() -> anyhow::Result<TokenStream> {
     let prop_value_count = prop_values.len();
 
     Ok(quote! {
-        use valence_core::aabb::Aabb;
-        use glam::dvec3;
+        use valence_math::{Aabb, DVec3};
 
         /// Represents the state of a block. This does not include block entity data such as
         /// the text on a sign, the design on a banner, or the content of a spawner.

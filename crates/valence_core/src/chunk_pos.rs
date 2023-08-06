@@ -1,4 +1,4 @@
-use glam::DVec3;
+use valence_math::DVec3;
 
 use crate::block_pos::BlockPos;
 use crate::protocol::{Decode, Encode};

@@ -102,7 +102,10 @@ fn create_or_update_objectives(
         };
 
         let Ok(mut layer) = layers.get_mut(entity_layer.0) else {
-            warn!("No layer found for entity layer ID {:?}, can't update scoreboard objective", entity_layer);
+            warn!(
+                "No layer found for entity layer ID {:?}, can't update scoreboard objective",
+                entity_layer
+            );
             continue;
         };
 
@@ -128,7 +131,10 @@ fn display_objectives(
         };
 
         let Ok(mut layer) = layers.get_mut(entity_layer.0) else {
-            warn!("No layer found for entity layer ID {:?}, can't update scoreboard display", entity_layer);
+            warn!(
+                "No layer found for entity layer ID {:?}, can't update scoreboard display",
+                entity_layer
+            );
             continue;
         };
 
@@ -144,7 +150,10 @@ fn remove_despawned_objectives(
     for (entity, objective, entity_layer) in objectives.iter() {
         commands.entity(entity).despawn();
         let Ok(mut layer) = layers.get_mut(entity_layer.0) else {
-            warn!("No layer found for entity layer ID {:?}, can't remove scoreboard objective", entity_layer);
+            warn!(
+                "No layer found for entity layer ID {:?}, can't remove scoreboard objective",
+                entity_layer
+            );
             continue;
         };
 
@@ -252,7 +261,10 @@ fn update_scores(
 ) {
     for (objective, scores, mut old_scores, entity_layer) in objectives.iter_mut() {
         let Ok(mut layer) = layers.get_mut(entity_layer.0) else {
-            warn!("No layer found for entity layer ID {:?}, can't update scores", entity_layer);
+            warn!(
+                "No layer found for entity layer ID {:?}, can't update scores",
+                entity_layer
+            );
             continue;
         };
 

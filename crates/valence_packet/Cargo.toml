@@ -15,7 +15,7 @@ valence_packet_macros.workspace = true
 anyhow.workspace = true
 bitfield-struct.workspace = true
 byteorder.workspace = true
-glam.workspace = true
+valence_math.workspace = true
 uuid = { workspace = true, features = ["serde"] }
 bytes.workspace = true
 tracing.workspace = true

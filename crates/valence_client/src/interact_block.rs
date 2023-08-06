@@ -1,9 +1,9 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use glam::Vec3;
 use valence_core::block_pos::BlockPos;
 use valence_core::direction::Direction;
 use valence_core::hand::Hand;
+use valence_math::Vec3;
 use valence_packet::packets::play::PlayerInteractBlockC2s;
 
 use crate::action::ActionSequence;

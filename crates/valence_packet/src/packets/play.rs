@@ -1,6 +1,5 @@
 use bitfield_struct::bitfield;
 use byteorder::WriteBytesExt;
-use glam::{DVec3, IVec3, Vec3};
 use valence_core::block_pos::BlockPos;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::difficulty::Difficulty;
@@ -11,6 +10,7 @@ use valence_core::item::ItemStack;
 use valence_core::protocol::byte_angle::ByteAngle;
 use valence_core::protocol::global_pos::GlobalPos;
 use valence_core::protocol::var_long::VarLong;
+use valence_math::{DVec3, IVec3, Vec3};
 use valence_nbt::Compound;
 
 use super::*;

@@ -52,23 +52,24 @@ valence_client.workspace = true
 valence_core.workspace = true
 valence_dimension.workspace = true
 valence_entity.workspace = true
-valence_layer.workspace = true
 valence_inventory = { workspace = true, optional = true }
+valence_layer.workspace = true
+valence_math = { workspace = true }
 valence_nbt.workspace = true
 valence_network = { workspace = true, optional = true }
+valence_packet.workspace = true
 valence_player_list = { workspace = true, optional = true }
 valence_registry.workspace = true
 valence_scoreboard = { workspace = true, optional = true }
-valence_world_border = { workspace = true, optional = true }
-valence_packet.workspace = true
 valence_weather = { workspace = true, optional = true }
+valence_world_border = { workspace = true, optional = true }
 
 [dev-dependencies]
 anyhow.workspace = true
 clap.workspace = true
 criterion.workspace = true
 flume.workspace = true
-noise.workspace = true              # For the terrain example.
+noise.workspace = true     # For the terrain example.
 tracing.workspace = true
 
 [dev-dependencies.reqwest]
@@ -189,5 +190,6 @@ valence_world_border.path = "crates/valence_world_border"
 valence_boss_bar.path = "crates/valence_boss_bar"
 valence_packet.path = "crates/valence_packet"
 valence_weather.path = "crates/valence_weather"
+valence_math.path = "crates/valence_math"
 valence.path = "."
 zip = "0.6.3"

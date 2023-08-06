@@ -4,9 +4,9 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-valence_core.workspace = true
 anyhow.workspace = true
-glam.workspace = true
+valence_core.workspace = true
+valence_math.workspace = true
 
 [build-dependencies]
 anyhow.workspace = true

@@ -2,7 +2,7 @@ use std::io::Write;
 use std::ops::{Add, Sub};
 
 use anyhow::bail;
-use glam::DVec3;
+use valence_math::DVec3;
 
 use crate::chunk_pos::ChunkPos;
 use crate::direction::Direction;

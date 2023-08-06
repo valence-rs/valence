@@ -26,7 +26,6 @@ pub mod tracked_data;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use glam::{DVec3, Vec3};
 pub use manager::EntityManager;
 use paste::paste;
 use tracing::warn;
@@ -38,6 +37,7 @@ use valence_core::protocol::var_int::VarInt;
 use valence_core::protocol::{Decode, Encode};
 use valence_core::uuid::UniqueId;
 use valence_core::DEFAULT_TPS;
+use valence_math::{DVec3, Vec3};
 
 include!(concat!(env!("OUT_DIR"), "/entity.rs"));
 pub struct EntityPlugin;

@@ -12,8 +12,8 @@ use std::sync::Arc;
 
 use anyhow::{ensure, Result};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use glam::*;
 use uuid::Uuid;
+use valence_math::*;
 use valence_nbt::Compound;
 
 use super::var_int::VarInt;
