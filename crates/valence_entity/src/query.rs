@@ -3,16 +3,16 @@ use std::mem;
 use bevy_ecs::prelude::DetectChanges;
 use bevy_ecs::query::WorldQuery;
 use bevy_ecs::world::Ref;
-use valence_core::protocol::byte_angle::ByteAngle;
-use valence_core::protocol::var_int::VarInt;
-use valence_core::uuid::UniqueId;
 use valence_math::DVec3;
-use valence_packet::packets::play::{
+use valence_protocol::encode::WritePacket;
+use valence_protocol::packets::play::{
     EntityAnimationS2c, EntityPositionS2c, EntitySetHeadYawS2c, EntitySpawnS2c, EntityStatusS2c,
     EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, ExperienceOrbSpawnS2c, MoveRelativeS2c,
     PlayerSpawnS2c, RotateAndMoveRelativeS2c, RotateS2c,
 };
-use valence_packet::protocol::encode::WritePacket;
+use valence_protocol::var_int::VarInt;
+use valence_protocol::ByteAngle;
+use valence_server_core::UniqueId;
 
 use crate::tracked_data::TrackedData;
 use crate::{

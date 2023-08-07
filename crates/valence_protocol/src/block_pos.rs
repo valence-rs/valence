@@ -39,8 +39,7 @@ impl BlockPos {
     /// direction.
     ///
     /// ```
-    /// use valence_protocol::block_pos::BlockPos;
-    /// use valence_protocol::direction::Direction;
+    /// use valence_protocol::{BlockPos, Direction};
     ///
     /// let pos = BlockPos::new(0, 0, 0);
     /// let adj = pos.get_in_direction(Direction::South);

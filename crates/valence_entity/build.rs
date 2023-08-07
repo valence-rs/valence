@@ -128,19 +128,19 @@ impl Value {
             Value::Long(_) => quote!(i64),
             Value::Float(_) => quote!(f32),
             Value::String(_) => quote!(String),
-            Value::TextComponent(_) => quote!(valence_core::text::Text),
-            Value::OptionalTextComponent(_) => quote!(Option<valence_core::text::Text>),
-            Value::ItemStack(_) => quote!(valence_core::item::ItemStack),
+            Value::TextComponent(_) => quote!(valence_protocol::Text),
+            Value::OptionalTextComponent(_) => quote!(Option<valence_protocol::Text>),
+            Value::ItemStack(_) => quote!(valence_protocol::ItemStack),
             Value::Boolean(_) => quote!(bool),
             Value::Rotation { .. } => quote!(crate::EulerAngle),
-            Value::BlockPos(_) => quote!(valence_core::block_pos::BlockPos),
-            Value::OptionalBlockPos(_) => quote!(Option<valence_core::block_pos::BlockPos>),
-            Value::Facing(_) => quote!(valence_core::direction::Direction),
+            Value::BlockPos(_) => quote!(valence_protocol::BlockPos),
+            Value::OptionalBlockPos(_) => quote!(Option<valence_protocol::BlockPos>),
+            Value::Facing(_) => quote!(valence_protocol::Direction),
             Value::OptionalUuid(_) => quote!(Option<::uuid::Uuid>),
-            Value::BlockState(_) => quote!(valence_block::BlockState),
-            Value::OptionalBlockState(_) => quote!(valence_block::BlockState),
+            Value::BlockState(_) => quote!(valence_protocol::BlockState),
+            Value::OptionalBlockState(_) => quote!(valence_protocol::BlockState),
             Value::NbtCompound(_) => quote!(valence_nbt::Compound),
-            Value::Particle(_) => quote!(valence_packet::packets::play::particle_s2c::Particle),
+            Value::Particle(_) => quote!(valence_protocol::packets::play::particle_s2c::Particle),
             Value::VillagerData { .. } => quote!(crate::VillagerData),
             Value::OptionalInt(_) => quote!(Option<i32>),
             Value::EntityPose(_) => quote!(crate::Pose),
@@ -163,7 +163,7 @@ impl Value {
             Value::String(s) => quote!(#s.to_owned()),
             Value::TextComponent(txt) => {
                 assert!(txt.is_empty());
-                quote!(valence_core::text::Text::default())
+                quote!(valence_protocol::Text::default())
             }
             Value::OptionalTextComponent(t) => {
                 assert!(t.is_none());
@@ -171,7 +171,7 @@ impl Value {
             }
             Value::ItemStack(stack) => {
                 assert_eq!(stack, "0 air");
-                quote!(valence_core::item::ItemStack::default())
+                quote!(valence_protocol::ItemStack::default())
             }
             Value::Boolean(b) => quote!(#b),
             Value::Rotation { pitch, yaw, roll } => quote! {
@@ -182,7 +182,7 @@ impl Value {
                 }
             },
             Value::BlockPos(BlockPos { x, y, z }) => {
-                quote!(valence_core::block_pos::BlockPos { x: #x, y: #y, z: #z })
+                quote!(valence_protocol::BlockPos { x: #x, y: #y, z: #z })
             }
             Value::OptionalBlockPos(pos) => {
                 assert!(pos.is_none());
@@ -190,18 +190,18 @@ impl Value {
             }
             Value::Facing(f) => {
                 let variant = ident(f.replace('.', "_").to_pascal_case());
-                quote!(valence_core::direction::Direction::#variant)
+                quote!(valence_protocol::Direction::#variant)
             }
             Value::OptionalUuid(uuid) => {
                 assert!(uuid.is_none());
                 quote!(None)
             }
             Value::BlockState(_) => {
-                quote!(valence_block::BlockState::default())
+                quote!(valence_protocol::BlockState::default())
             }
             Value::OptionalBlockState(bs) => {
                 assert!(bs.is_none());
-                quote!(valence_block::BlockState::default())
+                quote!(valence_protocol::BlockState::default())
             }
             Value::NbtCompound(s) => {
                 assert_eq!(s, "{}");
@@ -209,7 +209,7 @@ impl Value {
             }
             Value::Particle(p) => {
                 let variant = ident(p.replace('.', "_").to_pascal_case());
-                quote!(valence_packet::packets::play::particle_s2c::Particle::#variant)
+                quote!(valence_protocol::packets::play::particle_s2c::Particle::#variant)
             }
             Value::VillagerData {
                 typ,

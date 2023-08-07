@@ -7,8 +7,6 @@ documentation.workspace = true
 license.workspace = true
 
 [dependencies]
-valence_client.workspace = true
-valence_layer.workspace = true
-valence_core.workspace = true
+valence_server.workspace = true
 bevy_ecs.workspace = true
 bevy_app.workspace = true

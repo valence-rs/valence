@@ -18,18 +18,20 @@ use sha2::{Digest, Sha256};
 use tokio::net::{TcpListener, TcpStream};
 use tracing::{error, info, trace, warn};
 use uuid::Uuid;
-use valence_core::property::Property;
-use valence_core::protocol::raw::RawBytes;
-use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::Decode;
-use valence_core::text::{Color, IntoText, Text};
-use valence_core::{ident, translation_key, MINECRAFT_VERSION, PROTOCOL_VERSION};
-use valence_packet::packets::handshaking::handshake_c2s::HandshakeNextState;
-use valence_packet::packets::handshaking::*;
-use valence_packet::packets::login::*;
-use valence_packet::packets::status::*;
-use valence_packet::protocol::decode::PacketDecoder;
-use valence_packet::protocol::encode::PacketEncoder;
+use valence_lang::keys;
+use valence_protocol::Decode;
+use valence_server::protocol::packets::handshaking::handshake_c2s::HandshakeNextState;
+use valence_server::protocol::packets::handshaking::HandshakeC2s;
+use valence_server::protocol::packets::login::{
+    LoginCompressionS2c, LoginDisconnectS2c, LoginHelloC2s, LoginHelloS2c, LoginKeyC2s,
+    LoginQueryRequestS2c, LoginQueryResponseC2s, LoginSuccessS2c,
+};
+use valence_server::protocol::packets::status::{
+    QueryPingC2s, QueryPongS2c, QueryRequestC2s, QueryResponseS2c,
+};
+use valence_server::protocol::{PacketDecoder, PacketEncoder, Property, RawBytes, VarInt};
+use valence_server::text::{Color, IntoText};
+use valence_server::{ident, Text, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
 use crate::legacy_ping::try_handle_legacy_ping;
 use crate::packet_io::PacketIo;
@@ -279,7 +281,7 @@ async fn handle_login(
         ConnectionMode::Velocity { secret } => login_velocity(io, username, secret).await?,
     };
 
-    if let Some(threshold) = shared.0.compression_threshold {
+    if let Some(threshold) = shared.0.threshold {
         io.send_packet(&LoginCompressionS2c {
             threshold: VarInt(threshold as i32),
         })
@@ -377,10 +379,7 @@ async fn login_online(
     match resp.status() {
         StatusCode::OK => {}
         StatusCode::NO_CONTENT => {
-            let reason = Text::translate(
-                translation_key::MULTIPLAYER_DISCONNECT_UNVERIFIED_USERNAME,
-                [],
-            );
+            let reason = Text::translate(keys::MULTIPLAYER_DISCONNECT_UNVERIFIED_USERNAME, []);
             io.send_packet(&LoginDisconnectS2c {
                 reason: reason.into(),
             })

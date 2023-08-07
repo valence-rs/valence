@@ -5,19 +5,16 @@ use anyhow::bail;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use uuid::Uuid;
-use valence_core::protocol::var_int::VarInt;
-use valence_core::PROTOCOL_VERSION;
-use valence_packet::packets::handshaking::handshake_c2s::HandshakeNextState;
-use valence_packet::packets::handshaking::HandshakeC2s;
-use valence_packet::packets::login::{
+use valence_protocol::packets::handshaking::handshake_c2s::HandshakeNextState;
+use valence_protocol::packets::handshaking::HandshakeC2s;
+use valence_protocol::packets::login::{
     LoginCompressionS2c, LoginHelloC2s, LoginHelloS2c, LoginSuccessS2c,
 };
-use valence_packet::packets::play::{
+use valence_protocol::packets::play::{
     KeepAliveC2s, KeepAliveS2c, PlayerPositionLookS2c, PositionAndOnGroundC2s, TeleportConfirmC2s,
 };
-use valence_packet::protocol::decode::PacketDecoder;
-use valence_packet::protocol::encode::PacketEncoder;
-use valence_packet::protocol::Packet;
+use valence_protocol::var_int::VarInt;
+use valence_protocol::{Packet, PacketDecoder, PacketEncoder, PROTOCOL_VERSION};
 
 pub struct SessionParams<'a> {
     pub socket_addr: SocketAddr,

@@ -30,14 +30,9 @@ pub use manager::EntityManager;
 use paste::paste;
 use tracing::warn;
 use tracked_data::TrackedData;
-use valence_core::block_pos::BlockPos;
-use valence_core::chunk_pos::ChunkPos;
-use valence_core::despawn::Despawned;
-use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::{Decode, Encode};
-use valence_core::uuid::UniqueId;
-use valence_core::DEFAULT_TPS;
 use valence_math::{DVec3, Vec3};
+use valence_protocol::{BlockPos, ChunkPos, Decode, Encode, VarInt};
+use valence_server_core::{Despawned, UniqueId, DEFAULT_TPS};
 
 include!(concat!(env!("OUT_DIR"), "/entity.rs"));
 pub struct EntityPlugin;

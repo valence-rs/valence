@@ -2,8 +2,8 @@
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use valence_core::direction::Direction;
 use valence_math::{Aabb, DVec3, UVec3, Vec3Swizzles};
+use valence_protocol::Direction;
 
 use crate::*;
 

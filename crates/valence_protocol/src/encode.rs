@@ -9,7 +9,7 @@ use bytes::{BufMut, BytesMut};
 use tracing::warn;
 
 use crate::var_int::VarInt;
-use crate::{Encode, Packet, MAX_PACKET_SIZE};
+use crate::{CompressionThreshold, Encode, Packet, MAX_PACKET_SIZE};
 
 /// The AES block cipher with a 128 bit key, using the CFB-8 mode of
 /// operation.
@@ -22,7 +22,7 @@ pub struct PacketEncoder {
     #[cfg(feature = "compression")]
     compress_buf: Vec<u8>,
     #[cfg(feature = "compression")]
-    compression_threshold: Option<u32>,
+    threshold: CompressionThreshold,
     #[cfg(feature = "encryption")]
     cipher: Option<Cipher>,
 }
@@ -69,7 +69,7 @@ impl PacketEncoder {
         let data_len = self.buf.len() - start_len;
 
         #[cfg(feature = "compression")]
-        if let Some(threshold) = self.compression_threshold {
+        if let Some(threshold) = self.threshold {
             use std::io::Read;
 
             use flate2::bufread::ZlibEncoder;
@@ -163,8 +163,8 @@ impl PacketEncoder {
     }
 
     #[cfg(feature = "compression")]
-    pub fn set_compression(&mut self, threshold: Option<u32>) {
-        self.compression_threshold = threshold;
+    pub fn set_compression(&mut self, threshold: CompressionThreshold) {
+        self.threshold = threshold;
     }
 
     /// Encrypts all future packets **and any packets that have
@@ -235,11 +235,11 @@ impl<T: WritePacket> WritePacket for bevy_ecs::world::Mut<'_, T> {
 #[derive(Debug)]
 pub struct PacketWriter<'a> {
     pub buf: &'a mut Vec<u8>,
-    pub threshold: Option<u32>,
+    pub threshold: CompressionThreshold,
 }
 
 impl<'a> PacketWriter<'a> {
-    pub fn new(buf: &'a mut Vec<u8>, threshold: Option<u32>) -> Self {
+    pub fn new(buf: &'a mut Vec<u8>, threshold: CompressionThreshold) -> Self {
         Self { buf, threshold }
     }
 }

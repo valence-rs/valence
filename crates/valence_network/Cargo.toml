@@ -3,6 +3,8 @@ name = "valence_network"
 version.workspace = true
 edition.workspace = true
 
+# TODO: make encryption and compression optional features.
+
 [dependencies]
 anyhow.workspace = true
 async-trait.workspace = true
@@ -24,9 +26,12 @@ thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 uuid.workspace = true
-valence_client.workspace = true
-valence_core.workspace = true
-valence_entity.workspace = true
+valence_server.workspace = true
+valence_lang.workspace = true
+valence_protocol = { workspace = true, features = [
+    "encryption",
+    "compression",
+] }
 
 [dependencies.reqwest]
 workspace = true

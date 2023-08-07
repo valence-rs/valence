@@ -18,27 +18,28 @@
 )]
 #![allow(clippy::type_complexity)]
 
+mod components;
 use std::collections::BTreeSet;
 
 use bevy_app::prelude::*;
 use bevy_ecs::change_detection::DetectChanges;
 use bevy_ecs::prelude::*;
-use tracing::{debug, warn};
-
-mod components;
 pub use components::*;
-use valence_client::{Client, OldVisibleEntityLayers, VisibleEntityLayers};
-use valence_core::__private::VarInt;
-use valence_core::despawn::Despawned;
-use valence_core::text::IntoText;
-use valence_entity::EntityLayerId;
-use valence_layer::{EntityLayer, UpdateLayersPreClientSet};
-pub use valence_packet::packets::play::scoreboard_display_s2c::ScoreboardPosition;
-use valence_packet::packets::play::scoreboard_display_s2c::*;
-pub use valence_packet::packets::play::scoreboard_objective_update_s2c::ObjectiveRenderType;
-use valence_packet::packets::play::scoreboard_objective_update_s2c::*;
-use valence_packet::packets::play::scoreboard_player_update_s2c::*;
-use valence_packet::protocol::encode::WritePacket;
+use tracing::{debug, warn};
+use valence_server::client::{Client, OldVisibleEntityLayers, VisibleEntityLayers};
+use valence_server::entity::EntityLayerId;
+use valence_server::layer::UpdateLayersPreClientSet;
+use valence_server::protocol::packets::play::scoreboard_display_s2c::ScoreboardPosition;
+use valence_server::protocol::packets::play::scoreboard_objective_update_s2c::{
+    ObjectiveMode, ObjectiveRenderType,
+};
+use valence_server::protocol::packets::play::scoreboard_player_update_s2c::ScoreboardPlayerUpdateAction;
+use valence_server::protocol::packets::play::{
+    ScoreboardDisplayS2c, ScoreboardObjectiveUpdateS2c, ScoreboardPlayerUpdateS2c,
+};
+use valence_server::protocol::{VarInt, WritePacket};
+use valence_server::text::IntoText;
+use valence_server::{Despawned, EntityLayer};
 
 /// Provides all necessary systems to manage scoreboards.
 pub struct ScoreboardPlugin;

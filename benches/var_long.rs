@@ -2,8 +2,7 @@ use std::hint::black_box;
 
 use criterion::Criterion;
 use rand::Rng;
-use valence::protocol::var_long::VarLong;
-use valence::protocol::{Decode, Encode};
+use valence::protocol::{Decode, Encode, VarLong};
 
 pub fn var_long(c: &mut Criterion) {
     let mut group = c.benchmark_group("varlong");

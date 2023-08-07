@@ -6,15 +6,14 @@
 //! Some of the tests in this file may be inferior duplicates of real tests.
 
 use bevy_app::App;
-use glam::DVec3;
-use valence_client::Client;
-use valence_core::Server;
-use valence_entity::Position;
-use valence_inventory::{Inventory, InventoryKind, OpenInventory};
-use valence_packet::packets::play::{InventoryS2c, OpenScreenS2c, PositionAndOnGroundC2s};
 
+use crate::client::Client;
+use crate::entity::Position;
+use crate::inventory::{Inventory, InventoryKind, OpenInventory};
+use crate::math::DVec3;
+use crate::protocol::packets::play::{InventoryS2c, OpenScreenS2c, PositionAndOnGroundC2s};
 use crate::testing::ScenarioSingleClient;
-use crate::DefaultPlugins;
+use crate::{DefaultPlugins, Server};
 
 /// The server's tick should increment every update.
 #[test]

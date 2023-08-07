@@ -2,19 +2,18 @@
 
 use std::collections::HashMap;
 
-use bevy_app::App;
-use bevy_ecs::prelude::Entity;
-use rand::Rng;
+use bevy_app::prelude::*;
+use bevy_ecs::prelude::*;
+use entity::NameVisible;
+use valence::entity::hoglin::HoglinEntityBundle;
+use valence::entity::pig::PigEntityBundle;
+use valence::entity::sheep::SheepEntityBundle;
+use valence::entity::warden::WardenEntityBundle;
+use valence::entity::zombie::ZombieEntityBundle;
+use valence::entity::zombie_horse::ZombieHorseEntityBundle;
+use valence::entity::{entity, Pose};
 use valence::prelude::*;
-use valence_client::message::SendMessage;
-use valence_entity::entity::NameVisible;
-use valence_entity::hoglin::HoglinEntityBundle;
-use valence_entity::pig::PigEntityBundle;
-use valence_entity::sheep::SheepEntityBundle;
-use valence_entity::warden::WardenEntityBundle;
-use valence_entity::zombie::ZombieEntityBundle;
-use valence_entity::zombie_horse::ZombieHorseEntityBundle;
-use valence_entity::{entity, Pose};
+use valence::rand::Rng;
 
 pub fn main() {
     App::new()

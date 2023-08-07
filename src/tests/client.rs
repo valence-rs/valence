@@ -1,12 +1,12 @@
 use glam::DVec3;
-use valence_core::chunk_pos::ChunkPos;
-use valence_layer::chunk::UnloadedChunk;
-use valence_layer::ChunkLayer;
-use valence_packet::packets::play::{
+
+use crate::layer::chunk::UnloadedChunk;
+use crate::layer::ChunkLayer;
+use crate::protocol::packets::play::{
     FullC2s, MoveRelativeS2c, PlayerPositionLookS2c, TeleportConfirmC2s,
 };
-
 use crate::testing::{create_mock_client, ScenarioSingleClient};
+use crate::ChunkPos;
 
 #[test]
 fn client_teleport_and_move() {

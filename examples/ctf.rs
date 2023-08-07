@@ -3,22 +3,20 @@
 use std::collections::HashMap;
 
 use bevy_ecs::query::WorldQuery;
-use glam::Vec3Swizzles;
-use tracing::debug;
-use valence::entity::EntityStatuses;
+use valence::entity::cow::CowEntityBundle;
+use valence::entity::entity::Flags;
+use valence::entity::living::Health;
+use valence::entity::pig::PigEntityBundle;
+use valence::entity::player::PlayerEntityBundle;
+use valence::entity::{EntityAnimations, EntityStatuses, OnGround, Velocity};
+use valence::interact_block::InteractBlockEvent;
 use valence::inventory::HeldItem;
+use valence::log::debug;
+use valence::math::Vec3Swizzles;
 use valence::nbt::{compound, List};
 use valence::prelude::*;
-use valence_client::interact_block::InteractBlockEvent;
-use valence_client::message::SendMessage;
-use valence_client::status::RequestRespawnEvent;
-use valence_entity::cow::CowEntityBundle;
-use valence_entity::entity::Flags;
-use valence_entity::living::Health;
-use valence_entity::pig::PigEntityBundle;
-use valence_entity::player::PlayerEntityBundle;
-use valence_entity::{EntityAnimations, OnGround, Velocity};
-use valence_scoreboard::*;
+use valence::scoreboard::*;
+use valence::status::RequestRespawnEvent;
 
 const ARENA_Y: i32 = 64;
 const ARENA_MID_WIDTH: i32 = 2;

@@ -1,11 +1,11 @@
 use bevy_ecs::prelude::*;
 use tracing::warn;
-use valence_core::protocol::Encode;
+use valence_protocol::Encode;
 
 /// Cache for all the tracked data of an entity. Used for the
 /// [`EntityTrackerUpdateS2c`][packet] packet.
 ///
-/// [packet]: valence_packet::packets::play::EntityTrackerUpdateS2c
+/// [packet]: valence_protocol::packets::play::EntityTrackerUpdateS2c
 #[derive(Component, Default, Debug)]
 pub struct TrackedData {
     init_data: Vec<u8>,
@@ -20,7 +20,7 @@ impl TrackedData {
     /// [`EntityTrackerUpdateS2c`][packet] packet. This is used when the entity
     /// enters the view of a client.
     ///
-    /// [packet]: valence_packet::packets::play::EntityTrackerUpdateS2c
+    /// [packet]: valence_protocol::packets::play::EntityTrackerUpdateS2c
     pub fn init_data(&self) -> Option<&[u8]> {
         if self.init_data.len() > 1 {
             Some(&self.init_data)
@@ -33,7 +33,7 @@ impl TrackedData {
     /// [`EntityTrackerUpdateS2c`][packet] packet. This is used when tracked
     /// data is changed and the client is already in view of the entity.
     ///
-    /// [packet]: valence_packet::packets::play::EntityTrackerUpdateS2c
+    /// [packet]: valence_protocol::packets::play::EntityTrackerUpdateS2c
     pub fn update_data(&self) -> Option<&[u8]> {
         if self.update_data.len() > 1 {
             Some(&self.update_data)

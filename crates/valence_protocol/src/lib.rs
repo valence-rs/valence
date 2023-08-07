@@ -1,8 +1,21 @@
-use std::io::Write;
-
-use anyhow::Context;
-pub use valence_protocol_macros::{Decode, Encode, Packet};
-use var_int::VarInt;
+// #![doc = include_str!("../README.md")]
+#![deny(
+    rustdoc::broken_intra_doc_links,
+    rustdoc::private_intra_doc_links,
+    // rustdoc::missing_crate_level_docs,
+    rustdoc::invalid_codeblock_attributes,
+    rustdoc::invalid_rust_codeblocks,
+    rustdoc::bare_urls,
+    rustdoc::invalid_html_tags
+)]
+#![warn(
+    trivial_casts,
+    trivial_numeric_casts,
+    unused_lifetimes,
+    unused_import_braces,
+    unreachable_pub,
+    clippy::dbg_macro
+)]
 
 /// Used only by macros. Not public API.
 #[doc(hidden)]
@@ -16,28 +29,58 @@ pub mod __private {
 // This allows us to use our own proc macros internally.
 extern crate self as valence_protocol;
 
-pub mod array;
-pub mod block_pos;
-pub mod byte_angle;
-pub mod chunk_pos;
-pub mod chunk_view;
+mod array;
+mod block_pos;
+mod byte_angle;
+mod chunk_pos;
 pub mod decode;
-pub mod difficulty;
-pub mod direction;
+mod difficulty;
+mod direction;
 pub mod encode;
-pub mod game_mode;
-pub mod global_pos;
-pub mod hand;
+mod game_mode;
+mod global_pos;
+mod hand;
 mod impls;
 pub mod item;
-pub mod player_textures;
-pub mod property;
-pub mod raw;
+pub mod packets;
+mod player_textures;
+mod property;
+mod raw;
 pub mod sound;
 pub mod var_int;
-pub mod var_long;
-pub use {valence_ident as ident, valence_math as math, valence_text as text};
-pub mod packets;
+mod var_long;
+
+use std::io::Write;
+
+use anyhow::Context;
+pub use array::LengthPrefixedArray;
+pub use block::{BlockKind, BlockState};
+pub use block_pos::BlockPos;
+pub use byte_angle::ByteAngle;
+pub use chunk_pos::ChunkPos;
+pub use decode::PacketDecoder;
+pub use direction::Direction;
+pub use encode::{PacketEncoder, WritePacket};
+pub use game_mode::GameMode;
+pub use global_pos::GlobalPos;
+pub use hand::Hand;
+pub use ident::ident;
+pub use item::{ItemKind, ItemStack};
+pub use packets::play::particle_s2c::Particle;
+pub use player_textures::PlayerTextures;
+pub use property::Property;
+pub use raw::RawBytes;
+pub use sound::Sound;
+pub use text::Text;
+pub use valence_generated::{block, packet_id};
+pub use valence_ident::Ident;
+pub use valence_protocol_macros::{Decode, Encode, Packet};
+pub use var_int::VarInt;
+pub use var_long::VarLong;
+pub use {
+    anyhow, bytes, uuid, valence_ident as ident, valence_math as math, valence_nbt as nbt,
+    valence_text as text,
+};
 
 /// The maximum number of bytes in a single Minecraft packet.
 pub const MAX_PACKET_SIZE: i32 = 2097152;
@@ -48,6 +91,13 @@ pub const PROTOCOL_VERSION: i32 = 763;
 /// The stringified name of the Minecraft version this library currently
 /// targets.
 pub const MINECRAFT_VERSION: &str = "1.20.1";
+
+/// Type alias for the compression threshold.
+///
+/// For a compression threshold of `Some(N)`, packets with encoded lengths >=
+/// `N` are compressed while all others are not. `None` disables compression
+/// completely.
+pub type CompressionThreshold = Option<u32>;
 
 /// The `Encode` trait allows objects to be written to the Minecraft protocol.
 /// It is the inverse of [`Decode`].
@@ -95,7 +145,7 @@ pub const MINECRAFT_VERSION: &str = "1.20.1";
 /// println!("{buf:?}");
 /// ```
 ///
-/// [macro]: valence_core_macros::Encode
+/// [macro]: valence_protocol_macros::Encode
 /// [`VarInt`]: var_int::VarInt
 pub trait Encode {
     /// Writes this object to the provided writer.
@@ -180,7 +230,7 @@ pub trait Encode {
 /// assert!(r.is_empty());
 /// ```
 ///
-/// [macro]: valence_core_macros::Decode
+/// [macro]: valence_protocol_macros::Decode
 /// [`VarInt`]: var_int::VarInt
 pub trait Decode<'a>: Sized {
     /// Reads this object from the provided byte slice.
@@ -219,7 +269,7 @@ pub trait Packet: std::fmt::Debug {
     }
 }
 
-/// The side a packet is intended for
+/// The side a packet is intended for.
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum PacketSide {
     /// Server -> Client
@@ -228,7 +278,7 @@ pub enum PacketSide {
     Serverbound,
 }
 
-/// The state which a packet is used
+/// The statein  which a packet is used.
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum PacketState {
     Handshaking,
@@ -249,11 +299,11 @@ mod tests {
     use crate::decode::PacketDecoder;
     use crate::encode::PacketEncoder;
     use crate::hand::Hand;
-    use crate::ident::Ident;
     use crate::item::{ItemKind, ItemStack};
     use crate::text::{IntoText, Text};
     use crate::var_int::VarInt;
     use crate::var_long::VarLong;
+    use crate::Ident;
 
     #[derive(Encode, Decode, Packet, Debug)]
     #[packet(id = 1, side = PacketSide::Clientbound)]

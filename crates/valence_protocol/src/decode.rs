@@ -6,7 +6,7 @@ use anyhow::{bail, ensure, Context};
 use bytes::{Buf, BytesMut};
 
 use crate::var_int::{VarInt, VarIntDecodeError};
-use crate::{Decode, Packet, MAX_PACKET_SIZE};
+use crate::{CompressionThreshold, Decode, Packet, MAX_PACKET_SIZE};
 
 /// The AES block cipher with a 128 bit key, using the CFB-8 mode of
 /// operation.
@@ -19,7 +19,7 @@ pub struct PacketDecoder {
     #[cfg(feature = "compression")]
     decompress_buf: BytesMut,
     #[cfg(feature = "compression")]
-    compression_threshold: Option<u32>,
+    threshold: CompressionThreshold,
     #[cfg(feature = "encryption")]
     cipher: Option<Cipher>,
 }
@@ -53,7 +53,7 @@ impl PacketDecoder {
         let mut data;
 
         #[cfg(feature = "compression")]
-        if let Some(threshold) = self.compression_threshold {
+        if let Some(threshold) = self.threshold {
             use std::io::Write;
 
             use bytes::BufMut;
@@ -137,13 +137,13 @@ impl PacketDecoder {
     }
 
     #[cfg(feature = "compression")]
-    pub fn compression(&self) -> Option<u32> {
-        self.compression_threshold
+    pub fn compression(&self) -> CompressionThreshold {
+        self.threshold
     }
 
     #[cfg(feature = "compression")]
-    pub fn set_compression(&mut self, threshold: Option<u32>) {
-        self.compression_threshold = threshold;
+    pub fn set_compression(&mut self, threshold: CompressionThreshold) {
+        self.threshold = threshold;
     }
 
     #[cfg(feature = "encryption")]

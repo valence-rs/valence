@@ -1,9 +1,8 @@
 #![allow(clippy::type_complexity)]
 
+use valence::interact_block::InteractBlockEvent;
 use valence::inventory::HeldItem;
 use valence::prelude::*;
-use valence_client::interact_block::InteractBlockEvent;
-use valence_client::message::SendMessage;
 
 const SPAWN_Y: i32 = 64;
 

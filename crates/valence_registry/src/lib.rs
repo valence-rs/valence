@@ -17,7 +17,9 @@
     clippy::dbg_macro
 )]
 
+pub mod biome;
 pub mod codec;
+pub mod dimension_type;
 pub mod tags;
 
 use std::fmt::Debug;
@@ -26,10 +28,14 @@ use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
 
 use bevy_app::prelude::*;
-pub use bevy_ecs::prelude::*;
+use bevy_ecs::prelude::*;
+pub use biome::BiomeRegistry;
+pub use codec::RegistryCodec;
+pub use dimension_type::DimensionTypeRegistry;
 use indexmap::map::Entry;
 use indexmap::IndexMap;
-use valence_core::ident::Ident;
+pub use tags::TagsRegistry;
+use valence_ident::Ident;
 
 pub struct RegistryPlugin;
 

@@ -19,16 +19,15 @@
 )]
 
 use bevy_app::prelude::*;
-use valence_client::{Client, UpdateClientsSet, VisibleChunkLayer};
-use valence_core::CoreSettings;
-use valence_layer::ChunkLayer;
-use valence_packet::packets::play::{
+use bevy_ecs::prelude::*;
+use valence_server::client::{Client, UpdateClientsSet, VisibleChunkLayer};
+use valence_server::protocol::packets::play::{
     WorldBorderCenterChangedS2c, WorldBorderInitializeS2c, WorldBorderInterpolateSizeS2c,
     WorldBorderSizeChangedS2c, WorldBorderWarningBlocksChangedS2c,
     WorldBorderWarningTimeChangedS2c,
 };
-use valence_packet::protocol::encode::WritePacket;
-use valence_registry::*;
+use valence_server::protocol::WritePacket;
+use valence_server::{ChunkLayer, Server};
 
 // https://minecraft.fandom.com/wiki/World_border
 pub const DEFAULT_PORTAL_LIMIT: i32 = 29999984;
@@ -143,11 +142,11 @@ fn init_world_border_for_new_clients(
         &WorldBorderWarnTime,
         &WorldBorderWarnBlocks,
     )>,
-    settings: Res<CoreSettings>,
+    server: Res<Server>,
 ) {
     for (mut client, layer) in &mut clients {
         if let Ok((center, lerp, portal_tp_boundary, warn_time, warn_blocks)) = wbs.get(layer.0) {
-            let millis = lerp.remaining_ticks as i64 * 1000 / settings.tick_rate.get() as i64;
+            let millis = lerp.remaining_ticks as i64 * 1000 / server.tick_rate().get() as i64;
 
             client.write_packet(&WorldBorderInitializeS2c {
                 x: center.x,
@@ -165,7 +164,7 @@ fn init_world_border_for_new_clients(
 
 fn tick_world_border_lerp(
     mut wbs: Query<(&mut ChunkLayer, &mut WorldBorderLerp)>,
-    settings: Res<CoreSettings>,
+    server: Res<Server>,
 ) {
     for (mut layer, mut lerp) in &mut wbs {
         if lerp.is_changed() {
@@ -176,7 +175,7 @@ fn tick_world_border_lerp(
 
                 lerp.current_diameter = lerp.target_diameter;
             } else {
-                let millis = lerp.remaining_ticks as i64 * 1000 / settings.tick_rate.get() as i64;
+                let millis = lerp.remaining_ticks as i64 * 1000 / server.tick_rate().get() as i64;
 
                 layer.write_packet(&WorldBorderInterpolateSizeS2c {
                     old_diameter: lerp.current_diameter,
@@ -238,10 +237,10 @@ fn change_world_border_portal_tp_boundary(
         ),
         Changed<WorldBorderPortalTpBoundary>,
     >,
-    settings: Res<CoreSettings>,
+    server: Res<Server>,
 ) {
     for (mut layer, center, lerp, portal_tp_boundary, warn_time, warn_blocks) in &mut wbs {
-        let millis = lerp.remaining_ticks as i64 * 1000 / settings.tick_rate.get() as i64;
+        let millis = lerp.remaining_ticks as i64 * 1000 / server.tick_rate().get() as i64;
 
         layer.write_packet(&WorldBorderInitializeS2c {
             x: center.x,

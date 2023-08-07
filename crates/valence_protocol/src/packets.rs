@@ -5,12 +5,11 @@ use anyhow::bail;
 use uuid::Uuid;
 use valence_generated::packet_id;
 
-use crate::ident::Ident;
 use crate::property::Property;
 use crate::raw::RawBytes;
 use crate::text::Text;
 use crate::var_int::VarInt;
-use crate::{Decode, Encode, Packet, PacketState};
+use crate::{Decode, Encode, Ident, Packet, PacketState};
 
 pub mod handshaking;
 pub mod login;
