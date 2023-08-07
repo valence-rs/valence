@@ -13,10 +13,8 @@ use valence_nbt::Value;
 
 pub mod color;
 mod into_text;
-#[cfg(all(test, feature = "translate"))]
+#[cfg(test)]
 mod tests;
-#[cfg(feature = "translate")]
-pub mod translate;
 
 pub use color::Color;
 pub use into_text::IntoText;

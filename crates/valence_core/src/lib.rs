@@ -18,22 +18,7 @@
 )]
 #![allow(clippy::unusual_byte_groupings)]
 
-pub mod block_pos;
-pub mod chunk_pos;
 pub mod despawn;
-pub mod difficulty;
-pub mod direction;
-pub mod game_mode;
-pub mod hand;
-pub mod ident;
-pub mod item;
-pub mod player_textures;
-pub mod property;
-pub mod protocol;
-pub mod scratch;
-pub mod sound;
-pub mod text;
-pub mod translation_key;
 pub mod uuid;
 
 use std::num::NonZeroU32;
@@ -45,24 +30,8 @@ use bevy_ecs::prelude::*;
 
 use crate::despawn::despawn_marked_entities;
 
-/// Used only by macros. Not public API.
-#[doc(hidden)]
-pub mod __private {
-    pub use anyhow::{anyhow, bail, ensure, Context, Result};
-
-    pub use crate::protocol::var_int::VarInt;
-    pub use crate::protocol::{Decode, Encode};
-}
-
 // Needed to make proc macros work.
 extern crate self as valence_core;
-
-/// The Minecraft protocol version this library currently targets.
-pub const PROTOCOL_VERSION: i32 = 763;
-
-/// The stringified name of the Minecraft version this library currently
-/// targets.
-pub const MINECRAFT_VERSION: &str = "1.20.1";
 
 /// Minecraft's standard ticks per second (TPS).
 pub const DEFAULT_TPS: NonZeroU32 = match NonZeroU32::new(20) {

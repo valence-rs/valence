@@ -20,7 +20,6 @@ num-integer.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 valence_biome.workspace = true
-valence_block.workspace = true
 valence_client.workspace = true
 valence_core.workspace = true
 valence_entity.workspace = true

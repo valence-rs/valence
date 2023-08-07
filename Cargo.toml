@@ -46,7 +46,6 @@ rand.workspace = true
 valence_advancement = { workspace = true, optional = true }
 valence_anvil = { workspace = true, optional = true }
 valence_biome.workspace = true
-valence_block.workspace = true
 valence_boss_bar = { workspace = true, optional = true }
 valence_client.workspace = true
 valence_core.workspace = true
@@ -57,12 +56,12 @@ valence_layer.workspace = true
 valence_math = { workspace = true }
 valence_nbt.workspace = true
 valence_network = { workspace = true, optional = true }
-valence_packet.workspace = true
 valence_player_list = { workspace = true, optional = true }
 valence_registry.workspace = true
 valence_scoreboard = { workspace = true, optional = true }
 valence_weather = { workspace = true, optional = true }
 valence_world_border = { workspace = true, optional = true }
+valence_text.workspace = true
 valence_ident.workspace = true
 
 [dev-dependencies]
@@ -172,10 +171,8 @@ uuid = "1.3.1"
 valence_advancement.path = "crates/valence_advancement"
 valence_anvil.path = "crates/valence_anvil"
 valence_biome.path = "crates/valence_biome"
-valence_block.path = "crates/valence_block"
 valence_build_utils.path = "crates/valence_build_utils"
 valence_client.path = "crates/valence_client"
-valence_core_macros.path = "crates/valence_core_macros"
 valence_packet_macros.path = "crates/valence_packet_macros"
 valence_core.path = "crates/valence_core"
 valence_dimension.path = "crates/valence_dimension"
@@ -189,10 +186,12 @@ valence_registry.path = "crates/valence_registry"
 valence_scoreboard.path = "crates/valence_scoreboard"
 valence_world_border.path = "crates/valence_world_border"
 valence_boss_bar.path = "crates/valence_boss_bar"
-valence_packet.path = "crates/valence_packet"
 valence_weather.path = "crates/valence_weather"
 valence_math.path = "crates/valence_math"
 valence_ident.path = "crates/valence_ident"
 valence_ident_macros.path = "crates/valence_ident_macros"
+valence_generated.path = "crates/valence_generated"
+valence_text.path = "crates/valence_text"
+valence_protocol_macros.path = "crates/valence_protocol_macros"
 valence.path = "."
 zip = "0.6.3"

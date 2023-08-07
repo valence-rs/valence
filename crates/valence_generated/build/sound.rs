@@ -102,7 +102,6 @@ pub fn build() -> anyhow::Result<TokenStream> {
             /// Construct a sound from its snake_case name.
             ///
             /// Returns `None` if the name is invalid.
-            #[allow(clippy::should_implement_trait)]
             pub fn from_ident(id: Ident<&str>) -> Option<Self> {
                 match id.as_str() {
                     #sound_from_ident_arms

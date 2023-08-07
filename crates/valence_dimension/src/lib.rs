@@ -28,7 +28,6 @@ use valence_core::ident::Ident;
 use valence_nbt::serde::CompoundSerializer;
 use valence_registry::codec::{RegistryCodec, RegistryValue};
 use valence_registry::{Registry, RegistryIdx, RegistrySet};
-
 pub struct DimensionPlugin;
 
 impl Plugin for DimensionPlugin {
@@ -150,7 +149,7 @@ pub struct DimensionType {
 impl Default for DimensionType {
     fn default() -> Self {
         Self {
-            ambient_light: 1.0,
+            ambient_light: 0.0,
             bed_works: true,
             coordinate_scale: 1.0,
             effects: DimensionEffects::default(),

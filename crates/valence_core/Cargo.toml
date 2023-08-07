@@ -25,7 +25,6 @@ thiserror.workspace = true
 tracing.workspace = true
 uuid = { workspace = true, features = ["serde"] }
 valence_nbt = { workspace = true, features = ["binary"] }
-valence_core_macros.workspace = true
 url.workspace = true
 base64.workspace = true
 rand.workspace = true
@@ -34,11 +33,3 @@ rand.workspace = true
 rand.workspace = true
 # valence_core = { workspace = true, features = ["compression"] }
 
-[build-dependencies]
-anyhow.workspace = true
-heck.workspace = true
-proc-macro2.workspace = true
-quote.workspace = true
-serde = { workspace = true, features = ["derive"] }
-serde_json.workspace = true
-valence_build_utils.workspace = true

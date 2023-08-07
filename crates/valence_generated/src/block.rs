@@ -5,6 +5,7 @@ use std::fmt::Display;
 use std::iter::FusedIterator;
 
 use valence_ident::{ident, Ident};
+
 use crate::item::ItemKind;
 
 include!(concat!(env!("OUT_DIR"), "/block.rs"));

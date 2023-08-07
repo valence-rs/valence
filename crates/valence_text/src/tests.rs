@@ -32,7 +32,7 @@ fn non_object_data_types() {
 #[test]
 fn translate() {
     let txt = Text::translate(
-        translate::CHAT_TYPE_ADVANCEMENT_TASK,
+        "chat.type.advancement.task",
         ["arg1".into_text(), "arg2".into_text()],
     );
     let serialized = txt.to_string();

@@ -12,4 +12,3 @@ valence_core.workspace = true
 valence_entity.workspace = true
 valence_layer.workspace = true
 valence_registry.workspace = true
-valence_packet.workspace = true
