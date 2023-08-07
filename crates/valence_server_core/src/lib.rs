@@ -28,10 +28,10 @@ use bevy_app::prelude::*;
 use bevy_app::ScheduleRunnerPlugin;
 use bevy_ecs::prelude::*;
 pub use despawn::*;
-pub use uuid::*;
 use valence_protocol::CompressionThreshold;
 
 use crate::despawn::despawn_marked_entities;
+pub use crate::uuid::*;
 
 /// Minecraft's standard ticks per second (TPS).
 pub const DEFAULT_TPS: NonZeroU32 = match NonZeroU32::new(20) {

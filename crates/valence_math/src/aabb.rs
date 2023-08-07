@@ -42,7 +42,6 @@ impl Aabb {
 
     /// Returns a new AABB containing a single point `p`.
     pub fn new_point(p: DVec3) -> Self {
-        let p = p.into();
         Self::new(p, p)
     }
 
