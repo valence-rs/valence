@@ -187,13 +187,6 @@ fn prepare() -> ScenarioSingleClient {
 
     // Process a tick to get past the "on join" logic.
     s.app.update();
-    s.helper.clear_received();
-
-    for _ in 0..2 {
-        s.app.update();
-    }
-
-    s.helper.clear_received();
 
     // Attach the world border bundle to the chunk layer
     s.app.world.entity_mut(s.layer).insert(WorldBorderBundle {
