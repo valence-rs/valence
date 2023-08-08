@@ -1,0 +1,22 @@
+[package]
+name = "download_vanilla_server"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+documentation.workspace = true
+license.workspace = true
+
+[dependencies]
+valence_nbt = { workspace = true, features = ["binary", "preserve_order"] }
+indicatif.workspace = true
+anyhow.workspace = true
+tokio.workspace = true
+futures.workspace = true
+flate2.workspace = true
+dialoguer.workspace = true
+
+[dependencies.reqwest]
+workspace = true
+default-features = false
+# Avoid OpenSSL dependency on Linux.
+features = ["rustls-tls", "stream"]

@@ -16,3 +16,4 @@ flamegraph*.svg
 perf.data
 perf.data.old
 /graph.svg
+/vanilla-server

@@ -29,7 +29,8 @@ The general process should go something like this:
 4. Attempt to run `./gradlew runServer` and fix any errors that come up
 5. Run `./copy_extractor_output.sh`
 6. In `*.toml`s, replace all strings of the old mc version with the new mc version
-7. Try all the examples. If they work, you're probably done.
+7. Update the download URL in `tools/download_vanilla_server`.
+8. Try all the examples. If they work, you're probably done.
 
 
 If you need to update gradle, running this will automatically update the wrapper to the specified version, and update `gradle/gradle-wrapper.properties`.
