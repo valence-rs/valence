@@ -13,7 +13,9 @@ This will create `vanilla-server` in the current directory. `cd` into the folder
 java -jar server.jar nogui
 ```
 
-to start the server. You can then run
+to start the server. You'll have to agree to the EULA manually in `eula.txt`.
+
+You can then run
 
 ```bash
 cargo r -p packet_inspector
