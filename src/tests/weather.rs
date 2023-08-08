@@ -14,7 +14,8 @@ fn test_client_initialization_on_join() {
 
     app.update();
 
-    // Check if two game state change packets were sent, one for rain and one for thunder
+    // Check if two game state change packets were sent, one for rain and one for
+    // thunder
     let frames = helper.collect_received();
     frames.assert_count::<GameStateChangeS2c>(2);
 }
@@ -30,7 +31,8 @@ fn test_chunk_layer_initialization_on_join() {
 
     app.update();
 
-    // Check if two game state change packets were sent, one for rain and one for thunder
+    // Check if two game state change packets were sent, one for rain and one for
+    // thunder
     let frames = helper.collect_received();
     frames.assert_count::<GameStateChangeS2c>(2);
 }
@@ -137,7 +139,8 @@ fn prepare(client_weather: bool) -> ScenarioSingleClient {
     // Process a tick to get past the "on join" logic.
     s.app.update();
 
-    // Add weather to either the client or the chunk layer depending on the parameter
+    // Add weather to either the client or the chunk layer depending on the
+    // parameter
     if client_weather {
         add_weather_to_client(&mut s);
     } else {
