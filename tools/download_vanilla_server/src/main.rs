@@ -31,14 +31,14 @@ async fn main() -> anyhow::Result<()> {
 
     fs::create_dir_all("vanilla-server")?;
 
-    let mut file = File::create("vanilla-server/server.jar")?;
+    let mut jar_file = File::create("vanilla-server/server.jar")?;
 
     while let Some(chunk) = stream.next().await {
         let chunk = chunk?;
 
         pb.set_position((pb.position() + chunk.len() as u64).min(total_len));
 
-        file.write_all(&chunk)?;
+        jar_file.write_all(&chunk)?;
     }
 
     pb.finish_and_clear();
