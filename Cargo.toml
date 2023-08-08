@@ -19,6 +19,7 @@ default = [
     "log",
     "network",
     "player_list",
+    "scoreboard",
     "world_border",
     "weather",
 ]
@@ -29,6 +30,7 @@ inventory = ["dep:valence_inventory"]
 log = ["dep:bevy_log"]
 network = ["dep:valence_network"]
 player_list = ["dep:valence_player_list"]
+scoreboard = ["dep:valence_scoreboard"]
 world_border = ["dep:valence_world_border"]
 weather = ["dep:valence_weather"]
 
@@ -56,6 +58,7 @@ valence_nbt.workspace = true
 valence_network = { workspace = true, optional = true }
 valence_player_list = { workspace = true, optional = true }
 valence_registry.workspace = true
+valence_scoreboard = { workspace = true, optional = true }
 valence_world_border = { workspace = true, optional = true }
 valence_packet.workspace = true
 valence_weather = { workspace = true, optional = true }
@@ -104,7 +107,7 @@ async-trait = "0.1.60"
 atty = "0.2.14"
 base64 = "0.21.0"
 bevy_app = { version = "0.11", default-features = false }
-bevy_ecs = { version = "0.11", default-features = false }
+bevy_ecs = { version = "0.11", default-features = false, features = ["multi-threaded"] }
 bevy_hierarchy = { version = "0.11", default-features = false }
 bevy_log = { version = "0.11" }
 bevy_mod_debugdump = { version = "0.8.0", default-features = false }
@@ -181,6 +184,7 @@ valence_nbt = { path = "crates/valence_nbt", features = ["uuid"] }
 valence_network.path = "crates/valence_network"
 valence_player_list.path = "crates/valence_player_list"
 valence_registry.path = "crates/valence_registry"
+valence_scoreboard.path = "crates/valence_scoreboard"
 valence_world_border.path = "crates/valence_world_border"
 valence_boss_bar.path = "crates/valence_boss_bar"
 valence_packet.path = "crates/valence_packet"
