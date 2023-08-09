@@ -49,6 +49,7 @@ pub use valence_player_list as player_list;
 use valence_registry::RegistryPlugin;
 #[cfg(feature = "scoreboard")]
 pub use valence_scoreboard as scoreboard;
+use valence_server::abilities::AbilitiesPlugin;
 use valence_server::action::ActionPlugin;
 use valence_server::client::ClientPlugin;
 use valence_server::client_command::ClientCommandPlugin;
@@ -183,7 +184,8 @@ impl PluginGroup for DefaultPlugins {
             .add(InteractItemPlugin)
             .add(OpLevelPlugin)
             .add(ResourcePackPlugin)
-            .add(StatusPlugin);
+            .add(StatusPlugin)
+            .add(AbilitiesPlugin);
 
         #[cfg(feature = "log")]
         {
