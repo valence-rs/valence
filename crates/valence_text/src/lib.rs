@@ -1,4 +1,4 @@
-//! Formatted text.
+#![doc = include_str!("../README.md")]
 
 use std::borrow::Cow;
 use std::ops::{Deref, DerefMut};

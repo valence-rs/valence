@@ -1,8 +1,8 @@
-// #![doc = include_str!("../README.md")]
+#![doc = include_str!("../README.md")]
 #![deny(
     rustdoc::broken_intra_doc_links,
     rustdoc::private_intra_doc_links,
-    // rustdoc::missing_crate_level_docs,
+    rustdoc::missing_crate_level_docs,
     rustdoc::invalid_codeblock_attributes,
     rustdoc::invalid_rust_codeblocks,
     rustdoc::bare_urls,
@@ -59,6 +59,7 @@ pub use block_pos::BlockPos;
 pub use byte_angle::ByteAngle;
 pub use chunk_pos::ChunkPos;
 pub use decode::PacketDecoder;
+pub use difficulty::Difficulty;
 pub use direction::Direction;
 pub use encode::{PacketEncoder, WritePacket};
 pub use game_mode::GameMode;
@@ -110,9 +111,10 @@ pub type CompressionThreshold = Option<u32>;
 /// type definition.
 ///
 /// For enums, the variant to encode is marked by a leading [`VarInt`]
-/// discriminant (tag). The discriminant value can be changed using the `#[tag =
-/// ...]` attribute on the variant in question. Discriminant values are assigned
-/// to variants using rules similar to regular enum discriminants.
+/// discriminant (tag). The discriminant value can be changed using the
+/// `#[packet(tag = ...)]` attribute on the variant in question. Discriminant
+/// values are assigned to variants using rules similar to regular enum
+/// discriminants.
 ///
 /// ```
 /// use valence_protocol::Encode;
@@ -165,9 +167,10 @@ pub trait Encode {
     /// what the default implementation does), but a more efficient
     /// implementation may be used.
     ///
-    /// This optimization is very important for some types like `u8` where
-    /// [`write_all`] is used. Because impl specialization is unavailable in
-    /// stable Rust, we must make the slice specialization part of this trait.
+    /// This method is important for some types like `u8` where the entire slice
+    /// can be encoded in a single call to [`write_all`]. Because impl
+    /// specialization is unavailable in stable Rust at the time of writing,
+    /// we must make the slice specialization part of this trait.
     ///
     /// [`write_all`]: Write::write_all
     fn encode_slice(slice: &[Self], mut w: impl Write) -> anyhow::Result<()>
@@ -196,9 +199,10 @@ pub trait Encode {
 /// type definition.
 ///
 /// For enums, the variant to decode is determined by a leading [`VarInt`]
-/// discriminant (tag). The discriminant value can be changed using the `#[tag =
-/// ...]` attribute on the variant in question. Discriminant values are assigned
-/// to variants using rules similar to regular enum discriminants.
+/// discriminant (tag). The discriminant value can be changed using the
+/// `#[packet(tag = ...)]` attribute on the variant in question. Discriminant
+/// values are assigned to variants using rules similar to regular enum
+/// discriminants.
 ///
 /// ```
 /// use valence_protocol::Decode;

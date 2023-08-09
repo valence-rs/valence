@@ -1,12 +1,12 @@
 #[cfg(feature = "encryption")]
-use aes::cipher::generic_array::GenericArray;
-#[cfg(feature = "encryption")]
-use aes::cipher::{BlockDecryptMut, BlockSizeUser, KeyIvInit};
+use aes::cipher::{generic_array::GenericArray, BlockDecryptMut, BlockSizeUser, KeyIvInit};
 use anyhow::{bail, ensure, Context};
 use bytes::{Buf, BytesMut};
 
 use crate::var_int::{VarInt, VarIntDecodeError};
-use crate::{CompressionThreshold, Decode, Packet, MAX_PACKET_SIZE};
+#[cfg(feature = "encryption")]
+use crate::CompressionThreshold;
+use crate::{Decode, Packet, MAX_PACKET_SIZE};
 
 /// The AES block cipher with a 128 bit key, using the CFB-8 mode of
 /// operation.

@@ -1,3 +1,3 @@
-# valence_core
+# valence_server_core
 
-Contains foundational code or modules too small to deserve their own crate. The contents of `valence_core` are re-exported by the main `valence` crate.
+Contains some miscellaneous types for the `valence_server` family of crates, like `valence_entity`. `valence_registry`, and `valence_server`.

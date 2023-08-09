@@ -167,10 +167,14 @@ impl PacketEncoder {
         self.threshold = threshold;
     }
 
-    /// Encrypts all future packets **and any packets that have
-    /// not been [taken] yet.**
+    /// Initializes the cipher with the given key. All future packets **and any
+    /// that have not been [taken] yet** are encrypted.
     ///
     /// [taken]: Self::take
+    ///
+    /// # Panics
+    ///
+    /// Panics if encryption is already enabled.
     #[cfg(feature = "encryption")]
     pub fn enable_encryption(&mut self, key: &[u8; 16]) {
         assert!(self.cipher.is_none(), "encryption is already enabled");

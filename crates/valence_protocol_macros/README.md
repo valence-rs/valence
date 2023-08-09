@@ -1,3 +1,3 @@
-# valence_core_macros
+# valence_protocol_macros
 
-Procedural macros for `valence_core`
+Procedural macros for `valence_protocol`
