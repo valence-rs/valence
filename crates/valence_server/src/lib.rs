@@ -1,4 +1,4 @@
-// #![doc = include_str!("../README.md")]
+#![doc = include_str!("../README.md")]
 #![deny(
     rustdoc::broken_intra_doc_links,
     rustdoc::private_intra_doc_links,
