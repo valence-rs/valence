@@ -1,5 +1,6 @@
 use glam::DVec3;
 
+use crate::abilities::PlayerAbilitiesFlags;
 use crate::layer::chunk::UnloadedChunk;
 use crate::layer::ChunkLayer;
 use crate::protocol::packets::play::{
@@ -59,4 +60,45 @@ fn client_teleport_and_move() {
     helper_2
         .collect_received()
         .assert_count::<MoveRelativeS2c>(1);
+}
+
+#[test]
+fn client_gamemode_changed_ability() {
+    let mut senario = ScenarioSingleClient::new();
+
+    *senario
+        .app
+        .world
+        .get_mut::<GameMode>(senario.client)
+        .unwrap() = GameMode::Creative;
+
+    senario.app.update();
+
+    let abilities = senario
+        .app
+        .world
+        .get::<PlayerAbilitiesFlags>(senario.client)
+        .unwrap();
+
+    assert!(abilities.allow_flying());
+    assert!(abilities.instant_break());
+    assert!(abilities.invulnerable());
+
+    *senario
+        .app
+        .world
+        .get_mut::<GameMode>(senario.client)
+        .unwrap() = GameMode::Adventure;
+
+    senario.app.update();
+
+    let abilities = senario
+        .app
+        .world
+        .get::<PlayerAbilitiesFlags>(senario.client)
+        .unwrap();
+
+    assert!(!abilities.allow_flying());
+    assert!(!abilities.instant_break());
+    assert!(!abilities.invulnerable());
 }

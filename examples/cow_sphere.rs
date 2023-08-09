@@ -4,6 +4,9 @@ use std::f64::consts::TAU;
 
 use valence::math::{DQuat, EulerRot};
 use valence::prelude::*;
+use valence_client::abilities::{PlayerStartFlyingEvent, PlayerStopFlyingEvent};
+use valence_client::message::SendMessage;
+use valence_core::text::color::NamedColor;
 
 type SpherePartBundle = valence::entity::cow::CowEntityBundle;
 
@@ -25,7 +28,12 @@ fn main() {
         .add_systems(Startup, setup)
         .add_systems(
             Update,
-            (init_clients, update_sphere, despawn_disconnected_clients),
+            (
+                init_clients,
+                update_sphere,
+                despawn_disconnected_clients,
+                display_is_flying,
+            ),
         )
         .run();
 }
@@ -140,4 +148,23 @@ fn fibonacci_spiral(n: usize) -> impl Iterator<Item = DVec3> {
 
 fn lerp(a: f64, b: f64, t: f64) -> f64 {
     a * (1.0 - t) + b * t
+}
+
+// Send an actionbar message to all clients when their flying state changes.
+fn display_is_flying(
+    mut player_start_flying_events: EventReader<PlayerStartFlyingEvent>,
+    mut player_stop_flying_events: EventReader<PlayerStopFlyingEvent>,
+    mut clients: Query<&mut Client>,
+) {
+    for event in player_start_flying_events.iter() {
+        if let Ok(mut client) = clients.get_mut(event.client) {
+            client.send_action_bar_message("You are flying!".color(NamedColor::Green));
+        }
+    }
+
+    for event in player_stop_flying_events.iter() {
+        if let Ok(mut client) = clients.get_mut(event.client) {
+            client.send_action_bar_message("You are no longer flying!".color(NamedColor::Red));
+        }
+    }
 }

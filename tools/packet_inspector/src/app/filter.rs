@@ -82,14 +82,21 @@ fn draw_packet_list(ui: &mut Ui, state: &mut SharedState, packet_state: PacketSt
     let count = state
         .packet_filter
         .iter_mut()
-        .filter(|(p, _)| p.state == packet_state && p.name.to_lowercase().contains(&search))
+        .filter(|(p, _)| {
+            p.state == packet_state
+                && (p.name.to_lowercase().contains(&search)
+                    || int_to_hex_lower(p.id).contains(&search))
+        })
         .count();
 
     let count_enabled = state
         .packet_filter
         .iter_mut()
         .filter(|(p, enabled)| {
-            p.state == packet_state && p.name.to_lowercase().contains(&search) && **enabled
+            p.state == packet_state
+                && (p.name.to_lowercase().contains(&search)
+                    || int_to_hex_lower(p.id).contains(&search))
+                && **enabled
         })
         .count();
 
@@ -102,11 +109,11 @@ fn draw_packet_list(ui: &mut Ui, state: &mut SharedState, packet_state: PacketSt
         .ui(ui)
         .changed()
     {
-        for (_, enabled) in state
-            .packet_filter
-            .iter_mut()
-            .filter(|(p, _)| p.state == packet_state && p.name.to_lowercase().contains(&search))
-        {
+        for (_, enabled) in state.packet_filter.iter_mut().filter(|(p, _)| {
+            p.state == packet_state
+                && (p.name.to_lowercase().contains(&search)
+                    || int_to_hex_lower(p.id).contains(&search))
+        }) {
             if count == count_enabled || count_enabled == 0 {
                 *enabled = !*enabled;
                 continue;
@@ -119,14 +126,26 @@ fn draw_packet_list(ui: &mut Ui, state: &mut SharedState, packet_state: PacketSt
     for (p, enabled) in state
         .packet_filter
         .iter_mut()
-        .filter(|(p, _)| p.state == packet_state && p.name.to_lowercase().contains(&search))
+        .filter(|(p, _)| {
+            p.state == packet_state
+                && (p.name.to_lowercase().contains(&search)
+                    || int_to_hex_lower(p.id).contains(&search))
+        })
         .sorted_by(|(a, _), (b, _)| {
             a.id.cmp(&b.id)
                 .then((a.side as usize).cmp(&(b.side as usize)))
         })
     {
-        ui.checkbox(enabled, format!("[0x{:0>2X}] {}", p.id, p.name));
+        ui.checkbox(enabled, format!("[{}] {}", int_to_hex(p.id), p.name));
     }
 
     count
+}
+
+fn int_to_hex(i: i32) -> String {
+    format!("0x{:0>2X}", i)
+}
+
+fn int_to_hex_lower(i: i32) -> String {
+    format!("0x{:0>2x}", i)
 }

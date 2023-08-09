@@ -130,6 +130,8 @@ pub struct ClientBundle {
     pub is_debug: crate::spawn::IsDebug,
     pub is_flat: crate::spawn::IsFlat,
     pub portal_cooldown: crate::spawn::PortalCooldown,
+    pub flying_speed: crate::abilities::FlyingSpeed,
+    pub fov_modifier: crate::abilities::FovModifier,
     pub player: PlayerEntityBundle,
 }
 
@@ -168,6 +170,8 @@ impl ClientBundle {
             reduced_debug_info: Default::default(),
             is_debug: Default::default(),
             portal_cooldown: Default::default(),
+            flying_speed: Default::default(),
+            fov_modifier: Default::default(),
             player: PlayerEntityBundle {
                 uuid: UniqueId(args.uuid),
                 ..Default::default()
@@ -1060,7 +1064,7 @@ pub(crate) fn update_view_and_layers(
     );
 }
 
-fn update_game_mode(mut clients: Query<(&mut Client, &GameMode), Changed<GameMode>>) {
+pub(crate) fn update_game_mode(mut clients: Query<(&mut Client, &GameMode), Changed<GameMode>>) {
     for (mut client, game_mode) in &mut clients {
         if client.is_added() {
             // Game join packet includes the initial game mode.

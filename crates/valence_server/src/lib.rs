@@ -18,6 +18,7 @@
 )]
 #![allow(clippy::type_complexity)]
 
+pub mod abilities;
 pub mod action;
 mod chunk_view;
 pub mod client;
