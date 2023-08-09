@@ -2,12 +2,12 @@ use std::time::Duration;
 
 use bevy_app::prelude::*;
 use criterion::Criterion;
-use glam::DVec3;
 use rand::Rng;
 use valence::entity::Position;
 use valence::keepalive::KeepaliveSettings;
 use valence::layer::chunk::UnloadedChunk;
 use valence::layer::LayerBundle;
+use valence::math::DVec3;
 use valence::network::NetworkPlugin;
 use valence::protocol::packets::play::{FullC2s, HandSwingC2s};
 use valence::registry::{BiomeRegistry, DimensionTypeRegistry};
