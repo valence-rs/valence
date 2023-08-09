@@ -47,15 +47,15 @@ pub struct PlayerStopFlyingEvent {
 /// Order of execution:
 /// 1. `update_game_mode`: Watch [`GameMode`] changes => Send
 /// `GameStateChangeS2c` to update the client's gamemode
-/// 
+///
 /// 2. `update_client_player_abilities`: Watch [`PlayerAbilitiesFlags`],
 /// [`FlyingSpeed`] and [`FovModifier`] changes => Send [`PlayerAbilitiesS2c`]
 /// to update the client's abilities
-/// 
+///
 /// 3. `update_player_abilities`: Watch
 /// [`GameMode`] changes => Update [`PlayerAbilitiesFlags`] according to the
 /// [`GameMode`]
-/// 
+///
 /// 4. `update_server_player_abilities`: Watch
 /// [`UpdatePlayerAbilitiesC2s`] packets => Update [`PlayerAbilitiesFlags`]
 /// according to the packet
