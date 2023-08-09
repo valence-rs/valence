@@ -2,11 +2,11 @@
 
 use std::f64::consts::TAU;
 
+use valence::abilities::{PlayerStartFlyingEvent, PlayerStopFlyingEvent};
 use valence::math::{DQuat, EulerRot};
+use valence::message::SendMessage;
 use valence::prelude::*;
-use valence_client::abilities::{PlayerStartFlyingEvent, PlayerStopFlyingEvent};
-use valence_client::message::SendMessage;
-use valence_core::text::color::NamedColor;
+use valence_text::color::NamedColor;
 
 type SpherePartBundle = valence::entity::cow::CowEntityBundle;
 
