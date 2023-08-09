@@ -132,6 +132,7 @@ pub struct ClientBundle {
     pub portal_cooldown: crate::spawn::PortalCooldown,
     pub flying_speed: crate::abilities::FlyingSpeed,
     pub fov_modifier: crate::abilities::FovModifier,
+    pub player_abilities_flags: crate::abilities::PlayerAbilitiesFlags,
     pub player: PlayerEntityBundle,
 }
 
@@ -172,6 +173,7 @@ impl ClientBundle {
             portal_cooldown: Default::default(),
             flying_speed: Default::default(),
             fov_modifier: Default::default(),
+            player_abilities_flags: Default::default(),
             player: PlayerEntityBundle {
                 uuid: UniqueId(args.uuid),
                 ..Default::default()

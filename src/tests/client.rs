@@ -1,13 +1,12 @@
-use glam::DVec3;
-
 use crate::abilities::PlayerAbilitiesFlags;
 use crate::layer::chunk::UnloadedChunk;
 use crate::layer::ChunkLayer;
+use crate::math::DVec3;
 use crate::protocol::packets::play::{
     FullC2s, MoveRelativeS2c, PlayerPositionLookS2c, TeleportConfirmC2s,
 };
 use crate::testing::{create_mock_client, ScenarioSingleClient};
-use crate::ChunkPos;
+use crate::{ChunkPos, GameMode};
 
 #[test]
 fn client_teleport_and_move() {
@@ -64,38 +63,38 @@ fn client_teleport_and_move() {
 
 #[test]
 fn client_gamemode_changed_ability() {
-    let mut senario = ScenarioSingleClient::new();
+    let mut scenario = ScenarioSingleClient::new();
 
-    *senario
+    *scenario
         .app
         .world
-        .get_mut::<GameMode>(senario.client)
+        .get_mut::<GameMode>(scenario.client)
         .unwrap() = GameMode::Creative;
 
-    senario.app.update();
+    scenario.app.update();
 
-    let abilities = senario
+    let abilities = scenario
         .app
         .world
-        .get::<PlayerAbilitiesFlags>(senario.client)
+        .get::<PlayerAbilitiesFlags>(scenario.client)
         .unwrap();
 
     assert!(abilities.allow_flying());
     assert!(abilities.instant_break());
     assert!(abilities.invulnerable());
 
-    *senario
+    *scenario
         .app
         .world
-        .get_mut::<GameMode>(senario.client)
+        .get_mut::<GameMode>(scenario.client)
         .unwrap() = GameMode::Adventure;
 
-    senario.app.update();
+    scenario.app.update();
 
-    let abilities = senario
+    let abilities = scenario
         .app
         .world
-        .get::<PlayerAbilitiesFlags>(senario.client)
+        .get::<PlayerAbilitiesFlags>(scenario.client)
         .unwrap();
 
     assert!(!abilities.allow_flying());

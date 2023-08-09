@@ -41,7 +41,6 @@ anyhow.workspace = true
 bevy_app.workspace = true
 bevy_ecs.workspace = true
 bevy_log = { workspace = true, optional = true }
-glam.workspace = true
 uuid.workspace = true
 bytes.workspace = true
 rand.workspace = true

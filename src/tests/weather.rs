@@ -1,7 +1,6 @@
-use valence_packet::packets::play::GameStateChangeS2c;
-use valence_weather::{Rain, Thunder, WeatherBundle};
-
+use crate::protocol::packets::play::GameStateChangeS2c;
 use crate::testing::*;
+use crate::weather::{Rain, Thunder, WeatherBundle};
 
 #[test]
 fn test_client_initialization_on_join() {
