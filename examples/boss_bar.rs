@@ -66,7 +66,7 @@ fn setup(
             layer: EntityLayerId(layer_id),
             ..Default::default()
         },
-        BossBarTitle("BigCow".color(NamedColor::Red)),
+        BossBarTitle("Louis XVI".color(NamedColor::Red)),
         BossBarHealth(0.5),
         BossBarStyle {
             color: BossBarColor::Red,

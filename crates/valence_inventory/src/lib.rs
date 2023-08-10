@@ -1235,11 +1235,11 @@ fn handle_update_selected_slot(
                     // The client is trying to interact with a slot that does not exist, ignore.
                     continue;
                 }
-                held.held_item_slot = convert_hotbar_slot_id(pkt.slot);
+                held.held_item_slot = convert_hotbar_slot_id(pkt.slot as u16);
 
                 events.send(UpdateSelectedSlotEvent {
                     client: packet.client,
-                    slot: pkt.slot as u8,
+                    slot: pkt.slot,
                 });
             }
         }
