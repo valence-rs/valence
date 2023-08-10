@@ -26,7 +26,7 @@ pub enum BossBarAction<'a> {
 }
 
 /// The color of a boss bar.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Component, Default)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Default)]
 pub enum BossBarColor {
     #[default]
     Pink,
@@ -39,7 +39,7 @@ pub enum BossBarColor {
 }
 
 /// The division of a boss bar.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Component, Default)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Default)]
 pub enum BossBarDivision {
     #[default]
     NoDivision,
@@ -58,4 +58,15 @@ pub struct BossBarFlags {
     pub create_fog: bool,
     #[bits(5)]
     _pad: u8,
+}
+
+impl ToPacketAction for BossBarFlags {
+    fn to_packet_action(&self) -> BossBarAction {
+        BossBarAction::UpdateFlags(*self)
+    }
+}
+
+/// Trait for converting a component to a boss bar action.
+pub trait ToPacketAction {
+    fn to_packet_action(&self) -> BossBarAction;
 }
