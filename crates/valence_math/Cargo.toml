@@ -1,0 +1,10 @@
+[package]
+name = "valence_math"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+documentation.workspace = true
+license.workspace = true
+
+[dependencies]
+glam.workspace = true

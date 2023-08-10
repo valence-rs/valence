@@ -2,11 +2,11 @@
 
 use std::f64::consts::TAU;
 
-use glam::{DQuat, EulerRot};
+use valence::abilities::{PlayerStartFlyingEvent, PlayerStopFlyingEvent};
+use valence::math::{DQuat, EulerRot};
+use valence::message::SendMessage;
 use valence::prelude::*;
-use valence_client::abilities::{PlayerStartFlyingEvent, PlayerStopFlyingEvent};
-use valence_client::message::SendMessage;
-use valence_core::text::color::NamedColor;
+use valence_text::color::NamedColor;
 
 type SpherePartBundle = valence::entity::cow::CowEntityBundle;
 
@@ -103,11 +103,10 @@ fn init_clients(
 }
 
 fn update_sphere(
-    settings: Res<CoreSettings>,
     server: Res<Server>,
     mut parts: Query<(&mut Position, &mut Look, &mut HeadYaw), With<SpherePart>>,
 ) {
-    let time = server.current_tick() as f64 / settings.tick_rate.get() as f64;
+    let time = server.current_tick() as f64 / server.tick_rate().get() as f64;
 
     let rot_angles = DVec3::new(0.2, 0.4, 0.6) * SPHERE_FREQ * time * TAU % TAU;
     let rot = DQuat::from_euler(EulerRot::XYZ, rot_angles.x, rot_angles.y, rot_angles.z);

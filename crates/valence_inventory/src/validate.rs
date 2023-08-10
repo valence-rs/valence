@@ -1,7 +1,7 @@
-use anyhow::{bail, ensure};
-use valence_core::item::ItemStack;
-use valence_packet::packets::play::click_slot_c2s::ClickMode;
-use valence_packet::packets::play::ClickSlotC2s;
+use valence_server::protocol::anyhow::{self, bail, ensure};
+use valence_server::protocol::packets::play::click_slot_c2s::ClickMode;
+use valence_server::protocol::packets::play::ClickSlotC2s;
+use valence_server::ItemStack;
 
 use super::{CursorItem, Inventory, InventoryWindow, PLAYER_INVENTORY_MAIN_SLOTS_COUNT};
 
@@ -358,9 +358,10 @@ fn calculate_net_item_delta(
 
 #[cfg(test)]
 mod tests {
-    use valence_core::item::{ItemKind, ItemStack};
-    use valence_core::protocol::var_int::VarInt;
-    use valence_packet::packets::play::click_slot_c2s::SlotChange;
+
+    use valence_server::protocol::packets::play::click_slot_c2s::SlotChange;
+    use valence_server::protocol::VarInt;
+    use valence_server::ItemKind;
 
     use super::*;
     use crate::InventoryKind;

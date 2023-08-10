@@ -1,0 +1,37 @@
+[package]
+name = "valence_protocol"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+documentation.workspace = true
+license.workspace = true
+
+[features]
+encryption = ["dep:aes", "dep:cfb8"]
+compression = ["dep:flate2"]
+
+[dependencies]
+bevy_ecs.workspace = true                                 # TODO: make this optional
+valence_math.workspace = true
+valence_generated.workspace = true
+valence_text.workspace = true
+valence_nbt = { workspace = true, features = ["binary"] }
+valence_protocol_macros.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+serde = { workspace = true, features = ["derive"] }
+byteorder.workspace = true
+uuid.workspace = true
+valence_ident.workspace = true
+base64.workspace = true
+url.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+bytes.workspace = true
+bitfield-struct.workspace = true
+cfb8 = { workspace = true, optional = true }
+flate2 = { workspace = true, optional = true }
+aes = { workspace = true, optional = true }
+
+[dev-dependencies]
+rand.workspace = true

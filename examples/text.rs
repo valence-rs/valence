@@ -1,7 +1,7 @@
 #![allow(clippy::type_complexity)]
 
+use valence::lang::keys;
 use valence::prelude::*;
-use valence_client::message::SendMessage;
 
 const SPAWN_Y: i32 = 64;
 
@@ -91,12 +91,12 @@ fn init_clients(
         client.send_chat_message("\nTranslated Text");
         client.send_chat_message(
             " - 'chat.type.advancement.task': ".into_text()
-                + Text::translate(translation_key::CHAT_TYPE_ADVANCEMENT_TASK, []),
+                + Text::translate(keys::CHAT_TYPE_ADVANCEMENT_TASK, []),
         );
         client.send_chat_message(
             " - 'chat.type.advancement.task' with slots: ".into_text()
                 + Text::translate(
-                    translation_key::CHAT_TYPE_ADVANCEMENT_TASK,
+                    keys::CHAT_TYPE_ADVANCEMENT_TASK,
                     ["arg1".into(), "arg2".into()],
                 ),
         );

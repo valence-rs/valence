@@ -1,14 +1,13 @@
-use valence_packet::packets::play::{
+use crate::protocol::packets::play::{
     WorldBorderCenterChangedS2c, WorldBorderInitializeS2c, WorldBorderInterpolateSizeS2c,
     WorldBorderSizeChangedS2c, WorldBorderWarningBlocksChangedS2c,
     WorldBorderWarningTimeChangedS2c,
 };
-use valence_world_border::{
+use crate::testing::*;
+use crate::world_border::{
     WorldBorderBundle, WorldBorderCenter, WorldBorderLerp, WorldBorderPortalTpBoundary,
     WorldBorderWarnBlocks, WorldBorderWarnTime,
 };
-
-use crate::testing::*;
 
 #[test]
 fn test_intialize_on_join() {

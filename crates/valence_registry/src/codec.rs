@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use tracing::error;
-use valence_core::ident::Ident;
+use valence_ident::Ident;
 use valence_nbt::{compound, Compound, List, Value};
 
 use crate::RegistrySet;

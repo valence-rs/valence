@@ -38,6 +38,8 @@ pub fn write_generated_file(content: TokenStream, out_file: &str) -> anyhow::Res
     Ok(())
 }
 
+/// Parses a [`proc_macro2::Ident`] from a `str`. Rust keywords are prepended
+/// with underscores to make them valid identifiers.
 pub fn ident(s: impl AsRef<str>) -> Ident {
     let s = s.as_ref().trim();
 
@@ -47,6 +49,7 @@ pub fn ident(s: impl AsRef<str>) -> Ident {
         .unwrap_or_else(|_| Ident::new(format!("_{s}").as_str(), Span::call_site()))
 }
 
+#[track_caller]
 pub fn rerun_if_changed<const N: usize>(files: [&str; N]) {
     for file in files {
         assert!(

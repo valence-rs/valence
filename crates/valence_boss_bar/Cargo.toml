@@ -8,12 +8,8 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-valence_core.workspace = true
-valence_network.workspace = true
 valence_entity.workspace = true
-valence_client.workspace = true
-valence_packet.workspace = true
-uuid.workspace = true
+valence_server.workspace = true
 bitfield-struct.workspace = true
 bevy_app.workspace = true
 bevy_ecs.workspace = true

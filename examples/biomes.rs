@@ -3,7 +3,7 @@
 use rand::seq::IteratorRandom;
 use rand::Rng;
 use valence::prelude::*;
-use valence_biome::BiomeEffects;
+use valence::registry::biome::BiomeEffects;
 
 const SPAWN_Y: i32 = 0;
 const SIZE: i32 = 5;

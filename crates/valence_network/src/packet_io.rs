@@ -10,11 +10,10 @@ use tokio::net::TcpStream;
 use tokio::sync::Semaphore;
 use tokio::task::JoinHandle;
 use tracing::{debug, warn};
-use valence_client::{ClientBundleArgs, ClientConnection, ReceivedPacket};
-use valence_core::protocol::{Decode, Encode};
-use valence_packet::protocol::decode::{PacketDecoder, PacketFrame};
-use valence_packet::protocol::encode::PacketEncoder;
-use valence_packet::protocol::Packet;
+use valence_protocol::CompressionThreshold;
+use valence_server::client::{ClientBundleArgs, ClientConnection, ReceivedPacket};
+use valence_server::protocol::decode::PacketFrame;
+use valence_server::protocol::{Decode, Encode, Packet, PacketDecoder, PacketEncoder};
 
 use crate::byte_channel::{byte_channel, ByteSender, TrySendError};
 use crate::{CleanupOnDrop, NewClientInfo};
@@ -76,7 +75,7 @@ impl PacketIo {
     }
 
     #[allow(dead_code)]
-    pub(crate) fn set_compression(&mut self, threshold: Option<u32>) {
+    pub(crate) fn set_compression(&mut self, threshold: CompressionThreshold) {
         self.enc.set_compression(threshold);
         self.dec.set_compression(threshold);
     }

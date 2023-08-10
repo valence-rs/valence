@@ -2,11 +2,11 @@ use valence_boss_bar::{
     BossBarBundle, BossBarColor, BossBarDivision, BossBarFlags, BossBarHealth, BossBarStyle,
     BossBarTitle, BossBarViewers,
 };
-use valence_core::despawn::Despawned;
-use valence_core::text::Text;
-use valence_packet::packets::play::BossBarS2c;
+use valence_server::protocol::packets::play::BossBarS2c;
+use valence_server::Despawned;
 
 use crate::testing::ScenarioSingleClient;
+use crate::Text;
 
 #[test]
 fn test_intialize_on_join() {

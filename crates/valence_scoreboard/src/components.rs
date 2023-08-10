@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
 use bevy_ecs::prelude::*;
-use valence_core::text::{IntoText, Text};
-use valence_entity::EntityLayerId;
-use valence_packet::packets::play::scoreboard_display_s2c::ScoreboardPosition;
-use valence_packet::packets::play::scoreboard_objective_update_s2c::ObjectiveRenderType;
+use valence_server::entity::EntityLayerId;
+use valence_server::protocol::packets::play::scoreboard_display_s2c::ScoreboardPosition;
+use valence_server::protocol::packets::play::scoreboard_objective_update_s2c::ObjectiveRenderType;
+use valence_server::text::IntoText;
+use valence_server::Text;
 
 /// A string that identifies an objective. There is one scoreboard per
 /// objective.It's generally not safe to modify this after it's been created.

@@ -3,11 +3,12 @@ use std::collections::BTreeMap;
 
 use num_integer::div_ceil;
 use thiserror::Error;
-use valence_biome::BiomeId;
-use valence_block::{BlockKind, PropName, PropValue};
-use valence_core::ident::Ident;
-use valence_layer::chunk::{Chunk, UnloadedChunk};
-use valence_nbt::{Compound, List, Value};
+use valence_server::block::{PropName, PropValue};
+use valence_server::layer::chunk::{Chunk, UnloadedChunk};
+use valence_server::nbt::{Compound, List, Value};
+use valence_server::protocol::BlockKind;
+use valence_server::registry::biome::BiomeId;
+use valence_server::Ident;
 
 #[derive(Clone, Debug, Error)]
 #[non_exhaustive]

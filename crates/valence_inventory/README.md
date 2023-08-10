@@ -20,7 +20,7 @@ An example system that will let you access all player's inventories:
 ```
 # use bevy_ecs::prelude::*;
 # use valence_inventory::*;
-# use valence_client::Client;
+# use valence_server::client::Client;
 fn system(clients: Query<(&Client, &Inventory)>) {}
 ```
 

@@ -23,15 +23,13 @@ use std::collections::BTreeSet;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use valence_client::{Client, FlushPacketsSet};
-use valence_core::despawn::Despawned;
-use valence_core::text::Text;
-use valence_core::uuid::UniqueId;
-pub use valence_packet::packets::play::boss_bar_s2c::{
+use valence_server::client::{Client, FlushPacketsSet};
+pub use valence_server::protocol::packets::play::boss_bar_s2c::{
     BossBarAction, BossBarColor, BossBarDivision, BossBarFlags,
 };
-use valence_packet::packets::play::BossBarS2c;
-use valence_packet::protocol::encode::WritePacket;
+use valence_server::protocol::packets::play::BossBarS2c;
+use valence_server::protocol::WritePacket;
+use valence_server::{Despawned, Text, UniqueId};
 
 /// The bundle of components that make up a boss bar.
 #[derive(Bundle, Debug, Default)]

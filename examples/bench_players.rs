@@ -2,8 +2,9 @@
 
 use std::time::Instant;
 
+use valence::client::{VisibleChunkLayer, VisibleEntityLayers};
 use valence::prelude::*;
-use valence_client::{VisibleChunkLayer, VisibleEntityLayers};
+use valence::ServerSettings;
 
 const SPAWN_Y: i32 = 64;
 
@@ -12,7 +13,7 @@ struct TickStart(Instant);
 
 fn main() {
     App::new()
-        .insert_resource(CoreSettings {
+        .insert_resource(ServerSettings {
             compression_threshold: None,
             ..Default::default()
         })
@@ -34,14 +35,9 @@ fn record_tick_start_time(mut commands: Commands) {
     commands.insert_resource(TickStart(Instant::now()));
 }
 
-fn print_tick_time(
-    server: Res<Server>,
-    settings: Res<CoreSettings>,
-    time: Res<TickStart>,
-    clients: Query<(), With<Client>>,
-) {
+fn print_tick_time(server: Res<Server>, time: Res<TickStart>, clients: Query<(), With<Client>>) {
     let tick = server.current_tick();
-    if tick % (settings.tick_rate.get() as i64 / 2) == 0 {
+    if tick % (server.tick_rate().get() as i64 / 2) == 0 {
         let client_count = clients.iter().len();
 
         let millis = time.0.elapsed().as_secs_f32() * 1000.0;

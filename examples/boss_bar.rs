@@ -1,12 +1,12 @@
 #![allow(clippy::type_complexity)]
 
 use rand::seq::SliceRandom;
-use valence::prelude::*;
-use valence_boss_bar::{
+use valence::boss_bar::{
     BossBarBundle, BossBarColor, BossBarDivision, BossBarFlags, BossBarHealth, BossBarStyle,
     BossBarTitle, BossBarViewers,
 };
-use valence_client::message::{ChatMessageEvent, SendMessage};
+use valence::message::{ChatMessageEvent, SendMessage};
+use valence::prelude::*;
 
 const SPAWN_Y: i32 = 64;
 
