@@ -62,8 +62,7 @@ impl ChunkView {
     /// # Examples
     ///
     /// ```
-    /// use valence_protocol::chunk_pos::ChunkPos;
-    /// use valence_protocol::chunk_view::ChunkView;
+    /// use valence_server::{ChunkPos, ChunkView};
     ///
     /// let view = ChunkView::new(ChunkPos::new(5, -4), 16);
     /// let (min, max) = view.bounding_box();
