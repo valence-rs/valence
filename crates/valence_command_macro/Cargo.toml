@@ -1,5 +1,5 @@
 [package]
-name = "valence_core_macros"
+name = "valence_command_macro"
 version.workspace = true
 edition.workspace = true
 

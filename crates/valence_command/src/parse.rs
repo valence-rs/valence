@@ -237,6 +237,10 @@ impl ParseResults {
 }
 
 pub(crate) trait ParseObject: Sync + Send {
+    fn parse_id(&self) -> TypeId;
+
+    fn initialize(&mut self, world: &mut World);
+
     fn obj_parse<'a>(
         &self,
         reader: &mut StrReader<'a>,
@@ -246,6 +250,8 @@ pub(crate) trait ParseObject: Sync + Send {
     fn obj_skip<'a>(&self, reader: &mut StrReader<'a>) -> (ParseResult<()>, Box<dyn Any>);
 
     fn obj_brigadier(&self) -> Option<pkt::Parser<'static>>;
+
+    fn obj_brigadier_suggestions(&self) -> Option<NodeSuggestion>;
 
     fn obj_suggestions<'f>(
         &mut self,
@@ -260,10 +266,20 @@ pub(crate) trait ParseObject: Sync + Send {
 
 pub(crate) struct ParseWithData<T: Parse> {
     pub data: T::Data<'static>,
-    pub state: SystemState<T::SuggestionsParam>,
+    pub state: Option<SystemState<T::SuggestionsParam>>,
 }
 
 impl<T: Parse> ParseObject for ParseWithData<T> {
+    fn parse_id(&self) -> TypeId {
+        T::parse_id()
+    }
+
+    fn initialize(&mut self, world: &mut World) {
+        if self.state.is_none() {
+            self.state = Some(SystemState::new(world));
+        }
+    }
+
     fn obj_parse<'a>(
         &self,
         reader: &mut StrReader<'a>,
@@ -297,6 +313,10 @@ impl<T: Parse> ParseObject for ParseWithData<T> {
         T::brigadier(&self.data)
     }
 
+    fn obj_brigadier_suggestions(&self) -> Option<NodeSuggestion> {
+        T::brigadier_suggestions(&self.data)
+    }
+
     fn obj_suggestions<'f>(
         &mut self,
         suggestion: Box<dyn Any>,
@@ -306,13 +326,13 @@ impl<T: Parse> ParseObject for ParseWithData<T> {
     ) -> Pin<Box<dyn Future<Output = StrLocated<Cow<'static, [Suggestion<'static>]>>> + Send + 'f>>
     {
         let suggestion: Box<T::Suggestions> = suggestion.downcast().unwrap();
-        let param = self.state.get(world);
+        let param = self.state.as_mut().unwrap().get(world);
         let data =
             T::create_suggestions_data(&self.data, command.clone(), executor, &suggestion, param);
         T::suggestions(command, executor, suggestion, data)
     }
 
     fn obj_apply_deferred(&mut self, world: &mut World) {
-        self.state.apply(world);
+        self.state.as_mut().unwrap().apply(world);
     }
 }

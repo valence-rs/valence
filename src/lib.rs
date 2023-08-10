@@ -123,6 +123,9 @@ pub mod prelude {
     #[cfg(feature = "player_list")]
     pub use valence_player_list::{PlayerList, PlayerListEntry};
 
+    #[cfg(feature = "command")]
+    pub use valence_command as command;
+
     pub use super::DefaultPlugins;
 }
 

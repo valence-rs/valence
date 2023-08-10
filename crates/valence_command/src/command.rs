@@ -25,8 +25,8 @@ pub struct CommandExecutor {
 }
 
 impl CommandExecutor {
-    pub fn node_entity(&self, query: &Query<Option<&EntityNode>>) -> Option<Entity> {
-        self.base.node_entity(query)
+    pub fn node_entity(&self) -> Option<Entity> {
+        self.base.node_entity()
     }
 }
 
@@ -70,18 +70,12 @@ pub enum CommandExecutorBase {
 }
 
 impl CommandExecutorBase {
-    pub fn node_entity(&self, query: &Query<Option<&EntityNode>>) -> Option<Entity> {
+    pub fn node_entity(&self) -> Option<Entity> {
         match self {
-            Self::Block { instance, .. } => Some(instance),
+            Self::Block { instance, .. } => Some(*instance),
             Self::Console => None,
-            Self::Entity { entity } => Some(entity),
+            Self::Entity { entity } => Some(*entity),
         }
-        .and_then(|v| {
-            query
-                .get(*v)
-                .expect("The given entity does not exist in the world of this query")
-                .map(|v| v.0)
-        })
     }
 }
 

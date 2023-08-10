@@ -2,16 +2,16 @@ use bevy_app::{App, Plugin, PostUpdate, PreUpdate, Update};
 use bevy_ecs::schedule::IntoSystemConfigs;
 use compile::{compile_commands, CompiledCommandExecutionEvent};
 use exec::{command_execution_packet, node_command_execution, CommandExecutionEvent};
-use nodes::{send_nodes_to_clients, update_root_nodes};
+use nodes::{send_nodes_to_clients, update_root_nodes, NodeGraphInWorld};
 use suggestions::{
     send_calculated_suggestions, suggestions_request_packet, suggestions_spawn_tasks,
     SuggestionsAnswerEvent, SuggestionsQueue, SuggestionsRequestEvent, SuggestionsTokioRuntime,
 };
 
 pub mod boolean;
+pub mod builder;
 pub mod command;
 pub mod compile;
-pub mod entity;
 pub mod exec;
 pub mod nodes;
 pub mod nums;
@@ -19,7 +19,6 @@ pub mod parse;
 pub mod pkt;
 pub mod reader;
 pub mod suggestions;
-pub mod world;
 
 pub struct CommandPlugin;
 
@@ -42,6 +41,7 @@ impl Plugin for CommandPlugin {
                 send_calculated_suggestions,
             ),
         )
+        .init_resource::<NodeGraphInWorld>()
         .init_resource::<SuggestionsTokioRuntime>()
         .init_resource::<SuggestionsQueue>()
         .add_event::<CommandExecutionEvent>()

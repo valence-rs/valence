@@ -1,9 +1,9 @@
 use std::borrow::Cow;
 use std::sync::{Arc, Weak};
 
-use bevy_ecs::prelude::{Entity, Event, EventReader, EventWriter};
+use bevy_ecs::prelude::{DetectChangesMut, Entity, Event, EventReader, EventWriter};
 use bevy_ecs::query::{QueryState, With};
-use bevy_ecs::system::{Commands, Local, ParamSet, Query, Res, Resource};
+use bevy_ecs::system::{Commands, Local, ParamSet, Query, Res, ResMut, Resource};
 use bevy_ecs::world::World;
 use parking_lot::Mutex;
 use tokio::runtime::{Handle, Runtime};
@@ -16,9 +16,8 @@ use valence_core::protocol::{Decode, Encode};
 use valence_core::text::Text;
 
 use crate::command::CommandExecutorBase;
-use crate::compile::{CommandCompiler, CommandCompilerPurpose};
-use crate::exec::WorldUnsafeParam;
-use crate::nodes::{EntityNode, NodeChildrenFlow, NodeExclude, NodeParser, PrimaryNodeRoot};
+use crate::compile::CommandCompilerPurpose;
+use crate::nodes::{EntityNodeQuery, NodeFlow, NodeGraphInWorld, NodeId, NodeKind, RootNodeId};
 use crate::parse::ParseObject;
 use crate::pkt;
 use crate::reader::{ArcStrReader, StrLocated, StrSpan};
@@ -128,18 +127,13 @@ impl SuggestionsTokioRuntime {
 
 pub fn suggestions_spawn_tasks(
     mut event: EventReader<SuggestionsRequestEvent>,
-    root: Query<Option<&NodeExclude>>,
-    primary_root: Query<(Entity, Option<&NodeExclude>), With<PrimaryNodeRoot>>,
-    entity_node: Query<Option<&EntityNode>>,
-    flow: Query<Option<&NodeChildrenFlow>>,
-    mut set: ParamSet<(&World, Query<&mut NodeParser>)>,
-    world_unsafe: WorldUnsafeParam,
-    compiler: CommandCompiler,
+    entity_node: Query<EntityNodeQuery>,
+    mut set: ParamSet<(&World, ResMut<NodeGraphInWorld>)>,
     queue: Res<SuggestionsQueue>,
     tokio_runtime: Res<SuggestionsTokioRuntime>,
     mut commands: Commands,
 ) {
-    let mut parser_query = set.p1();
+    let mut graph = set.p1().take();
 
     for event in event.iter() {
         if !event.is_command() {
@@ -150,23 +144,25 @@ pub fn suggestions_spawn_tasks(
 
         let mut arc_reader = ArcStrReader::new_command(command);
 
-        let (node_entity, node_exclude) = match event.executor.node_entity(&entity_node) {
-            Some(entity) => (entity, root.get(entity).unwrap()),
-            None => primary_root.single(),
-        };
-
-        let mut entity = node_entity;
+        let root = graph
+            .get_root_node(
+                event
+                    .executor
+                    .node_entity()
+                    .and_then(|e| entity_node.get(e).ok().map(|v| v.get()))
+                    .unwrap_or(RootNodeId::SUPER),
+            )
+            .unwrap();
 
         let mut reader = arc_reader.reader();
 
-        let _ = compiler.node(
-            node_entity,
-            node_exclude.map(|v| &v.0),
+        let mut node = NodeId::ROOT;
+
+        let _ = graph.walk_node(
+            node,
+            root,
             &mut reader,
-            &mut CommandCompilerPurpose::Suggestions {
-                entity: &mut entity,
-            },
-            node_entity,
+            &mut CommandCompilerPurpose::Suggestions { node: &mut node },
         );
 
         let cursor = reader.cursor();
@@ -174,18 +170,19 @@ pub fn suggestions_spawn_tasks(
         // SAFETY: cursor from a reader of this Arc
         unsafe { arc_reader.set_cursor(cursor) };
 
-        if let Ok(Some(flow)) = flow.get(entity) {
+        // SAFETY: no other references
+        if let Some(flow) = unsafe { graph.get_mut_children_flow_unsafe(node) } {
             let begin = arc_reader.cursor();
 
             let mut reader = arc_reader.reader();
             let literal = reader.read_unquoted_str();
             let mut current_span = StrSpan::new(begin, reader.cursor());
             let mut current_suggestions: Vec<_> = flow
-                .literal
+                .literals
                 .keys()
                 .filter(|v| v.starts_with(literal))
                 .map(|v| Suggestion {
-                    message: v.clone(),
+                    message: Cow::Owned(v.clone()),
                     tooltip: None,
                 })
                 .collect();
@@ -194,20 +191,20 @@ pub fn suggestions_spawn_tasks(
 
             for parser in flow.parsers.iter().cloned() {
                 let mut reader = arc_reader.reader();
-                let mut parser = parser_query.get_mut(parser).unwrap();
-                let parser = parser.0.as_mut().unwrap();
+
+                // SAFETY: NodeChildrenFlow doesn't have a reference to the self node
+                let node = unsafe { graph.get_mut_node_unsafe(parser).unwrap() };
+                let parser = match node.kind {
+                    NodeKind::Argument { ref mut parse, .. } => parse.as_mut(),
+                    NodeKind::Literal { .. } => unreachable!(),
+                };
 
                 let (_, suggestions) = parser.obj_skip(&mut reader);
                 tasks.push(parser.obj_suggestions(
                     suggestions,
                     arc_reader.clone(),
                     event.executor,
-                    // SAFETY: &World is reserved for this system in set param and the only mutable
-                    // access we have is NodeParser, which is closed for public. Anyway if there is
-                    // a function that is public and using NodeParser then the system state is
-                    // never will be used because it is only used in this system, so there will be
-                    // no conflicts.
-                    unsafe { world_unsafe.0.world() },
+                    set.p0(),
                 ));
             }
 
@@ -243,59 +240,23 @@ pub fn suggestions_spawn_tasks(
         }
     }
 
+    set.p1().insert(graph);
+
     // parsers_apply_deferred should be executed in apply_deferred
     commands.add(|world: &mut World| parsers_apply_deferred(world));
 }
 
-#[derive(Resource)]
-struct ParsersApplyDeferred(
-    Option<
-        Box<(
-            Vec<(Entity, Option<Box<dyn ParseObject>>)>,
-            QueryState<(Entity, &'static mut NodeParser)>,
-        )>,
-    >,
-);
-
-// Note:
-// - We are getting a state of this system from resource ParsersApplyDeferred
-//   and replacing it while we are using it (we are doing this to get safe &mut
-//   World)
-// - We are moving all node parsers into the pool (TODO: a pool resource)
-// - We are applying deferred
-// - We are moving all node parsers back
-// - We are updating query state
-// - We are returning state into the resource
 /// Applying deferred for each NodeParser, like [`bevy_ecs::system::Commands`]
 pub fn parsers_apply_deferred(world: &mut World) {
-    let pool = match world.get_resource_mut::<ParsersApplyDeferred>() {
-        Some(resource) => resource,
-        None => {
-            let state = world.query();
-            world.insert_resource(ParsersApplyDeferred(Some(Box::new((vec![], state)))));
-            world.resource_mut()
+    let mut graph = world.resource_mut::<NodeGraphInWorld>().take();
+
+    for node in graph.shared.get_mut().nodes_mut().iter_mut() {
+        if let NodeKind::Argument { ref mut parse, .. } = node.kind {
+            parse.obj_apply_deferred(world);
         }
     }
-    .into_inner();
 
-    let mut pool = std::mem::replace(&mut pool.0, None).unwrap();
-
-    for (entity, mut node_parser) in pool.1.iter_mut(world) {
-        pool.0
-            .push((entity, std::mem::replace(&mut node_parser.0, None)));
-    }
-
-    for (_, node_parser) in &mut pool.0 {
-        node_parser.as_mut().unwrap().obj_apply_deferred(world);
-    }
-
-    for (entity, node_parser) in pool.0.drain(..) {
-        world.entity_mut(entity).insert(NodeParser(node_parser));
-    }
-
-    pool.1.update_archetypes(world);
-
-    world.insert_resource(ParsersApplyDeferred(Some(pool)));
+    world.resource_mut::<NodeGraphInWorld>().insert(graph);
 }
 
 pub fn send_calculated_suggestions(

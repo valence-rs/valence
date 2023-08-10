@@ -1,6 +1,6 @@
 use bevy_ecs::prelude::{Entity, Event, EventReader, EventWriter};
 use bevy_ecs::query::{Has, With};
-use bevy_ecs::system::{Query, SystemParam};
+use bevy_ecs::system::{Query, Res, SystemParam};
 use rustc_hash::FxHashSet;
 use valence_core::text::Text;
 use valence_core::translation_key::COMMAND_EXPECTED_SEPARATOR;
@@ -8,8 +8,8 @@ use valence_core::translation_key::COMMAND_EXPECTED_SEPARATOR;
 use crate::command::{CommandExecutor, CommandExecutorBridge, RealCommandExecutor};
 use crate::exec::CommandExecutionEvent;
 use crate::nodes::{
-    EntityNode, NodeChildrenFlow, NodeExclude, NodeFlow, NodeFlowInner, NodeParser, NodeSystem,
-    PrimaryNodeRoot,
+    EntityNode, EntityNodeQuery, NodeChildrenFlow, NodeFlow, NodeGraph, NodeGraphInWorld, NodeId,
+    NodeKind, RootNode, RootNodeId,
 };
 use crate::parse::{ParseObject, ParseResult, ParseResults, ParseResultsWrite};
 use crate::reader::{StrLocated, StrReader, StrSpan};
@@ -26,37 +26,23 @@ pub struct CompiledCommandExecutionEvent {
 
 pub struct CompiledCommand {
     pub(crate) results: ParseResults,
-    pub(crate) path: Vec<Entity>,
-}
-
-#[derive(SystemParam)]
-pub struct CommandCompiler<'w, 's> {
-    flow: Query<
-        'w,
-        's,
-        (
-            Option<&'static NodeFlow>,
-            Option<&'static NodeChildrenFlow>,
-            Has<NodeSystem>,
-        ),
-    >,
-    parser: Query<'w, 's, &'static NodeParser>,
+    pub(crate) path: Vec<NodeId>,
 }
 
 pub(crate) enum CommandCompilerPurpose<'a> {
     Execution {
         fill: &'a mut ParseResultsWrite,
-        path: &'a mut Vec<Entity>,
+        path: &'a mut Vec<NodeId>,
     },
     Suggestions {
-        entity: &'a mut Entity,
+        node: &'a mut NodeId,
     },
 }
 
 impl<'a> CommandCompilerPurpose<'a> {
-    pub(crate) fn last_entity(&mut self, last_entity: Entity) {
-        if let Self::Suggestions { entity } = self {
-            **entity = last_entity;
+    pub(crate) fn last_node(&mut self, last_node: NodeId) {
+        if let Self::Suggestions { node: entity } = self {
+            **entity = last_node;
         }
     }
 
@@ -72,16 +58,20 @@ impl<'a> CommandCompilerPurpose<'a> {
         .0
     }
 
+    pub(crate) fn add_path(&mut self, node: NodeId) {
+        if let Self::Execution { path, .. } = self {
+            path.push(node);
+        }
+    }
+
     pub(crate) fn path(
         &mut self,
-        entity: Entity,
+        node: NodeId,
         reader: &mut StrReader,
         executable: bool,
     ) -> ParseResult<()> {
         if executable {
-            if let Self::Execution { path, .. } = self {
-                path.push(entity);
-            }
+            self.add_path(node);
             Ok(())
         } else {
             // TODO: translated error
@@ -93,85 +83,82 @@ impl<'a> CommandCompilerPurpose<'a> {
     }
 }
 
-impl<'w, 's> CommandCompiler<'w, 's> {
-    pub fn compile(
+impl NodeGraph {
+    pub fn compile_command(
         &self,
-        root: Entity,
-        exclude: Option<&FxHashSet<Entity>>,
+        root: &RootNode,
         command: String,
     ) -> ParseResult<CompiledCommand> {
         let mut results = ParseResults::new_empty(command);
         let (mut reader, fill) = results.to_write();
         let mut path = vec![];
-        self.node(
+        self.walk_node(
+            NodeId::ROOT,
             root,
-            exclude,
             &mut reader,
             &mut CommandCompilerPurpose::Execution {
                 fill,
                 path: &mut path,
             },
-            root,
         )?;
         Ok(CompiledCommand { results, path })
     }
 
-    /// Searches next node to parse, parses it and inserts into `fill` then
-    /// invokes this method with found node's entity until we find a node which
-    /// ends everything.
-    pub(crate) fn node<'a>(
+    pub(crate) fn walk_node<'a>(
         &self,
-        node: Entity,
-        exclude: Option<&FxHashSet<Entity>>,
+        node_id: NodeId,
+        root: &RootNode,
         reader: &mut StrReader<'a>,
         purpose: &mut CommandCompilerPurpose,
-        root: Entity,
     ) -> ParseResult<()> {
-        let (node_flow, node_children_flow, executable) = self.flow.get(node).unwrap();
-
-        match node_flow.map(|v| v.get()) {
-            Some(NodeFlowInner::Children(_)) => {
-                if reader.is_ended() {
-                    return purpose.path(node, reader, executable);
+        match self.get_node(node_id) {
+            Some(node) => match node.flow {
+                NodeFlow::Children(ref children_flow) => {
+                    if reader.is_ended() {
+                        purpose.path(node_id, reader, node.execute.is_some())
+                    } else {
+                        self.walk_children(children_flow.as_ref(), root, reader, purpose)
+                    }
                 }
-
-                self.handle_children(node_children_flow.unwrap(), exclude, reader, purpose, root)
-            }
-            Some(NodeFlowInner::Redirect(redirect)) => {
-                purpose.path(node, reader, executable)?;
-                purpose.last_entity(*redirect);
-                self.node(*redirect, exclude, reader, purpose, root)
-            }
-            Some(NodeFlowInner::RedirectRoot) => {
-                purpose.path(node, reader, executable)?;
-                purpose.last_entity(root);
-                self.node(root, exclude, reader, purpose, root)
-            }
-            Some(NodeFlowInner::Stop) | None => {
-                purpose.path(node, reader, executable)?;
-                purpose.last_entity(node);
-                Ok(())
-            }
+                NodeFlow::Redirect(redirect) => {
+                    if node.execute.is_some() {
+                        purpose.add_path(redirect);
+                    }
+                    if root.policy.check(redirect) {
+                        purpose.last_node(redirect);
+                        self.walk_node(redirect, root, reader, purpose)
+                    } else {
+                        purpose.last_node(node_id);
+                        Ok(())
+                    }
+                }
+                NodeFlow::Stop => {
+                    purpose.path(node_id, reader, node.execute.is_some())?;
+                    purpose.last_node(node_id);
+                    Ok(())
+                }
+            },
+            None => self.walk_children(&self.shared().first_layer, root, reader, purpose),
         }
     }
 
-    fn handle_children<'a>(
+    pub(crate) fn walk_children<'a>(
         &self,
         children_flow: &NodeChildrenFlow,
-        exclude: Option<&FxHashSet<Entity>>,
+        root: &RootNode,
         reader: &mut StrReader<'a>,
         purpose: &mut CommandCompilerPurpose,
-        root: Entity,
     ) -> ParseResult<()> {
         let begin = reader.cursor();
         let mut end = begin;
-        if !children_flow.literal.is_empty() {
+
+        if !children_flow.literals.is_empty() {
             let literal = reader.read_unquoted_str();
-            if let Some(node) = children_flow.literal.get(literal) {
-                if exclude.map(|v| !v.contains(node)).unwrap_or(true) {
+            if let Some(node) = children_flow.literals.get(literal) {
+                if root.policy.check(*node) {
                     if reader.is_ended() {
                     } else if reader.skip_char(' ') {
-                        purpose.last_entity(*node);
+                        purpose.last_node(*node);
                     } else {
                         return Err(StrLocated::new(
                             StrSpan::new(reader.cursor(), reader.cursor()),
@@ -179,7 +166,7 @@ impl<'w, 's> CommandCompiler<'w, 's> {
                         ));
                     }
 
-                    return self.node(*node, exclude, reader, purpose, root);
+                    return self.walk_node(*node, root, reader, purpose);
                 }
             }
             end = reader.cursor();
@@ -189,23 +176,33 @@ impl<'w, 's> CommandCompiler<'w, 's> {
 
         let mut previous_err: Option<StrLocated<Text>> = None;
 
-        for entity in children_flow.parsers.iter().cloned() {
-            let begin = reader.cursor();
-            let node_parser = self.parser.get(entity).unwrap();
-            let result = purpose.parse(reader, node_parser.0.as_ref().unwrap().as_ref());
+        for node_id in children_flow.parsers.iter().cloned() {
+            if !root.policy.check(node_id) {
+                continue;
+            }
+
+            // It is impossible for root node to be here
+            let node = self.get_node(node_id).unwrap();
+            let result = purpose.parse(
+                reader,
+                match node.kind {
+                    NodeKind::Argument { ref parse, .. } => parse.as_ref(),
+                    _ => unreachable!(),
+                },
+            );
 
             match result {
                 Ok(()) => {
                     if reader.is_ended() {
                     } else if reader.skip_char(' ') {
-                        purpose.last_entity(entity);
+                        purpose.last_node(node_id);
                     } else {
                         return Err(StrLocated::new(
                             StrSpan::new(reader.cursor(), reader.cursor()),
                             Text::translate(COMMAND_EXPECTED_SEPARATOR, vec![]),
                         ));
                     }
-                    return self.node(entity, exclude, reader, purpose, root);
+                    return self.walk_node(node_id, root, reader, purpose);
                 }
                 Err(e) => {
                     // SAFETY: begin cursor was a cursor of this reader
@@ -237,25 +234,26 @@ impl<'w, 's> CommandCompiler<'w, 's> {
 }
 
 pub fn compile_commands(
+    graph: Res<NodeGraphInWorld>,
     mut compiled_event: EventWriter<CompiledCommandExecutionEvent>,
     mut execution_event: EventReader<CommandExecutionEvent>,
-    root: Query<Option<&NodeExclude>>,
-    primary_root: Query<(Entity, Option<&NodeExclude>), With<PrimaryNodeRoot>>,
-    entity_node: Query<Option<&EntityNode>>,
-    compiler: CommandCompiler,
+    entity_node: Query<EntityNodeQuery>,
     mut cebridge: CommandExecutorBridge,
 ) {
+    let graph = graph.get();
     for event in execution_event.iter() {
-        let (node_entity, node_exclude) = match event.executor.node_entity(&entity_node) {
-            Some(entity) => (entity, root.get(entity).unwrap()),
-            None => primary_root.single(),
-        };
+        let root = graph
+            .get_root_node(
+                event
+                    .executor
+                    .node_entity()
+                    .and_then(|e| entity_node.get(e).ok())
+                    .map(|v| v.get())
+                    .unwrap_or(RootNodeId::SUPER),
+            )
+            .unwrap();
 
-        match compiler.compile(
-            node_entity,
-            node_exclude.map(|v| &v.0),
-            event.command.clone(),
-        ) {
+        match graph.compile_command(&root, event.command.clone()) {
             Ok(compiled) => compiled_event.send(CompiledCommandExecutionEvent {
                 compiled,
                 executor: event.executor,

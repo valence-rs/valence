@@ -2,10 +2,11 @@
 
 use std::borrow::Cow;
 
+use command::builder::{NodeCommands, NodeGraphCommands};
+use command::command::{CommandExecutorBase, CommandExecutorBridge};
+use command::nodes::NodeGraphInWorld;
 use valence::prelude::*;
-use valence_command::command::{CommandArguments, CommandExecutorBridge, RealCommandExecutor};
-use valence_command::entity::NodeEntityCommandGet;
-use valence_command::nodes::NodeSuggestion;
+use valence_command::command::{CommandArguments, RealCommandExecutor};
 
 const SPAWN_Y: i32 = 64;
 
@@ -21,11 +22,29 @@ pub fn main() {
         .run();
 }
 
+macro_rules! gamemode_node {
+    ($gamemode:expr) => {
+        |node| {
+            node.execute(
+                |In(command_arguments): In<CommandArguments>,
+                 mut gamemode_query: Query<&mut GameMode>| {
+                    if let RealCommandExecutor::Player(entity) = command_arguments.1 {
+                        if let Ok(mut gamemode_player) = gamemode_query.get_mut(entity) {
+                            gamemode_player.set_if_neq($gamemode);
+                        }
+                    }
+                },
+            );
+        }
+    };
+}
+
 fn setup(
     mut commands: Commands,
     server: Res<Server>,
     dimensions: Res<DimensionTypeRegistry>,
     biomes: Res<BiomeRegistry>,
+    graph: ResMut<NodeGraphInWorld>,
 ) {
     let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
@@ -43,83 +62,51 @@ fn setup(
 
     commands.spawn(instance);
 
+    let mut commands = NodeGraphCommands { commands, graph };
+
     commands
-        .spawn_root_node(true)
-        .with_child(|child| {
-            child.name(Cow::Borrowed("creative")).executor(
-                |In(arguments): In<CommandArguments>, mut query: Query<&mut GameMode>| {
-                    if let RealCommandExecutor::Player(client) = arguments.1 {
-                        if let Ok(mut game_mode) = query.get_mut(client) {
-                            *game_mode = GameMode::Creative;
-                        }
-                    }
-                },
-            );
-        })
-        .with_child(|child| {
-            child.name(Cow::Borrowed("survival")).executor(
-                |In(arguments): In<CommandArguments>, mut query: Query<&mut GameMode>| {
-                    if let RealCommandExecutor::Player(client) = arguments.1 {
-                        if let Ok(mut game_mode) = query.get_mut(client) {
-                            *game_mode = GameMode::Survival;
-                        }
-                    }
-                },
-            );
-        })
-        .with_child(|child| {
-            child.name(Cow::Borrowed("spectator")).with_child(|child| {
-                child.name(Cow::Borrowed("set_spectator")).parser::<bool>(()).suggestions(Some(NodeSuggestion::AskServer)).executor(
-                    |In(mut arguments): In<CommandArguments>, mut query: Query<&mut GameMode>| {
-                        let enable = arguments.0.read::<bool>();
-                        if *enable {
-                            if let RealCommandExecutor::Player(client) = arguments.1 {
-                                if let Ok(mut game_mode) = query.get_mut(client) {
-                                    *game_mode = GameMode::Spectator;
-                                }
-                            }
-                        }
-                    },
+        .spawn_literal_node("gamemode".into())
+        .with_literal_child("survival".into(), gamemode_node!(GameMode::Survival))
+        .with_literal_child("creative".into(), gamemode_node!(GameMode::Creative))
+        .with_literal_child("spectator".into(), gamemode_node!(GameMode::Spectator))
+        .with_literal_child("adventure".into(), gamemode_node!(GameMode::Adventure))
+        .root_node_child();
+
+    fn teleport_execute(
+        In(mut arguments): In<CommandArguments>,
+        mut query: Query<&mut Position>,
+        mut cebridge: CommandExecutorBridge,
+    ) {
+        if let RealCommandExecutor::Player(client) = arguments.1 {
+            let x = arguments.0.read::<i32>();
+            let y = arguments.0.read::<i32>();
+            let z = arguments.0.read::<i32>();
+            if let Ok(mut position) = query.get_mut(client) {
+                position.0 = DVec3::new(*x as _, *y as _, *z as _);
+                cebridge.send_message(
+                    arguments.1,
+                    Text::text(format!("We teleported you to ({x} {y} {z})")),
                 );
-            });
-        })
-        .with_child(|child| {
-            child.name(Cow::Borrowed("tp")).with_child(|child| {
-                child.name(Cow::Borrowed("tp.x")).parser::<i32>(Default::default()).with_child(|child| {
-                    child.name(Cow::Borrowed("tp.y")).parser::<i32>(Default::default())
-                        .with_child(|child| {
-                            child.name(Cow::Borrowed("tp.z")).parser::<i32>(Default::default())
-                                .executor(|In(mut arguments): In<CommandArguments>, mut query: Query<&mut Position>, mut cebridge: CommandExecutorBridge| {
-                                    // CommandExecutorBridge is a SystemParam
-                                    if let RealCommandExecutor::Player(client) = arguments.1 {
-                                        let x = arguments.0.read::<i32>();
-                                        let y = arguments.0.read::<i32>();
-                                        let z = arguments.0.read::<i32>();
-                                        if let Ok(mut position) = query.get_mut(client) {
-                                            position.0 = DVec3::new(*x as _, *y as _, *z as _);
-                                            cebridge.send_message(arguments.1, Text::text(format!("We teleported you to ({x} {y} {z})")));
-                                        }
-                                    }
-                                });
-                        })
-                        .with_child(|child| {
-                            child.name(Cow::Borrowed("tp.zfloat")).parser::<f32>(Default::default())
-                                .executor(|In(mut arguments): In<CommandArguments>, mut query: Query<&mut Position>, mut cebridge: CommandExecutorBridge| {
-                                    // CommandExecutorBridge is a SystemParam
-                                    if let RealCommandExecutor::Player(client) = arguments.1 {
-                                        let x = arguments.0.read::<i32>();
-                                        let y = arguments.0.read::<i32>();
-                                        let z = arguments.0.read::<f32>();
-                                        if let Ok(mut position) = query.get_mut(client) {
-                                            position.0 = DVec3::new(*x as _, *y as _, *z as _);
-                                            cebridge.send_message(arguments.1, Text::text(format!("We teleported you to ({x} {y} {z} (f32))")));
-                                        }
-                                    }
-                                });
-                        });
+            }
+        }
+    }
+
+    let teleport_id = commands
+        .spawn_literal_node("teleport".into())
+        .with_argument_child::<i32>("x".into(), Default::default(), |child| {
+            child.with_argument_child::<i32>("y".into(), Default::default(), |child| {
+                child.with_argument_child::<i32>("z".into(), Default::default(), |child| {
+                    child.execute(teleport_execute);
                 });
             });
-        });
+        })
+        .root_node_child()
+        .id;
+
+    commands
+        .spawn_literal_node("tp".into())
+        .set_redirect(teleport_id)
+        .root_node_child();
 }
 
 fn init_clients(

@@ -1,11 +1,11 @@
 use std::borrow::Cow;
+use std::cell::UnsafeCell;
 use std::collections::HashMap;
 
-use bevy_ecs::prelude::{Component, DetectChanges, Entity};
-use bevy_ecs::query::{Added, Changed, Or, With};
-use bevy_ecs::removal_detection::RemovedComponents;
-use bevy_ecs::system::{Local, ParamSet, Query, System, SystemParam, SystemState};
-use bevy_ecs::world::{Ref, World};
+use bevy_ecs::prelude::{Component, DetectChanges};
+use bevy_ecs::query::{Added, Changed, Or, WorldQuery};
+use bevy_ecs::system::{Local, ParamSet, Query, Res, ResMut, Resource, System};
+use bevy_ecs::world::Ref;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 use valence_client::Client;
@@ -14,187 +14,234 @@ use valence_core::protocol::encode::WritePacket;
 use valence_core::protocol::Encode;
 
 use crate::command::CommandArguments;
-use crate::parse::{Parse, ParseObject, ParseWithData};
+use crate::parse::ParseObject;
 use crate::pkt::{self, RawCommandTreeS2c};
 
-pub(crate) type PCRelationVec = SmallVec<[Entity; 2]>;
+#[derive(Resource)]
+pub struct NodeGraphInWorld(pub Option<NodeGraph>);
 
-#[derive(Component, Debug)]
-pub struct NodeName(pub(crate) Cow<'static, str>);
-
-impl NodeName {
-    pub fn get(&self) -> &str {
-        &self.0
-    }
-
-    pub fn cloned(&self) -> Cow<'static, str> {
-        self.0.clone()
+impl Default for NodeGraphInWorld {
+    fn default() -> Self {
+        Self(Some(NodeGraph::default()))
     }
 }
 
-#[derive(Component, Debug)]
-pub struct NodeParents(pub(crate) PCRelationVec);
+impl NodeGraphInWorld {
+    const MESSAGE: &str =
+        "This NodeGraph is used by some system, which is requiring full access to it.";
 
-impl NodeParents {
-    pub fn get(&self) -> &[Entity] {
-        &self.0
+    /// # Panics
+    /// If this method were called in an environment, which requires full access
+    /// to it
+    pub fn get(&self) -> &NodeGraph {
+        self.0.as_ref().expect(Self::MESSAGE)
+    }
+
+    /// # Panics
+    /// If this method were called in an environment, which requires full access
+    /// to it
+    pub fn get_mut(&mut self) -> &mut NodeGraph {
+        self.0.as_mut().expect(Self::MESSAGE)
+    }
+
+    pub(crate) fn take(&mut self) -> NodeGraph {
+        std::mem::replace(&mut self.0, None).expect(Self::MESSAGE)
+    }
+
+    pub(crate) fn insert(&mut self, graph: NodeGraph) {
+        assert!(self.0.is_none(), "This NodeGraph is in the world");
+        self.0 = Some(graph);
     }
 }
 
-#[derive(Component)]
-pub struct NodeFlow(pub(crate) NodeFlowInner);
+pub struct NodeGraph {
+    pub(crate) shared: UnsafeCell<SharedNodeGraph>,
+    pub(crate) changed: bool,
+    pub(crate) root_nodes: Vec<RootNode>,
+}
 
-impl NodeFlow {
-    pub fn get(&self) -> &NodeFlowInner {
-        &self.0
+#[derive(Default)]
+pub(crate) struct SharedNodeGraph {
+    pub(crate) nodes: Vec<Node>,
+    pub(crate) nodes_len: usize,
+    pub(crate) first_layer: NodeChildrenFlow,
+}
+
+impl SharedNodeGraph {
+    pub fn nodes(&self) -> &[Node] {
+        &self.nodes[..self.nodes_len]
+    }
+
+    pub fn nodes_mut(&mut self) -> &mut [Node] {
+        &mut self.nodes[..self.nodes_len]
+    }
+
+    pub fn update_nodes_len(&mut self) {
+        self.nodes_len = self.nodes.len();
     }
 }
 
-pub enum NodeFlowInner {
-    /// Saves arguments but doesn't execute the node if the reader is not empty
-    Children(PCRelationVec),
-    /// Redirects flow to another node but executes this node firstly. May not
-    /// point to root node
-    Redirect(Entity),
-    /// The same as [`NodeFlow::Redirect`] but redirects to root node, which can
-    /// vary depending on which root node is in use
-    RedirectRoot,
-    /// There is no children and redirection, the node will be executed
-    Stop,
+// SAFETY: UnsafeCell does not implement Sync only because it was said so
+unsafe impl Sync for NodeGraph
+where
+    SharedNodeGraph: Sync,
+    bool: Sync,
+    Vec<RootNode>: Sync,
+{
 }
 
-/// If [`NodeFlow`] is [`NodeFlow::Children`] then this component will contain
-/// map of literals and parsers.
-#[derive(Component)]
-pub struct NodeChildrenFlow {
-    pub(crate) literal: HashMap<Cow<'static, str>, Entity>,
-    pub(crate) parsers: Vec<Entity>,
-}
+impl Default for NodeGraph {
+    fn default() -> Self {
+        let mut node_graph = Self {
+            shared: Default::default(),
+            changed: true,
+            root_nodes: vec![RootNode {
+                bytes: vec![],
+                changed: false,
+                updated: false,
+                policy: RootNodePolicy::Exclude(Default::default()),
+            }],
+        };
 
-#[derive(Component)]
-pub struct NodeParser(pub(crate) Option<Box<dyn ParseObject>>);
+        node_graph.update_root_nodes(&mut HashMap::default());
 
-impl NodeParser {
-    pub fn new<T: Parse>(data: T::Data<'static>, world: &mut World) -> Self {
-        Self(Some(Box::new(ParseWithData::<T> {
-            data,
-            state: SystemState::new(world),
-        })))
+        node_graph
     }
 }
 
-#[derive(Component, Clone, Copy, Debug)]
-pub enum NodeSuggestion {
-    AskServer,
-    AllRecipes,
-    AvailableSounds,
-    AvailableBiomes,
-    SummonableEntities,
+impl NodeGraph {
+    pub(crate) fn reserve_node_id(&mut self, kind: NodeKind) -> NodeId {
+        let shared = self.shared.get_mut();
+        let id = shared.nodes.len();
+        shared.nodes.push(Node {
+            kind,
+            execute: None,
+            flow: NodeFlow::Stop,
+            parents: Default::default(),
+        });
+        NodeId(id)
+    }
+
+    pub fn has_changed(&self) -> bool {
+        self.changed
+    }
+
+    pub(crate) fn shared(&self) -> &SharedNodeGraph {
+        // SAFETY: we are returning an immutable reference
+        unsafe { &*self.shared.get() }
+    }
+
+    pub(crate) fn get_node(&self, id: NodeId) -> Option<&Node> {
+        self.shared().nodes.get(id.0)
+    }
+
+    pub(crate) fn get_mut_node(&mut self, id: NodeId) -> Option<&mut Node> {
+        // SAFETY: We have a mutable reference to the NodeGraph that means that there is
+        // no other references from it
+        unsafe { self.get_mut_node_unsafe(id) }
+    }
+
+    /// # Safety
+    /// - There may not be a mutable reference to the same node
+    pub(crate) unsafe fn get_mut_node_unsafe(&self, id: NodeId) -> Option<&mut Node> {
+        (&mut *self.shared.get()).nodes.get_mut(id.0)
+    }
+
+    pub(crate) fn get_mut_children_flow(&mut self, id: NodeId) -> Option<&mut NodeChildrenFlow> {
+        // SAFETY: We have a mutable reference to the NodeGraph that means that there is
+        // no other references from it
+        unsafe { self.get_mut_children_flow_unsafe(id) }
+    }
+
+    /// # Safety
+    /// - There may not be a mutable reference to the same NodeChildrenFlow
+    pub(crate) unsafe fn get_mut_children_flow_unsafe(
+        &self,
+        id: NodeId,
+    ) -> Option<&mut NodeChildrenFlow> {
+        let shared = &mut *self.shared.get();
+        shared
+            .nodes
+            .get_mut(id.0)
+            .map(|v| match v.flow {
+                NodeFlow::Children(ref mut children_flow) => Some(children_flow.as_mut()),
+                _ => None,
+            })
+            .unwrap_or(Some(&mut shared.first_layer))
+    }
+
+    pub(crate) fn update_root_nodes(&mut self, node2id: &mut FxHashMap<NodeId, i32>) {
+        let mut root_nodes = std::mem::replace(&mut self.root_nodes, vec![]);
+
+        for root_node in root_nodes.iter_mut() {
+            root_node.updated = false;
+
+            if self.changed || root_node.changed {
+                root_node.changed = false;
+                node2id.clear();
+                // Shouldn't happen, so we are not returning root nodes back if error happens
+                root_node.write(self, node2id).unwrap();
+            }
+        }
+
+        self.changed = false;
+
+        self.root_nodes = root_nodes;
+    }
+
+    pub(crate) fn get_root_node(&self, id: RootNodeId) -> Option<&RootNode> {
+        self.root_nodes.get(id.0)
+    }
 }
 
-#[derive(Component)]
-pub struct NodeSystem {
-    /// [`None`] means that this system was already moved to the system's pool
-    pub(crate) system: Option<Box<dyn System<In = CommandArguments, Out = ()>>>,
+pub struct RootNode {
+    pub(crate) policy: RootNodePolicy,
+    changed: bool,
+    bytes: Vec<u8>,
+    updated: bool,
 }
 
-#[derive(Component)]
-pub struct InitializedNodeSystem;
-
-#[derive(Component)]
-pub struct NodeExclude(pub FxHashSet<Entity>);
-
-/// Contains cached nodes data for this root.
-#[derive(Component)]
-pub struct NodeRoot(pub(crate) Vec<u8>);
-
-#[derive(Component)]
-pub struct PrimaryNodeRoot;
-
-/// Node of a **bevy**'s Entity not minecraft's. Block will inherit node of
-/// their instances and entity may have this component on them. If there is no
-/// component present then [`PrimaryNodeRoot`] will be chosen.
-#[derive(Component)]
-pub struct EntityNode(pub Entity);
-
-#[derive(SystemParam)]
-pub struct RootWrite<'w, 's> {
-    root_node: Query<'w, 's, &'static mut NodeRoot>,
-    root_exclude: Query<'w, 's, Option<&'static NodeExclude>>,
-    single_root_write: SingleRootWrite<'w, 's>,
-    entity2id: Local<'s, FxHashMap<Entity, i32>>,
-}
-
-#[derive(SystemParam)]
-struct SingleRootWrite<'w, 's> {
-    node: Query<
-        'w,
-        's,
-        (
-            Option<&'static NodeParser>,
-            Option<&'static NodeSystem>,
-            Option<&'static NodeName>,
-            Option<&'static NodeFlow>,
-            Option<&'static NodeSuggestion>,
-        ),
-    >,
-}
-
-impl<'w, 's> RootWrite<'w, 's> {
-    pub fn write_root(&mut self, root: Entity) -> anyhow::Result<()> {
-        self.entity2id.clear();
-
-        let node_exclude = self
-            .root_exclude
-            .get(root)
-            .expect("Given entity does not exist");
-
+impl RootNode {
+    pub(crate) fn write(
+        &mut self,
+        graph: &NodeGraph,
+        node2id: &mut FxHashMap<NodeId, i32>,
+    ) -> anyhow::Result<()> {
         let mut nodes = vec![];
 
-        self.single_root_write.write_node(
-            &mut self.entity2id,
-            node_exclude.map(|v| &v.0),
-            &mut nodes,
-            root,
-            root,
-        );
+        self.updated = true;
 
-        let mut node_root = self
-            .root_node
-            .get_mut(root)
-            .expect("Given entity is not a root node");
+        self.write_single(NodeId::ROOT, graph, node2id, &mut nodes);
 
-        node_root.0.clear();
+        self.bytes.clear();
         pkt::CommandTreeS2c {
             commands: nodes,
             root_index: VarInt(
-                *self
-                    .entity2id
-                    .get(&root)
+                *node2id
+                    .get(&NodeId::ROOT)
                     .expect("There is no root entity in entity2id map"),
             ),
         }
-        .encode(&mut node_root.0)
+        .encode(&mut self.bytes)
     }
-}
 
-impl<'w, 's> SingleRootWrite<'w, 's> {
-    fn write_node<'a>(
-        &'a self,
-        entity2id: &mut FxHashMap<Entity, i32>,
-        exclude: Option<&FxHashSet<Entity>>,
+    fn write_single<'a>(
+        &mut self,
+        node: NodeId,
+        graph: &'a NodeGraph,
+        node2id: &mut FxHashMap<NodeId, i32>,
         nodes: &mut Vec<pkt::Node<'a>>,
-        root: Entity,
-        node: Entity,
     ) -> i32 {
-        let id = nodes.len() as i32;
 
-        if entity2id.insert(node, id).is_some() {
-            unreachable!();
+        if let Some(id) = node2id.get(&node) {
+            return *id;
         }
 
-        let (node_parser, node_execute, node_name, node_flow, node_suggestion) =
-            self.node.get(node).expect("Given entity is not a node");
+        let id = nodes.len() as i32;
+
+        node2id.insert(node, id);
+        
+        let node = graph.get_node(node);
 
         // If parser can not 'immitate' itself as brigadier's one then we say that it is
         // a greedy phrase. All children and redirects can be omitted in that
@@ -204,185 +251,274 @@ impl<'w, 's> SingleRootWrite<'w, 's> {
 
         nodes.push(pkt::Node {
             children: vec![],
-            data: match (node_parser, node_name) {
-                (Some(node_parser), Some(node_name)) => {
-                    match node_parser.0.as_ref().unwrap().obj_brigadier() {
+            data: match node {
+                Some(node) => match node.kind {
+                    NodeKind::Argument {
+                        ref name,
+                        ref parse,
+                    } => match parse.obj_brigadier() {
                         Some(parser) => pkt::NodeData::Argument {
-                            name: Cow::Borrowed(&node_name.0),
+                            name: Cow::Borrowed(name.as_str()),
                             parser,
-                            suggestion: node_suggestion.copied(),
+                            suggestion: parse.obj_brigadier_suggestions(),
                         },
                         None => {
                             children_redirect_skip = true;
+                            // What to do with the name?
                             pkt::NodeData::Argument {
-                                name: Cow::Borrowed(&node_name.0),
+                                name: Cow::Borrowed(name.as_str()),
                                 parser: pkt::Parser::String(pkt::StringArg::GreedyPhrase),
                                 suggestion: Some(NodeSuggestion::AskServer),
                             }
                         }
-                    }
-                }
-                (None, Some(node_name)) => pkt::NodeData::Literal {
-                    name: Cow::Borrowed(&node_name.0),
+                    },
+                    NodeKind::Literal { ref name } => pkt::NodeData::Literal {
+                        name: Cow::Borrowed(name.as_str()),
+                    },
                 },
-                (..) if root == node => pkt::NodeData::Root,
-                (..) => panic!(
-                    "Node is targetting root node entity, use ::Root enum's variants instead"
-                ),
+                // Root
+                None => pkt::NodeData::Root,
             },
-            executable: node_execute.is_some(),
+            executable: node.and_then(|v| v.execute.as_ref()).is_some(),
             redirect_node: None,
         });
 
         if !children_redirect_skip {
-            match node_flow.map(|v| v.get()) {
-                Some(NodeFlowInner::Children(children)) => {
-                    let children = children
+            match node {
+                Some(node) => match node.flow {
+                    NodeFlow::Children(ref children_flow) => {
+                        let children = children_flow
+                            .children
+                            .iter()
+                            .filter_map(|v| {
+                                self.policy
+                                    .check(*v)
+                                    .then(|| VarInt(self.write_single(*v, graph, node2id, nodes)))
+                            })
+                            .collect();
+
+                        nodes[id as usize].children = children;
+                    }
+                    NodeFlow::Redirect(redirect) => {
+                        if self.policy.check(redirect) {
+                            let redirect = self.write_single(redirect, graph, node2id, nodes);
+                            nodes[id as usize].redirect_node = Some(VarInt(redirect));
+                        }
+                    }
+                    NodeFlow::Stop => {}
+                },
+                None => {
+                    let children = graph
+                        .shared()
+                        .first_layer
+                        .children
                         .iter()
-                        .filter(|v| !Self::is_excluded(exclude, *v))
-                        .map(|v| VarInt(self.validate_node(entity2id, exclude, nodes, root, *v)))
+                        .filter_map(|v| {
+                            self.policy
+                                .check(*v)
+                                .then(|| VarInt(self.write_single(*v, graph, node2id, nodes)))
+                        })
                         .collect();
-                    let node = &mut nodes[id as usize];
-                    node.children = children;
+
+                    nodes[id as usize].children = children;
                 }
-                Some(NodeFlowInner::Redirect(node)) => {
-                    assert!(
-                        !Self::is_excluded(exclude, node),
-                        "Redirect of node is excluded from a tree"
-                    );
-                    let redirect_node = Some(VarInt(
-                        self.validate_node(entity2id, exclude, nodes, root, *node),
-                    ));
-                    let node = &mut nodes[id as usize];
-                    node.redirect_node = redirect_node;
-                }
-                Some(NodeFlowInner::RedirectRoot) => {
-                    let redirect_node = Some(VarInt(
-                        self.validate_node(entity2id, exclude, nodes, root, root),
-                    ));
-                    let node = &mut nodes[id as usize];
-                    node.redirect_node = redirect_node;
-                }
-                Some(NodeFlowInner::Stop) | None => {}
             }
         }
 
         id
     }
+}
 
-    fn validate_node<'a>(
-        &'a self,
-        entity2id: &mut FxHashMap<Entity, i32>,
-        exclude: Option<&FxHashSet<Entity>>,
-        nodes: &mut Vec<pkt::Node<'a>>,
-        root: Entity,
-        node: Entity,
-    ) -> i32 {
-        entity2id
-            .get(&node)
-            .cloned()
-            .unwrap_or_else(|| self.write_node(entity2id, exclude, nodes, root, node))
-    }
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RootNodePolicy {
+    Exclude(FxHashSet<NodeId>),
+    Include(FxHashSet<NodeId>),
+}
 
-    fn is_excluded(exclude: Option<&FxHashSet<Entity>>, node: &Entity) -> bool {
-        exclude.map(|s| s.contains(node)).unwrap_or(true)
+impl RootNodePolicy {
+    pub fn check(&self, node: NodeId) -> bool {
+        match self {
+            Self::Exclude(set) => !set.contains(&node),
+            Self::Include(set) => set.contains(&node),
+        }
     }
 }
 
-pub fn update_root_nodes(
-    query: Query<
-        Entity,
-        Or<(
-            Added<NodeName>, // Added because NodeName is constant for each node
-            Added<NodeSystem>, /* If the function of NodeSystem changes, we don't care because we
-                              * are telling only if the node is
-                              * executable */
-            Changed<NodeFlow>,
-            Changed<NodeParser>,
-            Changed<NodeSuggestion>,
-            Changed<NodeExclude>, // for root nodes
-        )>,
-    >,
-    mut writer: RootWrite,
-    parents: Query<Option<&NodeParents>>,
-    mut updated_root_nodes: Local<FxHashSet<Entity>>,
-) {
-    fn iteration(
-        writer: &mut RootWrite,
-        parents_query: &Query<Option<&NodeParents>>,
-        updated_root_nodes: &mut FxHashSet<Entity>,
-        node: Entity,
-    ) -> anyhow::Result<()> {
-        match parents_query
-            .get(node)
-            .expect("Given entity does not exist")
+pub(crate) struct VecRootNodePolicy(Vec<u8>);
+
+impl VecRootNodePolicy {
+    pub(crate) fn add_node(&mut self, nodes_count: usize, flag: bool) {
+        if nodes_count % 8 == 0 {
+            self.0.push(if flag { 1 } else { 0 })
+        } else {
+            *self.0.get_mut(nodes_count / 8).unwrap() |= 1 << (nodes_count % 8);
+        }
+    }
+
+    pub(crate) fn set_node(&mut self, index: usize, flag: bool) {
+        *self.0.get_mut(index / 8).unwrap() |= 1 << (index % 8);
+    }
+
+    pub(crate) fn get_node(&self, index: usize) -> Option<bool> {
+        self.0.get(index / 8).map(|v| (v & (1 << (index % 8))) == 0)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct RootNodeId(usize);
+
+impl RootNodeId {
+    pub const SUPER: Self = Self(0);
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct NodeId(usize);
+
+impl NodeId {
+    pub const ROOT: Self = Self(usize::MAX);
+}
+
+pub struct Node {
+    pub(crate) kind: NodeKind,
+    pub(crate) flow: NodeFlow,
+    pub(crate) parents: SmallVec<[NodeId; 2]>,
+    pub(crate) execute: Option<Box<dyn System<In = CommandArguments, Out = ()>>>,
+}
+
+impl Node {
+    pub(crate) fn remove_parent(&mut self, node_id: NodeId) {
+        if let Some((index, _)) = self
+            .parents
+            .iter()
+            .enumerate()
+            .find(|(_, v)| **v == node_id)
         {
-            Some(parents) => {
-                for parent in parents.0.iter() {
-                    iteration(writer, parents_query, updated_root_nodes, *parent)?;
+            self.parents.swap_remove(index);
+        }
+    }
+}
+
+#[derive(Debug)]
+pub(crate) enum NodeFlow {
+    Children(Box<NodeChildrenFlow>),
+    Redirect(NodeId),
+    Stop,
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct NodeChildrenFlow {
+    pub(crate) children: FxHashSet<NodeId>,
+    pub(crate) literals: HashMap<String, NodeId>,
+    pub(crate) parsers: Vec<NodeId>,
+}
+
+impl NodeChildrenFlow {
+    /// Adds a new node to the children vec with respecting literals,
+    /// parsers and node's parents. If this node is already added does nothing #
+    pub(crate) fn add(&mut self, self_id: NodeId, node: &mut Node, node_id: NodeId) {
+        if self.children.insert(node_id) {
+            node.parents.push(self_id);
+            match node.kind {
+                NodeKind::Argument { .. } => {
+                    self.parsers.push(node_id);
                 }
-                Ok(())
-            }
-            None if updated_root_nodes.contains(&node) => Ok(()),
-            None => {
-                updated_root_nodes.insert(node);
-                writer.write_root(node)
+                NodeKind::Literal { ref name } => {
+                    self.literals.insert(name.clone(), node_id);
+                }
             }
         }
     }
 
-    updated_root_nodes.clear();
-    for node_entity in query.iter() {
-        if let Err(err) = iteration(&mut writer, &parents, &mut updated_root_nodes, node_entity) {
-            // TODO: log
-            eprintln!("Failed to update nodes: {err:?}");
+    pub(crate) fn remove(&mut self, self_id: NodeId, node: &mut Node, node_id: NodeId) {
+        if self.children.remove(&node_id) {
+            match node.kind {
+                NodeKind::Argument { .. } => {
+                    if let Some((index, _)) = self
+                        .parsers
+                        .iter()
+                        .enumerate()
+                        .find(|(_, v)| **v == node_id)
+                    {
+                        self.parsers.swap_remove(index);
+                    }
+                }
+                NodeKind::Literal { ref name } => {
+                    self.literals.remove(name.as_str());
+                }
+            }
+
+            node.remove_parent(self_id);
         }
+    }
+}
+
+pub(crate) enum NodeKind {
+    Argument {
+        name: String,
+        parse: Box<dyn ParseObject>,
+    },
+    Literal {
+        name: String,
+    },
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum NodeSuggestion {
+    AskServer,
+    AllRecipes,
+    AvailableSounds,
+    AvailableBiomes,
+    SummonableEntities,
+}
+
+/// Node of a **bevy**'s Entity not minecraft's. Block will inherit node of
+/// their instances and entity may have this component on them. If there is no
+/// component present then [`PrimaryNodeRoot`] will be chosen.
+#[derive(Component)]
+pub struct EntityNode(pub RootNodeId);
+
+pub fn update_root_nodes(
+    mut graph: ResMut<NodeGraphInWorld>,
+    mut node2id: Local<FxHashMap<NodeId, i32>>,
+) {
+    let graph = graph.get_mut();
+    graph.update_root_nodes(&mut node2id);
+}
+
+#[derive(WorldQuery)]
+pub struct EntityNodeQuery(Option<Ref<'static, EntityNode>>);
+
+impl EntityNodeQueryItem<'_> {
+    pub fn get(&self) -> RootNodeId {
+        self.0.as_ref().map(|v| v.0).unwrap_or(RootNodeId::SUPER)
+    }
+
+    pub fn is_changed(&self) -> bool {
+        self.0.as_ref().map(|v| v.is_changed()).unwrap_or(false)
     }
 }
 
 pub fn send_nodes_to_clients(
+    graph: Res<NodeGraphInWorld>,
     mut param_set: ParamSet<(
-        Query<(&mut Client, Option<&EntityNode>), Or<(Changed<EntityNode>, Added<Client>)>>,
-        Query<(Entity, &mut Client, Option<Ref<EntityNode>>)>,
+        Query<(&mut Client, EntityNodeQuery), Or<(Changed<EntityNode>, Added<Client>)>>,
+        Query<(&mut Client, EntityNodeQuery)>,
     )>,
-    mut client_node_removed: RemovedComponents<EntityNode>,
-    node_updated_query: Query<(), Changed<NodeRoot>>,
-    root: Query<Ref<NodeRoot>>,
-    root_primary: Query<Ref<NodeRoot>, With<PrimaryNodeRoot>>,
 ) {
-    if node_updated_query.iter().next().is_none() {
-        // if there is no updated root nodes then we don't need to find their listeners
-        for (mut client, entity_node) in param_set.p0().iter_mut() {
-            let node_root = match entity_node {
-                Some(entity_node) => root.get(entity_node.0).unwrap(),
-                None => root_primary.single(),
-            };
-            client.write_packet(&RawCommandTreeS2c(&node_root.0));
-        }
+    let graph = graph.get();
 
-        for entity in client_node_removed.iter() {
-            if let Ok((_, mut client, entity_node)) = param_set.p1().get_mut(entity) {
-                let node_root = match entity_node {
-                    Some(entity_node) => root.get(entity_node.0).unwrap(),
-                    None => root_primary.single(),
-                };
-                client.write_packet(&RawCommandTreeS2c(&node_root.0));
+    // If graph has changed then any of root nodes could be changed
+    if graph.has_changed() {
+        for (mut client, entity_node) in param_set.p1().iter_mut() {
+            let root = &graph.get_root_node(entity_node.get()).unwrap();
+            if client.is_added() || entity_node.is_changed() || root.updated {
+                client.write_packet(&RawCommandTreeS2c(&root.bytes));
             }
         }
     } else {
-        // otherwise we will check each client if their node has been updated
-        // less faster
-        for (client_entity, mut client, entity_node) in param_set.p1().iter_mut() {
-            let (node_root, entity_node_changed) = match entity_node {
-                Some(entity_node) => (root.get(entity_node.0).unwrap(), entity_node.is_changed()),
-                None => (
-                    root_primary.single(),
-                    client_node_removed.iter().any(|e| e == client_entity),
-                ),
-            };
-            if node_root.is_changed() || client.is_added() || entity_node_changed {
-                client.write_packet(&RawCommandTreeS2c(&node_root.0));
-            }
+        for (mut client, entity_node) in param_set.p0().iter_mut() {
+            let root = &graph.get_root_node(entity_node.get()).unwrap();
+            client.write_packet(&RawCommandTreeS2c(&root.bytes));
         }
     }
 }
