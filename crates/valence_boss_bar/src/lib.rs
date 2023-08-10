@@ -22,20 +22,21 @@ use std::borrow::Cow;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use valence_client::{
+use valence_server::client::{
     Client, OldViewDistance, OldVisibleEntityLayers, ViewDistance, VisibleEntityLayers,
 };
-use valence_core::chunk_pos::{ChunkPos, ChunkView};
-use valence_core::despawn::Despawned;
-use valence_core::uuid::UniqueId;
-use valence_packet::packets::play::boss_bar_s2c::{BossBarAction, ToPacketAction};
-use valence_packet::packets::play::BossBarS2c;
-use valence_packet::protocol::encode::WritePacket;
+use valence_server::layer::UpdateLayersPreClientSet;
+use valence_server::protocol::packets::play::boss_bar_s2c::ToPacketAction;
+pub use valence_server::protocol::packets::play::boss_bar_s2c::{
+    BossBarAction, BossBarColor, BossBarDivision, BossBarFlags,
+};
+use valence_server::protocol::packets::play::BossBarS2c;
+use valence_server::protocol::WritePacket;
+use valence_server::{ChunkPos, ChunkView, Despawned, EntityLayer, Layer, UniqueId};
 
 mod components;
 pub use components::*;
 use valence_entity::{EntityLayerId, OldPosition, Position};
-use valence_layer::{EntityLayer, Layer, UpdateLayersPreClientSet};
 
 pub struct BossBarPlugin;
 

@@ -3,13 +3,11 @@ use std::hint::black_box;
 
 use criterion::Criterion;
 use valence::nbt::{compound, List};
-use valence::packet::packets::play::{ChunkDataS2c, EntitySpawnS2c, PlayerListHeaderS2c};
-use valence::packet::protocol::decode::PacketDecoder;
-use valence::packet::protocol::encode::{PacketEncoder, PacketWriter, WritePacket};
 use valence::prelude::*;
-use valence::protocol::array::LengthPrefixedArray;
-use valence::protocol::byte_angle::ByteAngle;
-use valence::protocol::var_int::VarInt;
+use valence::protocol::decode::PacketDecoder;
+use valence::protocol::encode::{PacketEncoder, PacketWriter, WritePacket};
+use valence::protocol::packets::play::{ChunkDataS2c, EntitySpawnS2c, PlayerListHeaderS2c};
+use valence::protocol::{ByteAngle, LengthPrefixedArray, VarInt};
 use valence::text::IntoText;
 
 pub fn packet(c: &mut Criterion) {

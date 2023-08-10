@@ -5,15 +5,15 @@ use anyhow::ensure;
 use bytes::{BufMut, BytesMut};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
-use valence::__private::VarInt;
-use valence::packet::protocol::decode::{PacketDecoder, PacketFrame};
-use valence::packet::protocol::encode::PacketEncoder;
-use valence::protocol::{Encode, MAX_PACKET_SIZE};
+use valence::protocol::decode::{PacketDecoder, PacketFrame};
+use valence::protocol::encode::PacketEncoder;
+use valence::protocol::{Encode, VarInt, MAX_PACKET_SIZE};
+use valence::CompressionThreshold;
 
 pub(crate) struct PacketIoReader {
     reader: tokio::io::ReadHalf<tokio::net::TcpStream>,
     dec: PacketDecoder,
-    threshold: Option<u32>,
+    threshold: CompressionThreshold,
 }
 
 impl PacketIoReader {
@@ -49,7 +49,7 @@ impl PacketIoReader {
 pub(crate) struct PacketIoWriter {
     writer: tokio::io::WriteHalf<tokio::net::TcpStream>,
     enc: PacketEncoder,
-    threshold: Option<u32>,
+    threshold: CompressionThreshold,
 }
 
 impl PacketIoWriter {
@@ -147,7 +147,7 @@ pub(crate) struct PacketIo {
     stream: TcpStream,
     enc: PacketEncoder,
     dec: PacketDecoder,
-    threshold: Option<u32>,
+    threshold: CompressionThreshold,
 }
 
 const READ_BUF_SIZE: usize = 1024;

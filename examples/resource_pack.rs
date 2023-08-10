@@ -1,10 +1,10 @@
 #![allow(clippy::type_complexity)]
 
 use valence::entity::sheep::SheepEntityBundle;
+use valence::message::SendMessage;
 use valence::prelude::*;
-use valence_client::message::SendMessage;
-use valence_client::resource_pack::ResourcePackStatusEvent;
-use valence_packet::packets::play::ResourcePackStatusC2s;
+use valence::protocol::packets::play::ResourcePackStatusC2s;
+use valence::resource_pack::ResourcePackStatusEvent;
 
 const SPAWN_Y: i32 = 64;
 

@@ -1,14 +1,14 @@
-use valence_client::VisibleEntityLayers;
-use valence_core::text::IntoText;
-use valence_core::Server;
-use valence_entity::EntityLayerId;
-use valence_layer::EntityLayer;
-use valence_packet::packets::play::{
-    ScoreboardDisplayS2c, ScoreboardObjectiveUpdateS2c, ScoreboardPlayerUpdateS2c,
-};
 use valence_scoreboard::*;
 
+use crate::client::VisibleEntityLayers;
+use crate::entity::EntityLayerId;
+use crate::layer::EntityLayer;
+use crate::protocol::packets::play::{
+    ScoreboardDisplayS2c, ScoreboardObjectiveUpdateS2c, ScoreboardPlayerUpdateS2c,
+};
 use crate::testing::ScenarioSingleClient;
+use crate::text::IntoText;
+use crate::Server;
 
 #[test]
 fn show_scoreboard_when_added_to_layer() {

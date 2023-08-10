@@ -23,6 +23,7 @@ indexmap = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"], optional = true }
 thiserror = { workspace = true, optional = true }
 uuid = { workspace = true, optional = true }
+valence_ident = { workspace = true, optional = true }
 
 [dev-dependencies]
 pretty_assertions.workspace = true

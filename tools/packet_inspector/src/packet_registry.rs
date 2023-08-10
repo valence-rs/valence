@@ -3,7 +3,8 @@ use std::sync::RwLock;
 
 use bytes::Bytes;
 use time::OffsetDateTime;
-use valence::packet::protocol::decode::PacketFrame;
+use valence::protocol::decode::PacketFrame;
+use valence::CompressionThreshold;
 
 pub struct PacketRegistry {
     packets: RwLock<Vec<Packet>>,
@@ -62,7 +63,7 @@ impl PacketRegistry {
         &self,
         side: PacketSide,
         state: PacketState,
-        threshold: Option<u32>,
+        threshold: CompressionThreshold,
         packet: &PacketFrame,
     ) -> anyhow::Result<()> {
         let mut p = self.get_specific_packet(side, state, packet.id);

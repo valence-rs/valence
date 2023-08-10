@@ -2,13 +2,14 @@ use valence_boss_bar::{
     BossBarBundle, BossBarColor, BossBarDivision, BossBarFlags, BossBarHealth, BossBarStyle,
     BossBarTitle,
 };
-use valence_client::VisibleEntityLayers;
-use valence_core::despawn::Despawned;
-use valence_core::text::{IntoText, Text};
-use valence_entity::EntityLayerId;
-use valence_packet::packets::play::BossBarS2c;
+use valence_server::client::VisibleEntityLayers;
+use valence_server::entity::EntityLayerId;
+use valence_server::protocol::packets::play::BossBarS2c;
+use valence_server::text::IntoText;
+use valence_server::Despawned;
 
 use crate::testing::ScenarioSingleClient;
+use crate::Text;
 
 #[test]
 fn test_intialize_on_join() {

@@ -6,8 +6,8 @@ edition.workspace = true
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true
-glam.workspace = true
+valence_math.workspace = true
 tracing-subscriber.workspace = true
 tracing.workspace = true
-valence_core.workspace = true
+valence_server_core.workspace = true
 valence.workspace = true

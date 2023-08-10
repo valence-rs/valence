@@ -2,11 +2,10 @@
 
 use bevy_app::App;
 use valence::client::despawn_disconnected_clients;
-use valence::client::message::ChatMessageEvent;
 use valence::inventory::HeldItem;
+use valence::message::{ChatMessageEvent, SendMessage};
 use valence::prelude::*;
 use valence::world_border::*;
-use valence_client::message::SendMessage;
 
 const SPAWN_Y: i32 = 64;
 

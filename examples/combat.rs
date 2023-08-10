@@ -1,9 +1,9 @@
 #![allow(clippy::type_complexity)]
 
 use bevy_ecs::query::WorldQuery;
-use glam::Vec3Swizzles;
 use rand::Rng;
 use valence::entity::EntityStatuses;
+use valence::math::Vec3Swizzles;
 use valence::prelude::*;
 
 const SPAWN_Y: i32 = 64;

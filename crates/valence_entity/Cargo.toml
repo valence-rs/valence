@@ -8,15 +8,14 @@ anyhow.workspace = true
 bevy_app.workspace = true
 bevy_ecs.workspace = true
 bitfield-struct.workspace = true
-glam.workspace = true
+valence_math.workspace = true
 paste.workspace = true
 rustc-hash.workspace = true
 tracing.workspace = true
 uuid.workspace = true
-valence_block.workspace = true
-valence_core.workspace = true
+valence_server_core.workspace = true
 valence_nbt.workspace = true
-valence_packet.workspace = true
+valence_protocol.workspace = true
 
 [build-dependencies]
 anyhow.workspace = true

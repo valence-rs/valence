@@ -22,18 +22,17 @@ use std::borrow::Cow;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use uuid::Uuid;
-use valence_client::{Client, Ping, Properties, Username};
-use valence_core::despawn::Despawned;
-use valence_core::game_mode::GameMode;
-use valence_core::text::{IntoText, Text};
-use valence_core::uuid::UniqueId;
-use valence_core::Server;
-use valence_layer::UpdateLayersPreClientSet;
-use valence_packet::packets::play::{
+use valence_server::client::{Client, Properties, Username};
+use valence_server::keepalive::Ping;
+use valence_server::layer::UpdateLayersPreClientSet;
+use valence_server::protocol::encode::PacketWriter;
+use valence_server::protocol::packets::play::{
     player_list_s2c as packet, PlayerListHeaderS2c, PlayerListS2c, PlayerRemoveS2c,
 };
-use valence_packet::protocol::encode::{PacketWriter, WritePacket};
+use valence_server::protocol::WritePacket;
+use valence_server::text::IntoText;
+use valence_server::uuid::Uuid;
+use valence_server::{Despawned, GameMode, Server, Text, UniqueId};
 
 pub struct PlayerListPlugin;
 

@@ -2,20 +2,17 @@ use std::time::Duration;
 
 use bevy_app::prelude::*;
 use criterion::Criterion;
-use glam::DVec3;
 use rand::Rng;
+use valence::entity::Position;
+use valence::keepalive::KeepaliveSettings;
+use valence::layer::chunk::UnloadedChunk;
+use valence::layer::LayerBundle;
+use valence::math::DVec3;
+use valence::network::NetworkPlugin;
+use valence::protocol::packets::play::{FullC2s, HandSwingC2s};
+use valence::registry::{BiomeRegistry, DimensionTypeRegistry};
 use valence::testing::create_mock_client;
-use valence::DefaultPlugins;
-use valence_biome::BiomeRegistry;
-use valence_client::keepalive::KeepaliveSettings;
-use valence_core::chunk_pos::ChunkPos;
-use valence_core::{ident, CoreSettings, Server};
-use valence_dimension::DimensionTypeRegistry;
-use valence_entity::Position;
-use valence_layer::chunk::UnloadedChunk;
-use valence_layer::LayerBundle;
-use valence_network::NetworkPlugin;
-use valence_packet::packets::play::{FullC2s, HandSwingC2s};
+use valence::{ident, ChunkPos, DefaultPlugins, Hand, Server, ServerSettings};
 
 pub fn many_players(c: &mut Criterion) {
     run_many_players(c, "many_players", 3000, 16, 16);
@@ -31,7 +28,7 @@ fn run_many_players(
 ) {
     let mut app = App::new();
 
-    app.insert_resource(CoreSettings {
+    app.insert_resource(ServerSettings {
         compression_threshold: Some(256),
         ..Default::default()
     });
@@ -111,9 +108,7 @@ fn run_many_players(
                     on_ground: rng.gen(),
                 });
 
-                helper.send(&HandSwingC2s {
-                    hand: valence_core::hand::Hand::Main,
-                });
+                helper.send(&HandSwingC2s { hand: Hand::Main });
             }
 
             drop(rng);

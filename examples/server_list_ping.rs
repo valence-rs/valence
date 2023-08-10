@@ -4,11 +4,11 @@ use std::net::SocketAddr;
 
 use rand::Rng;
 use valence::network::{
-    async_trait, BroadcastToLan, CleanupFn, ConnectionMode, PlayerSampleEntry, ServerListPing,
+    async_trait, BroadcastToLan, CleanupFn, ConnectionMode, HandshakeData, PlayerSampleEntry,
+    ServerListPing,
 };
 use valence::prelude::*;
-use valence_core::MINECRAFT_VERSION;
-use valence_network::HandshakeData;
+use valence::MINECRAFT_VERSION;
 
 pub fn main() {
     App::new()

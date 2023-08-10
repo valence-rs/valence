@@ -1,8 +1,5 @@
 use std::borrow::Cow;
 
-#[cfg(feature = "uuid")]
-use uuid::Uuid;
-
 use crate::tag::Tag;
 use crate::Compound;
 
@@ -215,20 +212,6 @@ impl From<Vec<i64>> for Value {
     }
 }
 
-#[cfg(feature = "uuid")]
-impl From<Uuid> for Value {
-    fn from(value: Uuid) -> Self {
-        let (most, least) = value.as_u64_pair();
-
-        let first = (most >> 32) as i32;
-        let second = most as i32;
-        let third = (least >> 32) as i32;
-        let fourth = least as i32;
-
-        Value::IntArray(vec![first, second, third, fourth])
-    }
-}
-
 impl From<Vec<i8>> for List {
     fn from(v: Vec<i8>) -> Self {
         List::Byte(v)
@@ -318,5 +301,29 @@ impl From<Value> for List {
             Value::IntArray(v) => List::IntArray(vec![v]),
             Value::LongArray(v) => List::LongArray(vec![v]),
         }
+    }
+}
+
+#[cfg(feature = "uuid")]
+impl From<uuid::Uuid> for Value {
+    fn from(value: uuid::Uuid) -> Self {
+        let (most, least) = value.as_u64_pair();
+
+        let first = (most >> 32) as i32;
+        let second = most as i32;
+        let third = (least >> 32) as i32;
+        let fourth = least as i32;
+
+        Value::IntArray(vec![first, second, third, fourth])
+    }
+}
+
+#[cfg(feature = "valence_ident")]
+impl<S> From<valence_ident::Ident<S>> for Value
+where
+    S: Into<Value>,
+{
+    fn from(value: valence_ident::Ident<S>) -> Self {
+        value.into_inner().into()
     }
 }

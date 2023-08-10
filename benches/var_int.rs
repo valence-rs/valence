@@ -2,8 +2,7 @@ use std::hint::black_box;
 
 use criterion::Criterion;
 use rand::Rng;
-use valence::protocol::var_int::VarInt;
-use valence::protocol::{Decode, Encode};
+use valence::protocol::{Decode, Encode, VarInt};
 
 pub fn var_int(c: &mut Criterion) {
     let mut group = c.benchmark_group("varint");

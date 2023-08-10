@@ -58,7 +58,7 @@ Gui.
 Start the server
 
 ```sh
-docker run -e EULA=TRUE -e ONLINE_MODE=false -d -p 25565:25565 --name mc itzg/minecraft-server
+docker run -e EULA=TRUE -e ONLINE_MODE=false -e ANNOUNCE_PLAYER_ACHIEVEMENTS=false -e GENERATE_STRUCTURES=false -e SPAWN_ANIMALS=false -e SPAWN_MONSTERS=false -e SPAWN_NPCS=false -e SPAWN_PROTECTION=0 -e VIEW_DISTANCE=16 -e MODE=creative -e LEVEL_TYPE=flat -e RCON_CMDS_STARTUP="gamerule doWeatherCycle false" -d -p 25565:25565 --name mc itzg/minecraft-server
 ```
 
 View server logs

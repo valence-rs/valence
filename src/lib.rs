@@ -23,37 +23,58 @@
 
 use bevy_app::{PluginGroup, PluginGroupBuilder};
 
+#[cfg(feature = "testing")]
 pub mod testing;
+
 #[cfg(test)]
 mod tests;
 
 #[cfg(feature = "log")]
 pub use bevy_log as log;
+use registry::biome::BiomePlugin;
+use registry::dimension_type::DimensionTypePlugin;
 #[cfg(feature = "advancement")]
 pub use valence_advancement as advancement;
 #[cfg(feature = "anvil")]
 pub use valence_anvil as anvil;
 #[cfg(feature = "boss_bar")]
 pub use valence_boss_bar as boss_bar;
-pub use valence_core::*;
 #[cfg(feature = "inventory")]
 pub use valence_inventory as inventory;
+pub use valence_lang as lang;
 #[cfg(feature = "network")]
 pub use valence_network as network;
 #[cfg(feature = "player_list")]
 pub use valence_player_list as player_list;
+use valence_registry::RegistryPlugin;
 #[cfg(feature = "scoreboard")]
 pub use valence_scoreboard as scoreboard;
+use valence_server::abilities::AbilitiesPlugin;
+use valence_server::action::ActionPlugin;
+use valence_server::client::ClientPlugin;
+use valence_server::client_command::ClientCommandPlugin;
+use valence_server::client_settings::ClientSettingsPlugin;
+use valence_server::custom_payload::CustomPayloadPlugin;
+use valence_server::entity::hitbox::HitboxPlugin;
+use valence_server::entity::EntityPlugin;
+use valence_server::event_loop::EventLoopPlugin;
+use valence_server::hand_swing::HandSwingPlugin;
+use valence_server::interact_block::InteractBlockPlugin;
+use valence_server::interact_entity::InteractEntityPlugin;
+use valence_server::interact_item::InteractItemPlugin;
+use valence_server::keepalive::KeepalivePlugin;
+use valence_server::layer::LayerPlugin;
+use valence_server::message::MessagePlugin;
+use valence_server::movement::MovementPlugin;
+use valence_server::op_level::OpLevelPlugin;
+use valence_server::resource_pack::ResourcePackPlugin;
+use valence_server::status::StatusPlugin;
+use valence_server::teleport::TeleportPlugin;
+pub use valence_server::*;
 #[cfg(feature = "weather")]
 pub use valence_weather as weather;
 #[cfg(feature = "world_border")]
 pub use valence_world_border as world_border;
-pub use {
-    bevy_app as app, bevy_ecs as ecs, glam, valence_biome as biome, valence_block as block,
-    valence_client as client, valence_dimension as dimension, valence_entity as entity,
-    valence_layer as layer, valence_nbt as nbt, valence_packet as packet,
-    valence_registry as registry,
-};
 
 /// Contains the most frequently used items in Valence projects.
 ///
@@ -70,65 +91,60 @@ pub mod prelude {
     pub use bevy_app::prelude::*;
     pub use bevy_ecs; // Needed for bevy_ecs macros to function correctly.
     pub use bevy_ecs::prelude::*;
-    pub use glam::{DVec2, DVec3, Vec2, Vec3};
-    pub use ident::Ident;
     pub use uuid::Uuid;
     #[cfg(feature = "advancement")]
     pub use valence_advancement::{
         event::AdvancementTabChangeEvent, Advancement, AdvancementBundle, AdvancementClientUpdate,
         AdvancementCriteria, AdvancementDisplay, AdvancementFrameType, AdvancementRequirements,
     };
-    pub use valence_biome::{Biome, BiomeId, BiomeRegistry};
-    pub use valence_block::{BlockKind, BlockState, PropName, PropValue};
-    pub use valence_client::action::{DiggingEvent, DiggingState};
-    pub use valence_client::command::{
-        ClientCommand, JumpWithHorseEvent, JumpWithHorseState, LeaveBedEvent, SneakEvent,
-        SneakState, SprintEvent, SprintState,
-    };
-    pub use valence_client::event_loop::{
-        EventLoopPostUpdate, EventLoopPreUpdate, EventLoopUpdate,
-    };
-    pub use valence_client::interact_entity::{EntityInteraction, InteractEntityEvent};
-    pub use valence_client::spawn::{ClientSpawnQuery, ClientSpawnQueryReadOnly};
-    pub use valence_client::title::SetTitle as _;
-    pub use valence_client::{
-        despawn_disconnected_clients, Client, Ip, OldView, OldViewDistance, Properties,
-        RespawnPosition, Username, View, ViewDistance, VisibleChunkLayer, VisibleEntityLayers,
-    };
-    pub use valence_core::block_pos::BlockPos;
-    pub use valence_core::chunk_pos::{ChunkPos, ChunkView};
-    pub use valence_core::despawn::Despawned;
-    pub use valence_core::direction::Direction;
-    pub use valence_core::game_mode::GameMode;
-    pub use valence_core::hand::Hand;
-    pub use valence_core::ident; // Export the `ident!` macro.
-    pub use valence_core::item::{ItemKind, ItemStack};
-    pub use valence_core::text::{Color, IntoText, Text};
-    pub use valence_core::uuid::UniqueId;
-    pub use valence_core::{translation_key, CoreSettings, Server};
-    pub use valence_dimension::{DimensionType, DimensionTypeRegistry};
-    pub use valence_entity::hitbox::{Hitbox, HitboxShape};
-    pub use valence_entity::{
-        EntityAnimation, EntityKind, EntityLayerId, EntityManager, EntityStatus, HeadYaw, Look,
-        OldEntityLayerId, OldPosition, Position,
-    };
     #[cfg(feature = "inventory")]
     pub use valence_inventory::{
         CursorItem, Inventory, InventoryKind, InventoryWindow, InventoryWindowMut, OpenInventory,
     };
-    pub use valence_layer::chunk::{
-        Block, BlockRef, Chunk, ChunkLayer, LoadedChunk, UnloadedChunk,
-    };
-    pub use valence_layer::{EntityLayer, LayerBundle};
-    pub use valence_nbt::Compound;
     #[cfg(feature = "network")]
     pub use valence_network::{
         ConnectionMode, ErasedNetworkCallbacks, NetworkCallbacks, NetworkSettings, NewClientInfo,
         SharedNetworkState,
     };
-    pub use valence_packet::packets::play::particle_s2c::Particle;
     #[cfg(feature = "player_list")]
     pub use valence_player_list::{PlayerList, PlayerListEntry};
+    pub use valence_registry::biome::{Biome, BiomeId, BiomeRegistry};
+    pub use valence_registry::dimension_type::{DimensionType, DimensionTypeRegistry};
+    pub use valence_server::action::{DiggingEvent, DiggingState};
+    pub use valence_server::block::{BlockKind, BlockState, PropName, PropValue};
+    pub use valence_server::client::{
+        despawn_disconnected_clients, Client, Ip, OldView, OldViewDistance, Properties, Username,
+        View, ViewDistance, VisibleChunkLayer, VisibleEntityLayers,
+    };
+    pub use valence_server::client_command::{
+        ClientCommand, JumpWithHorseEvent, JumpWithHorseState, LeaveBedEvent, SneakEvent,
+        SneakState, SprintEvent, SprintState,
+    };
+    pub use valence_server::entity::hitbox::{Hitbox, HitboxShape};
+    pub use valence_server::entity::{
+        EntityAnimation, EntityKind, EntityLayerId, EntityManager, EntityStatus, HeadYaw, Look,
+        OldEntityLayerId, OldPosition, Position,
+    };
+    pub use valence_server::event_loop::{
+        EventLoopPostUpdate, EventLoopPreUpdate, EventLoopUpdate,
+    };
+    pub use valence_server::ident::Ident;
+    pub use valence_server::interact_entity::{EntityInteraction, InteractEntityEvent};
+    pub use valence_server::layer::chunk::{
+        Block, BlockRef, Chunk, ChunkLayer, LoadedChunk, UnloadedChunk,
+    };
+    pub use valence_server::layer::{EntityLayer, LayerBundle};
+    pub use valence_server::math::{DVec2, DVec3, Vec2, Vec3};
+    pub use valence_server::message::SendMessage as _;
+    pub use valence_server::nbt::Compound;
+    pub use valence_server::protocol::packets::play::particle_s2c::Particle;
+    pub use valence_server::protocol::text::{Color, IntoText, Text};
+    pub use valence_server::spawn::{ClientSpawnQuery, ClientSpawnQueryReadOnly, RespawnPosition};
+    pub use valence_server::title::SetTitle as _;
+    pub use valence_server::{
+        ident, BlockPos, ChunkPos, ChunkView, Despawned, Direction, GameMode, Hand, ItemKind,
+        ItemStack, Server, UniqueId,
+    };
 
     pub use super::DefaultPlugins;
 }
@@ -145,14 +161,31 @@ impl PluginGroup for DefaultPlugins {
     fn build(self) -> PluginGroupBuilder {
         #[allow(unused_mut)]
         let mut group = PluginGroupBuilder::start::<Self>()
-            .add(valence_core::CorePlugin)
-            .add(valence_registry::RegistryPlugin)
-            .add(valence_biome::BiomePlugin)
-            .add(valence_dimension::DimensionPlugin)
-            .add(valence_entity::EntityPlugin)
-            .add(valence_entity::hitbox::HitboxPlugin)
-            .add(valence_layer::LayerPlugin::<valence_client::Client>::new())
-            .add(valence_client::ClientPlugin);
+            .add(ServerPlugin)
+            .add(RegistryPlugin)
+            .add(BiomePlugin)
+            .add(DimensionTypePlugin)
+            .add(EntityPlugin)
+            .add(HitboxPlugin)
+            .add(LayerPlugin)
+            .add(ClientPlugin)
+            .add(EventLoopPlugin)
+            .add(MovementPlugin)
+            .add(ClientCommandPlugin)
+            .add(KeepalivePlugin)
+            .add(InteractEntityPlugin)
+            .add(ClientSettingsPlugin)
+            .add(ActionPlugin)
+            .add(TeleportPlugin)
+            .add(MessagePlugin)
+            .add(CustomPayloadPlugin)
+            .add(HandSwingPlugin)
+            .add(InteractBlockPlugin)
+            .add(InteractItemPlugin)
+            .add(OpLevelPlugin)
+            .add(ResourcePackPlugin)
+            .add(StatusPlugin)
+            .add(AbilitiesPlugin);
 
         #[cfg(feature = "log")]
         {

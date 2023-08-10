@@ -7,19 +7,15 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bytes::{Buf, BufMut, BytesMut};
 use uuid::Uuid;
-use valence_biome::BiomeRegistry;
-use valence_client::keepalive::KeepaliveSettings;
-use valence_client::ClientBundleArgs;
-use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::{Decode, Encode};
-use valence_core::{ident, CoreSettings, Server};
-use valence_dimension::DimensionTypeRegistry;
-use valence_layer::{ChunkLayer, EntityLayer};
+use valence_ident::ident;
 use valence_network::NetworkPlugin;
-use valence_packet::packets::play::{PlayerPositionLookS2c, TeleportConfirmC2s};
-use valence_packet::protocol::decode::{PacketDecoder, PacketFrame};
-use valence_packet::protocol::encode::PacketEncoder;
-use valence_packet::protocol::Packet;
+use valence_registry::{BiomeRegistry, DimensionTypeRegistry};
+use valence_server::client::ClientBundleArgs;
+use valence_server::keepalive::KeepaliveSettings;
+use valence_server::protocol::decode::PacketFrame;
+use valence_server::protocol::packets::play::{PlayerPositionLookS2c, TeleportConfirmC2s};
+use valence_server::protocol::{Decode, Encode, Packet, PacketDecoder, PacketEncoder, VarInt};
+use valence_server::{ChunkLayer, EntityLayer, Server, ServerSettings};
 
 use crate::client::{ClientBundle, ClientConnection, ReceivedPacket};
 use crate::DefaultPlugins;
@@ -42,16 +38,14 @@ impl ScenarioSingleClient {
     pub fn new() -> Self {
         let mut app = App::new();
 
-        app.insert_resource(CoreSettings {
-            compression_threshold: None,
-            ..Default::default()
-        });
-
         app.insert_resource(KeepaliveSettings {
             period: Duration::MAX,
-        });
-
-        app.add_plugins(DefaultPlugins.build().disable::<NetworkPlugin>());
+        })
+        .insert_resource(ServerSettings {
+            compression_threshold: None,
+            ..Default::default()
+        })
+        .add_plugins(DefaultPlugins.build().disable::<NetworkPlugin>());
 
         app.update(); // Initialize plugins.
 

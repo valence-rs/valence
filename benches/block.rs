@@ -2,7 +2,7 @@ use std::hint::black_box;
 
 use criterion::Criterion;
 use valence::block::{BlockKind, BlockState, PropName, PropValue};
-use valence::item::ItemKind;
+use valence::ItemKind;
 
 pub fn block(c: &mut Criterion) {
     let mut group = c.benchmark_group("block");

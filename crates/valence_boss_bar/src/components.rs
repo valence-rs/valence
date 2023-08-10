@@ -1,13 +1,11 @@
 use std::borrow::Cow;
 
 use bevy_ecs::prelude::{Bundle, Component};
-use valence_core::text::Text;
-use valence_core::uuid::UniqueId;
 use valence_entity::EntityLayerId;
-use valence_packet::packets::play::boss_bar_s2c::{BossBarAction, ToPacketAction};
-pub use valence_packet::packets::play::boss_bar_s2c::{
-    BossBarColor, BossBarDivision, BossBarFlags,
+use valence_server::protocol::packets::play::boss_bar_s2c::{
+    BossBarAction, BossBarColor, BossBarDivision, BossBarFlags, ToPacketAction,
 };
+use valence_server::{Text, UniqueId};
 
 /// The bundle of components that make up a boss bar.
 #[derive(Bundle, Default)]

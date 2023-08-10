@@ -11,7 +11,7 @@ Example:
 ```rust
 # use bevy_ecs::prelude::*;
 use valence_scoreboard::*;
-use valence_core::text::IntoText;
+use valence_server::protocol::text::IntoText;
 
 fn spawn_scoreboard(mut commands: Commands) {
 	commands.spawn(ObjectiveBundle {

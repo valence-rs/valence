@@ -45,9 +45,9 @@ use tokio::sync::Semaphore;
 use tokio::time;
 use tracing::error;
 use uuid::Uuid;
-use valence_client::{ClientBundle, ClientBundleArgs, Properties, SpawnClientsSet};
-use valence_core::text::{IntoText, Text};
-use valence_core::{Server, MINECRAFT_VERSION, PROTOCOL_VERSION};
+use valence_protocol::text::IntoText;
+use valence_server::client::{ClientBundle, ClientBundleArgs, Properties, SpawnClientsSet};
+use valence_server::{CompressionThreshold, Server, Text, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
 pub struct NetworkPlugin;
 
@@ -60,7 +60,7 @@ impl Plugin for NetworkPlugin {
 }
 
 fn build_plugin(app: &mut App) -> anyhow::Result<()> {
-    let compression_threshold = app
+    let threshold = app
         .world
         .get_resource::<Server>()
         .context("missing server resource")?
@@ -100,7 +100,7 @@ fn build_plugin(app: &mut App) -> anyhow::Result<()> {
         player_count: AtomicUsize::new(0),
         max_players: settings.max_players,
         connection_mode: settings.connection_mode.clone(),
-        compression_threshold,
+        threshold,
         tokio_handle,
         _tokio_runtime: runtime,
         new_clients_send,
@@ -177,7 +177,7 @@ struct SharedNetworkStateInner {
     player_count: AtomicUsize,
     max_players: usize,
     connection_mode: ConnectionMode,
-    compression_threshold: Option<u32>,
+    threshold: CompressionThreshold,
     tokio_handle: Handle,
     // Holding a runtime handle is not enough to keep tokio working. We need
     // to store the runtime here so we don't drop it.
@@ -617,7 +617,7 @@ pub enum ServerListPing<'a> {
         /// different protocol.
         ///
         /// Can be formatted using `§` and format codes. Or use
-        /// [`valence_core::text::Text::to_legacy_lossy`].
+        /// [`valence_protocol::text::Text::to_legacy_lossy`].
         version_name: String,
         /// The protocol version of the server.
         protocol: i32,
