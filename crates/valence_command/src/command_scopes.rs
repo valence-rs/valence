@@ -1,16 +1,16 @@
 //! Scope graph for the Valence Command system.
-//! 
-//! ## Breakdown
-//! Each scope is a node in the graph. a path from one node to another indicates that the first
-//! scope implies the second. A colon in the scope name indicates a sub-scope. you
-//! can use this to create a hierarchy of scopes. for example, the scope "valence:command"
-//! implies "valence:command:tp". this means that if a player has the "valence:command" scope,
-//! they can use the "tp" command.
 //!
-//! You may also link scopes together in the registry. this is useful for admin permission
-//! umbrellas. for example, if the scope "valence:admin" is linked to
-//! "valence:command:teleport", It means that if a player has the "valence:admin" scope, they can
-//! use the "teleport" command.
+//! ## Breakdown
+//! Each scope is a node in the graph. a path from one node to another indicates
+//! that the first scope implies the second. A colon in the scope name indicates
+//! a sub-scope. you can use this to create a hierarchy of scopes. for example,
+//! the scope "valence:command" implies "valence:command:tp". this means that if
+//! a player has the "valence:command" scope, they can use the "tp" command.
+//!
+//! You may also link scopes together in the registry. this is useful for admin
+//! scope umbrellas. for example, if the scope "valence:admin" is linked to
+//! "valence:command:teleport", It means that if a player has the
+//! "valence:admin" scope, they can use the "teleport" command.
 //!
 //! # Example
 //! ```
@@ -31,9 +31,11 @@
 //! registry.link("valence:admin", "valence:command:teleport");
 //!
 //! // the "valence:admin" scope implies the "valence:command:teleport" scope
-//! assert_eq!(registry.grants("valence:admin", "valence:command:teleport"), true);
+//! assert_eq!(
+//!     registry.grants("valence:admin", "valence:command:teleport"),
+//!     true
+//! );
 //! ```
-//!
 
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
@@ -42,7 +44,6 @@ use bevy_ecs::prelude::Component;
 use bevy_ecs::system::Resource;
 use petgraph::dot;
 use petgraph::dot::Dot;
-
 use petgraph::prelude::*;
 
 /// Store the scope graph and provide methods for querying it.
@@ -55,11 +56,14 @@ pub struct CommandScopeRegistry {
 
 impl Debug for CommandScopeRegistry {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", Dot::with_config(&self.graph, &[dot::Config::EdgeNoLabel]))?;
+        write!(
+            f,
+            "{:?}",
+            Dot::with_config(&self.graph, &[dot::Config::EdgeNoLabel])
+        )?;
         Ok(())
     }
 }
-
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct Scope {
@@ -301,8 +305,14 @@ impl CommandScopeRegistry {
     /// assert!(registry.grants("valence:admin", "valence:command"));
     /// ```
     pub fn link(&mut self, scope: &str, other: &str) {
-        let scope_idx = *self.string_to_node.get(scope).expect(format!("scope {} does not exist", scope).as_str());
-        let other_idx = *self.string_to_node.get(other).expect(format!("scope {} does not exist", scope).as_str());
+        let scope_idx = *self
+            .string_to_node
+            .get(scope)
+            .expect(format!("scope {} does not exist", scope).as_str());
+        let other_idx = *self
+            .string_to_node
+            .get(other)
+            .expect(format!("scope {} does not exist", scope).as_str());
 
         self.graph.add_edge(scope_idx, other_idx, ());
     }

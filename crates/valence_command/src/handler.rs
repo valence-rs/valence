@@ -8,16 +8,14 @@ use petgraph::algo::all_simple_paths;
 use petgraph::dot::Dot;
 use petgraph::prelude::NodeIndex;
 use petgraph::Graph;
-use valence_client::event_loop::PacketEvent;
+use valence_server::event_loop::PacketEvent;
+use valence_server::protocol::packets::play::CommandExecutionC2s;
 
-
-
-use crate::arg_parser::{ArgLen};
+use crate::arg_parser::ArgLen;
 use crate::command_graph::{
-    CommandEdgeType, CommandGraphBuilder, CommandNode, NodeData,
+    parser_len, parser_valid_for, CommandEdgeType, CommandGraphBuilder, CommandNode, NodeData,
 };
-
-use crate::{packet, Command, CommandRegistry, CommandTypingEvent};
+use crate::{Command, CommandRegistry, CommandTypingEvent};
 
 pub struct CommandHandler<T>
 where
@@ -107,7 +105,7 @@ fn command_event_system<T>(
 {
     for packet in packets.iter() {
         let client = packet.client;
-        if let Some(packet) = packet.decode::<packet::CommandExecutionC2s>() {
+        if let Some(packet) = packet.decode::<CommandExecutionC2s>() {
             println!("Received command: {:?}", packet);
             let executable_leafs = command.executables.keys().collect::<Vec<&NodeIndex>>();
             println!("Executable leafs: {:?}", executable_leafs);
@@ -153,7 +151,7 @@ fn command_event_system<T>(
                         match &registry.graph.graph[*node].data {
                             NodeData::Root => {}
                             NodeData::Literal { .. } => command_len += 1,
-                            NodeData::Argument { parser, .. } => match parser.len() {
+                            NodeData::Argument { parser, .. } => match parser_len(parser) {
                                 ArgLen::Infinite => {
                                     potentially_infinite = true;
                                     command_len = 0;
@@ -200,7 +198,6 @@ fn command_event_system<T>(
 
                         // check that the executor has the permission to execute this command
 
-
                         match &registry.graph.graph[path[current_node]].data {
                             NodeData::Root => {
                                 println!("root");
@@ -216,7 +213,7 @@ fn command_event_system<T>(
                             }
                             NodeData::Argument { parser, name, .. } => {
                                 println!("argument: {}", name);
-                                let arg_len = parser.len();
+                                let arg_len = parser_len(parser);
 
                                 let (arg, taken_len): (String, usize) = match arg_len {
                                     ArgLen::Infinite => (
@@ -286,7 +283,7 @@ fn command_event_system<T>(
                                     }
                                 };
 
-                                if parser.valid_for(arg.clone()) {
+                                if parser_valid_for(parser, arg.clone()) {
                                     possible_args.push(arg);
                                     println!("possible args: {:?}", possible_args);
                                     current_arg += taken_len;

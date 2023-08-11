@@ -1,7 +1,7 @@
 use std::ops::Add;
-use thiserror::Error;
 
-use crate::command_graph::{Parser, StringArg};
+use thiserror::Error;
+use valence_server::protocol::packets::play::command_tree_s2c::{Parser, StringArg};
 
 pub trait CommandArgSet {
     fn from_args(args: Vec<String>) -> Self;
@@ -236,7 +236,8 @@ pub enum PossiblyRelative<T> {
 }
 
 impl<T> PossiblyRelative<T>
-    where T: Add<Output = T> + Copy,
+where
+    T: Add<Output = T> + Copy,
 {
     pub fn get(&self, origanal: T) -> T {
         match self {

@@ -10,14 +10,13 @@ use uuid::Uuid;
 use valence_ident::ident;
 use valence_network::NetworkPlugin;
 use valence_registry::{BiomeRegistry, DimensionTypeRegistry};
-use valence_server::client::ClientBundleArgs;
+use valence_server::client::{ClientBundle, ClientBundleArgs, ClientConnection, ReceivedPacket};
 use valence_server::keepalive::KeepaliveSettings;
 use valence_server::protocol::decode::PacketFrame;
 use valence_server::protocol::packets::play::{PlayerPositionLookS2c, TeleportConfirmC2s};
 use valence_server::protocol::{Decode, Encode, Packet, PacketDecoder, PacketEncoder, VarInt};
 use valence_server::{ChunkLayer, EntityLayer, Server, ServerSettings};
 
-use crate::client::{ClientBundle, ClientConnection, ReceivedPacket};
 use crate::DefaultPlugins;
 pub struct ScenarioSingleClient {
     /// The new bevy application.

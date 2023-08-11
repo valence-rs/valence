@@ -1,17 +1,12 @@
 #![allow(clippy::type_complexity)]
 
 use valence::prelude::*;
-use valence_client::message::SendMessage;
+use valence::protocol::packets::play::command_tree_s2c::Parser;
 use valence_command::arg_parser::CommandArgParseError;
-use valence_command::command_graph::{
-    CommandGraphBuilder, Parser,
-};
-use valence_command::handler::{CommandExecutionEvent, CommandHandler};
+use valence_command::command_graph::CommandGraphBuilder;
 use valence_command::command_scopes::CommandScopes;
-use valence_command::{
-    arg_parser, Command, CommandArgSet, CommandScopeRegistry,
-};
-use valence_entity::sheep::SheepEntityBundle;
+use valence_command::handler::{CommandExecutionEvent, CommandHandler};
+use valence_command::{arg_parser, Command, CommandArgSet, CommandScopeRegistry};
 
 const SPAWN_Y: i32 = 64;
 
@@ -86,10 +81,10 @@ impl Command for TeleportCommand {
                 single: true,
             })
             .with_executable(|s| {
-                TeleportResult::TargetToTarget(<(
-                    arg_parser::EntitySelector,
-                    arg_parser::EntitySelector,
-                )>::parse_args(s).unwrap())
+                TeleportResult::TargetToTarget(
+                    <(arg_parser::EntitySelector, arg_parser::EntitySelector)>::parse_args(s)
+                        .unwrap(),
+                )
             });
         // target to location
         command_graph
@@ -126,8 +121,7 @@ pub fn main() {
 fn handle_teleport_command(
     mut events: EventReader<CommandExecutionEvent<TeleportCommand>>,
     mut clients: Query<(&mut Client, &mut Position)>,
-    usernames: Query<(Entity, &Username)>
-    // mut commands: Commands
+    usernames: Query<(Entity, &Username)>, // mut commands: Commands
 ) {
     for event in events.iter() {
         match &event.result {
@@ -137,29 +131,22 @@ fn handle_teleport_command(
                 pos.0.y = data.y.get(pos.0.y as f32) as f64;
                 pos.0.z = data.z.get(pos.0.z as f32) as f64;
 
-
                 client.send_chat_message(format!(
                     "Teleport command executor -> location executed with data:\n {:#?}",
                     data
                 ));
             }
             TeleportResult::ExecutorToTarget(data) => {
-
-                let target = usernames.iter().find(
-                    |(_, name)| name.0 == *data
-                );
+                let target = usernames.iter().find(|(_, name)| name.0 == *data);
 
                 match target {
                     None => {
                         let client = &mut clients.get_mut(event.executor).unwrap().0;
-                        client.send_chat_message(format!(
-                            "Could not find target: {}",
-                            data
-                        ));
+                        client.send_chat_message(format!("Could not find target: {}", data));
                     }
                     Some(target_entity) => {
-                        let target_pos = clients.get(target_entity.0).unwrap().1.0;
-                        let pos = &mut clients.get_mut(event.executor).unwrap().1.0;
+                        let target_pos = clients.get(target_entity.0).unwrap().1 .0;
+                        let pos = &mut clients.get_mut(event.executor).unwrap().1 .0;
                         pos.x = target_pos.x;
                         pos.y = target_pos.y;
                         pos.z = target_pos.z;
@@ -173,12 +160,8 @@ fn handle_teleport_command(
                 ));
             }
             TeleportResult::TargetToTarget(data) => {
-                let from_target = usernames.iter().find(
-                    |(_, name)| name.0 == data.0
-                );
-                let to_target = usernames.iter().find(
-                    |(_, name)| name.0 == data.1
-                );
+                let from_target = usernames.iter().find(|(_, name)| name.0 == data.0);
+                let to_target = usernames.iter().find(|(_, name)| name.0 == data.1);
 
                 let client = &mut clients.get_mut(event.executor).unwrap().0;
                 client.send_chat_message(format!(
@@ -187,43 +170,34 @@ fn handle_teleport_command(
                 ));
                 match from_target {
                     None => {
-                        client.send_chat_message(format!(
-                            "Could not find target: {}",
-                            data.0
-                        ));
+                        client.send_chat_message(format!("Could not find target: {}", data.0));
                     }
-                    Some(from_target_entity) => {
-                        match to_target {
-                            None => {
-                                client.send_chat_message(format!(
-                                    "Could not find target: {}",
-                                    data.0
-                                ));
-                            }
-                            Some(to_target_entity) => {
-                                let  target_pos = *clients.get(to_target_entity.0).unwrap().1;
-                                let (from_client, from_pos) = &mut clients.get_mut(from_target_entity.0).unwrap();
-                                from_pos.0 = target_pos.0;
-
-                                from_client.send_chat_message(format!(
-                                    "You have been teleported to {}",
-                                    to_target_entity.1
-                                ));
-
-                                let to_client= &mut clients.get_mut(to_target_entity.0).unwrap().0;
-                                to_client.send_chat_message(format!(
-                                    "{} has been teleported to your location",
-                                    from_target_entity.1
-                                ));
-                            }
+                    Some(from_target_entity) => match to_target {
+                        None => {
+                            client.send_chat_message(format!("Could not find target: {}", data.0));
                         }
-                    }
+                        Some(to_target_entity) => {
+                            let target_pos = *clients.get(to_target_entity.0).unwrap().1;
+                            let (from_client, from_pos) =
+                                &mut clients.get_mut(from_target_entity.0).unwrap();
+                            from_pos.0 = target_pos.0;
+
+                            from_client.send_chat_message(format!(
+                                "You have been teleported to {}",
+                                to_target_entity.1
+                            ));
+
+                            let to_client = &mut clients.get_mut(to_target_entity.0).unwrap().0;
+                            to_client.send_chat_message(format!(
+                                "{} has been teleported to your location",
+                                from_target_entity.1
+                            ));
+                        }
+                    },
                 }
             }
             TeleportResult::TargetToLocation(data) => {
-                let target = usernames.iter().find(
-                    |(_, name)| name.0 == data.0
-                );
+                let target = usernames.iter().find(|(_, name)| name.0 == data.0);
 
                 let client = &mut clients.get_mut(event.executor).unwrap().0;
                 client.send_chat_message(format!(
@@ -232,10 +206,7 @@ fn handle_teleport_command(
                 ));
                 match target {
                     None => {
-                        client.send_chat_message(format!(
-                            "Could not find target: {}",
-                            data.0
-                        ));
+                        client.send_chat_message(format!("Could not find target: {}", data.0));
                     }
                     Some(target_entity) => {
                         let (client, pos) = &mut clients.get_mut(target_entity.0).unwrap();
@@ -243,15 +214,12 @@ fn handle_teleport_command(
                         pos.0.y = data.1.y.get(pos.0.y as f32) as f64;
                         pos.0.z = data.1.z.get(pos.0.z as f32) as f64;
 
-
                         client.send_chat_message(format!(
                             "Teleport command executor -> location executed with data:\n {:#?}",
                             data
                         ));
                     }
                 }
-
-
             }
         }
     }
@@ -264,40 +232,57 @@ fn setup(
     biomes: Res<BiomeRegistry>,
     mut permissions: ResMut<CommandScopeRegistry>,
 ) {
-    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let mut layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {
-            instance.insert_chunk([x, z], UnloadedChunk::new());
+            layer.chunk.insert_chunk([x, z], UnloadedChunk::new());
         }
     }
 
     for z in -25..25 {
         for x in -25..25 {
-            instance.set_block([x, SPAWN_Y, z], BlockState::GRASS_BLOCK);
+            layer
+                .chunk
+                .set_block([x, SPAWN_Y, z], BlockState::GRASS_BLOCK);
         }
     }
 
     permissions.add_scope("valence:command:teleport");
 
-    commands.spawn(instance);
+    commands.spawn(layer);
 }
 
 fn init_clients(
     mut clients: Query<
         (
+            &mut EntityLayerId,
+            &mut VisibleChunkLayer,
+            &mut VisibleEntityLayers,
             &mut CommandScopes,
             &mut Position,
-            &mut Location,
             &mut GameMode,
         ),
         Added<Client>,
     >,
-    instances: Query<Entity, With<Instance>>,
+    layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
 ) {
-    for (mut permissions, mut pos, mut loc, mut game_mode) in &mut clients {
+    for (
+        mut layer_id,
+        mut visible_chunk_layer,
+        mut visible_entity_layers,
+        mut permissions,
+        mut pos,
+        mut game_mode,
+    ) in &mut clients
+    {
+        let layer = layers.single();
+
+        layer_id.0 = layer;
+        visible_chunk_layer.0 = layer;
+        visible_entity_layers.0.insert(layer);
+
         pos.0 = [0.0, SPAWN_Y as f64 + 1.0, 0.0].into();
-        loc.0 = instances.single();
         *game_mode = GameMode::Creative;
 
         permissions.add("valence:command:teleport");

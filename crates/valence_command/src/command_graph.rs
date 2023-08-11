@@ -1,31 +1,41 @@
 //! Command graph implementation
 //!
-//! This is the core of the command system. It is a graph of `CommandNode`s that are connected by
-//! the `CommandEdgeType`. The graph is used to determine what command to run when a command is
-//! entered. The graph is also used to generate the command tree that is sent to the client.
+//! This is the core of the command system. It is a graph of `CommandNode`s that
+//! are connected by the `CommandEdgeType`. The graph is used to determine what
+//! command to run when a command is entered. The graph is also used to generate
+//! the command tree that is sent to the client.
 //!
 //! ### The graph is a directed graph with 3 types of nodes:
-//! * Root node ([NodeData::Root]) - This is the root of the graph.  It is used to connect all the
+//! * Root node ([NodeData::Root]) - This is the root of the graph.  It is used
+//!   to connect all the
 //! other nodes to the graph. It is always present and there should only be one.
-//! * Literal node ([NodeData::Literal]) - This is a literal part of a command. It is a string that
-//! must be matched exactly by the client to trigger the validity of the node. For example, the
-//! command `/tp` would have a literal node with the name `tp` which is a child of the root node.
-//! * Argument node ([NodeData::Argument]) - This is a node that represents an argument in a
-//! command. It is a string that is matched by the client and checked by the server. For example,
-//! the command `/tp 0 0 0` would have 1 argument node with the name "<destination:location>" and
-//! the parser [Parser::Vec3] which is a child of the literal node with the name `tp`.
+//! * Literal node ([NodeData::Literal]) - This is a literal part of a command.
+//!   It is a string that
+//! must be matched exactly by the client to trigger the validity of the node.
+//! For example, the command `/teleport` would have a literal node with the name
+//! `teleport` which is a child of the root node.
+//! * Argument node ([NodeData::Argument]) - This is a node that represents an
+//!   argument in a
+//! command. It is a string that is matched by the client and checked by the
+//! server. For example, the command `/teleport 0 0 0` would have 1 argument
+//! node with the name "<destination:location>" and the parser [Parser::Vec3]
+//! which is a child of the literal node with the name `teleport`.
 //!
 //! #### and 2 types of edges:
-//! * Child edge ([CommandEdgeType::Child]) - This is an edge that connects a parent node to a
-//! child node. It is used to determine what nodes are valid children of a parent node. for
-//! example, the literal node with the name `tp` would have a child edge to the argument node with
-//! the name "<destination:location>". This means that the argument node is a valid child of the
-//! literal node.
-//! * Redirect edge ([CommandEdgeType::Redirect]) - This edge is special. It is used to redirect the
-//! client to another node. For example, the literal node with the name `tp` would have a Redirect
-//! edge to the literal node with the name `teleport`. This means that if the client enters the
-//! command `/tp` the server will redirect the client to the literal node with the name `teleport`.
-//! Making the command `/tp` functionally equivalent to `/teleport`.
+//! * Child edge ([CommandEdgeType::Child]) - This is an edge that connects a
+//!   parent node to a
+//! child node. It is used to determine what nodes are valid children of a
+//! parent node. for example, the literal node with the name `teleport` would
+//! have a child edge to the argument node with the name
+//! "<destination:location>". This means that the argument node is a valid child
+//! of the literal node.
+//! * Redirect edge ([CommandEdgeType::Redirect]) - This edge is special. It is
+//!   used to redirect the
+//! client to another node. For example, the literal node with the name `tp`
+//! would have a Redirect edge to the literal node with the name `teleport`.
+//! This means that if the client enters the command `/tp` the server will
+//! redirect the client to the literal node with the name `teleport`. Making the
+//! command `/tp` functionally equivalent to `/teleport`.
 //!
 //! # Cool Example Graph For Possible Implementation Of Teleport Command (made with graphviz)
 //! ```text
@@ -58,22 +68,25 @@
 //!                                               └────────────────────────────────┘
 //! ```
 
-
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
-use petgraph::dot::Dot;
 
+use anyhow::bail;
+use petgraph::dot::Dot;
 use petgraph::prelude::*;
-use valence_core::__private::VarInt;
-use valence_core::ident::Ident;
-use valence_core::protocol::{Decode, Encode};
+use valence_server::protocol::packets::play::command_tree_s2c::{
+    Node, NodeData as PacketNodeData, Parser, StringArg, Suggestion,
+};
+use valence_server::protocol::packets::play::CommandTreeS2c;
+use valence_server::protocol::{Decode, Encode, VarInt};
+use valence_server::Ident;
 
 use crate::arg_parser::{ArgLen, CommandArg, GreedyString, QuotableString};
-use crate::packet::{CommandTreeS2c, Node};
 use crate::command_scopes::Scope;
 use crate::{arg_parser, CommandRegistry};
 
-/// This struct is used to store the command graph.(see module level docs for more info)
+/// This struct is used to store the command graph.(see module level docs for
+/// more info)
 #[derive(Debug, Clone)]
 pub struct CommandGraph {
     pub graph: Graph<CommandNode, CommandEdgeType>,
@@ -86,11 +99,11 @@ impl Default for CommandGraph {
     }
 }
 
-/// Output the graph in graphviz dot format to do visual debugging. (this was used to make the cool
-/// graph in the module level docs)
+/// Output the graph in graphviz dot format to do visual debugging. (this was
+/// used to make the cool graph in the module level docs)
 impl Display for CommandGraph {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}" , Dot::new(&self.graph))
+        write!(f, "{}", Dot::new(&self.graph))
     }
 }
 
@@ -108,7 +121,7 @@ impl CommandGraph {
 }
 
 /// Data for the nodes in the graph (see module level docs for more info)
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct CommandNode {
     pub executable: bool,
     pub data: NodeData,
@@ -125,7 +138,7 @@ impl Display for CommandNode {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub enum NodeData {
     Root,
     Literal {
@@ -136,15 +149,6 @@ pub enum NodeData {
         parser: Parser,
         suggestion: Option<Suggestion>,
     },
-}
-
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub enum Suggestion {
-    AskServer,
-    AllRecipes,
-    AvailableSounds,
-    AvailableBiomes,
-    SummonableEntities,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -162,256 +166,209 @@ impl Display for CommandEdgeType {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum Parser {
-    Bool,
-    Float { min: Option<f32>, max: Option<f32> },
-    Double { min: Option<f64>, max: Option<f64> },
-    Integer { min: Option<i32>, max: Option<i32> },
-    Long { min: Option<i64>, max: Option<i64> },
-    String(StringArg),
-    Entity { single: bool, only_players: bool },
-    GameProfile,
-    BlockPos,
-    ColumnPos,
-    Vec3,
-    Vec2,
-    BlockState,
-    BlockPredicate,
-    ItemStack,
-    ItemPredicate,
-    Color,
-    Component,
-    Message,
-    NbtCompoundTag,
-    NbtTag,
-    NbtPath,
-    Objective,
-    ObjectiveCriteria,
-    Operation,
-    Particle,
-    Angle,
-    Rotation,
-    ScoreboardSlot,
-    ScoreHolder { allow_multiple: bool },
-    Swizzle,
-    Team,
-    ItemSlot,
-    ResourceLocation,
-    Function,
-    EntityAnchor,
-    IntRange,
-    FloatRange,
-    Dimension,
-    GameMode,
-    Time,
-    ResourceOrTag { registry: Ident<String> },
-    ResourceOrTagKey { registry: Ident<String> },
-    Resource { registry: Ident<String> },
-    ResourceKey { registry: Ident<String> },
-    TemplateMirror,
-    TemplateRotation,
-    Uuid,
-}
-
 fn validate_min_max<T: PartialOrd>(val: T, min: Option<T>, max: Option<T>) -> bool {
     if let Some(min) = min {
         if val < min {
             return false;
         }
     }
-
     if let Some(max) = max {
         if val > max {
             return false;
         }
     }
-
     true
 }
 
-impl Parser {
-    pub fn len(&self) -> ArgLen {
-        match self {
-            // TODO: Investigate this further
-            Self::Bool => ArgLen::Exact(1),
-            Self::Float { .. } => ArgLen::Exact(1),
-            Self::Double { .. } => ArgLen::Exact(1),
-            Self::Integer { .. } => ArgLen::Exact(1),
-            Self::Long { .. } => ArgLen::Exact(1),
-            Self::String(arg) => match arg {
-                StringArg::SingleWord => ArgLen::Exact(1),
-                StringArg::QuotablePhrase => ArgLen::Within('"'),
-                StringArg::GreedyPhrase => ArgLen::Infinite,
-            },
-            Self::Entity { .. } => ArgLen::Exact(1),
-            Self::GameProfile => ArgLen::Exact(1),
-            Self::BlockPos => ArgLen::Exact(3),
-            Self::ColumnPos => ArgLen::Exact(3),
-            Self::Vec3 => ArgLen::Exact(3),
-            Self::Vec2 => ArgLen::Exact(2),
-            Self::BlockState => ArgLen::Exact(1),
-            Self::BlockPredicate => ArgLen::Exact(1),
-            Self::ItemStack => ArgLen::Exact(1),
-            Self::ItemPredicate => ArgLen::Exact(1),
-            Self::Color => ArgLen::Exact(1),
-            Self::Component => ArgLen::Infinite,
-            Self::Message => ArgLen::Infinite,
-            Self::NbtCompoundTag => ArgLen::Infinite,
-            Self::NbtTag => ArgLen::Infinite,
-            Self::NbtPath => ArgLen::Infinite,
-            Self::Objective => ArgLen::Exact(1),
-            Self::ObjectiveCriteria => ArgLen::Exact(1),
-            Self::Operation => ArgLen::Exact(1),
-            Self::Particle => ArgLen::Exact(1),
-            Self::Angle => ArgLen::Exact(1),
-            Self::Rotation => ArgLen::Exact(2),
-            Self::ScoreboardSlot => ArgLen::Exact(1),
-            Self::ScoreHolder { .. } => ArgLen::Exact(1),
-            Self::Swizzle => ArgLen::Exact(3),
-            Self::Team => ArgLen::Exact(1),
-            Self::ItemSlot => ArgLen::Exact(1),
-            Self::ResourceLocation => ArgLen::Exact(1),
-            Self::Function => ArgLen::Exact(1),
-            Self::EntityAnchor => ArgLen::Exact(1),
-            Self::IntRange => ArgLen::Exact(2),
-            Self::FloatRange => ArgLen::Exact(2),
-            Self::Dimension => ArgLen::Exact(1),
-            Self::GameMode => ArgLen::Exact(1),
-            Self::Time => ArgLen::Exact(1),
-            Self::ResourceOrTag { .. } => ArgLen::Exact(1),
-            Self::ResourceOrTagKey { .. } => ArgLen::Exact(1),
-            Self::Resource { .. } => ArgLen::Exact(1),
-            Self::ResourceKey { .. } => ArgLen::Exact(1),
-            Self::TemplateMirror => ArgLen::Exact(1),
-            Self::TemplateRotation => ArgLen::Exact(1),
-            Self::Uuid => ArgLen::Exact(1),
-        }
+pub fn parser_len(parser: &Parser) -> ArgLen {
+    match parser {
+        // TODO: Investigate this further
+        Parser::Bool => ArgLen::Exact(1),
+        Parser::Float { .. } => ArgLen::Exact(1),
+        Parser::Double { .. } => ArgLen::Exact(1),
+        Parser::Integer { .. } => ArgLen::Exact(1),
+        Parser::Long { .. } => ArgLen::Exact(1),
+        Parser::String(arg) => match arg {
+            StringArg::SingleWord => ArgLen::Exact(1),
+            StringArg::QuotablePhrase => ArgLen::Within('"'),
+            StringArg::GreedyPhrase => ArgLen::Infinite,
+        },
+        Parser::Entity { .. } => ArgLen::Exact(1),
+        Parser::GameProfile => ArgLen::Exact(1),
+        Parser::BlockPos => ArgLen::Exact(3),
+        Parser::ColumnPos => ArgLen::Exact(3),
+        Parser::Vec3 => ArgLen::Exact(3),
+        Parser::Vec2 => ArgLen::Exact(2),
+        Parser::BlockState => ArgLen::Exact(1),
+        Parser::BlockPredicate => ArgLen::Exact(1),
+        Parser::ItemStack => ArgLen::Exact(1),
+        Parser::ItemPredicate => ArgLen::Exact(1),
+        Parser::Color => ArgLen::Exact(1),
+        Parser::Component => ArgLen::Infinite,
+        Parser::Message => ArgLen::Infinite,
+        Parser::NbtCompoundTag => ArgLen::Infinite,
+        Parser::NbtTag => ArgLen::Infinite,
+        Parser::NbtPath => ArgLen::Infinite,
+        Parser::Objective => ArgLen::Exact(1),
+        Parser::ObjectiveCriteria => ArgLen::Exact(1),
+        Parser::Operation => ArgLen::Exact(1),
+        Parser::Particle => ArgLen::Exact(1),
+        Parser::Angle => ArgLen::Exact(1),
+        Parser::Rotation => ArgLen::Exact(2),
+        Parser::ScoreboardSlot => ArgLen::Exact(1),
+        Parser::ScoreHolder { .. } => ArgLen::Exact(1),
+        Parser::Swizzle => ArgLen::Exact(3),
+        Parser::Team => ArgLen::Exact(1),
+        Parser::ItemSlot => ArgLen::Exact(1),
+        Parser::ResourceLocation => ArgLen::Exact(1),
+        Parser::Function => ArgLen::Exact(1),
+        Parser::EntityAnchor => ArgLen::Exact(1),
+        Parser::IntRange => ArgLen::Exact(2),
+        Parser::FloatRange => ArgLen::Exact(2),
+        Parser::Dimension => ArgLen::Exact(1),
+        Parser::GameMode => ArgLen::Exact(1),
+        Parser::Time => ArgLen::Exact(1),
+        Parser::ResourceOrTag { .. } => ArgLen::Exact(1),
+        Parser::ResourceOrTagKey { .. } => ArgLen::Exact(1),
+        Parser::Resource { .. } => ArgLen::Exact(1),
+        Parser::ResourceKey { .. } => ArgLen::Exact(1),
+        Parser::TemplateMirror => ArgLen::Exact(1),
+        Parser::TemplateRotation => ArgLen::Exact(1),
+        Parser::Uuid => ArgLen::Exact(1),
     }
+}
 
-    pub fn valid_for(&self, arg: String) -> bool {
-        match self {
-            Self::Bool => bool::arg_from_string(arg).is_ok(),
-            Self::Float { min, max } => {
-                let float = f32::arg_from_string(arg);
-                match float {
-                    Ok(float) => validate_min_max(float, *min, *max),
-                    Err(_) => false,
-                }
+pub fn parser_valid_for(parser: &Parser, arg: String) -> bool {
+    match parser {
+        Parser::Bool => bool::arg_from_string(arg).is_ok(),
+        Parser::Float { min, max } => {
+            let float = f32::arg_from_string(arg);
+            match float {
+                Ok(float) => validate_min_max(float, *min, *max),
+                Err(_) => false,
             }
-            Parser::Double { min, max } => {
-                let double = f64::arg_from_string(arg);
-                match double {
-                    Ok(double) => validate_min_max(double, *min, *max),
-                    Err(_) => false,
-                }
+        }
+        Parser::Double { min, max } => {
+            let double = f64::arg_from_string(arg);
+            match double {
+                Ok(double) => validate_min_max(double, *min, *max),
+                Err(_) => false,
             }
-            Parser::Integer { min, max } => {
-                let int = i32::arg_from_string(arg);
-                match int {
-                    Ok(int) => validate_min_max(int, *min, *max),
-                    Err(_) => false,
-                }
+        }
+        Parser::Integer { min, max } => {
+            let int = i32::arg_from_string(arg);
+            match int {
+                Ok(int) => validate_min_max(int, *min, *max),
+                Err(_) => false,
             }
-            Parser::Long { min, max } => {
-                let long = i64::arg_from_string(arg);
-                match long {
-                    Ok(long) => validate_min_max(long, *min, *max),
-                    Err(_) => false,
-                }
+        }
+        Parser::Long { min, max } => {
+            let long = i64::arg_from_string(arg);
+            match long {
+                Ok(long) => validate_min_max(long, *min, *max),
+                Err(_) => false,
             }
-            Parser::String(arg_type) => match arg_type {
-                StringArg::SingleWord => String::arg_from_string(arg).is_ok(),
-                StringArg::QuotablePhrase => QuotableString::arg_from_string(arg).is_ok(),
-                StringArg::GreedyPhrase => GreedyString::arg_from_string(arg).is_ok(),
+        }
+        Parser::String(arg_type) => match arg_type {
+            StringArg::SingleWord => String::arg_from_string(arg).is_ok(),
+            StringArg::QuotablePhrase => QuotableString::arg_from_string(arg).is_ok(),
+            StringArg::GreedyPhrase => GreedyString::arg_from_string(arg).is_ok(),
+        },
+        Parser::Entity {
+            single,
+            only_players,
+        } => {
+            if *single && *only_players {
+                arg_parser::SinglePlayerSelector::arg_from_string(arg).is_ok()
+            } else if *single && !*only_players {
+                arg_parser::SingleEntitySelector::arg_from_string(arg).is_ok()
+            } else if *only_players && !*single {
+                arg_parser::PlayerSelector::arg_from_string(arg).is_ok()
+            } else {
+                arg_parser::EntitySelector::arg_from_string(arg).is_ok()
+            }
+        }
+        Parser::GameProfile => {
+            String::arg_from_string(arg).is_ok() // TODO
+        }
+        Parser::BlockPos => arg_parser::BlockPos::arg_from_string(arg).is_ok(),
+        Parser::ColumnPos => arg_parser::ColumnPos::arg_from_string(arg).is_ok(),
+        Parser::Vec3 => arg_parser::Vec3::arg_from_string(arg).is_ok(),
+        Parser::Vec2 => arg_parser::Vec2::arg_from_string(arg).is_ok(),
+        Parser::BlockState => arg_parser::BlockState::arg_from_string(arg).is_ok(),
+        Parser::BlockPredicate => arg_parser::BlockPredicate::arg_from_string(arg).is_ok(),
+        Parser::ItemStack => arg_parser::ItemStack::arg_from_string(arg).is_ok(),
+        Parser::ItemPredicate => {
+            String::arg_from_string(arg).is_ok() // TODO
+        }
+        Parser::Color => arg_parser::ChatColor::arg_from_string(arg).is_ok(),
+        Parser::Component => arg_parser::JsonChatComponent::arg_from_string(arg).is_ok(),
+        Parser::Message => arg_parser::Message::arg_from_string(arg).is_ok(),
+        Parser::NbtCompoundTag => arg_parser::JsonChatComponent::arg_from_string(arg).is_ok(),
+        Parser::NbtTag => arg_parser::NbtTag::arg_from_string(arg).is_ok(),
+        Parser::NbtPath => arg_parser::NbtPath::arg_from_string(arg).is_ok(),
+        Parser::Objective => arg_parser::Objective::arg_from_string(arg).is_ok(),
+        Parser::ObjectiveCriteria => arg_parser::ObjectiveCriteria::arg_from_string(arg).is_ok(),
+        Parser::Operation => arg_parser::Objective::arg_from_string(arg).is_ok(),
+        Parser::Particle => {
+            String::arg_from_string(arg).is_ok() // TODO
+        }
+        Parser::Angle => arg_parser::Angle::arg_from_string(arg).is_ok(),
+        Parser::Rotation => arg_parser::Rotation::arg_from_string(arg).is_ok(),
+        Parser::ScoreboardSlot => arg_parser::ScoreboardSlot::arg_from_string(arg).is_ok(),
+        Parser::ScoreHolder { .. } => arg_parser::ScoreHolder::arg_from_string(arg).is_ok(),
+        Parser::Swizzle => arg_parser::ScoreHolder::arg_from_string(arg).is_ok(),
+        Parser::Team => arg_parser::TeamName::arg_from_string(arg).is_ok(),
+        Parser::ItemSlot => arg_parser::ItemStack::arg_from_string(arg).is_ok(),
+        Parser::ResourceLocation => arg_parser::ResourceLocation::arg_from_string(arg).is_ok(),
+        Parser::Function => arg_parser::Function::arg_from_string(arg).is_ok(),
+        Parser::EntityAnchor => arg_parser::EntityAnchor::arg_from_string(arg).is_ok(),
+        Parser::IntRange => arg_parser::IntRange::arg_from_string(arg).is_ok(),
+        Parser::FloatRange => arg_parser::FloatRange::arg_from_string(arg).is_ok(),
+        Parser::Dimension => arg_parser::Dimension::arg_from_string(arg).is_ok(),
+        Parser::GameMode => arg_parser::GameMode::arg_from_string(arg).is_ok(),
+        Parser::Time => arg_parser::Time::arg_from_string(arg).is_ok(),
+        Parser::ResourceOrTag { .. } => {
+            String::arg_from_string(arg).is_ok() // TODO
+        }
+        Parser::ResourceOrTagKey { .. } => {
+            String::arg_from_string(arg).is_ok() // TODO
+        }
+        Parser::Resource { .. } => {
+            String::arg_from_string(arg).is_ok() // TODO
+        }
+        Parser::ResourceKey { .. } => {
+            String::arg_from_string(arg).is_ok() // TODO
+        }
+        Parser::TemplateMirror => {
+            String::arg_from_string(arg).is_ok() // TODO
+        }
+        Parser::TemplateRotation => {
+            String::arg_from_string(arg).is_ok() // TODO
+        }
+        Parser::Uuid => arg_parser::Uuid::arg_from_string(arg).is_ok(),
+    }
+}
+
+impl From<NodeData> for PacketNodeData {
+    fn from(value: NodeData) -> Self {
+        match value {
+            NodeData::Root => PacketNodeData::Root,
+            NodeData::Literal { name } => PacketNodeData::Literal { name },
+            NodeData::Argument {
+                name,
+                parser,
+                suggestion,
+            } => PacketNodeData::Argument {
+                name,
+                parser,
+                suggestion,
             },
-            Parser::Entity {
-                single,
-                only_players,
-            } => {
-                if *single && *only_players {
-                    arg_parser::SinglePlayerSelector::arg_from_string(arg).is_ok()
-                } else if *single && !*only_players {
-                    arg_parser::SingleEntitySelector::arg_from_string(arg).is_ok()
-                } else if *only_players && !*single {
-                    arg_parser::PlayerSelector::arg_from_string(arg).is_ok()
-                } else  {
-                    arg_parser::EntitySelector::arg_from_string(arg).is_ok()
-                }
-            }
-            Parser::GameProfile => {
-                String::arg_from_string(arg).is_ok() // TODO
-            }
-            Parser::BlockPos => arg_parser::BlockPos::arg_from_string(arg).is_ok(),
-            Parser::ColumnPos => arg_parser::ColumnPos::arg_from_string(arg).is_ok(),
-            Parser::Vec3 => arg_parser::Vec3::arg_from_string(arg).is_ok(),
-            Parser::Vec2 => arg_parser::Vec2::arg_from_string(arg).is_ok(),
-            Parser::BlockState => arg_parser::BlockState::arg_from_string(arg).is_ok(),
-            Parser::BlockPredicate => arg_parser::BlockPredicate::arg_from_string(arg).is_ok(),
-            Parser::ItemStack => arg_parser::ItemStack::arg_from_string(arg).is_ok(),
-            Parser::ItemPredicate => {
-                String::arg_from_string(arg).is_ok() // TODO
-            }
-            Parser::Color => arg_parser::ChatColor::arg_from_string(arg).is_ok(),
-            Parser::Component => arg_parser::JsonChatComponent::arg_from_string(arg).is_ok(),
-            Parser::Message => arg_parser::Message::arg_from_string(arg).is_ok(),
-            Parser::NbtCompoundTag => arg_parser::JsonChatComponent::arg_from_string(arg).is_ok(),
-            Parser::NbtTag => arg_parser::NbtTag::arg_from_string(arg).is_ok(),
-            Parser::NbtPath => arg_parser::NbtPath::arg_from_string(arg).is_ok(),
-            Parser::Objective => arg_parser::Objective::arg_from_string(arg).is_ok(),
-            Parser::ObjectiveCriteria => {
-                arg_parser::ObjectiveCriteria::arg_from_string(arg).is_ok()
-            }
-            Parser::Operation => arg_parser::Objective::arg_from_string(arg).is_ok(),
-            Parser::Particle => {
-                String::arg_from_string(arg).is_ok() // TODO
-            }
-            Parser::Angle => arg_parser::Angle::arg_from_string(arg).is_ok(),
-            Parser::Rotation => arg_parser::Rotation::arg_from_string(arg).is_ok(),
-            Parser::ScoreboardSlot => arg_parser::ScoreboardSlot::arg_from_string(arg).is_ok(),
-            Parser::ScoreHolder { .. } => arg_parser::ScoreHolder::arg_from_string(arg).is_ok(),
-            Parser::Swizzle => arg_parser::ScoreHolder::arg_from_string(arg).is_ok(),
-            Parser::Team => arg_parser::TeamName::arg_from_string(arg).is_ok(),
-            Parser::ItemSlot => arg_parser::ItemStack::arg_from_string(arg).is_ok(),
-            Parser::ResourceLocation => arg_parser::ResourceLocation::arg_from_string(arg).is_ok(),
-            Parser::Function => arg_parser::Function::arg_from_string(arg).is_ok(),
-            Parser::EntityAnchor => arg_parser::EntityAnchor::arg_from_string(arg).is_ok(),
-            Parser::IntRange => arg_parser::IntRange::arg_from_string(arg).is_ok(),
-            Parser::FloatRange => arg_parser::FloatRange::arg_from_string(arg).is_ok(),
-            Parser::Dimension => arg_parser::Dimension::arg_from_string(arg).is_ok(),
-            Parser::GameMode => arg_parser::GameMode::arg_from_string(arg).is_ok(),
-            Parser::Time => arg_parser::Time::arg_from_string(arg).is_ok(),
-            Parser::ResourceOrTag { .. } => {
-                String::arg_from_string(arg).is_ok() // TODO
-            }
-            Parser::ResourceOrTagKey { .. } => {
-                String::arg_from_string(arg).is_ok() // TODO
-            }
-            Parser::Resource { .. } => {
-                String::arg_from_string(arg).is_ok() // TODO
-            }
-            Parser::ResourceKey { .. } => {
-                String::arg_from_string(arg).is_ok() // TODO
-            }
-            Parser::TemplateMirror => {
-                String::arg_from_string(arg).is_ok() // TODO
-            }
-            Parser::TemplateRotation => {
-                String::arg_from_string(arg).is_ok() // TODO
-            }
-            Parser::Uuid => arg_parser::Uuid::arg_from_string(arg).is_ok(),
         }
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
-pub enum StringArg {
-    SingleWord,
-    QuotablePhrase,
-    GreedyPhrase,
-}
-
-impl From<CommandGraph> for CommandTreeS2c {
+impl<'a> From<CommandGraph> for CommandTreeS2c {
     fn from(value: CommandGraph) -> Self {
         let mut nodes = Vec::new();
         let graph = value.graph;
@@ -498,9 +455,11 @@ impl From<CommandGraph> for CommandTreeS2c {
     }
 }
 
-/// ergonomic builder pattern for adding executables literals and arguments to a command graph
+/// ergonomic builder pattern for adding executables literals and arguments to a
+/// command graph
 ///
-/// * `T` - the type that should be constructed by an executable when the command is executed
+/// * `T` - the type that should be constructed by an executable when the
+///   command is executed
 ///
 /// # Example
 /// ```
@@ -526,7 +485,7 @@ impl From<CommandGraph> for CommandTreeS2c {
 ///    .literal("test") // add a literal node then transition to it
 ///    .argument("test")
 ///    // a player needs one of these scopes to execute the command
-///    .with_scopes(vec!["test:admin", "command:test"]) 
+///    .with_scopes(vec!["test:admin", "command:test"])
 ///    .with_parser(Parser::Integer { min: None, max: None })
 ///    // it is reasonably safe to unwrap here because we know that the argument is an integer
 ///    .with_executable(|args| TestCommand { test: i32::parse_args(args).unwrap() })
@@ -544,12 +503,13 @@ impl From<CommandGraph> for CommandTreeS2c {
 /// assert_eq!(command_graph.graph.graph.edge_count(), 5);
 /// ```
 ///
-/// in this example we can execute either of the following commands for the same result:
+/// in this example we can execute either of the following commands for the same
+/// result:
 /// - `/test test 1`
 /// - `/test command test 1`
 ///
-/// the executables from these commands will both return a `TestCommand` with the value `1`
-///
+/// the executables from these commands will both return a `TestCommand` with
+/// the value `1`
 pub struct CommandGraphBuilder<'a, T> {
     // We do not own the graph, we just have a mutable reference to it
     graph: &'a mut CommandGraph,
@@ -631,13 +591,14 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
         *current_node = argument_node;
 
         self
-    } 
+    }
 
     /// creates a new redirect edge from the current node to the node specified
     ///
     /// # Example
     /// ```
     /// use std::collections::HashMap;
+    ///
     /// use valence_command::command_graph::CommandGraphBuilder;
     /// use valence_command::CommandRegistry;
     ///
@@ -645,7 +606,8 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
     ///
     /// let mut command_graph = CommandRegistry::default();
     /// let mut executable_map = HashMap::new();
-    /// let mut command_graph_builder = CommandGraphBuilder::<TestCommand>::new(&mut command_graph, &mut executable_map);
+    /// let mut command_graph_builder =
+    ///     CommandGraphBuilder::<TestCommand>::new(&mut command_graph, &mut executable_map);
     ///
     /// let simple_command = command_graph_builder
     ///   .root() // transition to the root node
@@ -669,7 +631,8 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
         self
     }
 
-    /// sets the executable flag on the current node to true and adds the executable to the map
+    /// sets the executable flag on the current node to true and adds the
+    /// executable to the map
     ///
     /// # Arguments
     /// * executable - the executable function to add
@@ -691,8 +654,10 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
     /// sets the required scopes for the current node
     ///
     /// # Arguments
-    /// * scopes - a list of scopes for that are aloud to access a command node and its children
-    /// (list of strings following the system described in [command_scopes](crate::command_scopes))
+    /// * scopes - a list of scopes for that are aloud to access a command node
+    ///   and its children
+    /// (list of strings following the system described in
+    /// [command_scopes](crate::command_scopes))
     pub fn with_scopes(&mut self, scopes: Vec<impl Into<Scope>>) -> &mut Self {
         let graph = &mut self.graph.graph;
         let current_node = &mut self.current_node;
@@ -704,9 +669,10 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
         self
     }
 
-    /// sets the parser for the current node. This will decide how the argument is parsed client
-    /// side and will be used to check the argument before it is passed to the executable. The
-    /// node should be an argument node or nothing will happen.
+    /// sets the parser for the current node. This will decide how the argument
+    /// is parsed client side and will be used to check the argument before
+    /// it is passed to the executable. The node should be an argument node
+    /// or nothing will happen.
     ///
     /// # Arguments
     /// * parser - the parser to use for the current node
@@ -737,7 +703,8 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
         self
     }
 
-    /// gets the id of the current node (useful for commands that have multiple children)
+    /// gets the id of the current node (useful for commands that have multiple
+    /// children)
     pub fn id(&self) -> NodeIndex {
         self.current_node
     }

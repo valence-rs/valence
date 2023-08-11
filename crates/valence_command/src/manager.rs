@@ -1,19 +1,12 @@
-
-
 use bevy_app::{App, Plugin, PreUpdate, Update};
 use bevy_ecs::entity::Entity;
-use bevy_ecs::prelude::{
-    Added, Commands, IntoSystemConfigs, Or, Query, Res,
-};
+use bevy_ecs::prelude::{Added, Commands, IntoSystemConfigs, Or, Query, Res};
 use bevy_ecs::query::Changed;
+use valence_server::client::{Client, SpawnClientsSet};
+use valence_server::protocol::packets::play::CommandTreeS2c;
+use valence_server::protocol::WritePacket;
 
-
-
-use valence_client::{Client, SpawnClientsSet};
-use valence_core::protocol::encode::WritePacket;
-
-use crate::command_graph::{CommandGraph};
-use crate::packet::CommandTreeS2c;
+use crate::command_graph::CommandGraph;
 use crate::command_scopes::CommandScopes;
 use crate::{CommandRegistry, CommandScopeRegistry};
 
@@ -49,7 +42,10 @@ pub fn insert_permissions_component(
 pub fn update_command_tree(
     command_registry: Res<CommandRegistry>,
     premission_registry: Res<CommandScopeRegistry>,
-    mut new_clients: Query<(&mut Client, &CommandScopes), Or<(Added<Client>, Changed<CommandScopes>)>>,
+    mut new_clients: Query<
+        (&mut Client, &CommandScopes),
+        Or<(Added<Client>, Changed<CommandScopes>)>,
+    >,
 ) {
     for (mut client, client_permissions) in new_clients.iter_mut() {
         let mut graph = command_registry.graph.clone();

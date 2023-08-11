@@ -1,20 +1,13 @@
 pub mod arg_parser;
 pub mod command_graph;
+pub mod command_scopes;
 pub mod handler;
 pub mod manager;
-pub mod packet;
-pub mod command_scopes;
-
-
-
-
 
 use bevy_ecs::entity::Entity;
 use bevy_ecs::event::Event;
-use bevy_ecs::prelude::{Resource};
+use bevy_ecs::prelude::Resource;
 pub use command_scopes::CommandScopeRegistry;
-
-
 
 use crate::arg_parser::{CommandArg, CommandArgParseError};
 use crate::command_graph::{CommandGraph, CommandGraphBuilder};
@@ -24,14 +17,6 @@ pub trait Command {
 
     fn name() -> String;
     fn assemble_graph(&self, graph: &mut CommandGraphBuilder<Self::CommandExecutables>);
-}
-
-pub trait Executable: Event {
-    fn from_args(
-        &self,
-        executor: Entity,
-        args: String,
-    ) -> Result<Box<dyn Event>, CommandArgParseError>;
 }
 
 pub trait CommandArgSet {
@@ -126,58 +111,6 @@ impl_arg_set!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, S, T, U, V, W);
 impl_arg_set!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, S, T, U, V, W, X);
 impl_arg_set!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, S, T, U, V, W, X, Y);
 impl_arg_set!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, S, T, U, V, W, X, Y, Z); // I'm sorry
-
-// first arg is the executor (creates struct) second arg is the args
-// executable!(ExecutorToLocation, arg_parser::Vec3) should be equivalent to
-//
-//#[derive(Event)]
-// struct ExecutorToLocation {
-//     executor: Entity,
-//     args: (arg_parser::Vec3),
-// }
-//
-// impl Default for ExecutorToLocation {
-//     fn default() -> Self {
-//         Self {
-//             executor: Entity::PLACEHOLDER,
-//             ..Default::default()
-//         }
-//     }
-// }
-//
-// impl Executable for ExecutorToLocation {
-//     fn from_args(executor: Entity, args: String) -> Result<Self,
-// CommandArgParseError> {         let location =
-// arg_parser::Vec3::from_string(args)?;         Ok(Self { executor, location })
-//     }
-// }
-
-#[macro_export]
-macro_rules! executable {
-    ($name:ident, $($arg:ident),*) => {
-        #[derive(Event)]
-        struct $name {
-            executor: Entity,
-            args: ($(arg_parser::$arg),*),
-        }
-
-        impl Default for $name {
-            fn default() -> Self {
-                Self {
-                    executor: Entity::PLACEHOLDER,
-                    args: ($(arg_parser::$arg::default()),*),
-                }
-            }
-        }
-
-        impl Executable for $name {
-            fn from_args(&self, executor: Entity, args: String) -> Result<Box<(dyn valence::prelude::Event)>, CommandArgParseError> {
-                let args = <($(arg_parser::$arg),*)>::from_string(args)?;
-                Ok(Box::new(Self { executor, args }))
-            }
-        }
-    };
-}
 
 #[derive(Resource, Default)]
 pub struct CommandRegistry {
