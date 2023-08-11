@@ -32,7 +32,7 @@ use tracing::warn;
 use tracked_data::TrackedData;
 use valence_math::{DVec3, Vec3};
 use valence_protocol::{BlockPos, ChunkPos, Decode, Encode, VarInt};
-use valence_server_core::{Despawned, UniqueId, DEFAULT_TPS};
+use valence_server_common::{Despawned, UniqueId, DEFAULT_TPS};
 
 include!(concat!(env!("OUT_DIR"), "/entity.rs"));
 pub struct EntityPlugin;

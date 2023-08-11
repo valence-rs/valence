@@ -1,7 +1,12 @@
 [package]
 name = "valence_world_border"
+description = "World border support for Valence"
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
+repository.workspace = true
+documentation.workspace = true
+license.workspace = true
 
 [dependencies]
 bevy_app.workspace = true

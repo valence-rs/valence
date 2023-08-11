@@ -1,7 +1,5 @@
 #![doc = include_str!("../README.md")]
 
-//! Resource identifiers.
-
 use std::borrow::{Borrow, Cow};
 use std::cmp::Ordering;
 use std::fmt;

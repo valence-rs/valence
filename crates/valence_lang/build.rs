@@ -9,11 +9,10 @@ pub fn main() -> anyhow::Result<()> {
 }
 
 fn build() -> anyhow::Result<TokenStream> {
-    rerun_if_changed(["../../extracted/translation_keys.json"]);
+    rerun_if_changed(["extracted/translation_keys.json"]);
 
-    let translations = serde_json::from_str::<Vec<Translation>>(include_str!(
-        "../../extracted/translation_keys.json"
-    ))?;
+    let translations =
+        serde_json::from_str::<Vec<Translation>>(include_str!("extracted/translation_keys.json"))?;
 
     let translation_key_consts = translations
         .iter()

@@ -49,7 +49,7 @@ pub use valence_protocol::{
     Difficulty, Direction, GameMode, Hand, Ident, ItemKind, ItemStack, PlayerTextures, Text,
     MINECRAFT_VERSION, PROTOCOL_VERSION,
 };
-pub use valence_server_core::*;
+pub use valence_server_common::*;
 pub use {
     bevy_app as app, bevy_ecs as ecs, rand, valence_entity as entity, valence_nbt as nbt,
     valence_protocol as protocol, valence_registry as registry,

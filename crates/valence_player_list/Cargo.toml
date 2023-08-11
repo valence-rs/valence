@@ -1,7 +1,12 @@
 [package]
 name = "valence_player_list"
+description = "Player list (tablist) support for Valence"
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
+repository.workspace = true
+documentation.workspace = true
+license.workspace = true
 
 [dependencies]
 bevy_app.workspace = true

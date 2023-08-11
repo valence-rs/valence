@@ -9,7 +9,7 @@ use valence_entity::query::UpdateEntityQuery;
 use valence_entity::{EntityId, EntityLayerId, OldEntityLayerId, OldPosition, Position};
 use valence_protocol::encode::{PacketWriter, WritePacket};
 use valence_protocol::{BlockPos, ChunkPos, CompressionThreshold, Encode, Packet};
-use valence_server_core::{Despawned, Server};
+use valence_server_common::{Despawned, Server};
 
 use super::bvh::GetChunkPos;
 use super::message::Messages;

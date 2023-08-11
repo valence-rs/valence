@@ -34,7 +34,7 @@ use valence_protocol::text::{IntoText, Text};
 use valence_protocol::var_int::VarInt;
 use valence_protocol::{BlockPos, ChunkPos, Encode, GameMode, Packet, Property};
 use valence_registry::RegistrySet;
-use valence_server_core::{Despawned, UniqueId};
+use valence_server_common::{Despawned, UniqueId};
 
 use crate::layer::{ChunkLayer, EntityLayer, UpdateLayersPostClientSet, UpdateLayersPreClientSet};
 use crate::ChunkView;

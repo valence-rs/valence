@@ -69,13 +69,13 @@ struct Shape {
 }
 
 pub fn build() -> anyhow::Result<TokenStream> {
-    rerun_if_changed(["../../extracted/blocks.json"]);
+    rerun_if_changed(["extracted/blocks.json"]);
 
     let TopLevel {
         blocks,
         shapes,
         block_entity_types,
-    } = serde_json::from_str(include_str!("../../../extracted/blocks.json"))?;
+    } = serde_json::from_str(include_str!("../extracted/blocks.json"))?;
 
     let max_state_id = blocks.iter().map(|b| b.max_state_id()).max().unwrap();
 

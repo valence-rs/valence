@@ -12,7 +12,7 @@ use valence_protocol::packets::play::{
 };
 use valence_protocol::var_int::VarInt;
 use valence_protocol::ByteAngle;
-use valence_server_core::UniqueId;
+use valence_server_common::UniqueId;
 
 use crate::tracked_data::TrackedData;
 use crate::{

@@ -2,6 +2,10 @@
 name = "playground"
 version.workspace = true
 edition.workspace = true
+repository.workspace = true
+documentation.workspace = true
+license.workspace = true
+publish = false
 
 [dependencies]
 anyhow.workspace = true
@@ -9,5 +13,5 @@ clap.workspace = true
 valence_math.workspace = true
 tracing-subscriber.workspace = true
 tracing.workspace = true
-valence_server_core.workspace = true
+valence_server_common.workspace = true
 valence.workspace = true
