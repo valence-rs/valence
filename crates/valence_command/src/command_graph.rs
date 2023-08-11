@@ -368,7 +368,7 @@ impl From<NodeData> for PacketNodeData {
     }
 }
 
-impl<'a> From<CommandGraph> for CommandTreeS2c {
+impl From<CommandGraph> for CommandTreeS2c {
     fn from(value: CommandGraph) -> Self {
         let mut nodes = Vec::new();
         let graph = value.graph;

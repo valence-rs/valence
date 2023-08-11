@@ -4,6 +4,7 @@ use bevy_app::{App, Plugin, PostStartup, Update};
 use bevy_ecs::change_detection::{Res, ResMut};
 use bevy_ecs::event::{Event, EventReader, EventWriter};
 use bevy_ecs::prelude::{Entity, Resource};
+use bevy_ecs::system::Query;
 use petgraph::algo::all_simple_paths;
 use petgraph::dot::Dot;
 use petgraph::prelude::NodeIndex;
@@ -15,7 +16,8 @@ use crate::arg_parser::ArgLen;
 use crate::command_graph::{
     parser_len, parser_valid_for, CommandEdgeType, CommandGraphBuilder, CommandNode, NodeData,
 };
-use crate::{Command, CommandRegistry, CommandTypingEvent};
+use crate::{Command, CommandRegistry, CommandScopeRegistry, CommandTypingEvent};
+use crate::command_scopes::CommandScopes;
 
 pub struct CommandHandler<T>
 where
@@ -99,6 +101,8 @@ fn command_event_system<T>(
     registry: Res<CommandRegistry>,
     mut events: EventWriter<CommandExecutionEvent<T>>,
     command: ResMut<CommandResource<T>>,
+    scope_registry: Res<CommandScopeRegistry>,
+    scopes: Query<&CommandScopes>
 ) where
     T: Command + Resource,
     T::CommandExecutables: Send + Sync,
@@ -196,7 +200,20 @@ fn command_event_system<T>(
 
                         println!("current_node: {}", current_node);
 
-                        // check that the executor has the permission to execute this command
+                        // check that the executor has the permission to path through this node
+                        let node_scopes = registry.graph.graph[path[current_node]].scopes.clone();
+                        if !node_scopes.is_empty() {
+                            let mut has_scope = false;
+                            for scope in node_scopes {
+                                if scope_registry.any_grants(scopes.get(client).unwrap().scopes.clone(), scope) {
+                                    has_scope = true;
+                                    break;
+                                }
+                            }
+                            if !has_scope {
+                                break;
+                            }
+                        }
 
                         match &registry.graph.graph[path[current_node]].data {
                             NodeData::Root => {

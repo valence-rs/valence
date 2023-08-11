@@ -53,6 +53,9 @@ pub fn update_command_tree(
         let mut nodes_to_remove = Vec::new();
         'nodes: for node in graph.graph.node_indices() {
             let node_scopes = &graph.graph[node].scopes;
+            if node_scopes.is_empty() {
+                continue;
+            }
             for permission in node_scopes.iter() {
                 if !premission_registry
                     .any_grants(client_permissions.scopes.clone(), permission.clone())
