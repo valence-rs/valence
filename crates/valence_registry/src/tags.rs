@@ -34,9 +34,8 @@ impl TagsRegistry {
 }
 
 fn init_tags_registry(mut tags: ResMut<TagsRegistry>) {
-    let registries =
-        serde_json::from_str::<Vec<Registry>>(include_str!("../extracted/tags.json"))
-            .expect("tags.json is invalid");
+    let registries = serde_json::from_str::<Vec<Registry>>(include_str!("../extracted/tags.json"))
+        .expect("tags.json is invalid");
     tags.registries = registries;
 }
 
