@@ -13,10 +13,9 @@ struct Packet {
 }
 
 pub fn build() -> anyhow::Result<TokenStream> {
-    rerun_if_changed(["../../extracted/packets.json"]);
+    rerun_if_changed(["extracted/packets.json"]);
 
-    let packets: Vec<Packet> =
-        serde_json::from_str(include_str!("../../../extracted/packets.json"))?;
+    let packets: Vec<Packet> = serde_json::from_str(include_str!("../extracted/packets.json"))?;
 
     let mut consts = TokenStream::new();
 

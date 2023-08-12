@@ -1,7 +1,12 @@
 [package]
 name = "valence_network"
+description = "Login and socket code for Valence"
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
+repository.workspace = true
+documentation.workspace = true
+license.workspace = true
 
 # TODO: make encryption and compression optional features.
 

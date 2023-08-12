@@ -1,5 +1,7 @@
 [package]
 name = "valence_text"
+description = "Parsing and writing Minecraft's JSON text format"
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true

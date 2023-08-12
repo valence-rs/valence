@@ -2,6 +2,10 @@
 name = "dump_schedule"
 version.workspace = true
 edition.workspace = true
+repository.workspace = true
+documentation.workspace = true
+license.workspace = true
+publish = false
 
 [dependencies]
 bevy_mod_debugdump.workspace = true

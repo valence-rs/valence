@@ -271,19 +271,18 @@ impl Value {
 type Entities = BTreeMap<String, Entity>;
 
 pub fn main() -> anyhow::Result<()> {
-    rerun_if_changed(["../../extracted/misc.json", "../../extracted/entities.json"]);
+    rerun_if_changed(["extracted/misc.json", "extracted/entities.json"]);
 
     write_generated_file(build()?, "entity.rs")
 }
 
 fn build() -> anyhow::Result<TokenStream> {
-    let entity_types =
-        serde_json::from_str::<EntityTypes>(include_str!("../../extracted/misc.json"))
-            .context("failed to deserialize misc.json")?
-            .entity_type;
+    let entity_types = serde_json::from_str::<EntityTypes>(include_str!("extracted/misc.json"))
+        .context("failed to deserialize misc.json")?
+        .entity_type;
 
     let entities: Entities =
-        serde_json::from_str::<Entities>(include_str!("../../extracted/entities.json"))
+        serde_json::from_str::<Entities>(include_str!("extracted/entities.json"))
             .context("failed to deserialize entities.json")?
             .into_iter()
             .collect();
@@ -518,7 +517,7 @@ fn build() -> anyhow::Result<TokenStream> {
     }
 
     let misc_entity_data: MiscEntityData =
-        serde_json::from_str(include_str!("../../extracted/misc.json"))?;
+        serde_json::from_str(include_str!("extracted/misc.json"))?;
 
     let entity_status_variants = misc_entity_data
         .entity_status

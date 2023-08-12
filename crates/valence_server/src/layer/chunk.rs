@@ -23,7 +23,7 @@ use valence_protocol::sound::{Sound, SoundCategory, SoundId};
 use valence_protocol::{BlockPos, ChunkPos, CompressionThreshold, Encode, Ident, Packet};
 use valence_registry::biome::{BiomeId, BiomeRegistry};
 use valence_registry::DimensionTypeRegistry;
-use valence_server_core::Server;
+use valence_server_common::Server;
 
 use super::bvh::GetChunkPos;
 use super::message::Messages;

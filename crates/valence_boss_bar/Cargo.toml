@@ -3,9 +3,11 @@ name = "valence_boss_bar"
 description = "Boss bar API for Valence"
 readme = "README.md"
 keywords = ["minecraft", "bossbar", "api"]
-documentation.workspace = true
 version.workspace = true
 edition.workspace = true
+repository.workspace = true
+documentation.workspace = true
+license.workspace = true
 
 [dependencies]
 valence_entity.workspace = true

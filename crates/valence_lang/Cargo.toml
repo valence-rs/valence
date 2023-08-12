@@ -1,5 +1,7 @@
 [package]
 name = "valence_lang"
+description = "Minecraft's languages and translation keys."
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true

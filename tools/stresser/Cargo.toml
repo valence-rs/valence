@@ -1,9 +1,13 @@
 [package]
 name = "stresser"
-description = "A stresser for Valence Minecraft server framework development purposes."
+description = "A stresser for Valence Minecraft server framework development purposes"
 authors = ["qualterz <qualterz@tutamail.com>"]
 version.workspace = true
 edition.workspace = true
+repository.workspace = true
+documentation.workspace = true
+license.workspace = true
+publish = false
 
 [dependencies]
 anyhow.workspace = true

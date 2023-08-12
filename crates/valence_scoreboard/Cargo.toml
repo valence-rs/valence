@@ -1,7 +1,12 @@
 [package]
 name = "valence_scoreboard"
-version = "0.1.0"
-edition = "2021"
+description = "Scoreboard support for Valence"
+readme = "README.md"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+documentation.workspace = true
+license.workspace = true
 
 [dependencies]
 bevy_app.workspace = true

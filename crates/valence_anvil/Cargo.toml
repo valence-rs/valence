@@ -1,12 +1,13 @@
 [package]
 name = "valence_anvil"
-description = "Anvil world format support for Valence"
-documentation.workspace = true
+description = "Anvil file format support for Valence"
 readme = "README.md"
-license.workspace = true
 keywords = ["anvil", "minecraft", "deserialization"]
 version.workspace = true
 edition.workspace = true
+repository.workspace = true
+documentation.workspace = true
+license.workspace = true
 
 [dependencies]
 bevy_app.workspace = true

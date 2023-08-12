@@ -1,7 +1,12 @@
 [package]
 name = "valence_registry"
+description = "Dynamic registries for Valence"
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
+repository.workspace = true
+documentation.workspace = true
+license.workspace = true
 
 [dependencies]
 bevy_app.workspace = true
@@ -14,4 +19,4 @@ valence_protocol.workspace = true
 anyhow.workspace = true
 valence_ident.workspace = true
 valence_nbt = { workspace = true, features = ["serde"] }
-valence_server_core.workspace = true
+valence_server_common.workspace = true

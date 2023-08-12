@@ -1,0 +1,13 @@
+[package]
+name = "valence_spatial"
+description = "Spatial partitioning for entities in Valence"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+documentation.workspace = true
+license.workspace = true
+
+[dependencies]
+approx.workspace = true
+rayon.workspace = true
+vek = "0.15.8" # TODO: remove this.

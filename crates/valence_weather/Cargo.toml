@@ -1,5 +1,7 @@
 [package]
 name = "valence_weather"
+description = "Weather support for Valence"
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true
