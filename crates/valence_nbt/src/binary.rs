@@ -38,8 +38,8 @@
 //! assert_eq!(root_name, "");
 //! ```
 
-mod decode;
 mod encode;
+mod decode;
 mod error;
 mod modified_utf8;
 #[cfg(test)]

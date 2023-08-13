@@ -1,302 +1,294 @@
-use std::mem;
+use std::io::Write;
+use std::slice;
 
-use byteorder::{BigEndian, ReadBytesExt};
-use cesu8::Cesu8DecodingError;
+use byteorder::{BigEndian, WriteBytesExt};
 
-use super::{Error, Result};
+use super::{modified_utf8, Error, Result};
 use crate::tag::Tag;
 use crate::{Compound, List, Value};
 
 impl Compound {
-    /// Decodes uncompressed NBT binary data from the provided slice.
+    /// Encodes uncompressed NBT binary data to the provided writer.
     ///
-    /// The string returned in the tuple is the name of the root compound
-    /// (typically the empty string).
-    pub fn from_binary(slice: &mut &[u8]) -> Result<(Self, String)> {
-        let mut state = DecodeState { slice, depth: 0 };
+    /// Only compounds are permitted at the top level. This is why the function
+    /// accepts a [`Compound`] reference rather than a [`Value`].
+    ///
+    /// Additionally, the root compound can be given a name. Typically the empty
+    /// string `""` is used.
+    pub fn to_binary<W: Write>(&self, writer: W, root_name: &str) -> Result<()> {
+        let mut state = EncodeState { writer };
 
-        let root_tag = state.read_tag()?;
+        state.write_tag(Tag::Compound)?;
+        state.write_string(root_name)?;
+        state.write_compound(self)?;
 
-        // For cases such as Block Entity Data in the chunk packet.
-        // https://wiki.vg/Protocol#Chunk_Data_and_Update_Light
-        if root_tag == Tag::End {
-            return Ok((Compound::new(), String::new()));
+        Ok(())
+    }
+
+    /// Returns the number of bytes that will be written when
+    /// [`Compound::to_binary`] is called with this compound and root name.
+    ///
+    /// If `to_binary` results in `Ok`, the exact number of bytes
+    /// reported by this function will have been written. If the result is
+    /// `Err`, then the reported count will be greater than or equal to the
+    /// number of bytes that have actually been written.
+    pub fn written_size(&self, root_name: &str) -> usize {
+        fn value_size(val: &Value) -> usize {
+            match val {
+                Value::Byte(_) => 1,
+                Value::Short(_) => 2,
+                Value::Int(_) => 4,
+                Value::Long(_) => 8,
+                Value::Float(_) => 4,
+                Value::Double(_) => 8,
+                Value::ByteArray(ba) => 4 + ba.len(),
+                Value::String(s) => string_size(s),
+                Value::List(l) => list_size(l),
+                Value::Compound(c) => compound_size(c),
+                Value::IntArray(ia) => 4 + ia.len() * 4,
+                Value::LongArray(la) => 4 + la.len() * 8,
+            }
         }
 
-        if root_tag != Tag::Compound {
-            return Err(Error::new_owned(format!(
-                "expected root tag for compound (got {root_tag})",
-            )));
+        fn list_size(l: &List) -> usize {
+            let elems_size = match l {
+                List::End => 0,
+                List::Byte(b) => b.len(),
+                List::Short(s) => s.len() * 2,
+                List::Int(i) => i.len() * 4,
+                List::Long(l) => l.len() * 8,
+                List::Float(f) => f.len() * 4,
+                List::Double(d) => d.len() * 8,
+                List::ByteArray(ba) => ba.iter().map(|b| 4 + b.len()).sum(),
+                List::String(s) => s.iter().map(|s| string_size(s)).sum(),
+                List::List(l) => l.iter().map(list_size).sum(),
+                List::Compound(c) => c.iter().map(compound_size).sum(),
+                List::IntArray(i) => i.iter().map(|i| 4 + i.len() * 4).sum(),
+                List::LongArray(l) => l.iter().map(|l| 4 + l.len() * 8).sum(),
+            };
+
+            1 + 4 + elems_size
         }
 
-        let root_name = state.read_string()?;
-        let root = state.read_compound()?;
+        fn string_size(s: &str) -> usize {
+            2 + modified_utf8::encoded_len(s)
+        }
 
-        debug_assert_eq!(state.depth, 0);
+        fn compound_size(c: &Compound) -> usize {
+            c.iter()
+                .map(|(k, v)| 1 + string_size(k) + value_size(v))
+                .sum::<usize>()
+                + 1
+        }
 
-        Ok((root, root_name))
+        1 + string_size(root_name) + compound_size(self)
     }
 }
 
-/// Maximum recursion depth to prevent overflowing the call stack.
-const MAX_DEPTH: usize = 512;
-
-struct DecodeState<'a, 'b> {
-    slice: &'a mut &'b [u8],
-    /// Current recursion depth.
-    depth: usize,
+struct EncodeState<W> {
+    writer: W,
 }
 
-impl DecodeState<'_, '_> {
-    #[inline]
-    fn check_depth<T>(&mut self, f: impl FnOnce(&mut Self) -> Result<T>) -> Result<T> {
-        if self.depth >= MAX_DEPTH {
-            return Err(Error::new_static("reached maximum recursion depth"));
-        }
-
-        self.depth += 1;
-        let res = f(self);
-        self.depth -= 1;
-        res
+impl<W: Write> EncodeState<W> {
+    fn write_tag(&mut self, tag: Tag) -> Result<()> {
+        Ok(self.writer.write_u8(tag as u8)?)
     }
 
-    fn read_tag(&mut self) -> Result<Tag> {
-        match self.slice.read_u8()? {
-            0 => Ok(Tag::End),
-            1 => Ok(Tag::Byte),
-            2 => Ok(Tag::Short),
-            3 => Ok(Tag::Int),
-            4 => Ok(Tag::Long),
-            5 => Ok(Tag::Float),
-            6 => Ok(Tag::Double),
-            7 => Ok(Tag::ByteArray),
-            8 => Ok(Tag::String),
-            9 => Ok(Tag::List),
-            10 => Ok(Tag::Compound),
-            11 => Ok(Tag::IntArray),
-            12 => Ok(Tag::LongArray),
-            byte => Err(Error::new_owned(format!("invalid tag byte of {byte:#x}"))),
+    fn write_value(&mut self, v: &Value) -> Result<()> {
+        match v {
+            Value::Byte(b) => self.write_byte(*b),
+            Value::Short(s) => self.write_short(*s),
+            Value::Int(i) => self.write_int(*i),
+            Value::Long(l) => self.write_long(*l),
+            Value::Float(f) => self.write_float(*f),
+            Value::Double(d) => self.write_double(*d),
+            Value::ByteArray(ba) => self.write_byte_array(ba),
+            Value::String(s) => self.write_string(s),
+            Value::List(l) => self.write_any_list(l),
+            Value::Compound(c) => self.write_compound(c),
+            Value::IntArray(ia) => self.write_int_array(ia),
+            Value::LongArray(la) => self.write_long_array(la),
         }
     }
 
-    fn read_value(&mut self, tag: Tag) -> Result<Value> {
-        match tag {
-            Tag::End => unreachable!("illegal TAG_End argument"),
-            Tag::Byte => Ok(self.read_byte()?.into()),
-            Tag::Short => Ok(self.read_short()?.into()),
-            Tag::Int => Ok(self.read_int()?.into()),
-            Tag::Long => Ok(self.read_long()?.into()),
-            Tag::Float => Ok(self.read_float()?.into()),
-            Tag::Double => Ok(self.read_double()?.into()),
-            Tag::ByteArray => Ok(self.read_byte_array()?.into()),
-            Tag::String => Ok(self.read_string()?.into()),
-            Tag::List => self.check_depth(|st| Ok(st.read_any_list()?.into())),
-            Tag::Compound => self.check_depth(|st| Ok(st.read_compound()?.into())),
-            Tag::IntArray => Ok(self.read_int_array()?.into()),
-            Tag::LongArray => Ok(self.read_long_array()?.into()),
-        }
+    fn write_byte(&mut self, byte: i8) -> Result<()> {
+        Ok(self.writer.write_i8(byte)?)
     }
 
-    fn read_byte(&mut self) -> Result<i8> {
-        Ok(self.slice.read_i8()?)
+    fn write_short(&mut self, short: i16) -> Result<()> {
+        Ok(self.writer.write_i16::<BigEndian>(short)?)
     }
 
-    fn read_short(&mut self) -> Result<i16> {
-        Ok(self.slice.read_i16::<BigEndian>()?)
+    fn write_int(&mut self, int: i32) -> Result<()> {
+        Ok(self.writer.write_i32::<BigEndian>(int)?)
     }
 
-    fn read_int(&mut self) -> Result<i32> {
-        Ok(self.slice.read_i32::<BigEndian>()?)
+    fn write_long(&mut self, long: i64) -> Result<()> {
+        Ok(self.writer.write_i64::<BigEndian>(long)?)
     }
 
-    fn read_long(&mut self) -> Result<i64> {
-        Ok(self.slice.read_i64::<BigEndian>()?)
+    fn write_float(&mut self, float: f32) -> Result<()> {
+        Ok(self.writer.write_f32::<BigEndian>(float)?)
     }
 
-    fn read_float(&mut self) -> Result<f32> {
-        Ok(self.slice.read_f32::<BigEndian>()?)
+    fn write_double(&mut self, double: f64) -> Result<()> {
+        Ok(self.writer.write_f64::<BigEndian>(double)?)
     }
 
-    fn read_double(&mut self) -> Result<f64> {
-        Ok(self.slice.read_f64::<BigEndian>()?)
-    }
-
-    fn read_byte_array(&mut self) -> Result<Vec<i8>> {
-        let len = self.slice.read_i32::<BigEndian>()?;
-
-        if len.is_negative() {
-            return Err(Error::new_owned(format!(
-                "negative byte array length of {len}"
-            )));
-        }
-
-        if len as usize > self.slice.len() {
-            return Err(Error::new_owned(format!(
-                "byte array length of {len} exceeds remainder of input"
-            )));
-        }
-
-        let (left, right) = self.slice.split_at(len as usize);
-
-        let array = left.iter().map(|b| *b as i8).collect();
-        *self.slice = right;
-
-        Ok(array)
-    }
-
-    fn read_string(&mut self) -> Result<String> {
-        let len = self.slice.read_u16::<BigEndian>()?.into();
-
-        if len > self.slice.len() {
-            return Err(Error::new_owned(format!(
-                "string of length {len} exceeds remainder of input"
-            )));
-        }
-
-        let (left, right) = self.slice.split_at(len);
-
-        match cesu8::from_java_cesu8(left) {
-            Ok(cow) => {
-                *self.slice = right;
-                Ok(cow.into())
-            }
-            Err(Cesu8DecodingError) => {
-                Err(Error::new_static("could not convert CESU-8 data to UTF-8"))
+    fn write_byte_array(&mut self, bytes: &[i8]) -> Result<()> {
+        match bytes.len().try_into() {
+            Ok(len) => self.write_int(len)?,
+            Err(_) => {
+                return Err(Error::new_owned(format!(
+                    "byte array of length {} exceeds maximum of i32::MAX",
+                    bytes.len(),
+                )))
             }
         }
+
+        // SAFETY: i8 has the same layout as u8.
+        let bytes = unsafe { slice::from_raw_parts(bytes.as_ptr() as *const u8, bytes.len()) };
+
+        Ok(self.writer.write_all(bytes)?)
     }
 
-    fn read_any_list(&mut self) -> Result<List> {
-        match self.read_tag()? {
-            Tag::End => match self.read_int()? {
-                0 => Ok(List::End),
-                len => Err(Error::new_owned(format!(
-                    "TAG_End list with nonzero length of {len}"
-                ))),
-            },
-            Tag::Byte => Ok(self.read_list(Tag::Byte, 1, |st| st.read_byte())?.into()),
-            Tag::Short => Ok(self.read_list(Tag::Short, 2, |st| st.read_short())?.into()),
-            Tag::Int => Ok(self.read_list(Tag::Int, 4, |st| st.read_int())?.into()),
-            Tag::Long => Ok(self.read_list(Tag::Long, 8, |st| st.read_long())?.into()),
-            Tag::Float => Ok(self.read_list(Tag::Float, 4, |st| st.read_float())?.into()),
-            Tag::Double => Ok(self
-                .read_list(Tag::Double, 8, |st| st.read_double())?
-                .into()),
-            Tag::ByteArray => Ok(self
-                .read_list(Tag::ByteArray, 4, |st| st.read_byte_array())?
-                .into()),
-            Tag::String => Ok(self
-                .read_list(Tag::String, 2, |st| st.read_string())?
-                .into()),
-            Tag::List => self
-                .check_depth(|st| Ok(st.read_list(Tag::List, 5, |st| st.read_any_list())?.into())),
-            Tag::Compound => self.check_depth(|st| {
-                Ok(st
-                    .read_list(Tag::Compound, 1, |st| st.read_compound())?
-                    .into())
-            }),
-            Tag::IntArray => Ok(self
-                .read_list(Tag::IntArray, 4, |st| st.read_int_array())?
-                .into()),
-            Tag::LongArray => Ok(self
-                .read_list(Tag::LongArray, 4, |st| st.read_long_array())?
-                .into()),
+    fn write_string(&mut self, s: &str) -> Result<()> {
+        let len = modified_utf8::encoded_len(s);
+
+        match len.try_into() {
+            Ok(n) => self.writer.write_u16::<BigEndian>(n)?,
+            Err(_) => {
+                return Err(Error::new_owned(format!(
+                    "string of length {len} exceeds maximum of u16::MAX"
+                )))
+            }
+        }
+
+        // Conversion to modified UTF-8 always increases the size of the string.
+        // If the new len is equal to the original len, we know it doesn't need
+        // to be re-encoded.
+        if len == s.len() {
+            self.writer.write_all(s.as_bytes())?;
+        } else {
+            modified_utf8::write_modified_utf8(&mut self.writer, s)?;
+        }
+
+        Ok(())
+    }
+
+    fn write_any_list(&mut self, list: &List) -> Result<()> {
+        match list {
+            List::End => {
+                self.write_tag(Tag::End)?;
+                // Length
+                self.writer.write_i32::<BigEndian>(0)?;
+                Ok(())
+            }
+            List::Byte(bl) => {
+                self.write_tag(Tag::Byte)?;
+
+                match bl.len().try_into() {
+                    Ok(len) => self.write_int(len)?,
+                    Err(_) => {
+                        return Err(Error::new_owned(format!(
+                            "byte list of length {} exceeds maximum of i32::MAX",
+                            bl.len(),
+                        )))
+                    }
+                }
+
+                // SAFETY: i8 has the same layout as u8.
+                let bytes = unsafe { slice::from_raw_parts(bl.as_ptr() as *const u8, bl.len()) };
+
+                Ok(self.writer.write_all(bytes)?)
+            }
+            List::Short(sl) => self.write_list(sl, Tag::Short, |st, s| st.write_short(*s)),
+            List::Int(il) => self.write_list(il, Tag::Int, |st, i| st.write_int(*i)),
+            List::Long(ll) => self.write_list(ll, Tag::Long, |st, l| st.write_long(*l)),
+            List::Float(fl) => self.write_list(fl, Tag::Float, |st, f| st.write_float(*f)),
+            List::Double(dl) => self.write_list(dl, Tag::Double, |st, d| st.write_double(*d)),
+            List::ByteArray(bal) => {
+                self.write_list(bal, Tag::ByteArray, |st, ba| st.write_byte_array(ba))
+            }
+            List::String(sl) => self.write_list(sl, Tag::String, |st, s| st.write_string(s)),
+            List::List(ll) => self.write_list(ll, Tag::List, |st, l| st.write_any_list(l)),
+            List::Compound(cl) => self.write_list(cl, Tag::Compound, |st, c| st.write_compound(c)),
+            List::IntArray(ial) => {
+                self.write_list(ial, Tag::IntArray, |st, ia| st.write_int_array(ia))
+            }
+            List::LongArray(lal) => {
+                self.write_list(lal, Tag::LongArray, |st, la| st.write_long_array(la))
+            }
         }
     }
 
-    /// Assumes the element tag has already been read.
-    ///
-    /// `min_elem_size` is the minimum size of the list element when encoded.
-    #[inline]
-    fn read_list<T, F>(
-        &mut self,
-        elem_type: Tag,
-        min_elem_size: usize,
-        mut read_elem: F,
-    ) -> Result<Vec<T>>
+    fn write_list<T, F>(&mut self, list: &[T], elem_type: Tag, mut write_elem: F) -> Result<()>
     where
-        F: FnMut(&mut Self) -> Result<T>,
+        F: FnMut(&mut Self, &T) -> Result<()>,
     {
-        let len = self.read_int()?;
+        self.write_tag(elem_type)?;
 
-        if len.is_negative() {
-            return Err(Error::new_owned(format!(
-                "negative {elem_type} list length of {len}",
-            )));
-        }
-
-        // Ensure we don't reserve more than the maximum amount of memory required given
-        // the size of the remaining input.
-        if len as u64 * min_elem_size as u64 > self.slice.len() as u64 {
-            return Err(Error::new_owned(format!(
-                "{elem_type} list of length {len} exceeds remainder of input"
-            )));
-        }
-
-        let mut list = Vec::with_capacity(len as usize);
-        for _ in 0..len {
-            list.push(read_elem(self)?);
-        }
-
-        Ok(list)
-    }
-
-    fn read_compound(&mut self) -> Result<Compound> {
-        let mut compound = Compound::new();
-
-        loop {
-            let tag = self.read_tag()?;
-            if tag == Tag::End {
-                return Ok(compound);
+        match list.len().try_into() {
+            Ok(len) => self.writer.write_i32::<BigEndian>(len)?,
+            Err(_) => {
+                return Err(Error::new_owned(format!(
+                    "{elem_type} list of length {} exceeds maximum of i32::MAX",
+                    list.len(),
+                )))
             }
-
-            compound.insert(self.read_string()?, self.read_value(tag)?);
         }
+
+        for elem in list {
+            write_elem(self, elem)?;
+        }
+
+        Ok(())
     }
 
-    fn read_int_array(&mut self) -> Result<Vec<i32>> {
-        let len = self.read_int()?;
-
-        if len.is_negative() {
-            return Err(Error::new_owned(format!(
-                "negative int array length of {len}",
-            )));
+    fn write_compound(&mut self, c: &Compound) -> Result<()> {
+        for (k, v) in c.iter() {
+            self.write_tag(v.tag())?;
+            self.write_string(k)?;
+            self.write_value(v)?;
         }
+        self.write_tag(Tag::End)?;
 
-        if len as u64 * mem::size_of::<i32>() as u64 > self.slice.len() as u64 {
-            return Err(Error::new_owned(format!(
-                "int array of length {len} exceeds remainder of input"
-            )));
-        }
-
-        let mut array = Vec::with_capacity(len as usize);
-        for _ in 0..len {
-            array.push(self.read_int()?);
-        }
-
-        Ok(array)
+        Ok(())
     }
 
-    fn read_long_array(&mut self) -> Result<Vec<i64>> {
-        let len = self.read_int()?;
-
-        if len.is_negative() {
-            return Err(Error::new_owned(format!(
-                "negative long array length of {len}",
-            )));
+    fn write_int_array(&mut self, ia: &[i32]) -> Result<()> {
+        match ia.len().try_into() {
+            Ok(len) => self.write_int(len)?,
+            Err(_) => {
+                return Err(Error::new_owned(format!(
+                    "int array of length {} exceeds maximum of i32::MAX",
+                    ia.len(),
+                )))
+            }
         }
 
-        if len as u64 * mem::size_of::<i64>() as u64 > self.slice.len() as u64 {
-            return Err(Error::new_owned(format!(
-                "long array of length {len} exceeds remainder of input"
-            )));
+        for i in ia {
+            self.write_int(*i)?;
         }
 
-        let mut array = Vec::with_capacity(len as usize);
-        for _ in 0..len {
-            array.push(self.read_long()?);
+        Ok(())
+    }
+
+    fn write_long_array(&mut self, la: &[i64]) -> Result<()> {
+        match la.len().try_into() {
+            Ok(len) => self.write_int(len)?,
+            Err(_) => {
+                return Err(Error::new_owned(format!(
+                    "long array of length {} exceeds maximum of i32::MAX",
+                    la.len(),
+                )))
+            }
         }
 
-        Ok(array)
+        for l in la {
+            self.write_long(*l)?;
+        }
+
+        Ok(())
     }
 }
