@@ -5,5 +5,5 @@ use super::*;
 pub struct LoginQueryRequestS2c<'a> {
     pub message_id: VarInt,
     pub channel: Ident<Cow<'a, str>>,
-    pub data: RawBytes<'a>,
+    pub data: Bounded<RawBytes<'a>, 1048576>,
 }

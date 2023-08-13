@@ -110,7 +110,7 @@ pub struct PlayerListActions {
 pub struct PlayerListEntry<'a> {
     pub player_uuid: Uuid,
     pub username: &'a str,
-    pub properties: Cow<'a, [Property]>,
+    pub properties: Cow<'a, [PropertyValue]>,
     pub chat_data: Option<ChatData<'a>>,
     pub listed: bool,
     pub ping: i32,

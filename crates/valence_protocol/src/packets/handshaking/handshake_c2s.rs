@@ -4,7 +4,7 @@ use super::*;
 #[packet(id = packet_id::HANDSHAKE_C2S, state = PacketState::Handshaking)]
 pub struct HandshakeC2s<'a> {
     pub protocol_version: VarInt,
-    pub server_address: &'a str,
+    pub server_address: Bounded<&'a str, 255>,
     pub server_port: u16,
     pub next_state: HandshakeNextState,
 }

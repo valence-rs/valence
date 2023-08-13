@@ -51,3 +51,14 @@ impl ToPacketAction for BossBarStyle {
         BossBarAction::UpdateStyle(self.color, self.division)
     }
 }
+
+impl ToPacketAction for BossBarFlags {
+    fn to_packet_action(&self) -> BossBarAction {
+        BossBarAction::UpdateFlags(*self)
+    }
+}
+
+/// Trait for converting a component to a boss bar action.
+trait ToPacketAction {
+    fn to_packet_action(&self) -> BossBarAction;
+}

@@ -31,6 +31,7 @@ extern crate self as valence_protocol;
 
 mod array;
 mod block_pos;
+mod bounded;
 mod byte_angle;
 mod chunk_pos;
 pub mod decode;
@@ -43,8 +44,7 @@ mod hand;
 mod impls;
 pub mod item;
 pub mod packets;
-mod player_textures;
-mod property;
+pub mod profile;
 mod raw;
 pub mod sound;
 pub mod var_int;
@@ -56,6 +56,7 @@ use anyhow::Context;
 pub use array::LengthPrefixedArray;
 pub use block::{BlockKind, BlockState};
 pub use block_pos::BlockPos;
+pub use bounded::Bounded;
 pub use byte_angle::ByteAngle;
 pub use chunk_pos::ChunkPos;
 pub use decode::PacketDecoder;
@@ -68,8 +69,6 @@ pub use hand::Hand;
 pub use ident::ident;
 pub use item::{ItemKind, ItemStack};
 pub use packets::play::particle_s2c::Particle;
-pub use player_textures::PlayerTextures;
-pub use property::Property;
 pub use raw::RawBytes;
 pub use sound::Sound;
 pub use text::Text;
@@ -93,12 +92,20 @@ pub const PROTOCOL_VERSION: i32 = 763;
 /// targets.
 pub const MINECRAFT_VERSION: &str = "1.20.1";
 
-/// Type alias for the compression threshold.
-///
-/// For a compression threshold of `Some(N)`, packets with encoded lengths >=
-/// `N` are compressed while all others are not. `None` disables compression
-/// completely.
-pub type CompressionThreshold = Option<u32>;
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub enum CompressionThreshold {
+    /// Packet compression is enabled. Packets with encoded lengths >=
+    /// this value are compressed.
+    Enabled(u32),
+    /// Packet compression is disabled. No packets are compressed.
+    Disabled,
+}
+
+impl Default for CompressionThreshold {
+    fn default() -> Self {
+        Self::Enabled(256)
+    }
+}
 
 /// The `Encode` trait allows objects to be written to the Minecraft protocol.
 /// It is the inverse of [`Decode`].

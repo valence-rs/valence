@@ -8,13 +8,14 @@ use std::io::Write;
 
 use anyhow::bail;
 use uuid::Uuid;
+use valence_generated::block::{BlockEntityKind, BlockKind, BlockState};
 use valence_generated::packet_id;
 
-use crate::property::Property;
+use crate::profile::PropertyValue;
 use crate::raw::RawBytes;
 use crate::text::Text;
 use crate::var_int::VarInt;
-use crate::{Decode, Encode, Ident, Packet, PacketState};
+use crate::{Bounded, Decode, Encode, Ident, Packet, PacketState};
 
 pub mod handshaking;
 pub mod login;

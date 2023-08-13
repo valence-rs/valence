@@ -32,7 +32,7 @@ use valence_protocol::packets::play::{
 use valence_protocol::sound::{Sound, SoundCategory, SoundId};
 use valence_protocol::text::{IntoText, Text};
 use valence_protocol::var_int::VarInt;
-use valence_protocol::{BlockPos, ChunkPos, Encode, GameMode, Packet, Property};
+use valence_protocol::{BlockPos, ChunkPos, Encode, GameMode, Packet, PropertyValue};
 use valence_registry::RegistrySet;
 use valence_server_common::{Despawned, UniqueId};
 
@@ -188,7 +188,7 @@ pub struct ClientBundleArgs {
     pub username: String,
     pub uuid: Uuid,
     pub ip: IpAddr,
-    pub properties: Vec<Property>,
+    pub properties: Vec<PropertyValue>,
     pub conn: Box<dyn ClientConnection>,
     /// The packet encoder to use. This should be in sync with [`Self::conn`].
     pub enc: PacketEncoder,
@@ -426,28 +426,28 @@ impl fmt::Display for Username {
 }
 
 #[derive(Component, Clone, PartialEq, Eq, Default, Debug)]
-pub struct Properties(pub Vec<Property>);
+pub struct Properties(pub Vec<PropertyValue>);
 
 impl Properties {
     /// Finds the property with the name "textures".
-    pub fn textures(&self) -> Option<&Property> {
+    pub fn textures(&self) -> Option<&PropertyValue> {
         self.0.iter().find(|prop| prop.name == "textures")
     }
 
     /// Finds the property with the name "textures".
-    pub fn textures_mut(&mut self) -> Option<&mut Property> {
+    pub fn textures_mut(&mut self) -> Option<&mut PropertyValue> {
         self.0.iter_mut().find(|prop| prop.name == "textures")
     }
 }
 
-impl From<Vec<Property>> for Properties {
-    fn from(value: Vec<Property>) -> Self {
+impl From<Vec<PropertyValue>> for Properties {
+    fn from(value: Vec<PropertyValue>) -> Self {
         Self(value)
     }
 }
 
 impl Deref for Properties {
-    type Target = [Property];
+    type Target = [PropertyValue];
 
     fn deref(&self) -> &Self::Target {
         &self.0

@@ -29,7 +29,7 @@ use valence_server::protocol::packets::login::{
 use valence_server::protocol::packets::status::{
     QueryPingC2s, QueryPongS2c, QueryRequestC2s, QueryResponseS2c,
 };
-use valence_server::protocol::{PacketDecoder, PacketEncoder, Property, RawBytes, VarInt};
+use valence_server::protocol::{PacketDecoder, PacketEncoder, PropertyValue, RawBytes, VarInt};
 use valence_server::text::{Color, IntoText};
 use valence_server::{ident, Text, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
@@ -395,7 +395,7 @@ async fn login_online(
     struct GameProfile {
         id: Uuid,
         name: String,
-        properties: Vec<Property>,
+        properties: Vec<PropertyValue>,
     }
 
     let profile: GameProfile = resp.json().await.context("parsing game profile")?;
@@ -453,7 +453,7 @@ fn login_bungeecord(
     // Read properties and get textures
     // Properties of player's game profile, only given if ip_forward and online_mode
     // on bungee both are true
-    let properties: Vec<Property> = match data.get(3) {
+    let properties: Vec<PropertyValue> = match data.get(3) {
         Some(properties) => serde_json::from_str(properties)
             .context("failed to parse BungeeCord player properties")?,
         None => vec![],
@@ -526,7 +526,7 @@ async fn login_velocity(
     );
 
     // Read game profile properties
-    let properties = Vec::<Property>::decode(&mut data_without_signature)
+    let properties = Vec::<PropertyValue>::decode(&mut data_without_signature)
         .context("decoding velocity game profile properties")?;
 
     if version >= VELOCITY_MODERN_FORWARDING_WITH_KEY_V2 {

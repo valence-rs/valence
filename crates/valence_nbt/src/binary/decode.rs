@@ -38,6 +38,10 @@ impl Compound {
     }
 }
 
+pub fn truncate_input(input: &[u8], budget: usize) -> &[u8] {
+    todo!()
+}
+
 /// Maximum recursion depth to prevent overflowing the call stack.
 const MAX_DEPTH: usize = 512;
 

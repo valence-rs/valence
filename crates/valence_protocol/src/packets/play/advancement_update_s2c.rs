@@ -1,3 +1,5 @@
+// TODO: simplify this and bound packet fields where appropriate.
+
 use super::*;
 
 pub type AdvancementUpdateS2c<'a> =

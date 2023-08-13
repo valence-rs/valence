@@ -6,5 +6,5 @@ pub struct BlockEventS2c {
     pub position: BlockPos,
     pub action_id: u8,
     pub action_parameter: u8,
-    pub block_type: VarInt,
+    pub block_type: BlockKind,
 }

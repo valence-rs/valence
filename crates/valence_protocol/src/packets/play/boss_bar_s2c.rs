@@ -59,14 +59,3 @@ pub struct BossBarFlags {
     #[bits(5)]
     _pad: u8,
 }
-
-impl ToPacketAction for BossBarFlags {
-    fn to_packet_action(&self) -> BossBarAction {
-        BossBarAction::UpdateFlags(*self)
-    }
-}
-
-/// Trait for converting a component to a boss bar action.
-pub trait ToPacketAction {
-    fn to_packet_action(&self) -> BossBarAction;
-}

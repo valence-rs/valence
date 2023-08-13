@@ -4,5 +4,5 @@ use super::*;
 #[packet(id = packet_id::LOGIN_QUERY_RESPONSE_C2S, state = PacketState::Login)]
 pub struct LoginQueryResponseC2s<'a> {
     pub message_id: VarInt,
-    pub data: Option<RawBytes<'a>>,
+    pub data: Option<Bounded<RawBytes<'a>, 1048576>>,
 }
