@@ -2,11 +2,11 @@
 
 use valence::prelude::*;
 use valence::protocol::packets::play::command_tree_s2c::Parser;
-use valence_command::arg_parser::CommandArgParseError;
 use valence_command::command_graph::CommandGraphBuilder;
 use valence_command::command_scopes::CommandScopes;
 use valence_command::handler::{CommandExecutionEvent, CommandHandler};
 use valence_command::{arg_parser, Command, CommandArgSet, CommandScopeRegistry};
+use valence_command_derive::Command;
 
 const SPAWN_Y: i32 = 64;
 
@@ -16,6 +16,27 @@ pub enum TeleportResult {
     TargetToTarget((String, String)),
     TargetToLocation((String, arg_parser::Vec3)),
 }
+
+#[derive(Command)]
+#[paths = ["selectfruit", "select fruit", "sf"]]
+#[scopes = ["valence:command:teleport"]]
+enum SelectFruit {
+    #[paths = "apple"] // this path is from the perant: selectfruit so `/selectfruit apple` will be here
+    Apple,
+    #[paths = "banana"]
+    Banana,
+    #[paths = "Strawberry {0?}"] // this could be `/selectfruit banana green` or /selectfruit banana
+    // the macro should be able to detect the fact it is optional and register two executables;
+    // one has no args and the other has the optional arg
+    Strawberry(Option<Strawberry>),
+}
+
+#[derive(Suggestions)] // I'd want this to assume snake case unless manully set
+enum Strawberry {
+    Red,
+    Green
+}
+
 
 #[derive(Resource, Clone)]
 struct TeleportCommand;
@@ -28,6 +49,7 @@ impl Command for TeleportCommand {
     }
 
     fn assemble_graph(&self, command_graph: &mut CommandGraphBuilder<Self::CommandExecutables>) {
+
         let teleport = command_graph
             .root()
             .literal("teleport")

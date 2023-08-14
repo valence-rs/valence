@@ -41,6 +41,8 @@ pub use valence_anvil as anvil;
 pub use valence_boss_bar as boss_bar;
 #[cfg(feature = "command")]
 pub use valence_command as command;
+#[cfg(feature = "command")]
+pub use valence_command_derive as command_derive;
 #[cfg(feature = "inventory")]
 pub use valence_inventory as inventory;
 pub use valence_lang as lang;
@@ -91,7 +93,7 @@ pub use valence_world_border as world_border;
 /// ```
 pub mod prelude {
     pub use bevy_app::prelude::*;
-    pub use bevy_ecs; // Needed for bevy_ecs macros to function correctly.
+    pub use bevy_ecs; // Needed for bevy_ecs valence_command_derive to function correctly.
     pub use bevy_ecs::prelude::*;
     pub use uuid::Uuid;
     #[cfg(feature = "advancement")]

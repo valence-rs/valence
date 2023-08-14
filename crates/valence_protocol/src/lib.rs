@@ -17,7 +17,7 @@
     clippy::dbg_macro
 )]
 
-/// Used only by macros. Not public API.
+/// Used only by valence_command_derive. Not public API.
 #[doc(hidden)]
 pub mod __private {
     pub use anyhow::{anyhow, bail, ensure, Context, Result};
@@ -26,7 +26,7 @@ pub mod __private {
     pub use crate::{Decode, Encode, Packet};
 }
 
-// This allows us to use our own proc macros internally.
+// This allows us to use our own proc valence_command_derive internally.
 extern crate self as valence_protocol;
 
 mod array;

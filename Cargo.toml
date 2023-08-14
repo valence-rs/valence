@@ -34,7 +34,7 @@ network = ["dep:valence_network"]
 player_list = ["dep:valence_player_list"]
 scoreboard = ["dep:valence_scoreboard"]
 world_border = ["dep:valence_world_border"]
-command = ["dep:valence_command"]
+command = ["dep:valence_command", "dep:valence_command_derive"]
 weather = ["dep:valence_weather"]
 testing = []
 
@@ -50,6 +50,8 @@ valence_advancement = { workspace = true, optional = true }
 valence_anvil = { workspace = true, optional = true }
 valence_boss_bar = { workspace = true, optional = true }
 valence_command = { workspace = true, optional = true }
+valence_command_derive = { workspace = true, optional = true }
+valence_ident_macros.workspace = true
 valence_ident.workspace = true
 valence_inventory = { workspace = true, optional = true }
 valence_lang.workspace = true
@@ -173,6 +175,7 @@ valence_anvil.path = "crates/valence_anvil"
 valence_boss_bar.path = "crates/valence_boss_bar"
 valence_build_utils.path = "crates/valence_build_utils"
 valence_command.path = "crates/valence_command"
+valence_command_derive.path = "crates/valence_command_derive"
 valence_entity.path = "crates/valence_entity"
 valence_generated.path = "crates/valence_generated"
 valence_ident.path = "crates/valence_ident"
