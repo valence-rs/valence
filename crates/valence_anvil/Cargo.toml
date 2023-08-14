@@ -1,15 +1,15 @@
 [package]
 name = "valence_anvil"
-description = "Anvil world format support for Valence"
-documentation.workspace = true
+description = "Anvil file format support for Valence"
 readme = "README.md"
-license.workspace = true
 keywords = ["anvil", "minecraft", "deserialization"]
 version.workspace = true
 edition.workspace = true
+repository.workspace = true
+documentation.workspace = true
+license.workspace = true
 
 [dependencies]
-anyhow.workspace = true
 bevy_app.workspace = true
 bevy_ecs.workspace = true
 byteorder.workspace = true
@@ -19,10 +19,4 @@ lru.workspace = true
 num-integer.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
-valence_biome.workspace = true
-valence_block.workspace = true
-valence_client.workspace = true
-valence_core.workspace = true
-valence_entity.workspace = true
-valence_layer.workspace = true
-valence_nbt.workspace = true
+valence_server.workspace = true

@@ -1,7 +1,7 @@
 #![allow(clippy::type_complexity)]
 
+use valence::interact_block::InteractBlockEvent;
 use valence::prelude::*;
-use valence_client::interact_block::InteractBlockEvent;
 
 const SPAWN_Y: i32 = 64;
 const CHEST_POS: [i32; 3] = [0, SPAWN_Y + 1, 3];

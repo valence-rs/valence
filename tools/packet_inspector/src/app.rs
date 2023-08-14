@@ -73,8 +73,8 @@ impl GuiApp {
             b,
             0.5,
             vec![
-                Box::new(hex_viewer::HexView::new()),
                 Box::new(text_viewer::TextView::new()),
+                Box::new(hex_viewer::HexView::new()),
             ],
         );
 

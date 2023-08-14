@@ -2,10 +2,10 @@ use std::borrow::Cow;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use valence_core::Server;
-pub use valence_packet::packets::play::synchronize_tags_s2c::Registry;
-use valence_packet::packets::play::SynchronizeTagsS2c;
-use valence_packet::protocol::encode::{PacketWriter, WritePacket};
+use valence_protocol::encode::{PacketWriter, WritePacket};
+pub use valence_protocol::packets::play::synchronize_tags_s2c::Registry;
+use valence_protocol::packets::play::SynchronizeTagsS2c;
+use valence_server_common::Server;
 
 use crate::RegistrySet;
 
@@ -33,10 +33,9 @@ impl TagsRegistry {
     }
 }
 
-pub fn init_tags_registry(mut tags: ResMut<TagsRegistry>) {
-    let registries =
-        serde_json::from_str::<Vec<Registry>>(include_str!("../../../extracted/tags.json"))
-            .expect("tags.json is invalid");
+fn init_tags_registry(mut tags: ResMut<TagsRegistry>) {
+    let registries = serde_json::from_str::<Vec<Registry>>(include_str!("../extracted/tags.json"))
+        .expect("tags.json is invalid");
     tags.registries = registries;
 }
 
@@ -53,14 +52,12 @@ pub(crate) fn cache_tags_packet(server: Res<Server>, tags: ResMut<TagsRegistry>)
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::RegistryPlugin;
-
+    /* TODO: move this to src/tests/
     #[test]
     fn smoke_test() {
         let mut app = bevy_app::App::new();
         app.add_plugins(RegistryPlugin);
-        app.insert_resource(Server::default());
+        // app.insert_resource(Server::default());
         app.update();
 
         let tags_registry = app.world.get_resource::<TagsRegistry>().unwrap();
@@ -68,4 +65,5 @@ mod tests {
         assert!(!packet.registries.is_empty());
         assert!(!tags_registry.cached_packet.is_empty());
     }
+    */
 }

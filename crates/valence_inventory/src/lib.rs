@@ -26,20 +26,18 @@ use std::ops::Range;
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use tracing::{debug, warn};
-use valence_client::event_loop::{EventLoopPreUpdate, PacketEvent};
-use valence_client::{Client, FlushPacketsSet, SpawnClientsSet};
-use valence_core::game_mode::GameMode;
-use valence_core::item::{ItemKind, ItemStack};
-use valence_core::protocol::var_int::VarInt;
-use valence_core::text::{IntoText, Text};
-pub use valence_packet::packets::play::click_slot_c2s::{ClickMode, SlotChange};
-pub use valence_packet::packets::play::open_screen_s2c::WindowType;
-pub use valence_packet::packets::play::player_action_c2s::PlayerAction;
-use valence_packet::packets::play::{
+use valence_server::client::{Client, FlushPacketsSet, SpawnClientsSet};
+use valence_server::event_loop::{EventLoopPreUpdate, PacketEvent};
+pub use valence_server::protocol::packets::play::click_slot_c2s::{ClickMode, SlotChange};
+use valence_server::protocol::packets::play::open_screen_s2c::WindowType;
+pub use valence_server::protocol::packets::play::player_action_c2s::PlayerAction;
+use valence_server::protocol::packets::play::{
     ClickSlotC2s, CloseHandledScreenC2s, CloseScreenS2c, CreativeInventoryActionC2s, InventoryS2c,
     OpenScreenS2c, PlayerActionC2s, ScreenHandlerSlotUpdateS2c, UpdateSelectedSlotC2s,
 };
-use valence_packet::protocol::encode::WritePacket;
+use valence_server::protocol::{VarInt, WritePacket};
+use valence_server::text::IntoText;
+use valence_server::{GameMode, ItemKind, ItemStack, Text};
 
 mod validate;
 
@@ -121,7 +119,7 @@ impl Inventory {
     ///
     /// ```
     /// # use valence_inventory::*;
-    /// # use valence_core::item::{ItemStack, ItemKind};
+    /// # use valence_server::item::{ItemStack, ItemKind};
     /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
     /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
     /// assert_eq!(inv.slot(0).unwrap().item, ItemKind::Diamond);
@@ -139,7 +137,7 @@ impl Inventory {
     ///
     /// ```
     /// # use valence_inventory::*;
-    /// # use valence_core::item::{ItemStack, ItemKind};
+    /// # use valence_server::item::{ItemStack, ItemKind};
     /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
     /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
     /// let old = inv.replace_slot(0, ItemStack::new(ItemKind::IronIngot, 1, None));
@@ -169,7 +167,7 @@ impl Inventory {
     ///
     /// ```
     /// # use valence_inventory::*;
-    /// # use valence_core::item::{ItemStack, ItemKind};
+    /// # use valence_server::item::{ItemStack, ItemKind};
     /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
     /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
     /// assert_eq!(inv.slot(1), None);
@@ -204,7 +202,7 @@ impl Inventory {
     ///
     /// ```
     /// # use valence_inventory::*;
-    /// # use valence_core::item::{ItemStack, ItemKind};
+    /// # use valence_server::item::{ItemStack, ItemKind};
     /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
     /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
     /// inv.set_slot_amount(0, 64);
@@ -245,8 +243,8 @@ impl Inventory {
     ///
     /// ```
     /// # use valence_inventory::*;
-    /// # use valence_core::item::{ItemStack, ItemKind};
-    /// # use valence_core::text::Text;
+    /// # use valence_server::item::{ItemStack, ItemKind};
+    /// # use valence_server::text::Text;
     /// let inv = Inventory::with_title(InventoryKind::Generic9x3, "Box of Holding");
     /// assert_eq!(inv.title(), &Text::from("Box of Holding"));
     /// ```
@@ -285,7 +283,7 @@ impl Inventory {
     ///
     /// ```
     /// # use valence_inventory::*;
-    /// # use valence_core::item::*;
+    /// # use valence_server::item::*;
     /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
     /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
     /// inv.set_slot(2, ItemStack::new(ItemKind::GoldIngot, 1, None));
@@ -309,7 +307,7 @@ impl Inventory {
     /// empty slots.
     /// ```
     /// # use valence_inventory::*;
-    /// # use valence_core::item::*;
+    /// # use valence_server::item::*;
     /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
     /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
     /// inv.set_slot(2, ItemStack::new(ItemKind::GoldIngot, 1, None));
@@ -325,7 +323,7 @@ impl Inventory {
     /// where `count() < stack_max`, or `None` if there are no empty slots.
     /// ```
     /// # use valence_inventory::*;
-    /// # use valence_core::item::*;
+    /// # use valence_server::item::*;
     /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
     /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
     /// inv.set_slot(2, ItemStack::new(ItemKind::GoldIngot, 64, None));
@@ -361,7 +359,7 @@ impl Inventory {
     /// where `count() < stack_max`, or `None` if there are no empty slots.
     /// ```
     /// # use valence_inventory::*;
-    /// # use valence_core::item::*;
+    /// # use valence_server::item::*;
     /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
     /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
     /// inv.set_slot(2, ItemStack::new(ItemKind::GoldIngot, 64, None));
@@ -447,7 +445,7 @@ impl OpenInventory {
 ///
 /// ```
 /// # use valence_inventory::*;
-/// # use valence_core::item::*;
+/// # use valence_server::item::*;
 /// let mut player_inventory = Inventory::new(InventoryKind::Player);
 /// player_inventory.set_slot(36, ItemStack::new(ItemKind::Diamond, 1, None));
 ///
@@ -503,7 +501,7 @@ impl<'a> InventoryWindow<'a> {
 ///
 /// ```
 /// # use valence_inventory::*;
-/// # use valence_core::item::*;
+/// # use valence_server::item::*;
 /// let mut player_inventory = Inventory::new(InventoryKind::Player);
 /// let mut target_inventory = Inventory::new(InventoryKind::Generic9x3);
 /// let mut window = InventoryWindowMut::new(&mut player_inventory, Some(&mut target_inventory));
@@ -1237,11 +1235,11 @@ fn handle_update_selected_slot(
                     // The client is trying to interact with a slot that does not exist, ignore.
                     continue;
                 }
-                held.held_item_slot = convert_hotbar_slot_id(pkt.slot as u16);
+                held.held_item_slot = convert_hotbar_slot_id(pkt.slot);
 
                 events.send(UpdateSelectedSlotEvent {
                     client: packet.client,
-                    slot: pkt.slot,
+                    slot: pkt.slot as u8,
                 });
             }
         }

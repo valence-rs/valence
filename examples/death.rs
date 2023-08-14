@@ -1,8 +1,7 @@
 #![allow(clippy::type_complexity)]
 
 use valence::prelude::*;
-use valence_client::message::SendMessage;
-use valence_client::status::RequestRespawnEvent;
+use valence::status::RequestRespawnEvent;
 
 const SPAWN_Y: i32 = 64;
 

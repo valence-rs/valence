@@ -1,9 +1,0 @@
-[package]
-name = "valence_spatial_index"
-version.workspace = true
-edition.workspace = true
-
-[dependencies]
-approx.workspace = true
-rayon.workspace = true
-vek = "0.15.8" # TODO: remove this.

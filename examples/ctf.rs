@@ -3,21 +3,20 @@
 use std::collections::HashMap;
 
 use bevy_ecs::query::WorldQuery;
-use glam::Vec3Swizzles;
-use tracing::debug;
-use valence::entity::EntityStatuses;
+use valence::entity::cow::CowEntityBundle;
+use valence::entity::entity::Flags;
+use valence::entity::living::Health;
+use valence::entity::pig::PigEntityBundle;
+use valence::entity::player::PlayerEntityBundle;
+use valence::entity::{EntityAnimations, EntityStatuses, OnGround, Velocity};
+use valence::interact_block::InteractBlockEvent;
 use valence::inventory::HeldItem;
+use valence::log::debug;
+use valence::math::Vec3Swizzles;
 use valence::nbt::{compound, List};
 use valence::prelude::*;
-use valence_client::interact_block::InteractBlockEvent;
-use valence_client::message::SendMessage;
-use valence_client::status::RequestRespawnEvent;
-use valence_entity::cow::CowEntityBundle;
-use valence_entity::entity::Flags;
-use valence_entity::living::Health;
-use valence_entity::pig::PigEntityBundle;
-use valence_entity::player::PlayerEntityBundle;
-use valence_entity::{EntityAnimations, OnGround, Velocity};
+use valence::scoreboard::*;
+use valence::status::RequestRespawnEvent;
 
 const ARENA_Y: i32 = 64;
 const ARENA_MID_WIDTH: i32 = 2;
@@ -54,6 +53,7 @@ pub fn main() {
                 update_clones,
                 teleport_oob_clients,
                 necromancy,
+                update_scoreboard,
             ),
         )
         .run();
@@ -107,6 +107,15 @@ fn setup(
 
     commands.spawn(layer);
 
+    let ctf_objective_layer = commands.spawn(EntityLayer::new(&server)).id();
+    let ctf_objective = ObjectiveBundle {
+        name: Objective::new("ctf-captures"),
+        display: ObjectiveDisplay("Captures".into_text()),
+        layer: EntityLayerId(ctf_objective_layer),
+        ..Default::default()
+    };
+    commands.spawn(ctf_objective);
+
     let red_capture_trigger = TriggerArea::new(
         red_flag - BlockPos::new(5, 3, 5),
         red_flag + BlockPos::new(5, 3, 5),
@@ -116,6 +125,8 @@ fn setup(
         blue_flag + BlockPos::new(5, 3, 5),
     );
     let mappos = CtfGlobals {
+        scoreboard_layer: ctf_objective_layer,
+
         red_flag,
         blue_flag,
 
@@ -367,6 +378,7 @@ fn init_clients(
         Added<Client>,
     >,
     main_layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
+    globals: Res<CtfGlobals>,
 ) {
     for (
         mut client,
@@ -383,6 +395,7 @@ fn init_clients(
         layer_id.0 = layer;
         visible_chunk_layer.0 = layer;
         visible_entity_layers.0.insert(layer);
+        visible_entity_layers.0.insert(globals.scoreboard_layer);
         pos.set(SPAWN_POS);
         *game_mode = GameMode::Adventure;
         health.0 = PLAYER_MAX_HEALTH;
@@ -719,6 +732,8 @@ struct FlagManager {
 
 #[derive(Debug, Resource)]
 struct CtfGlobals {
+    pub scoreboard_layer: Entity,
+
     pub red_flag: BlockPos,
     pub blue_flag: BlockPos,
 
@@ -1025,4 +1040,16 @@ fn necromancy(
             visible_chunk_layer.0 = main_layer;
         }
     }
+}
+
+fn update_scoreboard(
+    mut objectives: Query<&mut ObjectiveScores, With<Objective>>,
+    score: Res<Score>,
+) {
+    if !score.is_changed() {
+        return;
+    }
+    let mut s = objectives.single_mut();
+    s.insert("Red", *score.scores.get(&Team::Red).unwrap_or(&0) as i32);
+    s.insert("Blue", *score.scores.get(&Team::Blue).unwrap_or(&0) as i32);
 }

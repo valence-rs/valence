@@ -1,13 +1,13 @@
 [package]
 name = "valence_nbt"
-description = "A library for Minecraft's Named Binary Tag (NBT) format."
-documentation = "https://docs.rs/valence_nbt/"
-repository = "https://github.com/valence-rs/valence/tree/main/crates/valence_nbt"
+description = "Minecraft's Named Binary Tag (NBT) format."
 readme = "README.md"
+documentation = "https://docs.rs/valence_nbt/"
 license.workspace = true
 keywords = ["nbt", "minecraft", "serialization"]
-version = "0.7.0"
+version = "0.6.1"
 edition.workspace = true
+repository.workspace = true
 
 [features]
 binary = ["dep:byteorder", "dep:cesu8"]
@@ -23,6 +23,7 @@ indexmap = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"], optional = true }
 thiserror = { workspace = true, optional = true }
 uuid = { workspace = true, optional = true }
+valence_ident = { workspace = true, optional = true }
 
 [dev-dependencies]
 pretty_assertions.workspace = true

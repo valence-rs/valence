@@ -1,8 +1,7 @@
-use valence_layer::chunk::UnloadedChunk;
-use valence_layer::ChunkLayer;
-use valence_packet::packets::play::{PlayerListS2c, PlayerSpawnS2c};
-
+use crate::layer::chunk::UnloadedChunk;
+use crate::protocol::packets::play::{PlayerListS2c, PlayerSpawnS2c};
 use crate::testing::{create_mock_client, ScenarioSingleClient};
+use crate::ChunkLayer;
 
 #[test]
 fn player_list_arrives_before_player_spawn() {

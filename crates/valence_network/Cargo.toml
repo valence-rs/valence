@@ -1,12 +1,14 @@
 [package]
 name = "valence_network"
+description = "Login and socket code for Valence"
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
+repository.workspace = true
+documentation.workspace = true
+license.workspace = true
 
-[features]
-default = ["encryption", "compression"] # TODO: remove this.
-encryption = ["valence_packet/encryption"]
-compression = ["valence_packet/compression"]
+# TODO: make encryption and compression optional features.
 
 [dependencies]
 anyhow.workspace = true
@@ -29,10 +31,12 @@ thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 uuid.workspace = true
-valence_client.workspace = true
-valence_core.workspace = true
-valence_entity.workspace = true
-valence_packet.workspace = true
+valence_server.workspace = true
+valence_lang.workspace = true
+valence_protocol = { workspace = true, features = [
+    "encryption",
+    "compression",
+] }
 
 [dependencies.reqwest]
 workspace = true

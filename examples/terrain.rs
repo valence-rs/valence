@@ -10,7 +10,7 @@ use flume::{Receiver, Sender};
 use noise::{NoiseFn, SuperSimplex};
 use tracing::info;
 use valence::prelude::*;
-use valence_client::spawn::IsFlat;
+use valence::spawn::IsFlat;
 
 const SPAWN_POS: DVec3 = DVec3::new(0.0, 200.0, 0.0);
 const HEIGHT: u32 = 384;

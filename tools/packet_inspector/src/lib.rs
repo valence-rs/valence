@@ -7,12 +7,12 @@ use std::sync::{Arc, OnceLock};
 pub use packet_registry::Packet;
 use tokio::net::TcpStream;
 use tokio::sync::RwLock;
-use valence::packet::packets::handshaking::handshake_c2s::HandshakeNextState;
-use valence::packet::packets::handshaking::HandshakeC2s;
-use valence::packet::packets::login::{LoginCompressionS2c, LoginSuccessS2c};
-use valence::packet::protocol::decode::PacketFrame;
-use valence::packet::protocol::Packet as ValencePacket;
-use valence::protocol::Decode;
+use valence::protocol::decode::PacketFrame;
+use valence::protocol::packets::handshaking::handshake_c2s::HandshakeNextState;
+use valence::protocol::packets::handshaking::HandshakeC2s;
+use valence::protocol::packets::login::{LoginCompressionS2c, LoginSuccessS2c};
+use valence::protocol::{Decode, Packet as ValencePacket};
+use valence::CompressionThreshold;
 
 use crate::packet_io::PacketIo;
 use crate::packet_registry::PacketRegistry;
@@ -74,7 +74,7 @@ impl Proxy {
         let (mut server_reader, mut server_writer) = server.split();
 
         let current_state_inner = Arc::new(RwLock::new(PacketState::Handshaking));
-        let threshold_inner: Arc<RwLock<Option<u32>>> = Arc::new(RwLock::new(None));
+        let threshold_inner: Arc<RwLock<CompressionThreshold>> = Arc::new(RwLock::new(None));
 
         let current_state = current_state_inner.clone();
         let threshold = threshold_inner.clone();

@@ -9,6 +9,7 @@ readme = "README.md"
 license.workspace = true
 keywords = ["minecraft", "gamedev", "server", "ecs"]
 categories = ["game-engines"]
+include = ["/src", "/benches", "/examples", "/README.md", "/LICENSE.txt"]
 
 [features]
 default = [
@@ -19,9 +20,11 @@ default = [
     "log",
     "network",
     "player_list",
+    "scoreboard",
     "world_border",
     "schem",
     "weather",
+    "testing",
 ]
 advancement = ["dep:valence_advancement"]
 anvil = ["dep:valence_anvil"]
@@ -30,45 +33,42 @@ inventory = ["dep:valence_inventory"]
 log = ["dep:bevy_log"]
 network = ["dep:valence_network"]
 player_list = ["dep:valence_player_list"]
+scoreboard = ["dep:valence_scoreboard"]
 world_border = ["dep:valence_world_border"]
 schem = ["dep:valence_schem"]
 weather = ["dep:valence_weather"]
+testing = []
 
 [dependencies]
 anyhow.workspace = true
 bevy_app.workspace = true
 bevy_ecs.workspace = true
 bevy_log = { workspace = true, optional = true }
-glam.workspace = true
 uuid.workspace = true
 bytes.workspace = true
 rand.workspace = true
 valence_advancement = { workspace = true, optional = true }
 valence_anvil = { workspace = true, optional = true }
-valence_biome.workspace = true
-valence_block.workspace = true
 valence_boss_bar = { workspace = true, optional = true }
-valence_client.workspace = true
-valence_core.workspace = true
-valence_dimension.workspace = true
-valence_entity.workspace = true
-valence_layer.workspace = true
+valence_server.workspace = true
 valence_inventory = { workspace = true, optional = true }
-valence_nbt.workspace = true
 valence_network = { workspace = true, optional = true }
 valence_player_list = { workspace = true, optional = true }
 valence_registry.workspace = true
+valence_scoreboard = { workspace = true, optional = true }
+valence_weather = { workspace = true, optional = true }
 valence_world_border = { workspace = true, optional = true }
 valence_schem = { workspace = true, optional = true }
-valence_packet.workspace = true
-valence_weather = { workspace = true, optional = true }
+valence_lang.workspace = true
+valence_text.workspace = true
+valence_ident.workspace = true
 
 [dev-dependencies]
 anyhow.workspace = true
 clap.workspace = true
 criterion.workspace = true
 flume.workspace = true
-noise.workspace = true              # For the terrain example.
+noise.workspace = true     # For the terrain example.
 tracing.workspace = true
 
 [dev-dependencies.reqwest]
@@ -92,7 +92,7 @@ exclude = []
 resolver = "2"
 
 [workspace.package]
-version = "0.2.0-dev+mc.1.20.1"
+version = "0.2.0-alpha.1+mc.1.20.1"
 edition = "2021"
 repository = "https://github.com/valence-rs/valence"
 documentation = "https://docs.rs/valence/"
@@ -107,7 +107,9 @@ async-trait = "0.1.60"
 atty = "0.2.14"
 base64 = "0.21.0"
 bevy_app = { version = "0.11", default-features = false }
-bevy_ecs = { version = "0.11", default-features = false }
+bevy_ecs = { version = "0.11", default-features = false, features = [
+    "multi-threaded",
+] }
 bevy_hierarchy = { version = "0.11", default-features = false }
 bevy_log = { version = "0.11" }
 bevy_mod_debugdump = { version = "0.8.0", default-features = false }
@@ -130,8 +132,8 @@ fs_extra = "1.2.0"
 glam = "0.23.0"
 heck = "0.4.0"
 hmac = "0.12.1"
-indexmap = "1.9.3"
 image = "0.24.6"
+indexmap = "1.9.3"
 itertools = "0.10.5"
 lru = "0.10.0"
 noise = "0.8.2"
@@ -167,27 +169,32 @@ tracing = "0.1.37"
 tracing-subscriber = "0.3.16"
 url = { version = "2.2.2", features = ["serde"] }
 uuid = "1.3.1"
-valence_advancement.path = "crates/valence_advancement"
-valence_anvil.path = "crates/valence_anvil"
-valence_schem.path = "crates/valence_schem"
-valence_biome.path = "crates/valence_biome"
-valence_block.path = "crates/valence_block"
-valence_build_utils.path = "crates/valence_build_utils"
-valence_client.path = "crates/valence_client"
-valence_core_macros.path = "crates/valence_core_macros"
-valence_packet_macros.path = "crates/valence_packet_macros"
-valence_core.path = "crates/valence_core"
-valence_dimension.path = "crates/valence_dimension"
-valence_entity.path = "crates/valence_entity"
-valence_layer.path = "crates/valence_layer"
-valence_inventory.path = "crates/valence_inventory"
-valence_nbt = { path = "crates/valence_nbt", features = ["uuid"] }
-valence_network.path = "crates/valence_network"
-valence_player_list.path = "crates/valence_player_list"
-valence_registry.path = "crates/valence_registry"
-valence_world_border.path = "crates/valence_world_border"
-valence_boss_bar.path = "crates/valence_boss_bar"
-valence_packet.path = "crates/valence_packet"
-valence_weather.path = "crates/valence_weather"
-valence.path = "."
+valence = { path = ".", version = "0.2.0-alpha.1" }
+valence_advancement = { path = "crates/valence_advancement", version = "0.2.0-alpha.1" }
+valence_anvil = { path = "crates/valence_anvil", version = "0.2.0-alpha.1" }
+valence_schem = { path = "crates/valence_schem", version = "0.2.0-alpha.1" }
+valence_boss_bar = { path = "crates/valence_boss_bar", version = "0.2.0-alpha.1" }
+valence_build_utils = { path = "crates/valence_build_utils", version = "0.2.0-alpha.1" }
+valence_entity = { path = "crates/valence_entity", version = "0.2.0-alpha.1" }
+valence_generated = { path = "crates/valence_generated", version = "0.2.0-alpha.1" }
+valence_ident = { path = "crates/valence_ident", version = "0.2.0-alpha.1" }
+valence_ident_macros = { path = "crates/valence_ident_macros", version = "0.2.0-alpha.1" }
+valence_inventory = { path = "crates/valence_inventory", version = "0.2.0-alpha.1" }
+valence_lang = { path = "crates/valence_lang", version = "0.2.0-alpha.1" }
+valence_math = { path = "crates/valence_math", version = "0.2.0-alpha.1" }
+valence_nbt = { path = "crates/valence_nbt", features = [
+    "uuid",
+], version = "0.6.1" }
+valence_network = { path = "crates/valence_network", version = "0.2.0-alpha.1" }
+valence_packet_macros = { path = "crates/valence_packet_macros", version = "0.2.0-alpha.1" }
+valence_player_list = { path = "crates/valence_player_list", version = "0.2.0-alpha.1" }
+valence_protocol = { path = "crates/valence_protocol", version = "0.2.0-alpha.1" }
+valence_protocol_macros = { path = "crates/valence_protocol_macros", version = "0.2.0-alpha.1" }
+valence_registry = { path = "crates/valence_registry", version = "0.2.0-alpha.1" }
+valence_scoreboard = { path = "crates/valence_scoreboard", version = "0.2.0-alpha.1" }
+valence_server = { path = "crates/valence_server", version = "0.2.0-alpha.1" }
+valence_server_common = { path = "crates/valence_server_common", version = "0.2.0-alpha.1" }
+valence_text = { path = "crates/valence_text", version = "0.2.0-alpha.1" }
+valence_weather = { path = "crates/valence_weather", version = "0.2.0-alpha.1" }
+valence_world_border = { path = "crates/valence_world_border", version = "0.2.0-alpha.1" }
 zip = "0.6.3"

@@ -2,9 +2,8 @@
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use glam::{DVec3, UVec3, Vec3Swizzles};
-use valence_core::aabb::Aabb;
-use valence_core::direction::Direction;
+use valence_math::{Aabb, DVec3, UVec3, Vec3Swizzles};
+use valence_protocol::Direction;
 
 use crate::*;
 
@@ -73,17 +72,14 @@ impl Plugin for HitboxPlugin {
 #[derive(Component, Debug, PartialEq)]
 pub struct HitboxShape(pub Aabb);
 
-#[derive(Component, Debug)]
-/// Hitbox, aabb of which is calculated each tick using it's position and
+/// Hitbox, aabb of which is calculated each tick using its position and
 /// [`Hitbox`]. In order to change size of this hitbox you need to change
-/// [`Hitbox`]
+/// [`Hitbox`].
+#[derive(Component, Debug)]
 pub struct Hitbox(Aabb);
 
 impl HitboxShape {
-    pub const ZERO: HitboxShape = HitboxShape(Aabb {
-        min: DVec3::ZERO,
-        max: DVec3::ZERO,
-    });
+    pub const ZERO: HitboxShape = HitboxShape(Aabb::ZERO);
 
     pub fn get(&self) -> Aabb {
         self.0
@@ -428,10 +424,7 @@ fn update_item_frame_hitbox(
             _ => BOUNDS23.zxy(),
         };
 
-        hitbox.0 = Aabb {
-            min: center_pos - bounds,
-            max: center_pos + bounds,
-        }
+        hitbox.0 = Aabb::new(center_pos - bounds, center_pos + bounds);
     }
 }
 
@@ -514,10 +507,7 @@ fn update_painting_hitbox(
             _ => DVec3::new(bounds.x as f64, bounds.y as f64, 0.0625),
         };
 
-        hitbox.0 = Aabb {
-            min: center_pos - bounds / 2.0,
-            max: center_pos + bounds / 2.0,
-        };
+        hitbox.0 = Aabb::new(center_pos - bounds / 2.0, center_pos + bounds / 2.0);
     }
 }
 
@@ -553,6 +543,6 @@ fn update_shulker_hitbox(
             Direction::East => min.x -= peek,
         }
 
-        hitbox.0 = Aabb { min, max };
+        hitbox.0 = Aabb::new(min, max);
     }
 }

@@ -1,13 +1,15 @@
 [package]
 name = "valence_inventory"
+description = "Inventory support for Valence"
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
+repository.workspace = true
+documentation.workspace = true
+license.workspace = true
 
 [dependencies]
-anyhow.workspace = true
 bevy_app.workspace = true
 bevy_ecs.workspace = true
 tracing.workspace = true
-valence_client.workspace = true
-valence_core.workspace = true
-valence_packet.workspace = true
+valence_server.workspace = true
