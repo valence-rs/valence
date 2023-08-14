@@ -12,6 +12,7 @@ build = "build/main.rs"
 [dependencies]
 valence_math.workspace = true
 valence_ident.workspace = true
+thiserror.workspace = true
 
 [build-dependencies]
 anyhow.workspace = true

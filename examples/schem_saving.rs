@@ -3,11 +3,10 @@
 use std::path::PathBuf;
 
 use valence::prelude::*;
-use valence_client::interact_block::InteractBlockEvent;
-use valence_client::message::SendMessage;
 use valence_inventory::HeldItem;
-use valence_nbt::compound;
 use valence_schem::Schematic;
+use valence_server::interact_block::InteractBlockEvent;
+use valence_server::nbt::compound;
 
 const FLOOR_Y: i32 = 64;
 const SPAWN_POS: DVec3 = DVec3::new(0.5, FLOOR_Y as f64 + 1.0, 0.5);
@@ -94,7 +93,6 @@ fn second_pos(
         if !matches!(slot, Some(ItemStack {item, ..}) if *item == ItemKind::WoodenAxe) {
             continue;
         }
-        println!("So this is secondary pos");
         let changed = !matches!(pos.map(|pos| pos.0), Some(pos) if pos == *position);
         if changed {
             client.send_chat_message(format!(

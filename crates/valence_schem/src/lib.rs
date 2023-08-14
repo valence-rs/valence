@@ -29,16 +29,14 @@ use flate2::write::GzEncoder;
 use flate2::Compression;
 use glam::{DVec3, IVec3};
 use thiserror::Error;
-use valence_biome::BiomeId;
-use valence_block::{BlockEntityKind, BlockState, ParseBlockStateError};
-use valence_core::block_pos::BlockPos;
-use valence_core::chunk_pos::ChunkPos;
-use valence_core::ident::Ident;
-use valence_core::protocol::var_int::{VarInt, VarIntDecodeError};
-use valence_core::protocol::Encode;
-use valence_layer::chunk::{Block as ValenceBlock, Chunk};
-use valence_layer::ChunkLayer;
 use valence_nbt::{compound, Compound, List, Value};
+use valence_server::block::{BlockEntityKind, ParseBlockStateError};
+use valence_server::ident::Ident;
+use valence_server::layer::chunk::{Block as ValenceBlock, Chunk};
+use valence_server::protocol::var_int::{VarInt, VarIntDecodeError};
+use valence_server::protocol::Encode;
+use valence_server::registry::biome::BiomeId;
+use valence_server::{BlockPos, BlockState, ChunkLayer, ChunkPos};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Schematic {
