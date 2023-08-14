@@ -4,8 +4,8 @@ use std::fmt;
 use std::fmt::Display;
 use std::iter::FusedIterator;
 use std::str::FromStr;
-use thiserror::Error;
 
+use thiserror::Error;
 use valence_ident::{ident, Ident};
 
 use crate::item::ItemKind;

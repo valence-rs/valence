@@ -968,8 +968,7 @@ mod test {
     use std::fs;
 
     use valence::prelude::*;
-    use valence_core::ident;
-    use valence_layer::LayerBundle;
+    use valence_server::{ident, LayerBundle};
 
     use super::*;
 
