@@ -58,16 +58,17 @@ fn first_pos(
             continue;
         };
         let slot = inv.slot(held_item.slot());
-        if matches!(slot, Some(ItemStack {item, ..}) if *item == ItemKind::WoodenAxe) {
-            let changed = !matches!(pos.map(|pos| pos.0), Some(pos) if pos == *position);
-            if changed {
-                client.send_chat_message(format!(
-                    "Set the primary pos to ({}, {}, {})",
-                    position.x, position.y, position.z,
-                ));
-            }
-            commands.entity(*entity).insert(FirstPos(*position));
+        if !matches!(slot, Some(ItemStack {item, ..}) if *item == ItemKind::WoodenAxe) {
+            continue;
         }
+        let changed = !matches!(pos.map(|pos| pos.0), Some(pos) if pos == *position);
+        if changed {
+            client.send_chat_message(format!(
+                "Set the primary pos to ({}, {}, {})",
+                position.x, position.y, position.z,
+            ));
+        }
+        commands.entity(*entity).insert(FirstPos(*position));
     }
 }
 
@@ -83,22 +84,25 @@ fn second_pos(
         ..
     } in interacts.iter()
     {
-        if *hand == Hand::Main {
-            let Ok((mut client, inv, pos, held_item)) = clients.get_mut(*entity) else {
-                continue;
-            };
-            let slot = inv.slot(held_item.slot());
-            if matches!(slot, Some(ItemStack {item, ..}) if *item == ItemKind::WoodenAxe) {
-                let changed = !matches!(pos.map(|pos| pos.0), Some(pos) if pos == *position);
-                if changed {
-                    client.send_chat_message(format!(
-                        "Set the secondary pos to ({}, {}, {})",
-                        position.x, position.y, position.z,
-                    ));
-                }
-                commands.entity(*entity).insert(SecondPos(*position));
-            }
+        if *hand != Hand::Main {
+            continue;
         }
+        let Ok((mut client, inv, pos, held_item)) = clients.get_mut(*entity) else {
+            continue;
+        };
+        let slot = inv.slot(held_item.slot());
+        if !matches!(slot, Some(ItemStack {item, ..}) if *item == ItemKind::WoodenAxe) {
+            continue;
+        }
+        println!("So this is secondary pos");
+        let changed = !matches!(pos.map(|pos| pos.0), Some(pos) if pos == *position);
+        if changed {
+            client.send_chat_message(format!(
+                "Set the secondary pos to ({}, {}, {})",
+                position.x, position.y, position.z,
+            ));
+        }
+        commands.entity(*entity).insert(SecondPos(*position));
     }
 }
 
@@ -114,22 +118,24 @@ fn origin(
         ..
     } in interacts.iter()
     {
-        if *hand == Hand::Main {
-            let Ok((mut client, inv, pos, held_item)) = clients.get_mut(*entity) else {
-                continue;
-            };
-            let slot = inv.slot(held_item.slot());
-            if matches!(slot, Some(ItemStack {item, ..}) if *item == ItemKind::Stick) {
-                let changed = !matches!(pos.map(|pos| pos.0), Some(pos) if pos == *position);
-                if changed {
-                    client.send_chat_message(format!(
-                        "Set the origin to ({}, {}, {})",
-                        position.x, position.y, position.z,
-                    ));
-                }
-                commands.entity(*entity).insert(Origin(*position));
-            }
+        if *hand != Hand::Main {
+            continue;
         }
+        let Ok((mut client, inv, pos, held_item)) = clients.get_mut(*entity) else {
+            continue;
+        };
+        let slot = inv.slot(held_item.slot());
+        if !matches!(slot, Some(ItemStack {item, ..}) if *item == ItemKind::Stick) {
+            continue;
+        }
+        let changed = !matches!(pos.map(|pos| pos.0), Some(pos) if pos == *position);
+        if changed {
+            client.send_chat_message(format!(
+                "Set the origin to ({}, {}, {})",
+                position.x, position.y, position.z,
+            ));
+        }
+        commands.entity(*entity).insert(Origin(*position));
     }
 }
 
@@ -143,10 +149,10 @@ fn copy_schem(
         Option<&Origin>,
         &HeldItem,
         &Position,
-        &Location,
+        &VisibleChunkLayer,
         &Username,
     )>,
-    instances: Query<&Instance>,
+    layers: Query<&ChunkLayer>,
     mut interacts: EventReader<InteractBlockEvent>,
     biome_registry: Res<BiomeRegistry>,
     mut commands: Commands,
@@ -168,45 +174,46 @@ fn copy_schem(
             origin,
             held_item,
             &Position(pos),
-            &Location(instance),
+            &VisibleChunkLayer(layer),
             Username(username),
         )) = clients.get_mut(*entity)
         else {
             continue;
         };
         let slot = inv.slot(held_item.slot());
-        if matches!(slot, Some(ItemStack {item, ..}) if *item == ItemKind::Paper) {
-            let Some((FirstPos(pos1), SecondPos(pos2))) = pos1.zip(pos2) else {
-                client.send_chat_message("Specify both positions first");
-                continue;
-            };
-            let origin = origin.map(|pos| pos.0).unwrap_or(BlockPos::at(pos));
-
-            let Ok(instance) = instances.get(instance) else {
-                continue;
-            };
-            let mut schematic = Schematic::copy(instance, (*pos1, *pos2), origin, |id| {
-                biome_registry
-                    .iter()
-                    .find(|biome| biome.0 == id)
-                    .unwrap()
-                    .1
-                    .to_string_ident()
-            });
-            schematic.metadata.replace(compound! {"Author" => username});
-            commands.entity(*entity).insert(Clipboard(schematic));
-            client.send_chat_message("Copied");
+        if !matches!(slot, Some(ItemStack {item, ..}) if *item == ItemKind::Paper) {
+            continue;
         }
+        let Some((FirstPos(pos1), SecondPos(pos2))) = pos1.zip(pos2) else {
+            client.send_chat_message("Specify both positions first");
+            continue;
+        };
+        let origin = origin.map(|pos| pos.0).unwrap_or(BlockPos::from_pos(pos));
+
+        let Ok(layer) = layers.get(layer) else {
+            continue;
+        };
+        let mut schematic = Schematic::copy(layer, (*pos1, *pos2), origin, |id| {
+            biome_registry
+                .iter()
+                .find(|biome| biome.0 == id)
+                .unwrap()
+                .1
+                .to_string_ident()
+        });
+        schematic.metadata.replace(compound! {"Author" => username});
+        commands.entity(*entity).insert(Clipboard(schematic));
+        client.send_chat_message("Copied");
     }
 }
 
 fn paste_schem(
-    mut instances: Query<&mut Instance>,
+    mut layers: Query<&mut ChunkLayer>,
     mut clients: Query<(
         &mut Client,
         &Inventory,
         Option<&Clipboard>,
-        &Location,
+        &VisibleChunkLayer,
         &HeldItem,
         &Position,
     )>,
@@ -221,27 +228,34 @@ fn paste_schem(
         if *hand != Hand::Main {
             continue;
         }
-        let Ok((mut client, inv, clipboard, &Location(instance), held_item, &Position(position))) =
-            clients.get_mut(*entity)
+        let Ok((
+            mut client,
+            inv,
+            clipboard,
+            &VisibleChunkLayer(layer),
+            held_item,
+            &Position(position),
+        )) = clients.get_mut(*entity)
         else {
             continue;
         };
-        let Ok(mut instance) = instances.get_mut(instance) else {
+        let Ok(mut instance) = layers.get_mut(layer) else {
             continue;
         };
         let slot = inv.slot(held_item.slot());
-        if matches!(slot, Some(ItemStack {item, ..}) if *item == ItemKind::Feather) {
-            let Some(Clipboard(schematic)) = clipboard else {
-                client.send_chat_message("Copy something to clipboard first!");
-                continue;
-            };
-            let pos = BlockPos::at(position);
-            schematic.paste(&mut instance, pos, |_| BiomeId::default());
-            client.send_chat_message(format!(
-                "Pasted schematic at ({} {} {})",
-                pos.x, pos.y, pos.z
-            ));
+        if !matches!(slot, Some(ItemStack {item, ..}) if *item == ItemKind::Feather) {
+            continue;
         }
+        let Some(Clipboard(schematic)) = clipboard else {
+            client.send_chat_message("Copy something to clipboard first!");
+            continue;
+        };
+        let pos = BlockPos::from_pos(position);
+        schematic.paste(&mut instance, pos, |_| BiomeId::default());
+        client.send_chat_message(format!(
+            "Pasted schematic at ({} {} {})",
+            pos.x, pos.y, pos.z
+        ));
     }
 }
 
@@ -270,24 +284,25 @@ fn save_schem(
             continue;
         };
         let slot = inv.slot(held_item.slot());
-        if matches!(slot, Some(ItemStack {item, ..}) if *item == ItemKind::MusicDiscStal) {
-            let Some(Clipboard(schematic)) = clipboard else {
-                client.send_chat_message("Copy something to clipboard first!");
-                continue;
-            };
-            let path = PathBuf::from(format!("{username}.schem"));
-            schematic.save(&path).unwrap();
-            client.send_chat_message(format!("Saved schem to {}", path.display()));
+        if !matches!(slot, Some(ItemStack {item, ..}) if *item == ItemKind::MusicDiscStal) {
+            continue;
         }
+        let Some(Clipboard(schematic)) = clipboard else {
+            client.send_chat_message("Copy something to clipboard first!");
+            continue;
+        };
+        let path = PathBuf::from(format!("{username}.schem"));
+        schematic.save(&path).unwrap();
+        client.send_chat_message(format!("Saved schem to {}", path.display()));
     }
 }
 
 fn place_blocks(
     clients: Query<(&Inventory, &HeldItem), With<Client>>,
-    mut instances: Query<&mut Instance>,
+    mut layers: Query<&mut ChunkLayer>,
     mut events: EventReader<InteractBlockEvent>,
 ) {
-    let mut instance = instances.single_mut();
+    let mut layer = layers.single_mut();
 
     for event in events.iter() {
         let Ok((inventory, held_item)) = clients.get(event.client) else {
@@ -306,16 +321,16 @@ fn place_blocks(
         };
 
         let pos = event.position.get_in_direction(event.face);
-        instance.set_block(pos, block_kind.to_state());
+        layer.set_block(pos, block_kind.to_state());
     }
 }
 
 fn break_blocks(
-    mut instances: Query<&mut Instance>,
+    mut layers: Query<&mut ChunkLayer>,
     inventories: Query<(&Inventory, &HeldItem)>,
     mut events: EventReader<DiggingEvent>,
 ) {
-    let mut instance = instances.single_mut();
+    let mut layer = layers.single_mut();
 
     for DiggingEvent {
         client, position, ..
@@ -327,7 +342,7 @@ fn break_blocks(
 
         let slot = inv.slot(held_item.slot());
         if !matches!(slot, Some(ItemStack {item, ..}) if *item == ItemKind::WoodenAxe) {
-            instance.set_block(*position, BlockState::AIR);
+            layer.set_block(*position, BlockState::AIR);
         }
     }
 }
@@ -338,32 +353,52 @@ fn setup(
     dimensions: Res<DimensionTypeRegistry>,
     biomes: Res<BiomeRegistry>,
 ) {
-    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let mut layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     for x in -16..=16 {
         for z in -16..=16 {
             let pos = BlockPos::new(SPAWN_POS.x as i32 + x, FLOOR_Y, SPAWN_POS.z as i32 + z);
-            instance
+            layer
+                .chunk
                 .chunk_entry(ChunkPos::from_block_pos(pos))
                 .or_default();
-            instance.set_block(pos, BlockState::QUARTZ_BLOCK);
+            layer.chunk.set_block(pos, BlockState::QUARTZ_BLOCK);
         }
     }
 
-    commands.spawn(instance);
+    commands.spawn(layer);
 }
 
 fn init_clients(
     mut clients: Query<
-        (&mut Inventory, &mut Location, &mut Position, &mut GameMode),
+        (
+            &mut Inventory,
+            &mut EntityLayerId,
+            &mut VisibleChunkLayer,
+            &mut VisibleEntityLayers,
+            &mut Position,
+            &mut GameMode,
+        ),
         Added<Client>,
     >,
-    instances: Query<Entity, With<Instance>>,
+    layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
 ) {
-    for (mut inv, mut loc, mut pos, mut game_mode) in &mut clients {
-        *game_mode = GameMode::Creative;
-        loc.0 = instances.single();
+    for (
+        mut inv,
+        mut layer_id,
+        mut visible_chunk_layer,
+        mut visible_entity_layers,
+        mut pos,
+        mut game_mode,
+    ) in &mut clients
+    {
+        let layer = layers.single();
+
+        layer_id.0 = layer;
+        visible_chunk_layer.0 = layer;
+        visible_entity_layers.0.insert(layer);
         pos.set(SPAWN_POS);
+        *game_mode = GameMode::Creative;
 
         inv.set_slot(
             36,

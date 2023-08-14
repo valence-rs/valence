@@ -36,8 +36,8 @@ use valence_core::chunk_pos::ChunkPos;
 use valence_core::ident::Ident;
 use valence_core::protocol::var_int::{VarInt, VarIntDecodeError};
 use valence_core::protocol::Encode;
-use valence_instance::chunk::Chunk;
-use valence_instance::{Block as ValenceBlock, Instance};
+use valence_layer::chunk::{Block as ValenceBlock, Chunk};
+use valence_layer::ChunkLayer;
 use valence_nbt::{compound, Compound, List, Value};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -253,7 +253,10 @@ impl Schematic {
 
         let metadata = root
             .get("Metadata")
-            .and_then(|val| val.as_compound())
+            .and_then(|val| match val {
+                Value::Compound(val) => Some(val),
+                _ => None,
+            })
             .cloned();
 
         let Some(&Value::Int(version)) = root.get("Version") else {
@@ -277,7 +280,10 @@ impl Schematic {
         let offset = {
             let &[x, y, z] = root
                 .get("Offset")
-                .and_then(|val| val.as_int_array())
+                .and_then(|val| match val {
+                    Value::IntArray(val) => Some(val),
+                    _ => None,
+                })
                 .map(|arr| arr.as_slice())
                 .unwrap_or(&[0; 3])
             else {
@@ -771,11 +777,11 @@ impl Schematic {
         Ok(())
     }
 
-    pub fn paste<F>(&self, instance: &mut Instance, origin: BlockPos, map_biome: F)
+    pub fn paste<F>(&self, layer: &mut ChunkLayer, origin: BlockPos, map_biome: F)
     where
         F: FnMut(Ident<&str>) -> BiomeId,
     {
-        let min_y = instance.min_y();
+        let min_y = layer.min_y();
         if let Some(blocks) = &self.blocks {
             let blocks = blocks.iter().enumerate().map(|(idx, block)| {
                 let idx = u16::try_from(idx).unwrap();
@@ -799,7 +805,7 @@ impl Schematic {
                     y as i32 + origin.y + self.offset.y,
                     z as i32 + origin.z + self.offset.z,
                 );
-                let chunk = instance
+                let chunk = layer
                     .chunk_entry(ChunkPos::from_block_pos(block_pos))
                     .or_default();
                 let block = ValenceBlock::new(
@@ -851,8 +857,8 @@ impl Schematic {
                 let x = x as i32 + origin.x + self.offset.x;
                 let y = y as i32 + origin.y + self.offset.y;
                 let z = z as i32 + origin.z + self.offset.z;
-                let chunk = instance
-                    .chunk_entry(ChunkPos::at(x as f64, z as f64))
+                let chunk = layer
+                    .chunk_entry(ChunkPos::from_block_pos(BlockPos::new(x, y, z)))
                     .or_default();
 
                 chunk.set_biome(
@@ -868,7 +874,7 @@ impl Schematic {
     }
 
     pub fn copy<F>(
-        instance: &Instance,
+        layer: &ChunkLayer,
         corners: (BlockPos, BlockPos),
         origin: BlockPos,
         mut map_biome: F,
@@ -894,7 +900,7 @@ impl Schematic {
             .flat_map(|y| {
                 (min.z..=max.z).flat_map(move |z| {
                     (min.x..=max.x).map(move |x| {
-                        let Some(block) = instance.block([x, y, z]) else {
+                        let Some(block) = layer.block([x, y, z]) else {
                             panic!("coordinates ({x} {y} {z}) are out of bounds");
                         };
                         let state = block.state;
@@ -919,12 +925,12 @@ impl Schematic {
                 .flat_map(|x| {
                     (min.z..=max.z).flat_map(move |z| {
                         (min.y..=max.y).map(move |y| {
-                            instance
+                            layer
                                 .chunk(ChunkPos::from_block_pos(BlockPos::new(x, y, z)))
                                 .unwrap()
                                 .biome(
                                     x.rem_euclid(16) as u32 / 4,
-                                    (y - instance.min_y()) as u32 / 4,
+                                    (y - layer.min_y()) as u32 / 4,
                                     z.rem_euclid(16) as u32 / 4,
                                 )
                         })
@@ -965,6 +971,7 @@ mod test {
 
     use valence::prelude::*;
     use valence_core::ident;
+    use valence_layer::LayerBundle;
 
     use super::*;
 
@@ -973,7 +980,7 @@ mod test {
         let mut app = App::new();
         app.add_plugins(DefaultPlugins);
         app.update();
-        let mut instance = Instance::new(
+        let mut layer = LayerBundle::new(
             ident!("overworld"),
             app.world.resource(),
             app.world.resource(),
@@ -982,23 +989,23 @@ mod test {
 
         for x in -1..=0 {
             for z in -1..=0 {
-                instance.insert_chunk([x, z], UnloadedChunk::default());
+                layer.chunk.insert_chunk([x, z], UnloadedChunk::default());
             }
         }
 
-        instance.set_block([5, 1, -1], BlockState::GLOWSTONE);
-        instance.set_block([5, 2, -1], BlockState::STONE);
-        instance.set_block([5, 2, -2], BlockState::GLOWSTONE);
-        instance.set_block([4, 2, -1], BlockState::LAPIS_BLOCK);
-        instance.set_block([6, 2, -1], BlockState::STONE);
-        instance.set_block(
+        layer.chunk.set_block([5, 1, -1], BlockState::GLOWSTONE);
+        layer.chunk.set_block([5, 2, -1], BlockState::STONE);
+        layer.chunk.set_block([5, 2, -2], BlockState::GLOWSTONE);
+        layer.chunk.set_block([4, 2, -1], BlockState::LAPIS_BLOCK);
+        layer.chunk.set_block([6, 2, -1], BlockState::STONE);
+        layer.chunk.set_block(
             [5, 3, -1],
             ValenceBlock::new(
                 BlockState::OAK_SIGN,
                 Some(compound! {"Text1" => "abc".into_text()}),
             ),
         );
-        instance.set_block(
+        layer.chunk.set_block(
             [5, 2, 0],
             BlockState::ANDESITE_WALL
                 .set(PropName::Up, PropValue::True)
@@ -1006,21 +1013,21 @@ mod test {
         );
 
         let schematic = Schematic::copy(
-            &instance,
+            &layer.chunk,
             (BlockPos::new(4, 3, -1), BlockPos::new(6, 1, 0)),
             BlockPos::new(5, 3, 0),
             |_| ident!("minecraft:plains").to_string_ident(),
         );
 
-        schematic.paste(&mut instance, BlockPos::new(15, 18, 16), |_| {
+        schematic.paste(&mut layer.chunk, BlockPos::new(15, 18, 16), |_| {
             BiomeId::default()
         });
 
-        let block = instance.block([15, 18, 15]).unwrap();
+        let block = layer.chunk.block([15, 18, 15]).unwrap();
         assert_eq!(block.state, BlockState::OAK_SIGN);
         assert_eq!(block.nbt, Some(&compound! {"Text1" => "abc".into_text()}));
 
-        let block = instance.block([15, 17, 16]).unwrap();
+        let block = layer.chunk.block([15, 17, 16]).unwrap();
         assert_eq!(
             block.state,
             BlockState::ANDESITE_WALL
@@ -1029,23 +1036,23 @@ mod test {
         );
         assert_eq!(block.nbt, None);
 
-        let block = instance.block([15, 17, 15]).unwrap();
+        let block = layer.chunk.block([15, 17, 15]).unwrap();
         assert_eq!(block.state, BlockState::STONE);
         assert_eq!(block.nbt, None);
 
-        let block = instance.block([15, 17, 14]).unwrap();
+        let block = layer.chunk.block([15, 17, 14]).unwrap();
         assert_eq!(block.state, BlockState::AIR);
         assert_eq!(block.nbt, None);
 
-        let block = instance.block([14, 17, 15]).unwrap();
+        let block = layer.chunk.block([14, 17, 15]).unwrap();
         assert_eq!(block.state, BlockState::LAPIS_BLOCK);
         assert_eq!(block.nbt, None);
 
-        let block = instance.block([16, 17, 15]).unwrap();
+        let block = layer.chunk.block([16, 17, 15]).unwrap();
         assert_eq!(block.state, BlockState::STONE);
         assert_eq!(block.nbt, None);
 
-        let block = instance.block([15, 16, 15]).unwrap();
+        let block = layer.chunk.block([15, 16, 15]).unwrap();
         assert_eq!(block.state, BlockState::GLOWSTONE);
         assert_eq!(block.nbt, None);
 

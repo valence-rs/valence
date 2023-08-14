@@ -48,24 +48,44 @@ fn setup(
     server: Res<Server>,
     schem: Res<SchemRes>,
 ) {
-    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let mut layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
     schem
         .0
-        .paste(&mut instance, SPAWN_POS, |_| BiomeId::default());
-    commands.spawn(instance);
+        .paste(&mut layer.chunk, SPAWN_POS, |_| BiomeId::default());
+    commands.spawn(layer);
 }
 
 fn init_clients(
-    mut clients: Query<(&mut Location, &mut Position, &mut GameMode), Added<Client>>,
-    instances: Query<Entity, With<Instance>>,
+    mut clients: Query<
+        (
+            &mut EntityLayerId,
+            &mut VisibleChunkLayer,
+            &mut VisibleEntityLayers,
+            &mut Position,
+            &mut GameMode,
+        ),
+        Added<Client>,
+    >,
+    layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
 ) {
-    for (mut loc, mut pos, mut game_mode) in &mut clients {
-        *game_mode = GameMode::Creative;
+    for (
+        mut layer_id,
+        mut visible_chunk_layer,
+        mut visible_entity_layers,
+        mut pos,
+        mut game_mode,
+    ) in &mut clients
+    {
+        let layer = layers.single();
+
+        layer_id.0 = layer;
+        visible_chunk_layer.0 = layer;
+        visible_entity_layers.0.insert(layer);
         pos.set([
             SPAWN_POS.x as f64 + 0.5,
             SPAWN_POS.y as f64,
             SPAWN_POS.z as f64 + 0.5,
         ]);
-        loc.0 = instances.single();
+        *game_mode = GameMode::Creative;
     }
 }

@@ -16,7 +16,7 @@ thiserror.workspace = true
 valence_biome.workspace = true
 valence_block.workspace = true
 valence_core.workspace = true
-valence_instance.workspace = true
+valence_layer.workspace = true
 valence_nbt.workspace = true
 
 [dev-dependencies]
