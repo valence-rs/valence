@@ -30,6 +30,7 @@ pub mod __private {
 extern crate self as valence_protocol;
 
 mod array;
+mod bit_set;
 mod block_pos;
 mod bounded;
 mod byte_angle;
@@ -38,7 +39,7 @@ pub mod decode;
 mod difficulty;
 mod direction;
 pub mod encode;
-mod game_mode;
+pub mod game_mode;
 mod global_pos;
 mod hand;
 mod impls;
@@ -49,17 +50,20 @@ mod raw;
 pub mod sound;
 pub mod var_int;
 mod var_long;
+mod velocity;
 
 use std::io::Write;
 
 use anyhow::Context;
 pub use array::LengthPrefixedArray;
+pub use bit_set::FixedBitSet;
 pub use block::{BlockKind, BlockState};
 pub use block_pos::BlockPos;
 pub use bounded::Bounded;
 pub use byte_angle::ByteAngle;
 pub use chunk_pos::ChunkPos;
 pub use decode::PacketDecoder;
+use derive_more::{From, Into};
 pub use difficulty::Difficulty;
 pub use direction::Direction;
 pub use encode::{PacketEncoder, WritePacket};
@@ -77,6 +81,7 @@ pub use valence_ident::Ident;
 pub use valence_protocol_macros::{Decode, Encode, Packet};
 pub use var_int::VarInt;
 pub use var_long::VarLong;
+pub use velocity::Velocity;
 pub use {
     anyhow, bytes, uuid, valence_ident as ident, valence_math as math, valence_nbt as nbt,
     valence_text as text,
@@ -92,18 +97,17 @@ pub const PROTOCOL_VERSION: i32 = 763;
 /// targets.
 pub const MINECRAFT_VERSION: &str = "1.20.1";
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub enum CompressionThreshold {
-    /// Packet compression is enabled. Packets with encoded lengths >=
-    /// this value are compressed.
-    Enabled(u32),
-    /// Packet compression is disabled. No packets are compressed.
-    Disabled,
-}
+/// How large a packet should be before it is compressed by the packet encoder.
+///
+/// If the inner value is >= 0, then packets with encoded lengths >= to this
+/// value will be compressed. If the value is negative, then compression is
+/// disabled and no packets are compressed.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, From, Into)]
+pub struct CompressionThreshold(pub i32);
 
 impl Default for CompressionThreshold {
     fn default() -> Self {
-        Self::Enabled(256)
+        Self(256)
     }
 }
 
@@ -428,7 +432,7 @@ mod tests {
 
         enc.append_packet(&TestPacket::new("first")).unwrap();
         #[cfg(feature = "compression")]
-        enc.set_compression(Some(0));
+        enc.set_compression(0.into());
         enc.append_packet(&TestPacket::new("second")).unwrap();
         buf.unsplit(enc.take());
         #[cfg(feature = "encryption")]
@@ -445,7 +449,7 @@ mod tests {
         check_test_packet(&mut dec, "first");
 
         #[cfg(feature = "compression")]
-        dec.set_compression(Some(0));
+        dec.set_compression(0.into());
 
         check_test_packet(&mut dec, "second");
 

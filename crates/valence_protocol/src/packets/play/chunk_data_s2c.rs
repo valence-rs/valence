@@ -20,6 +20,6 @@ pub struct ChunkDataS2c<'a> {
 pub struct ChunkDataBlockEntity<'a> {
     pub packed_xz: i8,
     pub y: i16,
-    pub kind: VarInt,
+    pub kind: BlockEntityKind,
     pub data: Cow<'a, Compound>,
 }

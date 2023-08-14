@@ -6,6 +6,6 @@ pub struct PlayerSessionC2s<'a> {
     pub session_id: Uuid,
     // Public key
     pub expires_at: i64,
-    pub public_key_data: &'a [u8],
-    pub key_signature: &'a [u8],
+    pub public_key_data: Bounded<&'a [u8], 512>,
+    pub key_signature: Bounded<&'a [u8], 4096>,
 }

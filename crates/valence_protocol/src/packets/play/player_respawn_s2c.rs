@@ -7,7 +7,7 @@ pub struct PlayerRespawnS2c<'a> {
     pub dimension_name: Ident<Cow<'a, str>>,
     pub hashed_seed: u64,
     pub game_mode: GameMode,
-    pub previous_game_mode: i8,
+    pub previous_game_mode: OptGameMode,
     pub is_debug: bool,
     pub is_flat: bool,
     pub copy_metadata: bool,

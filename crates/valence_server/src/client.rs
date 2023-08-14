@@ -1105,7 +1105,7 @@ fn init_tracked_data(mut clients: Query<(&mut Client, &TrackedData), Added<Track
         if let Some(init_data) = tracked_data.init_data() {
             client.write_packet(&EntityTrackerUpdateS2c {
                 entity_id: VarInt(0),
-                metadata: init_data.into(),
+                tracked_values: init_data.into(),
             });
         }
     }
@@ -1116,7 +1116,7 @@ fn update_tracked_data(mut clients: Query<(&mut Client, &TrackedData)>) {
         if let Some(update_data) = tracked_data.update_data() {
             client.write_packet(&EntityTrackerUpdateS2c {
                 entity_id: VarInt(0),
-                metadata: update_data.into(),
+                tracked_values: update_data.into(),
             });
         }
     }

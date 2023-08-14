@@ -6,8 +6,8 @@ pub struct ChatMessageS2c<'a> {
     pub sender: Uuid,
     pub index: VarInt,
     pub message_signature: Option<&'a [u8; 256]>,
-    pub message: &'a str,
-    pub time_stamp: u64,
+    pub message: Bounded<&'a str, 256>,
+    pub timestamp: u64,
     pub salt: u64,
     pub previous_messages: Vec<MessageSignature<'a>>,
     pub unsigned_content: Option<Cow<'a, Text>>,
@@ -31,7 +31,7 @@ impl<'a> Encode for ChatMessageS2c<'a> {
         self.index.encode(&mut w)?;
         self.message_signature.encode(&mut w)?;
         self.message.encode(&mut w)?;
-        self.time_stamp.encode(&mut w)?;
+        self.timestamp.encode(&mut w)?;
         self.salt.encode(&mut w)?;
         self.previous_messages.encode(&mut w)?;
         self.unsigned_content.encode(&mut w)?;
@@ -58,7 +58,7 @@ impl<'a> Decode<'a> for ChatMessageS2c<'a> {
         let sender = Uuid::decode(r)?;
         let index = VarInt::decode(r)?;
         let message_signature = Option::<&'a [u8; 256]>::decode(r)?;
-        let message = <&str>::decode(r)?;
+        let message = Decode::decode(r)?;
         let time_stamp = u64::decode(r)?;
         let salt = u64::decode(r)?;
         let previous_messages = Vec::<MessageSignature>::decode(r)?;
@@ -79,7 +79,7 @@ impl<'a> Decode<'a> for ChatMessageS2c<'a> {
             index,
             message_signature,
             message,
-            time_stamp,
+            timestamp: time_stamp,
             salt,
             previous_messages,
             unsigned_content,

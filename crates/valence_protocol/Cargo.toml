@@ -31,7 +31,7 @@ serde_json.workspace = true
 tracing.workspace = true
 bytes.workspace = true
 bitfield-struct.workspace = true
-derive_more.workspace = true
+derive_more = { workspace = true, features = ["from", "into", "deref", "deref_mut", "as_ref"] }
 cfb8 = { workspace = true, optional = true }
 flate2 = { workspace = true, optional = true }
 aes = { workspace = true, optional = true }

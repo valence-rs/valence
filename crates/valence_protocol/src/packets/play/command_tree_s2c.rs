@@ -192,7 +192,7 @@ impl<'a> Decode<'a> for Node<'a> {
         };
 
         Ok(Self {
-            children,
+            children: children.into(),
             data: node_data,
             executable: flags & 0x04 != 0,
             redirect_node,

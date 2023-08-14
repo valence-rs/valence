@@ -140,8 +140,8 @@ async fn handle_handshake(
     };
 
     ensure!(
-        matches!(&shared.0.connection_mode, ConnectionMode::BungeeCord)
-            || handshake.server_address.chars().count() <= 255,
+        shared.0.connection_mode == ConnectionMode::BungeeCord
+            || handshake.server_address.encode_utf16().count() <= 255,
         "handshake server address is too long"
     );
 

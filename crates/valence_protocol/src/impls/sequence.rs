@@ -180,8 +180,6 @@ impl<'a, T: Decode<'a>> Decode<'a> for Box<[T]> {
 
 impl<'a, T: Decode<'a>, const MAX_LEN: usize> Decode<'a> for Bounded<Box<[T]>, MAX_LEN> {
     fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
-        Ok(Bounded(
-            Bounded::<Vec<_>, MAX_LEN>::decode(r)?.0.into_boxed_slice(),
-        ))
+        Ok(Bounded::<Vec<_>, MAX_LEN>::decode(r)?.map_into())
     }
 }

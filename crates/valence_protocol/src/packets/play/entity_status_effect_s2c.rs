@@ -4,7 +4,7 @@ use super::*;
 #[packet(id = packet_id::ENTITY_STATUS_EFFECT_S2C)]
 pub struct EntityStatusEffectS2c {
     pub entity_id: VarInt,
-    pub effect_id: VarInt,
+    pub effect_id: VarInt, // TODO: effect ID registry.
     pub amplifier: u8,
     pub duration: VarInt,
     pub flags: Flags,

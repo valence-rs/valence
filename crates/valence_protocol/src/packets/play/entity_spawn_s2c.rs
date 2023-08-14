@@ -8,11 +8,11 @@ use super::*;
 pub struct EntitySpawnS2c {
     pub entity_id: VarInt,
     pub object_uuid: Uuid,
-    pub kind: VarInt,
+    pub kind: VarInt, // TODO: EntityKind in valence_generated?
     pub position: DVec3,
     pub pitch: ByteAngle,
     pub yaw: ByteAngle,
     pub head_yaw: ByteAngle,
     pub data: VarInt,
-    pub velocity: [i16; 3],
+    pub velocity: Velocity,
 }

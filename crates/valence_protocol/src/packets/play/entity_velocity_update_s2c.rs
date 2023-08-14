@@ -4,5 +4,5 @@ use super::*;
 #[packet(id = packet_id::ENTITY_VELOCITY_UPDATE_S2C)]
 pub struct EntityVelocityUpdateS2c {
     pub entity_id: VarInt,
-    pub velocity: [i16; 3],
+    pub velocity: Velocity,
 }

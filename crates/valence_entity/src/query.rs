@@ -78,7 +78,7 @@ impl EntityInitQueryItem<'_> {
         if let Some(init_data) = self.tracked_data.init_data() {
             writer.write_packet(&EntityTrackerUpdateS2c {
                 entity_id: self.entity_id.get().into(),
-                metadata: init_data.into(),
+                tracked_values: init_data.into(),
             });
         }
     }
@@ -164,7 +164,7 @@ impl UpdateEntityQueryItem<'_> {
         if let Some(update_data) = self.tracked_data.update_data() {
             writer.write_packet(&EntityTrackerUpdateS2c {
                 entity_id,
-                metadata: update_data.into(),
+                tracked_values: update_data.into(),
             });
         }
 
