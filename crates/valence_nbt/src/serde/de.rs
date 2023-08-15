@@ -5,8 +5,7 @@ use serde::de::{self, IntoDeserializer, SeqAccess, Visitor};
 use serde::{forward_to_deserialize_any, Deserialize, Deserializer};
 
 use super::Error;
-use crate::serde::{i8_vec_to_u8_vec, u8_vec_to_i8_vec};
-use crate::{Compound, List, Value};
+use crate::{i8_vec_into_u8_vec, u8_slice_as_i8_slice, u8_vec_into_i8_vec, Compound, List, Value};
 
 impl<'de> Deserialize<'de> for Value {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -117,17 +116,14 @@ impl<'de> Deserialize<'de> for Value {
             where
                 E: de::Error,
             {
-                let slice: &[i8] =
-                    unsafe { slice::from_raw_parts(v.as_ptr() as *const i8, v.len()) };
-
-                Ok(Value::ByteArray(slice.into()))
+                Ok(Value::ByteArray(u8_slice_as_i8_slice(v).into()))
             }
 
             fn visit_byte_buf<E>(self, v: Vec<u8>) -> Result<Self::Value, E>
             where
                 E: de::Error,
             {
-                Ok(Value::ByteArray(u8_vec_to_i8_vec(v)))
+                Ok(Value::ByteArray(u8_vec_into_i8_vec(v)))
             }
 
             fn visit_seq<A>(self, seq: A) -> Result<Self::Value, A::Error>
@@ -190,17 +186,14 @@ impl<'de> Deserialize<'de> for List {
             where
                 E: de::Error,
             {
-                Ok(List::Byte(u8_vec_to_i8_vec(v)))
+                Ok(List::Byte(u8_vec_into_i8_vec(v)))
             }
 
             fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
             where
                 E: de::Error,
             {
-                let bytes: &[i8] =
-                    unsafe { slice::from_raw_parts(v.as_ptr() as *const i8, v.len()) };
-
-                Ok(List::Byte(bytes.into()))
+                Ok(List::Byte(u8_slice_as_i8_slice(v).into()))
             }
         }
 
@@ -269,7 +262,7 @@ impl<'de> Deserializer<'de> for Value {
             Value::Long(v) => visitor.visit_i64(v),
             Value::Float(v) => visitor.visit_f32(v),
             Value::Double(v) => visitor.visit_f64(v),
-            Value::ByteArray(v) => visitor.visit_byte_buf(i8_vec_to_u8_vec(v)),
+            Value::ByteArray(v) => visitor.visit_byte_buf(i8_vec_into_u8_vec(v)),
             Value::String(v) => visitor.visit_string(v),
             Value::List(v) => v.deserialize_any(visitor),
             Value::Compound(v) => v.into_deserializer().deserialize_any(visitor),
@@ -347,7 +340,7 @@ impl<'de> Deserializer<'de> for List {
 
         match self {
             List::End => visitor.visit_seq(EndSeqAccess),
-            List::Byte(v) => visitor.visit_byte_buf(i8_vec_to_u8_vec(v)),
+            List::Byte(v) => visitor.visit_byte_buf(i8_vec_into_u8_vec(v)),
             List::Short(v) => v.into_deserializer().deserialize_any(visitor),
             List::Int(v) => v.into_deserializer().deserialize_any(visitor),
             List::Long(v) => v.into_deserializer().deserialize_any(visitor),

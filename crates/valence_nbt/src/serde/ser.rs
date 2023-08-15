@@ -1,11 +1,10 @@
-use core::slice;
 use std::marker::PhantomData;
 
 use serde::ser::{Impossible, SerializeMap, SerializeSeq, SerializeStruct};
 use serde::{Serialize, Serializer};
 
-use super::{u8_vec_to_i8_vec, Error};
-use crate::{Compound, List, Value};
+use super::Error;
+use crate::{i8_slice_as_u8_slice, u8_vec_into_i8_vec, Compound, List, Value};
 
 impl Serialize for Value {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -19,12 +18,7 @@ impl Serialize for Value {
             Value::Long(v) => serializer.serialize_i64(*v),
             Value::Float(v) => serializer.serialize_f32(*v),
             Value::Double(v) => serializer.serialize_f64(*v),
-            Value::ByteArray(v) => {
-                // SAFETY: i8 has the same layout as u8.
-                let bytes = unsafe { slice::from_raw_parts(v.as_ptr() as *const u8, v.len()) };
-
-                serializer.serialize_bytes(bytes)
-            }
+            Value::ByteArray(v) => serializer.serialize_bytes(i8_slice_as_u8_slice(v)),
             Value::String(v) => serializer.serialize_str(v),
             Value::List(v) => v.serialize(serializer),
             Value::Compound(v) => v.serialize(serializer),
@@ -317,7 +311,7 @@ impl Serializer for ValueSerializer {
     }
 
     fn serialize_bytes(self, v: &[u8]) -> Result<Self::Ok, Self::Error> {
-        Ok(Value::ByteArray(u8_vec_to_i8_vec(v.into())))
+        Ok(Value::ByteArray(u8_vec_into_i8_vec(v.into())))
     }
 
     fn serialize_none(self) -> Result<Self::Ok, Self::Error> {

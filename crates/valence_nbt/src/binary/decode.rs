@@ -5,7 +5,7 @@ use byteorder::{BigEndian, WriteBytesExt};
 
 use super::{modified_utf8, Error, Result};
 use crate::tag::Tag;
-use crate::{Compound, List, Value};
+use crate::{i8_slice_as_u8_slice, Compound, List, Value};
 
 impl Compound {
     /// Encodes uncompressed NBT binary data to the provided writer.
@@ -146,10 +146,7 @@ impl<W: Write> EncodeState<W> {
             }
         }
 
-        // SAFETY: i8 has the same layout as u8.
-        let bytes = unsafe { slice::from_raw_parts(bytes.as_ptr() as *const u8, bytes.len()) };
-
-        Ok(self.writer.write_all(bytes)?)
+        Ok(self.writer.write_all(i8_slice_as_u8_slice(bytes))?)
     }
 
     fn write_string(&mut self, s: &str) -> Result<()> {
@@ -197,10 +194,7 @@ impl<W: Write> EncodeState<W> {
                     }
                 }
 
-                // SAFETY: i8 has the same layout as u8.
-                let bytes = unsafe { slice::from_raw_parts(bl.as_ptr() as *const u8, bl.len()) };
-
-                Ok(self.writer.write_all(bytes)?)
+                Ok(self.writer.write_all(i8_slice_as_u8_slice(bl))?)
             }
             List::Short(sl) => self.write_list(sl, Tag::Short, |st, s| st.write_short(*s)),
             List::Int(il) => self.write_list(il, Tag::Int, |st, i| st.write_int(*i)),
