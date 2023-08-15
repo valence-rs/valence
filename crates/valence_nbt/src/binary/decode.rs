@@ -1,5 +1,4 @@
 use std::io::Write;
-use std::slice;
 
 use byteorder::{BigEndian, WriteBytesExt};
 

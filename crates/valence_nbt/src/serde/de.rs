@@ -1,4 +1,4 @@
-use std::{fmt, slice};
+use std::fmt;
 
 use serde::de::value::{MapAccessDeserializer, MapDeserializer, SeqAccessDeserializer};
 use serde::de::{self, IntoDeserializer, SeqAccess, Visitor};
