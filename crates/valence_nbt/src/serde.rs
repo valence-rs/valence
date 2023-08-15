@@ -1,5 +1,4 @@
 use std::fmt;
-use std::mem::ManuallyDrop;
 
 pub use ser::*;
 use thiserror::Error;
