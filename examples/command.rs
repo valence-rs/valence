@@ -1,5 +1,6 @@
 #![allow(clippy::type_complexity)]
 
+use clap::arg;
 use valence::prelude::*;
 use valence::protocol::packets::play::command_tree_s2c::Parser;
 use valence_command::command_graph::CommandGraphBuilder;
@@ -10,116 +11,135 @@ use valence_command_derive::Command;
 
 const SPAWN_Y: i32 = 64;
 
-pub enum TeleportResult {
-    ExecutorToLocation(arg_parser::Vec3),
-    ExecutorToTarget(String),
-    TargetToTarget((String, String)),
-    TargetToLocation((String, arg_parser::Vec3)),
+// pub enum TeleportResult {
+//     ExecutorToLocation(arg_parser::Vec3),
+//     ExecutorToTarget(String),
+//     TargetToTarget((String, String)),
+//     TargetToLocation((String, arg_parser::Vec3)),
+// }
+
+// #[derive(Command)]
+// #[paths("selectfruit", "select fruit", "sf")]
+// #[scopes("valence:command:teleport")]
+// enum SelectFruit {
+//     #[paths = "apple"]
+//     // this path is from the perant: selectfruit so `/selectfruit apple` will be here
+//     Apple,
+//     #[paths = "banana"]
+//     Banana,
+//     #[paths = "Strawberry {breed} with_name {name} {kind?}"]
+//     // this could be `/selectfruit banana green` or /selectfruit banana
+//     // the macro should be able to detect the fact it is optional and register two executables;
+//     // one has no args and the other has the optional arg
+//     Strawberry {
+//         breed: arg_parser::Vec3,
+//         name: String,
+//         kind: Option<f32>,
+//     },
+//     #[paths("orange", "o")]
+//     Orange,
+// }
+#[derive(Command, Debug)]
+#[paths("teleport", "tp")]
+#[scopes("valence:command:teleport")]
+enum Teleport {
+    #[paths = "{location}"]
+    ExecutorToLocation { location: arg_parser::Vec3 },
+    #[paths = "{target}"]
+    ExecutorToTarget { target: String },
+    #[paths = "{from} {to}"]
+    TargetToTarget { from: String, to: String },
+    #[paths = "{target} {location}"]
+    TargetToLocation {
+        target: String,
+        location: arg_parser::Vec3,
+    },
 }
 
-#[derive(Command)]
-#[paths = ["selectfruit", "select fruit", "sf"]]
-#[scopes = ["valence:command:teleport"]]
-enum SelectFruit {
-    #[paths = "apple"] // this path is from the perant: selectfruit so `/selectfruit apple` will be here
-    Apple,
-    #[paths = "banana"]
-    Banana,
-    #[paths = "Strawberry {0?}"] // this could be `/selectfruit banana green` or /selectfruit banana
-    // the macro should be able to detect the fact it is optional and register two executables;
-    // one has no args and the other has the optional arg
-    Strawberry(Option<Strawberry>),
-}
 
-#[derive(Suggestions)] // I'd want this to assume snake case unless manully set
-enum Strawberry {
-    Red,
-    Green
-}
+// #[derive(Suggestions)] // I'd want this to assume snake case unless manully set
+// enum Strawberry {
+//     Red,
+//     Green
+// }
 
-
-#[derive(Resource, Clone)]
-struct TeleportCommand;
-
-impl Command for TeleportCommand {
-    type CommandExecutables = TeleportResult;
-
-    fn name() -> String {
-        "teleport".into()
-    }
-
-    fn assemble_graph(&self, command_graph: &mut CommandGraphBuilder<Self::CommandExecutables>) {
-
-        let teleport = command_graph
-            .root()
-            .literal("teleport")
-            .with_scopes(vec!["valence:command:teleport"])
-            .id();
-
-        // tp alias
-        command_graph
-            .root()
-            .literal("tp")
-            .with_scopes(vec!["valence:command:teleport"])
-            .redirect_to(teleport);
-
-        // executor to vec3 target
-        command_graph
-            .at(teleport)
-            .argument("destination:location")
-            .with_parser(Parser::Vec3)
-            .with_executable(|s| {
-                TeleportResult::ExecutorToLocation(arg_parser::Vec3::parse_args(s).unwrap())
-            });
-
-        // executor to entity target
-        command_graph
-            .at(teleport)
-            .argument("destination:entity")
-            .with_parser(Parser::Entity {
-                only_players: false,
-                single: true,
-            })
-            .with_executable(|s| {
-                TeleportResult::ExecutorToTarget(arg_parser::EntitySelector::parse_args(s).unwrap())
-            });
-
-        let targeted_teleport = command_graph
-            .root()
-            .at(teleport)
-            .argument("target:entity")
-            .with_parser(Parser::Entity {
-                only_players: false,
-                single: false,
-            })
-            .id();
-
-        // target to target
-        command_graph
-            .at(targeted_teleport)
-            .argument("destination:entity")
-            .with_parser(Parser::Entity {
-                only_players: false,
-                single: true,
-            })
-            .with_executable(|s| {
-                TeleportResult::TargetToTarget(
-                    <(arg_parser::EntitySelector, arg_parser::EntitySelector)>::parse_args(s)
-                        .unwrap(),
-                )
-            });
-        // target to location
-        command_graph
-            .at(targeted_teleport)
-            .argument("destination:location")
-            .with_parser(Parser::Vec3)
-            .with_executable(|s| {
-                TeleportResult::TargetToLocation(
-                    <(arg_parser::EntitySelector, arg_parser::Vec3)>::parse_args(s).unwrap(),
-                )
-            });
-    }
-}
+// #[derive(Resource, Clone)]
+// struct TeleportCommand;
+//
+// impl Command for TeleportCommand {
+//     type CommandExecutables = TeleportResult;
+//
+//     fn assemble_graph(&self, command_graph: &mut CommandGraphBuilder<Self::CommandExecutables>) {
+//         let teleport = command_graph
+//             .root()
+//             .literal("teleport")
+//             .with_scopes(vec!["valence:command:teleport"])
+//             .id();
+//
+//         // tp alias
+//         command_graph
+//             .root()
+//             .literal("tp")
+//             .with_scopes(vec!["valence:command:teleport"])
+//             .redirect_to(teleport);
+//
+//         // executor to vec3 target
+//         command_graph
+//             .at(teleport)
+//             .argument("destination:location")
+//             .with_parser(Parser::Vec3)
+//             .with_executable(|s| {
+//                 TeleportResult::ExecutorToLocation(arg_parser::Vec3::parse_args(s).unwrap())
+//             });
+//
+//         // executor to entity target
+//         command_graph
+//             .at(teleport)
+//             .argument("destination:entity")
+//             .with_parser(Parser::Entity {
+//                 only_players: false,
+//                 single: true,
+//             })
+//             .with_executable(|s| {
+//                 TeleportResult::ExecutorToTarget(arg_parser::EntitySelector::parse_args(s).unwrap())
+//             });
+//
+//         let targeted_teleport = command_graph
+//             .root()
+//             .at(teleport)
+//             .argument("target:entity")
+//             .with_parser(Parser::Entity {
+//                 only_players: false,
+//                 single: false,
+//             })
+//             .id();
+//
+//         // target to target
+//         command_graph
+//             .at(targeted_teleport)
+//             .argument("destination:entity")
+//             .with_parser(Parser::Entity {
+//                 only_players: false,
+//                 single: true,
+//             })
+//             .with_executable(|s| {
+//                 TeleportResult::TargetToTarget(
+//                     <(arg_parser::EntitySelector, arg_parser::EntitySelector)>::parse_args(s)
+//                         .unwrap(),
+//                 )
+//             });
+//         // target to location
+//         command_graph
+//             .at(targeted_teleport)
+//             .argument("destination:location")
+//             .with_parser(Parser::Vec3)
+//             .with_executable(|s| {
+//                 TeleportResult::TargetToLocation(
+//                     <(arg_parser::EntitySelector, arg_parser::Vec3)>::parse_args(s).unwrap(),
+//                 )
+//             });
+//     }
+// }
 
 pub fn main() {
     App::new()
@@ -147,24 +167,24 @@ fn handle_teleport_command(
 ) {
     for event in events.iter() {
         match &event.result {
-            TeleportResult::ExecutorToLocation(data) => {
+            Teleport::ExecutorToLocation { location } => {
                 let (client, pos) = &mut clients.get_mut(event.executor).unwrap();
-                pos.0.x = data.x.get(pos.0.x as f32) as f64;
-                pos.0.y = data.y.get(pos.0.y as f32) as f64;
-                pos.0.z = data.z.get(pos.0.z as f32) as f64;
+                pos.0.x = location.x.get(pos.0.x as f32) as f64;
+                pos.0.y = location.y.get(pos.0.y as f32) as f64;
+                pos.0.z = location.z.get(pos.0.z as f32) as f64;
 
                 client.send_chat_message(format!(
                     "Teleport command executor -> location executed with data:\n {:#?}",
-                    data
+                    &event.result
                 ));
             }
-            TeleportResult::ExecutorToTarget(data) => {
-                let target = usernames.iter().find(|(_, name)| name.0 == *data);
+            Teleport::ExecutorToTarget { target: raw_target } => {
+                let target = usernames.iter().find(|(_, name)| name.0 == *raw_target);
 
                 match target {
                     None => {
                         let client = &mut clients.get_mut(event.executor).unwrap().0;
-                        client.send_chat_message(format!("Could not find target: {}", data));
+                        client.send_chat_message(format!("Could not find target: {}", raw_target));
                     }
                     Some(target_entity) => {
                         let target_pos = clients.get(target_entity.0).unwrap().1 .0;
@@ -178,25 +198,25 @@ fn handle_teleport_command(
                 let client = &mut clients.get_mut(event.executor).unwrap().0;
                 client.send_chat_message(format!(
                     "Teleport command executor -> target executed with data:\n {:#?}",
-                    data
+                    &event.result
                 ));
             }
-            TeleportResult::TargetToTarget(data) => {
-                let from_target = usernames.iter().find(|(_, name)| name.0 == data.0);
-                let to_target = usernames.iter().find(|(_, name)| name.0 == data.1);
+            Teleport::TargetToTarget { from, to } => {
+                let from_target = usernames.iter().find(|(_, name)| name.0 == *from);
+                let to_target = usernames.iter().find(|(_, name)| name.0 == *to);
 
                 let client = &mut clients.get_mut(event.executor).unwrap().0;
                 client.send_chat_message(format!(
                     "Teleport command target -> location with data:\n {:#?}",
-                    data
+                    &event.result
                 ));
                 match from_target {
                     None => {
-                        client.send_chat_message(format!("Could not find target: {}", data.0));
+                        client.send_chat_message(format!("Could not find target: {}", from));
                     }
                     Some(from_target_entity) => match to_target {
                         None => {
-                            client.send_chat_message(format!("Could not find target: {}", data.0));
+                            client.send_chat_message(format!("Could not find target: {}", to));
                         }
                         Some(to_target_entity) => {
                             let target_pos = *clients.get(to_target_entity.0).unwrap().1;
@@ -218,27 +238,30 @@ fn handle_teleport_command(
                     },
                 }
             }
-            TeleportResult::TargetToLocation(data) => {
-                let target = usernames.iter().find(|(_, name)| name.0 == data.0);
+            Teleport::TargetToLocation {
+                target: target_raw,
+                location,
+            } => {
+                let target = usernames.iter().find(|(_, name)| name.0 == *target_raw);
 
                 let client = &mut clients.get_mut(event.executor).unwrap().0;
                 client.send_chat_message(format!(
                     "Teleport command target -> location with data:\n {:#?}",
-                    data
+                    &event.result
                 ));
                 match target {
                     None => {
-                        client.send_chat_message(format!("Could not find target: {}", data.0));
+                        client.send_chat_message(format!("Could not find target: {}", target_raw));
                     }
                     Some(target_entity) => {
                         let (client, pos) = &mut clients.get_mut(target_entity.0).unwrap();
-                        pos.0.x = data.1.x.get(pos.0.x as f32) as f64;
-                        pos.0.y = data.1.y.get(pos.0.y as f32) as f64;
-                        pos.0.z = data.1.z.get(pos.0.z as f32) as f64;
+                        pos.0.x = location.x.get(pos.0.x as f32) as f64;
+                        pos.0.y = location.y.get(pos.0.y as f32) as f64;
+                        pos.0.z = location.z.get(pos.0.z as f32) as f64;
 
                         client.send_chat_message(format!(
                             "Teleport command executor -> location executed with data:\n {:#?}",
-                            data
+                            &event.result
                         ));
                     }
                 }

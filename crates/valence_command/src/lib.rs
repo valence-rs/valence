@@ -15,7 +15,6 @@ use crate::command_graph::{CommandGraph, CommandGraphBuilder};
 pub trait Command {
     type CommandExecutables: Send + Sync; // usually an enum of all the possible commands
 
-    fn name() -> String;
     fn assemble_graph(&self, graph: &mut CommandGraphBuilder<Self::CommandExecutables>);
 }
 

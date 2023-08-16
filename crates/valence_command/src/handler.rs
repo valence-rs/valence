@@ -35,7 +35,7 @@ where
     }
 
     pub fn command_name() -> String {
-        T::name()
+        "hah".into()
     }
 }
 
@@ -232,72 +232,9 @@ fn command_event_system<T>(
                                 println!("argument: {}", name);
                                 let arg_len = parser_len(parser);
 
-                                let (arg, taken_len): (String, usize) = match arg_len {
-                                    ArgLen::Infinite => (
-                                        command_args[current_arg..].join(" "),
-                                        command_args[current_arg..].len(),
-                                    ),
-                                    ArgLen::Exact(num) => (
-                                        command_args[current_arg..current_arg + num as usize]
-                                            .join(" "),
-                                        num as usize,
-                                    ),
-                                    ArgLen::Within(char) => {
-                                        // example with " char: ""hello world"" will be
-                                        // ["\"hello", "world\""] in the list we want to get
-                                        // "hello world".
-
-                                        if command_args[current_arg].starts_with(char) {
-                                            let mut arg = command_args[current_arg].clone();
-                                            arg.remove(0);
-
-                                            // look for a list item that ends with the same char
-                                            let mut end_index = current_arg;
-                                            for (i, arg) in
-                                                command_args[current_arg + 1..].iter().enumerate()
-                                            {
-                                                if arg.ends_with(char) {
-                                                    end_index = i + current_arg + 1;
-                                                    break;
-                                                }
-                                            }
-
-                                            (
-                                                command_args[current_arg..end_index + 1].join(" "),
-                                                (end_index - current_arg + 1),
-                                            )
-                                        } else {
-                                            break;
-                                        }
-                                    }
-                                    ArgLen::WithinExplicit(start, end) => {
-                                        // example with [ and ] char: "[hello world]" will be
-                                        // ["[hello", "world]"] in the list we want to get
-                                        // "hello world".
-
-                                        if command_args[current_arg].starts_with(start) {
-                                            let mut arg = command_args[current_arg].clone();
-                                            arg.remove(0);
-
-                                            // look for a list item that ends with the same char
-                                            let mut end_index = current_arg;
-                                            for (i, arg) in
-                                                command_args[current_arg + 1..].iter().enumerate()
-                                            {
-                                                if arg.ends_with(end) {
-                                                    end_index = i + current_arg + 1;
-                                                    break;
-                                                }
-                                            }
-
-                                            (
-                                                command_args[current_arg..end_index + 1].join(" "),
-                                                (end_index - current_arg + 1),
-                                            )
-                                        } else {
-                                            break;
-                                        }
-                                    }
+                                let (arg, taken_len) = match parse_arg(&command_args, current_arg, arg_len) {
+                                    Some(value) => value,
+                                    None => break,
                                 };
 
                                 if parser_valid_for(parser, arg.clone()) {
@@ -326,4 +263,75 @@ fn command_event_system<T>(
             }
         }
     }
+}
+
+pub fn parse_arg(command_args: &[String], current_arg: usize, arg_len: ArgLen) -> Option<(String, usize)> {
+    let (arg, taken_len): (String, usize) = match arg_len {
+        ArgLen::Infinite => (
+            command_args[current_arg..].join(" "),
+            command_args[current_arg..].len(),
+        ),
+        ArgLen::Exact(num) => (
+            command_args[current_arg..current_arg + num as usize]
+                .join(" "),
+            num as usize,
+        ),
+        ArgLen::Within(char) => {
+            // example with " char: ""hello world"" will be
+            // ["\"hello", "world\""] in the list we want to get
+            // "hello world".
+
+            if command_args[current_arg].starts_with(char) {
+                let mut arg = command_args[current_arg].clone();
+                arg.remove(0);
+
+                // look for a list item that ends with the same char
+                let mut end_index = current_arg;
+                for (i, arg) in
+                command_args[current_arg + 1..].iter().enumerate()
+                {
+                    if arg.ends_with(char) {
+                        end_index = i + current_arg + 1;
+                        break;
+                    }
+                }
+
+                (
+                    command_args[current_arg..end_index + 1].join(" "),
+                    (end_index - current_arg + 1),
+                )
+            } else {
+                return None;
+            }
+        }
+        ArgLen::WithinExplicit(start, end) => {
+            // example with [ and ] char: "[hello world]" will be
+            // ["[hello", "world]"] in the list we want to get
+            // "hello world".
+
+            if command_args[current_arg].starts_with(start) {
+                let mut arg = command_args[current_arg].clone();
+                arg.remove(0);
+
+                // look for a list item that ends with the same char
+                let mut end_index = current_arg;
+                for (i, arg) in
+                command_args[current_arg + 1..].iter().enumerate()
+                {
+                    if arg.ends_with(end) {
+                        end_index = i + current_arg + 1;
+                        break;
+                    }
+                }
+
+                (
+                    command_args[current_arg..end_index + 1].join(" "),
+                    (end_index - current_arg + 1),
+                )
+            } else {
+                return None;
+            }
+        }
+    };
+    Some((arg, taken_len))
 }
