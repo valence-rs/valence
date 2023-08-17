@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::fmt::{Debug, format};
+use std::marker::PhantomData;
 
 use bevy_app::{App, Plugin, PostStartup, Update};
 use bevy_ecs::change_detection::{Res, ResMut};
@@ -9,7 +11,9 @@ use petgraph::algo::all_simple_paths;
 use petgraph::dot::Dot;
 use petgraph::prelude::NodeIndex;
 use petgraph::Graph;
+use valence_server::client::Client;
 use valence_server::event_loop::PacketEvent;
+use valence_server::message::SendMessage;
 use valence_server::protocol::packets::play::CommandExecutionC2s;
 
 use crate::arg_parser::ArgLen;
@@ -21,34 +25,30 @@ use crate::command_scopes::CommandScopes;
 
 pub struct CommandHandler<T>
 where
-    T: Command + Resource + Clone,
+    T: Command,
 {
-    command: T,
+    command: PhantomData<T>,
 }
 
 impl<T> CommandHandler<T>
 where
-    T: Command + Resource + Clone,
+    T: Command,
 {
-    pub fn from_command(command: T) -> Self {
-        CommandHandler { command }
-    }
-
-    pub fn command_name() -> String {
-        "hah".into()
+    pub fn from_command() -> Self {
+        CommandHandler { command: PhantomData }
     }
 }
 
 #[derive(Resource)]
-struct CommandResource<T: Command> {
-    command: T,
-    executables: HashMap<NodeIndex, fn(Vec<String>) -> T::CommandExecutables>,
+struct CommandResource<T: Command + Send + Sync> {
+    command: PhantomData<T>,
+    executables: HashMap<NodeIndex, fn(Vec<String>) -> T>,
 }
 
-impl<T: Command> CommandResource<T> {
-    pub fn new(command: T) -> Self {
+impl<T: Command + Send + Sync> CommandResource<T> {
+    pub fn new() -> Self {
         CommandResource {
-            command,
+            command: PhantomData,
             executables: HashMap::new(),
         }
     }
@@ -58,26 +58,26 @@ impl<T: Command> CommandResource<T> {
 pub struct CommandExecutionEvent<T>
 where
     T: Command,
-    T::CommandExecutables: Send + Sync + 'static,
+    T: Send + Sync + 'static,
 {
-    pub result: T::CommandExecutables,
+    pub result: T,
     pub executor: Entity,
 }
 
 impl<T> Plugin for CommandHandler<T>
 where
-    T: Command + Resource + Clone,
+    T: Command + Send + Sync + Debug + 'static,
 {
     fn build(&self, app: &mut App) {
-        println!("Registering command: {}", Self::command_name());
+        // println!("Registering command: {}", Self::command_name());
 
         app.add_event::<CommandTypingEvent<T>>()
             .add_event::<CommandExecutionEvent<T>>()
-            .insert_resource(CommandResource::new(self.command.clone()))
+            .insert_resource(CommandResource::<T>::new())
             .add_systems(Update, command_event_system::<T>)
             .add_systems(PostStartup, command_startup_system::<T>);
 
-        println!("Registered command: {}", Self::command_name());
+        // println!("Registered command: {}", Self::command_name());
     }
 }
 
@@ -85,11 +85,11 @@ fn command_startup_system<T>(
     mut registry: ResMut<CommandRegistry>,
     mut command: ResMut<CommandResource<T>>,
 ) where
-    T: Command + Resource + Clone,
+    T: Command + Send + Sync + 'static,
 {
     let mut executables = HashMap::new();
     let graph_builder = &mut CommandGraphBuilder::new(&mut registry, &mut executables);
-    command.command.assemble_graph(graph_builder);
+    T::assemble_graph(graph_builder);
 
     println!("Command graph: {}", &registry.graph);
     command.executables.extend(executables);
@@ -102,10 +102,10 @@ fn command_event_system<T>(
     mut events: EventWriter<CommandExecutionEvent<T>>,
     command: ResMut<CommandResource<T>>,
     scope_registry: Res<CommandScopeRegistry>,
-    scopes: Query<&CommandScopes>
+    scopes: Query<&CommandScopes>,
+    mut clients: Query<&mut Client>,
 ) where
-    T: Command + Resource,
-    T::CommandExecutables: Send + Sync,
+    T: Command + Send + Sync + Debug,
 {
     for packet in packets.iter() {
         let client = packet.client;
@@ -130,7 +130,7 @@ fn command_event_system<T>(
                     .split_whitespace()
                     .map(|s| s.to_string())
                     .collect::<Vec<String>>();
-                while let Some(path) = paths.next() {
+                for path in paths {
                     let mut potentially_infinite = false;
 
                     let mut command_len = 0;
@@ -198,7 +198,7 @@ fn command_event_system<T>(
                             }
                         }
 
-                        println!("current_node: {}", current_node);
+                        println!("current_node: {:?}", path[current_node]);
 
                         // check that the executor has the permission to path through this node
                         let node_scopes = registry.graph.graph[path[current_node]].scopes.clone();
@@ -251,6 +251,9 @@ fn command_event_system<T>(
                             let executable = command.executables.get(&path[current_node]).unwrap();
                             let args = possible_args;
                             let executable = executable(args);
+                            clients.get_mut(client).unwrap().send_chat_message(
+                                format!("executing command with  info {:#?}", executable)
+                            );
                             events.send(CommandExecutionEvent {
                                 result: executable,
                                 executor: client,
@@ -268,11 +271,11 @@ fn command_event_system<T>(
 pub fn parse_arg(command_args: &[String], current_arg: usize, arg_len: ArgLen) -> Option<(String, usize)> {
     let (arg, taken_len): (String, usize) = match arg_len {
         ArgLen::Infinite => (
-            command_args[current_arg..].join(" "),
-            command_args[current_arg..].len(),
+            command_args.get(current_arg..)?.join(" "),
+            command_args.get(current_arg..)?.len(),
         ),
         ArgLen::Exact(num) => (
-            command_args[current_arg..current_arg + num as usize]
+            command_args.get(current_arg..current_arg + num as usize)?
                 .join(" "),
             num as usize,
         ),
@@ -281,14 +284,14 @@ pub fn parse_arg(command_args: &[String], current_arg: usize, arg_len: ArgLen) -
             // ["\"hello", "world\""] in the list we want to get
             // "hello world".
 
-            if command_args[current_arg].starts_with(char) {
-                let mut arg = command_args[current_arg].clone();
+            if command_args.get(current_arg)?.starts_with(char) {
+                let mut arg = command_args.get(current_arg)?.clone();
                 arg.remove(0);
 
                 // look for a list item that ends with the same char
                 let mut end_index = current_arg;
                 for (i, arg) in
-                command_args[current_arg + 1..].iter().enumerate()
+                command_args.get(current_arg + 1..)?.iter().enumerate()
                 {
                     if arg.ends_with(char) {
                         end_index = i + current_arg + 1;
@@ -297,7 +300,7 @@ pub fn parse_arg(command_args: &[String], current_arg: usize, arg_len: ArgLen) -
                 }
 
                 (
-                    command_args[current_arg..end_index + 1].join(" "),
+                    command_args.get(current_arg..end_index + 1)?.join(" "),
                     (end_index - current_arg + 1),
                 )
             } else {
@@ -309,14 +312,14 @@ pub fn parse_arg(command_args: &[String], current_arg: usize, arg_len: ArgLen) -
             // ["[hello", "world]"] in the list we want to get
             // "hello world".
 
-            if command_args[current_arg].starts_with(start) {
-                let mut arg = command_args[current_arg].clone();
+            if command_args.get(current_arg)?.starts_with(start) {
+                let mut arg = command_args.get(current_arg)?.clone();
                 arg.remove(0);
 
                 // look for a list item that ends with the same char
                 let mut end_index = current_arg;
                 for (i, arg) in
-                command_args[current_arg + 1..].iter().enumerate()
+                command_args.get(current_arg + 1..)?.iter().enumerate()
                 {
                     if arg.ends_with(end) {
                         end_index = i + current_arg + 1;
@@ -325,7 +328,7 @@ pub fn parse_arg(command_args: &[String], current_arg: usize, arg_len: ArgLen) -
                 }
 
                 (
-                    command_args[current_arg..end_index + 1].join(" "),
+                    command_args.get(current_arg..end_index + 1)?.join(" "),
                     (end_index - current_arg + 1),
                 )
             } else {

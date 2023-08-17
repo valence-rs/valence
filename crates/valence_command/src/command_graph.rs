@@ -295,33 +295,33 @@ pub fn parser_valid_for(parser: &Parser, arg: String) -> bool {
         Parser::ColumnPos => arg_parser::ColumnPos::arg_from_string(arg).is_ok(),
         Parser::Vec3 => arg_parser::Vec3::arg_from_string(arg).is_ok(),
         Parser::Vec2 => arg_parser::Vec2::arg_from_string(arg).is_ok(),
-        Parser::BlockState => arg_parser::BlockState::arg_from_string(arg).is_ok(),
-        Parser::BlockPredicate => arg_parser::BlockPredicate::arg_from_string(arg).is_ok(),
-        Parser::ItemStack => arg_parser::ItemStack::arg_from_string(arg).is_ok(),
+        Parser::BlockState => String::arg_from_string(arg).is_ok(),
+        Parser::BlockPredicate => String::arg_from_string(arg).is_ok(),
+        Parser::ItemStack => String::arg_from_string(arg).is_ok(),
         Parser::ItemPredicate => {
             String::arg_from_string(arg).is_ok() // TODO
         }
-        Parser::Color => arg_parser::ChatColor::arg_from_string(arg).is_ok(),
-        Parser::Component => arg_parser::JsonChatComponent::arg_from_string(arg).is_ok(),
-        Parser::Message => arg_parser::Message::arg_from_string(arg).is_ok(),
-        Parser::NbtCompoundTag => arg_parser::JsonChatComponent::arg_from_string(arg).is_ok(),
-        Parser::NbtTag => arg_parser::NbtTag::arg_from_string(arg).is_ok(),
-        Parser::NbtPath => arg_parser::NbtPath::arg_from_string(arg).is_ok(),
-        Parser::Objective => arg_parser::Objective::arg_from_string(arg).is_ok(),
-        Parser::ObjectiveCriteria => arg_parser::ObjectiveCriteria::arg_from_string(arg).is_ok(),
-        Parser::Operation => arg_parser::Objective::arg_from_string(arg).is_ok(),
+        Parser::Color => String::arg_from_string(arg).is_ok(),
+        Parser::Component => String::arg_from_string(arg).is_ok(),
+        Parser::Message => String::arg_from_string(arg).is_ok(),
+        Parser::NbtCompoundTag => String::arg_from_string(arg).is_ok(),
+        Parser::NbtTag => String::arg_from_string(arg).is_ok(),
+        Parser::NbtPath => String::arg_from_string(arg).is_ok(),
+        Parser::Objective => String::arg_from_string(arg).is_ok(),
+        Parser::ObjectiveCriteria => String::arg_from_string(arg).is_ok(),
+        Parser::Operation => String::arg_from_string(arg).is_ok(),
         Parser::Particle => {
             String::arg_from_string(arg).is_ok() // TODO
         }
         Parser::Angle => arg_parser::Angle::arg_from_string(arg).is_ok(),
         Parser::Rotation => arg_parser::Rotation::arg_from_string(arg).is_ok(),
-        Parser::ScoreboardSlot => arg_parser::ScoreboardSlot::arg_from_string(arg).is_ok(),
+        Parser::ScoreboardSlot => String::arg_from_string(arg).is_ok(),
         Parser::ScoreHolder { .. } => arg_parser::ScoreHolder::arg_from_string(arg).is_ok(),
         Parser::Swizzle => arg_parser::ScoreHolder::arg_from_string(arg).is_ok(),
-        Parser::Team => arg_parser::TeamName::arg_from_string(arg).is_ok(),
-        Parser::ItemSlot => arg_parser::ItemStack::arg_from_string(arg).is_ok(),
-        Parser::ResourceLocation => arg_parser::ResourceLocation::arg_from_string(arg).is_ok(),
-        Parser::Function => arg_parser::Function::arg_from_string(arg).is_ok(),
+        Parser::Team => String::arg_from_string(arg).is_ok(),
+        Parser::ItemSlot => String::arg_from_string(arg).is_ok(),
+        Parser::ResourceLocation => String::arg_from_string(arg).is_ok(),
+        Parser::Function => String::arg_from_string(arg).is_ok(),
         Parser::EntityAnchor => arg_parser::EntityAnchor::arg_from_string(arg).is_ok(),
         Parser::IntRange => arg_parser::IntRange::arg_from_string(arg).is_ok(),
         Parser::FloatRange => arg_parser::FloatRange::arg_from_string(arg).is_ok(),
@@ -346,7 +346,7 @@ pub fn parser_valid_for(parser: &Parser, arg: String) -> bool {
         Parser::TemplateRotation => {
             String::arg_from_string(arg).is_ok() // TODO
         }
-        Parser::Uuid => arg_parser::Uuid::arg_from_string(arg).is_ok(),
+        Parser::Uuid => String::arg_from_string(arg).is_ok(),
     }
 }
 

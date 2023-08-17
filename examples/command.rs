@@ -1,45 +1,17 @@
 #![allow(clippy::type_complexity)]
 
-use clap::arg;
 use valence::prelude::*;
-use valence::protocol::packets::play::command_tree_s2c::Parser;
+use valence_command::arg_parser::{CommandArg, GreedyString};
 use valence_command::command_graph::CommandGraphBuilder;
 use valence_command::command_scopes::CommandScopes;
 use valence_command::handler::{CommandExecutionEvent, CommandHandler};
-use valence_command::{arg_parser, Command, CommandArgSet, CommandScopeRegistry};
+use valence_command::Command;
+use valence_command::{arg_parser, CommandScopeRegistry};
 use valence_command_derive::Command;
 
 const SPAWN_Y: i32 = 64;
 
-// pub enum TeleportResult {
-//     ExecutorToLocation(arg_parser::Vec3),
-//     ExecutorToTarget(String),
-//     TargetToTarget((String, String)),
-//     TargetToLocation((String, arg_parser::Vec3)),
-// }
-
-// #[derive(Command)]
-// #[paths("selectfruit", "select fruit", "sf")]
-// #[scopes("valence:command:teleport")]
-// enum SelectFruit {
-//     #[paths = "apple"]
-//     // this path is from the perant: selectfruit so `/selectfruit apple` will be here
-//     Apple,
-//     #[paths = "banana"]
-//     Banana,
-//     #[paths = "Strawberry {breed} with_name {name} {kind?}"]
-//     // this could be `/selectfruit banana green` or /selectfruit banana
-//     // the macro should be able to detect the fact it is optional and register two executables;
-//     // one has no args and the other has the optional arg
-//     Strawberry {
-//         breed: arg_parser::Vec3,
-//         name: String,
-//         kind: Option<f32>,
-//     },
-//     #[paths("orange", "o")]
-//     Orange,
-// }
-#[derive(Command, Debug)]
+#[derive(Command, Debug, Clone)]
 #[paths("teleport", "tp")]
 #[scopes("valence:command:teleport")]
 enum Teleport {
@@ -56,96 +28,45 @@ enum Teleport {
     },
 }
 
-
-// #[derive(Suggestions)] // I'd want this to assume snake case unless manully set
-// enum Strawberry {
-//     Red,
-//     Green
-// }
-
-// #[derive(Resource, Clone)]
-// struct TeleportCommand;
-//
-// impl Command for TeleportCommand {
-//     type CommandExecutables = TeleportResult;
-//
-//     fn assemble_graph(&self, command_graph: &mut CommandGraphBuilder<Self::CommandExecutables>) {
-//         let teleport = command_graph
-//             .root()
-//             .literal("teleport")
-//             .with_scopes(vec!["valence:command:teleport"])
-//             .id();
-//
-//         // tp alias
-//         command_graph
-//             .root()
-//             .literal("tp")
-//             .with_scopes(vec!["valence:command:teleport"])
-//             .redirect_to(teleport);
-//
-//         // executor to vec3 target
-//         command_graph
-//             .at(teleport)
-//             .argument("destination:location")
-//             .with_parser(Parser::Vec3)
-//             .with_executable(|s| {
-//                 TeleportResult::ExecutorToLocation(arg_parser::Vec3::parse_args(s).unwrap())
-//             });
-//
-//         // executor to entity target
-//         command_graph
-//             .at(teleport)
-//             .argument("destination:entity")
-//             .with_parser(Parser::Entity {
-//                 only_players: false,
-//                 single: true,
-//             })
-//             .with_executable(|s| {
-//                 TeleportResult::ExecutorToTarget(arg_parser::EntitySelector::parse_args(s).unwrap())
-//             });
-//
-//         let targeted_teleport = command_graph
-//             .root()
-//             .at(teleport)
-//             .argument("target:entity")
-//             .with_parser(Parser::Entity {
-//                 only_players: false,
-//                 single: false,
-//             })
-//             .id();
-//
-//         // target to target
-//         command_graph
-//             .at(targeted_teleport)
-//             .argument("destination:entity")
-//             .with_parser(Parser::Entity {
-//                 only_players: false,
-//                 single: true,
-//             })
-//             .with_executable(|s| {
-//                 TeleportResult::TargetToTarget(
-//                     <(arg_parser::EntitySelector, arg_parser::EntitySelector)>::parse_args(s)
-//                         .unwrap(),
-//                 )
-//             });
-//         // target to location
-//         command_graph
-//             .at(targeted_teleport)
-//             .argument("destination:location")
-//             .with_parser(Parser::Vec3)
-//             .with_executable(|s| {
-//                 TeleportResult::TargetToLocation(
-//                     <(arg_parser::EntitySelector, arg_parser::Vec3)>::parse_args(s).unwrap(),
-//                 )
-//             });
-//     }
-// }
+#[derive(Command, Debug, Clone)]
+#[paths("test", "t")]
+#[scopes("valence:command:teleport")]
+enum Test {
+    // 3 literals with an arg each
+    #[paths = "a {a} b {b} c {c}"]
+    A { a: String, b: i32, c: f32 },
+    // 2 literals with an arg last being optional
+    #[paths = "a {a} b {b?}"]
+    B { a: String, b: Option<String> },
+    // greedy string optional arg
+    #[paths = "a {a} b {b?}"]
+    C {
+        a: String,
+        b: Option<arg_parser::GreedyString>,
+    },
+    // greedy string required arg
+    #[paths = "a {a} b {b}"]
+    D {
+        a: String,
+        b: arg_parser::GreedyString,
+    },
+    // five optional args and an ending greedyString
+    #[paths = "options {a?} {b?} {c?} {d?} {e?}"]
+    E {
+        a: Option<i32>,
+        b: Option<f32>,
+        c: Option<arg_parser::Vec2>,
+        d: Option<arg_parser::Vec3>,
+        e: Option<GreedyString>,
+    },
+}
 
 pub fn main() {
     App::new()
         .add_plugins((
             DefaultPlugins,
-            CommandHandler::from_command(TeleportCommand),
+            CommandHandler::<Teleport>::from_command(),
+            CommandHandler::<Test>::from_command(),
         ))
         .add_systems(Startup, setup)
         .add_systems(
@@ -161,7 +82,7 @@ pub fn main() {
 }
 
 fn handle_teleport_command(
-    mut events: EventReader<CommandExecutionEvent<TeleportCommand>>,
+    mut events: EventReader<CommandExecutionEvent<Teleport>>,
     mut clients: Query<(&mut Client, &mut Position)>,
     usernames: Query<(Entity, &Username)>, // mut commands: Commands
 ) {

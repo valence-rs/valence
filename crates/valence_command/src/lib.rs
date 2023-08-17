@@ -13,23 +13,17 @@ use crate::arg_parser::{CommandArg, CommandArgParseError};
 use crate::command_graph::{CommandGraph, CommandGraphBuilder};
 
 pub trait Command {
-    type CommandExecutables: Send + Sync; // usually an enum of all the possible commands
-
-    fn assemble_graph(&self, graph: &mut CommandGraphBuilder<Self::CommandExecutables>);
+    fn assemble_graph(graph: &mut CommandGraphBuilder<Self>) where Self: Sized;
 }
 
 pub trait CommandArgSet {
-    type ArgResult;
-
-    fn parse_args(inputs: Vec<String>) -> Result<Self::ArgResult, CommandArgParseError>
+    fn parse_args(inputs: Vec<String>) -> Result<Self, CommandArgParseError>
     where
         Self: Sized;
 }
 
 impl CommandArgSet for () {
-    type ArgResult = ();
-
-    fn parse_args(_inputs: Vec<String>) -> Result<Self::ArgResult, CommandArgParseError> {
+    fn parse_args(_inputs: Vec<String>) -> Result<Self, CommandArgParseError> {
         Ok(())
     }
 }
@@ -38,10 +32,8 @@ impl<T> CommandArgSet for T
 where
     T: CommandArg,
 {
-    type ArgResult = T::Result;
-
-    fn parse_args(inputs: Vec<String>) -> Result<Self::ArgResult, CommandArgParseError> {
-        Ok(T::arg_from_string(inputs[0].clone())?)
+    fn parse_args(inputs: Vec<String>) -> Result<Self, CommandArgParseError> {
+        T::arg_from_string(inputs[0].clone())
     }
 }
 
@@ -49,10 +41,8 @@ impl<T> CommandArgSet for (T,)
 where
     T: CommandArg,
 {
-    type ArgResult = T::Result;
-
-    fn parse_args(inputs: Vec<String>) -> Result<Self::ArgResult, CommandArgParseError> {
-        Ok(T::arg_from_string(inputs[0].clone())?)
+    fn parse_args(inputs: Vec<String>) -> Result<Self, CommandArgParseError> {
+        Ok((T::arg_from_string(inputs[0].clone())?, ))
     }
 }
 
@@ -61,9 +51,7 @@ where
     A: CommandArg,
     B: CommandArg,
 {
-    type ArgResult = (A::Result, B::Result);
-
-    fn parse_args(inputs: Vec<String>) -> Result<Self::ArgResult, CommandArgParseError> {
+    fn parse_args(inputs: Vec<String>) -> Result<Self, CommandArgParseError> {
         let mut inputs = inputs.into_iter();
 
         Ok((
@@ -76,9 +64,7 @@ where
 macro_rules! impl_arg_set {
     ($($arg:ident),*) => {
         impl<$($arg),*> CommandArgSet for ($($arg),*) where $($arg: CommandArg),* {
-            type ArgResult = ($($arg::Result),*);
-
-            fn parse_args(inputs: Vec<String>) -> Result<Self::ArgResult, CommandArgParseError> {
+            fn parse_args(inputs: Vec<String>) -> Result<Self, CommandArgParseError> {
                 let mut inputs = inputs.into_iter();
 
                 Ok(($($arg::arg_from_string(inputs.next().unwrap())?),*))
@@ -121,7 +107,7 @@ pub struct CommandRegistry {
 /// the user is still typing
 pub struct CommandTypingEvent<T>
 where
-    T: Command + Resource,
+    T: Command + Send + Sync + 'static,
 {
     command: String,
     executor: Entity,

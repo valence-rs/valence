@@ -16,9 +16,7 @@ pub enum ArgLen {
 }
 
 pub trait CommandArg: Default {
-    type Result: Default;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError>;
+    fn arg_from_string(string: String) -> Result<Self, CommandArgParseError>;
     /// how many arguments does this type take up
     fn len() -> ArgLen {
         ArgLen::Exact(1)
@@ -37,9 +35,7 @@ pub enum CommandArgParseError {
 }
 
 impl CommandArg for bool {
-    type Result = bool;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
+    fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
         match string.to_lowercase().as_str() {
             "true" => Ok(true),
             "false" => Ok(false),
@@ -58,9 +54,7 @@ impl CommandArg for bool {
 macro_rules! impl_parser_for_number {
     ($type:ty, $name:expr, $parser:ident) => {
         impl CommandArg for $type {
-            type Result = $type;
-
-            fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
+            fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
                 match string.parse::<$type>() {
                     Ok(num) => Ok(num),
                     Err(_) => Err(CommandArgParseError::InvalidArgument(
@@ -86,9 +80,7 @@ impl_parser_for_number!(i32, "integer", Integer);
 impl_parser_for_number!(i64, "long", Long);
 
 impl CommandArg for String {
-    type Result = String;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
+    fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
         Ok(string)
     }
 
@@ -97,14 +89,12 @@ impl CommandArg for String {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct GreedyString;
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct GreedyString(String);
 
 impl CommandArg for GreedyString {
-    type Result = String;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
-        Ok(string)
+    fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
+        Ok(GreedyString(string))
     }
 
     fn len() -> ArgLen {
@@ -116,14 +106,12 @@ impl CommandArg for GreedyString {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct QuotableString;
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct QuotableString(String);
 
 impl CommandArg for QuotableString {
-    type Result = String;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
-        Ok(string)
+    fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
+        Ok(QuotableString(string))
     }
 
     fn len() -> ArgLen {
@@ -137,14 +125,12 @@ impl CommandArg for QuotableString {
 
 // TODO: impl Enity properly
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct EntitySelector;
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct EntitySelector(String);
 
 impl CommandArg for EntitySelector {
-    type Result = String;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
-        Ok(string)
+    fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
+        Ok(EntitySelector(string))
     }
 
     fn display() -> Parser {
@@ -155,14 +141,12 @@ impl CommandArg for EntitySelector {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct SingleEntitySelector;
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct SingleEntitySelector(String);
 
 impl CommandArg for SingleEntitySelector {
-    type Result = String;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
-        Ok(string)
+    fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
+        Ok(SingleEntitySelector(string))
     }
 
     fn display() -> Parser {
@@ -183,9 +167,7 @@ pub enum PlayerSelector {
 }
 
 impl CommandArg for PlayerSelector {
-    type Result = PlayerSelector;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
+    fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
         Ok(if string == "@a" {
             PlayerSelector::All
         } else if string == "@s" {
@@ -205,19 +187,22 @@ impl CommandArg for PlayerSelector {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct SinglePlayerSelector;
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub enum SinglePlayerSelector {
+    Single(String),
+    #[default]
+    SelfPlayer,
+    Nearest,
+}
 
 impl CommandArg for SinglePlayerSelector {
-    type Result = PlayerSelector;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
+    fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
         Ok(if string == "@s" {
-            PlayerSelector::SelfPlayer
+            SinglePlayerSelector::SelfPlayer
         } else if string == "@p" {
-            PlayerSelector::Nearest
+            SinglePlayerSelector::Nearest
         } else {
-            PlayerSelector::Single(string)
+            SinglePlayerSelector::Single(string)
         })
     }
 
@@ -251,13 +236,11 @@ impl<T> CommandArg for PossiblyRelative<T>
 where
     T: CommandArg,
 {
-    type Result = PossiblyRelative<T::Result>;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
+    fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
         if string.starts_with('~') {
             let possibly_value = string.trim_start_matches('~').to_string();
             Ok(PossiblyRelative::Relative(if possibly_value.is_empty() {
-                T::Result::default()
+                T::default()
             } else {
                 T::arg_from_string(possibly_value)?
             }))
@@ -285,9 +268,7 @@ pub struct BlockPos {
 }
 
 impl CommandArg for BlockPos {
-    type Result = BlockPos;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
+    fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
         let mut split = string.split(' ');
         let x = PossiblyRelative::<i32>::arg_from_string(split.next().unwrap().to_string())?;
         let y = PossiblyRelative::<i32>::arg_from_string(split.next().unwrap().to_string())?;
@@ -312,9 +293,7 @@ pub struct ColumnPos {
 }
 
 impl CommandArg for ColumnPos {
-    type Result = ColumnPos;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
+    fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
         let mut split = string.split(' ');
         let x = PossiblyRelative::<i32>::arg_from_string(split.next().unwrap().to_string())?;
         let y = PossiblyRelative::<i32>::arg_from_string(split.next().unwrap().to_string())?;
@@ -340,9 +319,7 @@ pub struct Vec3 {
 }
 
 impl CommandArg for Vec3 {
-    type Result = Vec3;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
+    fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
         let mut split = string.split(' ');
         let x = PossiblyRelative::<f32>::arg_from_string(split.next().unwrap().to_string())?;
         let y = PossiblyRelative::<f32>::arg_from_string(split.next().unwrap().to_string())?;
@@ -367,9 +344,7 @@ pub struct Vec2 {
 }
 
 impl CommandArg for Vec2 {
-    type Result = Vec2;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
+    fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
         let mut split = string.split(' ');
         let x = PossiblyRelative::<f32>::arg_from_string(split.next().unwrap().to_string())?;
         let y = PossiblyRelative::<f32>::arg_from_string(split.next().unwrap().to_string())?;
@@ -386,54 +361,6 @@ impl CommandArg for Vec2 {
     }
 }
 
-// TODO: BlockState proper
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct BlockState;
-
-impl CommandArg for BlockState {
-    type Result = String;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
-        Ok(string)
-    }
-
-    fn display() -> Parser {
-        Parser::BlockState
-    }
-}
-
-// TODO: block predicate proper
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct BlockPredicate;
-
-impl CommandArg for BlockPredicate {
-    type Result = String;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
-        Ok(string)
-    }
-
-    fn display() -> Parser {
-        Parser::BlockPredicate
-    }
-}
-
-// TODO: item stack proper
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct ItemStack;
-
-impl CommandArg for ItemStack {
-    type Result = String;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
-        Ok(string)
-    }
-
-    fn display() -> Parser {
-        Parser::ItemStack
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ChatColor {
@@ -458,9 +385,7 @@ pub enum ChatColor {
 }
 
 impl CommandArg for ChatColor {
-    type Result = ChatColor;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
+    fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
         Ok(match string.to_lowercase().as_str() {
             "black" => ChatColor::Black,
             "dark_blue" => ChatColor::DarkBlue,
@@ -493,124 +418,14 @@ impl CommandArg for ChatColor {
     }
 }
 
-// TODO: json chat component proper
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct JsonChatComponent;
-
-impl CommandArg for JsonChatComponent {
-    type Result = String;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
-        Ok(string)
-    }
-
-    fn display() -> Parser {
-        Parser::Component
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct Message;
-
-impl CommandArg for Message {
-    type Result = String;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
-        Ok(string)
-    }
-
-    fn display() -> Parser {
-        Parser::Message
-    }
-}
-
-// TODO: nbt proper
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct Nbt;
-
-impl CommandArg for Nbt {
-    type Result = String;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
-        Ok(string)
-    }
-
-    fn display() -> Parser {
-        Parser::NbtCompoundTag
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct NbtTag;
-
-impl CommandArg for NbtTag {
-    type Result = String;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
-        Ok(string)
-    }
-
-    fn display() -> Parser {
-        Parser::NbtTag
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct NbtPath;
-
-impl CommandArg for NbtPath {
-    type Result = String;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
-        Ok(string)
-    }
-
-    fn display() -> Parser {
-        Parser::NbtPath
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct Objective;
-
-impl CommandArg for Objective {
-    type Result = String;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
-        Ok(string)
-    }
-
-    fn display() -> Parser {
-        Parser::Objective
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct ObjectiveCriteria;
-
-impl CommandArg for ObjectiveCriteria {
-    type Result = String;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
-        Ok(string)
-    }
-
-    fn display() -> Parser {
-        Parser::ObjectiveCriteria
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct Angle;
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct Angle(f32);
 
 impl CommandArg for Angle {
-    type Result = f32;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
-        Ok(string.parse::<f32>().map_err(|_| {
+    fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
+        Ok(Angle(string.parse::<f32>().map_err(|_| {
             CommandArgParseError::InvalidArgument("angle".to_string(), string.clone())
-        })?)
+        })?))
     }
 
     fn display() -> Parser {
@@ -618,18 +433,16 @@ impl CommandArg for Angle {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct Rotation;
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct Rotation(Vec2);
 
 impl CommandArg for Rotation {
-    type Result = Vec2;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
+    fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
         let mut split = string.split(' ');
         let x = PossiblyRelative::<f32>::arg_from_string(split.next().unwrap().to_string())?;
         let y = PossiblyRelative::<f32>::arg_from_string(split.next().unwrap().to_string())?;
 
-        Ok(Vec2 { x, y })
+        Ok(Rotation(Vec2 { x, y }))
     }
 
     fn len() -> ArgLen {
@@ -641,23 +454,6 @@ impl CommandArg for Rotation {
     }
 }
 
-// TODO: ScoreboardSlot proper
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct ScoreboardSlot;
-
-impl CommandArg for ScoreboardSlot {
-    type Result = String;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
-        Ok(string)
-    }
-
-    fn display() -> Parser {
-        Parser::ScoreboardSlot
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum ScoreHolder {
     Entity(String), // TODO: EntitySelector proper
@@ -666,12 +462,10 @@ pub enum ScoreHolder {
 }
 
 impl CommandArg for ScoreHolder {
-    type Result = ScoreHolder;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
+    fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
         Ok(match string.as_str() {
             "*" => ScoreHolder::All,
-            _ => ScoreHolder::Entity(EntitySelector::arg_from_string(string)?),
+            _ => ScoreHolder::Entity(string),
         })
     }
 
@@ -690,9 +484,7 @@ pub struct Swizzle {
 }
 
 impl CommandArg for Swizzle {
-    type Result = Swizzle;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
+    fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
         let mut x = false;
         let mut y = false;
         let mut z = false;
@@ -720,64 +512,17 @@ impl CommandArg for Swizzle {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct TeamName;
-
-impl CommandArg for TeamName {
-    type Result = String;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
-        Ok(string)
-    }
-
-    fn display() -> Parser {
-        Parser::Team
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct InventorySlot;
+pub struct InventorySlot(u32);
 
 impl CommandArg for InventorySlot {
-    type Result = u32;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
-        Ok(string.parse::<u32>().map_err(|_| {
+    fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
+        Ok(InventorySlot(string.parse::<u32>().map_err(|_| {
             CommandArgParseError::InvalidArgument("inventory_slot".to_string(), string.clone())
-        })?)
+        })?))
     }
 
     fn display() -> Parser {
         Parser::ItemSlot
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct ResourceLocation;
-
-impl CommandArg for ResourceLocation {
-    type Result = String;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
-        Ok(string)
-    }
-
-    fn display() -> Parser {
-        Parser::ResourceLocation
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct Function;
-
-impl CommandArg for Function {
-    type Result = String;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
-        Ok(string)
-    }
-
-    fn display() -> Parser {
-        Parser::Function
     }
 }
 
@@ -789,9 +534,7 @@ pub enum EntityAnchor {
 }
 
 impl CommandArg for EntityAnchor {
-    type Result = EntityAnchor;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
+    fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
         Ok(match string.as_str() {
             "eyes" => EntityAnchor::Eyes,
             "feet" => EntityAnchor::Feet,
@@ -816,9 +559,7 @@ pub struct IntRange {
 }
 
 impl CommandArg for IntRange {
-    type Result = IntRange;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
+    fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
         let mut split = string.split("..");
         let min = split.next().unwrap().parse::<i32>().map_err(|_| {
             CommandArgParseError::InvalidArgument("int_range max".to_string(), string.clone())
@@ -846,9 +587,7 @@ pub struct FloatRange {
 }
 
 impl CommandArg for FloatRange {
-    type Result = FloatRange;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
+    fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
         let mut split = string.split("..");
         let min = split.next().unwrap().parse::<f32>().map_err(|_| {
             CommandArgParseError::InvalidArgument("float_range max".to_string(), string.clone())
@@ -878,9 +617,7 @@ pub enum Dimension {
 }
 
 impl CommandArg for Dimension {
-    type Result = Dimension;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
+    fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
         Ok(match string.to_lowercase().as_str() {
             "overworld" => Dimension::Overworld,
             "nether" => Dimension::Nether,
@@ -909,9 +646,7 @@ pub enum GameMode {
 }
 
 impl CommandArg for GameMode {
-    type Result = GameMode;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
+    fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
         Ok(match string.to_lowercase().as_str() {
             "survival" => GameMode::Survival,
             "creative" => GameMode::Creative,
@@ -939,9 +674,7 @@ pub struct Time {
 }
 
 impl CommandArg for Time {
-    type Result = Time;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
+    fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
         Ok(Time {
             ticks: string.parse::<i32>().map_err(|_| {
                 CommandArgParseError::InvalidArgument("time".to_string(), string.clone())
@@ -951,20 +684,5 @@ impl CommandArg for Time {
 
     fn display() -> Parser {
         Parser::Time
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct Uuid;
-
-impl CommandArg for Uuid {
-    type Result = String;
-
-    fn arg_from_string(string: String) -> Result<Self::Result, CommandArgParseError> {
-        Ok(string)
-    }
-
-    fn display() -> Parser {
-        Parser::Uuid
     }
 }
