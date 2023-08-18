@@ -121,5 +121,3 @@ jobs:
     steps:
     - name: Check for spelling errors
       uses: crate-ci/typos@v1.16.5
-      with: 
-        files: ./
