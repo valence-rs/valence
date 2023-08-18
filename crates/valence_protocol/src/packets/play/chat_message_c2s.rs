@@ -2,7 +2,6 @@ use super::*;
 use crate::FixedBitSet;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::CHAT_MESSAGE_C2S)]
 pub struct ChatMessageC2s<'a> {
     pub message: Bounded<&'a str, 256>,
     pub timestamp: u64,

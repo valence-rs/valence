@@ -2,7 +2,6 @@ use super::*;
 use crate::sound::SoundCategory;
 
 #[derive(Clone, PartialEq, Debug, Packet)]
-#[packet(id = packet_id::STOP_SOUND_S2C)]
 pub struct StopSoundS2c<'a> {
     pub source: Option<SoundCategory>,
     pub sound: Option<Ident<Cow<'a, str>>>,

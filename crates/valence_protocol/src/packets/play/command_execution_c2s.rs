@@ -1,7 +1,6 @@
 use super::*;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::COMMAND_EXECUTION_C2S)]
 pub struct CommandExecutionC2s<'a> {
     pub command: Bounded<&'a str, 256>,
     pub timestamp: u64,

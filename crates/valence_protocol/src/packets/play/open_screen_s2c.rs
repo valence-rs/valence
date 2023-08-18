@@ -1,7 +1,6 @@
 use super::*;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::OPEN_SCREEN_S2C)]
 pub struct OpenScreenS2c<'a> {
     pub window_id: VarInt,
     pub window_type: WindowType,

@@ -1,7 +1,6 @@
 use super::*;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::GAME_JOIN_S2C)]
 pub struct GameJoinS2c<'a> {
     pub entity_id: i32,
     pub is_hardcore: bool,

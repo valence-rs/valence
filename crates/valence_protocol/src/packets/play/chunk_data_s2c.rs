@@ -2,7 +2,6 @@ use super::*;
 use crate::array::FixedArray;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::CHUNK_DATA_S2C)]
 pub struct ChunkDataS2c<'a> {
     pub pos: ChunkPos,
     pub heightmaps: Cow<'a, Compound>,

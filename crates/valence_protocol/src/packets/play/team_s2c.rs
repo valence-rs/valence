@@ -1,7 +1,6 @@
 use super::*;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::TEAM_S2C)]
 pub struct TeamS2c<'a> {
     pub team_name: &'a str,
     pub mode: Mode<'a>,

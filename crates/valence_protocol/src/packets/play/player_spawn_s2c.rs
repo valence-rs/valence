@@ -14,7 +14,6 @@ use super::*;
 ///
 /// wiki : [Spawn Player](https://wiki.vg/Protocol#Spawn_Player)
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::PLAYER_SPAWN_S2C)]
 pub struct PlayerSpawnS2c {
     /// A unique integer ID mostly used in the protocol to identify the player.
     pub entity_id: VarInt,

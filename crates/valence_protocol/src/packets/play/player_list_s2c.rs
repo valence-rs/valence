@@ -1,7 +1,6 @@
 use super::*;
 
 #[derive(Clone, Debug, Packet)]
-#[packet(id = packet_id::PLAYER_LIST_S2C)]
 pub struct PlayerListS2c<'a> {
     pub actions: PlayerListActions,
     pub entries: Cow<'a, [PlayerListEntry<'a>]>,

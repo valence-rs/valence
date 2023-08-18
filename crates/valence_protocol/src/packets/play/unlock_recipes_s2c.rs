@@ -1,7 +1,6 @@
 use super::*;
 
 #[derive(Clone, PartialEq, Eq, Debug, Packet)]
-#[packet(id = packet_id::UNLOCK_RECIPES_S2C)]
 pub struct UnlockRecipesS2c<'a> {
     pub action: UpdateRecipeBookAction<'a>,
     pub crafting_recipe_book_open: bool,

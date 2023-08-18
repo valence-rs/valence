@@ -1,7 +1,6 @@
 use super::*;
 
 #[derive(Clone, PartialEq, Debug, Packet)]
-#[packet(id = packet_id::ENTITY_EQUIPMENT_UPDATE_S2C)]
 pub struct EntityEquipmentUpdateS2c {
     pub entity_id: VarInt,
     pub equipment: Vec<EquipmentEntry>,

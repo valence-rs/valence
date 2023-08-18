@@ -1,7 +1,6 @@
 use super::*;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::COMMAND_TREE_S2C)]
 pub struct CommandTreeS2c<'a> {
     pub commands: Vec<Node<'a>>,
     pub root_index: VarInt,

@@ -1,7 +1,6 @@
 use super::*;
 
 #[derive(Clone, PartialEq, Debug, Packet)]
-#[packet(id = packet_id::MAP_UPDATE_S2C)]
 pub struct MapUpdateS2c<'a> {
     pub map_id: VarInt,
     pub scale: i8,

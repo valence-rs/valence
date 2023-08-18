@@ -1,7 +1,6 @@
 use super::*;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::SCOREBOARD_PLAYER_UPDATE_S2C)]
 pub struct ScoreboardPlayerUpdateS2c<'a> {
     pub entity_name: &'a str,
     pub action: ScoreboardPlayerUpdateAction<'a>,

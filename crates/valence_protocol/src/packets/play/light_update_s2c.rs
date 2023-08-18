@@ -2,7 +2,6 @@ use super::*;
 use crate::array::FixedArray;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::LIGHT_UPDATE_S2C)]
 pub struct LightUpdateS2c<'a> {
     pub chunk_x: VarInt,
     pub chunk_z: VarInt,

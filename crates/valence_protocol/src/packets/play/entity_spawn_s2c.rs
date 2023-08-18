@@ -4,7 +4,6 @@ use super::*;
 ///
 /// wiki : [Spawn Entity](https://wiki.vg/Protocol#Spawn_Experience_Orb)
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::ENTITY_SPAWN_S2C)]
 pub struct EntitySpawnS2c {
     pub entity_id: VarInt,
     pub object_uuid: Uuid,

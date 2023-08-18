@@ -1,7 +1,6 @@
 use super::*;
 
 #[derive(Clone, PartialEq, Debug, Packet)]
-#[packet(id = packet_id::CHAT_MESSAGE_S2C)]
 pub struct ChatMessageS2c<'a> {
     pub sender: Uuid,
     pub index: VarInt,

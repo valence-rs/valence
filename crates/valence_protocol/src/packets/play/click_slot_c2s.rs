@@ -1,7 +1,6 @@
 use super::*;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::CLICK_SLOT_C2S)]
 pub struct ClickSlotC2s<'a> {
     pub window_id: u8,
     pub state_id: VarInt,

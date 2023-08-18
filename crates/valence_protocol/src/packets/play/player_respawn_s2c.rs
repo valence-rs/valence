@@ -1,7 +1,6 @@
 use super::*;
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::PLAYER_RESPAWN_S2C)]
 pub struct PlayerRespawnS2c<'a> {
     pub dimension_type_name: Ident<Cow<'a, str>>,
     pub dimension_name: Ident<Cow<'a, str>>,

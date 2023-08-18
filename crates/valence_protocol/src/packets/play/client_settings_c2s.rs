@@ -1,7 +1,6 @@
 use super::*;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::CLIENT_SETTINGS_C2S)]
 pub struct ClientSettingsC2s<'a> {
     pub locale: &'a str,
     pub view_distance: u8,

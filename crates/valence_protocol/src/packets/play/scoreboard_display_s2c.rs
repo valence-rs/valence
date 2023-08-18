@@ -4,7 +4,6 @@ use super::team_s2c::TeamColor;
 use super::*;
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::SCOREBOARD_DISPLAY_S2C)]
 pub struct ScoreboardDisplayS2c<'a> {
     pub position: ScoreboardPosition,
     pub score_name: &'a str,

@@ -3,7 +3,6 @@ use bevy_ecs::prelude::Component;
 use super::*;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::BOSS_BAR_S2C)]
 pub struct BossBarS2c<'a> {
     pub id: Uuid,
     pub action: BossBarAction<'a>,

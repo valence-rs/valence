@@ -1,7 +1,6 @@
 use super::*;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::SET_TRADE_OFFERS_S2C)]
 pub struct SetTradeOffersS2c {
     pub window_id: VarInt,
     pub trades: Vec<TradeOffer>,

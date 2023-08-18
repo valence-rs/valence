@@ -1,7 +1,6 @@
 use super::*;
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::UPDATE_STRUCTURE_BLOCK_C2S)]
 pub struct UpdateStructureBlockC2s<'a> {
     pub position: BlockPos,
     pub action: Action,

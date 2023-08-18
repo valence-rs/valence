@@ -1,7 +1,6 @@
 use super::*;
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::ENTITY_DAMAGE_S2C)]
 pub struct EntityDamageS2c {
     /// The ID of the entity taking damage
     pub entity_id: VarInt,

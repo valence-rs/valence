@@ -1,7 +1,7 @@
 use super::*;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::HANDSHAKE_C2S, state = PacketState::Handshaking)]
+#[packet(state = PacketState::Handshaking)]
 pub struct HandshakeC2s<'a> {
     pub protocol_version: VarInt,
     pub server_address: Bounded<&'a str, 255>,

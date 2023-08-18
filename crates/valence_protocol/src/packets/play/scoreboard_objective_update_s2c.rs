@@ -3,7 +3,6 @@ use bevy_ecs::prelude::*;
 use super::*;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::SCOREBOARD_OBJECTIVE_UPDATE_S2C)]
 pub struct ScoreboardObjectiveUpdateS2c<'a> {
     pub objective_name: &'a str,
     pub mode: ObjectiveMode<'a>,
