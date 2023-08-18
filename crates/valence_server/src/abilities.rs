@@ -1,9 +1,9 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+use derive_more::{Deref, DerefMut};
 pub use valence_protocol::packets::play::player_abilities_s2c::PlayerAbilitiesFlags;
 use valence_protocol::packets::play::{PlayerAbilitiesS2c, UpdatePlayerAbilitiesC2s};
 use valence_protocol::{GameMode, WritePacket};
-use derive_more::{Deref, DerefMut};
 
 use crate::client::{update_game_mode, Client, UpdateClientsSet};
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};

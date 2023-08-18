@@ -1,8 +1,8 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+use derive_more::Deref;
 use valence_protocol::packets::play::EntityStatusS2c;
 use valence_protocol::WritePacket;
-use derive_more::Deref;
 
 use crate::client::{Client, UpdateClientsSet};
 

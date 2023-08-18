@@ -5,7 +5,6 @@ pub mod event;
 
 use std::borrow::Cow;
 use std::io::Write;
-use derive_more::{Deref, DerefMut};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use bevy_app::prelude::*;
@@ -13,6 +12,7 @@ use bevy_ecs::prelude::*;
 use bevy_ecs::system::SystemParam;
 pub use bevy_hierarchy;
 use bevy_hierarchy::{Children, HierarchyPlugin, Parent};
+use derive_more::{Deref, DerefMut};
 use event::{handle_advancement_tab_change, AdvancementTabChangeEvent};
 use rustc_hash::FxHashMap;
 use valence_server::client::{Client, FlushPacketsSet, SpawnClientsSet};

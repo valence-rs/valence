@@ -26,8 +26,8 @@ pub mod tracked_data;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-pub use manager::EntityManager;
 use derive_more::{Deref, DerefMut};
+pub use manager::EntityManager;
 use paste::paste;
 use tracing::warn;
 use tracked_data::TrackedData;

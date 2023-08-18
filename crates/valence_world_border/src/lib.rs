@@ -20,6 +20,7 @@
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+use derive_more::{Deref, DerefMut};
 use valence_server::client::{Client, UpdateClientsSet, VisibleChunkLayer};
 use valence_server::protocol::packets::play::{
     WorldBorderCenterChangedS2c, WorldBorderInitializeS2c, WorldBorderInterpolateSizeS2c,
@@ -28,7 +29,6 @@ use valence_server::protocol::packets::play::{
 };
 use valence_server::protocol::WritePacket;
 use valence_server::{ChunkLayer, Server};
-use derive_more::{Deref, DerefMut};
 
 // https://minecraft.fandom.com/wiki/World_border
 pub const DEFAULT_PORTAL_LIMIT: i32 = 29999984;
