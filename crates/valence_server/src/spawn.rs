@@ -106,7 +106,7 @@ pub(super) fn initial_join(
         });
 
         // The login packet is prepended so that it's sent before all the other packets.
-        // Some packets don't work corectly when sent before the game join packet.
+        // Some packets don't work correctly when sent before the game join packet.
         _ = client.enc.prepend_packet(&GameJoinS2c {
             entity_id: 0, // We reserve ID 0 for clients.
             is_hardcore: spawn.is_hardcore.0,

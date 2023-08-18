@@ -21,7 +21,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         .iter()
         .map(|sound| {
             let id = &sound.id;
-            let name = ident(sound.name.replace('.', "_").to_pascal_case());
+            let name = ident(sound.name.to_pascal_case());
 
             quote! {
                 #id => Some(Self::#name),
@@ -33,7 +33,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         .iter()
         .map(|sound| {
             let id = &sound.id;
-            let name = ident(sound.name.replace('.', "_").to_pascal_case());
+            let name = ident(sound.name.to_pascal_case());
 
             quote! {
                 Self::#name => #id,
@@ -48,7 +48,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             let path_name = &sound.name;
             let ident_name = format!("minecraft:{}", &sound.name);
 
-            let name = ident(path_name.replace('.', "_").to_pascal_case());
+            let name = ident(path_name.to_pascal_case());
             quote! {
                 #ident_name => Some(Self::#name),
             }
@@ -59,7 +59,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         .iter()
         .map(|sound| {
             let str_name = &sound.name;
-            let name = ident(str_name.replace('.', "_").to_pascal_case());
+            let name = ident(str_name.to_pascal_case());
             quote! {
                 Self::#name => ident!(#str_name),
             }
@@ -68,7 +68,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
     let sound_variants = sounds
         .iter()
-        .map(|sound| ident(sound.name.replace('.', "_").to_pascal_case()))
+        .map(|sound| ident(sound.name.to_pascal_case()))
         .collect::<Vec<_>>();
 
     Ok(quote! {

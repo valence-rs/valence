@@ -1,36 +1,48 @@
-use std::{io::Write, fmt};
+use std::fmt;
+use std::io::Write;
 
-use crate::{Encode, Decode};
+use crate::{Decode, Encode};
 
-// TODO: when better const exprs are available, compute BYTE_COUNT from BIT_COUNT.
+// TODO: when better const exprs are available, compute BYTE_COUNT from
+// BIT_COUNT.
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct FixedBitSet<const BIT_COUNT: usize, const BYTE_COUNT: usize>(pub [u8; BYTE_COUNT]);
 
 impl<const BIT_COUNT: usize, const BYTE_COUNT: usize> FixedBitSet<BIT_COUNT, BYTE_COUNT> {
     pub fn bit(&self, idx: usize) -> bool {
         check_counts(BIT_COUNT, BYTE_COUNT);
-        assert!(idx < BIT_COUNT, "bit index of {idx} out of range for bitset with {BIT_COUNT} bits");
+        assert!(
+            idx < BIT_COUNT,
+            "bit index of {idx} out of range for bitset with {BIT_COUNT} bits"
+        );
 
         self.0[idx / 8] >> idx % 8 & 1 == 1
     }
 
     pub fn set_bit(&mut self, idx: usize, val: bool) {
         check_counts(BIT_COUNT, BYTE_COUNT);
-        assert!(idx < BIT_COUNT, "bit index of {idx} out of range for bitset with {BIT_COUNT} bits");
+        assert!(
+            idx < BIT_COUNT,
+            "bit index of {idx} out of range for bitset with {BIT_COUNT} bits"
+        );
 
         let byte = &mut self.0[idx / 8];
         *byte = *byte | (val as u8) << idx % 8;
     }
 }
 
-impl<const BIT_COUNT: usize, const BYTE_COUNT: usize> Encode for FixedBitSet<BIT_COUNT, BYTE_COUNT> {
+impl<const BIT_COUNT: usize, const BYTE_COUNT: usize> Encode
+    for FixedBitSet<BIT_COUNT, BYTE_COUNT>
+{
     fn encode(&self, w: impl Write) -> anyhow::Result<()> {
         check_counts(BIT_COUNT, BYTE_COUNT);
         self.0.encode(w)
     }
 }
 
-impl<const BIT_COUNT: usize, const BYTE_COUNT: usize> Decode<'_> for FixedBitSet<BIT_COUNT, BYTE_COUNT> {
+impl<const BIT_COUNT: usize, const BYTE_COUNT: usize> Decode<'_>
+    for FixedBitSet<BIT_COUNT, BYTE_COUNT>
+{
     fn decode(r: &mut &'_ [u8]) -> anyhow::Result<Self> {
         check_counts(BIT_COUNT, BYTE_COUNT);
         Ok(Self(Decode::decode(r)?))
@@ -41,13 +53,17 @@ const fn check_counts(bits: usize, bytes: usize) {
     assert!((bits + 7) / 8 == bytes)
 }
 
-impl<const BIT_COUNT: usize, const BYTE_COUNT: usize> fmt::Debug for FixedBitSet<BIT_COUNT, BYTE_COUNT> {
+impl<const BIT_COUNT: usize, const BYTE_COUNT: usize> fmt::Debug
+    for FixedBitSet<BIT_COUNT, BYTE_COUNT>
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, f)
     }
 }
 
-impl<const BIT_COUNT: usize, const BYTE_COUNT: usize> fmt::Display for FixedBitSet<BIT_COUNT, BYTE_COUNT> {
+impl<const BIT_COUNT: usize, const BYTE_COUNT: usize> fmt::Display
+    for FixedBitSet<BIT_COUNT, BYTE_COUNT>
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "0b")?;
 
@@ -85,7 +101,7 @@ mod tests {
     #[test]
     fn fixed_bit_set_ops() {
         let mut bits = FixedBitSet::<20, 3>::default();
-        
+
         assert!(!bits.bit(5));
         bits.set_bit(5, true);
         assert!(bits.bit(5));
@@ -108,4 +124,3 @@ mod tests {
         assert_eq!(format!("{bits}"), "0b00000000000000100000");
     }
 }
-

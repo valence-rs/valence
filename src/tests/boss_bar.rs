@@ -12,7 +12,7 @@ use crate::testing::ScenarioSingleClient;
 use crate::Text;
 
 #[test]
-fn test_intialize_on_join() {
+fn test_initialize_on_join() {
     let mut scenario = ScenarioSingleClient::new();
 
     // Insert a boss bar into the world

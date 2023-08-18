@@ -12,7 +12,7 @@ pub struct PlayerAbilitiesS2c {
 
 /// [`Component`] that stores the player's abilities flags.
 #[bitfield(u8)]
-#[derive(PartialEq, Eq, Encode, Decode, Component, Default)]
+#[derive(PartialEq, Eq, Encode, Decode, Component)]
 pub struct PlayerAbilitiesFlags {
     pub invulnerable: bool,
     pub flying: bool,

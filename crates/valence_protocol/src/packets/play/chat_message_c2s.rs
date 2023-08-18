@@ -1,6 +1,5 @@
-use crate::FixedBitSet;
-
 use super::*;
+use crate::FixedBitSet;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 #[packet(id = packet_id::CHAT_MESSAGE_C2S)]

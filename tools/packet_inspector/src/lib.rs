@@ -81,9 +81,9 @@ impl Proxy {
         let registry = PACKET_REGISTRY.get().unwrap().clone();
         let c2s = tokio::spawn(async move {
             loop {
-                let threashold = *threshold.read().await;
-                client_reader.set_compression(threashold);
-                server_writer.set_compression(threashold);
+                let threshold = *threshold.read().await;
+                client_reader.set_compression(threshold);
+                server_writer.set_compression(threshold);
                 // client to server handling
                 let packet = client_reader.recv_packet_raw().await?;
 
@@ -97,7 +97,7 @@ impl Proxy {
                     .process(
                         crate::packet_registry::PacketSide::Serverbound,
                         state,
-                        threashold,
+                        threshold,
                         &packet,
                     )
                     .await?;
@@ -123,9 +123,9 @@ impl Proxy {
         let registry = PACKET_REGISTRY.get().unwrap().clone();
         let s2c = tokio::spawn(async move {
             loop {
-                let threashold_value = *threshold.read().await;
-                server_reader.set_compression(threashold_value);
-                client_writer.set_compression(threashold_value);
+                let threshold_value = *threshold.read().await;
+                server_reader.set_compression(threshold_value);
+                client_writer.set_compression(threshold_value);
                 // server to client handling
                 let packet = server_reader.recv_packet_raw().await?;
 
@@ -152,7 +152,7 @@ impl Proxy {
                     .process(
                         crate::packet_registry::PacketSide::Clientbound,
                         state,
-                        threashold_value,
+                        threshold_value,
                         &packet,
                     )
                     .await?;

@@ -10,7 +10,7 @@ use crate::world_border::{
 };
 
 #[test]
-fn test_intialize_on_join() {
+fn test_initialize_on_join() {
     let ScenarioSingleClient {
         mut app,
         client: _,

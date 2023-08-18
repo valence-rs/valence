@@ -111,13 +111,13 @@ bevy_hierarchy = { version = "0.11", default-features = false }
 bevy_log = { version = "0.11" }
 bevy_mod_debugdump = { version = "0.8.0", default-features = false }
 bevy_utils = { version = "0.11" }
-bitfield-struct = "0.3.1"
+bitfield-struct = "0.5.3"
 byteorder = "1.4.3"
 bytes = "1.2.1"
 cesu8 = "1.1.0"
 cfb8 = "0.8.1"
 clap = { version = "4.0.30", features = ["derive"] }
-criterion = "0.4.0"
+criterion = "0.5.1"
 derive_more = "1.0.0-beta.3"
 directories = "5.0.0"
 eframe = { version = "0.22.0", default-features = false }
@@ -125,15 +125,15 @@ egui = "0.22.0"
 egui_dock = "0.6"
 enum-map = "2.5.0"
 flate2 = "1.0.24"
-flume = "0.10.14"
+flume = "0.11.0"
 fs_extra = "1.2.0"
-glam = "0.23.0"
-heck = "0.4.0"
+glam = "0.24.1"
+heck = "0.5.0-rc.1"
 hmac = "0.12.1"
 image = "0.24.6"
-indexmap = "1.9.3"
-itertools = "0.10.5"
-lru = "0.10.0"
+indexmap = "2.0.0"
+itertools = "0.11.0"
+lru = "0.11.0"
 noise = "0.8.2"
 num = "0.4.0"
 num-bigint = "0.4.3"
@@ -183,7 +183,6 @@ valence_nbt = { path = "crates/valence_nbt", features = [
     "uuid",
 ], version = "0.6.1" }
 valence_network = { path = "crates/valence_network", version = "0.2.0-alpha.1" }
-valence_packet_macros = { path = "crates/valence_packet_macros", version = "0.2.0-alpha.1" }
 valence_player_list = { path = "crates/valence_player_list", version = "0.2.0-alpha.1" }
 valence_protocol = { path = "crates/valence_protocol", version = "0.2.0-alpha.1" }
 valence_protocol_macros = { path = "crates/valence_protocol_macros", version = "0.2.0-alpha.1" }

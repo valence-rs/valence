@@ -39,7 +39,7 @@ impl<const MAX_BYTES: usize> Encode for Bounded<RawBytes<'_>, MAX_BYTES> {
             "cannot encode more than {MAX_BYTES} raw bytes (got {} bytes)",
             self.len()
         );
-        
+
         self.0.encode(w)
     }
 }

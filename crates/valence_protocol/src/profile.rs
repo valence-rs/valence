@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 use uuid::Uuid;
 
-use crate::{Decode, Encode, Bounded};
+use crate::{Bounded, Decode, Encode};
 
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct GameProfile<S: Ord = String> {

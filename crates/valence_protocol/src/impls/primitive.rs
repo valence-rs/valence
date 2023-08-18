@@ -2,7 +2,7 @@ use std::io::Write;
 use std::slice;
 
 use anyhow::ensure;
-use byteorder::{BigEndian, WriteBytesExt, ReadBytesExt};
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::{Decode, Encode};
 

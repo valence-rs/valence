@@ -14,7 +14,7 @@ pub struct EntityDamageS2c {
     /// not present, the value is 0. If this field is present:
     /// * and damage was dealt indirectly, such as by the use of a projectile,
     ///   this field will contain the ID of such projectile;
-    /// * and damage was dealt dirctly, such as by manually attacking, this
+    /// * and damage was dealt directly, such as by manually attacking, this
     ///   field will contain the same value as Source Cause ID.
     pub source_direct_id: VarInt,
     /// The Notchian server sends the Source Position when the damage was dealt

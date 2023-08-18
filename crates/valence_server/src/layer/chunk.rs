@@ -181,7 +181,7 @@ impl ChunkLayer {
         self.chunks.get_mut(&pos.into())
     }
 
-    /// Insert a chunk into the instance at the given position. The preivous
+    /// Insert a chunk into the instance at the given position. The previous
     /// chunk data is returned.
     pub fn insert_chunk(
         &mut self,

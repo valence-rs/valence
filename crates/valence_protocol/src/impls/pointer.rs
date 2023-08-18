@@ -1,6 +1,9 @@
-use std::{io::Write, rc::Rc, sync::Arc, borrow::Cow};
+use std::borrow::Cow;
+use std::io::Write;
+use std::rc::Rc;
+use std::sync::Arc;
 
-use crate::{Encode, Decode};
+use crate::{Decode, Encode};
 
 impl<T: Encode + ?Sized> Encode for &T {
     fn encode(&self, w: impl Write) -> anyhow::Result<()> {

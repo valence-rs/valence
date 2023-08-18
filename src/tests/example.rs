@@ -1,6 +1,6 @@
 //! Examples of valence unit tests that need to test the behavior of the server,
 //! and not just the logic of a single function. This module is meant to be a
-//! pallette of examples for how to write such tests, with various levels of
+//! palette of examples for how to write such tests, with various levels of
 //! complexity.
 //!
 //! Some of the tests in this file may be inferior duplicates of real tests.

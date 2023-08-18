@@ -1,4 +1,5 @@
-use std::{f32::consts::TAU, fmt};
+use std::f32::consts::TAU;
+use std::fmt;
 use std::io::Write;
 
 use crate::{Decode, Encode};
