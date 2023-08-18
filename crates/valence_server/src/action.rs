@@ -3,6 +3,7 @@ use bevy_ecs::prelude::*;
 use valence_protocol::packets::play::player_action_c2s::PlayerAction;
 use valence_protocol::packets::play::{PlayerActionC2s, PlayerActionResponseS2c};
 use valence_protocol::{BlockPos, Direction, VarInt, WritePacket};
+use derive_more::Deref;
 
 use crate::client::{Client, UpdateClientsSet};
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
@@ -35,7 +36,7 @@ pub enum DiggingState {
     Stop,
 }
 
-#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug, Deref)]
 pub struct ActionSequence(i32);
 
 impl ActionSequence {

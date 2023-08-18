@@ -13,4 +13,5 @@ valence_server.workspace = true
 bevy_app.workspace = true
 bevy_ecs.workspace = true
 bevy_hierarchy.workspace = true
+derive_more.workspace = true
 rustc-hash.workspace = true

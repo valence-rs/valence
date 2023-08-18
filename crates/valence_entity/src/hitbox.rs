@@ -4,6 +4,7 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use valence_math::{Aabb, DVec3, UVec3, Vec3Swizzles};
 use valence_protocol::Direction;
+use derive_more::Deref;
 
 use crate::*;
 
@@ -69,13 +70,13 @@ impl Plugin for HitboxPlugin {
 
 /// Size of hitbox. The only way to manipulate it without losing it on the next
 /// tick is using a marker entity. Marker entity's hitbox is never updated.
-#[derive(Component, Debug, PartialEq)]
+#[derive(Component, Debug, PartialEq, Deref)]
 pub struct HitboxShape(pub Aabb);
 
 /// Hitbox, aabb of which is calculated each tick using its position and
 /// [`Hitbox`]. In order to change size of this hitbox you need to change
 /// [`Hitbox`].
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Deref)]
 pub struct Hitbox(Aabb);
 
 impl HitboxShape {

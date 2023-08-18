@@ -6,6 +6,7 @@ use valence_server::protocol::packets::play::boss_bar_s2c::{
     BossBarAction, BossBarColor, BossBarDivision, BossBarFlags, ToPacketAction,
 };
 use valence_server::{Text, UniqueId};
+use derive_more::{Deref, DerefMut};
 
 /// The bundle of components that make up a boss bar.
 #[derive(Bundle, Default)]
@@ -19,7 +20,7 @@ pub struct BossBarBundle {
 }
 
 /// The title of a boss bar.
-#[derive(Component, Clone, Default)]
+#[derive(Component, Clone, Default, Deref, DerefMut)]
 pub struct BossBarTitle(pub Text);
 
 impl ToPacketAction for BossBarTitle {
@@ -29,7 +30,7 @@ impl ToPacketAction for BossBarTitle {
 }
 
 /// The health of a boss bar.
-#[derive(Component, Default)]
+#[derive(Component, Default, Deref, DerefMut)]
 pub struct BossBarHealth(pub f32);
 
 impl ToPacketAction for BossBarHealth {

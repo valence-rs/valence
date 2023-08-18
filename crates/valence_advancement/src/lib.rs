@@ -5,6 +5,7 @@ pub mod event;
 
 use std::borrow::Cow;
 use std::io::Write;
+use derive_more::{Deref, DerefMut};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use bevy_app::prelude::*;
@@ -321,7 +322,7 @@ fn send_advancement_update_packet(
 }
 
 /// Advancement's id. May not be updated.
-#[derive(Component)]
+#[derive(Component, Deref)]
 pub struct Advancement(Ident<Cow<'static, str>>);
 
 impl Advancement {
@@ -366,7 +367,7 @@ impl AdvancementDisplay {
 }
 
 /// Criteria's identifier. May not be updated
-#[derive(Component)]
+#[derive(Component, Deref)]
 pub struct AdvancementCriteria(Ident<Cow<'static, str>>);
 
 impl AdvancementCriteria {
@@ -382,7 +383,7 @@ impl AdvancementCriteria {
 /// Requirements for advancement to be completed.
 /// All columns should be completed, column is completed when any of criteria in
 /// this column is completed.
-#[derive(Component, Default)]
+#[derive(Component, Default, Deref, DerefMut)]
 pub struct AdvancementRequirements(pub Vec<Vec<Entity>>);
 
 #[derive(Component, Default)]

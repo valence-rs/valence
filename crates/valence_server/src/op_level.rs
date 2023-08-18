@@ -2,6 +2,7 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use valence_protocol::packets::play::EntityStatusS2c;
 use valence_protocol::WritePacket;
+use derive_more::Deref;
 
 use crate::client::{Client, UpdateClientsSet};
 
@@ -13,7 +14,7 @@ impl Plugin for OpLevelPlugin {
     }
 }
 
-#[derive(Component, Clone, PartialEq, Eq, Default, Debug)]
+#[derive(Component, Clone, PartialEq, Eq, Default, Debug, Deref)]
 pub struct OpLevel(u8);
 
 impl OpLevel {

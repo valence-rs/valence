@@ -3,6 +3,7 @@ use bevy_ecs::prelude::*;
 pub use valence_protocol::packets::play::player_abilities_s2c::PlayerAbilitiesFlags;
 use valence_protocol::packets::play::{PlayerAbilitiesS2c, UpdatePlayerAbilitiesC2s};
 use valence_protocol::{GameMode, WritePacket};
+use derive_more::{Deref, DerefMut};
 
 use crate::client::{update_game_mode, Client, UpdateClientsSet};
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
@@ -10,7 +11,7 @@ use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 /// [`Component`] that stores the player's flying speed ability.
 ///
 /// [`Default`] value: `0.05`.
-#[derive(Component)]
+#[derive(Component, Deref, DerefMut)]
 pub struct FlyingSpeed(pub f32);
 
 impl Default for FlyingSpeed {
@@ -23,7 +24,7 @@ impl Default for FlyingSpeed {
 /// The lower the value, the higher the field of view.
 ///
 /// [`Default`] value: `0.1`.
-#[derive(Component)]
+#[derive(Component, Deref, DerefMut)]
 pub struct FovModifier(pub f32);
 
 impl Default for FovModifier {
