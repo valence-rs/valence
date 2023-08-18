@@ -20,8 +20,11 @@ pub struct Compound {
 #[cfg(not(feature = "preserve_order"))]
 type Map = std::collections::BTreeMap<String, Value>;
 
-#[cfg(feature = "preserve_order")]
+#[cfg(all(feature = "preserve_order", not(feature = "ahash")))]
 type Map = indexmap::IndexMap<String, Value>;
+
+#[cfg(all(feature = "preserve_order", feature = "ahash"))]
+type Map = indexmap::IndexMap<String, Value, ahash::RandomState>;
 
 impl fmt::Debug for Compound {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

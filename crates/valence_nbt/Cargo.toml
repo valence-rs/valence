@@ -10,6 +10,7 @@ edition.workspace = true
 repository.workspace = true
 
 [features]
+ahash = ["dep:ahash"]
 binary = ["dep:byteorder", "dep:cesu8"]
 snbt = []
 # When enabled, the order of fields in compounds are preserved.
@@ -17,6 +18,7 @@ preserve_order = ["dep:indexmap"]
 serde = ["dep:serde", "dep:thiserror", "indexmap?/serde"]
 
 [dependencies]
+ahash = { workspace = true, optional = true }
 byteorder = { workspace = true, optional = true }
 cesu8 = { workspace = true, optional = true }
 indexmap = { workspace = true, optional = true }
