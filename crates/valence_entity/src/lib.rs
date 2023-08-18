@@ -26,6 +26,7 @@ pub mod tracked_data;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+use derive_more::{Deref, DerefMut};
 pub use manager::EntityManager;
 use paste::paste;
 use tracing::warn;
@@ -163,7 +164,7 @@ fn clear_tracked_data_changes(mut tracked_data: Query<&mut TrackedData, Changed<
 }
 
 /// Contains the entity layer an entity is on.
-#[derive(Component, Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, Debug, Deref)]
 pub struct EntityLayerId(pub Entity);
 
 impl Default for EntityLayerId {
@@ -179,7 +180,7 @@ impl PartialEq<OldEntityLayerId> for EntityLayerId {
 }
 
 /// The value of [`EntityLayerId`] from the end of the previous tick.
-#[derive(Component, Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, Debug, Deref)]
 pub struct OldEntityLayerId(Entity);
 
 impl OldEntityLayerId {
@@ -200,7 +201,7 @@ impl PartialEq<EntityLayerId> for OldEntityLayerId {
     }
 }
 
-#[derive(Component, Copy, Clone, PartialEq, Default, Debug)]
+#[derive(Component, Copy, Clone, PartialEq, Default, Debug, Deref, DerefMut)]
 pub struct Position(pub DVec3);
 
 impl Position {
@@ -234,7 +235,7 @@ impl PartialEq<OldPosition> for Position {
 /// The value of [`Position`] from the end of the previous tick.
 ///
 /// **NOTE**: You should not modify this component after the entity is spawned.
-#[derive(Component, Clone, PartialEq, Default, Debug)]
+#[derive(Component, Clone, PartialEq, Default, Debug, Deref)]
 pub struct OldPosition(DVec3);
 
 impl OldPosition {
@@ -308,7 +309,7 @@ impl Look {
     }
 }
 
-#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug, Deref, DerefMut)]
 pub struct OnGround(pub bool);
 
 /// A Minecraft entity's ID according to the protocol.
@@ -318,7 +319,7 @@ pub struct OnGround(pub bool);
 /// something else on the tick the entity is added. If you need to know the ID
 /// ahead of time, set this component to the value returned by
 /// [`EntityManager::next_id`] before spawning.
-#[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Deref)]
 pub struct EntityId(i32);
 
 impl EntityId {
@@ -335,11 +336,11 @@ impl Default for EntityId {
     }
 }
 
-#[derive(Component, Copy, Clone, PartialEq, Default, Debug)]
+#[derive(Component, Copy, Clone, PartialEq, Default, Debug, Deref, DerefMut)]
 pub struct HeadYaw(pub f32);
 
 /// Entity velocity in m/s.
-#[derive(Component, Copy, Clone, Default, Debug)]
+#[derive(Component, Copy, Clone, Default, Debug, Deref, DerefMut)]
 pub struct Velocity(pub Vec3);
 
 impl Velocity {
@@ -353,7 +354,7 @@ impl Velocity {
 
 // TODO: don't make statuses and animations components.
 
-#[derive(Component, Copy, Clone, Default, Debug)]
+#[derive(Component, Copy, Clone, Default, Debug, Deref, DerefMut)]
 pub struct EntityStatuses(pub u64);
 
 impl EntityStatuses {
@@ -370,7 +371,7 @@ impl EntityStatuses {
     }
 }
 
-#[derive(Component, Default, Debug, Copy, Clone)]
+#[derive(Component, Default, Debug, Copy, Clone, Deref, DerefMut)]
 pub struct EntityAnimations(pub u8);
 
 impl EntityAnimations {
@@ -397,7 +398,7 @@ impl EntityAnimations {
 /// - **Falling Block**: Block state
 /// - **Fishing Bobber**: Hook entity ID
 /// - **Warden**: Initial pose
-#[derive(Component, Default, Debug)]
+#[derive(Component, Default, Debug, Deref, DerefMut)]
 pub struct ObjectData(pub i32);
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Encode, Decode)]

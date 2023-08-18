@@ -20,6 +20,7 @@
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+use derive_more::{Deref, DerefMut};
 use valence_server::client::{Client, UpdateClientsSet, VisibleChunkLayer};
 use valence_server::protocol::packets::play::{
     WorldBorderCenterChangedS2c, WorldBorderInitializeS2c, WorldBorderInterpolateSizeS2c,
@@ -96,7 +97,7 @@ pub struct WorldBorderLerp {
     /// automatically.
     pub remaining_ticks: u64,
 }
-#[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Deref, DerefMut)]
 pub struct WorldBorderWarnTime(pub i32);
 
 impl Default for WorldBorderWarnTime {
@@ -105,7 +106,7 @@ impl Default for WorldBorderWarnTime {
     }
 }
 
-#[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Deref, DerefMut)]
 pub struct WorldBorderWarnBlocks(pub i32);
 
 impl Default for WorldBorderWarnBlocks {
@@ -114,7 +115,7 @@ impl Default for WorldBorderWarnBlocks {
     }
 }
 
-#[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Deref, DerefMut)]
 pub struct WorldBorderPortalTpBoundary(pub i32);
 
 impl Default for WorldBorderPortalTpBoundary {

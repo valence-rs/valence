@@ -11,6 +11,7 @@ use bevy_ecs::query::WorldQuery;
 use bevy_ecs::system::Command;
 use byteorder::{NativeEndian, ReadBytesExt};
 use bytes::{Bytes, BytesMut};
+use derive_more::{Deref, DerefMut};
 use tracing::warn;
 use uuid::Uuid;
 use valence_entity::player::PlayerEntityBundle;
@@ -416,7 +417,7 @@ impl EntityRemoveBuf {
     }
 }
 
-#[derive(Component, Clone, PartialEq, Eq, Default, Debug)]
+#[derive(Component, Clone, PartialEq, Eq, Default, Debug, Deref)]
 pub struct Username(pub String);
 
 impl fmt::Display for Username {
@@ -454,10 +455,10 @@ impl Deref for Properties {
     }
 }
 
-#[derive(Component, Clone, PartialEq, Eq, Debug)]
+#[derive(Component, Clone, PartialEq, Eq, Debug, Deref)]
 pub struct Ip(pub IpAddr);
 
-#[derive(Component, Clone, PartialEq, Eq, Debug)]
+#[derive(Component, Clone, PartialEq, Eq, Debug, Deref)]
 pub struct ViewDistance(u8);
 
 impl ViewDistance {
@@ -485,7 +486,7 @@ impl Default for ViewDistance {
 
 /// The [`ViewDistance`] at the end of the previous tick. Automatically updated
 /// as [`ViewDistance`] is changed.
-#[derive(Component, Clone, PartialEq, Eq, Default, Debug)]
+#[derive(Component, Clone, PartialEq, Eq, Default, Debug, Deref)]
 
 pub struct OldViewDistance(u8);
 
@@ -524,7 +525,7 @@ impl OldViewItem<'_> {
 ///
 /// A client can only see one chunk layer at a time. Mutating this component
 /// will cause the client to respawn in the new chunk layer.
-#[derive(Component, Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, Debug, Deref, DerefMut)]
 pub struct VisibleChunkLayer(pub Entity);
 
 impl Default for VisibleChunkLayer {
@@ -534,7 +535,7 @@ impl Default for VisibleChunkLayer {
 }
 
 /// The value of [`VisibleChunkLayer`] from the end of the previous tick.
-#[derive(Component, PartialEq, Eq, Debug)]
+#[derive(Component, PartialEq, Eq, Debug, Deref)]
 pub struct OldVisibleChunkLayer(Entity);
 
 impl OldVisibleChunkLayer {
@@ -554,7 +555,7 @@ impl OldVisibleChunkLayer {
 pub struct VisibleEntityLayers(pub BTreeSet<Entity>);
 
 /// The value of [`VisibleEntityLayers`] from the end of the previous tick.
-#[derive(Component, Default, Debug)]
+#[derive(Component, Default, Debug, Deref)]
 pub struct OldVisibleEntityLayers(BTreeSet<Entity>);
 
 impl OldVisibleEntityLayers {
