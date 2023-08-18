@@ -15,23 +15,32 @@ pub struct GameProfile<S: Ord = String> {
     pub id: Uuid,
     /// Player username.
     pub name: S,
-    /// Player properties. Notably, this often contains "textures" which hold
-    /// the player's skin and cape.
+    /// Player properties. This often contains "textures" which hold the
+    /// player's skin and cape.
     pub properties: PropertyMap<S>,
 }
 
-impl<S: AsRef<str> + Ord> Encode for GameProfile<S> {
+impl<S> Encode for GameProfile<S>
+where
+    S: AsRef<str> + Ord + Encode,
+{
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         self.id.encode(&mut w)?;
         Bounded::<_, 16>(self.name.as_ref()).encode(&mut w)?;
-        todo!()
-        // self.properties.encode(w)
+        self.properties.encode(w)
     }
 }
 
-impl<'a, S: Decode<'a> + Ord> Decode<'a> for GameProfile<S> {
+impl<'a, S> Decode<'a> for GameProfile<S>
+where
+    S: Decode<'a> + Ord + From<&'a str>,
+{
     fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
-        todo!()
+        Ok(Self {
+            id: Decode::decode(r)?,
+            name: Bounded::<&str, 16>::decode(r)?.0.into(),
+            properties: Decode::decode(r)?,
+        })
     }
 }
 

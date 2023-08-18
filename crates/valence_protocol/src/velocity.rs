@@ -46,8 +46,6 @@ impl fmt::Display for Velocity {
 #[cfg(test)]
 #[test]
 fn velocity_from_ms() {
-    let ms = -3.3575;
-
     let val_1 = Velocity::from_ms_f32([(); 3].map(|_| -3.3575)).0[0];
     let val_2 = Velocity::from_ms_f64([(); 3].map(|_| -3.3575)).0[0];
 
