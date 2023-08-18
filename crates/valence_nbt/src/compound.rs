@@ -34,7 +34,7 @@ impl fmt::Debug for Compound {
 
 impl Compound {
     pub fn new() -> Self {
-        Self { map: Map::new() }
+        Self { map: Map::default() }
     }
 
     pub fn with_capacity(cap: usize) -> Self {
@@ -46,7 +46,7 @@ impl Compound {
                 Map::new()
             },
             #[cfg(feature = "preserve_order")]
-            map: Map::with_capacity(cap),
+            map: Map::with_capacity_and_hasher(cap, Default::default()),
         }
     }
 
