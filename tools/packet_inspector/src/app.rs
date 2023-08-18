@@ -78,7 +78,7 @@ impl GuiApp {
             ],
         );
 
-        // Persistant Storage
+        // Persistent Storage
         let mut shared_state = SharedState::new(ctx);
 
         if let Some(storage) = cc.storage {
@@ -132,7 +132,7 @@ impl eframe::App for GuiApp {
     }
 }
 
-// This function is getting waaaay too complcated and messy
+// This function is getting waaaay too complicated and messy
 fn handle_events(state: Arc<RwLock<SharedState>>) {
     tokio::spawn(async move {
         let mut proxy_thread: Option<JoinHandle<_>> = None;

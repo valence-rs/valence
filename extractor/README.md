@@ -14,7 +14,7 @@ From this directory, run the following
 
 This will run the extractor and immediately exit, outputting the files that are listed in the logs.
 
-Next, run `copy_extractor_output.sh`. This copies the files to `extracted` so that they can be comitted.
+Next, run `copy_extractor_output.sh`. This copies the files to `extracted` so that they can be committed.
 
 ```sh
 ./copy_extractor_output.sh

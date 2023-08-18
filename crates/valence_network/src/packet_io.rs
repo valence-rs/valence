@@ -232,7 +232,7 @@ impl ClientConnection for RealClientConnection {
             Ok(packet) => {
                 let cost = mem::size_of::<ReceivedPacket>() + packet.body.len();
 
-                // Add the permits back that we removed eariler.
+                // Add the permits back that we removed earlier.
                 self.recv_sem.add_permits(cost);
 
                 Ok(Some(packet))
