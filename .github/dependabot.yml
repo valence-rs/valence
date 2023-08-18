@@ -7,7 +7,9 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 15
   - package-ecosystem: "gradle"
     directory: "/extractor/"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 15
