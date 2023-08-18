@@ -12,19 +12,7 @@ env:
 
 jobs:
   valence-fmt:
-    strategy:
-      fail-fast: true
-      matrix:
-        platform: [ubuntu-latest]
-        style: [default]
-        rust:
-          - nightly-2023-06-20
-        include:
-          - style: default
-            flags: ""
-
-    runs-on: ${{ matrix.platform }}
-
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
@@ -41,19 +29,7 @@ jobs:
         run: cargo fmt --all -- --check
 
   valence-clippy:
-    strategy:
-      fail-fast: true
-      matrix:
-        platform: [windows-latest, macos-latest, ubuntu-latest]
-        style: [default]
-        rust:
-          - stable
-        include:
-          - style: default
-            flags: ""
-
-    runs-on: ${{ matrix.platform }}
-
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
@@ -68,10 +44,9 @@ jobs:
 
       - name: Install Dependencies (Linux)
         run: sudo apt-get update && sudo apt-get install -y libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libclang-dev libgtk-3-dev
-        if: matrix.platform == 'ubuntu-latest'
 
       - name: Clippy
-        run: cargo clippy --workspace ${{ matrix.flags }}--no-deps --all-features --all-targets -- -D warnings
+        run: cargo clippy --workspace --no-deps --all-features --all-targets -- -D warnings
 
   valence-tests:
     strategy:
@@ -101,22 +76,16 @@ jobs:
         if: matrix.platform == 'ubuntu-latest'
 
       - name: Run tests
-        run: cargo test --workspace ${{ matrix.flags }}--all-features --all-targets
+        run: cargo test --workspace ${{ matrix.flags }} --all-features --all-targets
 
       - name: Run doctests
-        run: cargo test --workspace ${{ matrix.flags }}--all-features --doc
+        run: cargo test --workspace ${{ matrix.flags }} --all-features --doc
 
       - name: Run valence_nbt tests without preserve_order feature
         run: cargo test -p valence_nbt --all-targets
 
   extractor-tests:
-    strategy:
-      fail-fast: true
-      matrix:
-        platform: [windows-latest, macos-latest, ubuntu-latest]
-
-    runs-on: ${{ matrix.platform }}
-
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
@@ -131,19 +100,7 @@ jobs:
         working-directory: extractor
 
   valence-docs:
-    strategy:
-      fail-fast: true
-      matrix:
-        platform: [windows-latest, macos-latest, ubuntu-latest]
-        style: [default]
-        rust:
-          - stable
-        include:
-          - style: default
-            flags: ""
-
-    runs-on: ${{ matrix.platform }}
-
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
@@ -155,7 +112,14 @@ jobs:
 
       - name: Install Dependencies (Linux)
         run: sudo apt-get update && sudo apt-get install -y libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libclang-dev libgtk-3-dev
-        if: matrix.platform == 'ubuntu-latest'
 
       - name: Validate documentation
-        run: cargo doc --workspace ${{ matrix.flags }}--no-deps --all-features --document-private-items
+        run: cargo doc --workspace --no-deps --all-features --document-private-items
+
+  typos:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check for spelling errors
+      uses: crate-ci/typos@v1.16.5
+      with: 
+        files: ./
