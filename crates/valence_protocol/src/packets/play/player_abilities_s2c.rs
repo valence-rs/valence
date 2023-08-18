@@ -10,7 +10,6 @@ pub struct PlayerAbilitiesS2c {
     pub fov_modifier: f32,
 }
 
-/// [`Component`] that stores the player's abilities flags.
 #[bitfield(u8)]
 #[derive(PartialEq, Eq, Encode, Decode, Component)]
 pub struct PlayerAbilitiesFlags {

@@ -7,7 +7,7 @@ pub struct GameJoinS2c<'a> {
     pub is_hardcore: bool,
     pub game_mode: GameMode,
     pub previous_game_mode: OptGameMode,
-    pub dimension_names: BTreeSet<Ident<Cow<'a, str>>>,
+    pub dimension_names: Cow<'a, BTreeSet<Ident<Cow<'a, str>>>>,
     pub registry_codec: Cow<'a, Compound>,
     pub dimension_type_name: Ident<Cow<'a, str>>,
     pub dimension_name: Ident<Cow<'a, str>>,

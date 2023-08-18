@@ -15,6 +15,8 @@ pub enum GameMode {
     Spectator,
 }
 
+/// An optional [`GameMode`] with `None` encoded as `-1`. Isomorphic to
+/// `Option<GameMode>`.
 #[derive(Copy, Clone, PartialEq, Eq, Default, Debug, From, Into)]
 pub struct OptGameMode(pub Option<GameMode>);
 

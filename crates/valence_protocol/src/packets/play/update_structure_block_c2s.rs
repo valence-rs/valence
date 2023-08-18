@@ -11,7 +11,7 @@ pub struct UpdateStructureBlockC2s<'a> {
     pub size_xyz: [i8; 3],
     pub mirror: Mirror,
     pub rotation: Rotation,
-    pub metadata: &'a str,
+    pub metadata: Bounded<&'a str, 128>,
     pub integrity: f32,
     pub seed: VarLong,
     pub flags: Flags,

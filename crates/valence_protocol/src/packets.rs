@@ -4,7 +4,7 @@
 //! used in. Names are derived from the FabricMC Yarn mappings for consistency.
 
 use std::borrow::Cow;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
 
 use anyhow::{bail, ensure};

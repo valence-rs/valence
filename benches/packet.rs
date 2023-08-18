@@ -7,7 +7,7 @@ use valence::prelude::*;
 use valence::protocol::decode::PacketDecoder;
 use valence::protocol::encode::{PacketEncoder, PacketWriter, WritePacket};
 use valence::protocol::packets::play::{ChunkDataS2c, EntitySpawnS2c, PlayerListHeaderS2c};
-use valence::protocol::{ByteAngle, LengthPrefixedArray, VarInt};
+use valence::protocol::{ByteAngle, FixedArray, VarInt};
 use valence::text::IntoText;
 
 pub fn packet(c: &mut Criterion) {
@@ -16,8 +16,7 @@ pub fn packet(c: &mut Criterion) {
     let mut encoder = PacketEncoder::new();
 
     const BLOCKS_AND_BIOMES: [u8; 2000] = [0x80; 2000];
-    const SKY_LIGHT_ARRAYS: [LengthPrefixedArray<u8, 2048>; 26] =
-        [LengthPrefixedArray([0xff; 2048]); 26];
+    const SKY_LIGHT_ARRAYS: [FixedArray<u8, 2048>; 26] = [FixedArray([0xff; 2048]); 26];
 
     let chunk_data_packet = ChunkDataS2c {
         pos: ChunkPos::new(123, 456),

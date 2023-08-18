@@ -55,7 +55,7 @@ mod velocity;
 use std::io::Write;
 
 use anyhow::Context;
-pub use array::LengthPrefixedArray;
+pub use array::FixedArray;
 pub use bit_set::FixedBitSet;
 pub use block::{BlockKind, BlockState};
 pub use block_pos::BlockPos;
