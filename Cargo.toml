@@ -117,7 +117,7 @@ bytes = "1.2.1"
 cesu8 = "1.1.0"
 cfb8 = "0.8.1"
 clap = { version = "4.0.30", features = ["derive"] }
-criterion = "0.4.0"
+criterion = "0.5.1"
 directories = "5.0.0"
 eframe = { version = "0.22.0", default-features = false }
 egui = "0.22.0"
