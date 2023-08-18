@@ -34,7 +34,9 @@ impl fmt::Debug for Compound {
 
 impl Compound {
     pub fn new() -> Self {
-        Self { map: Map::default() }
+        Self {
+            map: Map::default()
+        }
     }
 
     pub fn with_capacity(cap: usize) -> Self {
