@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Actions Repository
-      - uses: actions/checkout@v3
+        uses: actions/checkout@v3
 
       - name: Setup Rust toolchain and cache
         uses: actions-rust-lang/setup-rust-toolchain@v1.5.0
@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Actions Repository
-      - uses: actions/checkout@v3
+        uses: actions/checkout@v3
 
       - name: Setup Rust toolchain and cache
         uses: actions-rust-lang/setup-rust-toolchain@v1.5.0
@@ -60,7 +60,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Actions Repository
-      - uses: actions/checkout@v3
+        uses: actions/checkout@v3
 
       - name: Setup Rust toolchain and cache
         uses: actions-rust-lang/setup-rust-toolchain@v1.5.0
@@ -93,7 +93,7 @@ jobs:
 
     steps:
       - name: Checkout Actions Repository
-      - uses: actions/checkout@v3
+        uses: actions/checkout@v3
 
       - name: Setup Rust toolchain and cache
         uses: actions-rust-lang/setup-rust-toolchain@v1.5.0
@@ -118,7 +118,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Actions Repository
-      - uses: actions/checkout@v3
+        uses: actions/checkout@v3
 
       - name: Setup Java
         uses: actions/setup-java@v2
