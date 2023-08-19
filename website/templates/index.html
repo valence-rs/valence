@@ -1,0 +1,93 @@
+{% extends "juice/templates/index.html" %} {% block hero %}
+<script async defer src="https://buttons.github.io/buttons.js"></script>
+<section class="text-center">
+  <h1
+    class="heading-text"
+    style="font-size: 50px; color: var(--header-text-color)"
+  >
+    Minecraft servers for the <br />
+    modern age
+  </h1>
+  <h3 class="title-text" style="color: var(--header-text-color)">
+    <b>Valence</b> is A Rust framework for building modular <br />
+    and high performance Minecraft servers.
+  </h3>
+  <div>
+    <a href="https://github.com/valence-rs/valence"
+      ><img
+        class="badge"
+        alt="GitHub Repo stars"
+        src="https://img.shields.io/github/stars/valence-rs/valence?&logo=github&label=Star&color=%23FF9A00"
+    /></a>
+    <a href="https://crates.io/crates/valence"
+      ><img
+        class="badge"
+        alt="GitHub release (with filter)"
+        src="https://img.shields.io/crates/v/valence?logo=Rust&label=Version&color=%23FF9A00"
+    /></a>
+    <a href="https://discord.gg/8Fqqy9XrYb"
+      ><img
+        class="badge"
+        alt="Discord"
+        src="https://img.shields.io/discord/998132822239870997?logo=discord&logoColor=white&label=Valence&color=%23FF9A00"
+    /></a>
+  </div>
+  <a href="/book/" class="title-text box-shadow button">Quick Start</a>
+</section>
+<img class="hero-image" style="width: 27%" src="{{ get_url(path="valence.svg")
+}}">
+
+<div
+  class="explore-more text"
+  onclick="document.getElementById('features').scrollIntoView({behavior: 'smooth'})"
+>
+  Explore More ⇩
+</div>
+<style>
+  .hero section {
+    padding: 0 5rem;
+  }
+
+  .badge {
+    height: 23px;
+    margin: 0.1rem;
+  }
+
+  .button {
+    display: inline-block;
+    width: 15rem;
+    margin: 2rem;
+    background-color: var(--header-text-color);
+    border-radius: 10px;
+    color: var(--primary-color);
+    border: none;
+    line-height: 1.7;
+    cursor: pointer;
+    opacity: 1;
+    transition: all ease-out 0.15s;
+  }
+
+  .button:hover {
+    opacity: 0.9;
+  }
+
+  @media screen and (max-width: 768px) {
+    .hero section {
+      padding: 0 2rem;
+    }
+
+    .hero-image {
+      display: none;
+    }
+  }
+</style>
+{% endblock hero %} {% block footer %}
+<footer>
+  <small class="subtext">
+    <a href="https://github.com/valence-rs/valence/blob/main/CODE_OF_CONDUCT.md"
+      >Code of Conduct</a
+    >
+    © 2023
+  </small>
+</footer>
+{% endblock footer %}
