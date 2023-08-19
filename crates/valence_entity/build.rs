@@ -447,7 +447,7 @@ fn build() -> anyhow::Result<TokenStream> {
             let default_expr = field.default_value.default_expr();
 
             module_body.extend([quote! {
-                #[derive(bevy_ecs::component::Component, PartialEq, Clone, Debug)]
+                #[derive(bevy_ecs::component::Component, PartialEq, Clone, Debug, ::derive_more::Deref)]
                 pub struct #pascal_field_name_ident(pub #inner_type);
 
                 #[allow(clippy::derivable_impls)]
@@ -546,7 +546,7 @@ fn build() -> anyhow::Result<TokenStream> {
 
         /// Identifies the type of an entity.
         /// As a component, the entity kind should not be modified.
-        #[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+        #[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, ::derive_more::Deref)]
         pub struct EntityKind(i32);
 
         impl EntityKind {
