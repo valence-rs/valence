@@ -68,8 +68,9 @@
 //!                                               └────────────────────────────────┘
 //! ```
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
+use std::marker::PhantomData;
 
 use anyhow::bail;
 use petgraph::dot::Dot;
@@ -81,7 +82,7 @@ use valence_server::protocol::packets::play::CommandTreeS2c;
 use valence_server::protocol::{Decode, Encode, VarInt};
 use valence_server::Ident;
 
-use crate::arg_parser::{ArgLen, CommandArg, GreedyString, QuotableString};
+use crate::arg_parser::{CommandArg, GreedyString, ParseInput, QuotableString};
 use crate::command_scopes::Scope;
 use crate::{arg_parser, CommandRegistry};
 
@@ -121,7 +122,7 @@ impl CommandGraph {
 }
 
 /// Data for the nodes in the graph (see module level docs for more info)
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CommandNode {
     pub executable: bool,
     pub data: NodeData,
@@ -129,7 +130,7 @@ pub struct CommandNode {
 }
 
 impl Display for CommandNode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self.data {
             NodeData::Root => write!(f, "Root"),
             NodeData::Literal { name } => write!(f, "Literal: {}", name),
@@ -138,7 +139,7 @@ impl Display for CommandNode {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum NodeData {
     Root,
     Literal {
@@ -179,175 +180,175 @@ fn validate_min_max<T: PartialOrd>(val: T, min: Option<T>, max: Option<T>) -> bo
     }
     true
 }
+//
+// pub fn parser_len(parser: &Parser) -> ArgLen {
+//     match parser {
+//         // TODO: Investigate this further
+//         Parser::Bool => ArgLen::Exact(1),
+//         Parser::Float { .. } => ArgLen::Exact(1),
+//         Parser::Double { .. } => ArgLen::Exact(1),
+//         Parser::Integer { .. } => ArgLen::Exact(1),
+//         Parser::Long { .. } => ArgLen::Exact(1),
+//         Parser::String(arg) => match arg {
+//             StringArg::SingleWord => ArgLen::Exact(1),
+//             StringArg::QuotablePhrase => ArgLen::Within('"'),
+//             StringArg::GreedyPhrase => ArgLen::Infinite,
+//         },
+//         Parser::Entity { .. } => ArgLen::Exact(1),
+//         Parser::GameProfile => ArgLen::Exact(1),
+//         Parser::BlockPos => ArgLen::Exact(3),
+//         Parser::ColumnPos => ArgLen::Exact(3),
+//         Parser::Vec3 => ArgLen::Exact(3),
+//         Parser::Vec2 => ArgLen::Exact(2),
+//         Parser::BlockState => ArgLen::Exact(1),
+//         Parser::BlockPredicate => ArgLen::Exact(1),
+//         Parser::ItemStack => ArgLen::Exact(1),
+//         Parser::ItemPredicate => ArgLen::Exact(1),
+//         Parser::Color => ArgLen::Exact(1),
+//         Parser::Component => ArgLen::Infinite,
+//         Parser::Message => ArgLen::Infinite,
+//         Parser::NbtCompoundTag => ArgLen::Infinite,
+//         Parser::NbtTag => ArgLen::Infinite,
+//         Parser::NbtPath => ArgLen::Infinite,
+//         Parser::Objective => ArgLen::Exact(1),
+//         Parser::ObjectiveCriteria => ArgLen::Exact(1),
+//         Parser::Operation => ArgLen::Exact(1),
+//         Parser::Particle => ArgLen::Exact(1),
+//         Parser::Angle => ArgLen::Exact(1),
+//         Parser::Rotation => ArgLen::Exact(2),
+//         Parser::ScoreboardSlot => ArgLen::Exact(1),
+//         Parser::ScoreHolder { .. } => ArgLen::Exact(1),
+//         Parser::Swizzle => ArgLen::Exact(3),
+//         Parser::Team => ArgLen::Exact(1),
+//         Parser::ItemSlot => ArgLen::Exact(1),
+//         Parser::ResourceLocation => ArgLen::Exact(1),
+//         Parser::Function => ArgLen::Exact(1),
+//         Parser::EntityAnchor => ArgLen::Exact(1),
+//         Parser::IntRange => ArgLen::Exact(2),
+//         Parser::FloatRange => ArgLen::Exact(2),
+//         Parser::Dimension => ArgLen::Exact(1),
+//         Parser::GameMode => ArgLen::Exact(1),
+//         Parser::Time => ArgLen::Exact(1),
+//         Parser::ResourceOrTag { .. } => ArgLen::Exact(1),
+//         Parser::ResourceOrTagKey { .. } => ArgLen::Exact(1),
+//         Parser::Resource { .. } => ArgLen::Exact(1),
+//         Parser::ResourceKey { .. } => ArgLen::Exact(1),
+//         Parser::TemplateMirror => ArgLen::Exact(1),
+//         Parser::TemplateRotation => ArgLen::Exact(1),
+//         Parser::Uuid => ArgLen::Exact(1),
+//     }
+// }
 
-pub fn parser_len(parser: &Parser) -> ArgLen {
-    match parser {
-        // TODO: Investigate this further
-        Parser::Bool => ArgLen::Exact(1),
-        Parser::Float { .. } => ArgLen::Exact(1),
-        Parser::Double { .. } => ArgLen::Exact(1),
-        Parser::Integer { .. } => ArgLen::Exact(1),
-        Parser::Long { .. } => ArgLen::Exact(1),
-        Parser::String(arg) => match arg {
-            StringArg::SingleWord => ArgLen::Exact(1),
-            StringArg::QuotablePhrase => ArgLen::Within('"'),
-            StringArg::GreedyPhrase => ArgLen::Infinite,
-        },
-        Parser::Entity { .. } => ArgLen::Exact(1),
-        Parser::GameProfile => ArgLen::Exact(1),
-        Parser::BlockPos => ArgLen::Exact(3),
-        Parser::ColumnPos => ArgLen::Exact(3),
-        Parser::Vec3 => ArgLen::Exact(3),
-        Parser::Vec2 => ArgLen::Exact(2),
-        Parser::BlockState => ArgLen::Exact(1),
-        Parser::BlockPredicate => ArgLen::Exact(1),
-        Parser::ItemStack => ArgLen::Exact(1),
-        Parser::ItemPredicate => ArgLen::Exact(1),
-        Parser::Color => ArgLen::Exact(1),
-        Parser::Component => ArgLen::Infinite,
-        Parser::Message => ArgLen::Infinite,
-        Parser::NbtCompoundTag => ArgLen::Infinite,
-        Parser::NbtTag => ArgLen::Infinite,
-        Parser::NbtPath => ArgLen::Infinite,
-        Parser::Objective => ArgLen::Exact(1),
-        Parser::ObjectiveCriteria => ArgLen::Exact(1),
-        Parser::Operation => ArgLen::Exact(1),
-        Parser::Particle => ArgLen::Exact(1),
-        Parser::Angle => ArgLen::Exact(1),
-        Parser::Rotation => ArgLen::Exact(2),
-        Parser::ScoreboardSlot => ArgLen::Exact(1),
-        Parser::ScoreHolder { .. } => ArgLen::Exact(1),
-        Parser::Swizzle => ArgLen::Exact(3),
-        Parser::Team => ArgLen::Exact(1),
-        Parser::ItemSlot => ArgLen::Exact(1),
-        Parser::ResourceLocation => ArgLen::Exact(1),
-        Parser::Function => ArgLen::Exact(1),
-        Parser::EntityAnchor => ArgLen::Exact(1),
-        Parser::IntRange => ArgLen::Exact(2),
-        Parser::FloatRange => ArgLen::Exact(2),
-        Parser::Dimension => ArgLen::Exact(1),
-        Parser::GameMode => ArgLen::Exact(1),
-        Parser::Time => ArgLen::Exact(1),
-        Parser::ResourceOrTag { .. } => ArgLen::Exact(1),
-        Parser::ResourceOrTagKey { .. } => ArgLen::Exact(1),
-        Parser::Resource { .. } => ArgLen::Exact(1),
-        Parser::ResourceKey { .. } => ArgLen::Exact(1),
-        Parser::TemplateMirror => ArgLen::Exact(1),
-        Parser::TemplateRotation => ArgLen::Exact(1),
-        Parser::Uuid => ArgLen::Exact(1),
-    }
-}
-
-pub fn parser_valid_for(parser: &Parser, arg: String) -> bool {
-    match parser {
-        Parser::Bool => bool::arg_from_string(arg).is_ok(),
-        Parser::Float { min, max } => {
-            let float = f32::arg_from_string(arg);
-            match float {
-                Ok(float) => validate_min_max(float, *min, *max),
-                Err(_) => false,
-            }
-        }
-        Parser::Double { min, max } => {
-            let double = f64::arg_from_string(arg);
-            match double {
-                Ok(double) => validate_min_max(double, *min, *max),
-                Err(_) => false,
-            }
-        }
-        Parser::Integer { min, max } => {
-            let int = i32::arg_from_string(arg);
-            match int {
-                Ok(int) => validate_min_max(int, *min, *max),
-                Err(_) => false,
-            }
-        }
-        Parser::Long { min, max } => {
-            let long = i64::arg_from_string(arg);
-            match long {
-                Ok(long) => validate_min_max(long, *min, *max),
-                Err(_) => false,
-            }
-        }
-        Parser::String(arg_type) => match arg_type {
-            StringArg::SingleWord => String::arg_from_string(arg).is_ok(),
-            StringArg::QuotablePhrase => QuotableString::arg_from_string(arg).is_ok(),
-            StringArg::GreedyPhrase => GreedyString::arg_from_string(arg).is_ok(),
-        },
-        Parser::Entity {
-            single,
-            only_players,
-        } => {
-            if *single && *only_players {
-                arg_parser::SinglePlayerSelector::arg_from_string(arg).is_ok()
-            } else if *single && !*only_players {
-                arg_parser::SingleEntitySelector::arg_from_string(arg).is_ok()
-            } else if *only_players && !*single {
-                arg_parser::PlayerSelector::arg_from_string(arg).is_ok()
-            } else {
-                arg_parser::EntitySelector::arg_from_string(arg).is_ok()
-            }
-        }
-        Parser::GameProfile => {
-            String::arg_from_string(arg).is_ok() // TODO
-        }
-        Parser::BlockPos => arg_parser::BlockPos::arg_from_string(arg).is_ok(),
-        Parser::ColumnPos => arg_parser::ColumnPos::arg_from_string(arg).is_ok(),
-        Parser::Vec3 => arg_parser::Vec3::arg_from_string(arg).is_ok(),
-        Parser::Vec2 => arg_parser::Vec2::arg_from_string(arg).is_ok(),
-        Parser::BlockState => String::arg_from_string(arg).is_ok(),
-        Parser::BlockPredicate => String::arg_from_string(arg).is_ok(),
-        Parser::ItemStack => String::arg_from_string(arg).is_ok(),
-        Parser::ItemPredicate => {
-            String::arg_from_string(arg).is_ok() // TODO
-        }
-        Parser::Color => String::arg_from_string(arg).is_ok(),
-        Parser::Component => String::arg_from_string(arg).is_ok(),
-        Parser::Message => String::arg_from_string(arg).is_ok(),
-        Parser::NbtCompoundTag => String::arg_from_string(arg).is_ok(),
-        Parser::NbtTag => String::arg_from_string(arg).is_ok(),
-        Parser::NbtPath => String::arg_from_string(arg).is_ok(),
-        Parser::Objective => String::arg_from_string(arg).is_ok(),
-        Parser::ObjectiveCriteria => String::arg_from_string(arg).is_ok(),
-        Parser::Operation => String::arg_from_string(arg).is_ok(),
-        Parser::Particle => {
-            String::arg_from_string(arg).is_ok() // TODO
-        }
-        Parser::Angle => arg_parser::Angle::arg_from_string(arg).is_ok(),
-        Parser::Rotation => arg_parser::Rotation::arg_from_string(arg).is_ok(),
-        Parser::ScoreboardSlot => String::arg_from_string(arg).is_ok(),
-        Parser::ScoreHolder { .. } => arg_parser::ScoreHolder::arg_from_string(arg).is_ok(),
-        Parser::Swizzle => arg_parser::ScoreHolder::arg_from_string(arg).is_ok(),
-        Parser::Team => String::arg_from_string(arg).is_ok(),
-        Parser::ItemSlot => String::arg_from_string(arg).is_ok(),
-        Parser::ResourceLocation => String::arg_from_string(arg).is_ok(),
-        Parser::Function => String::arg_from_string(arg).is_ok(),
-        Parser::EntityAnchor => arg_parser::EntityAnchor::arg_from_string(arg).is_ok(),
-        Parser::IntRange => arg_parser::IntRange::arg_from_string(arg).is_ok(),
-        Parser::FloatRange => arg_parser::FloatRange::arg_from_string(arg).is_ok(),
-        Parser::Dimension => arg_parser::Dimension::arg_from_string(arg).is_ok(),
-        Parser::GameMode => arg_parser::GameMode::arg_from_string(arg).is_ok(),
-        Parser::Time => arg_parser::Time::arg_from_string(arg).is_ok(),
-        Parser::ResourceOrTag { .. } => {
-            String::arg_from_string(arg).is_ok() // TODO
-        }
-        Parser::ResourceOrTagKey { .. } => {
-            String::arg_from_string(arg).is_ok() // TODO
-        }
-        Parser::Resource { .. } => {
-            String::arg_from_string(arg).is_ok() // TODO
-        }
-        Parser::ResourceKey { .. } => {
-            String::arg_from_string(arg).is_ok() // TODO
-        }
-        Parser::TemplateMirror => {
-            String::arg_from_string(arg).is_ok() // TODO
-        }
-        Parser::TemplateRotation => {
-            String::arg_from_string(arg).is_ok() // TODO
-        }
-        Parser::Uuid => String::arg_from_string(arg).is_ok(),
-    }
+pub fn parser_valid_for(parser: &Parser, arg: String) -> bool {false
+    // match parser {
+    //     Parser::Bool => bool::arg_from_string(arg).is_ok(),
+    //     Parser::Float { min, max } => {
+    //         let float = f32::arg_from_string(arg);
+    //         match float {
+    //             Ok(float) => validate_min_max(float, *min, *max),
+    //             Err(_) => false,
+    //         }
+    //     }
+    //     Parser::Double { min, max } => {
+    //         let double = f64::arg_from_string(arg);
+    //         match double {
+    //             Ok(double) => validate_min_max(double, *min, *max),
+    //             Err(_) => false,
+    //         }
+    //     }
+    //     Parser::Integer { min, max } => {
+    //         let int = i32::arg_from_string(arg);
+    //         match int {
+    //             Ok(int) => validate_min_max(int, *min, *max),
+    //             Err(_) => false,
+    //         }
+    //     }
+    //     Parser::Long { min, max } => {
+    //         let long = i64::arg_from_string(arg);
+    //         match long {
+    //             Ok(long) => validate_min_max(long, *min, *max),
+    //             Err(_) => false,
+    //         }
+    //     }
+    //     Parser::String(arg_type) => match arg_type {
+    //         StringArg::SingleWord => String::arg_from_string(arg).is_ok(),
+    //         StringArg::QuotablePhrase => QuotableString::arg_from_string(arg).is_ok(),
+    //         StringArg::GreedyPhrase => GreedyString::arg_from_string(arg).is_ok(),
+    //     },
+    //     Parser::Entity {
+    //         single,
+    //         only_players,
+    //     } => {
+    //         if *single && *only_players {
+    //             arg_parser::SinglePlayerSelector::arg_from_string(arg).is_ok()
+    //         } else if *single && !*only_players {
+    //             arg_parser::SingleEntitySelector::arg_from_string(arg).is_ok()
+    //         } else if *only_players && !*single {
+    //             arg_parser::PlayerSelector::arg_from_string(arg).is_ok()
+    //         } else {
+    //             arg_parser::EntitySelector::arg_from_string(arg).is_ok()
+    //         }
+    //     }
+    //     Parser::GameProfile => {
+    //         String::arg_from_string(arg).is_ok() // TODO
+    //     }
+    //     Parser::BlockPos => arg_parser::BlockPos::arg_from_string(arg).is_ok(),
+    //     Parser::ColumnPos => arg_parser::ColumnPos::arg_from_string(arg).is_ok(),
+    //     Parser::Vec3 => arg_parser::Vec3::arg_from_string(arg).is_ok(),
+    //     Parser::Vec2 => arg_parser::Vec2::arg_from_string(arg).is_ok(),
+    //     Parser::BlockState => String::arg_from_string(arg).is_ok(),
+    //     Parser::BlockPredicate => String::arg_from_string(arg).is_ok(),
+    //     Parser::ItemStack => String::arg_from_string(arg).is_ok(),
+    //     Parser::ItemPredicate => {
+    //         String::arg_from_string(arg).is_ok() // TODO
+    //     }
+    //     Parser::Color => String::arg_from_string(arg).is_ok(),
+    //     Parser::Component => String::arg_from_string(arg).is_ok(),
+    //     Parser::Message => String::arg_from_string(arg).is_ok(),
+    //     Parser::NbtCompoundTag => String::arg_from_string(arg).is_ok(),
+    //     Parser::NbtTag => String::arg_from_string(arg).is_ok(),
+    //     Parser::NbtPath => String::arg_from_string(arg).is_ok(),
+    //     Parser::Objective => String::arg_from_string(arg).is_ok(),
+    //     Parser::ObjectiveCriteria => String::arg_from_string(arg).is_ok(),
+    //     Parser::Operation => String::arg_from_string(arg).is_ok(),
+    //     Parser::Particle => {
+    //         String::arg_from_string(arg).is_ok() // TODO
+    //     }
+    //     Parser::Angle => arg_parser::Angle::arg_from_string(arg).is_ok(),
+    //     Parser::Rotation => arg_parser::Rotation::arg_from_string(arg).is_ok(),
+    //     Parser::ScoreboardSlot => String::arg_from_string(arg).is_ok(),
+    //     Parser::ScoreHolder { .. } => arg_parser::ScoreHolder::arg_from_string(arg).is_ok(),
+    //     Parser::Swizzle => arg_parser::ScoreHolder::arg_from_string(arg).is_ok(),
+    //     Parser::Team => String::arg_from_string(arg).is_ok(),
+    //     Parser::ItemSlot => String::arg_from_string(arg).is_ok(),
+    //     Parser::ResourceLocation => String::arg_from_string(arg).is_ok(),
+    //     Parser::Function => String::arg_from_string(arg).is_ok(),
+    //     Parser::EntityAnchor => arg_parser::EntityAnchor::arg_from_string(arg).is_ok(),
+    //     Parser::IntRange => arg_parser::IntRange::arg_from_string(arg).is_ok(),
+    //     Parser::FloatRange => arg_parser::FloatRange::arg_from_string(arg).is_ok(),
+    //     Parser::Dimension => arg_parser::Dimension::arg_from_string(arg).is_ok(),
+    //     Parser::GameMode => arg_parser::GameMode::arg_from_string(arg).is_ok(),
+    //     Parser::Time => arg_parser::Time::arg_from_string(arg).is_ok(),
+    //     Parser::ResourceOrTag { .. } => {
+    //         String::arg_from_string(arg).is_ok() // TODO
+    //     }
+    //     Parser::ResourceOrTagKey { .. } => {
+    //         String::arg_from_string(arg).is_ok() // TODO
+    //     }
+    //     Parser::Resource { .. } => {
+    //         String::arg_from_string(arg).is_ok() // TODO
+    //     }
+    //     Parser::ResourceKey { .. } => {
+    //         String::arg_from_string(arg).is_ok() // TODO
+    //     }
+    //     Parser::TemplateMirror => {
+    //         String::arg_from_string(arg).is_ok() // TODO
+    //     }
+    //     Parser::TemplateRotation => {
+    //         String::arg_from_string(arg).is_ok() // TODO
+    //     }
+    //     Parser::Uuid => String::arg_from_string(arg).is_ok(),
+    // }
 }
 
 impl From<NodeData> for PacketNodeData {
@@ -486,9 +487,9 @@ impl From<CommandGraph> for CommandTreeS2c {
 ///    .argument("test")
 ///    // a player needs one of these scopes to execute the command
 ///    .with_scopes(vec!["test:admin", "command:test"])
-///    .with_parser(Parser::Integer { min: None, max: None })
+///    .with_parser::<i32>()
 ///    // it is reasonably safe to unwrap here because we know that the argument is an integer
-///    .with_executable(|args| TestCommand { test: i32::parse_args(args).unwrap() })
+///    .with_executable(|args| TestCommand { test: i32::parse_arg(args).unwrap() })
 ///    .id();
 ///
 /// // complex command (redirects back to the simple command)
@@ -513,8 +514,9 @@ impl From<CommandGraph> for CommandTreeS2c {
 pub struct CommandGraphBuilder<'a, T> {
     // We do not own the graph, we just have a mutable reference to it
     graph: &'a mut CommandGraph,
-    executables: &'a mut HashMap<NodeIndex, fn(Vec<String>) -> T>,
     current_node: NodeIndex,
+    executables: &'a mut HashMap<NodeIndex, fn(&mut ParseInput) -> T>,
+    parsers: &'a mut HashMap<NodeIndex, fn(&mut ParseInput) -> bool>,
 }
 
 impl<'a, T> CommandGraphBuilder<'a, T> {
@@ -525,12 +527,14 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
     /// * executables - the map of node indices to executable parser functions
     pub fn new(
         registry: &'a mut CommandRegistry,
-        executables: &'a mut HashMap<NodeIndex, fn(Vec<String>) -> T>,
+        executables: &'a mut HashMap<NodeIndex, fn(&mut ParseInput) -> T>,
+        parsers: &'a mut HashMap<NodeIndex, fn(&mut ParseInput) -> bool>,
     ) -> Self {
         CommandGraphBuilder {
             current_node: registry.graph.root,
             graph: &mut registry.graph,
             executables,
+            parsers,
         }
     }
 
@@ -639,7 +643,7 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
     ///
     /// # Example
     /// have a look at the example for [CommandGraphBuilder]
-    pub fn with_executable(&mut self, executable: fn(Vec<String>) -> T) -> &mut Self {
+    pub fn with_executable(&mut self, executable: fn(&mut ParseInput) -> T) -> &mut Self {
         let graph = &mut self.graph.graph;
         let current_node = &mut self.current_node;
 
@@ -676,11 +680,19 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
     ///
     /// # Arguments
     /// * parser - the parser to use for the current node
-    pub fn with_parser(&mut self, parser: Parser) -> &mut Self {
+    pub fn with_parser<A:CommandArg>(&mut self) -> &mut Self {
         let graph = &mut self.graph.graph;
-        let current_node = &mut self.current_node;
+        let current_node = self.current_node;
 
-        let node = graph.node_weight_mut(*current_node).unwrap();
+        let node = graph.node_weight_mut(current_node).unwrap();
+        self.parsers.insert(current_node,|mut input| {
+            match A::parse_arg(&mut input) {
+                Ok(_) => true,
+                Err(_) => false,
+            }
+        });
+
+        let parser = A::display();
 
         node.data = match node.data.clone() {
             NodeData::Argument {

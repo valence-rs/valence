@@ -1,7 +1,7 @@
 #![allow(clippy::type_complexity)]
 
 use valence::prelude::*;
-use valence_command::arg_parser::{CommandArg, GreedyString};
+use valence_command::arg_parser::{CommandArg, EntitySelector, EntitySelectors, GreedyString, QuotableString};
 use valence_command::command_graph::CommandGraphBuilder;
 use valence_command::command_scopes::CommandScopes;
 use valence_command::handler::{CommandExecutionEvent, CommandHandler};
@@ -18,12 +18,12 @@ enum Teleport {
     #[paths = "{location}"]
     ExecutorToLocation { location: arg_parser::Vec3 },
     #[paths = "{target}"]
-    ExecutorToTarget { target: String },
+    ExecutorToTarget { target: EntitySelector },
     #[paths = "{from} {to}"]
-    TargetToTarget { from: String, to: String },
+    TargetToTarget { from: EntitySelector, to: EntitySelector },
     #[paths = "{target} {location}"]
     TargetToLocation {
-        target: String,
+        target: EntitySelector,
         location: arg_parser::Vec3,
     },
 }
@@ -33,33 +33,34 @@ enum Teleport {
 #[scopes("valence:command:teleport")]
 enum Test {
     // 3 literals with an arg each
-    #[paths = "a {a} b {b} c {c}"]
+    #[paths("a {a} b {b} c {c}", "{a} {b} {c}")]
     A { a: String, b: i32, c: f32 },
-    // 2 literals with an arg last being optional
-    #[paths = "a {a} b {b?}"]
-    B { a: String, b: Option<String> },
+    // 2 literals with an arg last being optional (Because of the greedy string before the end this
+    // is technically unreachable)
+    #[paths = "a {a} {b} b {c?}"]
+    B {
+        a: String,
+        b: GreedyString,
+        c: Option<String>,
+    },
     // greedy string optional arg
     #[paths = "a {a} b {b?}"]
-    C {
-        a: String,
-        b: Option<arg_parser::GreedyString>,
-    },
+    C { a: String, b: Option<GreedyString> },
     // greedy string required arg
     #[paths = "a {a} b {b}"]
-    D {
-        a: String,
-        b: arg_parser::GreedyString,
-    },
+    D { a: String, b: GreedyString },
     // five optional args and an ending greedyString
-    #[paths = "options {a?} {b?} {c?} {d?} {e?}"]
+    #[paths("options {a?} {b?} {c?} {d?} {e?}", "options {b?} {a?} {d?} {c?} {e?}")]
     E {
         a: Option<i32>,
-        b: Option<f32>,
+        b: Option<QuotableString>,
         c: Option<arg_parser::Vec2>,
         d: Option<arg_parser::Vec3>,
         e: Option<GreedyString>,
     },
 }
+
+
 
 pub fn main() {
     App::new()
@@ -99,7 +100,15 @@ fn handle_teleport_command(
                     &event.result
                 ));
             }
-            Teleport::ExecutorToTarget { target: raw_target } => {
+            Teleport::ExecutorToTarget { target } => {
+                let raw_target = match target {
+                    EntitySelector::SimpleSelector(x) => match
+                    x {
+                        EntitySelectors::SinglePlayer(x) => x,
+                        _ => "not implemented",
+                    },
+                    _ => "not implemented",
+                };
                 let target = usernames.iter().find(|(_, name)| name.0 == *raw_target);
 
                 match target {
@@ -123,8 +132,24 @@ fn handle_teleport_command(
                 ));
             }
             Teleport::TargetToTarget { from, to } => {
-                let from_target = usernames.iter().find(|(_, name)| name.0 == *from);
-                let to_target = usernames.iter().find(|(_, name)| name.0 == *to);
+                let from_raw_target = match from {
+                    EntitySelector::SimpleSelector(x) => match
+                    x {
+                        EntitySelectors::SinglePlayer(x) => x,
+                        _ => "not implemented",
+                    },
+                    _ => "not implemented",
+                };
+                let from_target = usernames.iter().find(|(_, name)| name.0 == *from_raw_target);
+                let to_raw_target = match to {
+                    EntitySelector::SimpleSelector(x) => match
+                    x {
+                        EntitySelectors::SinglePlayer(x) => &x,
+                        _ => "not implemented",
+                    },
+                    _ => "not implemented",
+                };
+                let to_target = usernames.iter().find(|(_, name)| name.0 == *to_raw_target);
 
                 let client = &mut clients.get_mut(event.executor).unwrap().0;
                 client.send_chat_message(format!(
@@ -133,11 +158,11 @@ fn handle_teleport_command(
                 ));
                 match from_target {
                     None => {
-                        client.send_chat_message(format!("Could not find target: {}", from));
+                        client.send_chat_message(format!("Could not find target: {}", from_raw_target));
                     }
                     Some(from_target_entity) => match to_target {
                         None => {
-                            client.send_chat_message(format!("Could not find target: {}", to));
+                            client.send_chat_message(format!("Could not find target: {}", to_raw_target));
                         }
                         Some(to_target_entity) => {
                             let target_pos = *clients.get(to_target_entity.0).unwrap().1;
@@ -160,10 +185,18 @@ fn handle_teleport_command(
                 }
             }
             Teleport::TargetToLocation {
-                target: target_raw,
+                target,
                 location,
             } => {
-                let target = usernames.iter().find(|(_, name)| name.0 == *target_raw);
+                let raw_target = match target {
+                    EntitySelector::SimpleSelector(x) => match
+                    x {
+                        EntitySelectors::SinglePlayer(x) => x,
+                        _ => "not implemented",
+                    },
+                    _ => "not implemented",
+                };
+                let target = usernames.iter().find(|(_, name)| name.0 == *raw_target);
 
                 let client = &mut clients.get_mut(event.executor).unwrap().0;
                 client.send_chat_message(format!(
@@ -172,7 +205,7 @@ fn handle_teleport_command(
                 ));
                 match target {
                     None => {
-                        client.send_chat_message(format!("Could not find target: {}", target_raw));
+                        client.send_chat_message(format!("Could not find target: {}", raw_target));
                     }
                     Some(target_entity) => {
                         let (client, pos) = &mut clients.get_mut(target_entity.0).unwrap();

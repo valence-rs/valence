@@ -37,7 +37,7 @@ pub enum Suggestion {
     SummonableEntities,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Parser {
     Bool,
     Float { min: Option<f32>, max: Option<f32> },
