@@ -447,7 +447,7 @@ fn build() -> anyhow::Result<TokenStream> {
             let default_expr = field.default_value.default_expr();
 
             module_body.extend([quote! {
-                #[derive(bevy_ecs::component::Component, PartialEq, Clone, Debug, ::derive_more::Deref)]
+                #[derive(bevy_ecs::component::Component, PartialEq, Clone, Debug, ::derive_more::Deref, ::derive_more::DerefMut)]
                 pub struct #pascal_field_name_ident(pub #inner_type);
 
                 #[allow(clippy::derivable_impls)]
