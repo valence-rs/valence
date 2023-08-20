@@ -1,4 +1,8 @@
-{% extends "juice/templates/index.html" %} {% block hero %}
+{% extends "juice/templates/index.html" %} 
+{% block head %}
+<link rel="icon" href="{{ config.base_url }}favicon.ico">
+{% endblock head %}
+{% block hero %}
 <script async defer src="https://buttons.github.io/buttons.js"></script>
 <section class="text-center">
   <h1
