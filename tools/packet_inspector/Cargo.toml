@@ -1,8 +1,12 @@
 [package]
 name = "packet_inspector"
+description = "A simple Minecraft proxy for inspecting packets."
 version.workspace = true
 edition.workspace = true
-description = "A simple Minecraft proxy for inspecting packets."
+repository.workspace = true
+documentation.workspace = true
+license.workspace = true
+publish = false
 
 [features]
 default = ["gui"]

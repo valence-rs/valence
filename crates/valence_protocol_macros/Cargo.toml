@@ -1,7 +1,11 @@
 [package]
 name = "valence_protocol_macros"
+description = "Procedural macros for valence_protocol"
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
+repository.workspace = true
+documentation.workspace = true
 license.workspace = true
 
 [lib]

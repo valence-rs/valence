@@ -51,7 +51,7 @@ pub enum BossBarDivision {
 
 /// The flags of a boss bar (darken sky, dragon bar, create fog).
 #[bitfield(u8)]
-#[derive(PartialEq, Eq, Encode, Decode, Component, Default)]
+#[derive(PartialEq, Eq, Encode, Decode, Component)]
 pub struct BossBarFlags {
     pub darken_sky: bool,
     pub dragon_bar: bool,

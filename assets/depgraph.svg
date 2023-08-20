@@ -54,7 +54,7 @@
 <g id="node5" class="node">
 <title>10</title>
 <polygon fill="none" stroke="black" points="801,-252 640,-252 640,-216 801,-216 801,-252"/>
-<text text-anchor="middle" x="720.5" y="-230.3" font-family="Times,serif" font-size="14.00">valence_server_core</text>
+<text text-anchor="middle" x="720.5" y="-230.3" font-family="Times,serif" font-size="14.00">valence_server_common</text>
 </g>
 <!-- 2&#45;&gt;10 -->
 <g id="edge4" class="edge">
@@ -240,7 +240,7 @@
 <g id="node20" class="node">
 <title>19</title>
 <polygon fill="none" stroke="black" points="1264,-612 1093,-612 1093,-576 1264,-576 1264,-612"/>
-<text text-anchor="middle" x="1178.5" y="-590.3" font-family="Times,serif" font-size="14.00">valence_spatial_index</text>
+<text text-anchor="middle" x="1178.5" y="-590.3" font-family="Times,serif" font-size="14.00">valence_spatial</text>
 </g>
 <!-- 20 -->
 <g id="node21" class="node">

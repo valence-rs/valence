@@ -5,7 +5,7 @@ use bevy_ecs::prelude::*;
 use valence_protocol::encode::{PacketWriter, WritePacket};
 pub use valence_protocol::packets::play::synchronize_tags_s2c::Registry;
 use valence_protocol::packets::play::SynchronizeTagsS2c;
-use valence_server_core::Server;
+use valence_server_common::Server;
 
 use crate::RegistrySet;
 
@@ -34,9 +34,8 @@ impl TagsRegistry {
 }
 
 fn init_tags_registry(mut tags: ResMut<TagsRegistry>) {
-    let registries =
-        serde_json::from_str::<Vec<Registry>>(include_str!("../../../extracted/tags.json"))
-            .expect("tags.json is invalid");
+    let registries = serde_json::from_str::<Vec<Registry>>(include_str!("../extracted/tags.json"))
+        .expect("tags.json is invalid");
     tags.registries = registries;
 }
 

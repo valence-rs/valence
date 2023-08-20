@@ -1,5 +1,7 @@
 [package]
 name = "valence_generated"
+description = "Generated code for valence and valence_protocol"
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true

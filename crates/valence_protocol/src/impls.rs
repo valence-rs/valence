@@ -18,7 +18,7 @@ use valence_generated::block::{BlockEntityKind, BlockKind, BlockState};
 use valence_generated::item::ItemKind;
 use valence_ident::{Ident, IdentError};
 use valence_math::*;
-use valence_nbt::Compound;
+use valence_nbt::{i8_slice_as_u8_slice, u8_slice_as_i8_slice, Compound};
 use valence_text::Text;
 
 use super::var_int::VarInt;
@@ -69,9 +69,7 @@ impl Encode for i8 {
     }
 
     fn encode_slice(slice: &[i8], mut w: impl Write) -> Result<()> {
-        // SAFETY: i8 has the same layout as u8.
-        let bytes = unsafe { slice::from_raw_parts(slice.as_ptr() as *const u8, slice.len()) };
-        Ok(w.write_all(bytes)?)
+        Ok(w.write_all(i8_slice_as_u8_slice(slice))?)
     }
 }
 
@@ -546,10 +544,7 @@ impl<'a> Decode<'a> for &'a [i8] {
     fn decode(r: &mut &'a [u8]) -> Result<Self> {
         let bytes = <&[u8]>::decode(r)?;
 
-        // SAFETY: i8 and u8 have the same layout.
-        let bytes = unsafe { slice::from_raw_parts(bytes.as_ptr() as *const i8, bytes.len()) };
-
-        Ok(bytes)
+        Ok(u8_slice_as_i8_slice(bytes))
     }
 }
 

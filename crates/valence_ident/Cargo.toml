@@ -1,5 +1,7 @@
 [package]
 name = "valence_ident"
+description = "Parse and create Minecraft's resource identifiers"
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true

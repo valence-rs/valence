@@ -1,0 +1,5 @@
+[files]
+extend-exclude = ["/assets/*.svg", "/extracted/*"]
+
+[default]
+extend-ignore-re = ['\d+ths', 'CC BY-NC-ND']

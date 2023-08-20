@@ -10,7 +10,7 @@ use hmac::digest::Update;
 use hmac::{Hmac, Mac};
 use num_bigint::BigInt;
 use reqwest::StatusCode;
-use rsa::PaddingScheme;
+use rsa::Pkcs1v15Encrypt;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use sha1::Sha1;
@@ -336,13 +336,13 @@ async fn login_online(
     let shared_secret = shared
         .0
         .rsa_key
-        .decrypt(PaddingScheme::PKCS1v15Encrypt, shared_secret)
+        .decrypt(Pkcs1v15Encrypt, shared_secret)
         .context("failed to decrypt shared secret")?;
 
     let verify_token = shared
         .0
         .rsa_key
-        .decrypt(PaddingScheme::PKCS1v15Encrypt, encrypted_verify_token)
+        .decrypt(Pkcs1v15Encrypt, encrypted_verify_token)
         .context("failed to decrypt verify token")?;
 
     ensure!(

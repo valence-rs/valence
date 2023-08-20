@@ -1,5 +1,7 @@
 [package]
 name = "valence_ident_macros"
+description = "Procedural macros for valence_ident"
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true

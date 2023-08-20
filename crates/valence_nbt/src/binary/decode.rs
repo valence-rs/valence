@@ -1,11 +1,10 @@
 use std::io::Write;
-use std::slice;
 
 use byteorder::{BigEndian, WriteBytesExt};
 
 use super::{modified_utf8, Error, Result};
 use crate::tag::Tag;
-use crate::{Compound, List, Value};
+use crate::{i8_slice_as_u8_slice, Compound, List, Value};
 
 impl Compound {
     /// Encodes uncompressed NBT binary data to the provided writer.
@@ -41,30 +40,30 @@ impl Compound {
                 Value::Long(_) => 8,
                 Value::Float(_) => 4,
                 Value::Double(_) => 8,
-                Value::ByteArray(ba) => 4 + ba.len(),
-                Value::String(s) => string_size(s),
-                Value::List(l) => list_size(l),
-                Value::Compound(c) => compound_size(c),
-                Value::IntArray(ia) => 4 + ia.len() * 4,
-                Value::LongArray(la) => 4 + la.len() * 8,
+                Value::ByteArray(v) => 4 + v.len(),
+                Value::String(v) => string_size(v),
+                Value::List(v) => list_size(v),
+                Value::Compound(v) => compound_size(v),
+                Value::IntArray(v) => 4 + v.len() * 4,
+                Value::LongArray(v) => 4 + v.len() * 8,
             }
         }
 
         fn list_size(l: &List) -> usize {
             let elems_size = match l {
                 List::End => 0,
-                List::Byte(b) => b.len(),
-                List::Short(s) => s.len() * 2,
-                List::Int(i) => i.len() * 4,
-                List::Long(l) => l.len() * 8,
-                List::Float(f) => f.len() * 4,
-                List::Double(d) => d.len() * 8,
-                List::ByteArray(ba) => ba.iter().map(|b| 4 + b.len()).sum(),
-                List::String(s) => s.iter().map(|s| string_size(s)).sum(),
-                List::List(l) => l.iter().map(list_size).sum(),
-                List::Compound(c) => c.iter().map(compound_size).sum(),
-                List::IntArray(i) => i.iter().map(|i| 4 + i.len() * 4).sum(),
-                List::LongArray(l) => l.iter().map(|l| 4 + l.len() * 8).sum(),
+                List::Byte(v) => v.len(),
+                List::Short(v) => v.len() * 2,
+                List::Int(v) => v.len() * 4,
+                List::Long(v) => v.len() * 8,
+                List::Float(v) => v.len() * 4,
+                List::Double(v) => v.len() * 8,
+                List::ByteArray(v) => v.iter().map(|b| 4 + b.len()).sum(),
+                List::String(v) => v.iter().map(|s| string_size(s)).sum(),
+                List::List(v) => v.iter().map(list_size).sum(),
+                List::Compound(v) => v.iter().map(compound_size).sum(),
+                List::IntArray(v) => v.iter().map(|i| 4 + i.len() * 4).sum(),
+                List::LongArray(v) => v.iter().map(|l| 4 + l.len() * 8).sum(),
             };
 
             1 + 4 + elems_size
@@ -96,18 +95,18 @@ impl<W: Write> EncodeState<W> {
 
     fn write_value(&mut self, v: &Value) -> Result<()> {
         match v {
-            Value::Byte(b) => self.write_byte(*b),
-            Value::Short(s) => self.write_short(*s),
-            Value::Int(i) => self.write_int(*i),
-            Value::Long(l) => self.write_long(*l),
-            Value::Float(f) => self.write_float(*f),
-            Value::Double(d) => self.write_double(*d),
-            Value::ByteArray(ba) => self.write_byte_array(ba),
-            Value::String(s) => self.write_string(s),
-            Value::List(l) => self.write_any_list(l),
-            Value::Compound(c) => self.write_compound(c),
-            Value::IntArray(ia) => self.write_int_array(ia),
-            Value::LongArray(la) => self.write_long_array(la),
+            Value::Byte(v) => self.write_byte(*v),
+            Value::Short(v) => self.write_short(*v),
+            Value::Int(v) => self.write_int(*v),
+            Value::Long(v) => self.write_long(*v),
+            Value::Float(v) => self.write_float(*v),
+            Value::Double(v) => self.write_double(*v),
+            Value::ByteArray(v) => self.write_byte_array(v),
+            Value::String(v) => self.write_string(v),
+            Value::List(v) => self.write_any_list(v),
+            Value::Compound(v) => self.write_compound(v),
+            Value::IntArray(v) => self.write_int_array(v),
+            Value::LongArray(v) => self.write_long_array(v),
         }
     }
 
@@ -146,10 +145,7 @@ impl<W: Write> EncodeState<W> {
             }
         }
 
-        // SAFETY: i8 has the same layout as u8.
-        let bytes = unsafe { slice::from_raw_parts(bytes.as_ptr() as *const u8, bytes.len()) };
-
-        Ok(self.writer.write_all(bytes)?)
+        Ok(self.writer.write_all(i8_slice_as_u8_slice(bytes))?)
     }
 
     fn write_string(&mut self, s: &str) -> Result<()> {
@@ -184,40 +180,35 @@ impl<W: Write> EncodeState<W> {
                 self.writer.write_i32::<BigEndian>(0)?;
                 Ok(())
             }
-            List::Byte(bl) => {
+            List::Byte(v) => {
                 self.write_tag(Tag::Byte)?;
 
-                match bl.len().try_into() {
+                match v.len().try_into() {
                     Ok(len) => self.write_int(len)?,
                     Err(_) => {
                         return Err(Error::new_owned(format!(
                             "byte list of length {} exceeds maximum of i32::MAX",
-                            bl.len(),
+                            v.len(),
                         )))
                     }
                 }
 
-                // SAFETY: i8 has the same layout as u8.
-                let bytes = unsafe { slice::from_raw_parts(bl.as_ptr() as *const u8, bl.len()) };
-
-                Ok(self.writer.write_all(bytes)?)
+                Ok(self.writer.write_all(i8_slice_as_u8_slice(v))?)
             }
-            List::Short(sl) => self.write_list(sl, Tag::Short, |st, s| st.write_short(*s)),
-            List::Int(il) => self.write_list(il, Tag::Int, |st, i| st.write_int(*i)),
-            List::Long(ll) => self.write_list(ll, Tag::Long, |st, l| st.write_long(*l)),
-            List::Float(fl) => self.write_list(fl, Tag::Float, |st, f| st.write_float(*f)),
-            List::Double(dl) => self.write_list(dl, Tag::Double, |st, d| st.write_double(*d)),
-            List::ByteArray(bal) => {
-                self.write_list(bal, Tag::ByteArray, |st, ba| st.write_byte_array(ba))
+            List::Short(sl) => self.write_list(sl, Tag::Short, |st, v| st.write_short(*v)),
+            List::Int(il) => self.write_list(il, Tag::Int, |st, v| st.write_int(*v)),
+            List::Long(ll) => self.write_list(ll, Tag::Long, |st, v| st.write_long(*v)),
+            List::Float(fl) => self.write_list(fl, Tag::Float, |st, v| st.write_float(*v)),
+            List::Double(dl) => self.write_list(dl, Tag::Double, |st, v| st.write_double(*v)),
+            List::ByteArray(v) => {
+                self.write_list(v, Tag::ByteArray, |st, v| st.write_byte_array(v))
             }
-            List::String(sl) => self.write_list(sl, Tag::String, |st, s| st.write_string(s)),
-            List::List(ll) => self.write_list(ll, Tag::List, |st, l| st.write_any_list(l)),
-            List::Compound(cl) => self.write_list(cl, Tag::Compound, |st, c| st.write_compound(c)),
-            List::IntArray(ial) => {
-                self.write_list(ial, Tag::IntArray, |st, ia| st.write_int_array(ia))
-            }
-            List::LongArray(lal) => {
-                self.write_list(lal, Tag::LongArray, |st, la| st.write_long_array(la))
+            List::String(v) => self.write_list(v, Tag::String, |st, v| st.write_string(v)),
+            List::List(v) => self.write_list(v, Tag::List, |st, v| st.write_any_list(v)),
+            List::Compound(v) => self.write_list(v, Tag::Compound, |st, v| st.write_compound(v)),
+            List::IntArray(v) => self.write_list(v, Tag::IntArray, |st, v| st.write_int_array(v)),
+            List::LongArray(v) => {
+                self.write_list(v, Tag::LongArray, |st, v| st.write_long_array(v))
             }
         }
     }

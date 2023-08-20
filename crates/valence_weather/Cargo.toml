@@ -1,5 +1,7 @@
 [package]
 name = "valence_weather"
+description = "Weather support for Valence"
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true
@@ -10,3 +12,4 @@ license.workspace = true
 valence_server.workspace = true
 bevy_ecs.workspace = true
 bevy_app.workspace = true
+derive_more.workspace = true

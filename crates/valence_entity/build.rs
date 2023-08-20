@@ -189,7 +189,7 @@ impl Value {
                 quote!(None)
             }
             Value::Facing(f) => {
-                let variant = ident(f.replace('.', "_").to_pascal_case());
+                let variant = ident(f.to_pascal_case());
                 quote!(valence_protocol::Direction::#variant)
             }
             Value::OptionalUuid(uuid) => {
@@ -208,7 +208,7 @@ impl Value {
                 quote!(valence_nbt::Compound::default())
             }
             Value::Particle(p) => {
-                let variant = ident(p.replace('.', "_").to_pascal_case());
+                let variant = ident(p.to_pascal_case());
                 quote!(valence_protocol::packets::play::particle_s2c::Particle::#variant)
             }
             Value::VillagerData {
@@ -216,8 +216,8 @@ impl Value {
                 profession,
                 level,
             } => {
-                let typ = ident(typ.replace('.', "_").to_pascal_case());
-                let profession = ident(profession.replace('.', "_").to_pascal_case());
+                let typ = ident(typ.to_pascal_case());
+                let profession = ident(profession.to_pascal_case());
                 quote! {
                     crate::VillagerData {
                         kind: crate::VillagerKind::#typ,
@@ -231,24 +231,24 @@ impl Value {
                 quote!(None)
             }
             Value::EntityPose(p) => {
-                let variant = ident(p.replace('.', "_").to_pascal_case());
+                let variant = ident(p.to_pascal_case());
                 quote!(crate::Pose::#variant)
             }
             Value::CatVariant(c) => {
-                let variant = ident(c.replace('.', "_").to_pascal_case());
+                let variant = ident(c.to_pascal_case());
                 quote!(crate::CatKind::#variant)
             }
             Value::FrogVariant(f) => {
-                let variant = ident(f.replace('.', "_").to_pascal_case());
+                let variant = ident(f.to_pascal_case());
                 quote!(crate::FrogKind::#variant)
             }
             Value::OptionalGlobalPos(_) => quote!(()),
             Value::PaintingVariant(p) => {
-                let variant = ident(p.replace('.', "_").to_pascal_case());
+                let variant = ident(p.to_pascal_case());
                 quote!(crate::PaintingKind::#variant)
             }
             Value::SnifferState(s) => {
-                let state = ident(s.replace('.', "_").to_pascal_case());
+                let state = ident(s.to_pascal_case());
                 quote!(crate::SnifferState::#state)
             }
             Value::Vector3f { x, y, z } => quote!(valence_math::Vec3::new(#x, #y, #z)),
@@ -271,19 +271,18 @@ impl Value {
 type Entities = BTreeMap<String, Entity>;
 
 pub fn main() -> anyhow::Result<()> {
-    rerun_if_changed(["../../extracted/misc.json", "../../extracted/entities.json"]);
+    rerun_if_changed(["extracted/misc.json", "extracted/entities.json"]);
 
     write_generated_file(build()?, "entity.rs")
 }
 
 fn build() -> anyhow::Result<TokenStream> {
-    let entity_types =
-        serde_json::from_str::<EntityTypes>(include_str!("../../extracted/misc.json"))
-            .context("failed to deserialize misc.json")?
-            .entity_type;
+    let entity_types = serde_json::from_str::<EntityTypes>(include_str!("extracted/misc.json"))
+        .context("failed to deserialize misc.json")?
+        .entity_type;
 
     let entities: Entities =
-        serde_json::from_str::<Entities>(include_str!("../../extracted/entities.json"))
+        serde_json::from_str::<Entities>(include_str!("extracted/entities.json"))
             .context("failed to deserialize entities.json")?
             .into_iter()
             .collect();
@@ -297,9 +296,7 @@ fn build() -> anyhow::Result<TokenStream> {
 
     for (entity_name, entity) in entities.clone() {
         let entity_name_ident = ident(&entity_name);
-        let stripped_shouty_entity_name = strip_entity_suffix(&entity_name)
-            .replace('.', "_")
-            .to_shouty_snake_case();
+        let stripped_shouty_entity_name = strip_entity_suffix(&entity_name).to_shouty_snake_case();
         let stripped_shouty_entity_name_ident = ident(&stripped_shouty_entity_name);
         let stripped_snake_entity_name = strip_entity_suffix(&entity_name).to_snake_case();
         let stripped_snake_entity_name_ident = ident(&stripped_snake_entity_name);
@@ -353,8 +350,7 @@ fn build() -> anyhow::Result<TokenStream> {
                         let snake_entity_name_ident = ident(entity_name.to_snake_case());
                         let stripped_snake_entity_name_ident =
                             ident(stripped_entity_name.to_snake_case());
-                        let pascal_entity_name_ident =
-                            ident(entity_name.replace('.', "_").to_pascal_case());
+                        let pascal_entity_name_ident = ident(entity_name.to_pascal_case());
 
                         bundle_fields.extend([quote! {
                             pub #snake_entity_name_ident: super::#stripped_snake_entity_name_ident::#pascal_entity_name_ident,
@@ -366,7 +362,7 @@ fn build() -> anyhow::Result<TokenStream> {
                     }
                     MarkerOrField::Field { entity_name, field } => {
                         let snake_field_name = field.name.to_snake_case();
-                        let pascal_field_name = field.name.replace('.', "_").to_pascal_case();
+                        let pascal_field_name = field.name.to_pascal_case();
                         let pascal_field_name_ident = ident(&pascal_field_name);
                         let stripped_entity_name = strip_entity_suffix(entity_name);
                         let stripped_snake_entity_name = stripped_entity_name.to_snake_case();
@@ -445,13 +441,13 @@ fn build() -> anyhow::Result<TokenStream> {
         }
 
         for field in &entity.fields {
-            let pascal_field_name_ident = ident(field.name.replace('.', "_").to_pascal_case());
+            let pascal_field_name_ident = ident(field.name.to_pascal_case());
             let snake_field_name = field.name.to_snake_case();
             let inner_type = field.default_value.field_type();
             let default_expr = field.default_value.default_expr();
 
             module_body.extend([quote! {
-                #[derive(bevy_ecs::component::Component, PartialEq, Clone, Debug)]
+                #[derive(bevy_ecs::component::Component, PartialEq, Clone, Debug, ::derive_more::Deref, ::derive_more::DerefMut)]
                 pub struct #pascal_field_name_ident(pub #inner_type);
 
                 #[allow(clippy::derivable_impls)]
@@ -518,13 +514,13 @@ fn build() -> anyhow::Result<TokenStream> {
     }
 
     let misc_entity_data: MiscEntityData =
-        serde_json::from_str(include_str!("../../extracted/misc.json"))?;
+        serde_json::from_str(include_str!("extracted/misc.json"))?;
 
     let entity_status_variants = misc_entity_data
         .entity_status
         .into_iter()
         .map(|(name, code)| {
-            let name = ident(name.replace('.', "_").to_pascal_case());
+            let name = ident(name.to_pascal_case());
             let code = code as isize;
 
             quote! {
@@ -537,7 +533,7 @@ fn build() -> anyhow::Result<TokenStream> {
             .entity_animation
             .into_iter()
             .map(|(name, code)| {
-                let name = ident(name.replace('.', "_").to_pascal_case());
+                let name = ident(name.to_pascal_case());
                 let code = code as isize;
 
                 quote! {
@@ -550,7 +546,7 @@ fn build() -> anyhow::Result<TokenStream> {
 
         /// Identifies the type of an entity.
         /// As a component, the entity kind should not be modified.
-        #[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+        #[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, ::derive_more::Deref)]
         pub struct EntityKind(i32);
 
         impl EntityKind {

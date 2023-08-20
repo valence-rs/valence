@@ -1,0 +1,17 @@
+[package]
+name = "valence_server_common"
+description = "Common code for the valence_server family of crates"
+readme = "README.md"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+documentation.workspace = true
+license.workspace = true
+
+[dependencies]
+bevy_ecs.workspace = true
+bevy_app.workspace = true
+derive_more.workspace = true
+uuid.workspace = true
+rand.workspace = true
+valence_protocol.workspace = true

@@ -17,7 +17,7 @@ use valence_entity::{InitEntitiesSet, UpdateTrackedDataSet};
 use valence_protocol::encode::WritePacket;
 use valence_protocol::{BlockPos, ChunkPos, Ident};
 use valence_registry::{BiomeRegistry, DimensionTypeRegistry};
-use valence_server_core::Server;
+use valence_server_common::Server;
 
 pub struct LayerPlugin;
 

@@ -9,16 +9,15 @@ pub fn main() -> anyhow::Result<()> {
 }
 
 fn build() -> anyhow::Result<TokenStream> {
-    rerun_if_changed(["../../extracted/translation_keys.json"]);
+    rerun_if_changed(["extracted/translation_keys.json"]);
 
-    let translations = serde_json::from_str::<Vec<Translation>>(include_str!(
-        "../../extracted/translation_keys.json"
-    ))?;
+    let translations =
+        serde_json::from_str::<Vec<Translation>>(include_str!("extracted/translation_keys.json"))?;
 
     let translation_key_consts = translations
         .iter()
         .map(|translation| {
-            let const_id = ident(translation.key.replace('.', "_").to_shouty_snake_case());
+            let const_id = ident(translation.key.to_shouty_snake_case());
             let key = &translation.key;
             let english_translation = &translation.english_translation;
             let doc = format!("\"{}\"", escape(english_translation));

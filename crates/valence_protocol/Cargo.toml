@@ -1,5 +1,7 @@
 [package]
 name = "valence_protocol"
+description = "Protocol library for Minecraft: Java Edition"
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true

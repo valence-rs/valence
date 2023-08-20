@@ -1,5 +1,7 @@
 [package]
 name = "valence_server"
+description = "The core of the Valence server"
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true
@@ -8,23 +10,24 @@ license.workspace = true
 
 [dependencies]
 anyhow.workspace = true
-arrayvec.workspace = true
 bevy_app.workspace = true
 bevy_ecs.workspace = true
 bevy_utils.workspace = true          # Needed for `ScheduleLabel` derive macro.
 bitfield-struct.workspace = true
-byteorder.workspace = true
 bytes.workspace = true
-num-integer.workspace = true
-parking_lot.workspace = true
+derive_more.workspace = true
+valence_math.workspace = true
 rand.workspace = true
-rustc-hash.workspace = true
 tracing.workspace = true
 uuid.workspace = true
+byteorder.workspace = true
+valence_server_common.workspace = true
 valence_entity.workspace = true
-valence_generated.workspace = true
-valence_math.workspace = true
 valence_nbt.workspace = true
-valence_protocol.workspace = true
 valence_registry.workspace = true
-valence_server_core.workspace = true
+valence_protocol.workspace = true
+valence_generated.workspace = true
+rustc-hash.workspace = true
+parking_lot.workspace = true
+num-integer.workspace = true
+arrayvec.workspace = true
