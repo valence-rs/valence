@@ -2,10 +2,10 @@
 
 use valence::prelude::*;
 use valence_command::arg_parser::{CommandArg, EntitySelector, EntitySelectors, GreedyString, QuotableString};
-use valence_command::command_graph::CommandGraphBuilder;
+
 use valence_command::command_scopes::CommandScopes;
 use valence_command::handler::{CommandExecutionEvent, CommandHandler};
-use valence_command::Command;
+
 use valence_command::{arg_parser, CommandScopeRegistry};
 use valence_command_derive::Command;
 

@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::fmt::{format, Debug};
+use std::fmt::{Debug};
 use std::marker::PhantomData;
 
 use bevy_app::{App, Plugin, PostStartup, Update};
@@ -8,7 +8,7 @@ use bevy_ecs::event::{Event, EventReader, EventWriter};
 use bevy_ecs::prelude::{Entity, Resource};
 use bevy_ecs::system::Query;
 use petgraph::algo::all_simple_paths;
-use petgraph::dot::Dot;
+
 use petgraph::prelude::NodeIndex;
 use petgraph::Graph;
 use valence_server::client::Client;
@@ -16,12 +16,12 @@ use valence_server::event_loop::PacketEvent;
 use valence_server::message::SendMessage;
 use valence_server::protocol::packets::play::CommandExecutionC2s;
 
-use crate::arg_parser::{CommandArg, ParseInput};
+use crate::arg_parser::{ParseInput};
 use crate::command_graph::{
-    parser_valid_for, CommandEdgeType, CommandGraphBuilder, CommandNode, NodeData,
+    CommandEdgeType, CommandGraphBuilder, CommandNode, NodeData,
 };
 use crate::command_scopes::CommandScopes;
-use crate::{Command, CommandRegistry, CommandScopeRegistry, CommandTypingEvent};
+use crate::{Command, CommandRegistry, CommandScopeRegistry};
 
 pub struct CommandHandler<T>
 where
@@ -75,8 +75,7 @@ where
     fn build(&self, app: &mut App) {
         // println!("Registering command: {}", Self::command_name());
 
-        app.add_event::<CommandTypingEvent<T>>()
-            .add_event::<CommandExecutionEvent<T>>()
+        app.add_event::<CommandExecutionEvent<T>>()
             .insert_resource(CommandResource::<T>::new())
             .add_systems(Update, command_event_system::<T>)
             .add_systems(PostStartup, command_startup_system::<T>);
@@ -124,7 +123,7 @@ fn command_event_system<T>(
             for leaf in executable_leafs {
                 // we want to find all possible paths from root to leaf then check if the path
                 // matches the command
-                let mut paths = all_simple_paths::<
+                let paths = all_simple_paths::<
                     Vec<NodeIndex>,
                     &Graph<CommandNode, CommandEdgeType>,
                 >(&registry.graph.graph, root, *leaf, 0, None);
@@ -179,7 +178,7 @@ fn command_event_system<T>(
                                 false => continue 'paths,
                             },
                             NodeData::Argument { .. } => {
-                                let parser = command.parsers.get(&node).unwrap();
+                                let parser = command.parsers.get(node).unwrap();
                                 let before_cursor = input.cursor;
                                 let valid = parser(&mut input);
                                 let after_cursor = input.cursor;

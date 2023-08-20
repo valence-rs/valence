@@ -12,4 +12,4 @@ proc-macro = true
 syn = { version = "2.0", features = ["full"] }
 quote = "1.0"
 proc-macro2 = "1.0"
-workspace.valance_commands = true
+workspace.valence_command = true

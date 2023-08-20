@@ -1,43 +1,10 @@
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, TokenTree};
-use quote::{format_ident, quote, ToTokens, TokenStreamExt};
-use syn::Expr::Field;
+use quote::{format_ident, quote};
+
 use syn::{
-    parenthesized, parse_macro_input, Attribute, Data, DeriveInput, Expr, Fields, LitStr, Meta,
-    MetaNameValue, Path,
+    parse_macro_input, Attribute, Data, DeriveInput, Expr, Fields, Meta,
 };
-
-// pub trait Command {
-//     type CommandExecutables: Send + Sync; // usually an enum of all the possible commands
-//
-//     fn name() -> String;
-//     fn assemble_graph(&self, graph: &mut CommandGraphBuilder<Self::CommandExecutables>);
-// }
-
-// #[derive(Command)]
-// #[paths = ["selectfruit", "select fruit", "sf"]]
-// #[scopes = ["valence:command:teleport"]]
-// enum SelectFruit {
-//     #[paths = "apple"] // this path is from the perant: selectfruit so `/selectfruit apple` will be here
-//     Apple,
-//     #[paths = "banana"]
-//     Banana,
-//     #[paths = "Strawberry {0?}"] // this could be `/selectfruit banana green` or /selectfruit banana
-//     // the macro should be able to detect the fact it is optional and register two executables;
-//     // one has no args and the other has the optional arg
-//     Strawberry(Option<Strawberry>),
-// }
-//
-// #[derive(Suggestions)] // I'd want this to assume snake case unless manully set
-// enum Strawberry {
-//     Red,
-//     Green
-// }
-
-enum CommandBranch {
-    Branch(Path),
-    SingleArg(String, Path, Ident),
-}
 
 #[proc_macro_derive(Command, attributes(command, scopes, paths))]
 pub fn derive_command(a_input: TokenStream) -> TokenStream {
@@ -74,64 +41,7 @@ pub fn derive_command(a_input: TokenStream) -> TokenStream {
                 paths.push((attr_paths, variant.fields.clone(), variant.ident.clone()));
             }
         }
-        // let mut expanded_variant_fields = Vec::new();
-        // match variant.fields {
-        //     Fields::Named(ref fields) => {
-        //         for field in fields.named.iter() {
-        //             let field_ident = field.ident.as_ref().unwrap();
-        //             let field_type = &field.ty;
-        //
-        //             let mut inner;
-        //             let mut is_optional = false;
-        //
-        //             match field_type {
-        //                 syn::Type::Path(ref type_path) => {
-        //                     let path = &type_path.path;
-        //                     if path.segments.len() != 1 {
-        //                         inner = field_type;
-        //                     }
-        //                     let segment = &path.segments.first().unwrap();
-        //                     if segment.ident.to_string() != "Option" {
-        //                         inner = field_type
-        //                     }
-        //                     match &segment.arguments {
-        //                         syn::PathArguments::AngleBracketed(ref angle_bracketed) => {
-        //                             if angle_bracketed.args.len() != 1 {
-        //                                 inner = field_type;
-        //                             }
-        //                             match angle_bracketed.args.first().unwrap() {
-        //                                 syn::GenericArgument::Type(ref generic_type) => {
-        //                                     inner = generic_type;
-        //                                     is_optional = true;
-        //                                 }
-        //                                 _ => inner = field_type,
-        //                             }
-        //                         }
-        //                         _ => inner = field_type,
-        //                     }
-        //                 }
-        //                 _ => inner = field_type,
-        //             };
-        //
-        //             if !is_optional {
-        //                 expanded_variant_fields.push(quote! {
-        //                 #field_ident: #inner
-        //             });
-        //             } else {
-        //                 expanded_variant_fields.push(quote! {
-        //                 #field_ident: Option<<#inner as valence_command::arg_parser::CommandArg>::Result>
-        //             });
-        //             }
-        //         }
-        //     }
-        //     _ => panic!("Command enum variants must be named"),
-        // }
-        // let variant_ident = &variant.ident;
-        // expanded_variants.push(quote! {
-        //     #variant_ident{#(#expanded_variant_fields),*}
-        // });
     }
-    println!("paths: {:#?}", paths);
 
     let mut expanded_nodes = Vec::new();
 
@@ -199,14 +109,7 @@ pub fn derive_command(a_input: TokenStream) -> TokenStream {
         alias_expansion
     };
 
-    println!(
-        "expanded_nodes: {}",
-        quote! {
-            #(#expanded_nodes)*
-        }
-    );
-
-    let new_struct = format_ident!("{}Command", enum_name);
+    let _new_struct = format_ident!("{}Command", enum_name);
 
     let expanded = quote! {
 
@@ -220,8 +123,6 @@ pub fn derive_command(a_input: TokenStream) -> TokenStream {
             }
         }
     };
-
-    println!("expanded: {}", expanded);
 
     proc_macro::TokenStream::from(expanded)
 }
@@ -265,13 +166,10 @@ fn process_paths(
             first = false;
         }
 
-        let mut real_args: usize = 0;
         let mut final_executable = Vec::new();
         for (i, arg) in path.iter().enumerate() {
             match arg {
                 CommandArg::Literal(lit) => {
-                    println!("lit: {:?}", lit);
-
                     inner_expansion = quote! {
                         #inner_expansion.literal(#lit)
 
@@ -311,8 +209,6 @@ fn process_paths(
                                 })
                         };
                     }
-
-                    real_args += 1;
                 }
                 CommandArg::Optional(ident) => {
                     let field_type = &fields
@@ -330,7 +226,7 @@ fn process_paths(
                                 panic!("Option type must be a single path segment");
                             }
                             let segment = &path.segments.first().unwrap();
-                            if segment.ident.to_string() != "Option" {
+                            if segment.ident != "Option" {
                                 panic!("Must be an Option type");
                             }
                             match &segment.arguments {
@@ -397,8 +293,6 @@ fn process_paths(
                                 })
                         };
                     }
-
-                    real_args += 1;
                 }
             }
         }
@@ -416,7 +310,6 @@ enum CommandArg {
 // example input: #[paths = "strawberry {0?}"]
 // example output: [CommandArg::Literal("Strawberry"), CommandArg::Optional(0)]
 fn parse_path(path: &Attribute) -> Option<Vec<Vec<CommandArg>>> {
-    println!("path: {:#?}", path);
     let path_strings: Vec<String> = get_lit_list_attr(path, "paths")?;
 
     let mut paths = Vec::new();
@@ -439,7 +332,6 @@ fn parse_path(path: &Attribute) -> Option<Vec<Vec<CommandArg>>> {
                     )));
                 }
             } else {
-                println!("making literal: {:?}", word);
                 args.push(CommandArg::Literal(word.to_string()));
             }
         }
@@ -459,9 +351,9 @@ fn get_lit_list_attr(attr: &Attribute, ident: &str) -> Option<Vec<String>> {
             match key_value.value {
                 Expr::Lit(ref lit) => match lit.lit {
                     syn::Lit::Str(ref lit_str) => Some(vec![lit_str.value()]),
-                    _ => return None,
+                    _ => None,
                 },
-                _ => return None,
+                _ => None,
             }
         }
         Meta::List(ref list) => {
@@ -470,13 +362,11 @@ fn get_lit_list_attr(attr: &Attribute, ident: &str) -> Option<Vec<String>> {
             }
 
             let mut path_strings = Vec::new();
-            println!("list: {:#?}", list.tokens);
             // parse as array with strings
             let mut comma_next = false;
             for token in list.tokens.clone() {
                 match token {
                     TokenTree::Literal(lit) => {
-                        println!("lit: {:#?}", lit);
                         if comma_next {
                             return None;
                         }
@@ -502,66 +392,6 @@ fn get_lit_list_attr(attr: &Attribute, ident: &str) -> Option<Vec<String>> {
             }
             Some(path_strings)
         }
-        _ => return None,
+        _ => None,
     }
-}
-//
-// fn get_scopes_attr(attr: &Attribute) -> Option<Vec<String>> {
-//     // Parse args (which contain key & value).
-//     // println!("attr: {:#?}", attr);
-//     let key_value: MetaNameValue = match attr.meta {
-//         Meta::NameValue(ref key_value) => key_value.clone(),
-//         _ => return None,
-//     };
-//     // println!("key_value: {:#?}", key_value);
-//
-//     if key_value.path.is_ident("scopes") {
-//         let value = match key_value.value {
-//             Expr::Array(ref array) => {
-//                 let mut values = Vec::new();
-//                 for expr in array.elems.iter() {
-//                     if let Expr::Lit(ref lit) = expr {
-//                         if let syn::Lit::Str(ref lit_str) = lit.lit {
-//                             values.push(lit_str.value());
-//                         }
-//                     } else {
-//                         panic!("Command name must be an array of strings");
-//                     }
-//                 }
-//                 values
-//             }
-//             _ => panic!("Command name must be an array of strings"),
-//         };
-//         println!("value: {:#?}", value);
-//         return Some(value);
-//     }
-//
-//     None
-// }
-
-fn get_arg_attr(attr: &Attribute) -> Option<String> {
-    // Parse args (which contain key & value).
-    // println!("attr: {:#?}", attr);
-    let key_value: MetaNameValue = match attr.meta {
-        Meta::NameValue(ref key_value) => key_value.clone(),
-        _ => return None,
-    };
-    // println!("key_value: {:#?}", key_value);
-
-    if key_value.path.is_ident("arg") {
-        let value = match key_value.value {
-            Expr::Lit(ref lit) => {
-                if let syn::Lit::Str(ref lit_str) = lit.lit {
-                    lit_str.value()
-                } else {
-                    panic!("Arg must be a string");
-                }
-            }
-            _ => panic!("Arg must be a string"),
-        };
-        println!("value: {:#?}", value);
-        return Some(value);
-    }
-
-    None
 }

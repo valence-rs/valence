@@ -317,8 +317,8 @@ impl CommandArg for QuotableString {
                 }
                 Err(CommandArgParseError::InvalidArgLength)
             }
-            Some(_) => return Ok(QuotableString(String::parse_arg(input)?)),
-            None => return Err(CommandArgParseError::InvalidArgLength),
+            Some(_) => Ok(QuotableString(String::parse_arg(input)?)),
+            None => Err(CommandArgParseError::InvalidArgLength),
         }
     }
 

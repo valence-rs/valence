@@ -290,6 +290,9 @@ impl CommandScopeRegistry {
 
     /// Create a link between two scopes so that one implies the other.
     ///
+    /// # Panics
+    /// Panics if either scope does not exist.
+    ///
     /// # Example
     /// ```
     /// use valence_command::CommandScopeRegistry;
@@ -308,11 +311,11 @@ impl CommandScopeRegistry {
         let scope_idx = *self
             .string_to_node
             .get(scope)
-            .expect(format!("scope {} does not exist", scope).as_str());
+            .unwrap_or_else(|| panic!("scope {} does not exist", scope));
         let other_idx = *self
             .string_to_node
             .get(other)
-            .expect(format!("scope {} does not exist", scope).as_str());
+            .unwrap_or_else(|| panic!("scope {} does not exist", scope));
 
         self.graph.add_edge(scope_idx, other_idx, ());
     }

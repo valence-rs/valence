@@ -4,8 +4,6 @@ pub mod command_scopes;
 pub mod handler;
 pub mod manager;
 
-use bevy_ecs::entity::Entity;
-use bevy_ecs::event::Event;
 use bevy_ecs::prelude::Resource;
 pub use command_scopes::CommandScopeRegistry;
 
@@ -100,16 +98,4 @@ impl_arg_set!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, S, T, U, V, W, 
 #[derive(Resource, Default)]
 pub struct CommandRegistry {
     pub graph: CommandGraph,
-}
-
-#[derive(Event, Debug)]
-/// This event is sent when a command is partially typed into the console and
-/// the user is still typing
-pub struct CommandTypingEvent<T>
-where
-    T: Command + Send + Sync + 'static,
-{
-    command: String,
-    executor: Entity,
-    _phantom: std::marker::PhantomData<T>,
 }
