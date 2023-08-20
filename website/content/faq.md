@@ -1,7 +1,7 @@
 +++
 title = "FAQ"
 description = "Frequently Asked Questions regarding Valence"
-weight = 3
+weight = 4
 +++
 
 # How to Fix Error

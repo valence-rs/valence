@@ -1,5 +1,6 @@
 +++
 title = "Hi"
+sort_by = "weight"
 +++
 
 # Features
