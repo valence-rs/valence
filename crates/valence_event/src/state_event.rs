@@ -66,6 +66,8 @@ pub struct StateId(usize);
 /// Defines a struct that can be used as a state for an event.
 pub trait State: Send + Sync + 'static {
     fn get(&self) -> bool;
+
+    fn set(&mut self, value: bool);
 }
 
 /// Resource that holds all states for all events.
@@ -439,14 +441,14 @@ impl<'s, 'w, E: Event> EventWithStateMutReader<'s, 'w, E> {
     }
 }
 
-impl<'a, E: Event> IntoIterator for &'a mut EventWithStateMutReader<'_, '_, E> {
-    type Item = (&'a E, &'a mut dyn State);
-    type IntoIter = ManualEventWithStateMutIterator<'a, E>;
+// impl<'a, E: Event> IntoIterator for &'a mut EventWithStateMutReader<'_, '_, E> {
+//     type Item = (&'a E, &'a mut dyn State);
+//     type IntoIter = ManualEventWithStateMutIterator<'a, E>;
 
-    fn into_iter(self) -> Self::IntoIter {
-        self.iter_mut()
-    }
-}
+//     fn into_iter(self) -> Self::IntoIter {
+//         self.iter_mut()
+//     }
+// }
 
 #[derive()]
 pub struct ManualEventWithStateMutIterator<'a, E: Event> {
@@ -493,10 +495,16 @@ impl<'a, E: Event> ManualEventWithStateMutIterator<'a, E> {
     }
 }
 
-impl<'a, E: Event> Iterator for ManualEventWithStateMutIterator<'a, E> {
-    type Item = (&'a E, &'a mut dyn State);
+pub trait LendingIterator {
+    type Item<'a> where Self: 'a;
+    
+    fn next(&mut self) -> Option<Self::Item<'_>>;
+}
 
-    fn next(&mut self) -> Option<Self::Item> {
+impl<E: Event> LendingIterator for ManualEventWithStateMutIterator<'_, E> {
+    type Item<'a> = (&'a E, &'a mut dyn State) where Self: 'a;
+
+    fn next(&mut self) -> Option<Self::Item<'_>> {
         match self
             .chain
             .next()
@@ -509,9 +517,5 @@ impl<'a, E: Event> Iterator for ManualEventWithStateMutIterator<'a, E> {
             }
             None => None,
         }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.unread, Some(self.unread))
     }
 }

@@ -35,6 +35,10 @@ impl State for Canceled {
     fn get(&self) -> bool {
         self.0
     }
+
+    fn set(&mut self, value: bool) {
+        self.0 = value;
+    }
 }
 
 #[derive(Clone, Debug, Event)]
