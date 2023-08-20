@@ -38,7 +38,6 @@ jobs:
           rustup update
           cargo install mdbook
       - name: Install zola
-        if: steps.cache.outputs.cache-hit != 'true'
         uses: taiki-e/install-action@v2
         with:
           tool: zola
