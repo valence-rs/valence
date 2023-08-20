@@ -20,12 +20,14 @@
 use std::mem::ManuallyDrop;
 
 pub use compound::Compound;
+pub use list::List;
 pub use tag::Tag;
-pub use value::{List, Value};
+pub use value::Value;
 
 #[cfg(feature = "binary")]
 pub mod binary;
 pub mod compound;
+pub mod list;
 #[cfg(feature = "serde")]
 pub mod serde;
 #[cfg(feature = "snbt")]
