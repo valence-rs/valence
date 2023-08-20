@@ -134,6 +134,102 @@ impl_value!(Value,,);
 impl_value!(ValueRef, 'a, &'a);
 impl_value!(ValueRefMut, 'a, &'a mut);
 
+impl Value {
+    /// Converts a reference to a value to a [ValueRef].
+    pub fn as_value_ref(&self) -> ValueRef {
+        match self {
+            Value::Byte(v) => ValueRef::Byte(v),
+            Value::Short(v) => ValueRef::Short(v),
+            Value::Int(v) => ValueRef::Int(v),
+            Value::Long(v) => ValueRef::Long(v),
+            Value::Float(v) => ValueRef::Float(v),
+            Value::Double(v) => ValueRef::Double(v),
+            Value::ByteArray(v) => ValueRef::ByteArray(&v[..]),
+            Value::String(v) => ValueRef::String(&v[..]),
+            Value::List(v) => ValueRef::List(v),
+            Value::Compound(v) => ValueRef::Compound(v),
+            Value::IntArray(v) => ValueRef::IntArray(&v[..]),
+            Value::LongArray(v) => ValueRef::LongArray(&v[..]),
+        }
+    }
+
+    /// Converts a mutable reference to a value to a [ValueRefMut].
+    pub fn as_value_ref_mut(&mut self) -> ValueRefMut {
+        match self {
+            Value::Byte(v) => ValueRefMut::Byte(v),
+            Value::Short(v) => ValueRefMut::Short(v),
+            Value::Int(v) => ValueRefMut::Int(v),
+            Value::Long(v) => ValueRefMut::Long(v),
+            Value::Float(v) => ValueRefMut::Float(v),
+            Value::Double(v) => ValueRefMut::Double(v),
+            Value::ByteArray(v) => ValueRefMut::ByteArray(v),
+            Value::String(v) => ValueRefMut::String(v),
+            Value::List(v) => ValueRefMut::List(v),
+            Value::Compound(v) => ValueRefMut::Compound(v),
+            Value::IntArray(v) => ValueRefMut::IntArray(v),
+            Value::LongArray(v) => ValueRefMut::LongArray(v),
+        }
+    }
+}
+
+impl ValueRef<'_> {
+    /// Clones this value reference to a new owned [Value].
+    pub fn to_value(&self) -> Value {
+        match *self {
+            ValueRef::Byte(v) => Value::Byte(*v),
+            ValueRef::Short(v) => Value::Short(*v),
+            ValueRef::Int(v) => Value::Int(*v),
+            ValueRef::Long(v) => Value::Long(*v),
+            ValueRef::Float(v) => Value::Float(*v),
+            ValueRef::Double(v) => Value::Double(*v),
+            ValueRef::ByteArray(v) => Value::ByteArray(v.to_vec()),
+            ValueRef::String(v) => Value::String(v.to_owned()),
+            ValueRef::List(v) => Value::List(v.clone()),
+            ValueRef::Compound(v) => Value::Compound(v.clone()),
+            ValueRef::IntArray(v) => Value::IntArray(v.to_vec()),
+            ValueRef::LongArray(v) => Value::LongArray(v.to_vec()),
+        }
+    }
+}
+
+impl<'a> ValueRefMut<'a> {
+    /// Clones this mutable value reference to a new owned [Value].
+    pub fn to_value(&self) -> Value {
+        match self {
+            ValueRefMut::Byte(v) => Value::Byte(**v),
+            ValueRefMut::Short(v) => Value::Short(**v),
+            ValueRefMut::Int(v) => Value::Int(**v),
+            ValueRefMut::Long(v) => Value::Long(**v),
+            ValueRefMut::Float(v) => Value::Float(**v),
+            ValueRefMut::Double(v) => Value::Double(**v),
+            ValueRefMut::ByteArray(v) => Value::ByteArray((*v).clone()),
+            ValueRefMut::String(v) => Value::String((*v).clone()),
+            ValueRefMut::List(v) => Value::List((*v).clone()),
+            ValueRefMut::Compound(v) => Value::Compound((*v).clone()),
+            ValueRefMut::IntArray(v) => Value::IntArray((*v).clone()),
+            ValueRefMut::LongArray(v) => Value::LongArray((*v).clone()),
+        }
+    }
+
+    /// Downgrades this mutable value reference into an immutable [ValueRef].
+    pub fn into_value_ref(self) -> ValueRef<'a> {
+        match self {
+            ValueRefMut::Byte(v) => ValueRef::Byte(v),
+            ValueRefMut::Short(v) => ValueRef::Short(v),
+            ValueRefMut::Int(v) => ValueRef::Int(v),
+            ValueRefMut::Long(v) => ValueRef::Long(v),
+            ValueRefMut::Float(v) => ValueRef::Float(v),
+            ValueRefMut::Double(v) => ValueRef::Double(v),
+            ValueRefMut::ByteArray(v) => ValueRef::ByteArray(&v[..]),
+            ValueRefMut::String(v) => ValueRef::String(&v[..]),
+            ValueRefMut::List(v) => ValueRef::List(v),
+            ValueRefMut::Compound(v) => ValueRef::Compound(v),
+            ValueRefMut::IntArray(v) => ValueRef::IntArray(&v[..]),
+            ValueRefMut::LongArray(v) => ValueRef::LongArray(&v[..]),
+        }
+    }
+}
+
 /// Bools are usually represented as `0` or `1` bytes in NBT.
 impl From<bool> for Value {
     fn from(b: bool) -> Self {
