@@ -48,6 +48,7 @@ valence_advancement = { workspace = true, optional = true }
 valence_anvil = { workspace = true, optional = true }
 valence_boss_bar = { workspace = true, optional = true }
 valence_server.workspace = true
+valence_event.workspace = true
 valence_inventory = { workspace = true, optional = true }
 valence_network = { workspace = true, optional = true }
 valence_player_list = { workspace = true, optional = true }
@@ -167,6 +168,7 @@ valence_advancement.path = "crates/valence_advancement"
 valence_anvil.path = "crates/valence_anvil"
 valence_build_utils.path = "crates/valence_build_utils"
 valence_server.path = "crates/valence_server"
+valence_event.path = "crates/valence_event"
 valence_packet_macros.path = "crates/valence_packet_macros"
 valence_server_core.path = "crates/valence_server_core"
 valence_entity.path = "crates/valence_entity"

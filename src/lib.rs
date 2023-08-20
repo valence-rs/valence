@@ -41,7 +41,6 @@ pub use valence_anvil as anvil;
 pub use valence_boss_bar as boss_bar;
 #[cfg(feature = "inventory")]
 pub use valence_inventory as inventory;
-pub use valence_lang as lang;
 #[cfg(feature = "network")]
 pub use valence_network as network;
 #[cfg(feature = "player_list")]
@@ -75,6 +74,7 @@ pub use valence_server::*;
 pub use valence_weather as weather;
 #[cfg(feature = "world_border")]
 pub use valence_world_border as world_border;
+pub use {valence_event as event, valence_lang as lang};
 
 /// Contains the most frequently used items in Valence projects.
 ///

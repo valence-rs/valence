@@ -1,0 +1,15 @@
+[package]
+name = "valence_event"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+valence_server_core.workspace = true
+valence_protocol.workspace = true
+valence_server.workspace = true
+bevy_ecs.workspace = true
+bevy_app.workspace = true
+bitfield-struct.workspace = true
+tracing.workspace = true
+
+
