@@ -55,7 +55,7 @@ header {
 .nav-item {
   margin: 0 10px;
   text-decoration: none;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: bold;
 
   &:hover {
@@ -95,7 +95,8 @@ main {
     color: #424242;
   }
 
-  .toc-item a, .toc-item-child a {
+  .toc-item a,
+  .toc-item-child a {
     color: var(--secondary-text-color);
 
     &:hover {
@@ -104,7 +105,8 @@ main {
     }
   }
 
-  .toc-item a.active, .toc-item-child a.active {
+  .toc-item a.active,
+  .toc-item-child a.active {
     color: var(--toc-highlight-text-color);
   }
 
@@ -112,7 +114,6 @@ main {
     padding: 0 30px 5px;
     color: #424242;
   }
-
 }
 
 .toc-sticky {
@@ -187,8 +188,8 @@ footer {
     padding: 0;
   }
 
-  .explore-more, .toc {
+  .explore-more,
+  .toc {
     display: none;
   }
-
 }
