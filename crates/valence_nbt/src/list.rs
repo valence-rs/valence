@@ -1,6 +1,6 @@
 use std::iter::FusedIterator;
 
-use crate::value::{ValueRef, ValueRefMut};
+use crate::value::{ValueMut, ValueRef};
 use crate::{Compound, Tag, Value};
 
 /// An NBT list value.
@@ -105,21 +105,21 @@ impl List {
 
     /// Gets a mutable reference to the value at the given index in this list,
     /// or `None` if the index is out of bounds.
-    pub fn get_mut(&mut self, index: usize) -> Option<ValueRefMut> {
+    pub fn get_mut(&mut self, index: usize) -> Option<ValueMut> {
         match self {
             List::End => None,
-            List::Byte(list) => list.get_mut(index).map(ValueRefMut::Byte),
-            List::Short(list) => list.get_mut(index).map(ValueRefMut::Short),
-            List::Int(list) => list.get_mut(index).map(ValueRefMut::Int),
-            List::Long(list) => list.get_mut(index).map(ValueRefMut::Long),
-            List::Float(list) => list.get_mut(index).map(ValueRefMut::Float),
-            List::Double(list) => list.get_mut(index).map(ValueRefMut::Double),
-            List::ByteArray(list) => list.get_mut(index).map(ValueRefMut::ByteArray),
-            List::String(list) => list.get_mut(index).map(ValueRefMut::String),
-            List::List(list) => list.get_mut(index).map(ValueRefMut::List),
-            List::Compound(list) => list.get_mut(index).map(ValueRefMut::Compound),
-            List::IntArray(list) => list.get_mut(index).map(ValueRefMut::IntArray),
-            List::LongArray(list) => list.get_mut(index).map(ValueRefMut::LongArray),
+            List::Byte(list) => list.get_mut(index).map(ValueMut::Byte),
+            List::Short(list) => list.get_mut(index).map(ValueMut::Short),
+            List::Int(list) => list.get_mut(index).map(ValueMut::Int),
+            List::Long(list) => list.get_mut(index).map(ValueMut::Long),
+            List::Float(list) => list.get_mut(index).map(ValueMut::Float),
+            List::Double(list) => list.get_mut(index).map(ValueMut::Double),
+            List::ByteArray(list) => list.get_mut(index).map(ValueMut::ByteArray),
+            List::String(list) => list.get_mut(index).map(ValueMut::String),
+            List::List(list) => list.get_mut(index).map(ValueMut::List),
+            List::Compound(list) => list.get_mut(index).map(ValueMut::Compound),
+            List::IntArray(list) => list.get_mut(index).map(ValueMut::IntArray),
+            List::LongArray(list) => list.get_mut(index).map(ValueMut::LongArray),
         }
     }
 
@@ -392,44 +392,44 @@ impl List {
     }
 
     /// Returns an iterator over this list. This iterator yields [ValueRef]s.
-    pub fn iter(&self) -> ListIter {
-        ListIter {
+    pub fn iter(&self) -> Iter {
+        Iter {
             inner: match self {
-                List::End => ListIterInner::End,
-                List::Byte(list) => ListIterInner::Byte(list.iter()),
-                List::Short(list) => ListIterInner::Short(list.iter()),
-                List::Int(list) => ListIterInner::Int(list.iter()),
-                List::Long(list) => ListIterInner::Long(list.iter()),
-                List::Float(list) => ListIterInner::Float(list.iter()),
-                List::Double(list) => ListIterInner::Double(list.iter()),
-                List::ByteArray(list) => ListIterInner::ByteArray(list.iter()),
-                List::String(list) => ListIterInner::String(list.iter()),
-                List::List(list) => ListIterInner::List(list.iter()),
-                List::Compound(list) => ListIterInner::Compound(list.iter()),
-                List::IntArray(list) => ListIterInner::IntArray(list.iter()),
-                List::LongArray(list) => ListIterInner::LongArray(list.iter()),
+                List::End => IterInner::End,
+                List::Byte(list) => IterInner::Byte(list.iter()),
+                List::Short(list) => IterInner::Short(list.iter()),
+                List::Int(list) => IterInner::Int(list.iter()),
+                List::Long(list) => IterInner::Long(list.iter()),
+                List::Float(list) => IterInner::Float(list.iter()),
+                List::Double(list) => IterInner::Double(list.iter()),
+                List::ByteArray(list) => IterInner::ByteArray(list.iter()),
+                List::String(list) => IterInner::String(list.iter()),
+                List::List(list) => IterInner::List(list.iter()),
+                List::Compound(list) => IterInner::Compound(list.iter()),
+                List::IntArray(list) => IterInner::IntArray(list.iter()),
+                List::LongArray(list) => IterInner::LongArray(list.iter()),
             },
         }
     }
 
     /// Returns a mutable iterator over this list. This iterator yields
-    /// [ValueRefMut]s.
-    pub fn iter_mut(&mut self) -> ListIterMut {
-        ListIterMut {
+    /// [ValueMut]s.
+    pub fn iter_mut(&mut self) -> IterMut {
+        IterMut {
             inner: match self {
-                List::End => ListIterMutInner::End,
-                List::Byte(list) => ListIterMutInner::Byte(list.iter_mut()),
-                List::Short(list) => ListIterMutInner::Short(list.iter_mut()),
-                List::Int(list) => ListIterMutInner::Int(list.iter_mut()),
-                List::Long(list) => ListIterMutInner::Long(list.iter_mut()),
-                List::Float(list) => ListIterMutInner::Float(list.iter_mut()),
-                List::Double(list) => ListIterMutInner::Double(list.iter_mut()),
-                List::ByteArray(list) => ListIterMutInner::ByteArray(list.iter_mut()),
-                List::String(list) => ListIterMutInner::String(list.iter_mut()),
-                List::List(list) => ListIterMutInner::List(list.iter_mut()),
-                List::Compound(list) => ListIterMutInner::Compound(list.iter_mut()),
-                List::IntArray(list) => ListIterMutInner::IntArray(list.iter_mut()),
-                List::LongArray(list) => ListIterMutInner::LongArray(list.iter_mut()),
+                List::End => IterMutInner::End,
+                List::Byte(list) => IterMutInner::Byte(list.iter_mut()),
+                List::Short(list) => IterMutInner::Short(list.iter_mut()),
+                List::Int(list) => IterMutInner::Int(list.iter_mut()),
+                List::Long(list) => IterMutInner::Long(list.iter_mut()),
+                List::Float(list) => IterMutInner::Float(list.iter_mut()),
+                List::Double(list) => IterMutInner::Double(list.iter_mut()),
+                List::ByteArray(list) => IterMutInner::ByteArray(list.iter_mut()),
+                List::String(list) => IterMutInner::String(list.iter_mut()),
+                List::List(list) => IterMutInner::List(list.iter_mut()),
+                List::Compound(list) => IterMutInner::Compound(list.iter_mut()),
+                List::IntArray(list) => IterMutInner::IntArray(list.iter_mut()),
+                List::LongArray(list) => IterMutInner::LongArray(list.iter_mut()),
             },
         }
     }
@@ -529,24 +529,24 @@ impl From<Value> for List {
 
 impl IntoIterator for List {
     type Item = Value;
-    type IntoIter = ListIntoIter;
+    type IntoIter = IntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
-        ListIntoIter {
+        IntoIter {
             inner: match self {
-                List::End => ListIntoIterInner::End,
-                List::Byte(list) => ListIntoIterInner::Byte(list.into_iter()),
-                List::Short(list) => ListIntoIterInner::Short(list.into_iter()),
-                List::Int(list) => ListIntoIterInner::Int(list.into_iter()),
-                List::Long(list) => ListIntoIterInner::Long(list.into_iter()),
-                List::Float(list) => ListIntoIterInner::Float(list.into_iter()),
-                List::Double(list) => ListIntoIterInner::Double(list.into_iter()),
-                List::ByteArray(list) => ListIntoIterInner::ByteArray(list.into_iter()),
-                List::String(list) => ListIntoIterInner::String(list.into_iter()),
-                List::List(list) => ListIntoIterInner::List(list.into_iter()),
-                List::Compound(list) => ListIntoIterInner::Compound(list.into_iter()),
-                List::IntArray(list) => ListIntoIterInner::IntArray(list.into_iter()),
-                List::LongArray(list) => ListIntoIterInner::LongArray(list.into_iter()),
+                List::End => IntoIterInner::End,
+                List::Byte(list) => IntoIterInner::Byte(list.into_iter()),
+                List::Short(list) => IntoIterInner::Short(list.into_iter()),
+                List::Int(list) => IntoIterInner::Int(list.into_iter()),
+                List::Long(list) => IntoIterInner::Long(list.into_iter()),
+                List::Float(list) => IntoIterInner::Float(list.into_iter()),
+                List::Double(list) => IntoIterInner::Double(list.into_iter()),
+                List::ByteArray(list) => IntoIterInner::ByteArray(list.into_iter()),
+                List::String(list) => IntoIterInner::String(list.into_iter()),
+                List::List(list) => IntoIterInner::List(list.into_iter()),
+                List::Compound(list) => IntoIterInner::Compound(list.into_iter()),
+                List::IntArray(list) => IntoIterInner::IntArray(list.into_iter()),
+                List::LongArray(list) => IntoIterInner::LongArray(list.into_iter()),
             },
         }
     }
@@ -554,7 +554,7 @@ impl IntoIterator for List {
 
 impl<'a> IntoIterator for &'a List {
     type Item = ValueRef<'a>;
-    type IntoIter = ListIter<'a>;
+    type IntoIter = Iter<'a>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
@@ -562,8 +562,8 @@ impl<'a> IntoIterator for &'a List {
 }
 
 impl<'a> IntoIterator for &'a mut List {
-    type Item = ValueRefMut<'a>;
-    type IntoIter = ListIterMut<'a>;
+    type Item = ValueMut<'a>;
+    type IntoIter = IterMut<'a>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter_mut()
@@ -571,11 +571,11 @@ impl<'a> IntoIterator for &'a mut List {
 }
 
 /// The owned iterator type for [List].
-pub struct ListIntoIter {
-    inner: ListIntoIterInner,
+pub struct IntoIter {
+    inner: IntoIterInner,
 }
 
-enum ListIntoIterInner {
+enum IntoIterInner {
     End,
     Byte(std::vec::IntoIter<i8>),
     Short(std::vec::IntoIter<i16>),
@@ -591,94 +591,94 @@ enum ListIntoIterInner {
     LongArray(std::vec::IntoIter<Vec<i64>>),
 }
 
-impl Iterator for ListIntoIter {
+impl Iterator for IntoIter {
     type Item = Value;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.inner {
-            ListIntoIterInner::End => None,
-            ListIntoIterInner::Byte(ref mut i) => i.next().map(Value::Byte),
-            ListIntoIterInner::Short(ref mut i) => i.next().map(Value::Short),
-            ListIntoIterInner::Int(ref mut i) => i.next().map(Value::Int),
-            ListIntoIterInner::Long(ref mut i) => i.next().map(Value::Long),
-            ListIntoIterInner::Float(ref mut i) => i.next().map(Value::Float),
-            ListIntoIterInner::Double(ref mut i) => i.next().map(Value::Double),
-            ListIntoIterInner::ByteArray(ref mut i) => i.next().map(Value::ByteArray),
-            ListIntoIterInner::String(ref mut i) => i.next().map(Value::String),
-            ListIntoIterInner::List(ref mut i) => i.next().map(Value::List),
-            ListIntoIterInner::Compound(ref mut i) => i.next().map(Value::Compound),
-            ListIntoIterInner::IntArray(ref mut i) => i.next().map(Value::IntArray),
-            ListIntoIterInner::LongArray(ref mut i) => i.next().map(Value::LongArray),
+            IntoIterInner::End => None,
+            IntoIterInner::Byte(ref mut i) => i.next().map(Value::Byte),
+            IntoIterInner::Short(ref mut i) => i.next().map(Value::Short),
+            IntoIterInner::Int(ref mut i) => i.next().map(Value::Int),
+            IntoIterInner::Long(ref mut i) => i.next().map(Value::Long),
+            IntoIterInner::Float(ref mut i) => i.next().map(Value::Float),
+            IntoIterInner::Double(ref mut i) => i.next().map(Value::Double),
+            IntoIterInner::ByteArray(ref mut i) => i.next().map(Value::ByteArray),
+            IntoIterInner::String(ref mut i) => i.next().map(Value::String),
+            IntoIterInner::List(ref mut i) => i.next().map(Value::List),
+            IntoIterInner::Compound(ref mut i) => i.next().map(Value::Compound),
+            IntoIterInner::IntArray(ref mut i) => i.next().map(Value::IntArray),
+            IntoIterInner::LongArray(ref mut i) => i.next().map(Value::LongArray),
         }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         match self.inner {
-            ListIntoIterInner::End => (0, Some(0)),
-            ListIntoIterInner::Byte(ref i) => i.size_hint(),
-            ListIntoIterInner::Short(ref i) => i.size_hint(),
-            ListIntoIterInner::Int(ref i) => i.size_hint(),
-            ListIntoIterInner::Long(ref i) => i.size_hint(),
-            ListIntoIterInner::Float(ref i) => i.size_hint(),
-            ListIntoIterInner::Double(ref i) => i.size_hint(),
-            ListIntoIterInner::ByteArray(ref i) => i.size_hint(),
-            ListIntoIterInner::String(ref i) => i.size_hint(),
-            ListIntoIterInner::List(ref i) => i.size_hint(),
-            ListIntoIterInner::Compound(ref i) => i.size_hint(),
-            ListIntoIterInner::IntArray(ref i) => i.size_hint(),
-            ListIntoIterInner::LongArray(ref i) => i.size_hint(),
+            IntoIterInner::End => (0, Some(0)),
+            IntoIterInner::Byte(ref i) => i.size_hint(),
+            IntoIterInner::Short(ref i) => i.size_hint(),
+            IntoIterInner::Int(ref i) => i.size_hint(),
+            IntoIterInner::Long(ref i) => i.size_hint(),
+            IntoIterInner::Float(ref i) => i.size_hint(),
+            IntoIterInner::Double(ref i) => i.size_hint(),
+            IntoIterInner::ByteArray(ref i) => i.size_hint(),
+            IntoIterInner::String(ref i) => i.size_hint(),
+            IntoIterInner::List(ref i) => i.size_hint(),
+            IntoIterInner::Compound(ref i) => i.size_hint(),
+            IntoIterInner::IntArray(ref i) => i.size_hint(),
+            IntoIterInner::LongArray(ref i) => i.size_hint(),
         }
     }
 }
 
-impl DoubleEndedIterator for ListIntoIter {
+impl DoubleEndedIterator for IntoIter {
     fn next_back(&mut self) -> Option<Self::Item> {
         match self.inner {
-            ListIntoIterInner::End => None,
-            ListIntoIterInner::Byte(ref mut i) => i.next_back().map(Value::Byte),
-            ListIntoIterInner::Short(ref mut i) => i.next_back().map(Value::Short),
-            ListIntoIterInner::Int(ref mut i) => i.next_back().map(Value::Int),
-            ListIntoIterInner::Long(ref mut i) => i.next_back().map(Value::Long),
-            ListIntoIterInner::Float(ref mut i) => i.next_back().map(Value::Float),
-            ListIntoIterInner::Double(ref mut i) => i.next_back().map(Value::Double),
-            ListIntoIterInner::ByteArray(ref mut i) => i.next_back().map(Value::ByteArray),
-            ListIntoIterInner::String(ref mut i) => i.next_back().map(Value::String),
-            ListIntoIterInner::List(ref mut i) => i.next_back().map(Value::List),
-            ListIntoIterInner::Compound(ref mut i) => i.next_back().map(Value::Compound),
-            ListIntoIterInner::IntArray(ref mut i) => i.next_back().map(Value::IntArray),
-            ListIntoIterInner::LongArray(ref mut i) => i.next_back().map(Value::LongArray),
+            IntoIterInner::End => None,
+            IntoIterInner::Byte(ref mut i) => i.next_back().map(Value::Byte),
+            IntoIterInner::Short(ref mut i) => i.next_back().map(Value::Short),
+            IntoIterInner::Int(ref mut i) => i.next_back().map(Value::Int),
+            IntoIterInner::Long(ref mut i) => i.next_back().map(Value::Long),
+            IntoIterInner::Float(ref mut i) => i.next_back().map(Value::Float),
+            IntoIterInner::Double(ref mut i) => i.next_back().map(Value::Double),
+            IntoIterInner::ByteArray(ref mut i) => i.next_back().map(Value::ByteArray),
+            IntoIterInner::String(ref mut i) => i.next_back().map(Value::String),
+            IntoIterInner::List(ref mut i) => i.next_back().map(Value::List),
+            IntoIterInner::Compound(ref mut i) => i.next_back().map(Value::Compound),
+            IntoIterInner::IntArray(ref mut i) => i.next_back().map(Value::IntArray),
+            IntoIterInner::LongArray(ref mut i) => i.next_back().map(Value::LongArray),
         }
     }
 }
 
-impl ExactSizeIterator for ListIntoIter {
+impl ExactSizeIterator for IntoIter {
     fn len(&self) -> usize {
         match self.inner {
-            ListIntoIterInner::End => 0,
-            ListIntoIterInner::Byte(ref i) => i.len(),
-            ListIntoIterInner::Short(ref i) => i.len(),
-            ListIntoIterInner::Int(ref i) => i.len(),
-            ListIntoIterInner::Long(ref i) => i.len(),
-            ListIntoIterInner::Float(ref i) => i.len(),
-            ListIntoIterInner::Double(ref i) => i.len(),
-            ListIntoIterInner::ByteArray(ref i) => i.len(),
-            ListIntoIterInner::String(ref i) => i.len(),
-            ListIntoIterInner::List(ref i) => i.len(),
-            ListIntoIterInner::Compound(ref i) => i.len(),
-            ListIntoIterInner::IntArray(ref i) => i.len(),
-            ListIntoIterInner::LongArray(ref i) => i.len(),
+            IntoIterInner::End => 0,
+            IntoIterInner::Byte(ref i) => i.len(),
+            IntoIterInner::Short(ref i) => i.len(),
+            IntoIterInner::Int(ref i) => i.len(),
+            IntoIterInner::Long(ref i) => i.len(),
+            IntoIterInner::Float(ref i) => i.len(),
+            IntoIterInner::Double(ref i) => i.len(),
+            IntoIterInner::ByteArray(ref i) => i.len(),
+            IntoIterInner::String(ref i) => i.len(),
+            IntoIterInner::List(ref i) => i.len(),
+            IntoIterInner::Compound(ref i) => i.len(),
+            IntoIterInner::IntArray(ref i) => i.len(),
+            IntoIterInner::LongArray(ref i) => i.len(),
         }
     }
 }
 
-impl FusedIterator for ListIntoIter {}
+impl FusedIterator for IntoIter {}
 
 /// The borrowing iterator type for [List].
-pub struct ListIter<'a> {
-    inner: ListIterInner<'a>,
+pub struct Iter<'a> {
+    inner: IterInner<'a>,
 }
 
-enum ListIterInner<'a> {
+enum IterInner<'a> {
     End,
     Byte(std::slice::Iter<'a, i8>),
     Short(std::slice::Iter<'a, i16>),
@@ -694,104 +694,98 @@ enum ListIterInner<'a> {
     LongArray(std::slice::Iter<'a, Vec<i64>>),
 }
 
-impl<'a> Iterator for ListIter<'a> {
+impl<'a> Iterator for Iter<'a> {
     type Item = ValueRef<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.inner {
-            ListIterInner::End => None,
-            ListIterInner::Byte(ref mut i) => i.next().map(ValueRef::Byte),
-            ListIterInner::Short(ref mut i) => i.next().map(ValueRef::Short),
-            ListIterInner::Int(ref mut i) => i.next().map(ValueRef::Int),
-            ListIterInner::Long(ref mut i) => i.next().map(ValueRef::Long),
-            ListIterInner::Float(ref mut i) => i.next().map(ValueRef::Float),
-            ListIterInner::Double(ref mut i) => i.next().map(ValueRef::Double),
-            ListIterInner::ByteArray(ref mut i) => {
-                i.next().map(|arr| ValueRef::ByteArray(&arr[..]))
-            }
-            ListIterInner::String(ref mut i) => i.next().map(|str| ValueRef::String(&str[..])),
-            ListIterInner::List(ref mut i) => i.next().map(ValueRef::List),
-            ListIterInner::Compound(ref mut i) => i.next().map(ValueRef::Compound),
-            ListIterInner::IntArray(ref mut i) => i.next().map(|arr| ValueRef::IntArray(&arr[..])),
-            ListIterInner::LongArray(ref mut i) => {
-                i.next().map(|arr| ValueRef::LongArray(&arr[..]))
-            }
+            IterInner::End => None,
+            IterInner::Byte(ref mut i) => i.next().map(ValueRef::Byte),
+            IterInner::Short(ref mut i) => i.next().map(ValueRef::Short),
+            IterInner::Int(ref mut i) => i.next().map(ValueRef::Int),
+            IterInner::Long(ref mut i) => i.next().map(ValueRef::Long),
+            IterInner::Float(ref mut i) => i.next().map(ValueRef::Float),
+            IterInner::Double(ref mut i) => i.next().map(ValueRef::Double),
+            IterInner::ByteArray(ref mut i) => i.next().map(|arr| ValueRef::ByteArray(&arr[..])),
+            IterInner::String(ref mut i) => i.next().map(|str| ValueRef::String(&str[..])),
+            IterInner::List(ref mut i) => i.next().map(ValueRef::List),
+            IterInner::Compound(ref mut i) => i.next().map(ValueRef::Compound),
+            IterInner::IntArray(ref mut i) => i.next().map(|arr| ValueRef::IntArray(&arr[..])),
+            IterInner::LongArray(ref mut i) => i.next().map(|arr| ValueRef::LongArray(&arr[..])),
         }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         match self.inner {
-            ListIterInner::End => (0, Some(0)),
-            ListIterInner::Byte(ref i) => i.size_hint(),
-            ListIterInner::Short(ref i) => i.size_hint(),
-            ListIterInner::Int(ref i) => i.size_hint(),
-            ListIterInner::Long(ref i) => i.size_hint(),
-            ListIterInner::Float(ref i) => i.size_hint(),
-            ListIterInner::Double(ref i) => i.size_hint(),
-            ListIterInner::ByteArray(ref i) => i.size_hint(),
-            ListIterInner::String(ref i) => i.size_hint(),
-            ListIterInner::List(ref i) => i.size_hint(),
-            ListIterInner::Compound(ref i) => i.size_hint(),
-            ListIterInner::IntArray(ref i) => i.size_hint(),
-            ListIterInner::LongArray(ref i) => i.size_hint(),
+            IterInner::End => (0, Some(0)),
+            IterInner::Byte(ref i) => i.size_hint(),
+            IterInner::Short(ref i) => i.size_hint(),
+            IterInner::Int(ref i) => i.size_hint(),
+            IterInner::Long(ref i) => i.size_hint(),
+            IterInner::Float(ref i) => i.size_hint(),
+            IterInner::Double(ref i) => i.size_hint(),
+            IterInner::ByteArray(ref i) => i.size_hint(),
+            IterInner::String(ref i) => i.size_hint(),
+            IterInner::List(ref i) => i.size_hint(),
+            IterInner::Compound(ref i) => i.size_hint(),
+            IterInner::IntArray(ref i) => i.size_hint(),
+            IterInner::LongArray(ref i) => i.size_hint(),
         }
     }
 }
 
-impl DoubleEndedIterator for ListIter<'_> {
+impl DoubleEndedIterator for Iter<'_> {
     fn next_back(&mut self) -> Option<Self::Item> {
         match self.inner {
-            ListIterInner::End => None,
-            ListIterInner::Byte(ref mut i) => i.next_back().map(ValueRef::Byte),
-            ListIterInner::Short(ref mut i) => i.next_back().map(ValueRef::Short),
-            ListIterInner::Int(ref mut i) => i.next_back().map(ValueRef::Int),
-            ListIterInner::Long(ref mut i) => i.next_back().map(ValueRef::Long),
-            ListIterInner::Float(ref mut i) => i.next_back().map(ValueRef::Float),
-            ListIterInner::Double(ref mut i) => i.next_back().map(ValueRef::Double),
-            ListIterInner::ByteArray(ref mut i) => {
+            IterInner::End => None,
+            IterInner::Byte(ref mut i) => i.next_back().map(ValueRef::Byte),
+            IterInner::Short(ref mut i) => i.next_back().map(ValueRef::Short),
+            IterInner::Int(ref mut i) => i.next_back().map(ValueRef::Int),
+            IterInner::Long(ref mut i) => i.next_back().map(ValueRef::Long),
+            IterInner::Float(ref mut i) => i.next_back().map(ValueRef::Float),
+            IterInner::Double(ref mut i) => i.next_back().map(ValueRef::Double),
+            IterInner::ByteArray(ref mut i) => {
                 i.next_back().map(|arr| ValueRef::ByteArray(&arr[..]))
             }
-            ListIterInner::String(ref mut i) => i.next_back().map(|str| ValueRef::String(&str[..])),
-            ListIterInner::List(ref mut i) => i.next_back().map(ValueRef::List),
-            ListIterInner::Compound(ref mut i) => i.next_back().map(ValueRef::Compound),
-            ListIterInner::IntArray(ref mut i) => {
-                i.next_back().map(|arr| ValueRef::IntArray(&arr[..]))
-            }
-            ListIterInner::LongArray(ref mut i) => {
+            IterInner::String(ref mut i) => i.next_back().map(|str| ValueRef::String(&str[..])),
+            IterInner::List(ref mut i) => i.next_back().map(ValueRef::List),
+            IterInner::Compound(ref mut i) => i.next_back().map(ValueRef::Compound),
+            IterInner::IntArray(ref mut i) => i.next_back().map(|arr| ValueRef::IntArray(&arr[..])),
+            IterInner::LongArray(ref mut i) => {
                 i.next_back().map(|arr| ValueRef::LongArray(&arr[..]))
             }
         }
     }
 }
 
-impl ExactSizeIterator for ListIter<'_> {
+impl ExactSizeIterator for Iter<'_> {
     fn len(&self) -> usize {
         match self.inner {
-            ListIterInner::End => 0,
-            ListIterInner::Byte(ref i) => i.len(),
-            ListIterInner::Short(ref i) => i.len(),
-            ListIterInner::Int(ref i) => i.len(),
-            ListIterInner::Long(ref i) => i.len(),
-            ListIterInner::Float(ref i) => i.len(),
-            ListIterInner::Double(ref i) => i.len(),
-            ListIterInner::ByteArray(ref i) => i.len(),
-            ListIterInner::String(ref i) => i.len(),
-            ListIterInner::List(ref i) => i.len(),
-            ListIterInner::Compound(ref i) => i.len(),
-            ListIterInner::IntArray(ref i) => i.len(),
-            ListIterInner::LongArray(ref i) => i.len(),
+            IterInner::End => 0,
+            IterInner::Byte(ref i) => i.len(),
+            IterInner::Short(ref i) => i.len(),
+            IterInner::Int(ref i) => i.len(),
+            IterInner::Long(ref i) => i.len(),
+            IterInner::Float(ref i) => i.len(),
+            IterInner::Double(ref i) => i.len(),
+            IterInner::ByteArray(ref i) => i.len(),
+            IterInner::String(ref i) => i.len(),
+            IterInner::List(ref i) => i.len(),
+            IterInner::Compound(ref i) => i.len(),
+            IterInner::IntArray(ref i) => i.len(),
+            IterInner::LongArray(ref i) => i.len(),
         }
     }
 }
 
-impl FusedIterator for ListIter<'_> {}
+impl FusedIterator for Iter<'_> {}
 
 /// The mutable borrowing iterator type for [List].
-pub struct ListIterMut<'a> {
-    inner: ListIterMutInner<'a>,
+pub struct IterMut<'a> {
+    inner: IterMutInner<'a>,
 }
 
-enum ListIterMutInner<'a> {
+enum IterMutInner<'a> {
     End,
     Byte(std::slice::IterMut<'a, i8>),
     Short(std::slice::IterMut<'a, i16>),
@@ -807,84 +801,84 @@ enum ListIterMutInner<'a> {
     LongArray(std::slice::IterMut<'a, Vec<i64>>),
 }
 
-impl<'a> Iterator for ListIterMut<'a> {
-    type Item = ValueRefMut<'a>;
+impl<'a> Iterator for IterMut<'a> {
+    type Item = ValueMut<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.inner {
-            ListIterMutInner::End => None,
-            ListIterMutInner::Byte(ref mut i) => i.next().map(ValueRefMut::Byte),
-            ListIterMutInner::Short(ref mut i) => i.next().map(ValueRefMut::Short),
-            ListIterMutInner::Int(ref mut i) => i.next().map(ValueRefMut::Int),
-            ListIterMutInner::Long(ref mut i) => i.next().map(ValueRefMut::Long),
-            ListIterMutInner::Float(ref mut i) => i.next().map(ValueRefMut::Float),
-            ListIterMutInner::Double(ref mut i) => i.next().map(ValueRefMut::Double),
-            ListIterMutInner::ByteArray(ref mut i) => i.next().map(ValueRefMut::ByteArray),
-            ListIterMutInner::String(ref mut i) => i.next().map(ValueRefMut::String),
-            ListIterMutInner::List(ref mut i) => i.next().map(ValueRefMut::List),
-            ListIterMutInner::Compound(ref mut i) => i.next().map(ValueRefMut::Compound),
-            ListIterMutInner::IntArray(ref mut i) => i.next().map(ValueRefMut::IntArray),
-            ListIterMutInner::LongArray(ref mut i) => i.next().map(ValueRefMut::LongArray),
+            IterMutInner::End => None,
+            IterMutInner::Byte(ref mut i) => i.next().map(ValueMut::Byte),
+            IterMutInner::Short(ref mut i) => i.next().map(ValueMut::Short),
+            IterMutInner::Int(ref mut i) => i.next().map(ValueMut::Int),
+            IterMutInner::Long(ref mut i) => i.next().map(ValueMut::Long),
+            IterMutInner::Float(ref mut i) => i.next().map(ValueMut::Float),
+            IterMutInner::Double(ref mut i) => i.next().map(ValueMut::Double),
+            IterMutInner::ByteArray(ref mut i) => i.next().map(ValueMut::ByteArray),
+            IterMutInner::String(ref mut i) => i.next().map(ValueMut::String),
+            IterMutInner::List(ref mut i) => i.next().map(ValueMut::List),
+            IterMutInner::Compound(ref mut i) => i.next().map(ValueMut::Compound),
+            IterMutInner::IntArray(ref mut i) => i.next().map(ValueMut::IntArray),
+            IterMutInner::LongArray(ref mut i) => i.next().map(ValueMut::LongArray),
         }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         match self.inner {
-            ListIterMutInner::End => (0, Some(0)),
-            ListIterMutInner::Byte(ref i) => i.size_hint(),
-            ListIterMutInner::Short(ref i) => i.size_hint(),
-            ListIterMutInner::Int(ref i) => i.size_hint(),
-            ListIterMutInner::Long(ref i) => i.size_hint(),
-            ListIterMutInner::Float(ref i) => i.size_hint(),
-            ListIterMutInner::Double(ref i) => i.size_hint(),
-            ListIterMutInner::ByteArray(ref i) => i.size_hint(),
-            ListIterMutInner::String(ref i) => i.size_hint(),
-            ListIterMutInner::List(ref i) => i.size_hint(),
-            ListIterMutInner::Compound(ref i) => i.size_hint(),
-            ListIterMutInner::IntArray(ref i) => i.size_hint(),
-            ListIterMutInner::LongArray(ref i) => i.size_hint(),
+            IterMutInner::End => (0, Some(0)),
+            IterMutInner::Byte(ref i) => i.size_hint(),
+            IterMutInner::Short(ref i) => i.size_hint(),
+            IterMutInner::Int(ref i) => i.size_hint(),
+            IterMutInner::Long(ref i) => i.size_hint(),
+            IterMutInner::Float(ref i) => i.size_hint(),
+            IterMutInner::Double(ref i) => i.size_hint(),
+            IterMutInner::ByteArray(ref i) => i.size_hint(),
+            IterMutInner::String(ref i) => i.size_hint(),
+            IterMutInner::List(ref i) => i.size_hint(),
+            IterMutInner::Compound(ref i) => i.size_hint(),
+            IterMutInner::IntArray(ref i) => i.size_hint(),
+            IterMutInner::LongArray(ref i) => i.size_hint(),
         }
     }
 }
 
-impl DoubleEndedIterator for ListIterMut<'_> {
+impl DoubleEndedIterator for IterMut<'_> {
     fn next_back(&mut self) -> Option<Self::Item> {
         match self.inner {
-            ListIterMutInner::End => None,
-            ListIterMutInner::Byte(ref mut i) => i.next_back().map(ValueRefMut::Byte),
-            ListIterMutInner::Short(ref mut i) => i.next_back().map(ValueRefMut::Short),
-            ListIterMutInner::Int(ref mut i) => i.next_back().map(ValueRefMut::Int),
-            ListIterMutInner::Long(ref mut i) => i.next_back().map(ValueRefMut::Long),
-            ListIterMutInner::Float(ref mut i) => i.next_back().map(ValueRefMut::Float),
-            ListIterMutInner::Double(ref mut i) => i.next_back().map(ValueRefMut::Double),
-            ListIterMutInner::ByteArray(ref mut i) => i.next_back().map(ValueRefMut::ByteArray),
-            ListIterMutInner::String(ref mut i) => i.next_back().map(ValueRefMut::String),
-            ListIterMutInner::List(ref mut i) => i.next_back().map(ValueRefMut::List),
-            ListIterMutInner::Compound(ref mut i) => i.next_back().map(ValueRefMut::Compound),
-            ListIterMutInner::IntArray(ref mut i) => i.next_back().map(ValueRefMut::IntArray),
-            ListIterMutInner::LongArray(ref mut i) => i.next_back().map(ValueRefMut::LongArray),
+            IterMutInner::End => None,
+            IterMutInner::Byte(ref mut i) => i.next_back().map(ValueMut::Byte),
+            IterMutInner::Short(ref mut i) => i.next_back().map(ValueMut::Short),
+            IterMutInner::Int(ref mut i) => i.next_back().map(ValueMut::Int),
+            IterMutInner::Long(ref mut i) => i.next_back().map(ValueMut::Long),
+            IterMutInner::Float(ref mut i) => i.next_back().map(ValueMut::Float),
+            IterMutInner::Double(ref mut i) => i.next_back().map(ValueMut::Double),
+            IterMutInner::ByteArray(ref mut i) => i.next_back().map(ValueMut::ByteArray),
+            IterMutInner::String(ref mut i) => i.next_back().map(ValueMut::String),
+            IterMutInner::List(ref mut i) => i.next_back().map(ValueMut::List),
+            IterMutInner::Compound(ref mut i) => i.next_back().map(ValueMut::Compound),
+            IterMutInner::IntArray(ref mut i) => i.next_back().map(ValueMut::IntArray),
+            IterMutInner::LongArray(ref mut i) => i.next_back().map(ValueMut::LongArray),
         }
     }
 }
 
-impl ExactSizeIterator for ListIterMut<'_> {
+impl ExactSizeIterator for IterMut<'_> {
     fn len(&self) -> usize {
         match self.inner {
-            ListIterMutInner::End => 0,
-            ListIterMutInner::Byte(ref i) => i.len(),
-            ListIterMutInner::Short(ref i) => i.len(),
-            ListIterMutInner::Int(ref i) => i.len(),
-            ListIterMutInner::Long(ref i) => i.len(),
-            ListIterMutInner::Float(ref i) => i.len(),
-            ListIterMutInner::Double(ref i) => i.len(),
-            ListIterMutInner::ByteArray(ref i) => i.len(),
-            ListIterMutInner::String(ref i) => i.len(),
-            ListIterMutInner::List(ref i) => i.len(),
-            ListIterMutInner::Compound(ref i) => i.len(),
-            ListIterMutInner::IntArray(ref i) => i.len(),
-            ListIterMutInner::LongArray(ref i) => i.len(),
+            IterMutInner::End => 0,
+            IterMutInner::Byte(ref i) => i.len(),
+            IterMutInner::Short(ref i) => i.len(),
+            IterMutInner::Int(ref i) => i.len(),
+            IterMutInner::Long(ref i) => i.len(),
+            IterMutInner::Float(ref i) => i.len(),
+            IterMutInner::Double(ref i) => i.len(),
+            IterMutInner::ByteArray(ref i) => i.len(),
+            IterMutInner::String(ref i) => i.len(),
+            IterMutInner::List(ref i) => i.len(),
+            IterMutInner::Compound(ref i) => i.len(),
+            IterMutInner::IntArray(ref i) => i.len(),
+            IterMutInner::LongArray(ref i) => i.len(),
         }
     }
 }
 
-impl FusedIterator for ListIterMut<'_> {}
+impl FusedIterator for IterMut<'_> {}

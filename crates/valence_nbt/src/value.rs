@@ -1,9 +1,7 @@
 use std::borrow::Cow;
 
 use crate::tag::Tag;
-use crate::Compound;
-// need pub use here for backwards compatibility (List used to be defined here)
-pub use crate::List;
+use crate::{Compound, List};
 
 /// Represents an arbitrary NBT value.
 #[derive(Clone, PartialEq, Debug)]
@@ -43,7 +41,7 @@ pub enum ValueRef<'a> {
 /// Represents a mutable reference to an arbitrary NBT value, where the tag is
 /// not part of the reference.
 #[derive(PartialEq, Debug)]
-pub enum ValueRefMut<'a> {
+pub enum ValueMut<'a> {
     Byte(&'a mut i8),
     Short(&'a mut i16),
     Int(&'a mut i32),
@@ -132,7 +130,7 @@ macro_rules! impl_value {
 
 impl_value!(Value,,);
 impl_value!(ValueRef, 'a, &'a);
-impl_value!(ValueRefMut, 'a, &'a mut);
+impl_value!(ValueMut, 'a, &'a mut);
 
 impl Value {
     /// Converts a reference to a value to a [ValueRef].
@@ -153,21 +151,21 @@ impl Value {
         }
     }
 
-    /// Converts a mutable reference to a value to a [ValueRefMut].
-    pub fn as_value_ref_mut(&mut self) -> ValueRefMut {
+    /// Converts a mutable reference to a value to a [ValueMut].
+    pub fn as_value_mut(&mut self) -> ValueMut {
         match self {
-            Value::Byte(v) => ValueRefMut::Byte(v),
-            Value::Short(v) => ValueRefMut::Short(v),
-            Value::Int(v) => ValueRefMut::Int(v),
-            Value::Long(v) => ValueRefMut::Long(v),
-            Value::Float(v) => ValueRefMut::Float(v),
-            Value::Double(v) => ValueRefMut::Double(v),
-            Value::ByteArray(v) => ValueRefMut::ByteArray(v),
-            Value::String(v) => ValueRefMut::String(v),
-            Value::List(v) => ValueRefMut::List(v),
-            Value::Compound(v) => ValueRefMut::Compound(v),
-            Value::IntArray(v) => ValueRefMut::IntArray(v),
-            Value::LongArray(v) => ValueRefMut::LongArray(v),
+            Value::Byte(v) => ValueMut::Byte(v),
+            Value::Short(v) => ValueMut::Short(v),
+            Value::Int(v) => ValueMut::Int(v),
+            Value::Long(v) => ValueMut::Long(v),
+            Value::Float(v) => ValueMut::Float(v),
+            Value::Double(v) => ValueMut::Double(v),
+            Value::ByteArray(v) => ValueMut::ByteArray(v),
+            Value::String(v) => ValueMut::String(v),
+            Value::List(v) => ValueMut::List(v),
+            Value::Compound(v) => ValueMut::Compound(v),
+            Value::IntArray(v) => ValueMut::IntArray(v),
+            Value::LongArray(v) => ValueMut::LongArray(v),
         }
     }
 }
@@ -192,40 +190,40 @@ impl ValueRef<'_> {
     }
 }
 
-impl<'a> ValueRefMut<'a> {
+impl<'a> ValueMut<'a> {
     /// Clones this mutable value reference to a new owned [Value].
     pub fn to_value(&self) -> Value {
         match self {
-            ValueRefMut::Byte(v) => Value::Byte(**v),
-            ValueRefMut::Short(v) => Value::Short(**v),
-            ValueRefMut::Int(v) => Value::Int(**v),
-            ValueRefMut::Long(v) => Value::Long(**v),
-            ValueRefMut::Float(v) => Value::Float(**v),
-            ValueRefMut::Double(v) => Value::Double(**v),
-            ValueRefMut::ByteArray(v) => Value::ByteArray((*v).clone()),
-            ValueRefMut::String(v) => Value::String((*v).clone()),
-            ValueRefMut::List(v) => Value::List((*v).clone()),
-            ValueRefMut::Compound(v) => Value::Compound((*v).clone()),
-            ValueRefMut::IntArray(v) => Value::IntArray((*v).clone()),
-            ValueRefMut::LongArray(v) => Value::LongArray((*v).clone()),
+            ValueMut::Byte(v) => Value::Byte(**v),
+            ValueMut::Short(v) => Value::Short(**v),
+            ValueMut::Int(v) => Value::Int(**v),
+            ValueMut::Long(v) => Value::Long(**v),
+            ValueMut::Float(v) => Value::Float(**v),
+            ValueMut::Double(v) => Value::Double(**v),
+            ValueMut::ByteArray(v) => Value::ByteArray((*v).clone()),
+            ValueMut::String(v) => Value::String((*v).clone()),
+            ValueMut::List(v) => Value::List((*v).clone()),
+            ValueMut::Compound(v) => Value::Compound((*v).clone()),
+            ValueMut::IntArray(v) => Value::IntArray((*v).clone()),
+            ValueMut::LongArray(v) => Value::LongArray((*v).clone()),
         }
     }
 
     /// Downgrades this mutable value reference into an immutable [ValueRef].
     pub fn into_value_ref(self) -> ValueRef<'a> {
         match self {
-            ValueRefMut::Byte(v) => ValueRef::Byte(v),
-            ValueRefMut::Short(v) => ValueRef::Short(v),
-            ValueRefMut::Int(v) => ValueRef::Int(v),
-            ValueRefMut::Long(v) => ValueRef::Long(v),
-            ValueRefMut::Float(v) => ValueRef::Float(v),
-            ValueRefMut::Double(v) => ValueRef::Double(v),
-            ValueRefMut::ByteArray(v) => ValueRef::ByteArray(&v[..]),
-            ValueRefMut::String(v) => ValueRef::String(&v[..]),
-            ValueRefMut::List(v) => ValueRef::List(v),
-            ValueRefMut::Compound(v) => ValueRef::Compound(v),
-            ValueRefMut::IntArray(v) => ValueRef::IntArray(&v[..]),
-            ValueRefMut::LongArray(v) => ValueRef::LongArray(&v[..]),
+            ValueMut::Byte(v) => ValueRef::Byte(v),
+            ValueMut::Short(v) => ValueRef::Short(v),
+            ValueMut::Int(v) => ValueRef::Int(v),
+            ValueMut::Long(v) => ValueRef::Long(v),
+            ValueMut::Float(v) => ValueRef::Float(v),
+            ValueMut::Double(v) => ValueRef::Double(v),
+            ValueMut::ByteArray(v) => ValueRef::ByteArray(&v[..]),
+            ValueMut::String(v) => ValueRef::String(&v[..]),
+            ValueMut::List(v) => ValueRef::List(v),
+            ValueMut::Compound(v) => ValueRef::Compound(v),
+            ValueMut::IntArray(v) => ValueRef::IntArray(&v[..]),
+            ValueMut::LongArray(v) => ValueRef::LongArray(&v[..]),
         }
     }
 }
@@ -276,6 +274,30 @@ impl From<Vec<i32>> for Value {
 impl From<Vec<i64>> for Value {
     fn from(v: Vec<i64>) -> Self {
         Self::LongArray(v)
+    }
+}
+
+impl From<ValueRef<'_>> for Value {
+    fn from(v: ValueRef) -> Self {
+        v.to_value()
+    }
+}
+
+impl From<&ValueRef<'_>> for Value {
+    fn from(v: &ValueRef) -> Self {
+        v.to_value()
+    }
+}
+
+impl From<ValueMut<'_>> for Value {
+    fn from(v: ValueMut) -> Self {
+        v.to_value()
+    }
+}
+
+impl From<&ValueMut<'_>> for Value {
+    fn from(v: &ValueMut) -> Self {
+        v.to_value()
     }
 }
 
@@ -333,6 +355,18 @@ impl<'a> From<&'a [i64]> for ValueRef<'a> {
     }
 }
 
+impl<'a> From<&'a Value> for ValueRef<'a> {
+    fn from(v: &'a Value) -> Self {
+        v.as_value_ref()
+    }
+}
+
+impl<'a> From<ValueMut<'a>> for ValueRef<'a> {
+    fn from(v: ValueMut<'a>) -> Self {
+        v.into_value_ref()
+    }
+}
+
 #[cfg(feature = "valence_ident")]
 impl<'a, S> From<&'a valence_ident::Ident<S>> for ValueRef<'a>
 where
@@ -343,26 +377,32 @@ where
     }
 }
 
-impl<'a> From<&'a mut Vec<i8>> for ValueRefMut<'a> {
+impl<'a> From<&'a mut Vec<i8>> for ValueMut<'a> {
     fn from(v: &'a mut Vec<i8>) -> Self {
         Self::ByteArray(v)
     }
 }
 
-impl<'a> From<&'a mut String> for ValueRefMut<'a> {
+impl<'a> From<&'a mut String> for ValueMut<'a> {
     fn from(v: &'a mut String) -> Self {
         Self::String(v)
     }
 }
 
-impl<'a> From<&'a mut Vec<i32>> for ValueRefMut<'a> {
+impl<'a> From<&'a mut Vec<i32>> for ValueMut<'a> {
     fn from(v: &'a mut Vec<i32>) -> Self {
         Self::IntArray(v)
     }
 }
 
-impl<'a> From<&'a mut Vec<i64>> for ValueRefMut<'a> {
+impl<'a> From<&'a mut Vec<i64>> for ValueMut<'a> {
     fn from(v: &'a mut Vec<i64>) -> Self {
         Self::LongArray(v)
+    }
+}
+
+impl<'a> From<&'a mut Value> for ValueMut<'a> {
+    fn from(v: &'a mut Value) -> Self {
+        v.as_value_mut()
     }
 }
