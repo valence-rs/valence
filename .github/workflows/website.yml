@@ -50,16 +50,12 @@ jobs:
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v3
-      - name: Build mdBook
-        run: mdbook build website
-      - name: Build nightly rustdoc
-        run: |
-          cargo doc --no-deps --workspace --all-features
-          cp target/doc website/static
-      - name: Build website with zola
+      - name: Build website
         run: |
           cd website
-          zola build
+          chmod +x build.sh
+          ./build.sh
+          cd ..
       - name: Fix permissions
         run: |
           chmod -c -R +rX "./website/public" | while read line; do

@@ -6,4 +6,4 @@ src = "book"
 title = "Valence Documentation"
 
 [build]
-build-dir = "static/book"
+build-dir = "public/book"
