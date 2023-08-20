@@ -16,7 +16,6 @@ highlight_code = true
 
 [extra]
 juice_extra_menu = [
-  { title = "Docs", link = "/book/" },
   { title = "Discord", link = "https://discord.gg/8Fqqy9XrYb" },
   { title = "Github", link = "https://github.com/valence-rs/valence" },
 ]

@@ -54,8 +54,8 @@ jobs:
         run: mdbook build website
       - name: Build nightly rustdoc
         run: |
-          cargo doc --target-dir website/static/ --no-deps --workspace --all-features
-          rm -rf website/static/debug website/static/.rustc_info.json website/static/.rustdoc_fingerprint.json
+          cargo doc --no-deps --workspace --all-features
+          cp target/doc website/static
       - name: Build website with zola
         run: |
           cd website
