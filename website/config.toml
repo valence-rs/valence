@@ -6,6 +6,9 @@ title = "Valence - A minecraft server framework"
 # Whether to automatically compile all Sass files in the sass directory
 compile_sass = true
 
+# When set to "true", the generated HTML files are minified.
+minify_html = true
+
 [markdown]
 # Whether to do syntax highlighting
 # Theme can be customised by setting the `highlight_theme` variable to a theme supported by Zola
