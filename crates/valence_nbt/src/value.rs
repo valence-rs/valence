@@ -60,6 +60,7 @@ macro_rules! impl_value {
     ($name:ident, $($lifetime:lifetime)?, ($($deref:tt)*), $($reference:tt)*) => {
         macro_rules! as_number {
             ($method_name:ident, $ty:ty, $($deref)*) => {
+                #[doc = concat!("If this value is a number, returns the `", stringify!($ty), "` representation of this value.")]
                 pub fn $method_name(&self) -> Option<$ty> {
                     #[allow(trivial_numeric_casts)]
                     match self {
@@ -77,6 +78,7 @@ macro_rules! impl_value {
 
         macro_rules! as_number_float {
             ($method_name:ident, $ty:ty, $($deref)*) => {
+                #[doc = concat!("If this value is a number, returns the `", stringify!($ty), "` representation of this value.")]
                 pub fn $method_name(&self) -> Option<$ty> {
                     #[allow(trivial_numeric_casts)]
                     match self {
@@ -111,6 +113,7 @@ macro_rules! impl_value {
                 }
             }
 
+            /// Returns whether this value is a number, i.e. a byte, short, int, long, float or double.
             pub fn is_number(&self) -> bool {
                 match self {
                     Self::Byte(_) | Self::Short(_) | Self::Int(_) | Self::Long(_) | Self::Float(_) | Self::Double(_) => true,
@@ -125,6 +128,7 @@ macro_rules! impl_value {
             as_number_float!(as_f32, f32, $($deref)*);
             as_number_float!(as_f64, f64, $($deref)*);
 
+            /// If this value is a number, returns the `bool` representation of this value.
             pub fn as_bool(&self) -> Option<bool> {
                 self.as_i8().map(|v| v != 0)
             }
