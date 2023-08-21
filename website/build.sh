@@ -20,3 +20,6 @@ mdbook build
 # build rustdoc
 cargo doc --no-deps --workspace --all-features
 cp -r ../target/doc/* public/rustdoc
+
+# copy logo assets
+cp ../assets/logo.svg public/valence.svg
