@@ -365,7 +365,7 @@ impl<E: Event> ManualEventWithStateReader<E> {
         events: &'a EventsWithState<E>,
         states: &'a States,
     ) -> ManualEventWithStateIterator<'a, E> {
-        ManualEventWithStateReader::new(self, events, states)
+        ManualEventWithStateIterator::new(self, events, states)
     }
 }
 
@@ -377,7 +377,7 @@ pub struct ManualEventWithStateIterator<'a, E: Event> {
     unread: usize,
 }
 
-impl<'a, E: Event> ManualEventWithStateReader<E> {
+impl<'a, E: Event> ManualEventWithStateIterator<'a, E> {
     pub fn new(
         reader: &'a mut ManualEventWithStateReader<E>,
         events: &'a EventsWithState<E>,
@@ -402,6 +402,7 @@ impl<'a, E: Event> ManualEventWithStateReader<E> {
             unread: unread_count,
         }
     }
+    
 }
 
 impl<'a, E: Event> Iterator for ManualEventWithStateIterator<'a, E> {
@@ -421,10 +422,6 @@ impl<'a, E: Event> Iterator for ManualEventWithStateIterator<'a, E> {
             }
             None => None,
         }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.unread, Some(self.unread))
     }
 }
 
@@ -514,6 +511,79 @@ impl<E: Event> LendingIterator for ManualEventWithStateMutIterator<'_, E> {
                 self.reader.last_event_count += 1;
                 self.unread -= 1;
                 Some((item.0, self.states.get_mut(item.1)))
+            }
+            None => None,
+        }
+    }
+}
+
+
+#[derive(SystemParam)]
+pub struct EventReader<'s, 'w, A: Event> {
+    reader: Local<'s, ManualEventWithStateReader<A>>,
+    events_a: Res<'w, EventsWithState<A>>,
+}
+
+impl<'s, 'w, A: Event> EventReader<'s, 'w, A> {
+    pub fn iter_with_ids(&mut self) -> ManualEventWithIdsIterator<'_, A> {
+        self.reader.iter_with_ids(&self.events_a)
+    }
+}
+
+#[derive()]
+pub struct ManualEventWithIdsIterator<'a, E: Event> {
+    reader: &'a mut ManualEventWithStateReader<E>,
+    chain: Chain<Iter<'a, EventWithStateInstance<E>>, Iter<'a, EventWithStateInstance<E>>>,
+    unread: usize,
+}
+
+impl<E: Event> ManualEventWithStateReader<E> {
+    pub fn iter_with_ids<'a>(
+        &'a mut self,
+        events: &'a EventsWithState<E>,
+    ) -> ManualEventWithIdsIterator<'a, E> {
+        ManualEventWithIdsIterator::new(self, events)
+    }
+}
+
+impl<'a, E: Event> ManualEventWithIdsIterator<'a, E> {
+    pub fn new(
+        reader: &'a mut ManualEventWithStateReader<E>,
+        events: &'a EventsWithState<E>,
+    ) -> ManualEventWithIdsIterator<'a, E> {
+        let a_index = (reader.last_event_count).saturating_sub(events.events_a.start_event_count);
+        let b_index = (reader.last_event_count).saturating_sub(events.events_b.start_event_count);
+        let a = events.events_a.get(a_index..).unwrap_or_default();
+        let b = events.events_b.get(b_index..).unwrap_or_default();
+
+        let unread_count = a.len() + b.len();
+        // Ensure `len` is implemented correctly
+        // debug_assert_eq!(unread_count, reader.len(events));
+        reader.last_event_count = events.event_count - unread_count;
+        // Iterate the oldest first, then the newer events
+        let chain = a.iter().chain(b.iter());
+
+        ManualEventWithIdsIterator {
+            reader,
+            chain,
+            unread: unread_count,
+        }
+    }
+}
+
+impl<'a, E: Event> Iterator for ManualEventWithIdsIterator<'a, E> {
+    type Item = (&'a E, StateId, EventId<E>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self
+            .chain
+            .next()
+            .map(|instance| (&instance.event, instance.state_id, instance.event_id))
+        {
+            Some(item) => {
+                self.reader.last_event_count += 1;
+                self.unread -= 1;
+                Some(item)
             }
             None => None,
         }

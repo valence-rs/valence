@@ -5,26 +5,26 @@ use valence_protocol::packets::play::ClickSlotC2s;
 use valence_protocol::ItemStack;
 use valence_server::event_loop::PacketEvent;
 
-// use self::click::{handle_inventory_click, InventoryClickEvent};
+use self::click::{handle_inventory_click, InventoryClickEvent};
 use super::*;
 use crate::state_event::EventWithStateWriter;
 
-// pub mod click;
+pub mod click;
 
 pub struct InventoryEventPlugin;
 
 impl Plugin for InventoryEventPlugin {
     fn build(&self, app: &mut App) {
         app.add_event_with_state::<ClickSlotEvent>()
-            // .add_event::<InventoryClickEvent>()
+            .add_event_with_state::<InventoryClickEvent>()
             .add_systems(
                 EventLoopPreUpdate,
                 handle_click_slot.in_set(EventDispacherSets::MainEvents),
-            );
-        // .add_systems(
-        //     EventLoopPreUpdate,
-        //     handle_inventory_click.in_set(EventDispacherSets::UserEvents),
-        // );
+            )
+        .add_systems(
+            EventLoopPreUpdate,
+            handle_inventory_click.in_set(EventDispacherSets::UserEvents),
+        );
     }
 }
 

@@ -1,4 +1,4 @@
-use bevy_ecs::prelude::EventWriter;
+use crate::state_event::{EventWithStateReader, EventReader};
 
 use super::*;
 
@@ -24,10 +24,10 @@ pub enum ClickType {
 }
 
 pub(super) fn handle_inventory_click(
-    mut click_slot_events: EventWithStateReader<ClickSlotEvent>,
-    mut inventory_click_events: EventWriter<InventoryClickEvent>,
+    mut click_slot_events: EventReader<ClickSlotEvent>,
+    mut inventory_click_events: EventWithStateWriter<InventoryClickEvent>,
 ) {
-    for (event, _) in click_slot_events.iter_some(EventState::new().with_canceled(false)) {
+    for (event, state_id, _) in click_slot_events.iter_with_ids() {
         let click_type = match event.mode {
             ClickMode::Click => match event.button {
                 0 => ClickType::Left,
@@ -59,6 +59,6 @@ pub(super) fn handle_inventory_click(
             cursor_item: event.carried_item.clone(),
         };
         
-        inventory_click_events.send(inventory_click_event);
+        inventory_click_events.send_with_state(inventory_click_event, state_id)
     }
 }

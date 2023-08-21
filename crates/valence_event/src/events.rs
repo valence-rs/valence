@@ -28,7 +28,9 @@ impl Plugin for EventDispacherPlugin {
             )
                 .chain(),
         )
+        
         .init_resource::<States>();
+
     }
 }
 
@@ -50,6 +52,9 @@ impl AddEventWithStateExt for App {
             self.init_resource::<EventsWithState<E>>()
                 .add_systems(First, EventsWithState::<E>::update_system);
         }
+        // if !self.world.contains_resource::<States>() {
+        //     self.init_resource::<States>();
+        // }
         self
     }
 }
