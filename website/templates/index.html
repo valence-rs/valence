@@ -20,10 +20,9 @@
       rel="stylesheet"
     />
     {% endblock fonts %}
-    <link rel="stylesheet" href="{{ get_url(path="prism.css") }}"/>
-    <link rel="stylesheet" href="/normalize.css" />
-    <link rel="stylesheet" href="{{ get_url(path="juice.css") }}"> {% block head
-    %} {% endblock head %}
+    <link rel="stylesheet" href="{{ get_url(path="prism.css") }}" />
+    <link rel="stylesheet" href="{{ get_url(path="normalize.css") }}" />
+    <link rel="stylesheet" href="{{ get_url(path="juice.css") }}" />
   </head>
   <body>
     {% block header %}
@@ -75,10 +74,12 @@
       </section>
       <script src="prism.js"></script>
       <div class="hero-code">
-<pre><code class="language-rust">fn pause_on_crouch(
-    mut events: EventReader<SneakEvent>,
-    mut board: ResMut<LifeBoard>,
-    mut layers: Query<&mut EntityLayer>,
+        <pre
+          data-file="main.rs"
+        ><code class="language-rust">fn pause_on_crouch(
+    mut events: EventReader&ltSneakEvent&gt,
+    mut board: ResMut&ltLifeBoard&gt,
+    mut layers: Query&lt&mut EntityLayer&gt,
 ) {
     for event in events.iter() {
         if event.state == SneakState::Start {
@@ -176,14 +177,8 @@
     {% block footer %}
     <footer>
       <small class="subtext">
-        <a
-          href="https://crates.io/crates/valence"
-          >Crates.io</a
-        >
-        <a
-          href="https://docs.rs/valence"
-          >Docs.rs</a
-        >
+        <a href="https://crates.io/crates/valence">Crates.io</a>
+        <a href="https://docs.rs/valence">Docs.rs</a>
         <a
           href="https://github.com/valence-rs/valence/blob/main/CODE_OF_CONDUCT.md"
           >Code of Conduct</a
