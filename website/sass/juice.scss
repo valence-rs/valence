@@ -146,6 +146,10 @@ footer {
   }
 }
 
+footer > small * {
+  margin: auto 1rem;
+}
+
 @media screen and (min-width: 1280px) {
   .content {
     max-width: 60%;
