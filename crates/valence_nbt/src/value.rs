@@ -57,7 +57,24 @@ pub enum ValueMut<'a> {
 }
 
 macro_rules! impl_value {
-    ($name:ident, $($lifetime:lifetime)?, $($reference:tt)*) => {
+    ($name:ident, $($lifetime:lifetime)?, ($($deref:tt)*), $($reference:tt)*) => {
+        macro_rules! as_number {
+            ($method_name:ident, $ty:ty, $($deref)*) => {
+                pub fn $method_name(&self) -> Option<$ty> {
+                    #[allow(trivial_numeric_casts)]
+                    match self {
+                        Self::Byte(v) => Some($($deref)* v as $ty),
+                        Self::Short(v) => Some($($deref)* v as $ty),
+                        Self::Int(v) => Some($($deref)* v as $ty),
+                        Self::Long(v) => Some($($deref)* v as $ty),
+                        Self::Float(v) => Some($($deref)* v as $ty),
+                        Self::Double(v) => Some($($deref)* v as $ty),
+                        _ => None,
+                    }
+                }
+            }
+        }
+
         impl $(<$lifetime>)? $name $(<$lifetime>)? {
             /// Returns the type of this value.
             pub fn tag(&self) -> Tag {
@@ -75,6 +92,24 @@ macro_rules! impl_value {
                     Self::IntArray(_) => Tag::IntArray,
                     Self::LongArray(_) => Tag::LongArray,
                 }
+            }
+
+            pub fn is_number(&self) -> bool {
+                match self {
+                    Self::Byte(_) | Self::Short(_) | Self::Int(_) | Self::Long(_) | Self::Float(_) | Self::Double(_) => true,
+                    _ => false,
+                }
+            }
+
+            as_number!(as_i8, i8, $($deref)*);
+            as_number!(as_i16, i16, $($deref)*);
+            as_number!(as_i32, i32, $($deref)*);
+            as_number!(as_i64, i64, $($deref)*);
+            as_number!(as_f32, f32, $($deref)*);
+            as_number!(as_f64, f64, $($deref)*);
+
+            pub fn as_bool(&self) -> Option<bool> {
+                self.as_i8().map(|v| v != 0)
             }
         }
 
@@ -128,9 +163,9 @@ macro_rules! impl_value {
     }
 }
 
-impl_value!(Value,,);
-impl_value!(ValueRef, 'a, &'a);
-impl_value!(ValueMut, 'a, &'a mut);
+impl_value!(Value,,(*),);
+impl_value!(ValueRef, 'a, (**), &'a);
+impl_value!(ValueMut, 'a, (**), &'a mut);
 
 impl Value {
     /// Converts a reference to a value to a [ValueRef].
