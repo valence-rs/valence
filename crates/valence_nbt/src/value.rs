@@ -67,6 +67,23 @@ macro_rules! impl_value {
                         Self::Short(v) => Some($($deref)* v as $ty),
                         Self::Int(v) => Some($($deref)* v as $ty),
                         Self::Long(v) => Some($($deref)* v as $ty),
+                        Self::Float(v) => Some(v.floor() as $ty),
+                        Self::Double(v) => Some(v.floor() as $ty),
+                        _ => None,
+                    }
+                }
+            }
+        }
+
+        macro_rules! as_number_float {
+            ($method_name:ident, $ty:ty, $($deref)*) => {
+                pub fn $method_name(&self) -> Option<$ty> {
+                    #[allow(trivial_numeric_casts)]
+                    match self {
+                        Self::Byte(v) => Some($($deref)* v as $ty),
+                        Self::Short(v) => Some($($deref)* v as $ty),
+                        Self::Int(v) => Some($($deref)* v as $ty),
+                        Self::Long(v) => Some($($deref)* v as $ty),
                         Self::Float(v) => Some($($deref)* v as $ty),
                         Self::Double(v) => Some($($deref)* v as $ty),
                         _ => None,
@@ -105,8 +122,8 @@ macro_rules! impl_value {
             as_number!(as_i16, i16, $($deref)*);
             as_number!(as_i32, i32, $($deref)*);
             as_number!(as_i64, i64, $($deref)*);
-            as_number!(as_f32, f32, $($deref)*);
-            as_number!(as_f64, f64, $($deref)*);
+            as_number_float!(as_f32, f32, $($deref)*);
+            as_number_float!(as_f64, f64, $($deref)*);
 
             pub fn as_bool(&self) -> Option<bool> {
                 self.as_i8().map(|v| v != 0)
