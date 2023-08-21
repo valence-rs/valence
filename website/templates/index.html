@@ -1,7 +1,32 @@
-{% extends "juice/templates/index.html" %} 
-{% block head %}
-<link rel="icon" href="{{ config.base_url }}favicon.ico">
-{% endblock head %}
+{% import "_macros.html" as macros %}
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}{{ config.title }}{% endblock title %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    {% block favicon %}
+     <link rel="icon" href="{{ config.base_url }}favicon.ico">
+    {% endblock favicon %}
+    {% include "_variables.html" %}
+    {% block fonts %}
+    <link href="https://fonts.googleapis.com/css?family=Alfa+Slab+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Fira+Sans:400,500,600&display=swap" rel="stylesheet">
+    {% endblock fonts %}
+    <link rel="stylesheet" href="/normalize.css">
+    <link rel="stylesheet" href="{{ get_url(path="juice.css") }}">
+    {% block head %}
+    {% endblock head %}
+</head>
+<body>
+    {% block header %}
+
+    <header class="pos-absolute" style="background-color: transparent">
+        {{ macros::render_header() }}
+    </header>
+
+    <div class="hero">
 {% block hero %}
 <script async defer src="https://buttons.github.io/buttons.js"></script>
 <section class="text-center">
@@ -36,7 +61,7 @@
         src="https://img.shields.io/discord/998132822239870997?logo=discord&logoColor=white&label=Valence&color=%23FF9A00"
     /></a>
   </div>
-  <a href="{{ config.base_url }}/book/" class="title-text box-shadow button">Quick Start</a>
+  <a href="{{ config.base_url }}book/" class="title-text box-shadow button">Quick Start</a>
 </section>
 <!-- below image generated using https://carbon.now.sh/?bg=rgba%2817%2C24%2C34%2C1%29&t=theme%3A8qjsvqowtpp&wt=boxy&l=rust&width=680&ds=false&dsyoff=20px&dsblur=68px&wc=true&wa=true&pv=0px&ph=0px&ln=true&fl=1&fm=Fira+Code&fs=16px&lh=119%25&si=false&es=2x&wm=false&code=fn%2520main%28%29%2520%257B%250A%2520%2520%2520%2520App%253A%253Anew%28%29%250A%2520%2520%2520%2520%2520%2520%2520%2520.add_plugins%28DefaultPlugins%29%250A%2520%2520%2520%2520%2520%2520%2520%2520.add_systems%28Startup%252C%2520setup%29%250A%2520%2520%2520%2520%2520%2520%2520%2520.add_systems%28%250A%2520%2520%2520%2520%2520%2520%2520%2520%2520%2520%2520%2520Update%252C%250A%2520%2520%2520%2520%2520%2520%2520%2520%2520%2520%2520%2520%28%250A%2520%2520%2520%2520%2520%2520%2520%2520%2520%2520%2520%2520%2520%2520%2520%2520init_clients%252C%250A%2520%2520%2520%2520%2520%2520%2520%2520%2520%2520%2520%2520%2520%2520%2520%2520despawn_disconnected_clients%252C%250A%2520%2520%2520%2520%2520%2520%2520%2520%2520%2520%2520%2520%29%252C%250A%2520%2520%2520%2520%2520%2520%2520%2520%29%250A%2520%2520%2520%2520%2520%2520%2520%2520.run%28%29%253B%250A%257D&tb=main.rs -->
 <img class="hero-image" style="width: 39%" src="{{ get_url(path="code-sample.svg")
@@ -86,7 +111,50 @@
     }
   }
 </style>
-{% endblock hero %} {% block footer %}
+{% endblock hero %} 
+
+</div>
+
+    {% endblock header %}
+
+    <main>
+        {% block toc %}
+        {% if section.toc %}
+        {% set toc = section.toc %}
+        {% elif page.toc %}
+        {% set toc = page.toc %}
+        {% endif %}
+        {% if toc %}
+        <div class="toc">
+            <div class="toc-sticky">
+                {% for h in toc %}
+                <div class="toc-item">
+                    <a class="subtext" href="{{h.permalink | safe}}">{{ h.title }}</a>
+                </div>
+                {% if h.children %}
+                {% for h2 in h.children %}
+                <div class="toc-item-child">
+                    <a class="subtext" href="{{h2.permalink | safe}}"><small>- {{ h2.title }}</small></a>
+                </div>
+                {% endfor %}
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        {% endblock toc %}
+
+        <div class="content text">
+            {% block content %}
+            <div id="features" class="heading-text">Overview</div>
+            {{ section.content | safe }}
+            {% endblock content %}
+        </div>
+
+        {% block sidebar %}
+        {% endblock sidebar %}
+    </main>
+{% block footer %}
 <footer>
   <small class="subtext">
     <a href="https://github.com/valence-rs/valence/blob/main/CODE_OF_CONDUCT.md"
@@ -96,3 +164,30 @@
   </small>
 </footer>
 {% endblock footer %}
+</body>
+<script>
+    const scrollHandler = entries => {
+        // Find the first entry which intersecting and ratio > 0.9 to highlight.
+        let entry = entries.find(entry => {
+            return entry.isIntersecting && entry.intersectionRatio > 0.9;
+        });
+        if (!entry) return;
+
+        document.querySelectorAll(".toc a").forEach((item) => {
+            item.classList.remove("active");
+        });
+
+        // let url = new URL(`#${entry.target.id}`);
+        let link = document.querySelector(`.toc a[href$="${decodeURIComponent(`#${entry.target.id}`)}"]`)
+        if (link) {
+            link.classList.add("active");
+            link.scrollIntoView({ behavior: "auto", block: "nearest" });
+        }
+    };
+    // Set -100px root margin to improve highlight experience.
+    const observer = new IntersectionObserver(scrollHandler, { threshold: 1 });
+    let items = document.querySelectorAll('h1,h2,h3,h4,h5,h6');
+    items.forEach(item => observer.observe(item));
+</script>
+
+</html>

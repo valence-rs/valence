@@ -2,7 +2,6 @@
 base_url = "/valence/"
 
 title = "Valence - A minecraft server framework"
-theme = "juice"
 
 # Whether to automatically compile all Sass files in the sass directory
 compile_sass = true
