@@ -1,4 +1,7 @@
-use super::*;
+use uuid::Uuid;
+use valence_math::DVec3;
+
+use crate::{ByteAngle, Decode, Encode, Packet, VarInt};
 
 /// This packet is sent by the server when a player comes into visible range,
 /// not when a player joins.

@@ -1,4 +1,4 @@
-use super::*;
+use crate::{packet_id, ByteAngle, Decode, Encode, Packet, VarInt};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
 #[packet(id = packet_id::ROTATE_AND_MOVE_RELATIVE)]

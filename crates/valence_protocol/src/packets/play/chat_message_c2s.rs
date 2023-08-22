@@ -1,5 +1,4 @@
-use super::*;
-use crate::FixedBitSet;
+use crate::{Bounded, Decode, Encode, FixedBitSet, Packet, VarInt};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 pub struct ChatMessageC2s<'a> {

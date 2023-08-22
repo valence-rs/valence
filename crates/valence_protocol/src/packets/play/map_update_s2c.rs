@@ -1,4 +1,9 @@
-use super::*;
+use std::borrow::Cow;
+use std::io::Write;
+
+use valence_text::Text;
+
+use crate::{Decode, Encode, Packet, VarInt};
 
 #[derive(Clone, PartialEq, Debug, Packet)]
 pub struct MapUpdateS2c<'a> {

@@ -1,4 +1,4 @@
-use super::*;
+use crate::{Decode, Encode, Packet, PacketState};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 #[packet(state = PacketState::Login)]

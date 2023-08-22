@@ -1,4 +1,4 @@
-use super::*;
+use crate::{Decode, Encode, Packet};
 
 /// Unused by notchian clients.
 #[derive(Copy, Clone, PartialEq, Debug, Encode, Decode, Packet)]

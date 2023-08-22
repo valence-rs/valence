@@ -1,4 +1,4 @@
-use super::*;
+use crate::{packet_id, Decode, Encode, Packet};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
 #[packet(id = packet_id::LOOK_AND_ON_GROUND)]

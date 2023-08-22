@@ -1,4 +1,6 @@
-use super::*;
+use valence_math::Vec3;
+
+use crate::{Decode, Encode, Hand, Packet, VarInt};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
 pub struct PlayerInteractEntityC2s {

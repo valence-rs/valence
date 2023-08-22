@@ -1,4 +1,6 @@
-use super::*;
+use bitfield_struct::bitfield;
+
+use crate::{BlockPos, Bounded, Decode, Encode, Packet, VarLong};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
 pub struct UpdateStructureBlockC2s<'a> {

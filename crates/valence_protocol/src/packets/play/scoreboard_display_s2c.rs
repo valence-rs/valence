@@ -1,7 +1,7 @@
 use bevy_ecs::prelude::Component;
 
 use super::team_s2c::TeamColor;
-use super::*;
+use crate::{Decode, Encode, Packet};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
 pub struct ScoreboardDisplayS2c<'a> {

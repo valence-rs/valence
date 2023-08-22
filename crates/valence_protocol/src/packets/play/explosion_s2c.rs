@@ -1,4 +1,8 @@
-use super::*;
+use std::borrow::Cow;
+
+use valence_math::DVec3;
+
+use crate::{BlockPos, Decode, Encode, Packet, Velocity};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 pub struct ExplosionS2c<'a> {

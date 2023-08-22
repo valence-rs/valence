@@ -1,4 +1,6 @@
-use super::*;
+use uuid::Uuid;
+
+use crate::{Bounded, Decode, Encode, Packet};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
 pub struct PlayerSessionC2s<'a> {

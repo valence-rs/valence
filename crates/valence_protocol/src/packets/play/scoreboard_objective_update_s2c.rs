@@ -1,6 +1,9 @@
-use bevy_ecs::prelude::*;
+use std::borrow::Cow;
 
-use super::*;
+use bevy_ecs::prelude::*;
+use valence_text::Text;
+
+use crate::{Decode, Encode, Packet};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 pub struct ScoreboardObjectiveUpdateS2c<'a> {

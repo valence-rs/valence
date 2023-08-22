@@ -1,4 +1,6 @@
-use super::*;
+use bitfield_struct::bitfield;
+
+use crate::{Decode, Encode, Packet};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 pub struct ClientSettingsC2s<'a> {

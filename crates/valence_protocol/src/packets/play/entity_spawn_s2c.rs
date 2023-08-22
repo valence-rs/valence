@@ -1,4 +1,7 @@
-use super::*;
+use uuid::Uuid;
+use valence_math::DVec3;
+
+use crate::{ByteAngle, Decode, Encode, Packet, VarInt, Velocity};
 
 /// Sent by the server when a vehicle or other non-living entity is created.
 ///

@@ -1,4 +1,11 @@
-use super::*;
+use std::borrow::Cow;
+use std::io::Write;
+
+use anyhow::bail;
+use bitfield_struct::bitfield;
+use valence_text::Text;
+
+use crate::{Decode, Encode, Packet};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 pub struct TeamS2c<'a> {

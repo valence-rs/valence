@@ -1,4 +1,4 @@
-use super::*;
+use crate::{BlockPos, Bounded, Decode, Encode, Packet};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
 pub struct UpdateSignC2s<'a> {

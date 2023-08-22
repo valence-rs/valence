@@ -1,4 +1,10 @@
-use super::*;
+use std::borrow::Cow;
+use std::io::Write;
+
+use uuid::Uuid;
+use valence_text::Text;
+
+use crate::{Bounded, Decode, Encode, Packet, VarInt};
 
 #[derive(Clone, PartialEq, Debug, Packet)]
 pub struct ChatMessageS2c<'a> {

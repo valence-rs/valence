@@ -1,4 +1,11 @@
-use super::*;
+use std::borrow::Cow;
+use std::collections::BTreeSet;
+
+use valence_ident::Ident;
+use valence_nbt::Compound;
+
+use crate::game_mode::OptGameMode;
+use crate::{Decode, Encode, GameMode, GlobalPos, Packet, VarInt};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 pub struct GameJoinS2c<'a> {

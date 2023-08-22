@@ -1,4 +1,10 @@
-use super::*;
+use std::io::Write;
+
+use anyhow::{bail, ensure};
+use byteorder::WriteBytesExt;
+use derive_more::{From, Into};
+
+use crate::{Decode, Encode, Packet, RawBytes, VarInt};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
 pub struct EntityTrackerUpdateS2c<'a> {
@@ -12,7 +18,7 @@ pub const MARKER_ID: u8 = 255;
 /// Serialized entity data tracker bytes _without the terminating
 /// [marker](MARKER_ID)_. The terminator is written by the [`Encode`] impl and
 /// skipped by the [`Decode`] impl.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, From, Into)]
 pub struct EntityTrackerBytes<'a>(pub &'a [u8]);
 
 impl Encode for EntityTrackerBytes<'_> {

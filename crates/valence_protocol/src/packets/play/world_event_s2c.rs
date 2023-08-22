@@ -1,4 +1,4 @@
-use super::*;
+use crate::{BlockPos, Decode, Encode, Packet};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 pub struct WorldEventS2c {

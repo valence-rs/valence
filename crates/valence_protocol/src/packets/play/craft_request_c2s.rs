@@ -1,4 +1,8 @@
-use super::*;
+use std::borrow::Cow;
+
+use valence_ident::Ident;
+
+use crate::{Decode, Encode, Packet};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 pub struct CraftRequestC2s<'a> {

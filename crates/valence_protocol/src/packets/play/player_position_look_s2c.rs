@@ -1,4 +1,7 @@
-use super::*;
+use bitfield_struct::bitfield;
+use valence_math::DVec3;
+
+use crate::{Decode, Encode, Packet, VarInt};
 
 #[derive(Copy, Clone, PartialEq, Debug, Encode, Decode, Packet)]
 pub struct PlayerPositionLookS2c {

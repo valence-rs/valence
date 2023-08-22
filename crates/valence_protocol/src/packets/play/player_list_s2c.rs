@@ -1,4 +1,12 @@
-use super::*;
+use std::borrow::Cow;
+use std::io::Write;
+
+use bitfield_struct::bitfield;
+use uuid::Uuid;
+use valence_text::Text;
+
+use crate::profile::PropertyMap;
+use crate::{Decode, Encode, GameMode, Packet, VarInt};
 
 #[derive(Clone, Debug, Packet)]
 pub struct PlayerListS2c<'a> {
@@ -109,7 +117,7 @@ pub struct PlayerListActions {
 pub struct PlayerListEntry<'a> {
     pub player_uuid: Uuid,
     pub username: &'a str,
-    pub properties: Cow<'a, [PropertyValue]>,
+    pub properties: Cow<'a, PropertyMap>,
     pub chat_data: Option<ChatData<'a>>,
     pub listed: bool,
     pub ping: i32,

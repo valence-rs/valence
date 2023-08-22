@@ -105,6 +105,11 @@ pub const MINECRAFT_VERSION: &str = "1.20.1";
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, From, Into)]
 pub struct CompressionThreshold(pub i32);
 
+impl CompressionThreshold {
+    /// No compression.
+    pub const OFF: Self = Self(-1);
+}
+
 impl Default for CompressionThreshold {
     fn default() -> Self {
         Self(256)

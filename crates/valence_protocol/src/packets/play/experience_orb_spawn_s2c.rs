@@ -1,4 +1,6 @@
-use super::*;
+use valence_math::DVec3;
+
+use crate::{Decode, Encode, Packet, VarInt};
 
 /// Spawns one or more experience orbs.
 ///

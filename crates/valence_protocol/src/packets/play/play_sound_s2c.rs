@@ -1,5 +1,7 @@
-use super::*;
+use valence_math::IVec3;
+
 use crate::sound::{SoundCategory, SoundId};
+use crate::{Decode, Encode, Packet};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 pub struct PlaySoundS2c<'a> {

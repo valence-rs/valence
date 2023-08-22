@@ -1,4 +1,6 @@
-use super::*;
+use uuid::Uuid;
+
+use crate::{Bounded, Decode, Encode, Packet, PacketState};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 #[packet(state = PacketState::Login)]

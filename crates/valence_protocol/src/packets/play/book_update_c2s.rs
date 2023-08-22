@@ -1,4 +1,4 @@
-use super::*;
+use crate::{Bounded, Decode, Encode, Packet, VarInt};
 
 pub const MAX_TITLE_CHARS: usize = 128;
 pub const MAX_PAGE_CHARS: usize = 8192;

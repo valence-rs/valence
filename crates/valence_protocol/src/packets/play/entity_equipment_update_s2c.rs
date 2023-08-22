@@ -1,4 +1,6 @@
-use super::*;
+use std::io::Write;
+
+use crate::{Decode, Encode, ItemStack, Packet, VarInt};
 
 #[derive(Clone, PartialEq, Debug, Packet)]
 pub struct EntityEquipmentUpdateS2c {

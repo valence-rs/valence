@@ -1,4 +1,4 @@
-use super::*;
+use crate::{Decode, Encode, Packet, VarInt};
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode, Packet)]
 pub struct RemoveEntityStatusEffectS2c {

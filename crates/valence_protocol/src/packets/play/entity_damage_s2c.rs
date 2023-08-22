@@ -1,4 +1,6 @@
-use super::*;
+use valence_math::DVec3;
+
+use crate::{Decode, Encode, Packet, VarInt};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
 pub struct EntityDamageS2c {

@@ -1,4 +1,4 @@
-use super::*;
+use crate::{Decode, Encode, Packet};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet, PartialEq, Eq)]
 pub enum UpdatePlayerAbilitiesC2s {

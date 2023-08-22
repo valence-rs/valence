@@ -1,4 +1,4 @@
-use super::*;
+use crate::{Decode, Encode, Packet, VarInt, VarLong};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
 pub struct WorldBorderInitializeS2c {

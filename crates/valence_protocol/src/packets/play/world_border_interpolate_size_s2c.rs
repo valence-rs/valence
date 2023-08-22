@@ -1,4 +1,4 @@
-use super::*;
+use crate::{Decode, Encode, Packet, VarLong};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 pub struct WorldBorderInterpolateSizeS2c {

@@ -1,5 +1,10 @@
-use super::*;
+use std::borrow::Cow;
+
+use valence_generated::block::BlockEntityKind;
+use valence_nbt::Compound;
+
 use crate::array::FixedArray;
+use crate::{ChunkPos, Decode, Encode, Packet};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 pub struct ChunkDataS2c<'a> {

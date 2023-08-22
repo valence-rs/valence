@@ -1,6 +1,7 @@
 use bevy_ecs::prelude::Component;
+use bitfield_struct::bitfield;
 
-use super::*;
+use crate::{Decode, Encode, Packet};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 pub struct PlayerAbilitiesS2c {

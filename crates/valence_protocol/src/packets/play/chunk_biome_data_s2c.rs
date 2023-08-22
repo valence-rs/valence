@@ -1,4 +1,6 @@
-use super::*;
+use std::borrow::Cow;
+
+use crate::{ChunkPos, Decode, Encode, Packet};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 pub struct ChunkBiomeDataS2c<'a> {

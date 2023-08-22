@@ -1,4 +1,9 @@
-use super::*;
+use std::{borrow::Cow, io::Write};
+
+use anyhow::bail;
+use valence_ident::Ident;
+
+use crate::{Decode, Encode, Packet, VarInt};
 
 #[derive(Clone, PartialEq, Eq, Debug, Packet)]
 pub struct UnlockRecipesS2c<'a> {
@@ -47,6 +52,12 @@ impl<'a> Decode<'a> for UnlockRecipesS2c<'a> {
             smoker_recipe_book_filter_active,
             recipe_ids,
         })
+    }
+}
+
+impl Encode for UnlockRecipesS2c<'_> {
+    fn encode(&self, _w: impl Write) -> anyhow::Result<()> {
+        todo!()
     }
 }
 

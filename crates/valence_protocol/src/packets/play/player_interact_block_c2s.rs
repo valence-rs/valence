@@ -1,4 +1,6 @@
-use super::*;
+use valence_math::Vec3;
+
+use crate::{BlockPos, Decode, Direction, Encode, Hand, Packet, VarInt};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
 pub struct PlayerInteractBlockC2s {

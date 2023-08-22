@@ -1,4 +1,6 @@
-use super::*;
+use valence_math::DVec3;
+
+use crate::{Decode, Encode, Packet, VarInt};
 
 /// Instructs a client to face an entity.
 #[derive(Copy, Clone, PartialEq, Debug, Encode, Decode, Packet)]
