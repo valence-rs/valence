@@ -1,3 +1,5 @@
+@import url("syntax-theme.css")
+
 .content {
   padding: 0 40px;
   display: flex;
@@ -7,7 +9,7 @@
 
 .content pre {
   overflow-x: auto;
-  padding: 1.25em 1.5em;
+  padding: .6rem .75rem;
   white-space: pre;
   word-wrap: normal;
   background-color: var(--code-background-color);
