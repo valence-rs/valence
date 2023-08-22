@@ -334,7 +334,7 @@ fn calculate_net_item_delta(
 ) -> i32 {
     let mut net_item_delta: i32 = 0;
 
-    for slot in &packet.slot_changes {
+    for slot in packet.slot_changes.iter() {
         let old_slot = window.slot(slot.idx as u16);
         let new_slot = slot.item.as_ref();
 

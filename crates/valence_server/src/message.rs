@@ -55,7 +55,7 @@ pub fn handle_chat_message(
         if let Some(pkt) = packet.decode::<ChatMessageC2s>() {
             events.send(ChatMessageEvent {
                 client: packet.client,
-                message: pkt.message.into(),
+                message: pkt.message.0.into(),
                 timestamp: pkt.timestamp,
             });
         }

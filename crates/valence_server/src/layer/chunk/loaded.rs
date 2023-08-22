@@ -10,7 +10,7 @@ use valence_protocol::packets::play::chunk_data_s2c::ChunkDataBlockEntity;
 use valence_protocol::packets::play::{
     BlockEntityUpdateS2c, BlockUpdateS2c, ChunkDataS2c, ChunkDeltaUpdateS2c,
 };
-use valence_protocol::{BlockPos, BlockState, ChunkPos, Encode, VarInt, VarLong};
+use valence_protocol::{BlockPos, BlockState, ChunkPos, Encode, VarLong};
 use valence_registry::biome::BiomeId;
 use valence_registry::RegistryIdx;
 
@@ -214,7 +214,7 @@ impl LoadedChunk {
 
                         writer.write_packet(&BlockUpdateS2c {
                             position: BlockPos::new(global_x, global_y, global_z),
-                            block_id: VarInt(block as i32),
+                            block_id: BlockState::from_raw(block as u16).unwrap(),
                         });
                     });
                 }
@@ -264,7 +264,7 @@ impl LoadedChunk {
 
                 writer.write_packet(&BlockEntityUpdateS2c {
                     position: BlockPos::new(global_x, global_y, global_z),
-                    kind: VarInt(kind as i32),
+                    kind,
                     data: Cow::Borrowed(nbt),
                 });
             });
@@ -353,7 +353,7 @@ impl LoadedChunk {
                     kind.map(|kind| ChunkDataBlockEntity {
                         packed_xz: ((x << 4) | z) as i8,
                         y: y as i16 + info.min_y as i16,
-                        kind: VarInt(kind as i32),
+                        kind,
                         data: Cow::Borrowed(nbt),
                     })
                 })
@@ -599,7 +599,7 @@ impl Chunk for LoadedChunk {
 
 #[cfg(test)]
 mod tests {
-    use valence_protocol::ident;
+    use valence_protocol::{ident, CompressionThreshold};
 
     use super::*;
 
@@ -629,11 +629,11 @@ mod tests {
                 height: 512,
                 min_y: -16,
                 biome_registry_len: 200,
-                threshold: None,
+                threshold: CompressionThreshold::OFF,
             };
 
             let mut buf = vec![];
-            let mut writer = PacketWriter::new(&mut buf, None);
+            let mut writer = PacketWriter::new(&mut buf, CompressionThreshold::OFF);
 
             // Rebuild cache.
             chunk.write_init_packets(&mut writer, ChunkPos::new(3, 4), &info);

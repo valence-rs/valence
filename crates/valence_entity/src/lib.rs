@@ -32,7 +32,7 @@ use tracing::warn;
 use tracked_data::TrackedData;
 use valence_math::{DVec3, Vec3};
 use valence_protocol::{BlockPos, ChunkPos, Decode, Encode, VarInt};
-use valence_server_common::{Despawned, UniqueId, DEFAULT_TPS};
+use valence_server_common::{Despawned, UniqueId};
 
 include!(concat!(env!("OUT_DIR"), "/entity.rs"));
 pub struct EntityPlugin;
@@ -343,11 +343,8 @@ pub struct HeadYaw(pub f32);
 pub struct Velocity(pub Vec3);
 
 impl Velocity {
-    pub fn to_packet_units(self) -> [i16; 3] {
-        // The saturating casts to i16 are desirable.
-        (8000.0 / DEFAULT_TPS.get() as f32 * self.0)
-            .to_array()
-            .map(|v| v as i16)
+    pub fn to_packet_units(self) -> valence_protocol::Velocity {
+        valence_protocol::Velocity::from_ms_f32(self.0.into())
     }
 }
 

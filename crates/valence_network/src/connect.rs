@@ -11,7 +11,6 @@ use hmac::{Hmac, Mac};
 use num_bigint::BigInt;
 use reqwest::StatusCode;
 use rsa::PaddingScheme;
-use serde::Deserialize;
 use serde_json::{json, Value};
 use sha1::Sha1;
 use sha2::{Digest, Sha256};
@@ -19,6 +18,7 @@ use tokio::net::{TcpListener, TcpStream};
 use tracing::{error, info, trace, warn};
 use uuid::Uuid;
 use valence_lang::keys;
+use valence_protocol::profile::{GameProfile, PropertyMap};
 use valence_protocol::Decode;
 use valence_server::protocol::packets::handshaking::handshake_c2s::HandshakeNextState;
 use valence_server::protocol::packets::handshaking::HandshakeC2s;
@@ -29,7 +29,7 @@ use valence_server::protocol::packets::login::{
 use valence_server::protocol::packets::status::{
     QueryPingC2s, QueryPongS2c, QueryRequestC2s, QueryResponseS2c,
 };
-use valence_server::protocol::{PacketDecoder, PacketEncoder, PropertyValue, RawBytes, VarInt};
+use valence_server::protocol::{PacketDecoder, PacketEncoder, RawBytes, VarInt};
 use valence_server::text::{Color, IntoText};
 use valence_server::{ident, Text, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
@@ -135,10 +135,11 @@ async fn handle_handshake(
 
     let handshake = HandshakeData {
         protocol_version: handshake.protocol_version.0,
-        server_address: handshake.server_address.to_owned(),
+        server_address: handshake.server_address.0.to_owned(),
         server_port: handshake.server_port,
     };
 
+    // TODO: this is borked.
     ensure!(
         shared.0.connection_mode == ConnectionMode::BungeeCord
             || handshake.server_address.encode_utf16().count() <= 255,
@@ -270,7 +271,7 @@ async fn handle_login(
         profile_id: _, // TODO
     } = io.recv_packet().await?;
 
-    let username = username.to_owned();
+    let username = username.0.to_owned();
 
     let info = match shared.connection_mode() {
         ConnectionMode::Online { .. } => login_online(shared, io, remote_addr, username).await?,
@@ -281,13 +282,13 @@ async fn handle_login(
         ConnectionMode::Velocity { secret } => login_velocity(io, username, secret).await?,
     };
 
-    if let Some(threshold) = shared.0.threshold {
+    if shared.0.threshold.0 > 0 {
         io.send_packet(&LoginCompressionS2c {
-            threshold: VarInt(threshold as i32),
+            threshold: shared.0.threshold.0.into(),
         })
         .await?;
 
-        io.set_compression(Some(threshold));
+        io.set_compression(shared.0.threshold);
     }
 
     let cleanup = match shared.0.callbacks.inner.login(shared, &info).await {
@@ -304,7 +305,7 @@ async fn handle_login(
 
     io.send_packet(&LoginSuccessS2c {
         uuid: info.uuid,
-        username: &info.username,
+        username: info.username.as_str().into(),
         properties: Default::default(),
     })
     .await?;
@@ -322,7 +323,7 @@ async fn login_online(
     let my_verify_token: [u8; 16] = rand::random();
 
     io.send_packet(&LoginHelloS2c {
-        server_id: "", // Always empty
+        server_id: "".into(), // Always empty
         public_key: &shared.0.public_key_der,
         verify_token: &my_verify_token,
     })
@@ -391,13 +392,6 @@ async fn login_online(
         }
     }
 
-    #[derive(Debug, Deserialize)]
-    struct GameProfile {
-        id: Uuid,
-        name: String,
-        properties: Vec<PropertyValue>,
-    }
-
     let profile: GameProfile = resp.json().await.context("parsing game profile")?;
 
     ensure!(profile.name == username, "usernames do not match");
@@ -424,7 +418,7 @@ fn login_offline(remote_addr: SocketAddr, username: String) -> anyhow::Result<Ne
         // Derive the client's UUID from a hash of their username.
         uuid: offline_uuid(username.as_str())?,
         username,
-        properties: vec![].into(),
+        properties: Default::default(),
         ip: remote_addr.ip(),
     })
 }
@@ -453,10 +447,10 @@ fn login_bungeecord(
     // Read properties and get textures
     // Properties of player's game profile, only given if ip_forward and online_mode
     // on bungee both are true
-    let properties: Vec<PropertyValue> = match data.get(3) {
+    let properties: PropertyMap = match data.get(3) {
         Some(properties) => serde_json::from_str(properties)
             .context("failed to parse BungeeCord player properties")?,
-        None => vec![],
+        None => PropertyMap::default(),
     };
 
     Ok(NewClientInfo {
@@ -482,7 +476,7 @@ async fn login_velocity(
     io.send_packet(&LoginQueryRequestS2c {
         message_id: VarInt(message_id),
         channel: ident!("velocity:player_info").into(),
-        data: RawBytes(&[VELOCITY_MIN_SUPPORTED_VERSION]),
+        data: RawBytes(&[VELOCITY_MIN_SUPPORTED_VERSION]).into(),
     })
     .await?;
 
@@ -526,7 +520,7 @@ async fn login_velocity(
     );
 
     // Read game profile properties
-    let properties = Vec::<PropertyValue>::decode(&mut data_without_signature)
+    let properties = PropertyMap::decode(&mut data_without_signature)
         .context("decoding velocity game profile properties")?;
 
     if version >= VELOCITY_MODERN_FORWARDING_WITH_KEY_V2 {

@@ -40,7 +40,7 @@ impl PacketIoReader {
     }
 
     #[allow(dead_code)]
-    pub(crate) fn set_compression(&mut self, threshold: Option<u32>) {
+    pub(crate) fn set_compression(&mut self, threshold: CompressionThreshold) {
         self.threshold = threshold;
         self.dec.set_compression(threshold);
     }
@@ -69,8 +69,8 @@ impl PacketIoWriter {
         let uncompressed_packet_length = uncompressed_packet.len();
         let uncompressed_packet_length_varint = VarInt(uncompressed_packet_length as i32);
 
-        if let Some(threshold) = self.threshold {
-            if uncompressed_packet_length > threshold as usize {
+        if self.threshold.0 >= 0 {
+            if uncompressed_packet_length > self.threshold.0 as usize {
                 use std::io::Read;
 
                 use flate2::bufread::ZlibEncoder;
@@ -137,7 +137,7 @@ impl PacketIoWriter {
     }
 
     #[allow(dead_code)]
-    pub(crate) fn set_compression(&mut self, threshold: Option<u32>) {
+    pub(crate) fn set_compression(&mut self, threshold: CompressionThreshold) {
         self.threshold = threshold;
         self.enc.set_compression(threshold);
     }
@@ -158,7 +158,7 @@ impl PacketIo {
             stream,
             enc: PacketEncoder::new(),
             dec: PacketDecoder::new(),
-            threshold: None,
+            threshold: CompressionThreshold::OFF,
         }
     }
 
@@ -180,7 +180,7 @@ impl PacketIo {
     }
 
     #[allow(dead_code)]
-    pub(crate) async fn set_compression(&mut self, threshold: Option<u32>) {
+    pub(crate) async fn set_compression(&mut self, threshold: CompressionThreshold) {
         self.threshold = threshold;
         self.enc.set_compression(threshold);
         self.dec.set_compression(threshold);

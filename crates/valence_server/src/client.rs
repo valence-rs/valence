@@ -2,7 +2,6 @@ use std::borrow::Cow;
 use std::collections::BTreeSet;
 use std::fmt;
 use std::net::IpAddr;
-use std::ops::Deref;
 use std::time::Instant;
 
 use bevy_app::prelude::*;
@@ -29,10 +28,11 @@ use valence_protocol::packets::play::{
     DisconnectS2c, EntitiesDestroyS2c, EntityStatusS2c, EntityTrackerUpdateS2c,
     EntityVelocityUpdateS2c, GameStateChangeS2c, ParticleS2c, PlaySoundS2c, UnloadChunkS2c,
 };
+use valence_protocol::profile::PropertyMap;
 use valence_protocol::sound::{Sound, SoundCategory, SoundId};
 use valence_protocol::text::{IntoText, Text};
 use valence_protocol::var_int::VarInt;
-use valence_protocol::{BlockPos, ChunkPos, Encode, GameMode, Packet, PropertyValue};
+use valence_protocol::{BlockPos, ChunkPos, Encode, GameMode, Packet};
 use valence_registry::RegistrySet;
 use valence_server_common::{Despawned, UniqueId};
 
@@ -186,9 +186,13 @@ impl ClientBundle {
 pub struct ClientBundleArgs {
     /// The username for the client.
     pub username: String,
+    /// UUID of the client.
     pub uuid: Uuid,
+    /// IP address of the client.
     pub ip: IpAddr,
-    pub properties: Vec<PropertyValue>,
+    /// Properties of this client from the game profile.
+    pub properties: PropertyMap,
+    /// The abstract socket connection.
     pub conn: Box<dyn ClientConnection>,
     /// The packet encoder to use. This should be in sync with [`Self::conn`].
     pub enc: PacketEncoder,
@@ -426,31 +430,11 @@ impl fmt::Display for Username {
 }
 
 #[derive(Component, Clone, PartialEq, Eq, Default, Debug)]
-pub struct Properties(pub Vec<PropertyValue>);
+pub struct Properties(pub PropertyMap);
 
-impl Properties {
-    /// Finds the property with the name "textures".
-    pub fn textures(&self) -> Option<&PropertyValue> {
-        self.0.iter().find(|prop| prop.name == "textures")
-    }
-
-    /// Finds the property with the name "textures".
-    pub fn textures_mut(&mut self) -> Option<&mut PropertyValue> {
-        self.0.iter_mut().find(|prop| prop.name == "textures")
-    }
-}
-
-impl From<Vec<PropertyValue>> for Properties {
-    fn from(value: Vec<PropertyValue>) -> Self {
+impl From<PropertyMap> for Properties {
+    fn from(value: PropertyMap) -> Self {
         Self(value)
-    }
-}
-
-impl Deref for Properties {
-    type Target = [PropertyValue];
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
     }
 }
 

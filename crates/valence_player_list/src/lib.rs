@@ -355,7 +355,7 @@ fn update_entries(
         let entry = packet::PlayerListEntry {
             player_uuid: uuid.0,
             username: &username.0,
-            properties: (&props.0).into(),
+            properties: Cow::Borrowed(&props.0),
             chat_data: None,
             listed: listed.0,
             ping: ping.0,
