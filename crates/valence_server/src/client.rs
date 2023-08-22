@@ -434,6 +434,18 @@ impl fmt::Display for Username {
 #[derive(Component, Clone, PartialEq, Eq, Default, Debug, Deref, DerefMut, From, Into)]
 pub struct Properties(pub Vec<Property>);
 
+impl Properties {
+    /// Finds the property with the name "textures".
+    pub fn textures(&self) -> Option<&Property> {
+        self.0.iter().find(|p| p.name == "textures")
+    }
+
+    /// Finds the property with the name "textures" mutably.
+    pub fn textures_mut(&mut self) -> Option<&mut Property> {
+        self.0.iter_mut().find(|p| p.name == "textures")
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct PropertyValue {
     pub value: String,
