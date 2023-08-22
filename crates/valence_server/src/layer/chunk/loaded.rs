@@ -629,11 +629,11 @@ mod tests {
                 height: 512,
                 min_y: -16,
                 biome_registry_len: 200,
-                threshold: CompressionThreshold::OFF,
+                threshold: CompressionThreshold(-1),
             };
 
             let mut buf = vec![];
-            let mut writer = PacketWriter::new(&mut buf, CompressionThreshold::OFF);
+            let mut writer = PacketWriter::new(&mut buf, CompressionThreshold(-1));
 
             // Rebuild cache.
             chunk.write_init_packets(&mut writer, ChunkPos::new(3, 4), &info);

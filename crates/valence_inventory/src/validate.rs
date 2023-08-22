@@ -387,7 +387,8 @@ mod tests {
                     idx: 5,
                     item: Some(ItemStack::new(ItemKind::Diamond, 21, None)),
                 },
-            ],
+            ]
+            .into(),
             carried_item: Some(ItemStack::new(ItemKind::Diamond, 1, None)),
         };
 
@@ -427,7 +428,8 @@ mod tests {
                     idx: 5,
                     item: Some(ItemStack::new(ItemKind::Emerald, 2, None)),
                 },
-            ],
+            ]
+            .into(),
             carried_item: Some(ItemStack::new(ItemKind::OakWood, 2, None)),
         };
 
@@ -454,7 +456,7 @@ mod tests {
             mode: ClickMode::Click,
             state_id: VarInt(0),
             slot_idx: 0,
-            slot_changes: vec![SlotChange { idx: 0, item: None }],
+            slot_changes: vec![SlotChange { idx: 0, item: None }].into(),
             carried_item: inventory.slot(0).cloned(),
         };
 
@@ -478,7 +480,8 @@ mod tests {
             slot_changes: vec![SlotChange {
                 idx: 0,
                 item: Some(ItemStack::new(ItemKind::Diamond, 20, None)),
-            }],
+            }]
+            .into(),
             carried_item: None,
         };
         let packet2 = ClickSlotC2s {
@@ -490,7 +493,8 @@ mod tests {
             slot_changes: vec![SlotChange {
                 idx: 0,
                 item: Some(ItemStack::new(ItemKind::Diamond, 30, None)),
-            }],
+            }]
+            .into(),
             carried_item: None,
         };
 
@@ -516,7 +520,8 @@ mod tests {
             slot_changes: vec![SlotChange {
                 idx: 0,
                 item: Some(ItemStack::new(ItemKind::Diamond, 64, None)),
-            }],
+            }]
+            .into(),
             carried_item: Some(ItemStack::new(ItemKind::Diamond, 20, None)),
         };
 
@@ -539,7 +544,8 @@ mod tests {
             slot_changes: vec![SlotChange {
                 idx: 0,
                 item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
-            }],
+            }]
+            .into(),
             carried_item: Some(ItemStack::new(ItemKind::IronIngot, 2, None)),
         };
 
@@ -563,7 +569,8 @@ mod tests {
             slot_changes: vec![SlotChange {
                 idx: 0,
                 item: Some(ItemStack::new(ItemKind::Diamond, 22, None)),
-            }],
+            }]
+            .into(),
             carried_item: None,
         };
         let packet2 = ClickSlotC2s {
@@ -575,7 +582,8 @@ mod tests {
             slot_changes: vec![SlotChange {
                 idx: 0,
                 item: Some(ItemStack::new(ItemKind::Diamond, 32, None)),
-            }],
+            }]
+            .into(),
             carried_item: None,
         };
         let packet3 = ClickSlotC2s {
@@ -593,7 +601,8 @@ mod tests {
                     idx: 1,
                     item: Some(ItemStack::new(ItemKind::Diamond, 22, None)),
                 },
-            ],
+            ]
+            .into(),
             carried_item: None,
         };
 
@@ -628,7 +637,8 @@ mod tests {
                         idx: 36,
                         item: Some(ItemStack::new(ItemKind::GoldIngot, 2, None)),
                     },
-                ],
+                ]
+                .into(),
                 carried_item: None,
             },
             ClickSlotC2s {
@@ -643,7 +653,8 @@ mod tests {
                         idx: 36,
                         item: Some(ItemStack::new(ItemKind::GoldIngot, 2, None)),
                     },
-                ],
+                ]
+                .into(),
                 carried_item: None,
             },
             ClickSlotC2s {
@@ -652,7 +663,7 @@ mod tests {
                 mode: ClickMode::Click,
                 state_id: VarInt(0),
                 slot_idx: 9,
-                slot_changes: vec![SlotChange { idx: 9, item: None }],
+                slot_changes: vec![SlotChange { idx: 9, item: None }].into(),
                 carried_item: Some(ItemStack::new(ItemKind::GoldIngot, 2, None)),
             },
             ClickSlotC2s {
@@ -664,7 +675,8 @@ mod tests {
                 slot_changes: vec![SlotChange {
                     idx: 9,
                     item: Some(ItemStack::new(ItemKind::GoldIngot, 1, None)),
-                }],
+                }]
+                .into(),
                 carried_item: None,
             },
         ];
@@ -699,7 +711,8 @@ mod tests {
                     item: Some(ItemStack::new(ItemKind::Diamond, 64, None)),
                 },
                 SlotChange { idx: 9, item: None },
-            ],
+            ]
+            .into(),
             carried_item: None,
         };
 
@@ -719,7 +732,7 @@ mod tests {
             slot_idx: 9,
             button: 0,
             mode: ClickMode::Click,
-            slot_changes: vec![SlotChange { idx: 9, item: None }],
+            slot_changes: vec![SlotChange { idx: 9, item: None }].into(),
             carried_item: Some(ItemStack::new(ItemKind::Apple, 100, None)),
         };
 
@@ -741,7 +754,8 @@ mod tests {
             slot_changes: vec![SlotChange {
                 idx: 9,
                 item: Some(ItemStack::new(ItemKind::Apple, 64, None)),
-            }],
+            }]
+            .into(),
             carried_item: Some(ItemStack::new(ItemKind::Apple, 36, None)),
         };
 
