@@ -38,7 +38,7 @@ This can be tested locally by using `zola serve`.
 ### Contribute to the book
 
 The book is made using mdbook and the source file lay in `./book/`.
-See the [offical documentation](https://rust-lang.github.io/mdBook/format/index.html) for how to create new pages.
+See the [official documentation](https://rust-lang.github.io/mdBook/format/index.html) for how to create new pages.
 
 This can be tested locally by using `mdbook serve`.
 
