@@ -1,28 +1,24 @@
 use std::borrow::Cow;
-use std::collections::BTreeMap;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use valence_ident::Ident;
 use valence_protocol::encode::{PacketWriter, WritePacket};
-use valence_protocol::packets::play::synchronize_tags_s2c::RegistryValue;
+pub use valence_protocol::packets::play::synchronize_tags_s2c::RegistryMap;
 use valence_protocol::packets::play::SynchronizeTagsS2c;
 use valence_server_common::Server;
 
 use crate::RegistrySet;
 
-pub type RegistryMap = BTreeMap<Ident<String>, RegistryValue>;
+#[derive(Debug, Resource, Default)]
+pub struct TagsRegistry {
+    pub registries: RegistryMap,
+    cached_packet: Vec<u8>,
+}
 
 pub(super) fn build(app: &mut App) {
     app.init_resource::<TagsRegistry>()
         .add_systems(PreStartup, init_tags_registry)
         .add_systems(PostUpdate, cache_tags_packet.in_set(RegistrySet));
-}
-
-#[derive(Debug, Resource, Default)]
-pub struct TagsRegistry {
-    pub registries: RegistryMap,
-    cached_packet: Vec<u8>,
 }
 
 impl TagsRegistry {
@@ -32,14 +28,16 @@ impl TagsRegistry {
         }
     }
 
-    pub fn sync_tags_packet(&self) -> &Vec<u8> {
+    /// Returns bytes of the cached synchronize tags packet.
+    pub fn sync_tags_packet(&self) -> &[u8] {
         &self.cached_packet
     }
 }
 
 fn init_tags_registry(mut tags: ResMut<TagsRegistry>) {
     let registries = serde_json::from_str::<RegistryMap>(include_str!("../extracted/tags.json"))
-        .expect("tags.json is invalid");
+        .expect("tags.json doesn't have expected structure");
+
     tags.registries = registries;
 }
 

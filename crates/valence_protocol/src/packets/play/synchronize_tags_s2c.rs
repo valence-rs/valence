@@ -7,7 +7,7 @@ use crate::{Decode, Encode, Packet, VarInt};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 pub struct SynchronizeTagsS2c<'a> {
-    pub groups: Cow<'a, BTreeMap<Ident<String>, RegistryValue>>,
+    pub groups: Cow<'a, RegistryMap>,
 }
 
-pub type RegistryValue = BTreeMap<Ident<String>, Vec<VarInt>>;
+pub type RegistryMap = BTreeMap<Ident<String>, BTreeMap<Ident<String>, Vec<VarInt>>>;
