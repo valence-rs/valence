@@ -29,7 +29,7 @@ use valence_protocol::packets::play::{
     DisconnectS2c, EntitiesDestroyS2c, EntityStatusS2c, EntityTrackerUpdateS2c,
     EntityVelocityUpdateS2c, GameStateChangeS2c, ParticleS2c, PlaySoundS2c, UnloadChunkS2c,
 };
-use valence_protocol::profile::PropertyMap;
+use valence_protocol::profile::Property;
 use valence_protocol::sound::{Sound, SoundCategory, SoundId};
 use valence_protocol::text::{IntoText, Text};
 use valence_protocol::var_int::VarInt;
@@ -192,7 +192,7 @@ pub struct ClientBundleArgs {
     /// IP address of the client.
     pub ip: IpAddr,
     /// Properties of this client from the game profile.
-    pub properties: PropertyMap,
+    pub properties: Vec<Property>,
     /// The abstract socket connection.
     pub conn: Box<dyn ClientConnection>,
     /// The packet encoder to use. This should be in sync with [`Self::conn`].
@@ -430,8 +430,15 @@ impl fmt::Display for Username {
     }
 }
 
+/// Player properties from the game profile.
 #[derive(Component, Clone, PartialEq, Eq, Default, Debug, Deref, DerefMut, From, Into)]
-pub struct Properties(pub PropertyMap);
+pub struct Properties(pub Vec<Property>);
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct PropertyValue {
+    pub value: String,
+    pub signature: Option<String>,
+}
 
 #[derive(Component, Clone, PartialEq, Eq, Debug, Deref)]
 pub struct Ip(pub IpAddr);

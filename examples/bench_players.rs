@@ -5,7 +5,6 @@ use std::time::Instant;
 use valence::client::{VisibleChunkLayer, VisibleEntityLayers};
 use valence::prelude::*;
 use valence::ServerSettings;
-use valence_server::CompressionThreshold;
 
 const SPAWN_Y: i32 = 64;
 
@@ -15,7 +14,7 @@ struct TickStart(Instant);
 fn main() {
     App::new()
         .insert_resource(ServerSettings {
-            compression_threshold: CompressionThreshold::OFF,
+            compression_threshold: Default::default(),
             ..Default::default()
         })
         .insert_resource(NetworkSettings {

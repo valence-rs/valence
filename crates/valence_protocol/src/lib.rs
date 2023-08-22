@@ -107,12 +107,12 @@ pub struct CompressionThreshold(pub i32);
 
 impl CompressionThreshold {
     /// No compression.
-    pub const OFF: Self = Self(-1);
+    pub const DEFAULT: Self = Self(-1);
 }
 
 impl Default for CompressionThreshold {
     fn default() -> Self {
-        Self(256)
+        Self::DEFAULT
     }
 }
 

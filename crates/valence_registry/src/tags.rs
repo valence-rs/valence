@@ -28,7 +28,7 @@ impl TagsRegistry {
         }
     }
 
-    /// Returns bytes of the cached synchronize tags packet.
+    /// Returns bytes of the cached [`SynchronizeTagsS2c`] packet.
     pub fn sync_tags_packet(&self) -> &[u8] {
         &self.cached_packet
     }
@@ -36,7 +36,7 @@ impl TagsRegistry {
 
 fn init_tags_registry(mut tags: ResMut<TagsRegistry>) {
     let registries = serde_json::from_str::<RegistryMap>(include_str!("../extracted/tags.json"))
-        .expect("tags.json doesn't have expected structure");
+        .expect("tags.json must have expected structure");
 
     tags.registries = registries;
 }
@@ -47,6 +47,7 @@ pub(crate) fn cache_tags_packet(server: Res<Server>, tags: ResMut<TagsRegistry>)
         let packet = tags.build_synchronize_tags();
         let mut bytes = vec![];
         let mut writer = PacketWriter::new(&mut bytes, server.compression_threshold());
+
         writer.write_packet(&packet);
         tags.cached_packet = bytes;
     }

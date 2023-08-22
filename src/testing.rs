@@ -15,7 +15,7 @@ use valence_server::keepalive::KeepaliveSettings;
 use valence_server::protocol::decode::PacketFrame;
 use valence_server::protocol::packets::play::{PlayerPositionLookS2c, TeleportConfirmC2s};
 use valence_server::protocol::{Decode, Encode, Packet, PacketDecoder, PacketEncoder, VarInt};
-use valence_server::{ChunkLayer, CompressionThreshold, EntityLayer, Server, ServerSettings};
+use valence_server::{ChunkLayer, EntityLayer, Server, ServerSettings};
 
 use crate::client::{ClientBundle, ClientConnection, ReceivedPacket};
 use crate::DefaultPlugins;
@@ -42,7 +42,7 @@ impl ScenarioSingleClient {
             period: Duration::MAX,
         })
         .insert_resource(ServerSettings {
-            compression_threshold: CompressionThreshold::OFF,
+            compression_threshold: Default::default(),
             ..Default::default()
         })
         .add_plugins(DefaultPlugins.build().disable::<NetworkPlugin>());

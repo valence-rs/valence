@@ -1,55 +1,13 @@
-use std::collections::BTreeMap;
-use std::io::Write;
-
-use anyhow::Context;
 use base64::prelude::*;
 use serde::{Deserialize, Serialize};
 use url::Url;
-use uuid::Uuid;
 
-use crate::{Bounded, Decode, Encode};
+use crate::{Decode, Encode};
 
-#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct GameProfile<S: Ord = String> {
-    /// UUID of the player.
-    pub id: Uuid,
-    /// Player username.
+/// A property from the game profile.
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Encode, Decode)]
+pub struct Property<S = String> {
     pub name: S,
-    /// Player properties. This often contains "textures" which hold the
-    /// player's skin and cape.
-    pub properties: PropertyMap<S>,
-}
-
-impl<S> Encode for GameProfile<S>
-where
-    S: AsRef<str> + Ord + Encode,
-{
-    fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
-        self.id.encode(&mut w)?;
-        Bounded::<_, 16>(self.name.as_ref()).encode(&mut w)?;
-        self.properties.encode(w)
-    }
-}
-
-impl<'a, S> Decode<'a> for GameProfile<S>
-where
-    S: Decode<'a> + Ord + From<&'a str>,
-{
-    fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
-        Ok(Self {
-            id: Decode::decode(r)?,
-            name: Bounded::<&str, 16>::decode(r)?.0.into(),
-            properties: Decode::decode(r)?,
-        })
-    }
-}
-
-/// Maps property names to property values.
-pub type PropertyMap<S = String> = BTreeMap<S, PropertyValue<S>>;
-
-/// Property values from a player's game profile.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Serialize, Deserialize)]
-pub struct PropertyValue<S = String> {
     pub value: S,
     pub signature: Option<S>,
 }
@@ -65,14 +23,6 @@ pub struct PlayerTextures {
 }
 
 impl PlayerTextures {
-    pub fn try_from_properties(props: &PropertyMap) -> anyhow::Result<Self> {
-        let textures = props
-            .get("textures")
-            .context("no textures in propery map")?;
-
-        Self::try_from_textures(&textures.value)
-    }
-
     /// Constructs player textures from the "textures" property of the game
     /// profile.
     ///

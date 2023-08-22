@@ -5,7 +5,7 @@ use bitfield_struct::bitfield;
 use uuid::Uuid;
 use valence_text::Text;
 
-use crate::profile::PropertyMap;
+use crate::profile::Property;
 use crate::{Decode, Encode, GameMode, Packet, VarInt};
 
 #[derive(Clone, Debug, Packet)]
@@ -117,7 +117,7 @@ pub struct PlayerListActions {
 pub struct PlayerListEntry<'a> {
     pub player_uuid: Uuid,
     pub username: &'a str,
-    pub properties: Cow<'a, PropertyMap>,
+    pub properties: Cow<'a, [Property]>,
     pub chat_data: Option<ChatData<'a>>,
     pub listed: bool,
     pub ping: i32,

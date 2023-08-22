@@ -11,6 +11,7 @@ use hmac::{Hmac, Mac};
 use num_bigint::BigInt;
 use reqwest::StatusCode;
 use rsa::Pkcs1v15Encrypt;
+use serde::Deserialize;
 use serde_json::{json, Value};
 use sha1::Sha1;
 use sha2::{Digest, Sha256};
@@ -18,8 +19,9 @@ use tokio::net::{TcpListener, TcpStream};
 use tracing::{error, info, trace, warn};
 use uuid::Uuid;
 use valence_lang::keys;
-use valence_protocol::profile::{GameProfile, PropertyMap};
+use valence_protocol::profile::Property;
 use valence_protocol::Decode;
+use valence_server::client::Properties;
 use valence_server::protocol::packets::handshaking::handshake_c2s::HandshakeNextState;
 use valence_server::protocol::packets::handshaking::HandshakeC2s;
 use valence_server::protocol::packets::login::{
@@ -149,11 +151,11 @@ async fn handle_handshake(
     match next_state {
         HandshakeNextState::Status => handle_status(shared, io, remote_addr, handshake)
             .await
-            .context("error handling status"),
+            .context("handling status"),
         HandshakeNextState::Login => {
             match handle_login(&shared, &mut io, remote_addr, handshake)
                 .await
-                .context("error handling login")?
+                .context("handling login")?
             {
                 Some((info, cleanup)) => {
                     let client = io.into_client_args(
@@ -392,6 +394,13 @@ async fn login_online(
         }
     }
 
+    #[derive(Deserialize)]
+    struct GameProfile {
+        id: Uuid,
+        name: String,
+        properties: Vec<Property>,
+    }
+
     let profile: GameProfile = resp.json().await.context("parsing game profile")?;
 
     ensure!(profile.name == username, "usernames do not match");
@@ -400,7 +409,7 @@ async fn login_online(
         uuid: profile.id,
         username,
         ip: remote_addr.ip(),
-        properties: profile.properties.into(),
+        properties: Properties(profile.properties),
     })
 }
 
@@ -447,16 +456,16 @@ fn login_bungeecord(
     // Read properties and get textures
     // Properties of player's game profile, only given if ip_forward and online_mode
     // on bungee both are true
-    let properties: PropertyMap = match data.get(3) {
+    let properties: Vec<Property> = match data.get(3) {
         Some(properties) => serde_json::from_str(properties)
             .context("failed to parse BungeeCord player properties")?,
-        None => PropertyMap::default(),
+        None => vec![],
     };
 
     Ok(NewClientInfo {
         uuid,
         username,
-        properties: properties.into(),
+        properties: Properties(properties),
         ip,
     })
 }
@@ -520,7 +529,7 @@ async fn login_velocity(
     );
 
     // Read game profile properties
-    let properties = PropertyMap::decode(&mut data_without_signature)
+    let properties = Vec::<Property>::decode(&mut data_without_signature)
         .context("decoding velocity game profile properties")?;
 
     if version >= VELOCITY_MODERN_FORWARDING_WITH_KEY_V2 {
@@ -530,7 +539,7 @@ async fn login_velocity(
     Ok(NewClientInfo {
         uuid,
         username,
-        properties: properties.into(),
+        properties: Properties(properties),
         ip: remote_addr,
     })
 }

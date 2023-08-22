@@ -112,6 +112,8 @@ where
             "length of B-tree map ({len}) exceeds i32::MAX"
         );
 
+        VarInt(len as i32).encode(&mut w)?;
+
         for pair in self.iter() {
             pair.encode(&mut w)?;
         }
@@ -158,6 +160,8 @@ where
             len <= i32::MAX as usize,
             "length of hash map ({len}) exceeds i32::MAX"
         );
+
+        VarInt(len as i32).encode(&mut w)?;
 
         for pair in self.iter() {
             pair.encode(&mut w)?;

@@ -220,7 +220,8 @@ impl PacketFrame {
     {
         ensure!(
             P::ID == self.id,
-            "packet ID mismatch: expected {}, got {}",
+            "packet ID mismatch while decoding '{}': expected {}, got {}",
+            P::NAME,
             P::ID,
             self.id
         );
@@ -231,7 +232,7 @@ impl PacketFrame {
 
         ensure!(
             r.is_empty(),
-            "missed {} bytes while decoding packet {}",
+            "missed {} bytes while decoding '{}'",
             r.len(),
             P::NAME
         );
