@@ -29,7 +29,7 @@ Rust is a language empowering us to build reliable and efficient software. This 
 
 Get the dependency:
 
-```sh
+```
 $ cargo add Valence
 ```
 
