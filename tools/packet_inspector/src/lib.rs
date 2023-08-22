@@ -75,7 +75,7 @@ impl Proxy {
 
         let current_state_inner = Arc::new(RwLock::new(PacketState::Handshaking));
         let threshold_inner: Arc<RwLock<CompressionThreshold>> =
-            Arc::new(RwLock::new(CompressionThreshold::OFF));
+            Arc::new(RwLock::new(CompressionThreshold::DEFAULT));
 
         let current_state = current_state_inner.clone();
         let threshold = threshold_inner.clone();

@@ -158,7 +158,7 @@ impl PacketIo {
             stream,
             enc: PacketEncoder::new(),
             dec: PacketDecoder::new(),
-            threshold: CompressionThreshold::OFF,
+            threshold: CompressionThreshold::DEFAULT,
         }
     }
 

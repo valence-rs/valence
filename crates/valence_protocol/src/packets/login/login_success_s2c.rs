@@ -2,7 +2,8 @@ use std::borrow::Cow;
 
 use uuid::Uuid;
 
-use crate::{Bounded, Decode, Encode, Packet, PacketState, profile::Property};
+use crate::profile::Property;
+use crate::{Bounded, Decode, Encode, Packet, PacketState};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 #[packet(state = PacketState::Login)]
