@@ -12,6 +12,7 @@ use bevy_ecs::prelude::*;
 use bevy_ecs::system::SystemParam;
 pub use bevy_hierarchy;
 use bevy_hierarchy::{Children, HierarchyPlugin, Parent};
+use derive_more::{Deref, DerefMut};
 use event::{handle_advancement_tab_change, AdvancementTabChangeEvent};
 use rustc_hash::FxHashMap;
 use valence_server::client::{Client, FlushPacketsSet, SpawnClientsSet};
@@ -321,7 +322,7 @@ fn send_advancement_update_packet(
 }
 
 /// Advancement's id. May not be updated.
-#[derive(Component)]
+#[derive(Component, Deref)]
 pub struct Advancement(Ident<Cow<'static, str>>);
 
 impl Advancement {
@@ -366,7 +367,7 @@ impl AdvancementDisplay {
 }
 
 /// Criteria's identifier. May not be updated
-#[derive(Component)]
+#[derive(Component, Deref)]
 pub struct AdvancementCriteria(Ident<Cow<'static, str>>);
 
 impl AdvancementCriteria {
@@ -382,7 +383,7 @@ impl AdvancementCriteria {
 /// Requirements for advancement to be completed.
 /// All columns should be completed, column is completed when any of criteria in
 /// this column is completed.
-#[derive(Component, Default)]
+#[derive(Component, Default, Deref, DerefMut)]
 pub struct AdvancementRequirements(pub Vec<Vec<Entity>>);
 
 #[derive(Component, Default)]

@@ -15,3 +15,4 @@ valence_server.workspace = true
 bitfield-struct.workspace = true
 bevy_app.workspace = true
 bevy_ecs.workspace = true
+derive_more.workspace = true

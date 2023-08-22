@@ -145,7 +145,7 @@ fn event_handler(
                 continue;
             };
 
-            let Some(textures) = properties.textures() else {
+            let Some(textures) = properties.get("textures") else {
                 continue;
             };
 

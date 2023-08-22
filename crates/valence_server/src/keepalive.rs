@@ -2,6 +2,7 @@ use std::time::{Duration, Instant};
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+use derive_more::Deref;
 use tracing::warn;
 use valence_protocol::packets::play::{KeepAliveC2s, KeepAliveS2c};
 use valence_protocol::WritePacket;
@@ -41,7 +42,7 @@ pub struct KeepaliveState {
 }
 
 /// Delay measured in milliseconds. Negative values indicate absence.
-#[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Deref)]
 pub struct Ping(pub i32);
 
 impl Default for Ping {

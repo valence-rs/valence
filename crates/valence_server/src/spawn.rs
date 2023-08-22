@@ -5,6 +5,7 @@ use std::collections::BTreeSet;
 
 use bevy_ecs::prelude::*;
 use bevy_ecs::query::WorldQuery;
+use derive_more::{Deref, DerefMut};
 use valence_entity::EntityLayerId;
 use valence_protocol::packets::play::{GameJoinS2c, PlayerRespawnS2c, PlayerSpawnPositionS2c};
 use valence_protocol::{BlockPos, GameMode, GlobalPos, Ident, VarInt, WritePacket};
@@ -19,32 +20,32 @@ use crate::layer::ChunkLayer;
 #[derive(Component, Clone, PartialEq, Eq, Default, Debug)]
 pub struct DeathLocation(pub Option<(Ident<String>, BlockPos)>);
 
-#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug, Deref, DerefMut)]
 pub struct IsHardcore(pub bool);
 
 /// Hashed world seed used for biome noise.
-#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug, Deref, DerefMut)]
 pub struct HashedSeed(pub u64);
 
-#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug, Deref, DerefMut)]
 pub struct ReducedDebugInfo(pub bool);
 
-#[derive(Component, Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, Debug, Deref, DerefMut)]
 pub struct HasRespawnScreen(pub bool);
 
 /// If the client is spawning into a debug world.
-#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug, Deref, DerefMut)]
 pub struct IsDebug(pub bool);
 
 /// Changes the perceived horizon line (used for superflat worlds).
-#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug, Deref, DerefMut)]
 pub struct IsFlat(pub bool);
 
-#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug, Deref, DerefMut)]
 pub struct PortalCooldown(pub i32);
 
 /// The initial previous gamemode. Used for the F3+F4 gamemode switcher.
-#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug, Deref, DerefMut)]
 pub struct PrevGameMode(pub Option<GameMode>);
 
 impl Default for HasRespawnScreen {

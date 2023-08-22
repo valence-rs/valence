@@ -22,6 +22,7 @@ use std::borrow::Cow;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+use derive_more::{Deref, DerefMut};
 use valence_server::client::{Client, Properties, Username};
 use valence_server::keepalive::Ping;
 use valence_server::layer::UpdateLayersPreClientSet;
@@ -140,11 +141,11 @@ pub struct PlayerListEntryBundle {
 pub struct PlayerListEntry;
 
 /// Displayed name for a player list entry. Appears as [`Username`] if `None`.
-#[derive(Component, Default, Debug)]
+#[derive(Component, Default, Debug, Deref, DerefMut)]
 pub struct DisplayName(pub Option<Text>);
 
 /// If a player list entry is visible. Defaults to `true`.
-#[derive(Component, Copy, Clone, Debug)]
+#[derive(Component, Copy, Clone, Debug, Deref, DerefMut)]
 pub struct Listed(pub bool);
 
 impl Default for Listed {

@@ -25,6 +25,7 @@ use std::ops::Range;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+use derive_more::{Deref, DerefMut};
 use tracing::{debug, warn};
 use valence_server::client::{Client, FlushPacketsSet, SpawnClientsSet};
 use valence_server::event_loop::{EventLoopPreUpdate, PacketEvent};
@@ -401,7 +402,7 @@ impl ClientInventoryState {
 }
 
 /// Indicates which hotbar slot the player is currently holding.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Deref)]
 pub struct HeldItem {
     held_item_slot: u16,
 }
@@ -416,7 +417,7 @@ impl HeldItem {
 
 /// The item stack that the client thinks it's holding under the mouse
 /// cursor.
-#[derive(Component, Clone, PartialEq, Default, Debug)]
+#[derive(Component, Clone, PartialEq, Default, Debug, Deref, DerefMut)]
 pub struct CursorItem(pub Option<ItemStack>);
 
 /// Used to indicate that the client with this component is currently viewing

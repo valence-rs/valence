@@ -64,7 +64,7 @@ fn setup(
     commands.spawn(layer);
 
     commands.insert_resource(LifeBoard {
-        paused: true,
+        playing: false,
         board: vec![false; BOARD_SIZE_X * BOARD_SIZE_Z].into(),
         board_buf: vec![false; BOARD_SIZE_X * BOARD_SIZE_Z].into(),
     });
@@ -112,7 +112,7 @@ fn init_clients(
 
 #[derive(Resource)]
 struct LifeBoard {
-    pub paused: bool,
+    pub playing: bool,
     board: Box<[bool]>,
     board_buf: Box<[bool]>,
 }
@@ -188,7 +188,7 @@ fn update_board(
     mut layers: Query<&mut ChunkLayer>,
     server: Res<Server>,
 ) {
-    if !board.paused && server.current_tick() % 2 == 0 {
+    if board.playing && server.current_tick() % 2 == 0 {
         board.update();
     }
 
@@ -210,18 +210,18 @@ fn update_board(
 fn pause_on_crouch(
     mut events: EventReader<SneakEvent>,
     mut board: ResMut<LifeBoard>,
-    mut clients: Query<&mut Client>,
+    mut layers: Query<&mut EntityLayer>,
 ) {
     for event in events.iter() {
         if event.state == SneakState::Start {
-            board.paused = !board.paused;
+            let mut layer = layers.single_mut();
 
-            for mut client in clients.iter_mut() {
-                if board.paused {
-                    client.set_action_bar("Paused".italic().color(Color::RED));
-                } else {
-                    client.set_action_bar("Playing".italic().color(Color::GREEN));
-                }
+            if board.playing {
+                board.playing = false;
+                layer.set_action_bar("Paused".italic().color(Color::RED));
+            } else {
+                board.playing = true;
+                layer.set_action_bar("Playing".italic().color(Color::GREEN));
             }
         }
     }

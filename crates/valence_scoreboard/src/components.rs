@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use bevy_ecs::prelude::*;
+use derive_more::{Deref, DerefMut};
 use valence_server::entity::EntityLayerId;
 use valence_server::protocol::packets::play::scoreboard_display_s2c::ScoreboardPosition;
 use valence_server::protocol::packets::play::scoreboard_objective_update_s2c::ObjectiveRenderType;
@@ -12,7 +13,7 @@ use valence_server::Text;
 /// Limited to 16 characters.
 ///
 /// Directly analogous to an Objective's Name.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Component)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Component, Deref)]
 pub struct Objective(pub(crate) String);
 
 impl Objective {
@@ -34,7 +35,7 @@ impl Objective {
 
 /// Optional display name for an objective. If not present, the objective's name
 /// is used.
-#[derive(Debug, Clone, PartialEq, Component)]
+#[derive(Debug, Clone, PartialEq, Component, Deref, DerefMut)]
 pub struct ObjectiveDisplay(pub Text);
 
 /// A mapping of keys to their scores.

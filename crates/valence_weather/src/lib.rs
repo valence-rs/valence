@@ -20,6 +20,7 @@
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+use derive_more::{Deref, DerefMut};
 use valence_server::client::{Client, FlushPacketsSet, UpdateClientsSet, VisibleChunkLayer};
 use valence_server::protocol::packets::play::game_state_change_s2c::GameEventKind;
 use valence_server::protocol::packets::play::GameStateChangeS2c;
@@ -56,12 +57,12 @@ pub struct WeatherBundle {
 
 /// Component containing the rain level. Valid values are in \[0, 1] with 0
 /// being no rain and 1 being full rain.
-#[derive(Component, Default, PartialEq, PartialOrd)]
+#[derive(Component, Default, PartialEq, PartialOrd, Deref, DerefMut)]
 pub struct Rain(pub f32);
 
 /// Component containing the thunder level. Valid values are in \[0, 1] with 0
 /// being no rain and 1 being full rain.
-#[derive(Component, Default, PartialEq, PartialOrd)]
+#[derive(Component, Default, PartialEq, PartialOrd, Deref, DerefMut)]
 pub struct Thunder(pub f32);
 
 fn init_weather_on_layer_join(
