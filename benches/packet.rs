@@ -9,6 +9,8 @@ use valence::protocol::encode::{PacketEncoder, PacketWriter, WritePacket};
 use valence::protocol::packets::play::{ChunkDataS2c, EntitySpawnS2c, PlayerListHeaderS2c};
 use valence::protocol::{ByteAngle, FixedArray, VarInt};
 use valence::text::IntoText;
+use valence_server::protocol::Velocity;
+use valence_server::CompressionThreshold;
 
 pub fn packet(c: &mut Criterion) {
     let mut group = c.benchmark_group("packet");
@@ -52,7 +54,7 @@ pub fn packet(c: &mut Criterion) {
         yaw: ByteAngle(100),
         head_yaw: ByteAngle(50),
         data: VarInt(i32::MIN),
-        velocity: [12, 34, 56],
+        velocity: Velocity([12, 34, 56]),
     };
 
     group.bench_function("encode_chunk_data", |b| {
@@ -88,7 +90,7 @@ pub fn packet(c: &mut Criterion) {
         });
     });
 
-    encoder.set_compression(Some(256));
+    encoder.set_compression(CompressionThreshold(-1));
 
     group.bench_function("encode_chunk_data_compressed", |b| {
         b.iter(|| {
@@ -126,7 +128,7 @@ pub fn packet(c: &mut Criterion) {
     let mut decoder = PacketDecoder::new();
     let mut packet_buf = vec![];
 
-    PacketWriter::new(&mut packet_buf, None).write_packet(&chunk_data_packet);
+    PacketWriter::new(&mut packet_buf, CompressionThreshold(-1)).write_packet(&chunk_data_packet);
 
     group.bench_function("decode_chunk_data", |b| {
         b.iter(|| {
@@ -145,7 +147,8 @@ pub fn packet(c: &mut Criterion) {
     });
 
     packet_buf.clear();
-    PacketWriter::new(&mut packet_buf, None).write_packet(&player_list_header_packet);
+    PacketWriter::new(&mut packet_buf, CompressionThreshold(-1))
+        .write_packet(&player_list_header_packet);
 
     group.bench_function("decode_player_list_header", |b| {
         b.iter(|| {
@@ -164,7 +167,7 @@ pub fn packet(c: &mut Criterion) {
     });
 
     packet_buf.clear();
-    PacketWriter::new(&mut packet_buf, None).write_packet(&spawn_entity_packet);
+    PacketWriter::new(&mut packet_buf, CompressionThreshold(-1)).write_packet(&spawn_entity_packet);
 
     group.bench_function("decode_entity_spawn", |b| {
         b.iter(|| {
@@ -182,10 +185,10 @@ pub fn packet(c: &mut Criterion) {
         });
     });
 
-    decoder.set_compression(Some(256));
+    decoder.set_compression(256.into());
 
     packet_buf.clear();
-    PacketWriter::new(&mut packet_buf, Some(256)).write_packet(&chunk_data_packet);
+    PacketWriter::new(&mut packet_buf, 256.into()).write_packet(&chunk_data_packet);
 
     group.bench_function("decode_chunk_data_compressed", |b| {
         b.iter(|| {
@@ -204,7 +207,7 @@ pub fn packet(c: &mut Criterion) {
     });
 
     packet_buf.clear();
-    PacketWriter::new(&mut packet_buf, Some(256)).write_packet(&player_list_header_packet);
+    PacketWriter::new(&mut packet_buf, 256.into()).write_packet(&player_list_header_packet);
 
     group.bench_function("decode_player_list_header_compressed", |b| {
         b.iter(|| {
@@ -223,7 +226,7 @@ pub fn packet(c: &mut Criterion) {
     });
 
     packet_buf.clear();
-    PacketWriter::new(&mut packet_buf, Some(256)).write_packet(&spawn_entity_packet);
+    PacketWriter::new(&mut packet_buf, 256.into()).write_packet(&spawn_entity_packet);
 
     group.bench_function("decode_spawn_entity_compressed", |b| {
         b.iter(|| {

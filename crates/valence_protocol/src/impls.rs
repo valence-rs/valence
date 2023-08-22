@@ -1,4 +1,5 @@
-//! Implementations of [`Encode`] and [`Decode`] on foreign types.
+//! Implementations of [`Encode`](crate::Encode) and [`Decode`](crate::Decode)
+//! on foreign types.
 
 mod map;
 mod math;
