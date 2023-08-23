@@ -11,7 +11,7 @@ use derive_more::{AsRef, Deref, DerefMut, From};
 /// - **arrays/slices**: The maximum number of elements.
 /// - **strings**: The maximum number of utf16 code units.
 /// - **[`RawBytes`]**: The maximum number of bytes.
-/// 
+///
 /// [`RawBytes`]: crate::RawBytes
 #[derive(
     Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Deref, DerefMut, AsRef, From,
