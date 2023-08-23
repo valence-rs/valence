@@ -4,4 +4,3 @@
 
 # Developer Guide
 
-- [First Steps](first-steps.md)

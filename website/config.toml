@@ -1,7 +1,7 @@
 # The URL the site will be built for
 base_url = "/"
 
-title = "Valence - A minecraft server framework"
+title = "Valence - A Minecraft server framework"
 
 # Whether to automatically compile all Sass files in the sass directory
 compile_sass = true
@@ -21,7 +21,7 @@ highlight_themes_css = [{ theme = "one-dark", filename = "syntax-theme.css" }]
 [extra]
 juice_extra_menu = [
   { title = "Discord", link = "https://discord.gg/8Fqqy9XrYb" },
-  { title = "Github", link = "https://github.com/valence-rs/valence" },
+  { title = "GitHub", link = "https://github.com/valence-rs/valence" },
 ]
 
 juice_logo_name = "Valence"
