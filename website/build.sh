@@ -7,7 +7,7 @@
 # - cargo      https://doc.rust-lang.org/cargo/getting-started/installation.html
 # - mdBook     https://rust-lang.github.io/mdBook/guide/installation.html
 
-set -euo pipefail
+set -eu
 
 # cd into this directory
 cd "$(dirname "$0")"
