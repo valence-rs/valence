@@ -1,0 +1,29 @@
+# The URL the site will be built for
+base_url = "/"
+
+title = "Valence - A Minecraft server framework"
+
+# Whether to automatically compile all Sass files in the sass directory
+compile_sass = true
+
+# When set to "true", the generated HTML files are minified.
+minify_html = true
+
+[markdown]
+# Whether to do syntax highlighting
+# Theme can be customised by setting the `highlight_theme` variable to a theme supported by Zola
+highlight_code = true
+
+# The theme to use for code highlighting.
+highlight_theme = "css"
+highlight_themes_css = [{ theme = "one-dark", filename = "syntax-theme.css" }]
+
+[extra]
+juice_extra_menu = [
+  { title = "Discord", link = "https://discord.gg/8Fqqy9XrYb" },
+  { title = "GitHub", link = "https://github.com/valence-rs/valence" },
+]
+
+juice_logo_name = "Valence"
+juice_logo_path = "valence.svg"
+repository_url = "https://github.com/valence-rs/valence"
