@@ -8,8 +8,11 @@ use derive_more::{AsRef, Deref, DerefMut, From};
 ///
 /// What exactly `MAX` represents depends on the type `T`. Here are some
 /// instances:
-/// - **
-/// - **strings**: The maximum number of _characters_ in the string.
+/// - **arrays/slices**: The maximum number of elements.
+/// - **strings**: The maximum number of utf16 code units.
+/// - **[`RawBytes`]**: The maximum number of bytes.
+/// 
+/// [`RawBytes`]: crate::RawBytes
 #[derive(
     Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Deref, DerefMut, AsRef, From,
 )]
