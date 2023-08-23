@@ -41,8 +41,9 @@ impl<'a, const MAX_CHARS: usize> Decode<'a> for Bounded<&'a str, MAX_CHARS> {
         ensure!(len >= 0, "attempt to decode string with negative length");
         let len = len as usize;
         ensure!(
-            len < r.len(),
-            "not enough data remaining to decode string of {len} bytes"
+            len <= r.len(),
+            "not enough data remaining ({} bytes) to decode string of {len} bytes",
+            r.len()
         );
 
         let (res, remaining) = r.split_at(len);
