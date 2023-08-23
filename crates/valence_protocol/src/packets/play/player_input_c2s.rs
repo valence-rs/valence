@@ -1,7 +1,8 @@
-use super::*;
+use bitfield_struct::bitfield;
+
+use crate::{Decode, Encode, Packet};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::PLAYER_INPUT_C2S)]
 pub struct PlayerInputC2s {
     pub sideways: f32,
     pub forward: f32,

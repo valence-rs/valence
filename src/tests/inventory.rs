@@ -159,7 +159,8 @@ fn test_should_modify_player_inventory_click_slot() {
         slot_changes: vec![SlotChange {
             idx: 20,
             item: None,
-        }],
+        }]
+        .into(),
         carried_item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
     });
 
@@ -304,7 +305,8 @@ fn test_should_modify_open_inventory_click_slot() {
         slot_changes: vec![SlotChange {
             idx: 20,
             item: None,
-        }],
+        }]
+        .into(),
         carried_item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
     });
 
@@ -766,7 +768,7 @@ mod dropping_items {
             slot_idx: -999,
             button: 0,
             mode: ClickMode::Click,
-            slot_changes: vec![],
+            slot_changes: vec![].into(),
             carried_item: None,
         });
 
@@ -832,7 +834,8 @@ mod dropping_items {
             slot_changes: vec![SlotChange {
                 idx: 40,
                 item: Some(ItemStack::new(ItemKind::IronIngot, 31, None)),
-            }],
+            }]
+            .into(),
             carried_item: None,
         });
 
@@ -891,7 +894,8 @@ mod dropping_items {
             slot_changes: vec![SlotChange {
                 idx: 40,
                 item: None,
-            }],
+            }]
+            .into(),
             carried_item: None,
         });
 
@@ -961,7 +965,8 @@ mod dropping_items {
             slot_changes: vec![SlotChange {
                 idx: 50,
                 item: Some(ItemStack::new(ItemKind::IronIngot, 31, None)),
-            }],
+            }]
+            .into(),
             carried_item: None,
         });
 
@@ -1047,7 +1052,8 @@ fn should_drop_item_stack_player_open_inventory_with_dropkey() {
         slot_changes: vec![SlotChange {
             idx: 50,
             item: None,
-        }],
+        }]
+        .into(),
         carried_item: None,
     });
 
@@ -1121,7 +1127,8 @@ fn dragging_items() {
                 idx: 11,
                 item: Some(ItemStack::new(ItemKind::Diamond, 21, None)),
             },
-        ],
+        ]
+        .into(),
         carried_item: Some(ItemStack::new(ItemKind::Diamond, 1, None)),
     };
     helper.send(&drag_packet);

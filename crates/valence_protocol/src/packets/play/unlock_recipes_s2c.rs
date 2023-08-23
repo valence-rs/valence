@@ -1,7 +1,12 @@
-use super::*;
+use std::borrow::Cow;
+use std::io::Write;
+
+use anyhow::bail;
+use valence_ident::Ident;
+
+use crate::{Decode, Encode, Packet, VarInt};
 
 #[derive(Clone, PartialEq, Eq, Debug, Packet)]
-#[packet(id = packet_id::UNLOCK_RECIPES_S2C)]
 pub struct UnlockRecipesS2c<'a> {
     pub action: UpdateRecipeBookAction<'a>,
     pub crafting_recipe_book_open: bool,
@@ -48,6 +53,12 @@ impl<'a> Decode<'a> for UnlockRecipesS2c<'a> {
             smoker_recipe_book_filter_active,
             recipe_ids,
         })
+    }
+}
+
+impl Encode for UnlockRecipesS2c<'_> {
+    fn encode(&self, _w: impl Write) -> anyhow::Result<()> {
+        todo!()
     }
 }
 

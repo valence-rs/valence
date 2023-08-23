@@ -1,7 +1,8 @@
-use super::*;
+use bitfield_struct::bitfield;
+
+use crate::{BlockPos, Bounded, Decode, Encode, Packet, VarLong};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::UPDATE_STRUCTURE_BLOCK_C2S)]
 pub struct UpdateStructureBlockC2s<'a> {
     pub position: BlockPos,
     pub action: Action,
@@ -11,7 +12,7 @@ pub struct UpdateStructureBlockC2s<'a> {
     pub size_xyz: [i8; 3],
     pub mirror: Mirror,
     pub rotation: Rotation,
-    pub metadata: &'a str,
+    pub metadata: Bounded<&'a str, 128>,
     pub integrity: f32,
     pub seed: VarLong,
     pub flags: Flags,

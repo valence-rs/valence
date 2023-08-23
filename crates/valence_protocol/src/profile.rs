@@ -1,11 +1,16 @@
-//! Player skins and capes.
-
-use anyhow::Context;
 use base64::prelude::*;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use url::Url;
 
-use crate::property::Property;
+use crate::{Decode, Encode};
+
+/// A property from the game profile.
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Encode, Decode)]
+pub struct Property<S = String> {
+    pub name: S,
+    pub value: S,
+    pub signature: Option<S>,
+}
 
 /// Contains URLs to the skin and cape of a player.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -18,12 +23,11 @@ pub struct PlayerTextures {
 }
 
 impl PlayerTextures {
-    pub fn from_properties(props: &[Property]) -> anyhow::Result<Self> {
-        let textures = props
-            .iter()
-            .find(|p| p.name == "textures")
-            .context("no textures in property list")?;
-
+    /// Constructs player textures from the "textures" property of the game
+    /// profile.
+    ///
+    /// "textures" is a base64 string of JSON data.
+    pub fn try_from_textures(textures: &str) -> anyhow::Result<Self> {
         #[derive(Debug, Deserialize)]
         struct Textures {
             textures: PlayerTexturesPayload,
@@ -42,7 +46,7 @@ impl PlayerTextures {
             url: Url,
         }
 
-        let decoded = BASE64_STANDARD.decode(textures.value.as_bytes())?;
+        let decoded = BASE64_STANDARD.decode(textures.as_bytes())?;
 
         let Textures { textures } = serde_json::from_slice(&decoded)?;
 

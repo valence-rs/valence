@@ -1,10 +1,12 @@
-use super::*;
+use bitfield_struct::bitfield;
+use valence_nbt::Compound;
+
+use crate::{Decode, Encode, Packet, VarInt};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::ENTITY_STATUS_EFFECT_S2C)]
 pub struct EntityStatusEffectS2c {
     pub entity_id: VarInt,
-    pub effect_id: VarInt,
+    pub effect_id: VarInt, // TODO: effect ID registry.
     pub amplifier: u8,
     pub duration: VarInt,
     pub flags: Flags,

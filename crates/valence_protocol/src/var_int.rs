@@ -2,13 +2,31 @@ use std::io::{Read, Write};
 
 use anyhow::bail;
 use byteorder::ReadBytesExt;
-use serde::Deserialize;
+use derive_more::{Deref, DerefMut, From, Into};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::{Decode, Encode};
 
 /// An `i32` encoded with variable length.
-#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Default,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Debug,
+    Deref,
+    DerefMut,
+    From,
+    Into,
+    Serialize,
+    Deserialize,
+)]
+#[serde(transparent)]
 #[repr(transparent)]
 pub struct VarInt(pub i32);
 
@@ -88,18 +106,6 @@ impl Decode<'_> for VarInt {
             }
         }
         bail!("VarInt is too large")
-    }
-}
-
-impl From<i32> for VarInt {
-    fn from(i: i32) -> Self {
-        VarInt(i)
-    }
-}
-
-impl From<VarInt> for i32 {
-    fn from(i: VarInt) -> Self {
-        i.0
     }
 }
 

@@ -1,9 +1,13 @@
-use bevy_ecs::prelude::Component;
+use std::borrow::Cow;
 
-use super::*;
+use bevy_ecs::prelude::Component;
+use bitfield_struct::bitfield;
+use uuid::Uuid;
+use valence_text::Text;
+
+use crate::{Decode, Encode, Packet};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::BOSS_BAR_S2C)]
 pub struct BossBarS2c<'a> {
     pub id: Uuid,
     pub action: BossBarAction<'a>,
@@ -58,15 +62,4 @@ pub struct BossBarFlags {
     pub create_fog: bool,
     #[bits(5)]
     _pad: u8,
-}
-
-impl ToPacketAction for BossBarFlags {
-    fn to_packet_action(&self) -> BossBarAction {
-        BossBarAction::UpdateFlags(*self)
-    }
-}
-
-/// Trait for converting a component to a boss bar action.
-pub trait ToPacketAction {
-    fn to_packet_action(&self) -> BossBarAction;
 }

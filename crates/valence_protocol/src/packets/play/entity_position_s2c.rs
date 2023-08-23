@@ -1,7 +1,8 @@
-use super::*;
+use valence_math::DVec3;
+
+use crate::{ByteAngle, Decode, Encode, Packet, VarInt};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::ENTITY_POSITION_S2C)]
 pub struct EntityPositionS2c {
     pub entity_id: VarInt,
     pub position: DVec3,

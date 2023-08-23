@@ -1,7 +1,6 @@
-use super::*;
+use crate::{Decode, Encode, Packet, VarInt};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::STATISTICS_S2C)]
 pub struct StatisticsS2c {
     pub statistics: Vec<Statistic>,
 }

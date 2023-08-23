@@ -1,7 +1,6 @@
-use super::*;
+use crate::{Decode, Encode, Packet};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::RESOURCE_PACK_STATUS_C2S)]
 pub enum ResourcePackStatusC2s {
     /// The client has successfully loaded the server's resource pack.
     SuccessfullyLoaded,

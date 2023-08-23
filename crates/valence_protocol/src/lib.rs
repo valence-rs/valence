@@ -30,35 +30,40 @@ pub mod __private {
 extern crate self as valence_protocol;
 
 mod array;
+mod bit_set;
 mod block_pos;
+mod bounded;
 mod byte_angle;
 mod chunk_pos;
 pub mod decode;
 mod difficulty;
 mod direction;
 pub mod encode;
-mod game_mode;
+pub mod game_mode;
 mod global_pos;
 mod hand;
 mod impls;
 pub mod item;
 pub mod packets;
-mod player_textures;
-mod property;
+pub mod profile;
 mod raw;
 pub mod sound;
 pub mod var_int;
 mod var_long;
+mod velocity;
 
 use std::io::Write;
 
 use anyhow::Context;
-pub use array::LengthPrefixedArray;
+pub use array::FixedArray;
+pub use bit_set::FixedBitSet;
 pub use block::{BlockKind, BlockState};
 pub use block_pos::BlockPos;
+pub use bounded::Bounded;
 pub use byte_angle::ByteAngle;
 pub use chunk_pos::ChunkPos;
 pub use decode::PacketDecoder;
+use derive_more::{From, Into};
 pub use difficulty::Difficulty;
 pub use direction::Direction;
 pub use encode::{PacketEncoder, WritePacket};
@@ -68,8 +73,6 @@ pub use hand::Hand;
 pub use ident::ident;
 pub use item::{ItemKind, ItemStack};
 pub use packets::play::particle_s2c::Particle;
-pub use player_textures::PlayerTextures;
-pub use property::Property;
 pub use raw::RawBytes;
 pub use sound::Sound;
 pub use text::Text;
@@ -78,6 +81,7 @@ pub use valence_ident::Ident;
 pub use valence_protocol_macros::{Decode, Encode, Packet};
 pub use var_int::VarInt;
 pub use var_long::VarLong;
+pub use velocity::Velocity;
 pub use {
     anyhow, bytes, uuid, valence_ident as ident, valence_math as math, valence_nbt as nbt,
     valence_text as text,
@@ -93,12 +97,24 @@ pub const PROTOCOL_VERSION: i32 = 763;
 /// targets.
 pub const MINECRAFT_VERSION: &str = "1.20.1";
 
-/// Type alias for the compression threshold.
+/// How large a packet should be before it is compressed by the packet encoder.
 ///
-/// For a compression threshold of `Some(N)`, packets with encoded lengths >=
-/// `N` are compressed while all others are not. `None` disables compression
-/// completely.
-pub type CompressionThreshold = Option<u32>;
+/// If the inner value is >= 0, then packets with encoded lengths >= to this
+/// value will be compressed. If the value is negative, then compression is
+/// disabled and no packets are compressed.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, From, Into)]
+pub struct CompressionThreshold(pub i32);
+
+impl CompressionThreshold {
+    /// No compression.
+    pub const DEFAULT: Self = Self(-1);
+}
+
+impl Default for CompressionThreshold {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
 
 /// The `Encode` trait allows objects to be written to the Minecraft protocol.
 /// It is the inverse of [`Decode`].
@@ -421,7 +437,7 @@ mod tests {
 
         enc.append_packet(&TestPacket::new("first")).unwrap();
         #[cfg(feature = "compression")]
-        enc.set_compression(Some(0));
+        enc.set_compression(0.into());
         enc.append_packet(&TestPacket::new("second")).unwrap();
         buf.unsplit(enc.take());
         #[cfg(feature = "encryption")]
@@ -438,7 +454,7 @@ mod tests {
         check_test_packet(&mut dec, "first");
 
         #[cfg(feature = "compression")]
-        dec.set_compression(Some(0));
+        dec.set_compression(0.into());
 
         check_test_packet(&mut dec, "second");
 

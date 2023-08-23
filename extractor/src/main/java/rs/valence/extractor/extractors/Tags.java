@@ -1,27 +1,22 @@
 package rs.valence.extractor.extractors;
 
-import com.mojang.datafixers.util.Pair;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import net.minecraft.util.Identifier;
-import net.minecraft.registry.Registry;
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.server.MinecraftServer;
-import rs.valence.extractor.Main;
-import net.minecraft.registry.tag.TagKey;
-import net.minecraft.registry.CombinedDynamicRegistries;
-import net.minecraft.registry.ServerDynamicRegistryType;
+import com.mojang.datafixers.util.Pair;
+import net.minecraft.registry.*;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.registry.entry.RegistryEntryList;
-import net.minecraft.registry.SerializableRegistries;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.util.Identifier;
+import rs.valence.extractor.Main;
 
-import java.util.Map;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class Tags implements Main.Extractor {
-    private CombinedDynamicRegistries<ServerDynamicRegistryType> dynamicRegistryManager;
+    private final CombinedDynamicRegistries<ServerDynamicRegistryType> dynamicRegistryManager;
 
     public Tags(MinecraftServer server) {
         this.dynamicRegistryManager = server.getCombinedDynamicRegistries();
@@ -34,7 +29,7 @@ public class Tags implements Main.Extractor {
 
     @Override
     public JsonElement extract() {
-        var tagsJson = new JsonArray();
+        var tagsJson = new JsonObject();
 
         Map<RegistryKey<? extends Registry<?>>, Map<Identifier, JsonArray>> registryTags =
             SerializableRegistries.streamRegistryManagerEntries(this.dynamicRegistryManager)
@@ -44,31 +39,24 @@ public class Tags implements Main.Extractor {
 
         for (var registry : registryTags.entrySet()) {
             var registryIdent = registry.getKey().getValue().toString();
-            var tagGroupJson = new JsonObject();
-            var tagGroupTagsJson = new JsonArray();
+            var tagGroupTagsJson = new JsonObject();
 
             for (var tag : registry.getValue().entrySet()) {
-                var tagJson = new JsonObject();
                 var ident = tag.getKey().toString();
-                var raw_ids = tag.getValue();
-
-                tagJson.addProperty("name", ident);
-                tagJson.add("entries", raw_ids);
-                tagGroupTagsJson.add(tagJson);
+                var rawIds = tag.getValue();
+                tagGroupTagsJson.add(ident, rawIds);
             }
 
-            tagGroupJson.addProperty("registry", registryIdent.toString());
-            tagGroupJson.add("tags", tagGroupTagsJson);
-            tagsJson.add(tagGroupJson);
+            tagsJson.add(registryIdent, tagGroupTagsJson);
         }
 
         return tagsJson;
     }
 
     private static <T> Map<Identifier, JsonArray> serializeTags(Registry<T> registry) {
-        HashMap<Identifier, JsonArray> map = new HashMap<Identifier, JsonArray>();
+        HashMap<Identifier, JsonArray> map = new HashMap<>();
         registry.streamTagsAndEntries().forEach(pair -> {
-            RegistryEntryList<T> registryEntryList = (RegistryEntryList<T>)pair.getSecond();
+            RegistryEntryList<T> registryEntryList = pair.getSecond();
             JsonArray intList = new JsonArray(registryEntryList.size());
             for (RegistryEntry<T> registryEntry : registryEntryList) {
                 if (registryEntry.getType() != RegistryEntry.Type.REFERENCE) {
@@ -76,7 +64,7 @@ public class Tags implements Main.Extractor {
                 }
                 intList.add(registry.getRawId(registryEntry.value()));
             }
-            map.put(((TagKey)pair.getFirst()).id(), intList);
+            map.put(pair.getFirst().id(), intList);
         });
         return map;
     }

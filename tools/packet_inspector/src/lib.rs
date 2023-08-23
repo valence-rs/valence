@@ -74,7 +74,8 @@ impl Proxy {
         let (mut server_reader, mut server_writer) = server.split();
 
         let current_state_inner = Arc::new(RwLock::new(PacketState::Handshaking));
-        let threshold_inner: Arc<RwLock<CompressionThreshold>> = Arc::new(RwLock::new(None));
+        let threshold_inner: Arc<RwLock<CompressionThreshold>> =
+            Arc::new(RwLock::new(CompressionThreshold::DEFAULT));
 
         let current_state = current_state_inner.clone();
         let threshold = threshold_inner.clone();
@@ -137,7 +138,7 @@ impl Proxy {
                 if state == PacketState::Login {
                     if let Some(compression) = extrapolate_packet::<LoginCompressionS2c>(&packet) {
                         if compression.threshold.0 >= 0 {
-                            *threshold.write().await = Some(compression.threshold.0 as u32);
+                            threshold.write().await.0 = compression.threshold.0;
                         }
                     };
 

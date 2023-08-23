@@ -26,7 +26,6 @@ use valence_server::client::{
     Client, OldViewDistance, OldVisibleEntityLayers, ViewDistance, VisibleEntityLayers,
 };
 use valence_server::layer::UpdateLayersPreClientSet;
-use valence_server::protocol::packets::play::boss_bar_s2c::ToPacketAction;
 pub use valence_server::protocol::packets::play::boss_bar_s2c::{
     BossBarAction, BossBarColor, BossBarDivision, BossBarFlags,
 };

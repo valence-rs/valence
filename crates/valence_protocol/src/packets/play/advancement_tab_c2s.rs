@@ -1,7 +1,10 @@
-use super::*;
+use std::borrow::Cow;
+
+use valence_ident::Ident;
+
+use crate::{Decode, Encode, Packet};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::ADVANCEMENT_TAB_C2S)]
 pub enum AdvancementTabC2s<'a> {
     OpenedTab { tab_id: Ident<Cow<'a, str>> },
     ClosedScreen,

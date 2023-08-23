@@ -1,7 +1,10 @@
-use super::*;
+use std::borrow::Cow;
+
+use valence_ident::Ident;
+
+use crate::{Decode, Encode, Packet};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::CRAFT_REQUEST_C2S)]
 pub struct CraftRequestC2s<'a> {
     pub window_id: i8,
     pub recipe: Ident<Cow<'a, str>>,

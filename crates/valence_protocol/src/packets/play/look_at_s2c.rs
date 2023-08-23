@@ -1,8 +1,9 @@
-use super::*;
+use valence_math::DVec3;
+
+use crate::{Decode, Encode, Packet, VarInt};
 
 /// Instructs a client to face an entity.
 #[derive(Copy, Clone, PartialEq, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::LOOK_AT_S2C)]
 pub struct LookAtS2c {
     pub feet_or_eyes: FeetOrEyes,
     pub target_position: DVec3,

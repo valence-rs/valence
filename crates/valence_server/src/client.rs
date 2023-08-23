@@ -2,7 +2,6 @@ use std::borrow::Cow;
 use std::collections::BTreeSet;
 use std::fmt;
 use std::net::IpAddr;
-use std::ops::Deref;
 use std::time::Instant;
 
 use bevy_app::prelude::*;
@@ -11,7 +10,7 @@ use bevy_ecs::query::WorldQuery;
 use bevy_ecs::system::Command;
 use byteorder::{NativeEndian, ReadBytesExt};
 use bytes::{Bytes, BytesMut};
-use derive_more::{Deref, DerefMut};
+use derive_more::{Deref, DerefMut, From, Into};
 use tracing::warn;
 use uuid::Uuid;
 use valence_entity::player::PlayerEntityBundle;
@@ -30,10 +29,11 @@ use valence_protocol::packets::play::{
     DisconnectS2c, EntitiesDestroyS2c, EntityStatusS2c, EntityTrackerUpdateS2c,
     EntityVelocityUpdateS2c, GameStateChangeS2c, ParticleS2c, PlaySoundS2c, UnloadChunkS2c,
 };
+use valence_protocol::profile::Property;
 use valence_protocol::sound::{Sound, SoundCategory, SoundId};
 use valence_protocol::text::{IntoText, Text};
 use valence_protocol::var_int::VarInt;
-use valence_protocol::{BlockPos, ChunkPos, Encode, GameMode, Packet, Property};
+use valence_protocol::{BlockPos, ChunkPos, Encode, GameMode, Packet};
 use valence_registry::RegistrySet;
 use valence_server_common::{Despawned, UniqueId};
 
@@ -187,9 +187,13 @@ impl ClientBundle {
 pub struct ClientBundleArgs {
     /// The username for the client.
     pub username: String,
+    /// UUID of the client.
     pub uuid: Uuid,
+    /// IP address of the client.
     pub ip: IpAddr,
+    /// Properties of this client from the game profile.
     pub properties: Vec<Property>,
+    /// The abstract socket connection.
     pub conn: Box<dyn ClientConnection>,
     /// The packet encoder to use. This should be in sync with [`Self::conn`].
     pub enc: PacketEncoder,
@@ -426,33 +430,26 @@ impl fmt::Display for Username {
     }
 }
 
-#[derive(Component, Clone, PartialEq, Eq, Default, Debug)]
+/// Player properties from the game profile.
+#[derive(Component, Clone, PartialEq, Eq, Default, Debug, Deref, DerefMut, From, Into)]
 pub struct Properties(pub Vec<Property>);
 
 impl Properties {
     /// Finds the property with the name "textures".
     pub fn textures(&self) -> Option<&Property> {
-        self.0.iter().find(|prop| prop.name == "textures")
+        self.0.iter().find(|p| p.name == "textures")
     }
 
-    /// Finds the property with the name "textures".
+    /// Finds the property with the name "textures" mutably.
     pub fn textures_mut(&mut self) -> Option<&mut Property> {
-        self.0.iter_mut().find(|prop| prop.name == "textures")
+        self.0.iter_mut().find(|p| p.name == "textures")
     }
 }
 
-impl From<Vec<Property>> for Properties {
-    fn from(value: Vec<Property>) -> Self {
-        Self(value)
-    }
-}
-
-impl Deref for Properties {
-    type Target = [Property];
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct PropertyValue {
+    pub value: String,
+    pub signature: Option<String>,
 }
 
 #[derive(Component, Clone, PartialEq, Eq, Debug, Deref)]
@@ -487,7 +484,6 @@ impl Default for ViewDistance {
 /// The [`ViewDistance`] at the end of the previous tick. Automatically updated
 /// as [`ViewDistance`] is changed.
 #[derive(Component, Clone, PartialEq, Eq, Default, Debug, Deref)]
-
 pub struct OldViewDistance(u8);
 
 impl OldViewDistance {
@@ -1106,7 +1102,7 @@ fn init_tracked_data(mut clients: Query<(&mut Client, &TrackedData), Added<Track
         if let Some(init_data) = tracked_data.init_data() {
             client.write_packet(&EntityTrackerUpdateS2c {
                 entity_id: VarInt(0),
-                metadata: init_data.into(),
+                tracked_values: init_data.into(),
             });
         }
     }
@@ -1117,7 +1113,7 @@ fn update_tracked_data(mut clients: Query<(&mut Client, &TrackedData)>) {
         if let Some(update_data) = tracked_data.update_data() {
             client.write_packet(&EntityTrackerUpdateS2c {
                 entity_id: VarInt(0),
-                metadata: update_data.into(),
+                tracked_values: update_data.into(),
             });
         }
     }

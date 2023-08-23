@@ -1,8 +1,12 @@
-use super::*;
+use std::borrow::Cow;
+use std::io::Write;
+
+use valence_ident::Ident;
+
 use crate::sound::SoundCategory;
+use crate::{Decode, Encode, Packet};
 
 #[derive(Clone, PartialEq, Debug, Packet)]
-#[packet(id = packet_id::STOP_SOUND_S2C)]
 pub struct StopSoundS2c<'a> {
     pub source: Option<SoundCategory>,
     pub sound: Option<Ident<Cow<'a, str>>>,

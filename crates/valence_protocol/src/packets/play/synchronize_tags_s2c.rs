@@ -1,21 +1,13 @@
-use serde::Deserialize;
+use std::borrow::Cow;
+use std::collections::BTreeMap;
 
-use super::*;
+use valence_ident::Ident;
+
+use crate::{Decode, Encode, Packet, VarInt};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::SYNCHRONIZE_TAGS_S2C)]
 pub struct SynchronizeTagsS2c<'a> {
-    pub registries: Cow<'a, [Registry]>,
+    pub groups: Cow<'a, RegistryMap>,
 }
 
-#[derive(Debug, Deserialize, Clone, PartialEq, Eq, Encode, Decode)]
-pub struct Registry {
-    pub registry: Ident<String>,
-    pub tags: Vec<TagEntry>,
-}
-
-#[derive(Debug, Deserialize, Clone, PartialEq, Eq, Encode, Decode)]
-pub struct TagEntry {
-    pub name: Ident<String>,
-    pub entries: Vec<VarInt>,
-}
+pub type RegistryMap = BTreeMap<Ident<String>, BTreeMap<Ident<String>, Vec<VarInt>>>;

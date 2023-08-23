@@ -1,4 +1,12 @@
-use super::*;
+// TODO: simplify this and bound packet fields where appropriate.
+
+use std::borrow::Cow;
+use std::io::Write;
+
+use valence_ident::Ident;
+use valence_text::Text;
+
+use crate::{packet_id, Decode, Encode, ItemStack, Packet, VarInt};
 
 pub type AdvancementUpdateS2c<'a> =
     GenericAdvancementUpdateS2c<'a, (Ident<Cow<'a, str>>, Advancement<'a, Option<ItemStack>>)>;

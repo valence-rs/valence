@@ -1,7 +1,13 @@
-use super::*;
+use std::borrow::Cow;
+use std::io::Write;
+
+use anyhow::bail;
+use byteorder::WriteBytesExt;
+use valence_ident::Ident;
+
+use crate::{Decode, Encode, Packet, VarInt};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::COMMAND_TREE_S2C)]
 pub struct CommandTreeS2c<'a> {
     pub commands: Vec<Node<'a>>,
     pub root_index: VarInt,

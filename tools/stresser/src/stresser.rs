@@ -14,7 +14,9 @@ use valence_protocol::packets::play::{
     KeepAliveC2s, KeepAliveS2c, PlayerPositionLookS2c, PositionAndOnGroundC2s, TeleportConfirmC2s,
 };
 use valence_protocol::var_int::VarInt;
-use valence_protocol::{Packet, PacketDecoder, PacketEncoder, PROTOCOL_VERSION};
+use valence_protocol::{
+    CompressionThreshold, Packet, PacketDecoder, PacketEncoder, PROTOCOL_VERSION,
+};
 
 pub struct SessionParams<'a> {
     pub socket_addr: SocketAddr,
@@ -47,7 +49,7 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
 
     let handshake_pkt = HandshakeC2s {
         protocol_version: VarInt(PROTOCOL_VERSION),
-        server_address: &server_addr_str,
+        server_address: server_addr_str.as_str().into(),
         server_port: sock_addr.port(),
         next_state: HandshakeNextState::Login,
     };
@@ -55,7 +57,7 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
     enc.append_packet(&handshake_pkt)?;
 
     enc.append_packet(&LoginHelloC2s {
-        username: sess_name,
+        username: sess_name.into(),
         profile_id: Some(Uuid::new_v4()),
     })?;
 
@@ -82,10 +84,10 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
             match frame.id {
                 LoginCompressionS2c::ID => {
                     let packet: LoginCompressionS2c = frame.decode()?;
-                    let threshold = packet.threshold.0 as u32;
+                    let threshold = packet.threshold.0;
 
-                    dec.set_compression(Some(threshold));
-                    enc.set_compression(Some(threshold));
+                    dec.set_compression(CompressionThreshold(threshold));
+                    enc.set_compression(CompressionThreshold(threshold));
                 }
 
                 LoginSuccessS2c::ID => {

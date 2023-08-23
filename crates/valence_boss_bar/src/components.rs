@@ -4,7 +4,7 @@ use bevy_ecs::prelude::{Bundle, Component};
 use derive_more::{Deref, DerefMut};
 use valence_entity::EntityLayerId;
 use valence_server::protocol::packets::play::boss_bar_s2c::{
-    BossBarAction, BossBarColor, BossBarDivision, BossBarFlags, ToPacketAction,
+    BossBarAction, BossBarColor, BossBarDivision, BossBarFlags,
 };
 use valence_server::{Text, UniqueId};
 
@@ -51,4 +51,15 @@ impl ToPacketAction for BossBarStyle {
     fn to_packet_action(&self) -> BossBarAction {
         BossBarAction::UpdateStyle(self.color, self.division)
     }
+}
+
+impl ToPacketAction for BossBarFlags {
+    fn to_packet_action(&self) -> BossBarAction {
+        BossBarAction::UpdateFlags(*self)
+    }
+}
+
+/// Trait for converting a component to a boss bar action.
+pub(crate) trait ToPacketAction {
+    fn to_packet_action(&self) -> BossBarAction;
 }

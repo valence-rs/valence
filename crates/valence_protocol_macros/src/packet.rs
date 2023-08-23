@@ -1,4 +1,5 @@
-use proc_macro2::{Span, TokenStream};
+use heck::ToShoutySnakeCase;
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use syn::spanned::Spanned;
 use syn::{parse2, parse_quote, Attribute, DeriveInput, Error, Expr, LitInt, LitStr, Result};
@@ -8,20 +9,7 @@ use crate::add_trait_bounds;
 pub(super) fn derive_packet(item: TokenStream) -> Result<TokenStream> {
     let mut input = parse2::<DeriveInput>(item)?;
 
-    let Some(packet_attr) = parse_packet_helper_attr(&input.attrs)? else {
-        return Err(Error::new(input.span(), "missing `packet` attribute"));
-    };
-
-    let Some(packet_id) = packet_attr.id else {
-        return Err(Error::new(
-            packet_attr.span,
-            "missing `id = ...` value from packet attribute",
-        ));
-    };
-
-    add_trait_bounds(&mut input.generics, quote!(::std::fmt::Debug));
-
-    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+    let packet_attr = parse_packet_helper_attr(&input.attrs)?.unwrap_or_default();
 
     let name = input.ident.clone();
 
@@ -31,16 +19,33 @@ pub(super) fn derive_packet(item: TokenStream) -> Result<TokenStream> {
         name.to_string()
     };
 
+    let packet_id: Expr = match packet_attr.id {
+        Some(expr) => expr,
+        None => match syn::parse_str::<Ident>(&name_str.to_shouty_snake_case()) {
+            Ok(ident) => parse_quote!(::valence_protocol::packet_id::#ident),
+            Err(_) => {
+                return Err(Error::new(
+                    packet_attr.span,
+                    "missing valid `id = ...` value from `packet` attr",
+                ))
+            }
+        },
+    };
+
+    add_trait_bounds(&mut input.generics, quote!(::std::fmt::Debug));
+
+    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+
     let side = if let Some(side_attr) = packet_attr.side {
         side_attr
-    } else if name_str.to_lowercase().contains("s2c") {
+    } else if name_str.to_lowercase().ends_with("s2c") {
         parse_quote!(::valence_protocol::PacketSide::Clientbound)
-    } else if name_str.to_lowercase().contains("c2s") {
+    } else if name_str.to_lowercase().ends_with("c2s") {
         parse_quote!(::valence_protocol::PacketSide::Serverbound)
     } else {
         return Err(Error::new(
-            input.span(),
-            "missing `side = PacketSide::...` value from packet attribute",
+            packet_attr.span,
+            "missing `side = PacketSide::...` value from `packet` attribute",
         ));
     };
 
@@ -67,6 +72,19 @@ struct PacketAttr {
     name: Option<LitStr>,
     side: Option<Expr>,
     state: Option<Expr>,
+}
+
+impl Default for PacketAttr {
+    fn default() -> Self {
+        Self {
+            span: Span::call_site(),
+            id: Default::default(),
+            tag: Default::default(),
+            name: Default::default(),
+            side: Default::default(),
+            state: Default::default(),
+        }
+    }
 }
 
 fn parse_packet_helper_attr(attrs: &[Attribute]) -> Result<Option<PacketAttr>> {
