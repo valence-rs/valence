@@ -22,6 +22,7 @@ zola build
 mdbook build
 
 # build rustdoc
+mkdir public/rustdoc
 cargo doc --no-deps --workspace --all-features
 cp -r ../target/doc/* public/rustdoc
 

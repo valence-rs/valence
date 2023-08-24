@@ -18,33 +18,33 @@
     <link
       href="https://fonts.googleapis.com/css?family=Fira+Sans:400,500,600&display=swap"
       rel="stylesheet"
-    />
-    {% endblock fonts %}
-    <link rel="stylesheet" href="{{ get_url(path="prism.css") }}" />
-    <link rel="stylesheet" href="{{ get_url(path="normalize.css") }}" />
-    <link rel="stylesheet" href="{{ get_url(path="juice.css") }}" />
-    <link rel="stylesheet" href="{{ get_url(path="syntax-theme.css") }}" />
-  </head>
-  <body>
-    {% block header %}
+  />
+  {% endblock fonts %}
+  <link rel="stylesheet" href="{{ get_url(path="prism.css") }}" />
+  <link rel="stylesheet" href="{{ get_url(path="normalize.css") }}" />
+  <link rel="stylesheet" href="{{ get_url(path="juice.css") }}" />
+  <link rel="stylesheet" href="{{ get_url(path="syntax-theme.css") }}" />
+</head>
+<body>
+  {% block header %}
 
-    <header class="pos-absolute" style="background-color: transparent">
-      {{ macros::render_header() }}
-    </header>
+  <header class="pos-absolute" style="background-color: transparent">
+    {{ macros::render_header() }}
+  </header>
 
-    <div class="hero">
-      {% block hero %}
+  <div class="hero">
+    {% block hero %}
       <script async defer src="https://buttons.github.io/buttons.js"></script>
       <section class="text-center">
         <h1
           class="heading-text"
-          style="font-size: 50px; color: var(--header-text-color)"
+          style="font-size: 50px; color: var(--header-text-color); font-weight: 900; letter-spacing: .4px;"
         >
           Minecraft servers for the <br />
           modern age
         </h1>
-        <h3 class="title-text" style="color: var(--header-text-color)">
-          <b>Valence</b> is A Rust framework for building modular <br />
+        <h3 class="title-text" style="color: #c87b07; font-weight: 100; letter-spacing: .3px;">
+          Valence is a Rust framework for building modular <br />
           and high performance Minecraft servers.
         </h3>
         <div>
