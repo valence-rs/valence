@@ -75,7 +75,9 @@
       <div class="hero-code">
         <pre
           data-file="main.rs"
-        ><code class="language-rust">fn pause_on_crouch(
+        ><code class="language-rust">
+
+fn pause_on_crouch(
     mut events: EventReader&ltSneakEvent&gt,
     mut board: ResMut&ltLifeBoard&gt,
     mut layers: Query&lt&mut EntityLayer&gt,
@@ -166,7 +168,7 @@
           href="https://github.com/valence-rs/valence/blob/main/CODE_OF_CONDUCT.md"
           >Code of Conduct</a
         >
-        © 2023
+        <span>© 2023</span>
       </small>
     </footer>
     {% endblock footer %}

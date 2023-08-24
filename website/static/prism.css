@@ -58,11 +58,13 @@ pre[class*="language-"] {
 pre[data-file]::before {
   content: attr(data-file);
   color: gray;
-  display: flex;
-  justify-content: center;
   line-height: 1;
+  text-align: center;
   font-size: 1rem;
   margin-bottom: 0.4rem;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 /* Inline code */
