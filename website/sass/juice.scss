@@ -82,6 +82,13 @@ header {
   }
 }
 
+  // only apply this when the screen is small
+  @media screen and (min-width: 768px) {
+    .hero {
+      flex-wrap: nowrap
+  }
+}
+
 main {
   display: flex;
   padding: 50px 100px;
