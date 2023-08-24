@@ -137,8 +137,8 @@ footer {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background-color: #202020;
-  color: #fcfcfc;
+  background-color: var(--primary-color);
+  color: var(--primary-text-color);
 
   a {
     color: #fcfcfc;
