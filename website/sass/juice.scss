@@ -66,18 +66,31 @@ header {
 
 .hero {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-evenly;
-  height: 100vh;
   background-color: var(--primary-color);
-  overflow-x: hidden;
-  padding: 0 40px;
+  padding: 3rem 40px;
+  position: relative;
+  overflow: hidden;
+  height: 100%;
 
   .explore-more {
     position: absolute;
     bottom: 20px;
     cursor: pointer;
   }
+}
+
+  // only apply this when the screen is small
+  @media screen and (min-width: 1300px) {
+    .hero {
+      flex-wrap: nowrap
+  }
+}
+
+.hero-code {
+  position: relative;
 }
 
 main {
@@ -137,8 +150,12 @@ footer {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background-color: #202020;
-  color: #fcfcfc;
+  flex-wrap: wrap;
+  background-color: var(--primary-color);
+  color: var(--primary-text-color);
+  text-align: center;
+  line-height: 1.5;
+  white-space: pre-wrap;
 
   a {
     color: #fcfcfc;
@@ -148,6 +165,7 @@ footer {
 
 footer > small * {
   margin: auto 1rem;
+  display: inline-block;
 }
 
 @media screen and (min-width: 1280px) {

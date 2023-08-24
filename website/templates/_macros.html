@@ -8,6 +8,8 @@
 </a>
 
 <nav>
+    <a class="nav-item subtitle-text" href="{{ config.base_url }}rustdoc/valence">Api</a>
+    <a class="nav-item subtitle-text" href="{{ config.base_url }}book/">Guide</a>
     {% for page in section.pages %}
     {% set exclude_menu = config.extra.juice_exclude_menu | default(value=[]) %}
     {% if exclude_menu is not containing(page.title) %}
