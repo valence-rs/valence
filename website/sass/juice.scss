@@ -66,12 +66,14 @@ header {
 
 .hero {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-evenly;
-  height: 100vh;
   background-color: var(--primary-color);
-  overflow-x: hidden;
-  padding: 0 40px;
+  padding: 3rem 40px;
+  position: relative;
+  overflow: hidden;
+  height: 100%;
 
   .explore-more {
     position: absolute;

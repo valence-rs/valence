@@ -27,6 +27,8 @@ pre[class*="language-"] {
 	hyphens: none;
 	background: #18202D;
 	color: #9a86fd;
+  max-width: 80vw;
+  overflow: scroll;
 }
 
 pre > code[class*="language-"] {
@@ -60,6 +62,7 @@ pre[data-file]::before {
   justify-content: center;
   line-height: 1;
   font-size: 1rem;
+  margin-bottom: 0.4rem;
 }
 
 /* Inline code */
