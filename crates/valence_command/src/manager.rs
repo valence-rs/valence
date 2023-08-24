@@ -1,24 +1,26 @@
 use bevy_app::{App, Plugin, PreUpdate, Update};
 use bevy_ecs::entity::Entity;
-use bevy_ecs::prelude::{Added, Commands, IntoSystemConfigs, Or, Query, Res};
+use bevy_ecs::prelude::{Added, Commands, EventReader, EventWriter, IntoSystemConfigs, Or, Query, Res};
 use bevy_ecs::query::Changed;
 use valence_server::client::{Client, SpawnClientsSet};
-use valence_server::protocol::packets::play::CommandTreeS2c;
+use valence_server::event_loop::PacketEvent;
+use valence_server::protocol::packets::play::{CommandExecutionC2s, CommandTreeS2c};
 use valence_server::protocol::WritePacket;
 
 use crate::command_graph::CommandGraph;
 use crate::command_scopes::CommandScopes;
-use crate::{CommandRegistry, CommandScopeRegistry};
+use crate::{CommandExecutionEvent, CommandRegistry, CommandScopeRegistry};
 
 pub struct CommandManagerPlugin;
 
 impl Plugin for CommandManagerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
+        app.add_event::<CommandExecutionEvent>()
+            .add_systems(
             PreUpdate,
             insert_permissions_component.after(SpawnClientsSet),
         )
-        .add_systems(Update, update_command_tree);
+        .add_systems(Update, (update_command_tree, read_incoming_packets));
 
         let graph: CommandGraph = CommandGraph::new();
 
@@ -35,6 +37,18 @@ pub fn insert_permissions_component(
     for client in clients.iter_mut() {
         println!("Inserting permissions component for client: {:?}", client);
         commands.entity(client).insert(CommandScopes::new());
+    }
+}
+
+pub fn read_incoming_packets(mut packets: EventReader<PacketEvent>, mut event_writer: EventWriter<CommandExecutionEvent>) {
+    for packet in packets.iter() {
+        let client = packet.client;
+        if let Some(packet) = packet.decode::<CommandExecutionC2s>() {
+            event_writer.send(CommandExecutionEvent {
+                command: packet.command.to_string(),
+                executor: client,
+            });
+        }
     }
 }
 
@@ -58,7 +72,7 @@ pub fn update_command_tree(
             }
             for permission in node_scopes.iter() {
                 if !premission_registry
-                    .any_grants(client_permissions.scopes.clone(), permission.clone())
+                    .any_grants(&client_permissions.scopes, permission)
                 {
                     // this should be enough to remove the node and all of its children (when it
                     // gets converted into a packet)
@@ -77,11 +91,3 @@ pub fn update_command_tree(
         client.write_packet(&packet);
     }
 }
-
-// pub fn handle_change_command_graph(mut registry: Res<CommandRegistry>, mut
-// clients) {     for packet in packets.iter() {
-//         if let Some(packet) =
-// packet.decode::<packet::ChangeCommandGraphS2c>() {             registry.graph
-// = packet.graph.into();         }
-//     }
-// }

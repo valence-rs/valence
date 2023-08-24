@@ -28,6 +28,10 @@ impl ParseInput {
         Self { input: input.into(), cursor: 0 }
     }
 
+    pub fn set_cursor(&mut self, cursor: usize) {
+        self.cursor = cursor;
+    }
+
     pub fn peek(&self) -> Option<char> {
         self.input.chars().nth(self.cursor)
     }
@@ -194,6 +198,7 @@ macro_rules! impl_parser_for_number {
     ($type:ty, $name:expr, $parser:ident) => {
         impl CommandArg for $type {
             fn parse_arg(input: &mut ParseInput) -> Result<Self, CommandArgParseError> {
+                input.skip_whitespace();
                 let s = match input.pop_to_next_whitespace_or_end() {
                     Some(s) => s,
                     None => return Err(CommandArgParseError::InvalidArgLength),

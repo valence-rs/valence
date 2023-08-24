@@ -82,6 +82,12 @@ impl From<String> for Scope {
     }
 }
 
+impl From<&String> for Scope {
+    fn from(name: &String) -> Self {
+        Self { name: name.clone() }
+    }
+}
+
 impl From<&str> for Scope {
     fn from(name: &str) -> Self {
         Self {
@@ -273,14 +279,15 @@ impl CommandScopeRegistry {
     /// registry.add_scope("valence:admin");
     ///
     /// assert!(registry.any_grants(
-    ///     vec!["valence:admin", "valence:command"],
+    ///     &vec!["valence:admin", "valence:command"],
     ///     "valence:command:tp"
     /// ));
     /// ```
-    pub fn any_grants(&self, scopes: Vec<impl Into<Scope>>, other: impl Into<Scope>) -> bool {
+    pub fn any_grants(&self, scopes: &Vec<impl Into<Scope> + Clone>, other: impl Into<Scope>) -> bool {
         let other = other.into();
 
         for scope in scopes {
+            let scope = (*scope).clone().into();
             if self.grants(scope, other.clone()) {
                 return true;
             }

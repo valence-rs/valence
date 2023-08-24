@@ -4,7 +4,7 @@ use valence::prelude::*;
 use valence_command::arg_parser::{CommandArg, EntitySelector, EntitySelectors, GreedyString, QuotableString};
 
 use valence_command::command_scopes::CommandScopes;
-use valence_command::handler::{CommandExecutionEvent, CommandHandler};
+use valence_command::handler::{CommandResultEvent, CommandHandler};
 
 use valence_command::{arg_parser, CommandScopeRegistry};
 use valence_command_derive::Command;
@@ -83,7 +83,7 @@ pub fn main() {
 }
 
 fn handle_teleport_command(
-    mut events: EventReader<CommandExecutionEvent<Teleport>>,
+    mut events: EventReader<CommandResultEvent<Teleport>>,
     mut clients: Query<(&mut Client, &mut Position)>,
     usernames: Query<(Entity, &Username)>, // mut commands: Commands
 ) {

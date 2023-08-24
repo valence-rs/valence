@@ -83,7 +83,6 @@ use valence_server::protocol::{VarInt};
 
 
 use crate::arg_parser::{CommandArg, ParseInput};
-use crate::command_scopes::Scope;
 use crate::{CommandRegistry};
 
 /// This struct is used to store the command graph.(see module level docs for
@@ -126,7 +125,7 @@ impl CommandGraph {
 pub struct CommandNode {
     pub executable: bool,
     pub data: NodeData,
-    pub scopes: Vec<Scope>,
+    pub scopes: Vec<String>,
 }
 
 impl Display for CommandNode {
@@ -482,7 +481,7 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
     ///   and its children
     /// (list of strings following the system described in
     /// [command_scopes](crate::command_scopes))
-    pub fn with_scopes(&mut self, scopes: Vec<impl Into<Scope>>) -> &mut Self {
+    pub fn with_scopes(&mut self, scopes: Vec<impl Into<String>>) -> &mut Self {
         let graph = &mut self.graph.graph;
         let current_node = &mut self.current_node;
 
