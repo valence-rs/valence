@@ -492,12 +492,12 @@ fn digging(
             if let Some(prev) = prev {
                 let kind: ItemKind = prev.state.to_kind().to_item_kind();
                 if let Some(slot) = inv.first_slot_with_item_in(kind, 64, 9..45) {
-                    let count = inv.slot(slot).unwrap().count();
+                    let count = inv.slot(slot).count();
                     inv.set_slot_amount(slot, count + 1);
                 } else {
                     let stack = ItemStack::new(kind, 1, None);
                     if let Some(empty_slot) = inv.first_empty_slot_in(9..45) {
-                        inv.set_slot(empty_slot, Some(stack));
+                        inv.set_slot(empty_slot, stack);
                     } else {
                         debug!("No empty slot to give item to player: {:?}", kind);
                     }
@@ -524,10 +524,8 @@ fn place_blocks(
 
         // get the held item
         let slot_id = held.slot();
-        let Some(stack) = inventory.slot(slot_id) else {
-            // no item in the slot
-            continue;
-        };
+        let stack = inventory.slot(slot_id);
+        if stack.is_empty() { continue; }
 
         let Some(block_kind) = BlockKind::from_item_kind(stack.item) else {
             // can't place this item as a block
@@ -541,7 +539,7 @@ fn place_blocks(
                 let count = stack.count();
                 inventory.set_slot_amount(slot_id, count - 1);
             } else {
-                inventory.set_slot(slot_id, None);
+                inventory.set_slot(slot_id, ItemStack::empty());
             }
         }
         let real_pos = event.position.get_in_direction(event.face);
@@ -600,17 +598,17 @@ fn do_team_selector_portals(
         if let Some(team) = team {
             *game_mode = GameMode::Survival;
             let mut inventory = Inventory::new(InventoryKind::Player);
-            inventory.set_slot(36, Some(ItemStack::new(ItemKind::WoodenSword, 1, None)));
+            inventory.set_slot(36, ItemStack::new(ItemKind::WoodenSword, 1, None));
             inventory.set_slot(
                 37,
-                Some(ItemStack::new(
+                ItemStack::new(
                     match team {
                         Team::Red => ItemKind::RedWool,
                         Team::Blue => ItemKind::BlueWool,
                     },
                     64,
                     None,
-                )),
+                ),
             );
             let combat_state = CombatState::default();
             commands
@@ -993,17 +991,16 @@ fn handle_combat_events(
         victim.client.trigger_status(EntityStatus::PlayAttackSound);
         victim.statuses.trigger(EntityStatus::PlayAttackSound);
 
-        let damage = if let Some(item) = attacker.inventory.slot(attacker.held_item.slot()) {
-            match item.item {
-                ItemKind::WoodenSword => 4.0,
-                ItemKind::StoneSword => 5.0,
-                ItemKind::IronSword => 6.0,
-                ItemKind::DiamondSword => 7.0,
-                _ => 1.0,
-            }
-        } else {
-            1.0
+        let stack = attacker.inventory.slot(attacker.held_item.slot());
+
+        let damage = match stack.item {
+            ItemKind::WoodenSword => 4.0,
+            ItemKind::StoneSword => 5.0,
+            ItemKind::IronSword => 6.0,
+            ItemKind::DiamondSword => 7.0,
+            _ => 1.0,
         };
+
         victim.health.0 -= damage;
     }
 }

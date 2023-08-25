@@ -138,7 +138,8 @@ fn place_blocks(
 
         // get the held item
         let slot_id = held.slot();
-        let Some(stack) = inventory.slot(slot_id) else {
+        let stack = inventory.slot(slot_id);
+        if inventory.slot(slot_id).is_empty() {
             // no item in the slot
             continue;
         };
@@ -155,7 +156,7 @@ fn place_blocks(
                 let count = stack.count();
                 inventory.set_slot_amount(slot_id, count - 1);
             } else {
-                inventory.set_slot(slot_id, None);
+                inventory.set_slot(slot_id, ItemStack::empty());
             }
         }
         let real_pos = event.position.get_in_direction(event.face);

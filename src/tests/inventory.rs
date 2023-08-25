@@ -158,10 +158,10 @@ fn test_should_modify_player_inventory_click_slot() {
         slot_idx: 20,
         slot_changes: vec![SlotChange {
             idx: 20,
-            item: None,
+            item: ItemStack::empty(),
         }]
         .into(),
-        carried_item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
+        carried_item: ItemStack::new(ItemKind::Diamond, 2, None),
     });
 
     app.update();
@@ -180,7 +180,7 @@ fn test_should_modify_player_inventory_click_slot() {
         .get::<Inventory>(client)
         .expect("could not find inventory for client");
 
-    assert_eq!(inventory.slot(20), None);
+    assert_eq!(inventory.slot(20), &ItemStack::empty());
 
     let cursor_item = app
         .world
@@ -189,7 +189,7 @@ fn test_should_modify_player_inventory_click_slot() {
 
     assert_eq!(
         cursor_item.0,
-        Some(ItemStack::new(ItemKind::Diamond, 2, None))
+        ItemStack::new(ItemKind::Diamond, 2, None)
     );
 }
 
@@ -304,10 +304,10 @@ fn test_should_modify_open_inventory_click_slot() {
         mode: ClickMode::Click,
         slot_changes: vec![SlotChange {
             idx: 20,
-            item: None,
+            item: ItemStack::empty(),
         }]
         .into(),
-        carried_item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
+        carried_item: ItemStack::new(ItemKind::Diamond, 2, None),
     });
 
     app.update();
@@ -325,14 +325,14 @@ fn test_should_modify_open_inventory_click_slot() {
         .world
         .get::<Inventory>(inventory_ent)
         .expect("could not find inventory");
-    assert_eq!(inventory.slot(20), None);
+    assert_eq!(inventory.slot(20), &ItemStack::empty());
     let cursor_item = app
         .world
         .get::<CursorItem>(client)
         .expect("could not find client");
     assert_eq!(
         cursor_item.0,
-        Some(ItemStack::new(ItemKind::Diamond, 2, None))
+        ItemStack::new(ItemKind::Diamond, 2, None)
     );
 }
 
@@ -374,7 +374,7 @@ fn test_should_modify_open_inventory_server_side() {
 
     assert_eq!(
         inventory.slot(5),
-        Some(&ItemStack::new(ItemKind::IronIngot, 1, None))
+        &ItemStack::new(ItemKind::IronIngot, 1, None)
     );
 }
 
@@ -427,7 +427,7 @@ fn test_set_creative_mode_slot_handling() {
 
     helper.send(&CreativeInventoryActionC2s {
         slot: 36,
-        clicked_item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
+        clicked_item: ItemStack::new(ItemKind::Diamond, 2, None),
     });
 
     app.update();
@@ -440,7 +440,7 @@ fn test_set_creative_mode_slot_handling() {
 
     assert_eq!(
         inventory.slot(36),
-        Some(&ItemStack::new(ItemKind::Diamond, 2, None))
+        &ItemStack::new(ItemKind::Diamond, 2, None)
     );
 }
 
@@ -465,7 +465,7 @@ fn test_ignore_set_creative_mode_slot_if_not_creative() {
 
     helper.send(&CreativeInventoryActionC2s {
         slot: 36,
-        clicked_item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
+        clicked_item: ItemStack::new(ItemKind::Diamond, 2, None),
     });
 
     app.update();
@@ -475,7 +475,7 @@ fn test_ignore_set_creative_mode_slot_if_not_creative() {
         .world
         .get::<Inventory>(client)
         .expect("could not find inventory for client");
-    assert_eq!(inventory.slot(36), None);
+    assert_eq!(inventory.slot(36), &ItemStack::empty());
 }
 
 #[test]
@@ -565,7 +565,7 @@ fn should_not_increment_state_id_on_cursor_item_change() {
     let expected_state_id = inv_state.state_id().0;
 
     let mut cursor_item = app.world.get_mut::<CursorItem>(client).unwrap();
-    cursor_item.0 = Some(ItemStack::new(ItemKind::Diamond, 2, None));
+    cursor_item.0 = ItemStack::new(ItemKind::Diamond, 2, None);
 
     app.update();
 
@@ -623,7 +623,7 @@ mod dropping_items {
 
         assert_eq!(
             inventory.slot(36),
-            Some(&ItemStack::new(ItemKind::IronIngot, 2, None))
+            &ItemStack::new(ItemKind::IronIngot, 2, None)
         );
 
         let events = app
@@ -684,7 +684,7 @@ mod dropping_items {
             .world
             .get::<Inventory>(client)
             .expect("could not find inventory");
-        assert_eq!(inventory.slot(36), None);
+        assert_eq!(inventory.slot(36), &ItemStack::empty());
         let events = app
             .world
             .get_resource::<Events<DropItemStackEvent>>()
@@ -716,7 +716,7 @@ mod dropping_items {
 
         helper.send(&CreativeInventoryActionC2s {
             slot: -1,
-            clicked_item: Some(ItemStack::new(ItemKind::IronIngot, 32, None)),
+            clicked_item: ItemStack::new(ItemKind::IronIngot, 32, None),
         });
 
         app.update();
@@ -755,7 +755,7 @@ mod dropping_items {
             .world
             .get_mut::<CursorItem>(client)
             .expect("could not find client");
-        cursor_item.0 = Some(ItemStack::new(ItemKind::IronIngot, 32, None));
+        cursor_item.0 = ItemStack::new(ItemKind::IronIngot, 32, None);
         let inv_state = app
             .world
             .get_mut::<ClientInventoryState>(client)
@@ -769,7 +769,7 @@ mod dropping_items {
             button: 0,
             mode: ClickMode::Click,
             slot_changes: vec![].into(),
-            carried_item: None,
+            carried_item: ItemStack::empty(),
         });
 
         app.update();
@@ -780,7 +780,7 @@ mod dropping_items {
             .get::<CursorItem>(client)
             .expect("could not find client");
 
-        assert_eq!(cursor_item.0, None);
+        assert_eq!(cursor_item.0, ItemStack::empty());
 
         let events = app
             .world
@@ -833,10 +833,10 @@ mod dropping_items {
             state_id: VarInt(state_id),
             slot_changes: vec![SlotChange {
                 idx: 40,
-                item: Some(ItemStack::new(ItemKind::IronIngot, 31, None)),
+                item: ItemStack::new(ItemKind::IronIngot, 31, None),
             }]
             .into(),
-            carried_item: None,
+            carried_item: ItemStack::empty(),
         });
 
         app.update();
@@ -893,10 +893,10 @@ mod dropping_items {
             state_id: VarInt(state_id),
             slot_changes: vec![SlotChange {
                 idx: 40,
-                item: None,
+                item: ItemStack::empty(),
             }]
             .into(),
-            carried_item: None,
+            carried_item: ItemStack::empty(),
         });
 
         app.update();
@@ -964,10 +964,10 @@ mod dropping_items {
             mode: ClickMode::DropKey,
             slot_changes: vec![SlotChange {
                 idx: 50,
-                item: Some(ItemStack::new(ItemKind::IronIngot, 31, None)),
+                item: ItemStack::new(ItemKind::IronIngot, 31, None),
             }]
             .into(),
-            carried_item: None,
+            carried_item: ItemStack::empty(),
         });
 
         app.update();
@@ -1001,7 +1001,7 @@ mod dropping_items {
         let expected_player_slot_id = convert_to_player_slot_id(InventoryKind::Generic9x3, 50);
         assert_eq!(
             player_inventory.slot(expected_player_slot_id),
-            Some(&ItemStack::new(ItemKind::IronIngot, 31, None))
+            &ItemStack::new(ItemKind::IronIngot, 31, None)
         );
     }
 }
@@ -1051,10 +1051,10 @@ fn should_drop_item_stack_player_open_inventory_with_dropkey() {
         mode: ClickMode::DropKey,
         slot_changes: vec![SlotChange {
             idx: 50,
-            item: None,
+            item: ItemStack::empty(),
         }]
         .into(),
-        carried_item: None,
+        carried_item: ItemStack::empty(),
     });
 
     app.update();
@@ -1085,7 +1085,7 @@ fn should_drop_item_stack_player_open_inventory_with_dropkey() {
 
     // Also make sure that the player inventory was updated correctly.
     let expected_player_slot_id = convert_to_player_slot_id(InventoryKind::Generic9x3, 50);
-    assert_eq!(player_inventory.slot(expected_player_slot_id), None);
+    assert_eq!(player_inventory.slot(expected_player_slot_id), &ItemStack::empty());
 }
 
 #[test]
@@ -1102,7 +1102,7 @@ fn dragging_items() {
     helper.clear_received();
 
     app.world.get_mut::<CursorItem>(client).unwrap().0 =
-        Some(ItemStack::new(ItemKind::Diamond, 64, None));
+        ItemStack::new(ItemKind::Diamond, 64, None);
 
     let inv_state = app.world.get::<ClientInventoryState>(client).unwrap();
     let window_id = inv_state.window_id();
@@ -1117,19 +1117,19 @@ fn dragging_items() {
         slot_changes: vec![
             SlotChange {
                 idx: 9,
-                item: Some(ItemStack::new(ItemKind::Diamond, 21, None)),
+                item: ItemStack::new(ItemKind::Diamond, 21, None),
             },
             SlotChange {
                 idx: 10,
-                item: Some(ItemStack::new(ItemKind::Diamond, 21, None)),
+                item: ItemStack::new(ItemKind::Diamond, 21, None),
             },
             SlotChange {
                 idx: 11,
-                item: Some(ItemStack::new(ItemKind::Diamond, 21, None)),
+                item: ItemStack::new(ItemKind::Diamond, 21, None),
             },
         ]
         .into(),
-        carried_item: Some(ItemStack::new(ItemKind::Diamond, 1, None)),
+        carried_item: ItemStack::new(ItemKind::Diamond, 1, None),
     };
     helper.send(&drag_packet);
 
@@ -1144,7 +1144,7 @@ fn dragging_items() {
 
     assert_eq!(
         cursor_item.0,
-        Some(ItemStack::new(ItemKind::Diamond, 1, None))
+        ItemStack::new(ItemKind::Diamond, 1, None)
     );
 
     let inventory = app
@@ -1155,7 +1155,7 @@ fn dragging_items() {
     for i in 9..12 {
         assert_eq!(
             inventory.slot(i),
-            Some(&ItemStack::new(ItemKind::Diamond, 21, None))
+            &ItemStack::new(ItemKind::Diamond, 21, None)
         );
     }
 }
