@@ -13,6 +13,7 @@ use bytes::{Bytes, BytesMut};
 use derive_more::{Deref, DerefMut, From, Into};
 use tracing::warn;
 use uuid::Uuid;
+use valence_entity::living::Health;
 use valence_entity::player::PlayerEntityBundle;
 use valence_entity::query::EntityInitQuery;
 use valence_entity::tracked_data::TrackedData;
@@ -177,6 +178,7 @@ impl ClientBundle {
             player_abilities_flags: Default::default(),
             player: PlayerEntityBundle {
                 uuid: UniqueId(args.uuid),
+                living_health: Health(20.0),
                 ..Default::default()
             },
         }
