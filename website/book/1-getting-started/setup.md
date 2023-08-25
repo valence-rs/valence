@@ -1,6 +1,6 @@
 # Before You Start
 
-We recommend you get familiar with Bevy's Entity Component System architecture and API, as Valence uses the exact same crate for it's ECS. You can find [Bevy's introduction to ECS here](https://bevyengine.org/learn/book/getting-started/ecs/).
+We recommend you get familiar with Bevy's Entity Component System architecture and API, as Valence uses the exact same crate for its ECS. You can find [Bevy's introduction to ECS here](https://bevyengine.org/learn/book/getting-started/ecs/).
 
 You should also download Minecraft, obviously. You can use any launcher you'd like, but we recommend using the [Prism Launcher](https://prismlauncher.org/) as it will let you run offline mode clients a bit easier.
 
@@ -30,7 +30,7 @@ If you run this and try to join the server, you'll see "Joining world..." and th
 
 Let's add a startup system that will put a single block under the spawn position. There's gonna be a lot of new stuff here, but don't worry, we'll briefly touch on most of it.
 
-Chunk Layers are the way Valence handles worlds. A client can only view a single layer at a time. So the first thing we need to do is create a new set of chunk and entity layers (`LayerBundle`), add some chunks to it, and then set our desired block in the world.
+Chunk Layers are the way Valence handles worlds. A client can only view a single chunk layer at a time. So the first thing we need to do is create a new pair of chunk and entity layers (`LayerBundle`), add some chunks to it, and then set our desired block in the world.
 
 ```rust
 fn setup(
@@ -86,7 +86,7 @@ fn init_clients(
 
         layer_id.0 = layer;
         visible_chunk_layer.0 = layer;
-        visible_entity_layers.0.insert(layer);
+        visible_entity_layers.insert(layer);
         pos.set([0.5, 65.0, 0.5]);
         *game_mode = GameMode::Creative;
     }
@@ -97,7 +97,7 @@ So what's going on here? Similar to chunk layers, there are also entity layers. 
 
 So from top to bottom this code does the following:
 
-1. Sets the client's assigned entity layer to the layer we created in `setup()`.
+1. Sets the client's _player entity_ to the layer we created in `setup()`. This makes the player visible to other clients viewing this layer.
 2. Sets the client's visible chunk layer to the layer we created in `setup()`.
 3. Sets the client's visible entity layers to include the layer we created in `setup()`.
 4. Sets the client's position to the spawn position.
