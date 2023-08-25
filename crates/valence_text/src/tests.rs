@@ -64,7 +64,7 @@ fn selector() {
     let deserialized = Text::from_str(&serialized).unwrap();
     assert_eq!(
         serialized,
-        r##"{"selector":"foo","separator":{"text":"bar","color":"red","bold":true}}"##
+        r#"{"selector":"foo","separator":{"text":"bar","color":"red","bold":true}}"#
     );
     assert_eq!(txt, deserialized);
 }
