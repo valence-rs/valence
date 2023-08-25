@@ -10,7 +10,7 @@ struct Item {
     id: u16,
     name: String,
     translation_key: String,
-    max_stack: u8,
+    max_stack: i8,
     max_durability: u16,
     enchantability: u8,
     fireproof: bool,
@@ -236,7 +236,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             }
 
             /// Returns the maximum stack count.
-            pub const fn max_stack(self) -> u8 {
+            pub const fn max_stack(self) -> i8 {
                 match self {
                     #item_kind_to_max_stack_arms
                 }

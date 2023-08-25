@@ -12,7 +12,7 @@ pub struct ClickSlotC2s<'a> {
     pub button: i8,
     pub mode: ClickMode,
     pub slot_changes: Cow<'a, [SlotChange]>,
-    pub carried_item: Option<ItemStack>,
+    pub carried_item: ItemStack,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Encode, Decode)]
@@ -29,5 +29,5 @@ pub enum ClickMode {
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct SlotChange {
     pub idx: i16,
-    pub item: Option<ItemStack>,
+    pub item: ItemStack,
 }

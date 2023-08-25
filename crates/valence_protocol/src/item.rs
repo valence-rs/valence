@@ -64,6 +64,10 @@ impl ItemStack {
     pub fn is_empty(&self) -> bool {
         self.item == ItemKind::Air || self.count <= 0
     }
+
+    pub fn is_not_empty(&self) -> bool {
+        !self.is_empty()
+    }
 }
 
 impl Default for ItemStack {
