@@ -6,7 +6,8 @@ use valence_command::arg_parser::{CommandArg, EntitySelector, EntitySelectors, G
 use valence_command::command_scopes::CommandScopes;
 use valence_command::handler::{CommandResultEvent, CommandHandler};
 
-use valence_command::{arg_parser, CommandScopeRegistry};
+use valence_command::{arg_parser, Command, CommandScopeRegistry};
+use valence_command::command_graph::CommandGraphBuilder;
 use valence_command_derive::Command;
 
 const SPAWN_Y: i32 = 64;
@@ -60,7 +61,54 @@ enum Test {
     },
 }
 
+#[derive(Debug, Clone)]
+enum ComplexRedirection {
+    A(arg_parser::Vec3),
+    B,
+    C(arg_parser::Vec2),
+    D,
+    E(arg_parser::Vec3),
+}
 
+impl Command for ComplexRedirection {
+    fn assemble_graph(graph: &mut CommandGraphBuilder<Self>) where Self: Sized {
+        let root =graph.literal("complex").id();
+        let a = graph.literal("a").id();
+
+        graph.at(a).argument("a").with_parser::<arg_parser::Vec3>().with_executable(
+            |input| {
+                ComplexRedirection::A(arg_parser::Vec3::parse_arg(input).unwrap())
+            },
+        );
+
+        let b = graph.literal("b").id();
+
+        graph.at(b).with_executable(|_| ComplexRedirection::B);
+        graph.at(b).redirect_to(root);
+
+        let c = graph.literal("c").id();
+
+        graph.at(c).argument("c").with_parser::<arg_parser::Vec2>().with_executable(
+            |input| {
+                ComplexRedirection::C(arg_parser::Vec2::parse_arg(input).unwrap())
+            },
+        );
+
+        let d = graph.literal("d").id();
+
+        graph.at(d).with_executable(|_| ComplexRedirection::D);
+        graph.at(d).redirect_to(root);
+
+        let e = graph.literal("e").id();
+
+        graph.at(e).argument("e").with_parser::<arg_parser::Vec3>().with_executable(
+            |input| {
+                ComplexRedirection::E(arg_parser::Vec3::parse_arg(input).unwrap())
+            },
+        );
+
+    }
+}
 
 pub fn main() {
     App::new()
@@ -68,6 +116,7 @@ pub fn main() {
             DefaultPlugins,
             CommandHandler::<Teleport>::from_command(),
             CommandHandler::<Test>::from_command(),
+            CommandHandler::<ComplexRedirection>::from_command(),
         ))
         .add_systems(Startup, setup)
         .add_systems(
@@ -76,6 +125,7 @@ pub fn main() {
                 init_clients,
                 despawn_disconnected_clients,
                 toggle_perms_on_sneak,
+                handle_test_command,
                 handle_teleport_command,
             ),
         )
@@ -221,6 +271,32 @@ fn handle_teleport_command(
                 }
             }
         }
+    }
+}
+
+fn handle_test_command(
+    mut events: EventReader<CommandResultEvent<Test>>,
+    mut clients: Query<&mut Client>,
+) {
+    for event in events.iter() {
+        let client = &mut clients.get_mut(event.executor).unwrap();
+        client.send_chat_message(format!(
+            "Test command executed with data:\n {:#?}",
+            &event.result
+        ));
+    }
+}
+
+fn handle_complex_command(
+    mut events: EventReader<CommandResultEvent<ComplexRedirection>>,
+    mut clients: Query<&mut Client>,
+) {
+    for event in events.iter() {
+        let client = &mut clients.get_mut(event.executor).unwrap();
+        client.send_chat_message(format!(
+            "Test command executed with data:\n {:#?}",
+            &event.result
+        ));
     }
 }
 

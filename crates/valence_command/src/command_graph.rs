@@ -67,6 +67,10 @@
 //!                                               │ Argument: <destination:entity> │
 //!                                               └────────────────────────────────┘
 //! ```
+//! If you want a cool graph of your own command graph you can use the display trait on the
+//! [CommandGraph] struct. Then you can use a tool like
+//! [Graphviz Online](https://dreampuf.github.io/GraphvizOnline) to look at the graph.
+//!
 
 use std::collections::{HashMap};
 use std::fmt::{Display, Formatter};
@@ -220,11 +224,7 @@ impl From<CommandGraph> for CommandTreeS2c {
             };
 
             if *index == root_index_graph {
-                nodes.push(CommandNode {
-                    executable: false,
-                    data: NodeData::Root,
-                    scopes: Vec::new(),
-                });
+                nodes.push(node);
                 index_map.insert(*index, nodes.len() - 1);
                 continue;
             } else {
@@ -245,6 +245,7 @@ impl From<CommandGraph> for CommandTreeS2c {
 
         let mut packet_nodes = Vec::new();
 
+        // convert the nodes to the packet format
         for (index, children, redirect) in &nodes_to_be_allocated {
             let mut packet_children: Vec<VarInt> = Vec::new();
 
@@ -335,6 +336,7 @@ pub struct CommandGraphBuilder<'a, T> {
     current_node: NodeIndex,
     executables: &'a mut HashMap<NodeIndex, fn(&mut ParseInput) -> T>,
     parsers: &'a mut HashMap<NodeIndex, fn(&mut ParseInput) -> bool>,
+    // modifiers: &'a mut HashMap<NodeIndex, fn(String, &mut HashMap<String, String>)>,
 }
 
 impl<'a, T> CommandGraphBuilder<'a, T> {

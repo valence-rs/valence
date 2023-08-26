@@ -304,8 +304,9 @@ pub struct QuotableString(String);
 impl CommandArg for QuotableString {
     fn parse_arg(input: &mut ParseInput) -> Result<Self, CommandArgParseError> {
         input.skip_whitespace();
-        match input.pop() {
+        match input.peek() {
             Some('"') => {
+                input.pop();
                 let mut s = String::new();
                 let mut escaped = false;
                 while let Some(c) = input.pop() {
@@ -382,9 +383,10 @@ impl CommandArg for EntitySelector {
         input.skip_whitespace();
         let mut s = String::new();
         let mut selector = None;
-        while let Some(c) = input.pop() {
+        while let Some(c) = input.peek() {
             match c {
                 '@' => {
+                    input.pop();
                     match input.pop() {
                         Some('e') => selector = Some(EntitySelectors::AllEntities),
                         Some('a') => selector = Some(EntitySelectors::AllPlayers),
@@ -403,6 +405,7 @@ impl CommandArg for EntitySelector {
                     }
                 }
                 '[' => {
+                    input.pop();
                     if selector.is_none() {
                         return Err(CommandArgParseError::InvalidArgument(
                             "entity selector".to_string(),
@@ -422,10 +425,9 @@ impl CommandArg for EntitySelector {
                     return Err(CommandArgParseError::InvalidArgLength);
                 }
                 _ => {
-                    return Err(CommandArgParseError::InvalidArgument(
-                        "entity selector".to_string(),
-                        c.to_string(),
-                    ))
+                    return Ok(EntitySelector::SimpleSelector(EntitySelectors::SinglePlayer(
+                        String::parse_arg(input)?,
+                    )))
                 }
             }
         }
