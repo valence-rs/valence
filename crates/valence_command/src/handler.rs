@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::marker::PhantomData;
+use std::time::Instant;
 
 use bevy_app::{App, Plugin, PostStartup, Update};
 use bevy_ecs::change_detection::{Res, ResMut};
@@ -39,7 +40,6 @@ where
 struct CommandResource<T: Command + Send + Sync> {
     command: PhantomData<T>,
     executables: HashMap<NodeIndex, fn(&mut ParseInput) -> T>,
-    parsers: HashMap<NodeIndex, fn(&mut ParseInput) -> bool>,
 }
 
 impl<T: Command + Send + Sync> CommandResource<T> {
@@ -47,7 +47,6 @@ impl<T: Command + Send + Sync> CommandResource<T> {
         CommandResource {
             command: PhantomData,
             executables: HashMap::new(),
-            parsers: HashMap::new(),
         }
     }
 }
@@ -60,6 +59,7 @@ where
 {
     pub result: T,
     pub executor: Entity,
+    pub modifiers: HashMap<&'static str, String>,
 }
 
 impl<T> Plugin for CommandHandler<T>
@@ -82,11 +82,13 @@ fn command_startup_system<T>(
 {
     let mut executables = HashMap::new();
     let mut parsers = HashMap::new();
+    let mut modifiers = HashMap::new();
     let graph_builder =
-        &mut CommandGraphBuilder::new(&mut registry, &mut executables, &mut parsers);
+        &mut CommandGraphBuilder::new(&mut registry, &mut executables, &mut parsers, &mut modifiers);
     T::assemble_graph(graph_builder);
     command.executables.extend(executables);
-    command.parsers.extend(parsers);
+    registry.parsers.extend(parsers);
+    registry.modifiers.extend(modifiers);
 }
 
 /// this system reads incoming command events and prints them to the console
@@ -101,11 +103,12 @@ fn command_event_system<T>(
     T: Command + Send + Sync + Debug,
 {
     for command_event in commands_executed.iter() {
+        let timer = Instant::now();
         let executor = command_event.executor;
-        trace!("Received command: {:?}", command_event);
+        println!("Received command: {:?}", command_event);
         // theese are the leafs of the graph that are executable under this command group
         let executable_leafs = command.executables.keys().collect::<Vec<&NodeIndex>>();
-        trace!("Executable leafs: {:?}", executable_leafs);
+        println!("Executable leafs: {:?}", executable_leafs);
         let root = registry.graph.root;
 
         let command_input = &command_event.command;
@@ -115,13 +118,15 @@ fn command_event_system<T>(
         let mut to_be_executed = Vec::new();
 
         let mut args = Vec::new();
+        let mut modifiers_to_be_executed = Vec::new();
 
         parse_command_args(
             &mut args,
+            &mut modifiers_to_be_executed,
             &mut input,
             graph,
             &executable_leafs,
-            &command.parsers,
+            registry.as_ref(),
             &mut to_be_executed,
             root,
             executor,
@@ -130,13 +135,23 @@ fn command_event_system<T>(
             false,
         );
 
-            for executable in to_be_executed {
-                trace!("Executing command with args: {:?}", args);
-                let result =
-                    command.executables.get(&executable).unwrap()(&mut ParseInput::new(&args.join(" ")));
-                trace!("executing command with info {:#?}", result);
-                events.send(CommandResultEvent { result, executor });
-            }
+        let mut modifiers = HashMap::new();
+        for (node, modifier) in modifiers_to_be_executed {
+            println!("Executing modifier with data: {:?}", modifier);
+            registry.modifiers.get(&node).unwrap()(modifier, &mut modifiers);
+        }
+
+        println!("modifiers: {:?}", modifiers);
+
+        for executable in to_be_executed {
+            println!("Executing command with args: {:?}", args);
+            let result = command.executables.get(&executable).unwrap()(&mut ParseInput::new(
+                &args.join(" "),
+            ));
+            println!("executing command with info {:#?}", result);
+            events.send(CommandResultEvent { result, executor, modifiers: modifiers.clone() });
+        }
+        println!("Command took: {:?}", timer.elapsed());
     }
 }
 
@@ -144,10 +159,11 @@ fn command_event_system<T>(
 /// recursively parse the command args.
 fn parse_command_args(
     command_args: &mut Vec<String>,
+    modifiers_to_be_executed: &mut Vec<(NodeIndex, String)>,
     input: &mut ParseInput,
     graph: &Graph<CommandNode, CommandEdgeType>,
     executable_leafs: &[&NodeIndex],
-    parsers: &HashMap<NodeIndex, fn(&mut ParseInput) -> bool>,
+    command_registry: &CommandRegistry,
     to_be_executed: &mut Vec<NodeIndex>,
     curent_node: NodeIndex,
     executor: Entity,
@@ -178,22 +194,27 @@ fn parse_command_args(
         match &graph[curent_node].data {
             // no real need to check for root node
             NodeData::Root => {
-                println!("root: {:?}", graph[curent_node].data);
+                if command_registry.modifiers.contains_key(&curent_node) {
+                    modifiers_to_be_executed.push((curent_node, String::new()));
+                }
             }
             // if the node is a literal, we want to match the name of the literal
             // to the input
             NodeData::Literal { name } => {
-                println!("literal: {:?}", graph[curent_node].data);
                 match input.match_next(name) {
-                    true => {}
+                    true => {
+                        input.pop(); // we want to pop the whitespace after the literal
+                        if command_registry.modifiers.contains_key(&curent_node) {
+                            modifiers_to_be_executed.push((curent_node, String::new()));
+                        }
+                    }
                     false => return false,
                 }
             }
             // if the node is an argument, we want to parse the argument
             NodeData::Argument { .. } => {
-                println!("argument: {:?}", graph[curent_node].data);
 
-                let parser = match parsers.get(&curent_node) {
+                let parser = match command_registry.parsers.get(&curent_node) {
                     Some(parser) => parser,
                     None => {
                         return false;
@@ -205,7 +226,10 @@ fn parse_command_args(
                 let valid = parser(input);
                 let after_cursor = input.cursor;
                 if valid {
-                    command_args.push(input.input[before_cursor..after_cursor].to_string())
+                    command_args.push(input.input[before_cursor..after_cursor].to_string());
+                    if command_registry.modifiers.contains_key(&curent_node) {
+                        modifiers_to_be_executed.push((curent_node, input.input[before_cursor..after_cursor].to_string()));
+                    }
                 } else {
                     return false;
                 }
@@ -215,27 +239,27 @@ fn parse_command_args(
         command_args.clear();
     }
 
-
     let pre_cursor = input.cursor;
     input.skip_whitespace();
-    if input.is_done() && executable_leafs.contains(&&curent_node){
+    if input.is_done() && executable_leafs.contains(&&curent_node) {
         to_be_executed.push(curent_node);
         return true;
     } else {
         input.cursor = pre_cursor;
     }
 
-
     let mut all_invalid = true;
     for neighbor in graph.neighbors(curent_node) {
         let pre_cursor = input.cursor;
         let mut args = command_args.clone();
+        let mut modifiers = modifiers_to_be_executed.clone();
         let valid = parse_command_args(
             &mut args,
+            &mut modifiers,
             input,
             graph,
             executable_leafs,
-            parsers,
+            command_registry,
             to_be_executed,
             neighbor,
             executor,
@@ -245,7 +269,6 @@ fn parse_command_args(
                 let edge = graph.find_edge(curent_node, neighbor).unwrap();
                 match &graph[edge] {
                     CommandEdgeType::Redirect => {
-                        println!("redirecting to: {:?}", graph[neighbor].data);
                         true
                     }
                     _ => false,
@@ -253,8 +276,8 @@ fn parse_command_args(
             },
         );
         if valid {
-            println!("args2: {:?}", args);
             *command_args = args;
+            *modifiers_to_be_executed = modifiers;
             all_invalid = false;
             break;
         } else {

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use bevy_app::{App, Plugin, PreUpdate, Update};
 use bevy_ecs::entity::Entity;
 use bevy_ecs::prelude::{Added, Commands, EventReader, EventWriter, IntoSystemConfigs, Or, Query, Res};
@@ -23,8 +24,10 @@ impl Plugin for CommandManagerPlugin {
         .add_systems(Update, (update_command_tree, read_incoming_packets));
 
         let graph: CommandGraph = CommandGraph::new();
+        let modifiers = HashMap::new();
+        let parsers = HashMap::new();
 
-        app.insert_resource(CommandRegistry { graph });
+        app.insert_resource(CommandRegistry { graph, modifiers, parsers });
 
         app.insert_resource(CommandScopeRegistry::new());
     }

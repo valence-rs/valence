@@ -13,7 +13,7 @@ use valence_command_derive::Command;
 const SPAWN_Y: i32 = 64;
 
 #[derive(Command, Debug, Clone)]
-#[paths("teleport", "tp")]
+#[paths("teleport", "tp ")]
 #[scopes("valence:command:teleport")]
 enum Teleport {
     #[paths = "{location}"]
@@ -30,7 +30,7 @@ enum Teleport {
 }
 
 #[derive(Command, Debug, Clone)]
-#[paths("test", "t")]
+#[paths("test ", "t ")]
 #[scopes("valence:command:teleport")]
 enum Test {
     // 3 literals with an arg each
@@ -94,7 +94,12 @@ impl Command for ComplexRedirection {
             },
         );
 
-        let d = graph.literal("d").id();
+        let d = graph.at(root).literal("d").with_modifier(|_, modifiers| {
+            let entry = modifiers.entry("d_pass_count").or_insert("0".into());
+            let count = entry.parse::<u32>().unwrap();
+            *entry = (count + 1).to_string();
+        }
+        ).id();
 
         graph.at(d).with_executable(|_| ComplexRedirection::D);
         graph.at(d).redirect_to(root);
@@ -122,6 +127,7 @@ pub fn main() {
         .add_systems(
             Update,
             (
+                handle_complex_command,
                 init_clients,
                 despawn_disconnected_clients,
                 toggle_perms_on_sneak,
@@ -294,8 +300,9 @@ fn handle_complex_command(
     for event in events.iter() {
         let client = &mut clients.get_mut(event.executor).unwrap();
         client.send_chat_message(format!(
-            "Test command executed with data:\n {:#?}",
-            &event.result
+            "complex command executed with data:\n {:#?}\n and with the modifiers:\n {:#?}",
+            &event.result,
+            &event.modifiers
         ));
     }
 }

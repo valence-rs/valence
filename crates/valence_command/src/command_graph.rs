@@ -79,6 +79,7 @@ use std::fmt::{Display, Formatter};
 
 use petgraph::dot::Dot;
 use petgraph::prelude::*;
+use serde_value::Value;
 use valence_server::protocol::packets::play::command_tree_s2c::{
     Node, NodeData as PacketNodeData, Parser, StringArg, Suggestion,
 };
@@ -297,7 +298,8 @@ impl From<CommandGraph> for CommandTreeS2c {
 /// let mut command_graph = CommandRegistry::default();
 /// let mut executable_map = HashMap::new();
 /// let mut parser_map = HashMap::new();
-/// let mut command_graph_builder = CommandGraphBuilder::<TestCommand>::new(&mut command_graph, &mut executable_map, &mut parser_map);
+/// let mut modifier_map = HashMap::new();
+/// let mut command_graph_builder = CommandGraphBuilder::<TestCommand>::new(&mut command_graph, &mut executable_map, &mut parser_map, &mut modifier_map);
 ///
 /// // simple command
 /// let simple_command = command_graph_builder
@@ -336,7 +338,7 @@ pub struct CommandGraphBuilder<'a, T> {
     current_node: NodeIndex,
     executables: &'a mut HashMap<NodeIndex, fn(&mut ParseInput) -> T>,
     parsers: &'a mut HashMap<NodeIndex, fn(&mut ParseInput) -> bool>,
-    // modifiers: &'a mut HashMap<NodeIndex, fn(String, &mut HashMap<String, String>)>,
+    modifiers: &'a mut HashMap<NodeIndex, fn(String, &mut HashMap<&str, String>)>,
 }
 
 impl<'a, T> CommandGraphBuilder<'a, T> {
@@ -349,12 +351,14 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
         registry: &'a mut CommandRegistry,
         executables: &'a mut HashMap<NodeIndex, fn(&mut ParseInput) -> T>,
         parsers: &'a mut HashMap<NodeIndex, fn(&mut ParseInput) -> bool>,
+        modifiers: &'a mut HashMap<NodeIndex, fn(String, &mut HashMap<&str, String>)>,
     ) -> Self {
         CommandGraphBuilder {
             current_node: registry.graph.root,
             graph: &mut registry.graph,
             executables,
             parsers,
+            modifiers,
         }
     }
 
@@ -431,8 +435,9 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
     /// let mut command_graph = CommandRegistry::default();
     /// let mut executable_map = HashMap::new();
     /// let mut parser_map = HashMap::new();
+    /// let mut modifier_map = HashMap::new();
     /// let mut command_graph_builder =
-    ///     CommandGraphBuilder::<TestCommand>::new(&mut command_graph, &mut executable_map, &mut parser_map);
+    ///     CommandGraphBuilder::<TestCommand>::new(&mut command_graph, &mut executable_map, &mut parser_map, &mut modifier_map);
     ///
     /// let simple_command = command_graph_builder
     ///   .root() // transition to the root node
@@ -472,6 +477,45 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
 
         node.executable = true;
         self.executables.insert(*current_node, executable);
+
+        self
+    }
+
+    /// adds a modifier to the current node
+    ///
+    /// # Arguments
+    /// * modifier - the modifier function to add
+    ///
+    /// # Example
+    /// ```
+    /// use std::collections::HashMap;
+    ///
+    /// use valence_command::command_graph::CommandGraphBuilder;
+    /// use valence_command::CommandRegistry;
+    ///
+    /// struct TestCommand;
+    ///
+    /// let mut command_graph = CommandRegistry::default();
+    /// let mut executable_map = HashMap::new();
+    /// let mut parser_map = HashMap::new();
+    /// let mut modifier_map = HashMap::new();
+    /// let mut command_graph_builder =
+    ///    CommandGraphBuilder::<TestCommand>::new(&mut command_graph, &mut executable_map, &mut parser_map, &mut modifier_map);
+    ///
+    /// command_graph_builder
+    ///     .root() // transition to the root node
+    ///     .literal("test") // add a literal node then transition to it    ///
+    ///     .with_modifier(|_, modifiers| {
+    ///        modifiers.insert("test", "test".into()); // this will trigger when the node is passed
+    ///     })
+    ///     .literal("command") // add a literal node then transition to it
+    ///     .with_executable(|_| TestCommand);
+    /// ```
+    pub fn with_modifier(&mut self, modifier: fn(String, &mut HashMap<&str, String>)) -> &mut Self {
+        let graph = &mut self.graph.graph;
+        let current_node = &mut self.current_node;
+
+        self.modifiers.insert(*current_node, modifier);
 
         self
     }

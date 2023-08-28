@@ -14,4 +14,4 @@ anyhow.workspace = true
 byteorder.workspace = true
 petgraph.workspace = true
 thiserror.workspace = true
-
+serde-value.workspace = true

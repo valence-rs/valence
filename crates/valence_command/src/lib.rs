@@ -4,9 +4,13 @@ pub mod command_scopes;
 pub mod handler;
 pub mod manager;
 
+use std::collections::HashMap;
 use bevy_ecs::event::Event;
 use bevy_ecs::prelude::{Entity, Resource};
+use petgraph::prelude::NodeIndex;
+use serde_value::Value;
 pub use command_scopes::CommandScopeRegistry;
+use crate::arg_parser::ParseInput;
 
 use crate::command_graph::{CommandGraph, CommandGraphBuilder};
 
@@ -26,4 +30,6 @@ pub struct CommandExecutionEvent {
 #[derive(Resource, Default)]
 pub struct CommandRegistry {
     pub graph: CommandGraph,
+    pub parsers: HashMap<NodeIndex, fn(&mut ParseInput) -> bool>,
+    pub modifiers: HashMap<NodeIndex, fn(String, &mut HashMap<&str, String>)>,
 }
