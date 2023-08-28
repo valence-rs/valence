@@ -525,7 +525,9 @@ fn place_blocks(
         // get the held item
         let slot_id = held.slot();
         let stack = inventory.slot(slot_id);
-        if stack.is_empty() { continue; }
+        if stack.is_empty() {
+            continue;
+        }
 
         let Some(block_kind) = BlockKind::from_item_kind(stack.item) else {
             // can't place this item as a block

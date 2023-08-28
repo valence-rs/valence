@@ -210,11 +210,13 @@ impl Inventory {
 
         let item = &mut self.slots[idx as usize];
 
-        if item.count() == amount {
-            return;
+        if item.is_not_empty() {
+            if item.count() == amount {
+                return;
+            }
+            item.set_count(amount);
+            self.changed |= 1 << idx;
         }
-        item.set_count(amount);
-        self.changed |= 1 << idx;
     }
 
     pub fn slot_count(&self) -> u16 {
@@ -858,7 +860,7 @@ fn handle_click_slot(
         if pkt.slot_idx < 0 && pkt.mode == ClickMode::Click {
             // The client is dropping the cursor item by clicking outside the window.
 
-            let stack = &cursor_item.0;
+            let stack = &mut cursor_item.0;
 
             if stack.is_not_empty() {
                 drop_item_stack_events.send(DropItemStackEvent {
@@ -866,6 +868,7 @@ fn handle_click_slot(
                     from_slot: None,
                     stack: stack.clone(),
                 });
+                *stack = ItemStack::empty();
             }
         } else if pkt.mode == ClickMode::DropKey {
             // The client is dropping an item by pressing the drop key.

@@ -31,7 +31,7 @@ pub(super) fn validate_click_slot_packet(
                 return false;
             }
 
-            if !s.item.is_empty() {
+            if s.item.is_not_empty() {
                 let max_stack_size = s
                     .item
                     .item
@@ -49,7 +49,7 @@ pub(super) fn validate_click_slot_packet(
     );
 
     // check carried item count is valid
-    if !packet.carried_item.is_empty() {
+    if packet.carried_item.is_not_empty() {
         let carried_item = &packet.carried_item;
 
         let max_stack_size = carried_item
@@ -141,7 +141,7 @@ pub(super) fn validate_click_slot_packet(
                 let expected_delta = match packet.button {
                     1 => -1,
                     0 => {
-                        if cursor_item.is_empty() {
+                        if cursor_item.is_not_empty() {
                             -cursor_item.0.count as i32
                         } else {
                             0
@@ -221,7 +221,7 @@ pub(super) fn validate_click_slot_packet(
             let Some(item_kind) = packet
                 .slot_changes
                 .iter()
-                .filter(|s| !s.item.is_empty())
+                .filter(|s| s.item.is_not_empty())
                 .next()
                 .map(|s| &s.item)
             else {
@@ -307,7 +307,7 @@ pub(super) fn validate_click_slot_packet(
             let expected_delta = match packet.button {
                 0 => -1,
                 1 => {
-                    if !old_slot.is_empty() {
+                    if old_slot.is_not_empty() {
                         -old_slot.count() as i32
                     } else {
                         0

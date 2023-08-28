@@ -187,10 +187,7 @@ fn test_should_modify_player_inventory_click_slot() {
         .get::<CursorItem>(client)
         .expect("could not find client");
 
-    assert_eq!(
-        cursor_item.0,
-        ItemStack::new(ItemKind::Diamond, 2, None)
-    );
+    assert_eq!(cursor_item.0, ItemStack::new(ItemKind::Diamond, 2, None));
 }
 
 #[test]
@@ -330,10 +327,7 @@ fn test_should_modify_open_inventory_click_slot() {
         .world
         .get::<CursorItem>(client)
         .expect("could not find client");
-    assert_eq!(
-        cursor_item.0,
-        ItemStack::new(ItemKind::Diamond, 2, None)
-    );
+    assert_eq!(cursor_item.0, ItemStack::new(ItemKind::Diamond, 2, None));
 }
 
 #[test]
@@ -1085,7 +1079,10 @@ fn should_drop_item_stack_player_open_inventory_with_dropkey() {
 
     // Also make sure that the player inventory was updated correctly.
     let expected_player_slot_id = convert_to_player_slot_id(InventoryKind::Generic9x3, 50);
-    assert_eq!(player_inventory.slot(expected_player_slot_id), &ItemStack::empty());
+    assert_eq!(
+        player_inventory.slot(expected_player_slot_id),
+        &ItemStack::empty()
+    );
 }
 
 #[test]
@@ -1142,10 +1139,7 @@ fn dragging_items() {
         .get::<CursorItem>(client)
         .expect("could not find client");
 
-    assert_eq!(
-        cursor_item.0,
-        ItemStack::new(ItemKind::Diamond, 1, None)
-    );
+    assert_eq!(cursor_item.0, ItemStack::new(ItemKind::Diamond, 1, None));
 
     let inventory = app
         .world
