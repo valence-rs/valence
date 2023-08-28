@@ -50,6 +50,8 @@ impl TrackedData {
 
         self.remove_init_value(index);
 
+        self.init_data.pop(); // Remove terminator.
+
         // Append the new value to the end.
         let len_before = self.init_data.len();
 
@@ -61,6 +63,8 @@ impl TrackedData {
         let len = self.init_data.len() - len_before;
 
         self.init_entries.push((index, len as u32));
+
+        self.init_data.push(0xff); // Add terminator.
     }
 
     pub fn remove_init_value(&mut self, index: u8) -> bool {
@@ -88,10 +92,14 @@ impl TrackedData {
             "index of 0xff is reserved for the terminator"
         );
 
+        self.update_data.pop(); // Remove terminator.
+
         self.update_data.extend_from_slice(&[index, type_id]);
         if let Err(e) = value.encode(&mut self.update_data) {
             warn!("failed to encode updated tracked data: {e:#}");
         }
+
+        self.update_data.push(0xff); // Add terminator.
     }
 
     pub fn clear_update_values(&mut self) {
@@ -120,7 +128,7 @@ mod tests {
         assert!(td.remove_init_value(0));
         assert!(td.remove_init_value(5));
 
-        assert!(td.init_data.as_slice().is_empty());
+        assert!(td.init_data.as_slice().is_empty() || td.init_data.as_slice() == [0xff]);
         assert!(td.init_data().is_none());
 
         assert!(td.update_data.is_empty());
