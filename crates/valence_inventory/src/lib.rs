@@ -1024,13 +1024,13 @@ fn handle_click_slot(
                 for slot in pkt.slot_changes.iter() {
                     if (0i16..target_inventory.slot_count() as i16).contains(&slot.idx) {
                         // The client is interacting with a slot in the target inventory.
-                        target_inventory.set_slot(slot.idx as u16, slot.item.clone());
+                        target_inventory.set_slot(slot.idx as u16, slot.stack.clone());
                         open_inventory.client_changed |= 1 << slot.idx;
                     } else {
                         // The client is interacting with a slot in their own inventory.
                         let slot_id =
                             convert_to_player_slot_id(target_inventory.kind, slot.idx as u16);
-                        client_inv.set_slot(slot_id, slot.item.clone());
+                        client_inv.set_slot(slot_id, slot.stack.clone());
                         inv_state.slots_changed |= 1 << slot_id;
                     }
                 }
@@ -1059,7 +1059,7 @@ fn handle_click_slot(
 
                 for slot in pkt.slot_changes.iter() {
                     if (0i16..client_inv.slot_count() as i16).contains(&slot.idx) {
-                        client_inv.set_slot(slot.idx as u16, slot.item.clone());
+                        client_inv.set_slot(slot.idx as u16, slot.stack.clone());
                         inv_state.slots_changed |= 1 << slot.idx;
                     } else {
                         // The client is trying to interact with a slot that does not exist,

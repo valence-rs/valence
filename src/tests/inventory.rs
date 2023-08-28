@@ -158,7 +158,7 @@ fn test_should_modify_player_inventory_click_slot() {
         slot_idx: 20,
         slot_changes: vec![SlotChange {
             idx: 20,
-            item: ItemStack::empty(),
+            stack: ItemStack::empty(),
         }]
         .into(),
         carried_item: ItemStack::new(ItemKind::Diamond, 2, None),
@@ -301,7 +301,7 @@ fn test_should_modify_open_inventory_click_slot() {
         mode: ClickMode::Click,
         slot_changes: vec![SlotChange {
             idx: 20,
-            item: ItemStack::empty(),
+            stack: ItemStack::empty(),
         }]
         .into(),
         carried_item: ItemStack::new(ItemKind::Diamond, 2, None),
@@ -827,7 +827,7 @@ mod dropping_items {
             state_id: VarInt(state_id),
             slot_changes: vec![SlotChange {
                 idx: 40,
-                item: ItemStack::new(ItemKind::IronIngot, 31, None),
+                stack: ItemStack::new(ItemKind::IronIngot, 31, None),
             }]
             .into(),
             carried_item: ItemStack::empty(),
@@ -887,7 +887,7 @@ mod dropping_items {
             state_id: VarInt(state_id),
             slot_changes: vec![SlotChange {
                 idx: 40,
-                item: ItemStack::empty(),
+                stack: ItemStack::empty(),
             }]
             .into(),
             carried_item: ItemStack::empty(),
@@ -958,7 +958,7 @@ mod dropping_items {
             mode: ClickMode::DropKey,
             slot_changes: vec![SlotChange {
                 idx: 50,
-                item: ItemStack::new(ItemKind::IronIngot, 31, None),
+                stack: ItemStack::new(ItemKind::IronIngot, 31, None),
             }]
             .into(),
             carried_item: ItemStack::empty(),
@@ -1045,7 +1045,7 @@ fn should_drop_item_stack_player_open_inventory_with_dropkey() {
         mode: ClickMode::DropKey,
         slot_changes: vec![SlotChange {
             idx: 50,
-            item: ItemStack::empty(),
+            stack: ItemStack::empty(),
         }]
         .into(),
         carried_item: ItemStack::empty(),
@@ -1114,15 +1114,15 @@ fn dragging_items() {
         slot_changes: vec![
             SlotChange {
                 idx: 9,
-                item: ItemStack::new(ItemKind::Diamond, 21, None),
+                stack: ItemStack::new(ItemKind::Diamond, 21, None),
             },
             SlotChange {
                 idx: 10,
-                item: ItemStack::new(ItemKind::Diamond, 21, None),
+                stack: ItemStack::new(ItemKind::Diamond, 21, None),
             },
             SlotChange {
                 idx: 11,
-                item: ItemStack::new(ItemKind::Diamond, 21, None),
+                stack: ItemStack::new(ItemKind::Diamond, 21, None),
             },
         ]
         .into(),

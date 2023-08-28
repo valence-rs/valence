@@ -31,14 +31,14 @@ pub(super) fn validate_click_slot_packet(
                 return false;
             }
 
-            if s.item.is_not_empty() {
+            if s.stack.is_not_empty() {
                 let max_stack_size = s
-                    .item
+                    .stack
                     .item
                     .max_stack()
-                    .max(s.item.count())
+                    .max(s.stack.count())
                     .min(ItemStack::STACK_MAX);
-                if !(1..=max_stack_size).contains(&(s.item.count())) {
+                if !(1..=max_stack_size).contains(&(s.stack.count())) {
                     return false;
                 }
             }
@@ -190,7 +190,7 @@ pub(super) fn validate_click_slot_packet(
                     // assert that a swap occurs
                     ensure!(
                         *old_slot == packet.carried_item
-                            && cursor_item.0 == packet.slot_changes[0].item,
+                            && cursor_item.0 == packet.slot_changes[0].stack,
                         "swapped items must match"
                     );
                 } else {
@@ -221,9 +221,9 @@ pub(super) fn validate_click_slot_packet(
             let Some(item_kind) = packet
                 .slot_changes
                 .iter()
-                .filter(|s| s.item.is_not_empty())
+                .filter(|s| s.stack.is_not_empty())
                 .next()
-                .map(|s| &s.item)
+                .map(|s| &s.stack)
             else {
                 bail!("shift click must move an item");
             };
@@ -237,8 +237,8 @@ pub(super) fn validate_click_slot_packet(
             // assert all moved items are the same kind
             ensure!(
                 packet.slot_changes.iter()
-                    .filter(|s| s.item.is_not_empty())
-                    .all(|s| s.item.item == item_kind.item),
+                    .filter(|s| s.stack.is_not_empty())
+                    .all(|s| s.stack.item == item_kind.item),
                 "shift click must move the same item kind"
             );
         }
@@ -263,8 +263,8 @@ pub(super) fn validate_click_slot_packet(
                 window.slot(packet.slot_changes[1].idx as u16),
             ];
             ensure!(
-                old_slots.iter().any(|s| *s == &packet.slot_changes[0].item)
-                    && old_slots.iter().any(|s| *s == &packet.slot_changes[1].item),
+                old_slots.iter().any(|s| *s == &packet.slot_changes[0].stack)
+                    && old_slots.iter().any(|s| *s == &packet.slot_changes[1].stack),
                 "swapped items must match"
             );
         }
@@ -280,7 +280,7 @@ pub(super) fn validate_click_slot_packet(
             );
 
             let old_slot = window.slot(packet.slot_idx as u16);
-            let new_slot = &packet.slot_changes[0].item;
+            let new_slot = &packet.slot_changes[0].stack;
             let is_transmuting = {
                 let old_slot = if old_slot.is_empty() {
                     None
@@ -363,7 +363,7 @@ fn calculate_net_item_delta(
 
     for slot in packet.slot_changes.iter() {
         let old_slot = window.slot(slot.idx as u16);
-        let new_slot = &slot.item;
+        let new_slot = &slot.stack;
 
         let old_slot_count = if old_slot.is_empty() {
             None
@@ -425,15 +425,15 @@ mod tests {
             slot_changes: vec![
                 SlotChange {
                     idx: 4,
-                    item: ItemStack::new(ItemKind::Diamond, 21, None),
+                    stack: ItemStack::new(ItemKind::Diamond, 21, None),
                 },
                 SlotChange {
                     idx: 3,
-                    item: ItemStack::new(ItemKind::Diamond, 21, None),
+                    stack: ItemStack::new(ItemKind::Diamond, 21, None),
                 },
                 SlotChange {
                     idx: 5,
-                    item: ItemStack::new(ItemKind::Diamond, 21, None),
+                    stack: ItemStack::new(ItemKind::Diamond, 21, None),
                 },
             ]
             .into(),
@@ -462,19 +462,19 @@ mod tests {
             slot_changes: vec![
                 SlotChange {
                     idx: 2,
-                    item: ItemStack::new(ItemKind::Diamond, 2, None),
+                    stack: ItemStack::new(ItemKind::Diamond, 2, None),
                 },
                 SlotChange {
                     idx: 3,
-                    item: ItemStack::new(ItemKind::IronIngot, 2, None),
+                    stack: ItemStack::new(ItemKind::IronIngot, 2, None),
                 },
                 SlotChange {
                     idx: 4,
-                    item: ItemStack::new(ItemKind::GoldIngot, 2, None),
+                    stack: ItemStack::new(ItemKind::GoldIngot, 2, None),
                 },
                 SlotChange {
                     idx: 5,
-                    item: ItemStack::new(ItemKind::Emerald, 2, None),
+                    stack: ItemStack::new(ItemKind::Emerald, 2, None),
                 },
             ]
             .into(),
@@ -506,7 +506,7 @@ mod tests {
             slot_idx: 0,
             slot_changes: vec![SlotChange {
                 idx: 0,
-                item: ItemStack::empty(),
+                stack: ItemStack::empty(),
             }]
             .into(),
             carried_item: inventory.slot(0).clone(),
@@ -531,7 +531,7 @@ mod tests {
             slot_idx: 0,
             slot_changes: vec![SlotChange {
                 idx: 0,
-                item: ItemStack::new(ItemKind::Diamond, 20, None),
+                stack: ItemStack::new(ItemKind::Diamond, 20, None),
             }]
             .into(),
             carried_item: ItemStack::empty(),
@@ -544,7 +544,7 @@ mod tests {
             slot_idx: 0,
             slot_changes: vec![SlotChange {
                 idx: 0,
-                item: ItemStack::new(ItemKind::Diamond, 30, None),
+                stack: ItemStack::new(ItemKind::Diamond, 30, None),
             }]
             .into(),
             carried_item: ItemStack::empty(),
@@ -571,7 +571,7 @@ mod tests {
             slot_idx: 0,
             slot_changes: vec![SlotChange {
                 idx: 0,
-                item: ItemStack::new(ItemKind::Diamond, 64, None),
+                stack: ItemStack::new(ItemKind::Diamond, 64, None),
             }]
             .into(),
             carried_item: ItemStack::new(ItemKind::Diamond, 20, None),
@@ -595,7 +595,7 @@ mod tests {
             slot_idx: 0,
             slot_changes: vec![SlotChange {
                 idx: 0,
-                item: ItemStack::new(ItemKind::Diamond, 2, None),
+                stack: ItemStack::new(ItemKind::Diamond, 2, None),
             }]
             .into(),
             carried_item: ItemStack::new(ItemKind::IronIngot, 2, None),
@@ -620,7 +620,7 @@ mod tests {
             slot_idx: 0,
             slot_changes: vec![SlotChange {
                 idx: 0,
-                item: ItemStack::new(ItemKind::Diamond, 22, None),
+                stack: ItemStack::new(ItemKind::Diamond, 22, None),
             }]
             .into(),
             carried_item: ItemStack::empty(),
@@ -633,7 +633,7 @@ mod tests {
             slot_idx: 0,
             slot_changes: vec![SlotChange {
                 idx: 0,
-                item: ItemStack::new(ItemKind::Diamond, 32, None),
+                stack: ItemStack::new(ItemKind::Diamond, 32, None),
             }]
             .into(),
             carried_item: ItemStack::empty(),
@@ -647,11 +647,11 @@ mod tests {
             slot_changes: vec![
                 SlotChange {
                     idx: 0,
-                    item: ItemStack::new(ItemKind::Diamond, 22, None),
+                    stack: ItemStack::new(ItemKind::Diamond, 22, None),
                 },
                 SlotChange {
                     idx: 1,
-                    item: ItemStack::new(ItemKind::Diamond, 22, None),
+                    stack: ItemStack::new(ItemKind::Diamond, 22, None),
                 },
             ]
             .into(),
@@ -686,11 +686,11 @@ mod tests {
                 slot_changes: vec![
                     SlotChange {
                         idx: 9,
-                        item: ItemStack::empty(),
+                        stack: ItemStack::empty(),
                     },
                     SlotChange {
                         idx: 36,
-                        item: ItemStack::new(ItemKind::GoldIngot, 2, None),
+                        stack: ItemStack::new(ItemKind::GoldIngot, 2, None),
                     },
                 ]
                 .into(),
@@ -705,11 +705,11 @@ mod tests {
                 slot_changes: vec![
                     SlotChange {
                         idx: 9,
-                        item: ItemStack::empty(),
+                        stack: ItemStack::empty(),
                     },
                     SlotChange {
                         idx: 36,
-                        item: ItemStack::new(ItemKind::GoldIngot, 2, None),
+                        stack: ItemStack::new(ItemKind::GoldIngot, 2, None),
                     },
                 ]
                 .into(),
@@ -723,7 +723,7 @@ mod tests {
                 slot_idx: 9,
                 slot_changes: vec![SlotChange {
                     idx: 9,
-                    item: ItemStack::empty(),
+                    stack: ItemStack::empty(),
                 }]
                 .into(),
                 carried_item: ItemStack::new(ItemKind::GoldIngot, 2, None),
@@ -736,7 +736,7 @@ mod tests {
                 slot_idx: 9,
                 slot_changes: vec![SlotChange {
                     idx: 9,
-                    item: ItemStack::new(ItemKind::GoldIngot, 1, None),
+                    stack: ItemStack::new(ItemKind::GoldIngot, 1, None),
                 }]
                 .into(),
                 carried_item: ItemStack::empty(),
@@ -766,15 +766,15 @@ mod tests {
             slot_changes: vec![
                 SlotChange {
                     idx: 37,
-                    item: ItemStack::new(ItemKind::Diamond, 32, None),
+                    stack: ItemStack::new(ItemKind::Diamond, 32, None),
                 },
                 SlotChange {
                     idx: 36,
-                    item: ItemStack::new(ItemKind::Diamond, 64, None),
+                    stack: ItemStack::new(ItemKind::Diamond, 64, None),
                 },
                 SlotChange {
                     idx: 9,
-                    item: ItemStack::empty(),
+                    stack: ItemStack::empty(),
                 },
             ]
             .into(),
@@ -799,7 +799,7 @@ mod tests {
             mode: ClickMode::Click,
             slot_changes: vec![SlotChange {
                 idx: 9,
-                item: ItemStack::empty(),
+                stack: ItemStack::empty(),
             }]
             .into(),
             carried_item: ItemStack::new(ItemKind::Apple, 100, None),
@@ -822,7 +822,7 @@ mod tests {
             mode: ClickMode::Click,
             slot_changes: vec![SlotChange {
                 idx: 9,
-                item: ItemStack::new(ItemKind::Apple, 64, None),
+                stack: ItemStack::new(ItemKind::Apple, 64, None),
             }]
             .into(),
             carried_item: ItemStack::new(ItemKind::Apple, 36, None),
