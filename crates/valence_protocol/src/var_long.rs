@@ -2,11 +2,28 @@ use std::io::Write;
 
 use anyhow::bail;
 use byteorder::ReadBytesExt;
+use derive_more::{From, Into};
+use serde::{Deserialize, Serialize};
 
 use crate::{Decode, Encode};
 
 /// An `i64` encoded with variable length.
-#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(
+    Clone,
+    Copy,
+    Default,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Debug,
+    From,
+    Into,
+    Serialize,
+    Deserialize,
+)]
+#[serde(transparent)]
 #[repr(transparent)]
 pub struct VarLong(pub i64);
 
@@ -107,12 +124,6 @@ impl Decode<'_> for VarLong {
             }
         }
         bail!("VarInt is too large")
-    }
-}
-
-impl From<i64> for VarLong {
-    fn from(value: i64) -> Self {
-        Self(value)
     }
 }
 

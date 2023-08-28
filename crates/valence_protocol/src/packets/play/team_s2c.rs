@@ -1,7 +1,13 @@
-use super::*;
+use std::borrow::Cow;
+use std::io::Write;
+
+use anyhow::bail;
+use bitfield_struct::bitfield;
+use valence_text::Text;
+
+use crate::{Decode, Encode, Packet};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::TEAM_S2C)]
 pub struct TeamS2c<'a> {
     pub team_name: &'a str,
     pub mode: Mode<'a>,

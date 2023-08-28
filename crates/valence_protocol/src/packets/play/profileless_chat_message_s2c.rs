@@ -1,7 +1,10 @@
-use super::*;
+use std::borrow::Cow;
+
+use valence_text::Text;
+
+use crate::{Decode, Encode, Packet, VarInt};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::PROFILELESS_CHAT_MESSAGE_S2C)]
 pub struct ProfilelessChatMessageS2c<'a> {
     pub message: Cow<'a, Text>,
     pub chat_type: VarInt,

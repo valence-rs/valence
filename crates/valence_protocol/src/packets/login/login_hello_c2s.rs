@@ -1,8 +1,10 @@
-use super::*;
+use uuid::Uuid;
+
+use crate::{Bounded, Decode, Encode, Packet, PacketState};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::LOGIN_HELLO_C2S, state = PacketState::Login)]
+#[packet(state = PacketState::Login)]
 pub struct LoginHelloC2s<'a> {
-    pub username: &'a str, // TODO: bound this
+    pub username: Bounded<&'a str, 16>,
     pub profile_id: Option<Uuid>,
 }

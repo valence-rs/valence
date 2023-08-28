@@ -14,7 +14,7 @@ struct TickStart(Instant);
 fn main() {
     App::new()
         .insert_resource(ServerSettings {
-            compression_threshold: None,
+            compression_threshold: Default::default(),
             ..Default::default()
         })
         .insert_resource(NetworkSettings {

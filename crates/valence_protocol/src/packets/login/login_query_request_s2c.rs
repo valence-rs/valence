@@ -1,9 +1,13 @@
-use super::*;
+use std::borrow::Cow;
+
+use valence_ident::Ident;
+
+use crate::{Bounded, Decode, Encode, Packet, PacketState, RawBytes, VarInt};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::LOGIN_QUERY_REQUEST_S2C, state = PacketState::Login)]
+#[packet(state = PacketState::Login)]
 pub struct LoginQueryRequestS2c<'a> {
     pub message_id: VarInt,
     pub channel: Ident<Cow<'a, str>>,
-    pub data: RawBytes<'a>,
+    pub data: Bounded<RawBytes<'a>, 1048576>,
 }

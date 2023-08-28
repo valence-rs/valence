@@ -41,7 +41,7 @@ impl ScenarioSingleClient {
             period: Duration::MAX,
         })
         .insert_resource(ServerSettings {
-            compression_threshold: None,
+            compression_threshold: Default::default(),
             ..Default::default()
         })
         .add_plugins(DefaultPlugins.build().disable::<NetworkPlugin>());
@@ -89,7 +89,7 @@ pub fn create_mock_client(name: impl Into<String>) -> (ClientBundle, MockClientH
         username: name.into(),
         uuid: Uuid::from_bytes(rand::random()),
         ip: IpAddr::V4(Ipv4Addr::LOCALHOST),
-        properties: vec![],
+        properties: Default::default(),
         conn: Box::new(conn.clone()),
         enc: PacketEncoder::new(),
     });

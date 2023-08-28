@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use crate::tag::Tag;
-use crate::Compound;
+use crate::{Compound, List};
 
 /// Represents an arbitrary NBT value.
 #[derive(Clone, PartialEq, Debug)]
@@ -20,104 +20,267 @@ pub enum Value {
     LongArray(Vec<i64>),
 }
 
-/// An NBT list value.
-///
-/// NBT lists are homogeneous, meaning each list element must be of the same
-/// type. This is opposed to a format like JSON where lists can be
-/// heterogeneous. Here is a JSON list that would be illegal in NBT:
-///
-/// ```json
-/// [42, "hello", {}]
-/// ```
-///
-/// Every possible element type has its own variant in this enum. As a result,
-/// heterogeneous lists are unrepresentable.
-#[derive(Clone, PartialEq, Debug)]
-pub enum List {
-    /// The list with the element type of `TAG_End` and length of zero.
-    End,
-    Byte(Vec<i8>),
-    Short(Vec<i16>),
-    Int(Vec<i32>),
-    Long(Vec<i64>),
-    Float(Vec<f32>),
-    Double(Vec<f64>),
-    ByteArray(Vec<Vec<i8>>),
-    String(Vec<String>),
-    List(Vec<List>),
-    Compound(Vec<Compound>),
-    IntArray(Vec<Vec<i32>>),
-    LongArray(Vec<Vec<i64>>),
+/// Represents a reference to an arbitrary NBT value, where the tag is not part
+/// of the reference.
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum ValueRef<'a> {
+    Byte(&'a i8),
+    Short(&'a i16),
+    Int(&'a i32),
+    Long(&'a i64),
+    Float(&'a f32),
+    Double(&'a f64),
+    ByteArray(&'a [i8]),
+    String(&'a str),
+    List(&'a List),
+    Compound(&'a Compound),
+    IntArray(&'a [i32]),
+    LongArray(&'a [i64]),
 }
 
-impl List {
-    /// Returns the length of this list.
-    pub fn len(&self) -> usize {
-        match self {
-            List::End => 0,
-            List::Byte(l) => l.len(),
-            List::Short(l) => l.len(),
-            List::Int(l) => l.len(),
-            List::Long(l) => l.len(),
-            List::Float(l) => l.len(),
-            List::Double(l) => l.len(),
-            List::ByteArray(l) => l.len(),
-            List::String(l) => l.len(),
-            List::List(l) => l.len(),
-            List::Compound(l) => l.len(),
-            List::IntArray(l) => l.len(),
-            List::LongArray(l) => l.len(),
+/// Represents a mutable reference to an arbitrary NBT value, where the tag is
+/// not part of the reference.
+#[derive(PartialEq, Debug)]
+pub enum ValueMut<'a> {
+    Byte(&'a mut i8),
+    Short(&'a mut i16),
+    Int(&'a mut i32),
+    Long(&'a mut i64),
+    Float(&'a mut f32),
+    Double(&'a mut f64),
+    ByteArray(&'a mut Vec<i8>),
+    String(&'a mut String),
+    List(&'a mut List),
+    Compound(&'a mut Compound),
+    IntArray(&'a mut Vec<i32>),
+    LongArray(&'a mut Vec<i64>),
+}
+
+macro_rules! impl_value {
+    ($name:ident, $($lifetime:lifetime)?, ($($deref:tt)*), $($reference:tt)*) => {
+        macro_rules! as_number {
+            ($method_name:ident, $ty:ty, $($deref)*) => {
+                #[doc = concat!("If this value is a number, returns the `", stringify!($ty), "` representation of this value.")]
+                pub fn $method_name(&self) -> Option<$ty> {
+                    #[allow(trivial_numeric_casts)]
+                    match self {
+                        Self::Byte(v) => Some($($deref)* v as $ty),
+                        Self::Short(v) => Some($($deref)* v as $ty),
+                        Self::Int(v) => Some($($deref)* v as $ty),
+                        Self::Long(v) => Some($($deref)* v as $ty),
+                        Self::Float(v) => Some(v.floor() as $ty),
+                        Self::Double(v) => Some(v.floor() as $ty),
+                        _ => None,
+                    }
+                }
+            }
         }
-    }
 
-    /// Returns `true` if this list has no elements. `false` otherwise.
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
+        macro_rules! as_number_float {
+            ($method_name:ident, $ty:ty, $($deref)*) => {
+                #[doc = concat!("If this value is a number, returns the `", stringify!($ty), "` representation of this value.")]
+                pub fn $method_name(&self) -> Option<$ty> {
+                    #[allow(trivial_numeric_casts)]
+                    match self {
+                        Self::Byte(v) => Some($($deref)* v as $ty),
+                        Self::Short(v) => Some($($deref)* v as $ty),
+                        Self::Int(v) => Some($($deref)* v as $ty),
+                        Self::Long(v) => Some($($deref)* v as $ty),
+                        Self::Float(v) => Some($($deref)* v as $ty),
+                        Self::Double(v) => Some($($deref)* v as $ty),
+                        _ => None,
+                    }
+                }
+            }
+        }
 
-    /// Returns the element type of this list.
-    pub fn element_tag(&self) -> Tag {
-        match self {
-            List::End => Tag::End,
-            List::Byte(_) => Tag::Byte,
-            List::Short(_) => Tag::Short,
-            List::Int(_) => Tag::Int,
-            List::Long(_) => Tag::Long,
-            List::Float(_) => Tag::Float,
-            List::Double(_) => Tag::Double,
-            List::ByteArray(_) => Tag::ByteArray,
-            List::String(_) => Tag::String,
-            List::List(_) => Tag::List,
-            List::Compound(_) => Tag::Compound,
-            List::IntArray(_) => Tag::IntArray,
-            List::LongArray(_) => Tag::LongArray,
+        impl $(<$lifetime>)? $name $(<$lifetime>)? {
+            /// Returns the type of this value.
+            pub fn tag(&self) -> Tag {
+                match self {
+                    Self::Byte(_) => Tag::Byte,
+                    Self::Short(_) => Tag::Short,
+                    Self::Int(_) => Tag::Int,
+                    Self::Long(_) => Tag::Long,
+                    Self::Float(_) => Tag::Float,
+                    Self::Double(_) => Tag::Double,
+                    Self::ByteArray(_) => Tag::ByteArray,
+                    Self::String(_) => Tag::String,
+                    Self::List(_) => Tag::List,
+                    Self::Compound(_) => Tag::Compound,
+                    Self::IntArray(_) => Tag::IntArray,
+                    Self::LongArray(_) => Tag::LongArray,
+                }
+            }
+
+            /// Returns whether this value is a number, i.e. a byte, short, int, long, float or double.
+            pub fn is_number(&self) -> bool {
+                match self {
+                    Self::Byte(_) | Self::Short(_) | Self::Int(_) | Self::Long(_) | Self::Float(_) | Self::Double(_) => true,
+                    _ => false,
+                }
+            }
+
+            as_number!(as_i8, i8, $($deref)*);
+            as_number!(as_i16, i16, $($deref)*);
+            as_number!(as_i32, i32, $($deref)*);
+            as_number!(as_i64, i64, $($deref)*);
+            as_number_float!(as_f32, f32, $($deref)*);
+            as_number_float!(as_f64, f64, $($deref)*);
+
+            /// If this value is a number, returns the `bool` representation of this value.
+            pub fn as_bool(&self) -> Option<bool> {
+                self.as_i8().map(|v| v != 0)
+            }
+        }
+
+        impl $(<$lifetime>)? From<$($reference)* i8> for $name $(<$lifetime>)? {
+            fn from(v: $($reference)* i8) -> Self {
+                Self::Byte(v)
+            }
+        }
+
+        impl $(<$lifetime>)? From<$($reference)* i16> for $name $(<$lifetime>)? {
+            fn from(v: $($reference)* i16) -> Self {
+                Self::Short(v)
+            }
+        }
+
+        impl $(<$lifetime>)? From<$($reference)* i32> for $name $(<$lifetime>)? {
+            fn from(v: $($reference)* i32) -> Self {
+                Self::Int(v)
+            }
+        }
+
+        impl $(<$lifetime>)? From<$($reference)* i64> for $name $(<$lifetime>)? {
+            fn from(v: $($reference)* i64) -> Self {
+                Self::Long(v)
+            }
+        }
+
+        impl $(<$lifetime>)? From<$($reference)* f32> for $name $(<$lifetime>)? {
+            fn from(v: $($reference)* f32) -> Self {
+                Self::Float(v)
+            }
+        }
+
+        impl $(<$lifetime>)? From<$($reference)* f64> for $name $(<$lifetime>)? {
+            fn from(v: $($reference)* f64) -> Self {
+                Self::Double(v)
+            }
+        }
+
+        impl $(<$lifetime>)? From<$($reference)* List> for $name $(<$lifetime>)? {
+            fn from(v: $($reference)* List) -> Self {
+                Self::List(v)
+            }
+        }
+
+        impl $(<$lifetime>)? From<$($reference)* Compound> for $name $(<$lifetime>)? {
+            fn from(v: $($reference)* Compound) -> Self {
+                Self::Compound(v)
+            }
         }
     }
 }
+
+impl_value!(Value,,(*),);
+impl_value!(ValueRef, 'a, (**), &'a);
+impl_value!(ValueMut, 'a, (**), &'a mut);
 
 impl Value {
-    /// Returns the type of this value.
-    pub fn tag(&self) -> Tag {
+    /// Converts a reference to a value to a [ValueRef].
+    pub fn as_value_ref(&self) -> ValueRef {
         match self {
-            Self::Byte(_) => Tag::Byte,
-            Self::Short(_) => Tag::Short,
-            Self::Int(_) => Tag::Int,
-            Self::Long(_) => Tag::Long,
-            Self::Float(_) => Tag::Float,
-            Self::Double(_) => Tag::Double,
-            Self::ByteArray(_) => Tag::ByteArray,
-            Self::String(_) => Tag::String,
-            Self::List(_) => Tag::List,
-            Self::Compound(_) => Tag::Compound,
-            Self::IntArray(_) => Tag::IntArray,
-            Self::LongArray(_) => Tag::LongArray,
+            Value::Byte(v) => ValueRef::Byte(v),
+            Value::Short(v) => ValueRef::Short(v),
+            Value::Int(v) => ValueRef::Int(v),
+            Value::Long(v) => ValueRef::Long(v),
+            Value::Float(v) => ValueRef::Float(v),
+            Value::Double(v) => ValueRef::Double(v),
+            Value::ByteArray(v) => ValueRef::ByteArray(&v[..]),
+            Value::String(v) => ValueRef::String(&v[..]),
+            Value::List(v) => ValueRef::List(v),
+            Value::Compound(v) => ValueRef::Compound(v),
+            Value::IntArray(v) => ValueRef::IntArray(&v[..]),
+            Value::LongArray(v) => ValueRef::LongArray(&v[..]),
+        }
+    }
+
+    /// Converts a mutable reference to a value to a [ValueMut].
+    pub fn as_value_mut(&mut self) -> ValueMut {
+        match self {
+            Value::Byte(v) => ValueMut::Byte(v),
+            Value::Short(v) => ValueMut::Short(v),
+            Value::Int(v) => ValueMut::Int(v),
+            Value::Long(v) => ValueMut::Long(v),
+            Value::Float(v) => ValueMut::Float(v),
+            Value::Double(v) => ValueMut::Double(v),
+            Value::ByteArray(v) => ValueMut::ByteArray(v),
+            Value::String(v) => ValueMut::String(v),
+            Value::List(v) => ValueMut::List(v),
+            Value::Compound(v) => ValueMut::Compound(v),
+            Value::IntArray(v) => ValueMut::IntArray(v),
+            Value::LongArray(v) => ValueMut::LongArray(v),
         }
     }
 }
 
-impl From<i8> for Value {
-    fn from(v: i8) -> Self {
-        Self::Byte(v)
+impl ValueRef<'_> {
+    /// Clones this value reference to a new owned [Value].
+    pub fn to_value(&self) -> Value {
+        match *self {
+            ValueRef::Byte(v) => Value::Byte(*v),
+            ValueRef::Short(v) => Value::Short(*v),
+            ValueRef::Int(v) => Value::Int(*v),
+            ValueRef::Long(v) => Value::Long(*v),
+            ValueRef::Float(v) => Value::Float(*v),
+            ValueRef::Double(v) => Value::Double(*v),
+            ValueRef::ByteArray(v) => Value::ByteArray(v.to_vec()),
+            ValueRef::String(v) => Value::String(v.to_owned()),
+            ValueRef::List(v) => Value::List(v.clone()),
+            ValueRef::Compound(v) => Value::Compound(v.clone()),
+            ValueRef::IntArray(v) => Value::IntArray(v.to_vec()),
+            ValueRef::LongArray(v) => Value::LongArray(v.to_vec()),
+        }
+    }
+}
+
+impl<'a> ValueMut<'a> {
+    /// Clones this mutable value reference to a new owned [Value].
+    pub fn to_value(&self) -> Value {
+        match self {
+            ValueMut::Byte(v) => Value::Byte(**v),
+            ValueMut::Short(v) => Value::Short(**v),
+            ValueMut::Int(v) => Value::Int(**v),
+            ValueMut::Long(v) => Value::Long(**v),
+            ValueMut::Float(v) => Value::Float(**v),
+            ValueMut::Double(v) => Value::Double(**v),
+            ValueMut::ByteArray(v) => Value::ByteArray((*v).clone()),
+            ValueMut::String(v) => Value::String((*v).clone()),
+            ValueMut::List(v) => Value::List((*v).clone()),
+            ValueMut::Compound(v) => Value::Compound((*v).clone()),
+            ValueMut::IntArray(v) => Value::IntArray((*v).clone()),
+            ValueMut::LongArray(v) => Value::LongArray((*v).clone()),
+        }
+    }
+
+    /// Downgrades this mutable value reference into an immutable [ValueRef].
+    pub fn into_value_ref(self) -> ValueRef<'a> {
+        match self {
+            ValueMut::Byte(v) => ValueRef::Byte(v),
+            ValueMut::Short(v) => ValueRef::Short(v),
+            ValueMut::Int(v) => ValueRef::Int(v),
+            ValueMut::Long(v) => ValueRef::Long(v),
+            ValueMut::Float(v) => ValueRef::Float(v),
+            ValueMut::Double(v) => ValueRef::Double(v),
+            ValueMut::ByteArray(v) => ValueRef::ByteArray(&v[..]),
+            ValueMut::String(v) => ValueRef::String(&v[..]),
+            ValueMut::List(v) => ValueRef::List(v),
+            ValueMut::Compound(v) => ValueRef::Compound(v),
+            ValueMut::IntArray(v) => ValueRef::IntArray(&v[..]),
+            ValueMut::LongArray(v) => ValueRef::LongArray(&v[..]),
+        }
     }
 }
 
@@ -125,36 +288,6 @@ impl From<i8> for Value {
 impl From<bool> for Value {
     fn from(b: bool) -> Self {
         Value::Byte(b as _)
-    }
-}
-
-impl From<i16> for Value {
-    fn from(v: i16) -> Self {
-        Self::Short(v)
-    }
-}
-
-impl From<i32> for Value {
-    fn from(v: i32) -> Self {
-        Self::Int(v)
-    }
-}
-
-impl From<i64> for Value {
-    fn from(v: i64) -> Self {
-        Self::Long(v)
-    }
-}
-
-impl From<f32> for Value {
-    fn from(v: f32) -> Self {
-        Self::Float(v)
-    }
-}
-
-impl From<f64> for Value {
-    fn from(v: f64) -> Self {
-        Self::Double(v)
     }
 }
 
@@ -188,18 +321,6 @@ impl<'a> From<Cow<'a, str>> for Value {
     }
 }
 
-impl From<List> for Value {
-    fn from(v: List) -> Self {
-        Self::List(v)
-    }
-}
-
-impl From<Compound> for Value {
-    fn from(v: Compound) -> Self {
-        Self::Compound(v)
-    }
-}
-
 impl From<Vec<i32>> for Value {
     fn from(v: Vec<i32>) -> Self {
         Self::IntArray(v)
@@ -212,95 +333,27 @@ impl From<Vec<i64>> for Value {
     }
 }
 
-impl From<Vec<i8>> for List {
-    fn from(v: Vec<i8>) -> Self {
-        List::Byte(v)
+impl From<ValueRef<'_>> for Value {
+    fn from(v: ValueRef) -> Self {
+        v.to_value()
     }
 }
 
-impl From<Vec<i16>> for List {
-    fn from(v: Vec<i16>) -> Self {
-        List::Short(v)
+impl From<&ValueRef<'_>> for Value {
+    fn from(v: &ValueRef) -> Self {
+        v.to_value()
     }
 }
 
-impl From<Vec<i32>> for List {
-    fn from(v: Vec<i32>) -> Self {
-        List::Int(v)
+impl From<ValueMut<'_>> for Value {
+    fn from(v: ValueMut) -> Self {
+        v.to_value()
     }
 }
 
-impl From<Vec<i64>> for List {
-    fn from(v: Vec<i64>) -> Self {
-        List::Long(v)
-    }
-}
-
-impl From<Vec<f32>> for List {
-    fn from(v: Vec<f32>) -> Self {
-        List::Float(v)
-    }
-}
-
-impl From<Vec<f64>> for List {
-    fn from(v: Vec<f64>) -> Self {
-        List::Double(v)
-    }
-}
-
-impl From<Vec<Vec<i8>>> for List {
-    fn from(v: Vec<Vec<i8>>) -> Self {
-        List::ByteArray(v)
-    }
-}
-
-impl From<Vec<String>> for List {
-    fn from(v: Vec<String>) -> Self {
-        List::String(v)
-    }
-}
-
-impl From<Vec<List>> for List {
-    fn from(v: Vec<List>) -> Self {
-        List::List(v)
-    }
-}
-
-impl From<Vec<Compound>> for List {
-    fn from(v: Vec<Compound>) -> Self {
-        List::Compound(v)
-    }
-}
-
-impl From<Vec<Vec<i32>>> for List {
-    fn from(v: Vec<Vec<i32>>) -> Self {
-        List::IntArray(v)
-    }
-}
-
-impl From<Vec<Vec<i64>>> for List {
-    fn from(v: Vec<Vec<i64>>) -> Self {
-        List::LongArray(v)
-    }
-}
-
-/// Converts a value to a singleton list.
-impl From<Value> for List {
-    fn from(value: Value) -> Self {
-        match value {
-            Value::Byte(v) => List::Byte(vec![v]),
-            Value::Short(v) => List::Short(vec![v]),
-            Value::Int(v) => List::Int(vec![v]),
-            Value::Long(v) => List::Long(vec![v]),
-            Value::Float(v) => List::Float(vec![v]),
-            Value::Double(v) => List::Double(vec![v]),
-            Value::ByteArray(v) => List::ByteArray(vec![v]),
-            Value::String(v) => List::String(vec![v]),
-            Value::List(v) => List::List(vec![v]),
-            Value::Compound(v) => List::Compound(vec![v]),
-            Value::IntArray(v) => List::IntArray(vec![v]),
-            Value::LongArray(v) => List::LongArray(vec![v]),
-        }
+impl From<&ValueMut<'_>> for Value {
+    fn from(v: &ValueMut) -> Self {
+        v.to_value()
     }
 }
 
@@ -325,5 +378,87 @@ where
 {
     fn from(value: valence_ident::Ident<S>) -> Self {
         value.into_inner().into()
+    }
+}
+
+impl<'a> From<&'a [i8]> for ValueRef<'a> {
+    fn from(v: &'a [i8]) -> Self {
+        Self::ByteArray(v)
+    }
+}
+
+impl<'a> From<&'a str> for ValueRef<'a> {
+    fn from(v: &'a str) -> ValueRef<'a> {
+        Self::String(v)
+    }
+}
+
+impl<'a> From<&'a Cow<'_, str>> for ValueRef<'a> {
+    fn from(v: &'a Cow<'_, str>) -> Self {
+        Self::String(v.as_ref())
+    }
+}
+
+impl<'a> From<&'a [i32]> for ValueRef<'a> {
+    fn from(v: &'a [i32]) -> Self {
+        Self::IntArray(v)
+    }
+}
+
+impl<'a> From<&'a [i64]> for ValueRef<'a> {
+    fn from(v: &'a [i64]) -> Self {
+        Self::LongArray(v)
+    }
+}
+
+impl<'a> From<&'a Value> for ValueRef<'a> {
+    fn from(v: &'a Value) -> Self {
+        v.as_value_ref()
+    }
+}
+
+impl<'a> From<ValueMut<'a>> for ValueRef<'a> {
+    fn from(v: ValueMut<'a>) -> Self {
+        v.into_value_ref()
+    }
+}
+
+#[cfg(feature = "valence_ident")]
+impl<'a, S> From<&'a valence_ident::Ident<S>> for ValueRef<'a>
+where
+    S: AsRef<str>,
+{
+    fn from(v: &'a valence_ident::Ident<S>) -> Self {
+        Self::String(v.as_ref())
+    }
+}
+
+impl<'a> From<&'a mut Vec<i8>> for ValueMut<'a> {
+    fn from(v: &'a mut Vec<i8>) -> Self {
+        Self::ByteArray(v)
+    }
+}
+
+impl<'a> From<&'a mut String> for ValueMut<'a> {
+    fn from(v: &'a mut String) -> Self {
+        Self::String(v)
+    }
+}
+
+impl<'a> From<&'a mut Vec<i32>> for ValueMut<'a> {
+    fn from(v: &'a mut Vec<i32>) -> Self {
+        Self::IntArray(v)
+    }
+}
+
+impl<'a> From<&'a mut Vec<i64>> for ValueMut<'a> {
+    fn from(v: &'a mut Vec<i64>) -> Self {
+        Self::LongArray(v)
+    }
+}
+
+impl<'a> From<&'a mut Value> for ValueMut<'a> {
+    fn from(v: &'a mut Value) -> Self {
+        v.as_value_mut()
     }
 }

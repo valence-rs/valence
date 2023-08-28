@@ -27,8 +27,8 @@ impl Client {
     ///
     /// # Arguments
     /// * `url` - The URL of the resource pack file.
-    /// * `hash` - The SHA-1 hash of the resource pack file. Any value other
-    ///   than a 40-character hexadecimal string is ignored by the client.
+    /// * `hash` - The SHA-1 hash of the resource pack file. The value must be a
+    ///   40-character hexadecimal string.
     /// * `forced` - Whether a client should be kicked from the server upon
     ///   declining the pack (this is enforced client-side)
     /// * `prompt_message` - A message to be displayed with the resource pack
@@ -42,7 +42,7 @@ impl Client {
     ) {
         self.write_packet(&ResourcePackSendS2c {
             url,
-            hash,
+            hash: hash.into(),
             forced,
             prompt_message: prompt_message.map(|t| t.into()),
         });

@@ -521,6 +521,7 @@ impl<'a> SnbtWriter<'a> {
                 self.output.push(']');
             }};
         }
+        #[allow(clippy::redundant_closure_call)]
         match list {
             List::Byte(v) => variant_impl!(v, |v| self.write_primitive("b", v)),
             List::Short(v) => variant_impl!(v, |v| self.write_primitive("s", v)),

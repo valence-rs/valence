@@ -69,13 +69,13 @@ impl PacketEncoder {
         let data_len = self.buf.len() - start_len;
 
         #[cfg(feature = "compression")]
-        if let Some(threshold) = self.threshold {
+        if self.threshold.0 >= 0 {
             use std::io::Read;
 
             use flate2::bufread::ZlibEncoder;
             use flate2::Compression;
 
-            if data_len > threshold as usize {
+            if data_len > self.threshold.0 as usize {
                 let mut z = ZlibEncoder::new(&self.buf[start_len..], Compression::new(4));
 
                 self.compress_buf.clear();
@@ -258,15 +258,14 @@ impl WritePacket for PacketWriter<'_> {
 
         let res;
 
-        if let Some(threshold) = self.threshold {
+        if self.threshold.0 >= 0 {
             #[cfg(feature = "compression")]
             {
-                res = encode_packet_compressed(self.buf, pkt, threshold);
+                res = encode_packet_compressed(self.buf, pkt, self.threshold.0 as u32);
             }
 
             #[cfg(not(feature = "compression"))]
             {
-                let _ = threshold;
                 panic!("\"compression\" feature must be enabled to write compressed packets");
             }
         } else {

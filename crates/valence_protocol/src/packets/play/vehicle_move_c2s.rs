@@ -1,7 +1,8 @@
-use super::*;
+use valence_math::DVec3;
+
+use crate::{Decode, Encode, Packet};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::VEHICLE_MOVE_C2S)]
 pub struct VehicleMoveC2s {
     pub position: DVec3,
     pub yaw: f32,

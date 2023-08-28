@@ -1,7 +1,6 @@
-use super::*;
+use crate::{BlockPos, Decode, Direction, Encode, Packet, VarInt};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::PLAYER_ACTION_C2S)]
 pub struct PlayerActionC2s {
     pub action: PlayerAction,
     pub position: BlockPos,

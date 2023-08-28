@@ -13,6 +13,7 @@ use valence::protocol::packets::play::{FullC2s, HandSwingC2s};
 use valence::registry::{BiomeRegistry, DimensionTypeRegistry};
 use valence::testing::create_mock_client;
 use valence::{ident, ChunkPos, DefaultPlugins, Hand, Server, ServerSettings};
+use valence_server::CompressionThreshold;
 
 pub fn many_players(c: &mut Criterion) {
     run_many_players(c, "many_players", 3000, 16, 16);
@@ -29,7 +30,7 @@ fn run_many_players(
     let mut app = App::new();
 
     app.insert_resource(ServerSettings {
-        compression_threshold: Some(256),
+        compression_threshold: CompressionThreshold(256),
         ..Default::default()
     });
 

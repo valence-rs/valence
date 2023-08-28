@@ -1,7 +1,8 @@
-use super::*;
+use uuid::Uuid;
+
+use crate::{Decode, Encode, Packet};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::SPECTATOR_TELEPORT_C2S)]
 pub struct SpectatorTeleportC2s {
     pub target: Uuid,
 }

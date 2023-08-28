@@ -19,7 +19,9 @@ use tokio::net::{TcpListener, TcpStream};
 use tracing::{error, info, trace, warn};
 use uuid::Uuid;
 use valence_lang::keys;
+use valence_protocol::profile::Property;
 use valence_protocol::Decode;
+use valence_server::client::Properties;
 use valence_server::protocol::packets::handshaking::handshake_c2s::HandshakeNextState;
 use valence_server::protocol::packets::handshaking::HandshakeC2s;
 use valence_server::protocol::packets::login::{
@@ -29,7 +31,7 @@ use valence_server::protocol::packets::login::{
 use valence_server::protocol::packets::status::{
     QueryPingC2s, QueryPongS2c, QueryRequestC2s, QueryResponseS2c,
 };
-use valence_server::protocol::{PacketDecoder, PacketEncoder, Property, RawBytes, VarInt};
+use valence_server::protocol::{PacketDecoder, PacketEncoder, RawBytes, VarInt};
 use valence_server::text::{Color, IntoText};
 use valence_server::{ident, Text, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
@@ -135,24 +137,25 @@ async fn handle_handshake(
 
     let handshake = HandshakeData {
         protocol_version: handshake.protocol_version.0,
-        server_address: handshake.server_address.to_owned(),
+        server_address: handshake.server_address.0.to_owned(),
         server_port: handshake.server_port,
     };
 
+    // TODO: this is borked.
     ensure!(
-        matches!(&shared.0.connection_mode, ConnectionMode::BungeeCord)
-            || handshake.server_address.chars().count() <= 255,
+        shared.0.connection_mode == ConnectionMode::BungeeCord
+            || handshake.server_address.encode_utf16().count() <= 255,
         "handshake server address is too long"
     );
 
     match next_state {
         HandshakeNextState::Status => handle_status(shared, io, remote_addr, handshake)
             .await
-            .context("error handling status"),
+            .context("handling status"),
         HandshakeNextState::Login => {
             match handle_login(&shared, &mut io, remote_addr, handshake)
                 .await
-                .context("error handling login")?
+                .context("handling login")?
             {
                 Some((info, cleanup)) => {
                     let client = io.into_client_args(
@@ -270,7 +273,7 @@ async fn handle_login(
         profile_id: _, // TODO
     } = io.recv_packet().await?;
 
-    let username = username.to_owned();
+    let username = username.0.to_owned();
 
     let info = match shared.connection_mode() {
         ConnectionMode::Online { .. } => login_online(shared, io, remote_addr, username).await?,
@@ -281,13 +284,13 @@ async fn handle_login(
         ConnectionMode::Velocity { secret } => login_velocity(io, username, secret).await?,
     };
 
-    if let Some(threshold) = shared.0.threshold {
+    if shared.0.threshold.0 > 0 {
         io.send_packet(&LoginCompressionS2c {
-            threshold: VarInt(threshold as i32),
+            threshold: shared.0.threshold.0.into(),
         })
         .await?;
 
-        io.set_compression(Some(threshold));
+        io.set_compression(shared.0.threshold);
     }
 
     let cleanup = match shared.0.callbacks.inner.login(shared, &info).await {
@@ -304,7 +307,7 @@ async fn handle_login(
 
     io.send_packet(&LoginSuccessS2c {
         uuid: info.uuid,
-        username: &info.username,
+        username: info.username.as_str().into(),
         properties: Default::default(),
     })
     .await?;
@@ -322,7 +325,7 @@ async fn login_online(
     let my_verify_token: [u8; 16] = rand::random();
 
     io.send_packet(&LoginHelloS2c {
-        server_id: "", // Always empty
+        server_id: "".into(), // Always empty
         public_key: &shared.0.public_key_der,
         verify_token: &my_verify_token,
     })
@@ -391,7 +394,7 @@ async fn login_online(
         }
     }
 
-    #[derive(Debug, Deserialize)]
+    #[derive(Deserialize)]
     struct GameProfile {
         id: Uuid,
         name: String,
@@ -406,7 +409,7 @@ async fn login_online(
         uuid: profile.id,
         username,
         ip: remote_addr.ip(),
-        properties: profile.properties.into(),
+        properties: Properties(profile.properties),
     })
 }
 
@@ -424,7 +427,7 @@ fn login_offline(remote_addr: SocketAddr, username: String) -> anyhow::Result<Ne
         // Derive the client's UUID from a hash of their username.
         uuid: offline_uuid(username.as_str())?,
         username,
-        properties: vec![].into(),
+        properties: Default::default(),
         ip: remote_addr.ip(),
     })
 }
@@ -462,7 +465,7 @@ fn login_bungeecord(
     Ok(NewClientInfo {
         uuid,
         username,
-        properties: properties.into(),
+        properties: Properties(properties),
         ip,
     })
 }
@@ -482,7 +485,7 @@ async fn login_velocity(
     io.send_packet(&LoginQueryRequestS2c {
         message_id: VarInt(message_id),
         channel: ident!("velocity:player_info").into(),
-        data: RawBytes(&[VELOCITY_MIN_SUPPORTED_VERSION]),
+        data: RawBytes(&[VELOCITY_MIN_SUPPORTED_VERSION]).into(),
     })
     .await?;
 
@@ -536,7 +539,7 @@ async fn login_velocity(
     Ok(NewClientInfo {
         uuid,
         username,
-        properties: properties.into(),
+        properties: Properties(properties),
         ip: remote_addr,
     })
 }

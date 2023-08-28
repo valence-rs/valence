@@ -1,6 +1,7 @@
 //! Handles spawning and respawning the client.
 
 use std::borrow::Cow;
+use std::collections::BTreeSet;
 
 use bevy_ecs::prelude::*;
 use bevy_ecs::query::WorldQuery;
@@ -93,7 +94,7 @@ pub(super) fn initial_join(
             continue;
         };
 
-        let dimension_names: Vec<Ident<Cow<str>>> = codec
+        let dimension_names: BTreeSet<Ident<Cow<str>>> = codec
             .registry(BiomeRegistry::KEY)
             .iter()
             .map(|value| value.name.as_str_ident().into())
@@ -112,8 +113,8 @@ pub(super) fn initial_join(
             entity_id: 0, // We reserve ID 0 for clients.
             is_hardcore: spawn.is_hardcore.0,
             game_mode: *spawn.game_mode,
-            previous_game_mode: spawn.prev_game_mode.0.map(|g| g as i8).unwrap_or(-1),
-            dimension_names,
+            previous_game_mode: spawn.prev_game_mode.0.into(),
+            dimension_names: Cow::Owned(dimension_names),
             registry_codec: Cow::Borrowed(codec.cached_codec()),
             dimension_type_name: dimension_name.clone(),
             dimension_name,
@@ -180,7 +181,7 @@ pub(super) fn respawn(
             dimension_name: dimension_name.into(),
             hashed_seed: hashed_seed.0,
             game_mode: *game_mode,
-            previous_game_mode: prev_game_mode.0.map(|g| g as i8).unwrap_or(-1),
+            previous_game_mode: prev_game_mode.0.into(),
             is_debug: is_debug.0,
             is_flat: is_flat.0,
             copy_metadata: true,

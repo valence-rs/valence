@@ -1,7 +1,6 @@
-use super::*;
+use crate::{Decode, Encode, Packet, VarInt, VarLong};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::WORLD_BORDER_INITIALIZE_S2C)]
 pub struct WorldBorderInitializeS2c {
     pub x: f64,
     pub z: f64,

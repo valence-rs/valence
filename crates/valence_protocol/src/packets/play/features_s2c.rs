@@ -1,7 +1,11 @@
-use super::*;
+use std::borrow::Cow;
+use std::collections::BTreeSet;
+
+use valence_ident::Ident;
+
+use crate::{Decode, Encode, Packet};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::FEATURES_S2C)]
 pub struct FeaturesS2c<'a> {
-    pub features: Vec<Ident<Cow<'a, str>>>,
+    pub features: Cow<'a, BTreeSet<Ident<String>>>,
 }

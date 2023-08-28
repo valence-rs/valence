@@ -1,7 +1,10 @@
-use super::*;
+use std::borrow::Cow;
+
+use valence_ident::Ident;
+
+use crate::{BlockPos, Decode, Encode, Packet};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::UPDATE_JIGSAW_C2S)]
 pub struct UpdateJigsawC2s<'a> {
     pub position: BlockPos,
     pub name: Ident<Cow<'a, str>>,

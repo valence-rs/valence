@@ -53,7 +53,7 @@ impl PacketDecoder {
         let mut data;
 
         #[cfg(feature = "compression")]
-        if let Some(threshold) = self.threshold {
+        if self.threshold.0 >= 0 {
             use std::io::Write;
 
             use bytes::BufMut;
@@ -71,9 +71,10 @@ impl PacketDecoder {
             // Is this packet compressed?
             if data_len > 0 {
                 ensure!(
-                    data_len as u32 > threshold,
+                    data_len > self.threshold.0,
                     "decompressed packet length of {data_len} is <= the compression threshold of \
-                     {threshold}"
+                     {}",
+                    self.threshold.0
                 );
 
                 debug_assert!(self.decompress_buf.is_empty());
@@ -99,10 +100,10 @@ impl PacketDecoder {
                 debug_assert_eq!(data_len, 0);
 
                 ensure!(
-                    r.len() <= threshold as usize,
+                    r.len() <= self.threshold.0 as usize,
                     "uncompressed packet length of {} exceeds compression threshold of {}",
                     r.len(),
-                    threshold
+                    self.threshold.0
                 );
 
                 let remaining_len = r.len();
@@ -219,7 +220,8 @@ impl PacketFrame {
     {
         ensure!(
             P::ID == self.id,
-            "packet ID mismatch: expected {}, got {}",
+            "packet ID mismatch while decoding '{}': expected {}, got {}",
+            P::NAME,
             P::ID,
             self.id
         );
@@ -230,7 +232,7 @@ impl PacketFrame {
 
         ensure!(
             r.is_empty(),
-            "missed {} bytes while decoding packet {}",
+            "missed {} bytes while decoding '{}'",
             r.len(),
             P::NAME
         );

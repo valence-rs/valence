@@ -1,3 +1,4 @@
+use std::fmt;
 use std::io::Write;
 use std::ops::{Add, Sub};
 
@@ -9,7 +10,7 @@ use crate::direction::Direction;
 use crate::{Decode, Encode};
 
 /// Represents an absolute block position in world space.
-#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct BlockPos {
     pub x: i32,
     pub y: i32,
@@ -105,6 +106,18 @@ impl From<[i32; 3]> for BlockPos {
 impl From<BlockPos> for [i32; 3] {
     fn from(pos: BlockPos) -> Self {
         [pos.x, pos.y, pos.z]
+    }
+}
+
+impl fmt::Debug for BlockPos {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
+    }
+}
+
+impl fmt::Display for BlockPos {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "({}, {}, {})", self.x, self.y, self.z)
     }
 }
 

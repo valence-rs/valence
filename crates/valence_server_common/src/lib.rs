@@ -74,7 +74,7 @@ impl Default for ServerSettings {
     fn default() -> Self {
         Self {
             tick_rate: DEFAULT_TPS,
-            compression_threshold: Some(256),
+            compression_threshold: CompressionThreshold(256),
         }
     }
 }

@@ -1,7 +1,11 @@
-use super::*;
+use std::borrow::Cow;
+
+use uuid::Uuid;
+use valence_ident::Ident;
+
+use crate::{Decode, Encode, Packet, VarInt};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::ENTITY_ATTRIBUTES_S2C)]
 pub struct EntityAttributesS2c<'a> {
     pub entity_id: VarInt,
     pub properties: Vec<AttributeProperty<'a>>,

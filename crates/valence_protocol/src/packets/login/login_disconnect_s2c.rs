@@ -1,7 +1,9 @@
-use super::*;
+use std::borrow::Cow;
+
+use crate::{Decode, Encode, Packet, PacketState, Text};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::LOGIN_DISCONNECT_S2C, state = PacketState::Login)]
+#[packet(state = PacketState::Login)]
 pub struct LoginDisconnectS2c<'a> {
     pub reason: Cow<'a, Text>,
 }

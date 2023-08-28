@@ -1,7 +1,8 @@
-use super::*;
+use valence_math::Vec3;
+
+use crate::{Decode, Encode, Hand, Packet, VarInt};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::PLAYER_INTERACT_ENTITY_C2S)]
 pub struct PlayerInteractEntityC2s {
     pub entity_id: VarInt,
     pub interact: EntityInteraction,

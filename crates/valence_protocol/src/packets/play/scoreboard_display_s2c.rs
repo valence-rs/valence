@@ -1,10 +1,9 @@
 use bevy_ecs::prelude::Component;
 
 use super::team_s2c::TeamColor;
-use super::*;
+use crate::{Decode, Encode, Packet};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::SCOREBOARD_DISPLAY_S2C)]
 pub struct ScoreboardDisplayS2c<'a> {
     pub position: ScoreboardPosition,
     pub score_name: &'a str,

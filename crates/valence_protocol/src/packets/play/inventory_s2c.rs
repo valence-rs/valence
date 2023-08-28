@@ -1,7 +1,8 @@
-use super::*;
+use std::borrow::Cow;
+
+use crate::{Decode, Encode, ItemStack, Packet, VarInt};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::INVENTORY_S2C)]
 pub struct InventoryS2c<'a> {
     pub window_id: u8,
     pub state_id: VarInt,

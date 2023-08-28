@@ -1,4 +1,8 @@
-#![doc = include_str!("../README.md")] // Points to the main project README.
+#![cfg_attr(
+    unstable_doc,
+    doc = "**❗ NOTE:** This documentation is sourced from the `main` branch. If you're looking for the most recent stable release, go [here](https://docs.rs/valence/latest/valence/).\n\n---\n"
+)]
+#![doc = include_str!("../README.md")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/valence-rs/valence/main/assets/logo.svg",
     html_favicon_url = "https://raw.githubusercontent.com/valence-rs/valence/main/assets/logo.svg"

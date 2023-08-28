@@ -1,13 +1,17 @@
-use super::*;
+use std::borrow::Cow;
+
+use valence_ident::Ident;
+
+use crate::game_mode::OptGameMode;
+use crate::{Decode, Encode, GameMode, GlobalPos, Packet, VarInt};
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::PLAYER_RESPAWN_S2C)]
 pub struct PlayerRespawnS2c<'a> {
     pub dimension_type_name: Ident<Cow<'a, str>>,
     pub dimension_name: Ident<Cow<'a, str>>,
     pub hashed_seed: u64,
     pub game_mode: GameMode,
-    pub previous_game_mode: i8,
+    pub previous_game_mode: OptGameMode,
     pub is_debug: bool,
     pub is_flat: bool,
     pub copy_metadata: bool,
