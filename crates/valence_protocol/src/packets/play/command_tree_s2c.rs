@@ -8,7 +8,6 @@ use valence_ident::Ident;
 use crate::{Decode, Encode, Packet, VarInt};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::COMMAND_TREE_S2C)]
 pub struct CommandTreeS2c {
     pub commands: Vec<Node>,
     pub root_index: VarInt,
