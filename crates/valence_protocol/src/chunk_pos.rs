@@ -1,6 +1,7 @@
 use valence_math::DVec3;
 
 use crate::block_pos::BlockPos;
+use crate::chunk_section_pos::ChunkSectionPos;
 use crate::{Decode, Encode};
 
 /// The X and Z position of a chunk.
@@ -18,21 +19,35 @@ impl ChunkPos {
         Self { x, z }
     }
 
-    /// Constructs a chunk position from a position in world space. Only the `x`
-    /// and `z` components are used.
-    pub fn from_pos(pos: DVec3) -> Self {
-        Self::new((pos.x / 16.0).floor() as i32, (pos.z / 16.0).floor() as i32)
-    }
-
-    pub const fn from_block_pos(pos: BlockPos) -> Self {
-        Self::new(pos.x.div_euclid(16), pos.z.div_euclid(16))
-    }
-
     pub const fn distance_squared(self, other: Self) -> u64 {
         let diff_x = other.x as i64 - self.x as i64;
         let diff_z = other.z as i64 - self.z as i64;
 
         (diff_x * diff_x + diff_z * diff_z) as u64
+    }
+}
+
+impl From<BlockPos> for ChunkPos {
+    fn from(pos: BlockPos) -> Self {
+        Self {
+            x: pos.x.div_euclid(16),
+            z: pos.z.div_euclid(16),
+        }
+    }
+}
+
+impl From<ChunkSectionPos> for ChunkPos {
+    fn from(pos: ChunkSectionPos) -> Self {
+        Self { x: pos.x, z: pos.z }
+    }
+}
+
+impl From<DVec3> for ChunkPos {
+    fn from(pos: DVec3) -> Self {
+        Self {
+            x: (pos.x / 16.0).floor() as i32,
+            z: (pos.z / 16.0).floor() as i32,
+        }
     }
 }
 

@@ -131,7 +131,7 @@ pub mod prelude {
     pub use valence_server::ident::Ident;
     pub use valence_server::interact_entity::{EntityInteraction, InteractEntityEvent};
     pub use valence_server::layer::chunk::{
-        Block, BlockRef, Chunk, ChunkLayer, LoadedChunk, UnloadedChunk,
+        Block, BlockRef, ChunkOps, ChunkLayer, LoadedChunk, Chunk,
     };
     pub use valence_server::layer::{EntityLayer, LayerBundle};
     pub use valence_server::math::{DVec2, DVec3, Vec2, Vec3};

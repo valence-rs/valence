@@ -1,4 +1,4 @@
-use crate::layer::chunk::UnloadedChunk;
+use crate::layer::chunk::Chunk;
 use crate::protocol::packets::play::{PlayerListS2c, PlayerSpawnS2c};
 use crate::testing::{create_mock_client, ScenarioSingleClient};
 use crate::ChunkLayer;
@@ -16,7 +16,7 @@ fn player_list_arrives_before_player_spawn() {
 
     for z in -5..5 {
         for x in -5..5 {
-            layer.insert_chunk([x, z], UnloadedChunk::new());
+            layer.insert_chunk([x, z], Chunk::new());
         }
     }
 

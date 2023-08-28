@@ -1,27 +1,32 @@
+pub mod batch;
+mod biome;
 #[allow(clippy::module_inception)]
 mod chunk;
-pub mod loaded;
+mod loaded;
 mod paletted_container;
-pub mod unloaded;
+mod unloaded;
 
 use std::borrow::Cow;
 use std::collections::hash_map::{Entry, OccupiedEntry, VacantEntry};
-use std::fmt;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-pub use chunk::{MAX_HEIGHT, *};
+pub use biome::*;
+pub use chunk::*;
 pub use loaded::LoadedChunk;
 use rustc_hash::FxHashMap;
-pub use unloaded::UnloadedChunk;
+pub use unloaded::Chunk;
 use valence_math::{DVec3, Vec3};
 use valence_nbt::Compound;
 use valence_protocol::encode::{PacketWriter, WritePacket};
+use valence_protocol::packets::play::chunk_delta_update_s2c::ChunkDeltaUpdateEntry;
 use valence_protocol::packets::play::particle_s2c::Particle;
 use valence_protocol::packets::play::{ParticleS2c, PlaySoundS2c};
 use valence_protocol::sound::{Sound, SoundCategory, SoundId};
-use valence_protocol::{BlockPos, ChunkPos, CompressionThreshold, Encode, Ident, Packet};
-use valence_registry::biome::{BiomeId, BiomeRegistry};
+use valence_protocol::{
+    BlockPos, BlockState, ChunkPos, CompressionThreshold, Encode, Ident, Packet,
+};
+use valence_registry::biome::BiomeRegistry;
 use valence_registry::DimensionTypeRegistry;
 use valence_server_common::Server;
 
@@ -37,28 +42,17 @@ pub struct ChunkLayer {
     messages: ChunkLayerMessages,
     chunks: FxHashMap<ChunkPos, LoadedChunk>,
     info: ChunkLayerInfo,
+    block_update_buf: Vec<ChunkDeltaUpdateEntry>,
 }
 
 /// Chunk layer information.
+#[derive(Debug)]
 pub(crate) struct ChunkLayerInfo {
     dimension_type_name: Ident<String>,
     height: u32,
     min_y: i32,
     biome_registry_len: usize,
     threshold: CompressionThreshold,
-}
-
-impl fmt::Debug for ChunkLayerInfo {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ChunkLayerInfo")
-            .field("dimension_type_name", &self.dimension_type_name)
-            .field("height", &self.height)
-            .field("min_y", &self.min_y)
-            .field("biome_registry_len", &self.biome_registry_len)
-            .field("threshold", &self.threshold)
-            // Ignore sky light mask and array.
-            .finish()
-    }
 }
 
 type ChunkLayerMessages = Messages<GlobalMsg, LocalMsg>;
@@ -111,8 +105,8 @@ impl GetChunkPos for LocalMsg {
         match *self {
             LocalMsg::PacketAt { pos } => pos,
             LocalMsg::PacketAtExcept { pos, .. } => pos,
-            LocalMsg::RadiusAt { center, .. } => center.to_chunk_pos(),
-            LocalMsg::RadiusAtExcept { center, .. } => center.to_chunk_pos(),
+            LocalMsg::RadiusAt { center, .. } => center.into(),
+            LocalMsg::RadiusAtExcept { center, .. } => center.into(),
             LocalMsg::ChangeBiome { pos } => pos,
             LocalMsg::ChangeChunkState { pos } => pos,
         }
@@ -152,6 +146,7 @@ impl ChunkLayer {
                 biome_registry_len: biomes.iter().len(),
                 threshold: server.compression_threshold(),
             },
+            block_update_buf: vec![],
         }
     }
 
@@ -183,11 +178,7 @@ impl ChunkLayer {
 
     /// Insert a chunk into the instance at the given position. The previous
     /// chunk data is returned.
-    pub fn insert_chunk(
-        &mut self,
-        pos: impl Into<ChunkPos>,
-        chunk: UnloadedChunk,
-    ) -> Option<UnloadedChunk> {
+    pub fn insert_chunk(&mut self, pos: impl Into<ChunkPos>, chunk: Chunk) -> Option<Chunk> {
         match self.chunk_entry(pos) {
             ChunkEntry::Occupied(mut oe) => Some(oe.insert(chunk)),
             ChunkEntry::Vacant(ve) => {
@@ -199,7 +190,7 @@ impl ChunkLayer {
 
     /// Unload the chunk at the given position, if it is loaded. Returns the
     /// chunk if it was loaded.
-    pub fn remove_chunk(&mut self, pos: impl Into<ChunkPos>) -> Option<UnloadedChunk> {
+    pub fn remove_chunk(&mut self, pos: impl Into<ChunkPos>) -> Option<Chunk> {
         match self.chunk_entry(pos) {
             ChunkEntry::Occupied(oe) => Some(oe.remove()),
             ChunkEntry::Vacant(_) => None,
@@ -265,82 +256,7 @@ impl ChunkLayer {
 
         self.chunks.shrink_to_fit();
         self.messages.shrink_to_fit();
-    }
-
-    pub fn block(&self, pos: impl Into<BlockPos>) -> Option<BlockRef> {
-        let (chunk, x, y, z) = self.chunk_and_offsets(pos.into())?;
-        Some(chunk.block(x, y, z))
-    }
-
-    pub fn set_block(&mut self, pos: impl Into<BlockPos>, block: impl IntoBlock) -> Option<Block> {
-        let (chunk, x, y, z) = self.chunk_and_offsets_mut(pos.into())?;
-        Some(chunk.set_block(x, y, z, block))
-    }
-
-    pub fn block_entity_mut(&mut self, pos: impl Into<BlockPos>) -> Option<&mut Compound> {
-        let (chunk, x, y, z) = self.chunk_and_offsets_mut(pos.into())?;
-        chunk.block_entity_mut(x, y, z)
-    }
-
-    pub fn biome(&self, pos: impl Into<BlockPos>) -> Option<BiomeId> {
-        let (chunk, x, y, z) = self.chunk_and_offsets(pos.into())?;
-        Some(chunk.biome(x / 4, y / 4, z / 4))
-    }
-
-    pub fn set_biome(&mut self, pos: impl Into<BlockPos>, biome: BiomeId) -> Option<BiomeId> {
-        let (chunk, x, y, z) = self.chunk_and_offsets_mut(pos.into())?;
-        Some(chunk.set_biome(x / 4, y / 4, z / 4, biome))
-    }
-
-    #[inline]
-    fn chunk_and_offsets(&self, pos: BlockPos) -> Option<(&LoadedChunk, u32, u32, u32)> {
-        let Some(y) = pos
-            .y
-            .checked_sub(self.info.min_y)
-            .and_then(|y| y.try_into().ok())
-        else {
-            return None;
-        };
-
-        if y >= self.info.height {
-            return None;
-        }
-
-        let Some(chunk) = self.chunk(ChunkPos::from_block_pos(pos)) else {
-            return None;
-        };
-
-        let x = pos.x.rem_euclid(16) as u32;
-        let z = pos.z.rem_euclid(16) as u32;
-
-        Some((chunk, x, y, z))
-    }
-
-    #[inline]
-    fn chunk_and_offsets_mut(
-        &mut self,
-        pos: BlockPos,
-    ) -> Option<(&mut LoadedChunk, u32, u32, u32)> {
-        let Some(y) = pos
-            .y
-            .checked_sub(self.info.min_y)
-            .and_then(|y| y.try_into().ok())
-        else {
-            return None;
-        };
-
-        if y >= self.info.height {
-            return None;
-        }
-
-        let Some(chunk) = self.chunk_mut(ChunkPos::from_block_pos(pos)) else {
-            return None;
-        };
-
-        let x = pos.x.rem_euclid(16) as u32;
-        let z = pos.z.rem_euclid(16) as u32;
-
-        Some((chunk, x, y, z))
+        self.block_update_buf.shrink_to_fit();
     }
 
     pub(crate) fn info(&self) -> &ChunkLayerInfo {
@@ -366,15 +282,14 @@ impl ChunkLayer {
     ) {
         let position = position.into();
 
-        self.view_writer(ChunkPos::from_pos(position))
-            .write_packet(&ParticleS2c {
-                particle: Cow::Borrowed(particle),
-                long_distance,
-                position,
-                offset: offset.into(),
-                max_speed,
-                count,
-            });
+        self.view_writer(position).write_packet(&ParticleS2c {
+            particle: Cow::Borrowed(particle),
+            long_distance,
+            position,
+            offset: offset.into(),
+            max_speed,
+            count,
+        });
     }
 
     // TODO: move to `valence_sound`.
@@ -391,18 +306,17 @@ impl ChunkLayer {
     ) {
         let position = position.into();
 
-        self.view_writer(ChunkPos::from_pos(position))
-            .write_packet(&PlaySoundS2c {
-                id: SoundId::Direct {
-                    id: sound.to_ident().into(),
-                    range: None,
-                },
-                category,
-                position: (position * 8.0).as_ivec3(),
-                volume,
-                pitch,
-                seed: rand::random(),
-            });
+        self.view_writer(position).write_packet(&PlaySoundS2c {
+            id: SoundId::Direct {
+                id: sound.to_ident().into(),
+                range: None,
+            },
+            category,
+            position: (position * 8.0).as_ivec3(),
+            volume,
+            pitch,
+            seed: rand::random(),
+        });
     }
 }
 
@@ -646,7 +560,7 @@ impl<'a> ChunkEntry<'a> {
     pub fn or_default(self) -> &'a mut LoadedChunk {
         match self {
             ChunkEntry::Occupied(oe) => oe.into_mut(),
-            ChunkEntry::Vacant(ve) => ve.insert(UnloadedChunk::new()),
+            ChunkEntry::Vacant(ve) => ve.insert(Chunk::new()),
         }
     }
 }
@@ -666,7 +580,7 @@ impl<'a> OccupiedChunkEntry<'a> {
         self.entry.get_mut()
     }
 
-    pub fn insert(&mut self, chunk: UnloadedChunk) -> UnloadedChunk {
+    pub fn insert(&mut self, chunk: Chunk) -> Chunk {
         self.messages.send_local_infallible(
             LocalMsg::ChangeChunkState {
                 pos: *self.entry.key(),
@@ -674,7 +588,7 @@ impl<'a> OccupiedChunkEntry<'a> {
             |b| b.push(ChunkLayer::OVERWRITE),
         );
 
-        self.entry.get_mut().insert(chunk)
+        self.entry.get_mut().replace(chunk)
     }
 
     pub fn into_mut(self) -> &'a mut LoadedChunk {
@@ -685,29 +599,19 @@ impl<'a> OccupiedChunkEntry<'a> {
         self.entry.key()
     }
 
-    pub fn remove(self) -> UnloadedChunk {
-        self.messages.send_local_infallible(
-            LocalMsg::ChangeChunkState {
-                pos: *self.entry.key(),
-            },
-            |b| b.push(ChunkLayer::UNLOAD),
-        );
-
-        self.entry.remove().remove()
+    pub fn remove(self) -> Chunk {
+        self.remove_entry().1
     }
 
-    pub fn remove_entry(mut self) -> (ChunkPos, UnloadedChunk) {
-        let pos = *self.entry.key();
-        let chunk = self.entry.get_mut().remove();
+    pub fn remove_entry(self) -> (ChunkPos, Chunk) {
+        let (pos, chunk) = self.entry.remove_entry();
 
-        self.messages.send_local_infallible(
-            LocalMsg::ChangeChunkState {
-                pos: *self.entry.key(),
-            },
-            |b| b.push(ChunkLayer::UNLOAD),
-        );
+        self.messages
+            .send_local_infallible(LocalMsg::ChangeChunkState { pos }, |b| {
+                b.push(ChunkLayer::UNLOAD)
+            });
 
-        (pos, chunk)
+        (pos, chunk.into_chunk())
     }
 }
 
@@ -719,9 +623,9 @@ pub struct VacantChunkEntry<'a> {
 }
 
 impl<'a> VacantChunkEntry<'a> {
-    pub fn insert(self, chunk: UnloadedChunk) -> &'a mut LoadedChunk {
+    pub fn insert(self, chunk: Chunk) -> &'a mut LoadedChunk {
         let mut loaded = LoadedChunk::new(self.height);
-        loaded.insert(chunk);
+        loaded.replace(chunk);
 
         self.messages.send_local_infallible(
             LocalMsg::ChangeChunkState {
@@ -742,6 +646,63 @@ impl<'a> VacantChunkEntry<'a> {
     }
 }
 
+/// Represents a complete block, which is a pair of block state and optional NBT
+/// data for the block entity.
+#[derive(Clone, PartialEq, Default, Debug)]
+pub struct Block {
+    pub state: BlockState,
+    pub nbt: Option<Compound>,
+}
+
+impl Block {
+    pub const fn new(state: BlockState, nbt: Option<Compound>) -> Self {
+        Self { state, nbt }
+    }
+}
+
+impl From<BlockState> for Block {
+    fn from(state: BlockState) -> Self {
+        Self { state, nbt: None }
+    }
+}
+
+/// Like [`Block`] but immutably referenced.
+#[derive(Copy, Clone, PartialEq, Default, Debug)]
+pub struct BlockRef<'a> {
+    pub state: BlockState,
+    pub nbt: Option<&'a Compound>,
+}
+
+impl<'a> BlockRef<'a> {
+    pub const fn new(state: BlockState, nbt: Option<&'a Compound>) -> Self {
+        Self { state, nbt }
+    }
+}
+
+impl From<BlockRef<'_>> for Block {
+    fn from(value: BlockRef<'_>) -> Self {
+        Self {
+            state: value.state,
+            nbt: value.nbt.cloned(),
+        }
+    }
+}
+
+impl From<BlockState> for BlockRef<'_> {
+    fn from(state: BlockState) -> Self {
+        Self { state, nbt: None }
+    }
+}
+
+impl<'a> From<&'a Block> for BlockRef<'a> {
+    fn from(value: &'a Block) -> Self {
+        Self {
+            state: value.state,
+            nbt: value.nbt.as_ref(),
+        }
+    }
+}
+
 pub(super) fn build(app: &mut App) {
     app.add_systems(
         PostUpdate,
@@ -753,13 +714,7 @@ pub(super) fn build(app: &mut App) {
 }
 
 fn update_chunk_layers_pre_client(mut layers: Query<&mut ChunkLayer>) {
-    for layer in &mut layers {
-        let layer = layer.into_inner();
-
-        for (&pos, chunk) in &mut layer.chunks {
-            chunk.update_pre_client(pos, &layer.info, &mut layer.messages);
-        }
-
+    for mut layer in &mut layers {
         layer.messages.ready();
     }
 }

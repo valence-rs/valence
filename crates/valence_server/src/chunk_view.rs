@@ -32,9 +32,9 @@ impl ChunkView {
         self.dist
     }
 
-    pub const fn contains(self, pos: ChunkPos) -> bool {
+    pub fn contains(self, pos: impl Into<ChunkPos>) -> bool {
         let true_dist = self.dist as u64 + EXTRA_VIEW_RADIUS as u64;
-        self.pos.distance_squared(pos) <= true_dist * true_dist
+        self.pos.distance_squared(pos.into()) <= true_dist * true_dist
     }
 
     /// Returns an iterator over all the chunk positions in this view. Positions

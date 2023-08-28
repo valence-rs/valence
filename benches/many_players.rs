@@ -5,7 +5,7 @@ use criterion::Criterion;
 use rand::Rng;
 use valence::entity::Position;
 use valence::keepalive::KeepaliveSettings;
-use valence::layer::chunk::UnloadedChunk;
+use valence::layer::chunk::Chunk;
 use valence::layer::LayerBundle;
 use valence::math::DVec3;
 use valence::network::NetworkPlugin;
@@ -53,7 +53,7 @@ fn run_many_players(
         for x in -world_size..world_size {
             layer
                 .chunk
-                .insert_chunk(ChunkPos::new(x, z), UnloadedChunk::new());
+                .insert_chunk(ChunkPos::new(x, z), Chunk::new());
         }
     }
 

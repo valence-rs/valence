@@ -69,7 +69,7 @@ fn setup(
 
     for z in -5..5 {
         for x in -5..5 {
-            layer.chunk.insert_chunk([x, z], UnloadedChunk::new());
+            layer.chunk.insert_chunk([x, z], Chunk::new());
         }
     }
 
@@ -699,7 +699,7 @@ impl TriggerArea {
     }
 
     pub fn contains_pos(&self, pos: DVec3) -> bool {
-        self.contains(BlockPos::from_pos(pos))
+        self.contains(pos.into())
     }
 
     pub fn iter_block_pos(&self) -> impl Iterator<Item = BlockPos> {
@@ -1031,7 +1031,7 @@ fn necromancy(
         if let Ok((mut visible_chunk_layer, mut respawn_pos, team, mut health)) =
             clients.get_mut(event.client)
         {
-            respawn_pos.pos = BlockPos::from_pos(team.spawn_pos());
+            respawn_pos.pos = team.spawn_pos().into();
             health.0 = PLAYER_MAX_HEALTH;
 
             let main_layer = layers.single();

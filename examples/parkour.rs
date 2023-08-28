@@ -112,8 +112,8 @@ fn reset_clients(
             }
 
             // Init chunks.
-            for pos in ChunkView::new(ChunkPos::from_block_pos(START_POS), VIEW_DIST).iter() {
-                layer.insert_chunk(pos, UnloadedChunk::new());
+            for pos in ChunkView::new(START_POS.into(), VIEW_DIST).iter() {
+                layer.insert_chunk(pos, Chunk::new());
             }
 
             state.score = 0;

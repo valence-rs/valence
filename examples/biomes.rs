@@ -52,7 +52,7 @@ fn setup(
 
     for z in -SIZE..SIZE {
         for x in -SIZE..SIZE {
-            layer.chunk.insert_chunk([x, z], UnloadedChunk::new());
+            layer.chunk.insert_chunk([x, z], Chunk::new());
         }
     }
 
@@ -82,7 +82,7 @@ fn set_biomes(mut layers: Query<&mut ChunkLayer>, biomes: Res<BiomeRegistry>) {
             .map(|(biome, _, _)| biome)
             .unwrap_or_default();
 
-        layer.set_biome([x, SPAWN_Y, z], biome);
+        layer.set_biome(BlockPos::new(x, SPAWN_Y, z), biome);
     }
 }
 

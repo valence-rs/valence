@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::collections::{BTreeMap, BTreeSet};
 use std::mem;
 use std::sync::atomic::{AtomicU32, Ordering};
 
@@ -7,88 +6,45 @@ use parking_lot::Mutex; // Using nonstandard mutex to avoid poisoning API.
 use valence_nbt::{compound, Compound};
 use valence_protocol::encode::{PacketWriter, WritePacket};
 use valence_protocol::packets::play::chunk_data_s2c::ChunkDataBlockEntity;
-use valence_protocol::packets::play::{
-    BlockEntityUpdateS2c, BlockUpdateS2c, ChunkDataS2c, ChunkDeltaUpdateS2c,
-};
-use valence_protocol::{BlockPos, BlockState, ChunkPos, Encode, VarLong};
+use valence_protocol::packets::play::ChunkDataS2c;
+use valence_protocol::{BlockState, ChunkPos, Encode};
 use valence_registry::biome::BiomeId;
 use valence_registry::RegistryIdx;
 
-use super::chunk::{
-    bit_width, check_biome_oob, check_block_oob, check_section_oob, BiomeContainer,
-    BlockStateContainer, Chunk, SECTION_BLOCK_COUNT,
-};
-use super::paletted_container::PalettedContainer;
-use super::unloaded::{self, UnloadedChunk};
-use super::{ChunkLayerInfo, ChunkLayerMessages, LocalMsg};
+use super::chunk::{bit_width, ChunkOps};
+use super::unloaded::Chunk;
+use super::{ChunkLayerInfo, SECTION_BLOCK_COUNT};
 
+/// A chunk that is actively loaded in a [`ChunkLayer`]. This is only accessible
+/// behind a reference.
+///
+/// Like [`Chunk`], loaded chunks implement the [`ChunkOps`] trait so you can
+/// use many of the same methods.
+///
+/// **NOTE:** Loaded chunks are a low-level API. Mutations directly to loaded
+/// chunks are intentionally not synchronized with clients. Consider using the
+/// relevant methods on [`ChunkLayer`] instead.
+///
+/// [`ChunkLayer`]: super::ChunkLayer
 #[derive(Debug)]
 pub struct LoadedChunk {
+    /// Chunk data for this loaded chunk.
+    chunk: Chunk,
     /// A count of the clients viewing this chunk. Useful for knowing if it's
     /// necessary to record changes, since no client would be in view to receive
     /// the changes if this were zero.
     viewer_count: AtomicU32,
-    /// Block and biome data for the chunk.
-    sections: Box<[Section]>,
-    /// The block entities in this chunk.
-    block_entities: BTreeMap<u32, Compound>,
-    /// The set of block entities that have been modified this tick.
-    changed_block_entities: BTreeSet<u32>,
-    /// If any biomes in this chunk have been modified this tick.
-    changed_biomes: bool,
     /// Cached bytes of the chunk initialization packet. The cache is considered
     /// invalidated if empty. This should be cleared whenever the chunk is
     /// modified in an observable way, even if the chunk is not viewed.
     cached_init_packets: Mutex<Vec<u8>>,
 }
 
-#[derive(Clone, Default, Debug)]
-struct Section {
-    block_states: BlockStateContainer,
-    biomes: BiomeContainer,
-    /// Contains modifications for the update section packet. (Or the regular
-    /// block update packet if len == 1).
-    section_updates: Vec<VarLong>,
-}
-
-impl Section {
-    fn count_non_air_blocks(&self) -> u16 {
-        let mut count = 0;
-
-        match &self.block_states {
-            PalettedContainer::Single(s) => {
-                if !s.is_air() {
-                    count += SECTION_BLOCK_COUNT as u16;
-                }
-            }
-            PalettedContainer::Indirect(ind) => {
-                for i in 0..SECTION_BLOCK_COUNT {
-                    if !ind.get(i).is_air() {
-                        count += 1;
-                    }
-                }
-            }
-            PalettedContainer::Direct(dir) => {
-                for s in dir.as_ref() {
-                    if !s.is_air() {
-                        count += 1;
-                    }
-                }
-            }
-        }
-
-        count
-    }
-}
-
 impl LoadedChunk {
     pub(crate) fn new(height: u32) -> Self {
         Self {
             viewer_count: AtomicU32::new(0),
-            sections: vec![Section::default(); height as usize / 16].into(),
-            block_entities: BTreeMap::new(),
-            changed_block_entities: BTreeSet::new(),
-            changed_biomes: false,
+            chunk: Chunk::with_height(height),
             cached_init_packets: Mutex::new(vec![]),
         }
     }
@@ -100,59 +56,21 @@ impl LoadedChunk {
     /// The previous chunk data is returned.
     ///
     /// [resized]: UnloadedChunk::set_height
-    pub(crate) fn insert(&mut self, mut chunk: UnloadedChunk) -> UnloadedChunk {
+    pub fn replace(&mut self, mut chunk: Chunk) -> Chunk {
         chunk.set_height(self.height());
 
-        let old_sections = self
-            .sections
-            .iter_mut()
-            .zip(chunk.sections)
-            .map(|(sect, other_sect)| {
-                sect.section_updates.clear();
-
-                unloaded::Section {
-                    block_states: mem::replace(&mut sect.block_states, other_sect.block_states),
-                    biomes: mem::replace(&mut sect.biomes, other_sect.biomes),
-                }
-            })
-            .collect();
-        let old_block_entities = mem::replace(&mut self.block_entities, chunk.block_entities);
-        self.changed_block_entities.clear();
-        self.changed_biomes = false;
         self.cached_init_packets.get_mut().clear();
 
-        self.assert_no_changes();
-
-        UnloadedChunk {
-            sections: old_sections,
-            block_entities: old_block_entities,
-        }
+        mem::replace(&mut self.chunk, chunk)
     }
 
-    pub(crate) fn remove(&mut self) -> UnloadedChunk {
-        let old_sections = self
-            .sections
-            .iter_mut()
-            .map(|sect| {
-                sect.section_updates.clear();
+    pub(super) fn into_chunk(self) -> Chunk {
+        self.chunk
+    }
 
-                unloaded::Section {
-                    block_states: mem::take(&mut sect.block_states),
-                    biomes: mem::take(&mut sect.biomes),
-                }
-            })
-            .collect();
-        let old_block_entities = mem::take(&mut self.block_entities);
-        self.changed_block_entities.clear();
-        self.changed_biomes = false;
-        self.cached_init_packets.get_mut().clear();
-
-        self.assert_no_changes();
-
-        UnloadedChunk {
-            sections: old_sections,
-            block_entities: old_block_entities,
-        }
+    /// Clones this chunk's data into the returned [`Chunk`].
+    pub fn to_chunk(&self) -> Chunk {
+        self.chunk.clone()
     }
 
     /// Returns the number of clients in view of this chunk.
@@ -177,124 +95,6 @@ impl LoadedChunk {
         debug_assert_ne!(old, 0, "viewer count underflow!");
     }
 
-    /// Performs the changes necessary to prepare this chunk for client updates.
-    /// - Chunk change messages are written to the layer.
-    /// - Recorded changes are cleared.
-    pub(crate) fn update_pre_client(
-        &mut self,
-        pos: ChunkPos,
-        info: &ChunkLayerInfo,
-        messages: &mut ChunkLayerMessages,
-    ) {
-        if *self.viewer_count.get_mut() == 0 {
-            // Nobody is viewing the chunk, so no need to send any update packets. There
-            // also shouldn't be any changes that need to be cleared.
-            self.assert_no_changes();
-
-            return;
-        }
-
-        // Block states
-        for (sect_y, sect) in self.sections.iter_mut().enumerate() {
-            match sect.section_updates.len() {
-                0 => {}
-                1 => {
-                    let packed = sect.section_updates[0].0 as u64;
-                    let offset_y = packed & 0b1111;
-                    let offset_z = (packed >> 4) & 0b1111;
-                    let offset_x = (packed >> 8) & 0b1111;
-                    let block = packed >> 12;
-
-                    let global_x = pos.x * 16 + offset_x as i32;
-                    let global_y = info.min_y + sect_y as i32 * 16 + offset_y as i32;
-                    let global_z = pos.z * 16 + offset_z as i32;
-
-                    messages.send_local_infallible(LocalMsg::PacketAt { pos }, |buf| {
-                        let mut writer = PacketWriter::new(buf, info.threshold);
-
-                        writer.write_packet(&BlockUpdateS2c {
-                            position: BlockPos::new(global_x, global_y, global_z),
-                            block_id: BlockState::from_raw(block as u16).unwrap(),
-                        });
-                    });
-                }
-                _ => {
-                    let chunk_section_position = (pos.x as i64) << 42
-                        | (pos.z as i64 & 0x3fffff) << 20
-                        | (sect_y as i64 + info.min_y.div_euclid(16) as i64) & 0xfffff;
-
-                    messages.send_local_infallible(LocalMsg::PacketAt { pos }, |buf| {
-                        let mut writer = PacketWriter::new(buf, info.threshold);
-
-                        writer.write_packet(&ChunkDeltaUpdateS2c {
-                            chunk_section_position,
-                            blocks: Cow::Borrowed(&sect.section_updates),
-                        });
-                    });
-                }
-            }
-
-            sect.section_updates.clear();
-        }
-
-        // Block entities
-        for &idx in &self.changed_block_entities {
-            let Some(nbt) = self.block_entities.get(&idx) else {
-                continue;
-            };
-
-            let x = idx % 16;
-            let z = (idx / 16) % 16;
-            let y = idx / 16 / 16;
-
-            let state = self.sections[y as usize / 16]
-                .block_states
-                .get(idx as usize % SECTION_BLOCK_COUNT);
-
-            let Some(kind) = state.block_entity_kind() else {
-                continue;
-            };
-
-            let global_x = pos.x * 16 + x as i32;
-            let global_y = info.min_y + y as i32;
-            let global_z = pos.z * 16 + z as i32;
-
-            messages.send_local_infallible(LocalMsg::PacketAt { pos }, |buf| {
-                let mut writer = PacketWriter::new(buf, info.threshold);
-
-                writer.write_packet(&BlockEntityUpdateS2c {
-                    position: BlockPos::new(global_x, global_y, global_z),
-                    kind,
-                    data: Cow::Borrowed(nbt),
-                });
-            });
-        }
-
-        self.changed_block_entities.clear();
-
-        // Biomes
-        if self.changed_biomes {
-            self.changed_biomes = false;
-
-            messages.send_local_infallible(LocalMsg::ChangeBiome { pos }, |buf| {
-                for sect in self.sections.iter() {
-                    sect.biomes
-                        .encode_mc_format(
-                            &mut *buf,
-                            |b| b.to_index() as _,
-                            0,
-                            3,
-                            bit_width(info.biome_registry_len - 1),
-                        )
-                        .expect("paletted container encode should always succeed");
-                }
-            });
-        }
-
-        // All changes should be cleared.
-        self.assert_no_changes();
-    }
-
     /// Writes the packet data needed to initialize this chunk.
     pub(crate) fn write_init_packets(
         &self,
@@ -311,7 +111,7 @@ impl LoadedChunk {
 
             let mut blocks_and_biomes: Vec<u8> = vec![];
 
-            for sect in self.sections.iter() {
+            for sect in &self.chunk.sections {
                 sect.count_non_air_blocks()
                     .encode(&mut blocks_and_biomes)
                     .unwrap();
@@ -338,6 +138,7 @@ impl LoadedChunk {
             }
 
             let block_entities: Vec<_> = self
+                .chunk
                 .block_entities
                 .iter()
                 .filter_map(|(&idx, nbt)| {
@@ -345,7 +146,7 @@ impl LoadedChunk {
                     let z = idx / 16 % 16;
                     let y = idx / 16 / 16;
 
-                    let kind = self.sections[y as usize / 16]
+                    let kind = self.chunk.sections[y as usize / 16]
                         .block_states
                         .get(idx as usize % SECTION_BLOCK_COUNT)
                         .block_entity_kind();
@@ -375,124 +176,46 @@ impl LoadedChunk {
 
         writer.write_packet_bytes(&init_packets);
     }
-
-    /// Asserts that no changes to this chunk are currently recorded.
-    #[track_caller]
-    fn assert_no_changes(&self) {
-        #[cfg(debug_assertions)]
-        {
-            assert!(!self.changed_biomes);
-            assert!(self.changed_block_entities.is_empty());
-
-            for sect in self.sections.iter() {
-                assert!(sect.section_updates.is_empty());
-            }
-        }
-    }
 }
 
-impl Chunk for LoadedChunk {
+impl ChunkOps for LoadedChunk {
     fn height(&self) -> u32 {
-        self.sections.len() as u32 * 16
+        self.chunk.height()
     }
 
     fn block_state(&self, x: u32, y: u32, z: u32) -> BlockState {
-        check_block_oob(self, x, y, z);
-
-        let idx = x + z * 16 + y % 16 * 16 * 16;
-        self.sections[y as usize / 16]
-            .block_states
-            .get(idx as usize)
+        self.chunk.block_state(x, y, z)
     }
 
     fn set_block_state(&mut self, x: u32, y: u32, z: u32, block: BlockState) -> BlockState {
-        check_block_oob(self, x, y, z);
-
-        let sect_y = y / 16;
-        let sect = &mut self.sections[sect_y as usize];
-        let idx = x + z * 16 + y % 16 * 16 * 16;
-
-        let old_block = sect.block_states.set(idx as usize, block);
+        let old_block = self.chunk.set_block_state(x, y, z, block);
 
         if block != old_block {
             self.cached_init_packets.get_mut().clear();
-
-            if *self.viewer_count.get_mut() > 0 {
-                let compact = (block.to_raw() as i64) << 12 | (x << 8 | z << 4 | (y % 16)) as i64;
-                sect.section_updates.push(VarLong(compact));
-            }
         }
 
         old_block
     }
 
     fn fill_block_state_section(&mut self, sect_y: u32, block: BlockState) {
-        check_section_oob(self, sect_y);
+        self.chunk.fill_block_state_section(sect_y, block);
 
-        let sect = &mut self.sections[sect_y as usize];
-
-        if let PalettedContainer::Single(b) = &sect.block_states {
-            if *b != block {
-                self.cached_init_packets.get_mut().clear();
-
-                if *self.viewer_count.get_mut() > 0 {
-                    // The whole section is being modified, so any previous modifications would
-                    // be overwritten.
-                    sect.section_updates.clear();
-
-                    // Push section updates for all the blocks in the section.
-                    sect.section_updates.reserve_exact(SECTION_BLOCK_COUNT);
-                    let block_bits = (block.to_raw() as i64) << 12;
-                    for z in 0..16 {
-                        for x in 0..16 {
-                            let packed = block_bits | (x << 8 | z << 4 | sect_y as i64);
-                            sect.section_updates.push(VarLong(packed));
-                        }
-                    }
-                }
-            }
-        } else {
-            let block_bits = (block.to_raw() as i64) << 12;
-            for z in 0..16 {
-                for x in 0..16 {
-                    let idx = x + z * 16 + sect_y * (16 * 16);
-                    if block != sect.block_states.get(idx as usize) {
-                        self.cached_init_packets.get_mut().clear();
-
-                        if *self.viewer_count.get_mut() > 0 {
-                            let packed = block_bits | (x << 8 | z << 4 | sect_y) as i64;
-                            sect.section_updates.push(VarLong(packed));
-                        }
-                    }
-                }
-            }
-        }
-
-        sect.block_states.fill(block);
+        // TODO: do some checks to avoid calling this sometimes.
+        self.cached_init_packets.get_mut().clear();
     }
 
     fn block_entity(&self, x: u32, y: u32, z: u32) -> Option<&Compound> {
-        check_block_oob(self, x, y, z);
-
-        let idx = x + z * 16 + y * 16 * 16;
-        self.block_entities.get(&idx)
+        self.chunk.block_entity(x, y, z)
     }
 
     fn block_entity_mut(&mut self, x: u32, y: u32, z: u32) -> Option<&mut Compound> {
-        check_block_oob(self, x, y, z);
+        let res = self.chunk.block_entity_mut(x, y, z);
 
-        let idx = x + z * 16 + y * 16 * 16;
-
-        if let Some(be) = self.block_entities.get_mut(&idx) {
-            if *self.viewer_count.get_mut() > 0 {
-                self.changed_block_entities.insert(idx);
-            }
+        if res.is_some() {
             self.cached_init_packets.get_mut().clear();
-
-            Some(be)
-        } else {
-            None
         }
+
+        res
     }
 
     fn set_block_entity(
@@ -502,98 +225,44 @@ impl Chunk for LoadedChunk {
         z: u32,
         block_entity: Option<Compound>,
     ) -> Option<Compound> {
-        check_block_oob(self, x, y, z);
+        self.cached_init_packets.get_mut().clear();
 
-        let idx = x + z * 16 + y * 16 * 16;
-
-        match block_entity {
-            Some(nbt) => {
-                if *self.viewer_count.get_mut() > 0 {
-                    self.changed_block_entities.insert(idx);
-                }
-                self.cached_init_packets.get_mut().clear();
-
-                self.block_entities.insert(idx, nbt)
-            }
-            None => {
-                let res = self.block_entities.remove(&idx);
-
-                if res.is_some() {
-                    self.cached_init_packets.get_mut().clear();
-                }
-
-                res
-            }
-        }
+        self.chunk.set_block_entity(x, y, z, block_entity)
     }
 
     fn clear_block_entities(&mut self) {
-        if self.block_entities.is_empty() {
+        if self.chunk.block_entities.is_empty() {
             return;
         }
 
-        self.cached_init_packets.get_mut().clear();
+        self.chunk.clear_block_entities();
 
-        if *self.viewer_count.get_mut() > 0 {
-            self.changed_block_entities
-                .extend(mem::take(&mut self.block_entities).into_keys());
-        } else {
-            self.block_entities.clear();
-        }
+        self.cached_init_packets.get_mut().clear();
     }
 
     fn biome(&self, x: u32, y: u32, z: u32) -> BiomeId {
-        check_biome_oob(self, x, y, z);
-
-        let idx = x + z * 4 + y % 4 * 4 * 4;
-        self.sections[y as usize / 4].biomes.get(idx as usize)
+        self.chunk.biome(x, y, z)
     }
 
     fn set_biome(&mut self, x: u32, y: u32, z: u32, biome: BiomeId) -> BiomeId {
-        check_biome_oob(self, x, y, z);
-
-        let idx = x + z * 4 + y % 4 * 4 * 4;
-        let old_biome = self.sections[y as usize / 4]
-            .biomes
-            .set(idx as usize, biome);
+        let old_biome = self.chunk.set_biome(x, y, z, biome);
 
         if biome != old_biome {
             self.cached_init_packets.get_mut().clear();
-
-            if *self.viewer_count.get_mut() > 0 {
-                self.changed_biomes = true;
-            }
         }
 
         old_biome
     }
 
     fn fill_biome_section(&mut self, sect_y: u32, biome: BiomeId) {
-        check_section_oob(self, sect_y);
+        self.chunk.fill_biome_section(sect_y, biome);
 
-        let sect = &mut self.sections[sect_y as usize];
-
-        if let PalettedContainer::Single(b) = &sect.biomes {
-            if *b != biome {
-                self.cached_init_packets.get_mut().clear();
-                self.changed_biomes = *self.viewer_count.get_mut() > 0;
-            }
-        } else {
-            self.cached_init_packets.get_mut().clear();
-            self.changed_biomes = *self.viewer_count.get_mut() > 0;
-        }
-
-        sect.biomes.fill(biome);
+        self.cached_init_packets.get_mut().clear();
     }
 
     fn shrink_to_fit(&mut self) {
         self.cached_init_packets.get_mut().shrink_to_fit();
-
-        for sect in self.sections.iter_mut() {
-            sect.block_states.shrink_to_fit();
-            sect.biomes.shrink_to_fit();
-            sect.section_updates.shrink_to_fit();
-        }
+        self.chunk.shrink_to_fit();
     }
 }
 
@@ -602,23 +271,6 @@ mod tests {
     use valence_protocol::{ident, CompressionThreshold};
 
     use super::*;
-
-    #[test]
-    fn loaded_chunk_unviewed_no_changes() {
-        let mut chunk = LoadedChunk::new(512);
-
-        chunk.set_block(0, 10, 0, BlockState::MAGMA_BLOCK);
-        chunk.assert_no_changes();
-
-        chunk.set_biome(0, 0, 0, BiomeId::from_index(5));
-        chunk.assert_no_changes();
-
-        chunk.fill_block_states(BlockState::ACACIA_BUTTON);
-        chunk.assert_no_changes();
-
-        chunk.fill_biomes(BiomeId::from_index(42));
-        chunk.assert_no_changes();
-    }
 
     #[test]
     fn loaded_chunk_changes_clear_packet_cache() {

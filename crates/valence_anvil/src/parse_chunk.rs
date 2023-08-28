@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use num_integer::div_ceil;
 use thiserror::Error;
 use valence_server::block::{PropName, PropValue};
-use valence_server::layer::chunk::{Chunk, UnloadedChunk};
+use valence_server::layer::chunk::{ChunkOps, Chunk};
 use valence_server::nbt::{Compound, List, Value};
 use valence_server::protocol::BlockKind;
 use valence_server::registry::biome::BiomeId;
@@ -68,17 +68,17 @@ pub(crate) enum ParseChunkError {
 pub(crate) fn parse_chunk(
     mut nbt: Compound,
     biome_map: &BTreeMap<Ident<String>, BiomeId>, // TODO: replace with biome registry arg.
-) -> Result<UnloadedChunk, ParseChunkError> {
+) -> Result<Chunk, ParseChunkError> {
     let Some(Value::List(List::Compound(sections))) = nbt.remove("sections") else {
         return Err(ParseChunkError::MissingSections);
     };
 
     if sections.is_empty() {
-        return Ok(UnloadedChunk::new());
+        return Ok(Chunk::new());
     }
 
     let mut chunk =
-        UnloadedChunk::with_height((sections.len() * 16).try_into().unwrap_or(u32::MAX));
+        Chunk::with_height((sections.len() * 16).try_into().unwrap_or(u32::MAX));
 
     let min_sect_y = sections
         .iter()

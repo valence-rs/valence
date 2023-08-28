@@ -16,7 +16,7 @@ const SPAWN_POS: DVec3 = DVec3::new(0.0, 200.0, 0.0);
 const HEIGHT: u32 = 384;
 
 struct ChunkWorkerState {
-    sender: Sender<(ChunkPos, UnloadedChunk)>,
+    sender: Sender<(ChunkPos, Chunk)>,
     receiver: Receiver<ChunkPos>,
     // Noise functions
     density: SuperSimplex,
@@ -32,7 +32,7 @@ struct GameState {
     /// been sent to the thread pool.
     pending: HashMap<ChunkPos, Option<Priority>>,
     sender: Sender<ChunkPos>,
-    receiver: Receiver<(ChunkPos, UnloadedChunk)>,
+    receiver: Receiver<(ChunkPos, Chunk)>,
 }
 
 /// The order in which chunks should be processed by the thread pool. Smaller
@@ -218,7 +218,7 @@ fn send_recv_chunks(mut layers: Query<&mut ChunkLayer>, state: ResMut<GameState>
 
 fn chunk_worker(state: Arc<ChunkWorkerState>) {
     while let Ok(pos) = state.receiver.recv() {
-        let mut chunk = UnloadedChunk::with_height(HEIGHT);
+        let mut chunk = Chunk::with_height(HEIGHT);
 
         for offset_z in 0..16 {
             for offset_x in 0..16 {

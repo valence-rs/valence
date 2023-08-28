@@ -1,5 +1,5 @@
 use crate::abilities::PlayerAbilitiesFlags;
-use crate::layer::chunk::UnloadedChunk;
+use crate::layer::chunk::Chunk;
 use crate::layer::ChunkLayer;
 use crate::math::DVec3;
 use crate::protocol::packets::play::{
@@ -21,7 +21,7 @@ fn client_teleport_and_move() {
 
     for z in -10..10 {
         for x in -10..10 {
-            layer.insert_chunk(ChunkPos::new(x, z), UnloadedChunk::new());
+            layer.insert_chunk(ChunkPos::new(x, z), Chunk::new());
         }
     }
 

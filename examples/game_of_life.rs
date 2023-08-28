@@ -51,7 +51,7 @@ fn setup(
 
     for z in -10..10 {
         for x in -10..10 {
-            layer.chunk.insert_chunk([x, z], UnloadedChunk::new());
+            layer.chunk.insert_chunk([x, z], Chunk::new());
         }
     }
 

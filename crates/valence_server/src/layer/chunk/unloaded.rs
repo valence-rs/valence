@@ -5,26 +5,59 @@ use valence_nbt::Compound;
 use valence_protocol::BlockState;
 use valence_registry::biome::BiomeId;
 
-use super::chunk::{
-    check_biome_oob, check_block_oob, check_section_oob, BiomeContainer, BlockStateContainer,
-    Chunk, MAX_HEIGHT, SECTION_BLOCK_COUNT,
-};
+use super::chunk::{ChunkOps, MAX_HEIGHT};
+use super::paletted_container::PalettedContainer;
+use super::{SECTION_BIOME_COUNT, SECTION_BLOCK_COUNT};
 
 #[derive(Clone, Default, Debug)]
-pub struct UnloadedChunk {
+pub struct Chunk {
     pub(super) sections: Vec<Section>,
     pub(super) block_entities: BTreeMap<u32, Compound>,
 }
 
 #[derive(Clone, Default, Debug)]
 pub(super) struct Section {
-    pub(super) block_states: BlockStateContainer,
-    pub(super) biomes: BiomeContainer,
+    pub(super) block_states:
+        PalettedContainer<BlockState, SECTION_BLOCK_COUNT, { SECTION_BLOCK_COUNT / 2 }>,
+    pub(super) biomes: PalettedContainer<BiomeId, SECTION_BIOME_COUNT, { SECTION_BIOME_COUNT / 2 }>,
 }
 
-impl UnloadedChunk {
-    pub fn new() -> Self {
-        Self::default()
+impl Section {
+    pub(super) fn count_non_air_blocks(&self) -> u16 {
+        let mut count = 0;
+
+        match &self.block_states {
+            PalettedContainer::Single(s) => {
+                if !s.is_air() {
+                    count += SECTION_BLOCK_COUNT as u16;
+                }
+            }
+            PalettedContainer::Indirect(ind) => {
+                for i in 0..SECTION_BLOCK_COUNT {
+                    if !ind.get(i).is_air() {
+                        count += 1;
+                    }
+                }
+            }
+            PalettedContainer::Direct(dir) => {
+                for s in dir.as_ref() {
+                    if !s.is_air() {
+                        count += 1;
+                    }
+                }
+            }
+        }
+
+        count
+    }
+}
+
+impl Chunk {
+    pub const fn new() -> Self {
+        Self {
+            sections: vec![],
+            block_entities: BTreeMap::new(),
+        }
     }
 
     pub fn with_height(height: u32) -> Self {
@@ -34,7 +67,7 @@ impl UnloadedChunk {
         }
     }
 
-    /// Sets the height of this chunk in meters. The chunk is truncated or
+    /// Sets the height of this chunk in blocks. The chunk is truncated or
     /// extended with [`BlockState::AIR`] and [`BiomeId::default()`] from the
     /// top.
     ///
@@ -63,7 +96,7 @@ impl UnloadedChunk {
     }
 }
 
-impl Chunk for UnloadedChunk {
+impl ChunkOps for Chunk {
     fn height(&self) -> u32 {
         self.sections.len() as u32 * 16
     }
@@ -157,13 +190,40 @@ impl Chunk for UnloadedChunk {
     }
 }
 
+#[inline]
+#[track_caller]
+pub(super) fn check_block_oob(chunk: &impl ChunkOps, x: u32, y: u32, z: u32) {
+    assert!(
+        x < 16 && y < chunk.height() && z < 16,
+        "chunk block offsets of ({x}, {y}, {z}) are out of bounds"
+    );
+}
+
+#[inline]
+#[track_caller]
+pub(super) fn check_biome_oob(chunk: &impl ChunkOps, x: u32, y: u32, z: u32) {
+    assert!(
+        x < 4 && y < chunk.height() / 4 && z < 4,
+        "chunk biome offsets of ({x}, {y}, {z}) are out of bounds"
+    );
+}
+
+#[inline]
+#[track_caller]
+pub(super) fn check_section_oob(chunk: &impl ChunkOps, sect_y: u32) {
+    assert!(
+        sect_y < chunk.height() / 16,
+        "chunk section offset of {sect_y} is out of bounds"
+    );
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn unloaded_chunk_resize_removes_block_entities() {
-        let mut chunk = UnloadedChunk::with_height(32);
+    fn chunk_resize_removes_block_entities() {
+        let mut chunk = Chunk::with_height(32);
 
         assert_eq!(chunk.height(), 32);
 

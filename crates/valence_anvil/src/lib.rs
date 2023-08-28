@@ -34,7 +34,7 @@ use lru::LruCache;
 use tracing::warn;
 use valence_server::client::{Client, OldView, View};
 use valence_server::entity::{EntityLayerId, OldEntityLayerId};
-use valence_server::layer::chunk::UnloadedChunk;
+use valence_server::layer::chunk::Chunk;
 use valence_server::layer::UpdateLayersPreClientSet;
 use valence_server::nbt::Compound;
 use valence_server::protocol::anyhow::{bail, ensure};
@@ -63,7 +63,7 @@ pub struct AnvilLevel {
     receiver: Receiver<(ChunkPos, WorkerResult)>,
 }
 
-type WorkerResult = anyhow::Result<Option<(UnloadedChunk, u32)>>;
+type WorkerResult = anyhow::Result<Option<(Chunk, u32)>>;
 
 impl AnvilLevel {
     pub fn new(world_root: impl Into<PathBuf>, biomes: &BiomeRegistry) -> Self {

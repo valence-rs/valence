@@ -127,7 +127,7 @@ fn handle_chunk_loads(
             ChunkLoadStatus::Empty => {
                 // There's no chunk here so let's insert an empty chunk. If we were doing
                 // terrain generation we would prepare that here.
-                layer.insert_chunk(event.pos, UnloadedChunk::new());
+                layer.insert_chunk(event.pos, Chunk::new());
             }
             ChunkLoadStatus::Failed(e) => {
                 // Something went wrong.
@@ -139,7 +139,7 @@ fn handle_chunk_loads(
                 eprintln!("{errmsg}");
                 layer.send_chat_message(errmsg.color(Color::RED));
 
-                layer.insert_chunk(event.pos, UnloadedChunk::new());
+                layer.insert_chunk(event.pos, Chunk::new());
             }
         }
     }
