@@ -236,7 +236,9 @@ pub(super) fn validate_click_slot_packet(
 
             // assert all moved items are the same kind
             ensure!(
-                packet.slot_changes.iter().all(|s| s.item == *item_kind),
+                packet.slot_changes.iter()
+                    .filter(|s| s.item.is_not_empty())
+                    .all(|s| s.item.item == item_kind.item),
                 "shift click must move the same item kind"
             );
         }
