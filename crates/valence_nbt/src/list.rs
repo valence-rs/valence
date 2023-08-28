@@ -374,7 +374,7 @@ impl List {
             panic!("removal index (is {index}) should be < len (is {len})");
         }
 
-        match self {
+        let removed = match self {
             List::End => assert_failed(index, 0),
             List::Byte(list) => Value::Byte(list.remove(index)),
             List::Short(list) => Value::Short(list.remove(index)),
@@ -388,6 +388,44 @@ impl List {
             List::Compound(list) => Value::Compound(list.remove(index)),
             List::IntArray(list) => Value::IntArray(list.remove(index)),
             List::LongArray(list) => Value::LongArray(list.remove(index)),
+        };
+
+        if self.is_empty() {
+            *self = List::End;
+        }
+
+        removed
+    }
+
+    /// Returns only the elements specified by the predicate, passing a mutable
+    /// reference to it.
+    ///
+    /// In other words, removes all elements `e` such that `f(ValueMut(&mut e))`
+    /// returns `false`. This method operates in place, visiting each element
+    /// exactly once in the original order, and preserves the order of the
+    /// retained elements.
+    pub fn retain<F>(&mut self, mut f: F)
+    where
+        F: FnMut(ValueMut) -> bool,
+    {
+        match self {
+            List::End => {}
+            List::Byte(list) => list.retain_mut(|v| f(ValueMut::Byte(v))),
+            List::Short(list) => list.retain_mut(|v| f(ValueMut::Short(v))),
+            List::Int(list) => list.retain_mut(|v| f(ValueMut::Int(v))),
+            List::Long(list) => list.retain_mut(|v| f(ValueMut::Long(v))),
+            List::Float(list) => list.retain_mut(|v| f(ValueMut::Float(v))),
+            List::Double(list) => list.retain_mut(|v| f(ValueMut::Double(v))),
+            List::ByteArray(list) => list.retain_mut(|v| f(ValueMut::ByteArray(v))),
+            List::String(list) => list.retain_mut(|v| f(ValueMut::String(v))),
+            List::List(list) => list.retain_mut(|v| f(ValueMut::List(v))),
+            List::Compound(list) => list.retain_mut(|v| f(ValueMut::Compound(v))),
+            List::IntArray(list) => list.retain_mut(|v| f(ValueMut::IntArray(v))),
+            List::LongArray(list) => list.retain_mut(|v| f(ValueMut::LongArray(v))),
+        }
+
+        if self.is_empty() {
+            *self = List::End;
         }
     }
 
