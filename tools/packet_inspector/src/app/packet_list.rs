@@ -79,7 +79,7 @@ fn draw_packet_counter(state: &mut SharedState, ui: &mut Ui) {
     let filtered_packets = packets
         .iter()
         .filter(|p| state.packet_filter.get(p).unwrap_or(true))
-        .count;
+        .count();
 
     ui.label(format!("({}/{})", filtered_packets, length));
 }
