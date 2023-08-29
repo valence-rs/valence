@@ -1,6 +1,8 @@
 use clap::Parser;
 use packet_inspector::Packet;
 use packet_inspector::Proxy;
+use packet_inspector::ProxyLog;
+use packet_inspector::DisconnectionReason;
 use std::net::SocketAddr;
 use tracing::Level;
 
@@ -21,12 +23,11 @@ async fn main() -> anyhow::Result<()> {
 
     let args = CliArgs::parse();
 
-    let proxy = Proxy::new(args.listener_addr, args.server_addr);
+    let proxy = Proxy::start(args.listener_addr, args.server_addr).await?;
     let receiver = proxy.subscribe().await;
 
     tokio::spawn(async move {
-        proxy.run().await?;
-
+        proxy.main_task.await??;
         Ok::<(), anyhow::Error>(())
     });
 
@@ -35,6 +36,29 @@ async fn main() -> anyhow::Result<()> {
         while let Ok(packet) = receiver.recv_async().await {
             log(&packet);
         }
+    });
+
+    tokio::spawn(async move {
+        loop {
+            let next = proxy.logs_rx.recv_async().await?;
+            match next {
+                ProxyLog::ClientConnected(addr) => {
+                    tracing::trace!("Accepted a new client {addr}.");
+                }
+                ProxyLog::ClientDisconnected(addr, DisconnectionReason::Error(_)) => {
+                    tracing::trace!("Client {addr} disconnected.");
+                }
+                ProxyLog::ClientDisconnected(addr, DisconnectionReason::OnlineModeRequired) => {
+                    tracing::error!(
+                        "Client {addr} was disconnected due to a server encryption request. \
+                        The packet inspector does not support online mode."
+                    );
+                }
+            }
+        }
+
+        #[allow(unreachable_code)]
+        Ok::<(), anyhow::Error>(())
     });
 
     tokio::signal::ctrl_c().await.unwrap();

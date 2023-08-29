@@ -141,6 +141,11 @@ impl PacketIoWriter {
         self.threshold = threshold;
         self.enc.set_compression(threshold);
     }
+
+    pub async fn shutdown(&mut self) -> std::io::Result<()> {
+        self.writer.shutdown().await?;
+        Ok(())
+    }
 }
 
 pub(crate) struct PacketIo {

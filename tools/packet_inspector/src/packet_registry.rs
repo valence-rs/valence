@@ -82,6 +82,12 @@ impl PacketRegistry {
     }
 }
 
+impl Default for PacketRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Clone, Debug, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Packet {
