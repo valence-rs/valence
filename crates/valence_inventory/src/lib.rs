@@ -122,7 +122,7 @@ impl Inventory {
     /// # use valence_server::item::{ItemStack, ItemKind};
     /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
     /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
-    /// assert_eq!(inv.slot(0).unwrap().item, ItemKind::Diamond);
+    /// assert_eq!(inv.slot(0).item, ItemKind::Diamond);
     /// ```
     #[track_caller]
     #[inline]
@@ -141,7 +141,7 @@ impl Inventory {
     /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
     /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
     /// let old = inv.replace_slot(0, ItemStack::new(ItemKind::IronIngot, 1, None));
-    /// assert_eq!(old.unwrap().item, ItemKind::Diamond);
+    /// assert_eq!(old.item, ItemKind::Diamond);
     /// ```
     #[track_caller]
     #[must_use]
@@ -166,9 +166,9 @@ impl Inventory {
     /// # use valence_server::item::{ItemStack, ItemKind};
     /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
     /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
-    /// assert_eq!(inv.slot(1), None);
+    /// assert_eq!(inv.slot(1), &ItemStack::EMPTY);
     /// inv.swap_slot(0, 1);
-    /// assert_eq!(inv.slot(1).unwrap().item, ItemKind::Diamond);
+    /// assert_eq!(inv.slot(1).item, ItemKind::Diamond);
     /// ```
     #[track_caller]
     pub fn swap_slot(&mut self, idx_a: u16, idx_b: u16) {
@@ -202,7 +202,7 @@ impl Inventory {
     /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
     /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
     /// inv.set_slot_amount(0, 64);
-    /// assert_eq!(inv.slot(0).unwrap().count, 64);
+    /// assert_eq!(inv.slot(0).count, 64);
     /// ```
     #[track_caller]
     pub fn set_slot_amount(&mut self, idx: u16, amount: i8) {
@@ -447,7 +447,7 @@ impl OpenInventory {
 ///
 /// assert_eq!(
 ///     window.slot(54),
-///     Some(&ItemStack::new(ItemKind::Diamond, 1, None))
+///     &ItemStack::new(ItemKind::Diamond, 1, None)
 /// );
 /// ```
 pub struct InventoryWindow<'a> {
@@ -502,7 +502,7 @@ impl<'a> InventoryWindow<'a> {
 ///
 /// assert_eq!(
 ///     player_inventory.slot(36),
-///     Some(&ItemStack::new(ItemKind::Diamond, 1, None))
+///     &ItemStack::new(ItemKind::Diamond, 1, None)
 /// );
 /// ```
 pub struct InventoryWindowMut<'a> {
