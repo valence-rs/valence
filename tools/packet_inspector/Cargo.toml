@@ -24,6 +24,7 @@ cli = ["clap"]
 
 [dependencies]
 anyhow = { workspace = true }
+thiserror = { workspace = true }
 bytes = { workspace = true }
 flate2 = { workspace = true }
 flume = { workspace = true }
