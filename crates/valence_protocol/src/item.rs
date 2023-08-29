@@ -43,8 +43,8 @@ impl ItemStack {
         self
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.item == ItemKind::Air || self.count <= 0
+    pub const fn is_empty(&self) -> bool {
+        matches!(self.item, ItemKind::Air) || matches!(self.count, c if c <= 0)
     }
 }
 
@@ -105,5 +105,9 @@ mod tests {
         assert!(less_then_one_stack.is_empty());
 
         assert!(ItemStack::EMPTY.is_empty());
+
+        let not_empty_stack = ItemStack::new(ItemKind::Stone, 10, None);
+
+        assert!(!not_empty_stack.is_empty());
     }
 }
