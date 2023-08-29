@@ -155,7 +155,7 @@ fn create_particle_vec() -> Vec<Particle> {
         Particle::Composter,
         Particle::Heart,
         Particle::InstantEffect,
-        Particle::Item(ItemStack::empty()),
+        Particle::Item(ItemStack::EMPTY),
         Particle::Item(ItemStack::new(ItemKind::IronPickaxe, 1, None)),
         Particle::VibrationBlock {
             block_pos: [0, SPAWN_Y, 0].into(),

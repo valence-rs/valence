@@ -492,7 +492,7 @@ fn digging(
             if let Some(prev) = prev {
                 let kind: ItemKind = prev.state.to_kind().to_item_kind();
                 if let Some(slot) = inv.first_slot_with_item_in(kind, 64, 9..45) {
-                    let count = inv.slot(slot).count();
+                    let count = inv.slot(slot).count;
                     inv.set_slot_amount(slot, count + 1);
                 } else {
                     let stack = ItemStack::new(kind, 1, None);
@@ -537,11 +537,11 @@ fn place_blocks(
         if *game_mode == GameMode::Survival {
             // check if the player has the item in their inventory and remove
             // it.
-            if stack.count() > 1 {
-                let count = stack.count();
+            if stack.count > 1 {
+                let count = stack.count;
                 inventory.set_slot_amount(slot_id, count - 1);
             } else {
-                inventory.set_slot(slot_id, ItemStack::empty());
+                inventory.set_slot(slot_id, ItemStack::EMPTY);
             }
         }
         let real_pos = event.position.get_in_direction(event.face);

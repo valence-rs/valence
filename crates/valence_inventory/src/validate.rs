@@ -31,14 +31,9 @@ pub(super) fn validate_click_slot_packet(
                 return false;
             }
 
-            if s.stack.is_not_empty() {
-                let max_stack_size = s
-                    .stack
-                    .item
-                    .max_stack()
-                    .max(s.stack.count())
-                    .min(ItemStack::STACK_MAX);
-                if !(1..=max_stack_size).contains(&(s.stack.count())) {
+            if !s.stack.is_empty() {
+                let max_stack_size = s.stack.item.max_stack().max(s.stack.count);
+                if !(1..=max_stack_size).contains(&(s.stack.count)) {
                     return false;
                 }
             }
@@ -49,16 +44,12 @@ pub(super) fn validate_click_slot_packet(
     );
 
     // check carried item count is valid
-    if packet.carried_item.is_not_empty() {
+    if !packet.carried_item.is_empty() {
         let carried_item = &packet.carried_item;
 
-        let max_stack_size = carried_item
-            .item
-            .max_stack()
-            .max(carried_item.count())
-            .min(ItemStack::STACK_MAX);
+        let max_stack_size = carried_item.item.max_stack().max(carried_item.count);
         ensure!(
-            (1..=max_stack_size).contains(&(carried_item.count())),
+            (1..=max_stack_size).contains(&(carried_item.count)),
             "invalid carried item count"
         );
     }
@@ -141,7 +132,7 @@ pub(super) fn validate_click_slot_packet(
                 let expected_delta = match packet.button {
                     1 => -1,
                     0 => {
-                        if cursor_item.is_not_empty() {
+                        if !cursor_item.is_empty() {
                             -cursor_item.0.count as i32
                         } else {
                             0
@@ -181,7 +172,7 @@ pub(super) fn validate_click_slot_packet(
                     match (old_item, new_item) {
                         (Some(old_item), Some(new_item)) => old_item != new_item,
                         (Some(_), None) => true,
-                        (None, Some(new_item)) => cursor_item.count() <= new_item.max_stack(),
+                        (None, Some(new_item)) => cursor_item.count <= new_item.max_stack(),
                         (None, None) => false,
                     }
                 };
@@ -221,7 +212,7 @@ pub(super) fn validate_click_slot_packet(
             let Some(item_kind) = packet
                 .slot_changes
                 .iter()
-                .filter(|s| s.stack.is_not_empty())
+                .filter(|s| !s.stack.is_empty())
                 .next()
                 .map(|s| &s.stack)
             else {
@@ -236,8 +227,10 @@ pub(super) fn validate_click_slot_packet(
 
             // assert all moved items are the same kind
             ensure!(
-                packet.slot_changes.iter()
-                    .filter(|s| s.stack.is_not_empty())
+                packet
+                    .slot_changes
+                    .iter()
+                    .filter(|s| !s.stack.is_empty())
                     .all(|s| s.stack.item == item_kind.item),
                 "shift click must move the same item kind"
             );
@@ -263,8 +256,12 @@ pub(super) fn validate_click_slot_packet(
                 window.slot(packet.slot_changes[1].idx as u16),
             ];
             ensure!(
-                old_slots.iter().any(|s| *s == &packet.slot_changes[0].stack)
-                    && old_slots.iter().any(|s| *s == &packet.slot_changes[1].stack),
+                old_slots
+                    .iter()
+                    .any(|s| *s == &packet.slot_changes[0].stack)
+                    && old_slots
+                        .iter()
+                        .any(|s| *s == &packet.slot_changes[1].stack),
                 "swapped items must match"
             );
         }
@@ -309,8 +306,8 @@ pub(super) fn validate_click_slot_packet(
             let expected_delta = match packet.button {
                 0 => -1,
                 1 => {
-                    if old_slot.is_not_empty() {
-                        -old_slot.count() as i32
+                    if !old_slot.is_empty() {
+                        -old_slot.count as i32
                     } else {
                         0
                     }
@@ -368,12 +365,12 @@ fn calculate_net_item_delta(
         let old_slot_count = if old_slot.is_empty() {
             None
         } else {
-            Some(old_slot.count() as i32)
+            Some(old_slot.count as i32)
         };
         let new_slot_count = if new_slot.is_empty() {
             None
         } else {
-            Some(new_slot.count() as i32)
+            Some(new_slot.count as i32)
         };
 
         net_item_delta += match (old_slot_count, new_slot_count) {
@@ -387,12 +384,12 @@ fn calculate_net_item_delta(
     let cursor_item_count = if cursor_item.is_empty() {
         None
     } else {
-        Some(cursor_item.count() as i32)
+        Some(cursor_item.count as i32)
     };
     let carried_item_count = if packet.carried_item.is_empty() {
         None
     } else {
-        Some(packet.carried_item.count() as i32)
+        Some(packet.carried_item.count as i32)
     };
 
     net_item_delta += match (cursor_item_count, carried_item_count) {
@@ -506,7 +503,7 @@ mod tests {
             slot_idx: 0,
             slot_changes: vec![SlotChange {
                 idx: 0,
-                stack: ItemStack::empty(),
+                stack: ItemStack::EMPTY,
             }]
             .into(),
             carried_item: inventory.slot(0).clone(),
@@ -534,7 +531,7 @@ mod tests {
                 stack: ItemStack::new(ItemKind::Diamond, 20, None),
             }]
             .into(),
-            carried_item: ItemStack::empty(),
+            carried_item: ItemStack::EMPTY,
         };
         let packet2 = ClickSlotC2s {
             window_id: 1,
@@ -547,7 +544,7 @@ mod tests {
                 stack: ItemStack::new(ItemKind::Diamond, 30, None),
             }]
             .into(),
-            carried_item: ItemStack::empty(),
+            carried_item: ItemStack::EMPTY,
         };
 
         validate_click_slot_packet(&packet1, &player_inventory, Some(&inventory1), &cursor_item)
@@ -623,7 +620,7 @@ mod tests {
                 stack: ItemStack::new(ItemKind::Diamond, 22, None),
             }]
             .into(),
-            carried_item: ItemStack::empty(),
+            carried_item: ItemStack::EMPTY,
         };
         let packet2 = ClickSlotC2s {
             window_id: 1,
@@ -636,7 +633,7 @@ mod tests {
                 stack: ItemStack::new(ItemKind::Diamond, 32, None),
             }]
             .into(),
-            carried_item: ItemStack::empty(),
+            carried_item: ItemStack::EMPTY,
         };
         let packet3 = ClickSlotC2s {
             window_id: 1,
@@ -655,7 +652,7 @@ mod tests {
                 },
             ]
             .into(),
-            carried_item: ItemStack::empty(),
+            carried_item: ItemStack::EMPTY,
         };
 
         validate_click_slot_packet(&packet1, &player_inventory, Some(&inventory1), &cursor_item)
@@ -686,7 +683,7 @@ mod tests {
                 slot_changes: vec![
                     SlotChange {
                         idx: 9,
-                        stack: ItemStack::empty(),
+                        stack: ItemStack::EMPTY,
                     },
                     SlotChange {
                         idx: 36,
@@ -694,7 +691,7 @@ mod tests {
                     },
                 ]
                 .into(),
-                carried_item: ItemStack::empty(),
+                carried_item: ItemStack::EMPTY,
             },
             ClickSlotC2s {
                 window_id: 0,
@@ -705,7 +702,7 @@ mod tests {
                 slot_changes: vec![
                     SlotChange {
                         idx: 9,
-                        stack: ItemStack::empty(),
+                        stack: ItemStack::EMPTY,
                     },
                     SlotChange {
                         idx: 36,
@@ -713,7 +710,7 @@ mod tests {
                     },
                 ]
                 .into(),
-                carried_item: ItemStack::empty(),
+                carried_item: ItemStack::EMPTY,
             },
             ClickSlotC2s {
                 window_id: 0,
@@ -723,7 +720,7 @@ mod tests {
                 slot_idx: 9,
                 slot_changes: vec![SlotChange {
                     idx: 9,
-                    stack: ItemStack::empty(),
+                    stack: ItemStack::EMPTY,
                 }]
                 .into(),
                 carried_item: ItemStack::new(ItemKind::GoldIngot, 2, None),
@@ -739,7 +736,7 @@ mod tests {
                     stack: ItemStack::new(ItemKind::GoldIngot, 1, None),
                 }]
                 .into(),
-                carried_item: ItemStack::empty(),
+                carried_item: ItemStack::EMPTY,
             },
         ];
 
@@ -774,11 +771,11 @@ mod tests {
                 },
                 SlotChange {
                     idx: 9,
-                    stack: ItemStack::empty(),
+                    stack: ItemStack::EMPTY,
                 },
             ]
             .into(),
-            carried_item: ItemStack::empty(),
+            carried_item: ItemStack::EMPTY,
         };
 
         validate_click_slot_packet(&packet, &player_inventory, None, &cursor_item)
@@ -799,7 +796,7 @@ mod tests {
             mode: ClickMode::Click,
             slot_changes: vec![SlotChange {
                 idx: 9,
-                stack: ItemStack::empty(),
+                stack: ItemStack::EMPTY,
             }]
             .into(),
             carried_item: ItemStack::new(ItemKind::Apple, 100, None),

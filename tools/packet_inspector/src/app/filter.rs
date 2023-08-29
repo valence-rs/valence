@@ -87,7 +87,7 @@ fn draw_packet_list(ui: &mut Ui, state: &mut SharedState, packet_state: PacketSt
                 && (p.name.to_lowercase().contains(&search)
                     || int_to_hex_lower(p.id).contains(&search))
         })
-        .count();
+        .count;
 
     let count_enabled = state
         .packet_filter
@@ -98,7 +98,7 @@ fn draw_packet_list(ui: &mut Ui, state: &mut SharedState, packet_state: PacketSt
                     || int_to_hex_lower(p.id).contains(&search))
                 && **enabled
         })
-        .count();
+        .count;
 
     if count == 0 {
         return 0;

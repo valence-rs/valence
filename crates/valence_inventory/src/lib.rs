@@ -101,7 +101,7 @@ impl Inventory {
         Inventory {
             title: title.into_cow_text().into_owned(),
             kind,
-            slots: vec![ItemStack::empty(); kind.slot_count()].into(),
+            slots: vec![ItemStack::EMPTY; kind.slot_count()].into(),
             changed: 0,
         }
     }
@@ -202,7 +202,7 @@ impl Inventory {
     /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
     /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
     /// inv.set_slot_amount(0, 64);
-    /// assert_eq!(inv.slot(0).unwrap().count(), 64);
+    /// assert_eq!(inv.slot(0).unwrap().count, 64);
     /// ```
     #[track_caller]
     pub fn set_slot_amount(&mut self, idx: u16, amount: i8) {
@@ -210,11 +210,11 @@ impl Inventory {
 
         let item = &mut self.slots[idx as usize];
 
-        if item.is_not_empty() {
-            if item.count() == amount {
+        if !item.is_empty() {
+            if item.count == amount {
                 return;
             }
-            item.set_count(amount);
+            item.count = amount;
             self.changed |= 1 << idx;
         }
     }
@@ -315,7 +315,7 @@ impl Inventory {
     }
 
     /// Returns the first slot with the given [`ItemKind`] in the inventory
-    /// where `count() < stack_max`, or `None` if there are no empty slots.
+    /// where `count < stack_max`, or `None` if there are no empty slots.
     /// ```
     /// # use valence_inventory::*;
     /// # use valence_server::item::*;
@@ -349,7 +349,7 @@ impl Inventory {
     }
 
     /// Returns the first slot with the given [`ItemKind`] in the inventory
-    /// where `count() < stack_max`, or `None` if there are no empty slots.
+    /// where `count < stack_max`, or `None` if there are no empty slots.
     /// ```
     /// # use valence_inventory::*;
     /// # use valence_server::item::*;
@@ -571,7 +571,7 @@ fn init_new_client_inventories(clients: Query<Entity, Added<Client>>, mut comman
     for entity in &clients {
         commands.entity(entity).insert((
             Inventory::new(InventoryKind::Player),
-            CursorItem(ItemStack::empty()),
+            CursorItem(ItemStack::EMPTY),
             ClientInventoryState {
                 window_id: 0,
                 state_id: Wrapping(0),
@@ -862,13 +862,13 @@ fn handle_click_slot(
 
             let stack = &mut cursor_item.0;
 
-            if stack.is_not_empty() {
+            if !stack.is_empty() {
                 drop_item_stack_events.send(DropItemStackEvent {
                     client: packet.client,
                     from_slot: None,
                     stack: stack.clone(),
                 });
-                *stack = ItemStack::empty();
+                *stack = ItemStack::EMPTY;
             }
         } else if pkt.mode == ClickMode::DropKey {
             // The client is dropping an item by pressing the drop key.
@@ -907,17 +907,16 @@ fn handle_click_slot(
 
                     let stack = target_inventory.slot(pkt.slot_idx as u16);
 
-                    if stack.is_not_empty() {
-                        let dropped = if entire_stack || stack.count() == 1 {
-                            target_inventory.replace_slot(pkt.slot_idx as u16, ItemStack::empty())
+                    if !stack.is_empty() {
+                        let dropped = if entire_stack || stack.count == 1 {
+                            target_inventory.replace_slot(pkt.slot_idx as u16, ItemStack::EMPTY)
                         } else {
-                            let mut stack = stack.clone();
-                            stack.set_count(stack.count() - 1);
+                            let stack = stack.clone().with_count(stack.count - 1);
                             let mut old_slot =
                                 target_inventory.replace_slot(pkt.slot_idx as u16, stack);
                             // we already checked that the slot was not empty and that the
                             // stack count is > 1
-                            old_slot.set_count(1);
+                            old_slot.count = 1;
                             old_slot
                         };
 
@@ -934,16 +933,15 @@ fn handle_click_slot(
 
                     let stack = client_inv.slot(slot_id);
 
-                    if stack.is_not_empty() {
-                        let dropped = if entire_stack || stack.count() == 1 {
-                            client_inv.replace_slot(slot_id, ItemStack::empty())
+                    if !stack.is_empty() {
+                        let dropped = if entire_stack || stack.count == 1 {
+                            client_inv.replace_slot(slot_id, ItemStack::EMPTY)
                         } else {
-                            let mut stack = stack.clone();
-                            stack.set_count(stack.count() - 1);
+                            let stack = stack.clone().with_count(stack.count - 1);
                             let mut old_slot = client_inv.replace_slot(slot_id, stack);
                             // we already checked that the slot was not empty and that the
                             // stack count is > 1
-                            old_slot.set_count(1);
+                            old_slot.count = 1;
                             old_slot
                         };
 
@@ -960,16 +958,15 @@ fn handle_click_slot(
 
                 let stack = client_inv.slot(pkt.slot_idx as u16);
 
-                if stack.is_not_empty() {
-                    let dropped = if entire_stack || stack.count() == 1 {
-                        client_inv.replace_slot(pkt.slot_idx as u16, ItemStack::empty())
+                if !stack.is_empty() {
+                    let dropped = if entire_stack || stack.count == 1 {
+                        client_inv.replace_slot(pkt.slot_idx as u16, ItemStack::EMPTY)
                     } else {
-                        let mut stack = stack.clone();
-                        stack.set_count(stack.count() - 1);
+                        let stack = stack.clone().with_count(stack.count - 1);
                         let mut old_slot = client_inv.replace_slot(pkt.slot_idx as u16, stack);
                         // we already checked that the slot was not empty and that the
                         // stack count is > 1
-                        old_slot.set_count(1);
+                        old_slot.count = 1;
                         old_slot
                     };
 
@@ -1096,9 +1093,9 @@ fn handle_player_actions(
             match pkt.action {
                 PlayerAction::DropAllItems => {
                     if let Ok((mut inv, mut inv_state, &held)) = clients.get_mut(packet.client) {
-                        let stack = inv.replace_slot(held.slot(), ItemStack::empty());
+                        let stack = inv.replace_slot(held.slot(), ItemStack::EMPTY);
 
-                        if stack.is_not_empty() {
+                        if !stack.is_empty() {
                             inv_state.slots_changed |= 1 << held.slot();
 
                             drop_item_stack_events.send(DropItemStackEvent {
@@ -1111,16 +1108,16 @@ fn handle_player_actions(
                 }
                 PlayerAction::DropItem => {
                     if let Ok((mut inv, mut inv_state, held)) = clients.get_mut(packet.client) {
-                        let mut stack = inv.replace_slot(held.slot(), ItemStack::empty());
+                        let mut stack = inv.replace_slot(held.slot(), ItemStack::EMPTY);
 
-                        if stack.is_not_empty() {
-                            if stack.count() > 1 {
+                        if !stack.is_empty() {
+                            if stack.count > 1 {
                                 inv.set_slot(
                                     held.slot(),
-                                    stack.clone().with_count(stack.count() - 1),
+                                    stack.clone().with_count(stack.count - 1),
                                 );
 
-                                stack.set_count(1);
+                                stack.count = 1;
                             }
 
                             inv_state.slots_changed |= 1 << held.slot();
@@ -1177,7 +1174,7 @@ fn handle_creative_inventory_action(
             if pkt.slot == -1 {
                 let stack = pkt.clicked_item.clone();
 
-                if stack.is_not_empty() {
+                if !stack.is_empty() {
                     drop_item_stack_events.send(DropItemStackEvent {
                         client: packet.client,
                         from_slot: None,

@@ -158,7 +158,7 @@ fn test_should_modify_player_inventory_click_slot() {
         slot_idx: 20,
         slot_changes: vec![SlotChange {
             idx: 20,
-            stack: ItemStack::empty(),
+            stack: ItemStack::EMPTY,
         }]
         .into(),
         carried_item: ItemStack::new(ItemKind::Diamond, 2, None),
@@ -180,7 +180,7 @@ fn test_should_modify_player_inventory_click_slot() {
         .get::<Inventory>(client)
         .expect("could not find inventory for client");
 
-    assert_eq!(inventory.slot(20), &ItemStack::empty());
+    assert_eq!(inventory.slot(20), &ItemStack::EMPTY);
 
     let cursor_item = app
         .world
@@ -301,7 +301,7 @@ fn test_should_modify_open_inventory_click_slot() {
         mode: ClickMode::Click,
         slot_changes: vec![SlotChange {
             idx: 20,
-            stack: ItemStack::empty(),
+            stack: ItemStack::EMPTY,
         }]
         .into(),
         carried_item: ItemStack::new(ItemKind::Diamond, 2, None),
@@ -322,7 +322,7 @@ fn test_should_modify_open_inventory_click_slot() {
         .world
         .get::<Inventory>(inventory_ent)
         .expect("could not find inventory");
-    assert_eq!(inventory.slot(20), &ItemStack::empty());
+    assert_eq!(inventory.slot(20), &ItemStack::EMPTY);
     let cursor_item = app
         .world
         .get::<CursorItem>(client)
@@ -469,7 +469,7 @@ fn test_ignore_set_creative_mode_slot_if_not_creative() {
         .world
         .get::<Inventory>(client)
         .expect("could not find inventory for client");
-    assert_eq!(inventory.slot(36), &ItemStack::empty());
+    assert_eq!(inventory.slot(36), &ItemStack::EMPTY);
 }
 
 #[test]
@@ -678,7 +678,7 @@ mod dropping_items {
             .world
             .get::<Inventory>(client)
             .expect("could not find inventory");
-        assert_eq!(inventory.slot(36), &ItemStack::empty());
+        assert_eq!(inventory.slot(36), &ItemStack::EMPTY);
         let events = app
             .world
             .get_resource::<Events<DropItemStackEvent>>()
@@ -763,7 +763,7 @@ mod dropping_items {
             button: 0,
             mode: ClickMode::Click,
             slot_changes: vec![].into(),
-            carried_item: ItemStack::empty(),
+            carried_item: ItemStack::EMPTY,
         });
 
         app.update();
@@ -774,7 +774,7 @@ mod dropping_items {
             .get::<CursorItem>(client)
             .expect("could not find client");
 
-        assert_eq!(cursor_item.0, ItemStack::empty());
+        assert_eq!(cursor_item.0, ItemStack::EMPTY);
 
         let events = app
             .world
@@ -830,7 +830,7 @@ mod dropping_items {
                 stack: ItemStack::new(ItemKind::IronIngot, 31, None),
             }]
             .into(),
-            carried_item: ItemStack::empty(),
+            carried_item: ItemStack::EMPTY,
         });
 
         app.update();
@@ -887,10 +887,10 @@ mod dropping_items {
             state_id: VarInt(state_id),
             slot_changes: vec![SlotChange {
                 idx: 40,
-                stack: ItemStack::empty(),
+                stack: ItemStack::EMPTY,
             }]
             .into(),
-            carried_item: ItemStack::empty(),
+            carried_item: ItemStack::EMPTY,
         });
 
         app.update();
@@ -961,7 +961,7 @@ mod dropping_items {
                 stack: ItemStack::new(ItemKind::IronIngot, 31, None),
             }]
             .into(),
-            carried_item: ItemStack::empty(),
+            carried_item: ItemStack::EMPTY,
         });
 
         app.update();
@@ -1045,10 +1045,10 @@ fn should_drop_item_stack_player_open_inventory_with_dropkey() {
         mode: ClickMode::DropKey,
         slot_changes: vec![SlotChange {
             idx: 50,
-            stack: ItemStack::empty(),
+            stack: ItemStack::EMPTY,
         }]
         .into(),
-        carried_item: ItemStack::empty(),
+        carried_item: ItemStack::EMPTY,
     });
 
     app.update();
@@ -1081,7 +1081,7 @@ fn should_drop_item_stack_player_open_inventory_with_dropkey() {
     let expected_player_slot_id = convert_to_player_slot_id(InventoryKind::Generic9x3, 50);
     assert_eq!(
         player_inventory.slot(expected_player_slot_id),
-        &ItemStack::empty()
+        &ItemStack::EMPTY
     );
 }
 
