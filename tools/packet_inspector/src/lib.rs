@@ -6,13 +6,10 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::bail;
-
 use bytes::{BufMut, BytesMut};
-
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
-
 use valence::protocol::decode::PacketFrame;
 use valence::protocol::packets::handshaking::handshake_c2s::HandshakeNextState;
 use valence::protocol::packets::handshaking::HandshakeC2s;
@@ -93,9 +90,9 @@ impl Proxy {
         self.packet_registry.read().await.subscribe()
     }
 
-    /// Sends a request to stop the proxy and awaits its task's termination. There's a hardcoded
-    /// 5 second long timeout after which the task is considered unresponsive and automatically
-    /// aborted.
+    /// Sends a request to stop the proxy and awaits its task's termination.
+    /// There's a hardcoded 5 second long timeout after which the task is
+    /// considered unresponsive and automatically aborted.
     pub async fn stop(self) {
         // The task may have already stopped, so we can ignore a Disconnected error
         let _ = self.message_tx.send_async(ProxyMessage::Stop).await;
@@ -111,8 +108,8 @@ impl Proxy {
         }
     }
 
-    /// The main listener task is responsible for handling the TCP listener and managing child
-    /// tasks for each client connected to the inspector.
+    /// The main listener task is responsible for handling the TCP listener and
+    /// managing child tasks for each client connected to the inspector.
     async fn run_main_task(
         packet_registry: Arc<RwLock<PacketRegistry>>,
         listener: TcpListener,
@@ -150,7 +147,8 @@ impl Proxy {
         }
     }
 
-    /// Each client connected to the inspector is handled in its own individual task, defined here.
+    /// Each client connected to the inspector is handled in its own individual
+    /// task, defined here.
     async fn run_individual_proxy(
         client: TcpStream,
         server: TcpStream,
@@ -188,7 +186,7 @@ impl Proxy {
                         logs_tx
                             .send_async(ProxyLog::ClientDisconnected(
                                 client_addr,
-                                DisconnectionReason::Error(e.into()),
+                                DisconnectionReason::Error(e),
                             ))
                             .await?;
 
@@ -235,7 +233,7 @@ impl Proxy {
                     Ok(packet) => packet,
                     Err(e) => {
                         client_writer.shutdown().await?;
-                        return Err(anyhow::Error::from(e));
+                        return Err(e);
                     }
                 };
 
@@ -264,40 +262,40 @@ impl Proxy {
 
                 // (The check is done in this if rather than the one above, to still send the
                 // encryption request packet to the inspector)
-                if state == PacketState::Login {
-                    if extrapolate_packet::<LoginHelloS2c>(&packet).is_some() {
-                        // The server is requesting encryption, we can't support that
+                if state == PacketState::Login
+                    && extrapolate_packet::<LoginHelloS2c>(&packet).is_some()
+                {
+                    // The server is requesting encryption, we can't support that
 
-                        let disconnect_packet = LoginDisconnectS2c {
-                            reason: "This server is running in online mode, \
-                                which is unsupported by the Packet Inspector."
-                                .into_text()
-                                .color(Color::Named(NamedColor::Red))
-                                .into_cow_text(),
-                        };
+                    let disconnect_packet = LoginDisconnectS2c {
+                        reason: "This server is running in online mode, which is unsupported by \
+                                 the Packet Inspector."
+                            .into_text()
+                            .color(Color::Named(NamedColor::Red))
+                            .into_cow_text(),
+                    };
 
-                        client_writer
-                            .send_packet_raw(&PacketFrame {
-                                id: LoginDisconnectS2c::ID,
-                                body: {
-                                    let mut writer = BytesMut::new().writer();
-                                    disconnect_packet.encode(&mut writer)?;
-                                    writer.into_inner()
-                                },
-                            })
-                            .await?;
+                    client_writer
+                        .send_packet_raw(&PacketFrame {
+                            id: LoginDisconnectS2c::ID,
+                            body: {
+                                let mut writer = BytesMut::new().writer();
+                                disconnect_packet.encode(&mut writer)?;
+                                writer.into_inner()
+                            },
+                        })
+                        .await?;
 
-                        client_writer.shutdown().await?;
+                    client_writer.shutdown().await?;
 
-                        logs_tx
-                            .send_async(ProxyLog::ClientDisconnected(
-                                client_addr,
-                                DisconnectionReason::OnlineModeRequired,
-                            ))
-                            .await?;
+                    logs_tx
+                        .send_async(ProxyLog::ClientDisconnected(
+                            client_addr,
+                            DisconnectionReason::OnlineModeRequired,
+                        ))
+                        .await?;
 
-                        bail!("server is running in online mode");
-                    }
+                    bail!("server is running in online mode");
                 }
 
                 client_writer.send_packet_raw(&packet).await?;
