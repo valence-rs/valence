@@ -85,7 +85,7 @@ impl Proxy {
         })
     }
 
-    /// Subscribes to the proxy's [`PacketRegistry`].
+    /// Subscribes to the proxy's packet registry.
     pub async fn subscribe(&self) -> flume::Receiver<Packet> {
         self.packet_registry.read().await.subscribe()
     }
