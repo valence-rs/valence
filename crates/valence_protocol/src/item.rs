@@ -6,7 +6,7 @@ use valence_nbt::Compound;
 use crate::{Decode, Encode};
 
 /// A stack of items in an inventory.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Default)]
 pub struct ItemStack {
     pub item: ItemKind,
     pub count: i8,
@@ -45,12 +45,6 @@ impl ItemStack {
 
     pub fn is_empty(&self) -> bool {
         self.item == ItemKind::Air || self.count <= 0
-    }
-}
-
-impl Default for ItemStack {
-    fn default() -> Self {
-        ItemStack::EMPTY
     }
 }
 

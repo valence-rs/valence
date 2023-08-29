@@ -174,9 +174,10 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
     Ok(quote! {
         /// Represents an item from the game
-        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
         #[repr(u16)]
         pub enum ItemKind {
+            #[default]
             #(#item_kind_variants,)*
         }
 
