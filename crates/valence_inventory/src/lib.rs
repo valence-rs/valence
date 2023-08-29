@@ -445,10 +445,7 @@ impl OpenInventory {
 /// let target_inventory = Inventory::new(InventoryKind::Generic9x3);
 /// let window = InventoryWindow::new(&player_inventory, Some(&target_inventory));
 ///
-/// assert_eq!(
-///     window.slot(54),
-///     &ItemStack::new(ItemKind::Diamond, 1, None)
-/// );
+/// assert_eq!(window.slot(54), &ItemStack::new(ItemKind::Diamond, 1, None));
 /// ```
 pub struct InventoryWindow<'a> {
     player_inventory: &'a Inventory,

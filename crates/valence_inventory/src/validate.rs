@@ -1,7 +1,6 @@
 use valence_server::protocol::anyhow::{self, bail, ensure};
 use valence_server::protocol::packets::play::click_slot_c2s::ClickMode;
 use valence_server::protocol::packets::play::ClickSlotC2s;
-use valence_server::ItemStack;
 
 use super::{CursorItem, Inventory, InventoryWindow, PLAYER_INVENTORY_MAIN_SLOTS_COUNT};
 
@@ -212,8 +211,7 @@ pub(super) fn validate_click_slot_packet(
             let Some(item_kind) = packet
                 .slot_changes
                 .iter()
-                .filter(|s| !s.stack.is_empty())
-                .next()
+                .find(|s| !s.stack.is_empty())
                 .map(|s| &s.stack)
             else {
                 bail!("shift click must move an item");
@@ -406,7 +404,7 @@ fn calculate_net_item_delta(
 mod tests {
     use valence_server::protocol::packets::play::click_slot_c2s::SlotChange;
     use valence_server::protocol::VarInt;
-    use valence_server::ItemKind;
+    use valence_server::{ItemKind, ItemStack};
 
     use super::*;
     use crate::InventoryKind;

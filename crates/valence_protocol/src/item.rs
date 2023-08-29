@@ -1,6 +1,5 @@
 use std::io::Write;
 
-use anyhow::ensure;
 pub use valence_generated::item::ItemKind;
 use valence_nbt::Compound;
 
