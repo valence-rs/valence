@@ -158,13 +158,8 @@ fn handle_events(state: Arc<RwLock<SharedState>>) {
                     let state = state.clone();
 
                     proxy_thread = Some(tokio::spawn(async move {
-                        let proxy = Proxy::new(listener_addr, server_addr);
+                        let proxy = Proxy::start(listener_addr, server_addr).await?;
                         let receiver = proxy.subscribe().await;
-
-                        tokio::spawn(async move {
-                            proxy.run().await?;
-                            Ok::<(), anyhow::Error>(())
-                        });
 
                         while let Ok(packet) = receiver.recv_async().await {
                             let state = state.read().unwrap();
