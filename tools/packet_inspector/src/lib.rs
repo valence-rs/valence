@@ -10,16 +10,15 @@ use bytes::{BufMut, BytesMut};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
-use valence::protocol::decode::PacketFrame;
-use valence::protocol::packets::handshaking::handshake_c2s::HandshakeNextState;
-use valence::protocol::packets::handshaking::HandshakeC2s;
-use valence::protocol::packets::login::{
+use valence_protocol::decode::PacketFrame;
+use valence_protocol::packets::handshaking::handshake_c2s::HandshakeNextState;
+use valence_protocol::packets::handshaking::HandshakeC2s;
+use valence_protocol::packets::login::{
     LoginCompressionS2c, LoginDisconnectS2c, LoginHelloS2c, LoginSuccessS2c,
 };
-use valence::protocol::{Decode, Encode, Packet as ValencePacket};
-use valence::text::color::NamedColor;
-use valence::text::{Color, IntoText};
-use valence::CompressionThreshold;
+use valence_protocol::text::color::NamedColor;
+use valence_protocol::text::{Color, IntoText};
+use valence_protocol::{CompressionThreshold, Decode, Encode, Packet as ValencePacket};
 
 use crate::packet_io::PacketIo;
 use crate::packet_registry::PacketRegistry;
@@ -176,8 +175,6 @@ impl Proxy {
                 client_reader.set_compression(threshold);
                 server_writer.set_compression(threshold);
 
-                let state = *state_lock.read().await;
-
                 // client to server handling
                 let packet = match client_reader.recv_packet_raw().await {
                     Ok(packet) => packet,
@@ -193,6 +190,8 @@ impl Proxy {
                         bail!("connection error");
                     }
                 };
+
+                let state = *state_lock.read().await;
 
                 registry
                     .write()
