@@ -156,12 +156,13 @@ pub(super) fn validate_click_slot_packet(
                 // TODO: make sure NBT is the same.
                 //       Sometimes, the client will add nbt data to an item if it's missing,
                 // like       "Damage" to a sword.
-                let should_swap: bool = packet.button == 0 && match (!old_slot.is_empty(), !cursor_item.is_empty()) {
-                    (true, true) => old_slot.item != cursor_item.item,
-                    (true, false) => true,
-                    (false, true) => cursor_item.count <= cursor_item.item.max_stack(),
-                    (false, false) => false,
-                };
+                let should_swap: bool = packet.button == 0
+                    && match (!old_slot.is_empty(), !cursor_item.is_empty()) {
+                        (true, true) => old_slot.item != cursor_item.item,
+                        (true, false) => true,
+                        (false, true) => cursor_item.count <= cursor_item.item.max_stack(),
+                        (false, false) => false,
+                    };
 
                 if should_swap {
                     // assert that a swap occurs
