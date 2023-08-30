@@ -44,7 +44,7 @@ impl ItemStack {
     }
 
     pub const fn is_empty(&self) -> bool {
-        matches!(self.item, ItemKind::Air) || matches!(self.count, c if c <= 0)
+        matches!(self.item, ItemKind::Air) || self.count <= 0
     }
 }
 

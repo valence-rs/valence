@@ -139,7 +139,7 @@ fn place_blocks(
         // get the held item
         let slot_id = held.slot();
         let stack = inventory.slot(slot_id);
-        if inventory.slot(slot_id).is_empty() {
+        if stack.is_empty() {
             // no item in the slot
             continue;
         };
@@ -153,8 +153,8 @@ fn place_blocks(
             // check if the player has the item in their inventory and remove
             // it.
             if stack.count > 1 {
-                let count = stack.count;
-                inventory.set_slot_amount(slot_id, count - 1);
+                let amount = stack.count - 1;
+                inventory.set_slot_amount(slot_id, amount);
             } else {
                 inventory.set_slot(slot_id, ItemStack::EMPTY);
             }

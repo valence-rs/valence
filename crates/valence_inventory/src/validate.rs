@@ -48,7 +48,7 @@ pub(super) fn validate_click_slot_packet(
 
         let max_stack_size = carried_item.item.max_stack().max(carried_item.count);
         ensure!(
-            (1..=max_stack_size).contains(&(carried_item.count)),
+            (1..=max_stack_size).contains(&carried_item.count),
             "invalid carried item count"
         );
     }
@@ -156,24 +156,11 @@ pub(super) fn validate_click_slot_packet(
                 // TODO: make sure NBT is the same.
                 //       Sometimes, the client will add nbt data to an item if it's missing,
                 // like       "Damage" to a sword.
-                let should_swap: bool = packet.button == 0 && {
-                    let old_item = if old_slot.is_empty() {
-                        None
-                    } else {
-                        Some(old_slot.item)
-                    };
-                    let new_item = if cursor_item.is_empty() {
-                        None
-                    } else {
-                        Some(cursor_item.item)
-                    };
-
-                    match (old_item, new_item) {
-                        (Some(old_item), Some(new_item)) => old_item != new_item,
-                        (Some(_), None) => true,
-                        (None, Some(new_item)) => cursor_item.count <= new_item.max_stack(),
-                        (None, None) => false,
-                    }
+                let should_swap: bool = packet.button == 0 && match (!old_slot.is_empty(), !cursor_item.is_empty()) {
+                    (true, true) => old_slot.item != cursor_item.item,
+                    (true, false) => true,
+                    (false, true) => cursor_item.count <= cursor_item.item.max_stack(),
+                    (false, false) => false,
                 };
 
                 if should_swap {
@@ -212,14 +199,14 @@ pub(super) fn validate_click_slot_packet(
                 .slot_changes
                 .iter()
                 .find(|s| !s.stack.is_empty())
-                .map(|s| &s.stack)
+                .map(|s| s.stack.item)
             else {
                 bail!("shift click must move an item");
             };
 
             let old_slot_kind = window.slot(packet.slot_idx as u16).item;
             ensure!(
-                old_slot_kind == item_kind.item,
+                old_slot_kind == item_kind,
                 "shift click must move the same item kind as modified slots"
             );
 
@@ -229,7 +216,7 @@ pub(super) fn validate_click_slot_packet(
                     .slot_changes
                     .iter()
                     .filter(|s| !s.stack.is_empty())
-                    .all(|s| s.stack.item == item_kind.item),
+                    .all(|s| s.stack.item == item_kind),
                 "shift click must move the same item kind"
             );
         }
@@ -276,26 +263,13 @@ pub(super) fn validate_click_slot_packet(
 
             let old_slot = window.slot(packet.slot_idx as u16);
             let new_slot = &packet.slot_changes[0].stack;
-            let is_transmuting = {
-                let old_slot = if old_slot.is_empty() {
-                    None
-                } else {
-                    Some(old_slot.item)
-                };
-                let new_slot = if new_slot.is_empty() {
-                    None
-                } else {
-                    Some(new_slot.item)
-                };
-
-                match (old_slot, new_slot) {
-                    // TODO: make sure NBT is the same
-                    // Sometimes, the client will add nbt data to an item if it's missing, like
-                    // "Damage" to a sword
-                    (Some(old_slot), Some(new_slot)) => old_slot != new_slot,
-                    (_, None) => false,
-                    (None, Some(_)) => true,
-                }
+            let is_transmuting = match (!old_slot.is_empty(), !new_slot.is_empty()) {
+                // TODO: make sure NBT is the same.
+                // Sometimes, the client will add nbt data to an item if it's missing, like
+                // "Damage" to a sword.
+                (true, true) => old_slot.item != new_slot.item,
+                (_, false) => false,
+                (false, true) => true,
             };
             ensure!(!is_transmuting, "transmuting items is not allowed");
 
@@ -360,41 +334,19 @@ fn calculate_net_item_delta(
         let old_slot = window.slot(slot.idx as u16);
         let new_slot = &slot.stack;
 
-        let old_slot_count = if old_slot.is_empty() {
-            None
-        } else {
-            Some(old_slot.count as i32)
-        };
-        let new_slot_count = if new_slot.is_empty() {
-            None
-        } else {
-            Some(new_slot.count as i32)
-        };
-
-        net_item_delta += match (old_slot_count, new_slot_count) {
-            (Some(old), Some(new)) => new - old,
-            (Some(old), None) => -old,
-            (None, Some(new)) => new,
-            (None, None) => 0,
+        net_item_delta += match (!old_slot.is_empty(), !new_slot.is_empty()) {
+            (true, true) => new_slot.count as i32 - old_slot.count as i32,
+            (true, false) => -(old_slot.count as i32),
+            (false, true) => new_slot.count as i32,
+            (false, false) => 0,
         };
     }
 
-    let cursor_item_count = if cursor_item.is_empty() {
-        None
-    } else {
-        Some(cursor_item.count as i32)
-    };
-    let carried_item_count = if packet.carried_item.is_empty() {
-        None
-    } else {
-        Some(packet.carried_item.count as i32)
-    };
-
-    net_item_delta += match (cursor_item_count, carried_item_count) {
-        (Some(old), Some(new)) => new - old,
-        (Some(old), None) => -old,
-        (None, Some(new)) => new,
-        (None, None) => 0,
+    net_item_delta += match (!cursor_item.is_empty(), !packet.carried_item.is_empty()) {
+        (true, true) => packet.carried_item.count as i32 - cursor_item.count as i32,
+        (true, false) => -(cursor_item.count as i32),
+        (false, true) => packet.carried_item.count as i32,
+        (false, false) => 0,
     };
 
     net_item_delta

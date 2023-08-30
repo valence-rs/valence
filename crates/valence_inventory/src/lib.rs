@@ -166,7 +166,7 @@ impl Inventory {
     /// # use valence_server::item::{ItemStack, ItemKind};
     /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
     /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
-    /// assert_eq!(inv.slot(1), &ItemStack::EMPTY);
+    /// assert!(inv.slot(1).is_empty());
     /// inv.swap_slot(0, 1);
     /// assert_eq!(inv.slot(1).item, ItemKind::Diamond);
     /// ```
@@ -462,7 +462,7 @@ impl<'a> InventoryWindow<'a> {
 
     #[track_caller]
     pub fn slot(&self, idx: u16) -> &ItemStack {
-        return if let Some(open_inv) = self.open_inventory.as_ref() {
+        if let Some(open_inv) = self.open_inventory.as_ref() {
             if idx < open_inv.slot_count() {
                 open_inv.slot(idx)
             } else {
@@ -471,7 +471,7 @@ impl<'a> InventoryWindow<'a> {
             }
         } else {
             self.player_inventory.slot(idx)
-        };
+        }
     }
 
     #[track_caller]
@@ -520,7 +520,7 @@ impl<'a> InventoryWindowMut<'a> {
 
     #[track_caller]
     pub fn slot(&self, idx: u16) -> &ItemStack {
-        return if let Some(open_inv) = self.open_inventory.as_ref() {
+        if let Some(open_inv) = self.open_inventory.as_ref() {
             if idx < open_inv.slot_count() {
                 open_inv.slot(idx)
             } else {
@@ -529,7 +529,7 @@ impl<'a> InventoryWindowMut<'a> {
             }
         } else {
             self.player_inventory.slot(idx)
-        };
+        }
     }
 
     #[track_caller]
@@ -857,15 +857,14 @@ fn handle_click_slot(
         if pkt.slot_idx < 0 && pkt.mode == ClickMode::Click {
             // The client is dropping the cursor item by clicking outside the window.
 
-            let stack = &mut cursor_item.0;
+            let stack = std::mem::take(&mut cursor_item.0);
 
             if !stack.is_empty() {
                 drop_item_stack_events.send(DropItemStackEvent {
                     client: packet.client,
                     from_slot: None,
-                    stack: stack.clone(),
+                    stack,
                 });
-                *stack = ItemStack::EMPTY;
             }
         } else if pkt.mode == ClickMode::DropKey {
             // The client is dropping an item by pressing the drop key.
@@ -972,7 +971,7 @@ fn handle_click_slot(
                         from_slot: Some(pkt.slot_idx as u16),
                         stack: dropped,
                     });
-                };
+                }
             }
         } else {
             // The player is clicking a slot in an inventory.
