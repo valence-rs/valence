@@ -175,8 +175,6 @@ impl Proxy {
                 client_reader.set_compression(threshold);
                 server_writer.set_compression(threshold);
 
-                let state = *state_lock.read().await;
-
                 // client to server handling
                 let packet = match client_reader.recv_packet_raw().await {
                     Ok(packet) => packet,
@@ -192,6 +190,8 @@ impl Proxy {
                         bail!("connection error");
                     }
                 };
+
+                let state = *state_lock.read().await;
 
                 registry
                     .write()
