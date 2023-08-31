@@ -7,5 +7,5 @@ pub struct ScreenHandlerSlotUpdateS2c<'a> {
     pub window_id: i8,
     pub state_id: VarInt,
     pub slot_idx: i16,
-    pub slot_data: Cow<'a, Option<ItemStack>>,
+    pub slot_data: Cow<'a, ItemStack>,
 }

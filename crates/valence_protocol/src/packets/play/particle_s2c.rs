@@ -101,7 +101,7 @@ pub enum Particle {
     Composter,
     Heart,
     InstantEffect,
-    Item(Option<ItemStack>),
+    Item(ItemStack),
     /// The 'Block' variant of the 'Vibration' particle
     VibrationBlock {
         block_pos: BlockPos,
