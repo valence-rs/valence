@@ -30,7 +30,7 @@ jobs:
         run: cargo depgraph --workspace-only | tred | dot -Tsvg -o assets/depgraph.svg
 
       - name: Check depgraph diff
-        run: git diff --exit-code assets/depgraph.svg > depgraph.patch
+        run: git diff --exit-code assets/depgraph.svg > assets/depgraph.patch
 
       - name: Create comment file
         if: ${{ failure() }}
@@ -42,7 +42,7 @@ jobs:
             <summary>depgraph.svg (Don't forget the trailing newline)</summary>
             
           \`\`\`html
-          $(cat depgraph.svg)
+          $(cat assets/depgraph.svg)
 
           \`\`\`
           </details>
@@ -52,7 +52,7 @@ jobs:
           <details>
 
           \`\`\`patch
-          $(cat depgraph.patch)
+          $(cat assets/depgraph.patch)
           \`\`\`
           </details>" >> pr-comment.txt
 
