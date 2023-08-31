@@ -46,7 +46,7 @@ uuid.workspace = true
 bytes.workspace = true
 rand.workspace = true
 valence_advancement = { workspace = true, optional = true }
-valence_anvil = { workspace = true, optional = true }
+valence_anvil = { workspace = true, optional = true, features = ["bevy"] }
 valence_boss_bar = { workspace = true, optional = true }
 valence_server.workspace = true
 valence_inventory = { workspace = true, optional = true }

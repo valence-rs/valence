@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
+use std::path::PathBuf;
 
 use num_integer::div_ceil;
 use thiserror::Error;
@@ -8,11 +9,61 @@ use valence_server::layer::chunk::{Chunk, UnloadedChunk};
 use valence_server::nbt::{Compound, List, Value};
 use valence_server::protocol::BlockKind;
 use valence_server::registry::biome::BiomeId;
-use valence_server::Ident;
+use valence_server::registry::BiomeRegistry;
+use valence_server::{ChunkPos, Ident};
 
-#[derive(Clone, Debug, Error)]
+use crate::{RegionError, RegionFolder};
+
+#[derive(Debug)]
+pub struct DimensionFolder {
+    region: RegionFolder,
+    /// Mapping of biome names to their biome ID.
+    biome_to_id: BTreeMap<Ident<String>, BiomeId>,
+}
+
+impl DimensionFolder {
+    pub fn new(dimension_root: impl Into<PathBuf>, biomes: &BiomeRegistry) -> Self {
+        let mut region_root = dimension_root.into();
+        region_root.push("region");
+
+        Self {
+            region: RegionFolder::new(region_root),
+            biome_to_id: biomes
+                .iter()
+                .map(|(id, name, _)| (name.to_string_ident(), id))
+                .collect(),
+        }
+    }
+
+    /// Gets the parsed chunk at the given chunk position.
+    ///
+    /// Returns `Ok(Some(chunk))` if the chunk exists and no errors occurred
+    /// loading it. Returns `Ok(None)` if the chunk does not exist and no
+    /// errors occurred attempting to load it. Returns `Err(_)` if an error
+    /// occurred attempting to load the chunk.
+    pub fn get_chunk(&mut self, pos: ChunkPos) -> Result<Option<ParsedChunk>, ParseChunkError> {
+        let Some(raw_chunk) = self.region.get_chunk(pos.x, pos.z)? else {
+            return Ok(None);
+        };
+        let parsed = parse_chunk(raw_chunk.data, &self.biome_to_id)?;
+        Ok(Some(ParsedChunk {
+            chunk: parsed,
+            timestamp: raw_chunk.timestamp,
+        }))
+    }
+}
+
+/// A chunk parsed to show block information, biome information etc.
+pub struct ParsedChunk {
+    pub chunk: UnloadedChunk,
+    pub timestamp: u32,
+}
+
+#[derive(Debug, Error)]
 #[non_exhaustive]
-pub(crate) enum ParseChunkError {
+pub enum ParseChunkError {
+    #[error("region error: {0}")]
+    Region(#[from] RegionError),
     #[error("missing chunk sections")]
     MissingSections,
     #[error("missing chunk section Y")]
@@ -65,7 +116,7 @@ pub(crate) enum ParseChunkError {
     InvalidBlockEntityPosition,
 }
 
-pub(crate) fn parse_chunk(
+fn parse_chunk(
     mut nbt: Compound,
     biome_map: &BTreeMap<Ident<String>, BiomeId>, // TODO: replace with biome registry arg.
 ) -> Result<UnloadedChunk, ParseChunkError> {

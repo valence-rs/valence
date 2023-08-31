@@ -9,14 +9,19 @@ repository.workspace = true
 documentation.workspace = true
 license.workspace = true
 
+[features]
+bevy = ["bevy_app", "bevy_ecs", "flume", "parsing"]
+parsing = ["num-integer", "valence_server"]
+
 [dependencies]
-bevy_app.workspace = true
-bevy_ecs.workspace = true
+bevy_app = { workspace = true, optional = true }
+bevy_ecs = { workspace = true, optional = true }
 byteorder.workspace = true
 flate2.workspace = true
-flume.workspace = true
+flume = { workspace = true, optional = true }
 lru.workspace = true
-num-integer.workspace = true
+num-integer = { workspace = true, optional = true }
 thiserror.workspace = true
 tracing.workspace = true
-valence_server.workspace = true
+valence_nbt.workspace = true
+valence_server = { workspace = true, optional = true }
