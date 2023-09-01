@@ -54,7 +54,7 @@ jobs:
         if: ${{ steps.find-artifact.outputs.result == 'true' }}
         run: |
           unzip bad-depgraph.zip
-          echo "event_number=$(cat bad-depgraph/event-number)" >> "$GITHUB_OUTPUT"
+          echo "event_number=$(cat event-number)" >> "$GITHUB_OUTPUT"
 
       - name: Create pull request comment
         uses: marocchino/sticky-pull-request-comment@v2
@@ -62,5 +62,5 @@ jobs:
         with:
           recreate: true
           header: depgraph
-          path: bad-depgraph/pr-comment.txt
+          path: pr-comment.txt
           number: ${{ steps.extract_artifact.outputs.event_number }}
