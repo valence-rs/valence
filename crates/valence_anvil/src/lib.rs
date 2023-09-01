@@ -22,16 +22,15 @@ use std::io::{ErrorKind, Read, Seek, SeekFrom};
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 
-#[cfg(feature = "bevy")]
+#[cfg(feature = "bevy_plugin")]
 pub use bevy::*;
 use byteorder::{BigEndian, ReadBytesExt};
 use flate2::bufread::{GzDecoder, ZlibDecoder};
 use lru::LruCache;
 use thiserror::Error;
-use tracing::warn;
 use valence_nbt::Compound;
 
-#[cfg(feature = "bevy")]
+#[cfg(feature = "bevy_plugin")]
 mod bevy;
 #[cfg(feature = "parsing")]
 pub mod parsing;
