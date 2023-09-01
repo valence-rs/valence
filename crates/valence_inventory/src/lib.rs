@@ -85,7 +85,7 @@ pub const PLAYER_INVENTORY_MAIN_SLOTS_COUNT: u16 = 36;
 pub struct Inventory {
     title: Text,
     kind: InventoryKind,
-    slots: Box<[Option<ItemStack>]>,
+    slots: Box<[ItemStack]>,
     /// Contains a set bit for each modified slot in `slots`.
     #[doc(hidden)]
     pub changed: u64,
@@ -101,17 +101,16 @@ impl Inventory {
         Inventory {
             title: title.into_cow_text().into_owned(),
             kind,
-            slots: vec![None; kind.slot_count()].into(),
+            slots: vec![ItemStack::EMPTY; kind.slot_count()].into(),
             changed: 0,
         }
     }
 
     #[track_caller]
-    pub fn slot(&self, idx: u16) -> Option<&ItemStack> {
+    pub fn slot(&self, idx: u16) -> &ItemStack {
         self.slots
             .get(idx as usize)
             .expect("slot index out of range")
-            .as_ref()
     }
 
     /// Sets the slot at the given index to the given item stack.
@@ -123,11 +122,11 @@ impl Inventory {
     /// # use valence_server::item::{ItemStack, ItemKind};
     /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
     /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
-    /// assert_eq!(inv.slot(0).unwrap().item, ItemKind::Diamond);
+    /// assert_eq!(inv.slot(0).item, ItemKind::Diamond);
     /// ```
     #[track_caller]
     #[inline]
-    pub fn set_slot(&mut self, idx: u16, item: impl Into<Option<ItemStack>>) {
+    pub fn set_slot(&mut self, idx: u16, item: impl Into<ItemStack>) {
         let _ = self.replace_slot(idx, item);
     }
 
@@ -142,15 +141,11 @@ impl Inventory {
     /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
     /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
     /// let old = inv.replace_slot(0, ItemStack::new(ItemKind::IronIngot, 1, None));
-    /// assert_eq!(old.unwrap().item, ItemKind::Diamond);
+    /// assert_eq!(old.item, ItemKind::Diamond);
     /// ```
     #[track_caller]
     #[must_use]
-    pub fn replace_slot(
-        &mut self,
-        idx: u16,
-        item: impl Into<Option<ItemStack>>,
-    ) -> Option<ItemStack> {
+    pub fn replace_slot(&mut self, idx: u16, item: impl Into<ItemStack>) -> ItemStack {
         assert!(idx < self.slot_count(), "slot index of {idx} out of bounds");
 
         let new = item.into();
@@ -171,9 +166,9 @@ impl Inventory {
     /// # use valence_server::item::{ItemStack, ItemKind};
     /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
     /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
-    /// assert_eq!(inv.slot(1), None);
+    /// assert!(inv.slot(1).is_empty());
     /// inv.swap_slot(0, 1);
-    /// assert_eq!(inv.slot(1).unwrap().item, ItemKind::Diamond);
+    /// assert_eq!(inv.slot(1).item, ItemKind::Diamond);
     /// ```
     #[track_caller]
     pub fn swap_slot(&mut self, idx_a: u16, idx_b: u16) {
@@ -207,17 +202,19 @@ impl Inventory {
     /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
     /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
     /// inv.set_slot_amount(0, 64);
-    /// assert_eq!(inv.slot(0).unwrap().count(), 64);
+    /// assert_eq!(inv.slot(0).count, 64);
     /// ```
     #[track_caller]
-    pub fn set_slot_amount(&mut self, idx: u16, amount: u8) {
+    pub fn set_slot_amount(&mut self, idx: u16, amount: i8) {
         assert!(idx < self.slot_count(), "slot index out of range");
 
-        if let Some(item) = self.slots[idx as usize].as_mut() {
-            if item.count() == amount {
+        let item = &mut self.slots[idx as usize];
+
+        if !item.is_empty() {
+            if item.count == amount {
                 return;
             }
-            item.set_count(amount);
+            item.count = amount;
             self.changed |= 1 << idx;
         }
     }
@@ -228,12 +225,9 @@ impl Inventory {
 
     pub fn slots(
         &self,
-    ) -> impl ExactSizeIterator<Item = Option<&ItemStack>>
-           + DoubleEndedIterator
-           + FusedIterator
-           + Clone
-           + '_ {
-        self.slots.iter().map(|item| item.as_ref())
+    ) -> impl ExactSizeIterator<Item = &ItemStack> + DoubleEndedIterator + FusedIterator + Clone + '_
+    {
+        self.slots.iter()
     }
 
     pub fn kind(&self) -> InventoryKind {
@@ -275,8 +269,8 @@ impl Inventory {
         std::mem::replace(&mut self.title, title.into_cow_text().into_owned())
     }
 
-    pub(crate) fn slot_slice(&self) -> &[Option<ItemStack>] {
-        self.slots.as_ref()
+    pub(crate) fn slot_slice(&self) -> &[ItemStack] {
+        &self.slots
     }
 
     /// Returns the first empty slot in the given range, or `None` if there are
@@ -301,7 +295,7 @@ impl Inventory {
             "slot range out of range"
         );
 
-        range.find(|&idx| self.slots[idx as usize].is_none())
+        range.find(|&idx| self.slots[idx as usize].is_empty())
     }
 
     /// Returns the first empty slot in the inventory, or `None` if there are no
@@ -321,7 +315,7 @@ impl Inventory {
     }
 
     /// Returns the first slot with the given [`ItemKind`] in the inventory
-    /// where `count() < stack_max`, or `None` if there are no empty slots.
+    /// where `count < stack_max`, or `None` if there are no empty slots.
     /// ```
     /// # use valence_inventory::*;
     /// # use valence_server::item::*;
@@ -338,7 +332,7 @@ impl Inventory {
     pub fn first_slot_with_item_in(
         &self,
         item: ItemKind,
-        stack_max: u8,
+        stack_max: i8,
         mut range: Range<u16>,
     ) -> Option<u16> {
         assert!(
@@ -349,15 +343,13 @@ impl Inventory {
         assert!(stack_max > 0, "stack_max must be greater than 0");
 
         range.find(|&idx| {
-            self.slots[idx as usize]
-                .as_ref()
-                .map(|stack| stack.item == item && stack.count() < stack_max)
-                .unwrap_or(false)
+            let stack = &self.slots[idx as usize];
+            stack.item == item && stack.count < stack_max
         })
     }
 
     /// Returns the first slot with the given [`ItemKind`] in the inventory
-    /// where `count() < stack_max`, or `None` if there are no empty slots.
+    /// where `count < stack_max`, or `None` if there are no empty slots.
     /// ```
     /// # use valence_inventory::*;
     /// # use valence_server::item::*;
@@ -369,7 +361,7 @@ impl Inventory {
     /// assert_eq!(inv.first_slot_with_item(ItemKind::GoldIngot, 64), Some(4));
     /// ```
     #[inline]
-    pub fn first_slot_with_item(&self, item: ItemKind, stack_max: u8) -> Option<u16> {
+    pub fn first_slot_with_item(&self, item: ItemKind, stack_max: i8) -> Option<u16> {
         self.first_slot_with_item_in(item, stack_max, 0..self.slot_count())
     }
 }
@@ -418,7 +410,7 @@ impl HeldItem {
 /// The item stack that the client thinks it's holding under the mouse
 /// cursor.
 #[derive(Component, Clone, PartialEq, Default, Debug, Deref, DerefMut)]
-pub struct CursorItem(pub Option<ItemStack>);
+pub struct CursorItem(pub ItemStack);
 
 /// Used to indicate that the client with this component is currently viewing
 /// an inventory.
@@ -453,10 +445,7 @@ impl OpenInventory {
 /// let target_inventory = Inventory::new(InventoryKind::Generic9x3);
 /// let window = InventoryWindow::new(&player_inventory, Some(&target_inventory));
 ///
-/// assert_eq!(
-///     window.slot(54),
-///     Some(&ItemStack::new(ItemKind::Diamond, 1, None))
-/// );
+/// assert_eq!(window.slot(54), &ItemStack::new(ItemKind::Diamond, 1, None));
 /// ```
 pub struct InventoryWindow<'a> {
     player_inventory: &'a Inventory,
@@ -472,17 +461,16 @@ impl<'a> InventoryWindow<'a> {
     }
 
     #[track_caller]
-    pub fn slot(&self, idx: u16) -> Option<&ItemStack> {
+    pub fn slot(&self, idx: u16) -> &ItemStack {
         if let Some(open_inv) = self.open_inventory.as_ref() {
             if idx < open_inv.slot_count() {
-                return open_inv.slot(idx);
+                open_inv.slot(idx)
             } else {
-                return self
-                    .player_inventory
-                    .slot(convert_to_player_slot_id(open_inv.kind(), idx));
+                self.player_inventory
+                    .slot(convert_to_player_slot_id(open_inv.kind(), idx))
             }
         } else {
-            return self.player_inventory.slot(idx);
+            self.player_inventory.slot(idx)
         }
     }
 
@@ -511,7 +499,7 @@ impl<'a> InventoryWindow<'a> {
 ///
 /// assert_eq!(
 ///     player_inventory.slot(36),
-///     Some(&ItemStack::new(ItemKind::Diamond, 1, None))
+///     &ItemStack::new(ItemKind::Diamond, 1, None)
 /// );
 /// ```
 pub struct InventoryWindowMut<'a> {
@@ -531,27 +519,22 @@ impl<'a> InventoryWindowMut<'a> {
     }
 
     #[track_caller]
-    pub fn slot(&self, idx: u16) -> Option<&ItemStack> {
+    pub fn slot(&self, idx: u16) -> &ItemStack {
         if let Some(open_inv) = self.open_inventory.as_ref() {
             if idx < open_inv.slot_count() {
-                return open_inv.slot(idx);
+                open_inv.slot(idx)
             } else {
-                return self
-                    .player_inventory
-                    .slot(convert_to_player_slot_id(open_inv.kind(), idx));
+                self.player_inventory
+                    .slot(convert_to_player_slot_id(open_inv.kind(), idx))
             }
         } else {
-            return self.player_inventory.slot(idx);
+            self.player_inventory.slot(idx)
         }
     }
 
     #[track_caller]
     #[must_use]
-    pub fn replace_slot(
-        &mut self,
-        idx: u16,
-        item: impl Into<Option<ItemStack>>,
-    ) -> Option<ItemStack> {
+    pub fn replace_slot(&mut self, idx: u16, item: impl Into<ItemStack>) -> ItemStack {
         assert!(idx < self.slot_count(), "slot index of {idx} out of bounds");
 
         if let Some(open_inv) = self.open_inventory.as_mut() {
@@ -568,7 +551,7 @@ impl<'a> InventoryWindowMut<'a> {
 
     #[track_caller]
     #[inline]
-    pub fn set_slot(&mut self, idx: u16, item: impl Into<Option<ItemStack>>) {
+    pub fn set_slot(&mut self, idx: u16, item: impl Into<ItemStack>) {
         let _ = self.replace_slot(idx, item);
     }
 
@@ -585,7 +568,7 @@ fn init_new_client_inventories(clients: Query<Entity, Added<Client>>, mut comman
     for entity in &clients {
         commands.entity(entity).insert((
             Inventory::new(InventoryKind::Player),
-            CursorItem(None),
+            CursorItem(ItemStack::EMPTY),
             ClientInventoryState {
                 window_id: 0,
                 state_id: Wrapping(0),
@@ -804,7 +787,7 @@ pub struct ClickSlotEvent {
     pub button: i8,
     pub mode: ClickMode,
     pub slot_changes: Vec<SlotChange>,
-    pub carried_item: Option<ItemStack>,
+    pub carried_item: ItemStack,
 }
 
 #[derive(Event, Clone, Debug)]
@@ -874,7 +857,9 @@ fn handle_click_slot(
         if pkt.slot_idx < 0 && pkt.mode == ClickMode::Click {
             // The client is dropping the cursor item by clicking outside the window.
 
-            if let Some(stack) = cursor_item.0.take() {
+            let stack = std::mem::take(&mut cursor_item.0);
+
+            if !stack.is_empty() {
                 drop_item_stack_events.send(DropItemStackEvent {
                     client: packet.client,
                     from_slot: None,
@@ -916,20 +901,20 @@ fn handle_click_slot(
                 if (0i16..target_inventory.slot_count() as i16).contains(&pkt.slot_idx) {
                     // The player is dropping an item from another inventory.
 
-                    if let Some(stack) = target_inventory.slot(pkt.slot_idx as u16) {
-                        let dropped = if entire_stack || stack.count() == 1 {
-                            target_inventory.replace_slot(pkt.slot_idx as u16, None)
+                    let stack = target_inventory.slot(pkt.slot_idx as u16);
+
+                    if !stack.is_empty() {
+                        let dropped = if entire_stack || stack.count == 1 {
+                            target_inventory.replace_slot(pkt.slot_idx as u16, ItemStack::EMPTY)
                         } else {
-                            let mut stack = stack.clone();
-                            stack.set_count(stack.count() - 1);
+                            let stack = stack.clone().with_count(stack.count - 1);
                             let mut old_slot =
-                                target_inventory.replace_slot(pkt.slot_idx as u16, Some(stack));
+                                target_inventory.replace_slot(pkt.slot_idx as u16, stack);
                             // we already checked that the slot was not empty and that the
                             // stack count is > 1
-                            old_slot.as_mut().unwrap().set_count(1);
+                            old_slot.count = 1;
                             old_slot
-                        }
-                        .expect("dropped item should exist"); // we already checked that the slot was not empty
+                        };
 
                         drop_item_stack_events.send(DropItemStackEvent {
                             client: packet.client,
@@ -941,19 +926,20 @@ fn handle_click_slot(
                     // The player is dropping an item from their inventory.
                     let slot_id =
                         convert_to_player_slot_id(target_inventory.kind, pkt.slot_idx as u16);
-                    if let Some(stack) = client_inv.slot(slot_id) {
-                        let dropped = if entire_stack || stack.count() == 1 {
-                            client_inv.replace_slot(slot_id, None)
+
+                    let stack = client_inv.slot(slot_id);
+
+                    if !stack.is_empty() {
+                        let dropped = if entire_stack || stack.count == 1 {
+                            client_inv.replace_slot(slot_id, ItemStack::EMPTY)
                         } else {
-                            let mut stack = stack.clone();
-                            stack.set_count(stack.count() - 1);
-                            let mut old_slot = client_inv.replace_slot(slot_id, Some(stack));
+                            let stack = stack.clone().with_count(stack.count - 1);
+                            let mut old_slot = client_inv.replace_slot(slot_id, stack);
                             // we already checked that the slot was not empty and that the
                             // stack count is > 1
-                            old_slot.as_mut().unwrap().set_count(1);
+                            old_slot.count = 1;
                             old_slot
-                        }
-                        .expect("dropped item should exist"); // we already checked that the slot was not empty
+                        };
 
                         drop_item_stack_events.send(DropItemStackEvent {
                             client: packet.client,
@@ -965,20 +951,20 @@ fn handle_click_slot(
             } else {
                 // The player has no inventory open and is dropping an item from their
                 // inventory.
-                if let Some(stack) = client_inv.slot(pkt.slot_idx as u16) {
-                    let dropped = if entire_stack || stack.count() == 1 {
-                        client_inv.replace_slot(pkt.slot_idx as u16, None)
+
+                let stack = client_inv.slot(pkt.slot_idx as u16);
+
+                if !stack.is_empty() {
+                    let dropped = if entire_stack || stack.count == 1 {
+                        client_inv.replace_slot(pkt.slot_idx as u16, ItemStack::EMPTY)
                     } else {
-                        let mut stack = stack.clone();
-                        stack.set_count(stack.count() - 1);
-                        let mut old_slot =
-                            client_inv.replace_slot(pkt.slot_idx as u16, Some(stack));
+                        let stack = stack.clone().with_count(stack.count - 1);
+                        let mut old_slot = client_inv.replace_slot(pkt.slot_idx as u16, stack);
                         // we already checked that the slot was not empty and that the
                         // stack count is > 1
-                        old_slot.as_mut().unwrap().set_count(1);
+                        old_slot.count = 1;
                         old_slot
-                    }
-                    .expect("dropped item should exist"); // we already checked that the slot was not empty
+                    };
 
                     drop_item_stack_events.send(DropItemStackEvent {
                         client: packet.client,
@@ -1031,13 +1017,13 @@ fn handle_click_slot(
                 for slot in pkt.slot_changes.iter() {
                     if (0i16..target_inventory.slot_count() as i16).contains(&slot.idx) {
                         // The client is interacting with a slot in the target inventory.
-                        target_inventory.set_slot(slot.idx as u16, slot.item.clone());
+                        target_inventory.set_slot(slot.idx as u16, slot.stack.clone());
                         open_inventory.client_changed |= 1 << slot.idx;
                     } else {
                         // The client is interacting with a slot in their own inventory.
                         let slot_id =
                             convert_to_player_slot_id(target_inventory.kind, slot.idx as u16);
-                        client_inv.set_slot(slot_id, slot.item.clone());
+                        client_inv.set_slot(slot_id, slot.stack.clone());
                         inv_state.slots_changed |= 1 << slot_id;
                     }
                 }
@@ -1066,7 +1052,7 @@ fn handle_click_slot(
 
                 for slot in pkt.slot_changes.iter() {
                     if (0i16..client_inv.slot_count() as i16).contains(&slot.idx) {
-                        client_inv.set_slot(slot.idx as u16, slot.item.clone());
+                        client_inv.set_slot(slot.idx as u16, slot.stack.clone());
                         inv_state.slots_changed |= 1 << slot.idx;
                     } else {
                         // The client is trying to interact with a slot that does not exist,
@@ -1103,7 +1089,9 @@ fn handle_player_actions(
             match pkt.action {
                 PlayerAction::DropAllItems => {
                     if let Ok((mut inv, mut inv_state, &held)) = clients.get_mut(packet.client) {
-                        if let Some(stack) = inv.replace_slot(held.slot(), None) {
+                        let stack = inv.replace_slot(held.slot(), ItemStack::EMPTY);
+
+                        if !stack.is_empty() {
                             inv_state.slots_changed |= 1 << held.slot();
 
                             drop_item_stack_events.send(DropItemStackEvent {
@@ -1116,14 +1104,16 @@ fn handle_player_actions(
                 }
                 PlayerAction::DropItem => {
                     if let Ok((mut inv, mut inv_state, held)) = clients.get_mut(packet.client) {
-                        if let Some(mut stack) = inv.replace_slot(held.slot(), None) {
-                            if stack.count() > 1 {
+                        let mut stack = inv.replace_slot(held.slot(), ItemStack::EMPTY);
+
+                        if !stack.is_empty() {
+                            if stack.count > 1 {
                                 inv.set_slot(
                                     held.slot(),
-                                    stack.clone().with_count(stack.count() - 1),
+                                    stack.clone().with_count(stack.count - 1),
                                 );
 
-                                stack.set_count(1);
+                                stack.count = 1;
                             }
 
                             inv_state.slots_changed |= 1 << held.slot();
@@ -1150,7 +1140,7 @@ fn handle_player_actions(
 pub struct CreativeInventoryActionEvent {
     pub client: Entity,
     pub slot: i16,
-    pub clicked_item: Option<ItemStack>,
+    pub clicked_item: ItemStack,
 }
 
 fn handle_creative_inventory_action(
@@ -1178,7 +1168,9 @@ fn handle_creative_inventory_action(
             }
 
             if pkt.slot == -1 {
-                if let Some(stack) = pkt.clicked_item.clone() {
+                let stack = pkt.clicked_item.clone();
+
+                if !stack.is_empty() {
                     drop_item_stack_events.send(DropItemStackEvent {
                         client: packet.client,
                         from_slot: None,

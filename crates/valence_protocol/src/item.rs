@@ -1,40 +1,38 @@
 use std::io::Write;
 
-use anyhow::ensure;
 pub use valence_generated::item::ItemKind;
 use valence_nbt::Compound;
 
 use crate::{Decode, Encode};
 
 /// A stack of items in an inventory.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Default)]
 pub struct ItemStack {
     pub item: ItemKind,
-    count: u8,
+    pub count: i8,
     pub nbt: Option<Compound>,
 }
 
 impl ItemStack {
-    pub const STACK_MIN: u8 = 1;
-    pub const STACK_MAX: u8 = 127;
+    pub const EMPTY: ItemStack = ItemStack {
+        item: ItemKind::Air,
+        count: 0,
+        nbt: None,
+    };
 
     #[must_use]
-    pub fn new(item: ItemKind, count: u8, nbt: Option<Compound>) -> Self {
-        Self {
-            item,
-            count: count.clamp(Self::STACK_MIN, Self::STACK_MAX),
-            nbt,
-        }
+    pub const fn new(item: ItemKind, count: i8, nbt: Option<Compound>) -> Self {
+        Self { item, count, nbt }
     }
 
     #[must_use]
-    pub fn with_count(mut self, count: u8) -> Self {
-        self.set_count(count);
+    pub const fn with_count(mut self, count: i8) -> Self {
+        self.count = count;
         self
     }
 
     #[must_use]
-    pub fn with_item(mut self, item: ItemKind) -> Self {
+    pub const fn with_item(mut self, item: ItemKind) -> Self {
         self.item = item;
         self
     }
@@ -45,63 +43,36 @@ impl ItemStack {
         self
     }
 
-    /// Gets the number of items in this stack.
-    pub fn count(&self) -> u8 {
-        self.count
-    }
-
-    /// Sets the number of items in this stack. Values are clamped to 1-127,
-    /// which are the positive values accepted by clients.
-    pub fn set_count(&mut self, count: u8) {
-        self.count = count.clamp(Self::STACK_MIN, Self::STACK_MAX);
+    pub const fn is_empty(&self) -> bool {
+        matches!(self.item, ItemKind::Air) || self.count <= 0
     }
 }
 
-impl Default for ItemStack {
-    fn default() -> Self {
-        Self::new(ItemKind::Air, 1, None)
-    }
-}
-
-impl Encode for Option<ItemStack> {
-    fn encode(&self, w: impl Write) -> anyhow::Result<()> {
-        self.as_ref().encode(w)
-    }
-}
-
-impl<'a> Encode for Option<&'a ItemStack> {
+impl Encode for ItemStack {
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
-        match *self {
-            None => false.encode(w),
-            Some(s) => {
-                true.encode(&mut w)?;
-                s.item.encode(&mut w)?;
-                s.count.encode(&mut w)?;
-                match &s.nbt {
-                    Some(n) => n.encode(w),
-                    None => 0u8.encode(w),
-                }
+        if self.is_empty() {
+            false.encode(w)
+        } else {
+            true.encode(&mut w)?;
+            self.item.encode(&mut w)?;
+            self.count.encode(&mut w)?;
+            match &self.nbt {
+                Some(n) => n.encode(w),
+                None => 0u8.encode(w),
             }
         }
     }
 }
 
-impl Decode<'_> for Option<ItemStack> {
+impl Decode<'_> for ItemStack {
     fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         let present = bool::decode(r)?;
         if !present {
-            return Ok(None);
-        }
+            return Ok(ItemStack::EMPTY);
+        };
 
         let item = ItemKind::decode(r)?;
-        let count = u8::decode(r)?;
-
-        ensure!(
-            (ItemStack::STACK_MIN..=ItemStack::STACK_MAX).contains(&count),
-            "invalid item stack count (got {count}, expected {}..={})",
-            ItemStack::STACK_MIN,
-            ItemStack::STACK_MAX,
-        );
+        let count = i8::decode(r)?;
 
         let nbt = if let [0, rest @ ..] = *r {
             *r = rest;
@@ -110,7 +81,14 @@ impl Decode<'_> for Option<ItemStack> {
             Some(Compound::decode(r)?)
         };
 
-        Ok(Some(ItemStack { item, count, nbt }))
+        let stack = ItemStack { item, count, nbt };
+
+        // Normalize empty item stacks.
+        if stack.is_empty() {
+            Ok(ItemStack::EMPTY)
+        } else {
+            Ok(stack)
+        }
     }
 }
 
@@ -119,10 +97,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn item_stack_clamps_count() {
-        let mut stack = ItemStack::new(ItemKind::Stone, 200, None);
-        assert_eq!(stack.count, ItemStack::STACK_MAX);
-        stack.set_count(201);
-        assert_eq!(stack.count, ItemStack::STACK_MAX);
+    fn empty_item_stack_is_empty() {
+        let air_stack = ItemStack::new(ItemKind::Air, 10, None);
+        let less_then_one_stack = ItemStack::new(ItemKind::Stone, 0, None);
+
+        assert!(air_stack.is_empty());
+        assert!(less_then_one_stack.is_empty());
+
+        assert!(ItemStack::EMPTY.is_empty());
+
+        let not_empty_stack = ItemStack::new(ItemKind::Stone, 10, None);
+
+        assert!(!not_empty_stack.is_empty());
     }
 }

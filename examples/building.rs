@@ -142,7 +142,8 @@ fn place_blocks(
             Hand::Off => PLAYER_INVENTORY_MAIN_SLOTS_COUNT + 9,
         };
 
-        let Some(stack) = inventory.slot(slot_id) else {
+        let stack = inventory.slot(slot_id);
+        if stack.is_empty() {
             // no item in the slot
             continue;
         };
@@ -155,11 +156,11 @@ fn place_blocks(
         if *game_mode == GameMode::Survival {
             // check if the player has the item in their inventory and remove
             // it.
-            if stack.count() > 1 {
-                let count = stack.count();
-                inventory.set_slot_amount(slot_id, count - 1);
+            if stack.count > 1 {
+                let amount = stack.count - 1;
+                inventory.set_slot_amount(slot_id, amount);
             } else {
-                inventory.set_slot(slot_id, None);
+                inventory.set_slot(slot_id, ItemStack::EMPTY);
             }
         }
 

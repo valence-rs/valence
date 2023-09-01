@@ -11,7 +11,7 @@ pub struct EntityEquipmentUpdateS2c {
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
 pub struct EquipmentEntry {
     pub slot: i8,
-    pub item: Option<ItemStack>,
+    pub item: ItemStack,
 }
 
 impl Encode for EntityEquipmentUpdateS2c {
@@ -40,7 +40,7 @@ impl<'a> Decode<'a> for EntityEquipmentUpdateS2c {
 
         loop {
             let slot = i8::decode(r)?;
-            let item = Option::<ItemStack>::decode(r)?;
+            let item = ItemStack::decode(r)?;
             equipment.push(EquipmentEntry {
                 slot: slot & 127,
                 item,

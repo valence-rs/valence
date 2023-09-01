@@ -4,7 +4,7 @@ use anyhow::{bail, ensure, Context};
 use bytes::{Buf, BytesMut};
 
 use crate::var_int::{VarInt, VarIntDecodeError};
-#[cfg(feature = "encryption")]
+#[cfg(feature = "compression")]
 use crate::CompressionThreshold;
 use crate::{Decode, Packet, MAX_PACKET_SIZE};
 
