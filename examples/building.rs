@@ -3,6 +3,8 @@
 use valence::interact_block::InteractBlockEvent;
 use valence::inventory::HeldItem;
 use valence::prelude::*;
+use valence_inventory::PLAYER_INVENTORY_MAIN_SLOTS_COUNT;
+use valence_server::placement;
 
 const SPAWN_Y: i32 = 64;
 
@@ -122,14 +124,12 @@ fn digging(
 }
 
 fn place_blocks(
-    mut clients: Query<(&mut Inventory, &GameMode, &HeldItem)>,
-    mut layers: Query<&mut ChunkLayer>,
+    mut commands: Commands,
+    mut clients: Query<(&mut Inventory, &GameMode, &HeldItem, &Look)>,
     mut events: EventReader<InteractBlockEvent>,
 ) {
-    let mut layer = layers.single_mut();
-
     for event in events.iter() {
-        let Ok((mut inventory, game_mode, held)) = clients.get_mut(event.client) else {
+        let Ok((mut inventory, game_mode, held, look)) = clients.get_mut(event.client) else {
             continue;
         };
         if event.hand != Hand::Main {
@@ -137,7 +137,11 @@ fn place_blocks(
         }
 
         // get the held item
-        let slot_id = held.slot();
+        let slot_id = match event.hand {
+            Hand::Main => held.slot(),
+            Hand::Off => PLAYER_INVENTORY_MAIN_SLOTS_COUNT + 9,
+        };
+
         let Some(stack) = inventory.slot(slot_id) else {
             // no item in the slot
             continue;
@@ -158,7 +162,12 @@ fn place_blocks(
                 inventory.set_slot(slot_id, None);
             }
         }
-        let real_pos = event.position.get_in_direction(event.face);
-        layer.set_block(real_pos, block_kind.to_state());
+
+        commands.add(placement::PlaceBlockCommand {
+            block_kind,
+            interact_block_event: *event,
+            look: *look,
+            ignore_collisions: false,
+        });
     }
 }
