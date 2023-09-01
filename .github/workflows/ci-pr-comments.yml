@@ -1,0 +1,66 @@
+name: Check Depgraph
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+
+permissions:
+  # Needed in order to leave comments on pull requests.
+  pull-requests: "write"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check-depgraph:
+    runs-on: ubuntu-latest
+    if: >
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'failure'
+    steps:
+      - name: Checkout Actions Repository
+        uses: actions/checkout@v3
+
+      - name: Download artifact
+        id: find-artifact
+        uses: actions/github-script@v6
+        with:
+          result-encoding: string
+          script: |
+            var artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               run_id: ${{ github.event.workflow_run.id }},
+            });
+            var matchArtifacts = artifacts.data.artifacts.filter((artifact) => {
+              return artifact.name == "bad-depgraph"
+            });
+            if (matchArtifacts.length == 0) { return "false" }
+            var matchArtifact = matchArtifacts[0];
+            var download = await github.rest.actions.downloadArtifact({
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               artifact_id: matchArtifact.id,
+               archive_format: 'zip',
+            });
+            var fs = require('fs');
+            fs.writeFileSync('${{github.workspace}}/bad-depgraph.zip', Buffer.from(download.data));
+            return "true"
+
+      - name: Extract artifact
+        id: extract_artifact
+        if: ${{ steps.find-artifact.outputs.result == 'true' }}
+        run: |
+          unzip bad-depgraph.zip
+          echo "event_number=$(cat event-number)" >> "$GITHUB_OUTPUT"
+
+      - name: Create pull request comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: ${{ steps.find-artifact.outputs.result == 'true' }}
+        with:
+          recreate: true
+          header: depgraph
+          path: pr-comment.txt
+          number: ${{ steps.extract_artifact.outputs.event_number }}
