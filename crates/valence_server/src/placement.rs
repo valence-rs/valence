@@ -596,6 +596,9 @@ impl PlacementRule {
 //Based on https://minecraft.fandom.com/wiki/Opacity/Placement
 //Plant mechanics not covered there
 pub fn can_be_placed_on_top(this: BlockState, of: BlockState) -> bool {
+    if of.is_air() {
+        return false;
+    }
     match PlacementRule::from_kind(of.to_kind()) {
         PlacementRule::Basic | PlacementRule::Observer => return true,
         PlacementRule::Trapdoors => {
@@ -615,21 +618,23 @@ pub fn can_be_placed_on_top(this: BlockState, of: BlockState) -> bool {
 
     match PlacementRule::from_kind(this.to_kind()) {
         PlacementRule::Carpets | PlacementRule::FlowerPot | PlacementRule::Grindstone => true,
-        PlacementRule::Doors => match PlacementRule::from_kind(of.to_kind()) {
-            PlacementRule::ChorusFlower
-            | PlacementRule::FrostedIce
-            | PlacementRule::Scaffolding => true,
-            PlacementRule::Snow => of.get(PropName::Layers).unwrap() == PropValue::_8,
-            _ => match of.to_kind() {
-                BlockKind::Azalea
-                | BlockKind::FloweringAzalea
-                | BlockKind::Ice
-                | BlockKind::BlueIce
-                | BlockKind::PackedIce
-                | BlockKind::FrostedIce => true,
-                _ => false,
-            },
-        },
+        PlacementRule::Doors | PlacementRule::Buttons | PlacementRule::Lever => {
+            match PlacementRule::from_kind(of.to_kind()) {
+                PlacementRule::ChorusFlower
+                | PlacementRule::FrostedIce
+                | PlacementRule::Scaffolding => true,
+                PlacementRule::Snow => of.get(PropName::Layers).unwrap() == PropValue::_8,
+                _ => match of.to_kind() {
+                    BlockKind::Azalea
+                    | BlockKind::FloweringAzalea
+                    | BlockKind::Ice
+                    | BlockKind::BlueIce
+                    | BlockKind::PackedIce
+                    | BlockKind::FrostedIce => true,
+                    _ => false,
+                },
+            }
+        }
         _ => unimplemented!(),
     }
 }
@@ -674,8 +679,19 @@ pub fn can_be_placed_on_side(this: BlockState, of: BlockState) -> bool {
     }
 
     match PlacementRule::from_kind(this.to_kind()) {
+        PlacementRule::Buttons | PlacementRule::Lever => {
+            match PlacementRule::from_kind(of.to_kind()) {
+                PlacementRule::ChorusFlower => true,
+                PlacementRule::Snow => of.get(PropName::Layers).unwrap() == PropValue::_8,
+                _ => false,
+            }
+        }
         _ => unimplemented!(),
     }
+}
+
+pub fn can_be_placed_on_bottom(this: BlockState, of: BlockState) -> bool {
+    todo!()
 }
 
 //TODO: Builder
@@ -758,6 +774,7 @@ impl Command for PlaceBlockCommand {
             for hitbox in entity_hitboxes.iter() {
                 let entity_aabb = hitbox.get();
 
+                //TODO: Add this to Aabb?
                 pub fn intersects(this: Aabb, other: Aabb) -> bool {
                     this.max().x > other.min().x
                         && other.max().x > this.min().x
@@ -836,14 +853,41 @@ impl Command for PlaceBlockCommand {
             PlacementRule::Buttons | PlacementRule::Lever => {
                 //TODO: can be placed?
 
-                let (face, facing) = match face {
-                    Direction::Down => (PropValue::Ceiling, direction.into_prop_value()),
-                    Direction::Up => (PropValue::Floor, direction.into_prop_value()),
-                    Direction::North => (PropValue::Wall, PropValue::North),
-                    Direction::South => (PropValue::Wall, PropValue::South),
-                    Direction::West => (PropValue::Wall, PropValue::West),
-                    Direction::East => (PropValue::Wall, PropValue::East),
+                let (face, facing, can_be_placed) = match face {
+                    Direction::Down => (
+                        PropValue::Ceiling,
+                        direction.into_prop_value(),
+                        can_be_placed_on_bottom(block, interact_block.state),
+                    ),
+                    Direction::Up => (
+                        PropValue::Floor,
+                        direction.into_prop_value(),
+                        can_be_placed_on_top(block, interact_block.state),
+                    ),
+                    Direction::North => (
+                        PropValue::Wall,
+                        PropValue::North,
+                        can_be_placed_on_side(block, interact_block.state),
+                    ),
+                    Direction::South => (
+                        PropValue::Wall,
+                        PropValue::South,
+                        can_be_placed_on_side(block, interact_block.state),
+                    ),
+                    Direction::West => (
+                        PropValue::Wall,
+                        PropValue::West,
+                        can_be_placed_on_side(block, interact_block.state),
+                    ),
+                    Direction::East => (
+                        PropValue::Wall,
+                        PropValue::East,
+                        can_be_placed_on_side(block, interact_block.state),
+                    ),
                 };
+                if !can_be_placed {
+                    return;
+                }
 
                 block = block.set(PropName::Face, face);
                 block = block.set(PropName::Facing, facing);
