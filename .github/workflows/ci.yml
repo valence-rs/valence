@@ -52,7 +52,7 @@ jobs:
     steps:
       - name: Checkout Actions Repository
         uses: actions/checkout@v3
-      
+
       - name: Check for spelling errors
         uses: crate-ci/typos@v1.16.5
 
@@ -129,3 +129,57 @@ jobs:
       - name: Test Build
         run: ./gradlew build
         working-directory: extractor
+
+  check-depgraph:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Actions Repository
+        uses: actions/checkout@v3
+
+      - name: Install cargo-depgraph
+        uses: baptiste0928/cargo-install@v2.1.0
+        with:
+          crate: cargo-depgraph
+
+      - name: Install graphviz
+        run: sudo apt update && sudo apt install -y graphviz
+
+      - name: Generate new depgraph
+        run: cargo depgraph --workspace-only | tred | dot -Tsvg -o assets/depgraph.svg
+
+      - name: Check depgraph diff
+        run: git diff --exit-code assets/depgraph.svg > assets/depgraph.patch
+
+      - name: Create comment artifact
+        if: ${{ failure() && github.event_name == 'pull_request' }}
+        run: |
+          mkdir ./bad-depgraph
+          echo ${{ github.event.number }} >> ./bad-depgraph/event-number
+
+          echo "It looks like this pull request changed the workspace structure. \
+          Please replace \`assets/depgraph.svg\` with the following text:
+
+          <details>
+            <summary>depgraph.svg (Don't forget the trailing newline)</summary>
+            
+          \`\`\`html
+          $(cat assets/depgraph.svg)
+
+          \`\`\`
+          </details>
+
+          For reference, here is a diff against the old \`depgraph.svg\`:
+
+          <details>
+
+          \`\`\`patch
+          $(cat assets/depgraph.patch)
+          \`\`\`
+          </details>" > ./bad-depgraph/pr-comment.txt
+
+      - name: Upload comment artifact
+        uses: actions/upload-artifact@v2
+        if: ${{ failure() && github.event_name == 'pull_request' }}
+        with:
+          name: bad-depgraph
+          path: bad-depgraph/
