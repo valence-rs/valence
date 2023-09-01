@@ -2,18 +2,18 @@ name: Check Depgraph
 
 on:
   pull_request_target:
+  push:
     branches: [ "main" ]
 
 env:
   CARGO_TERM_COLOR: always
 
-permissions:
-  # Needed in order to leave comments on pull requests.
-  pull-requests: 'write'
-
 jobs:
   check-depgraph:
     runs-on: ubuntu-latest
+    permissions:
+      # Needed in order to leave comments on pull requests.
+      pull-requests: 'write'
     steps:
       - name: Checkout Actions Repository
         uses: actions/checkout@v3
