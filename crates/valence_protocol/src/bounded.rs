@@ -1,4 +1,5 @@
-use std::{borrow::Borrow, fmt::Display};
+use std::borrow::Borrow;
+use std::fmt::Display;
 
 use derive_more::{AsRef, Deref, DerefMut, From};
 
