@@ -80,7 +80,7 @@ fn setup(
             AdvancementDisplay {
                 title: "Root".into(),
                 description: "Toggles when you sneak".into(),
-                icon: Some(ItemStack::new(ItemKind::Stone, 1, None)),
+                icon: ItemStack::new(ItemKind::Stone, 1, None),
                 frame_type: AdvancementFrameType::Task,
                 show_toast: true,
                 hidden: false,
@@ -103,7 +103,7 @@ fn setup(
             AdvancementDisplay {
                 title: "First".into(),
                 description: "First advancement".into(),
-                icon: Some(ItemStack::new(ItemKind::OakWood, 1, None)),
+                icon: ItemStack::new(ItemKind::OakWood, 1, None),
                 frame_type: AdvancementFrameType::Task,
                 show_toast: false,
                 hidden: false,
@@ -124,7 +124,7 @@ fn setup(
             AdvancementDisplay {
                 title: "Second".into(),
                 description: "Second advancement".into(),
-                icon: Some(ItemStack::new(ItemKind::AcaciaWood, 1, None)),
+                icon: ItemStack::new(ItemKind::AcaciaWood, 1, None),
                 frame_type: AdvancementFrameType::Task,
                 show_toast: false,
                 hidden: false,
@@ -152,7 +152,7 @@ fn setup(
             AdvancementDisplay {
                 title: "Root2".into(),
                 description: "Go to this tab 5 times to earn this advancement".into(),
-                icon: Some(ItemStack::new(ItemKind::IronSword, 1, None)),
+                icon: ItemStack::new(ItemKind::IronSword, 1, None),
                 frame_type: AdvancementFrameType::Challenge,
                 show_toast: false,
                 hidden: false,

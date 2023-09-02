@@ -12,9 +12,9 @@ pub struct SetTradeOffersS2c {
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
 pub struct TradeOffer {
-    pub input_one: Option<ItemStack>,
-    pub output_item: Option<ItemStack>,
-    pub input_two: Option<ItemStack>,
+    pub input_one: ItemStack,
+    pub output_item: ItemStack,
+    pub input_two: ItemStack,
     pub trade_disabled: bool,
     pub number_of_trade_uses: i32,
     pub max_trade_uses: i32,

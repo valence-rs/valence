@@ -159,7 +159,7 @@ fn update_client_views(
 
     for (client, view, old_view) in &mut clients {
         let view = view.get();
-        let queue_pos = |pos| {
+        let queue_pos = |pos: ChunkPos| {
             if layer.chunk(pos).is_none() {
                 match state.pending.entry(pos) {
                     Entry::Occupied(mut oe) => {

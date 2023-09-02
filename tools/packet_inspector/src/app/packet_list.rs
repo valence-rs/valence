@@ -34,7 +34,7 @@ impl View for PacketList {
     }
 }
 
-fn handle_keyboard_input(state: &mut SharedState, ui: &mut Ui) {
+fn handle_keyboard_input(state: &mut SharedState, ui: &Ui) {
     if ui.input(|i| i.key_pressed(egui::Key::ArrowUp)) {
         // select previous packet
         let index = state.selected_packet.unwrap_or(1);
@@ -72,7 +72,7 @@ fn handle_keyboard_input(state: &mut SharedState, ui: &mut Ui) {
     }
 }
 
-fn draw_packet_counter(state: &mut SharedState, ui: &mut Ui) {
+fn draw_packet_counter(state: &SharedState, ui: &mut Ui) {
     let packets = state.packets.read().unwrap();
     let length = packets.len();
 

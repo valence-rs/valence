@@ -73,13 +73,13 @@ Valence's capabilities.
 
 ## Running the Examples
 
-After cloning the repository, run
+After cloning the repository, run this command to try an example.
 
 ```shell
-cargo r -r --example
+cargo r -r --example parkour
 ```
 
-to view the list of examples. I recommend giving `parkour`, `game_of_life`, `terrain`, and `cow_sphere` a try.
+ I also recommend giving `game_of_life`, `terrain`, and `cow_sphere` a try.
 
 Next, open your Minecraft client and connect to the address `localhost`.
 If all goes well you should be playing on the server.
@@ -87,17 +87,17 @@ If all goes well you should be playing on the server.
 ## Adding Valence as a Dependency
 
 Valence is published to [crates.io](https://crates.io/crates/valence). Run `cargo add valence` to add it to your
-project. Documentation is available [here](https://docs.rs/valence/latest/valence/).
+project.
 
 However, the crates.io version is likely outdated. To use the most recent development version, add Valence as a
-[git dependency](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#specifying-dependencies-from-git-repositories)
+[git dependency](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#specifying-dependencies-from-git-repositories).
 
 ```toml
 [dependencies]
 valence = { git = "https://github.com/valence-rs/valence" }
 ```
 
-View the latest documentation by running `cargo d --open` in your project.
+Documentation from the main branch is available [here](https://valence.rs/rustdoc/valence/).
 
 # Contributing
 

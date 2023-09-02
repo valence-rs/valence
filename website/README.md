@@ -13,7 +13,7 @@ The entire page including the [mdbook](https://github.com/rust-lang/mdBook) and 
 
 To test the website locally you can execute `./build.sh` and serve the contents through
 ```
-$ python -m http.server public
+$ python -m http.server -d public
 ```
 or any other similar http server.
 

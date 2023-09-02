@@ -23,13 +23,14 @@ gui = [
 cli = ["clap"]
 
 [dependencies]
+valence_protocol = { workspace = true, features = ["compression"] }
 anyhow = { workspace = true }
+thiserror = { workspace = true }
 bytes = { workspace = true }
 flate2 = { workspace = true }
 flume = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 tracing = { workspace = true }
-valence = { workspace = true }
 time = { workspace = true, features = ["local-offset"] }
 image = { workspace = true, optional = true }
 tracing-subscriber = { workspace = true }

@@ -147,8 +147,8 @@ fn write_transformer(packets: &[Packet]) -> anyhow::Result<()> {
             name
         };
 
-        let state_map = acc.entry(side).or_insert_with(HashMap::new);
-        let id_map = state_map.entry(state).or_insert_with(Vec::new);
+        let state_map = acc.entry(side).or_default();
+        let id_map = state_map.entry(state).or_default();
         id_map.push(name);
 
         acc

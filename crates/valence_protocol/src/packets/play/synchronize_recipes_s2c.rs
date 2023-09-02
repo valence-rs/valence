@@ -55,7 +55,7 @@ pub struct CraftingShapedData<'a> {
     pub category: CraftingShapedCategory,
     /// Length must be width * height.
     pub ingredients: Cow<'a, [Ingredient<'a>]>,
-    pub result: Option<ItemStack>,
+    pub result: ItemStack,
     pub show_notification: bool,
 }
 
@@ -103,4 +103,4 @@ pub enum CraftingShapedCategory {
     Misc,
 }
 
-pub type Ingredient<'a> = Cow<'a, [Option<ItemStack>]>;
+pub type Ingredient<'a> = Cow<'a, [ItemStack]>;

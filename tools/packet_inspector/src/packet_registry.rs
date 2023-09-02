@@ -3,8 +3,8 @@ use std::sync::RwLock;
 
 use bytes::Bytes;
 use time::OffsetDateTime;
-use valence::protocol::decode::PacketFrame;
-use valence::CompressionThreshold;
+use valence_protocol::decode::PacketFrame;
+use valence_protocol::CompressionThreshold;
 
 pub struct PacketRegistry {
     packets: RwLock<Vec<Packet>>,
@@ -79,6 +79,12 @@ impl PacketRegistry {
         self.sender.send_async(p).await?;
 
         Ok(())
+    }
+}
+
+impl Default for PacketRegistry {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
