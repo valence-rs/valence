@@ -25,6 +25,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 #[cfg(feature = "bevy_plugin")]
 pub use bevy::*;
+use bitfield_struct::bitfield;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use flate2::bufread::{GzDecoder, ZlibDecoder};
 use flate2::write::{GzEncoder, ZlibEncoder};
@@ -86,11 +87,19 @@ impl Compression {
     }
 }
 
-#[cfg(feature = "write")]
 #[derive(Copy, Clone, Debug, Default)]
-struct WriteOptions {
-    compression: Compression,
-    skip_oversized_chunks: bool,
+#[non_exhaustive]
+pub struct WriteOptions {
+    /// Set the compression method used to write chunks. This can be useful to
+    /// change in order to write anvil files compatible with older Minecraft
+    /// versions.
+    pub compression: Compression,
+
+    /// Set whether to skip writing oversized chunks (>1MiB after compression).
+    /// Versions older than 1.15 (19w36a) cannot read oversized chunks, so this
+    /// may be useful for writing region files compatible with those
+    /// versions.
+    pub skip_oversized_chunks: bool,
 }
 
 #[derive(Debug)]
@@ -98,12 +107,12 @@ pub struct RegionFolder {
     /// Region files. An LRU cache is used to limit the number of open file
     /// handles.
     regions: LruCache<RegionPos, RegionEntry>,
-    /// Path to the "region" subdirectory in the world root.
+    /// Path to the directory containing the region files and chunk files.
     region_root: PathBuf,
     /// Scratch buffer for (de)compression.
     compression_buf: Vec<u8>,
-    #[cfg(feature = "write")]
-    write_options: WriteOptions,
+    /// Options to use for writing the chunk.
+    pub write_options: WriteOptions,
 }
 
 impl RegionFolder {
@@ -112,29 +121,11 @@ impl RegionFolder {
             regions: LruCache::new(LRU_CACHE_SIZE),
             region_root: region_root.into(),
             compression_buf: Vec::new(),
-            #[cfg(feature = "write")]
             write_options: WriteOptions::default(),
         }
     }
 
-    /// Set the compression method used to write chunks. This can be useful to
-    /// change in order to write anvil files compatible with older Minecraft
-    /// versions.
-    #[cfg(feature = "write")]
-    pub fn set_write_compression(&mut self, compression: Compression) {
-        self.write_options.compression = compression;
-    }
-
-    /// Set whether to skip writing oversized chunks (>1MiB after compression).
-    /// Versions older than 1.15 (19w36a) cannot read oversized chunks, so this
-    /// may be useful for writing region files compatible with those
-    /// versions.
-    #[cfg(feature = "write")]
-    pub fn skip_write_oversized_chunks(&mut self, skip_oversized_chunks: bool) {
-        self.write_options.skip_oversized_chunks = skip_oversized_chunks;
-    }
-
-    fn get_region<'a>(
+    fn region<'a>(
         regions: &'a mut LruCache<RegionPos, RegionEntry>,
         region_root: &Path,
         region_x: i32,
@@ -182,8 +173,7 @@ impl RegionFolder {
         let region_x = pos_x.div_euclid(32);
         let region_z = pos_z.div_euclid(32);
 
-        let Some(region) =
-            Self::get_region(&mut self.regions, &self.region_root, region_x, region_z)?
+        let Some(region) = Self::region(&mut self.regions, &self.region_root, region_x, region_z)?
         else {
             return Ok(None);
         };
@@ -197,14 +187,11 @@ impl RegionFolder {
     /// Note that this only marks the chunk as deleted so that it cannot be
     /// retrieved, and can be overwritten by other chunks later. It does not
     /// decrease the size of the region file.
-    ///
-    /// This method is simple enough to not require the `write` feature.
     pub fn delete_chunk(&mut self, pos_x: i32, pos_z: i32) -> Result<bool, RegionError> {
         let region_x = pos_x.div_euclid(32);
         let region_z = pos_z.div_euclid(32);
 
-        let Some(region) =
-            Self::get_region(&mut self.regions, &self.region_root, region_x, region_z)?
+        let Some(region) = Self::region(&mut self.regions, &self.region_root, region_x, region_z)?
         else {
             return Ok(false);
         };
@@ -214,47 +201,41 @@ impl RegionFolder {
 
     /// Sets the raw chunk at the given position, overwriting the old chunk if
     /// it exists.
-    #[cfg(feature = "write")]
     pub fn set_chunk(
         &mut self,
         pos_x: i32,
         pos_z: i32,
-        chunk: Compound,
+        chunk: &Compound,
     ) -> Result<(), RegionError> {
         let region_x = pos_x.div_euclid(32);
         let region_z = pos_z.div_euclid(32);
 
-        let region =
-            match Self::get_region(&mut self.regions, &self.region_root, region_x, region_z)? {
-                Some(region) => region,
-                None => {
-                    let path = self
-                        .region_root
-                        .join(format!("r.{region_x}.{region_z}.mca"));
+        let region = match Self::region(&mut self.regions, &self.region_root, region_x, region_z)? {
+            Some(region) => region,
+            None => {
+                let path = self
+                    .region_root
+                    .join(format!("r.{region_x}.{region_z}.mca"));
 
-                    let file = match File::options()
-                        .read(true)
-                        .write(true)
-                        .create(true)
-                        .open(path)
-                    {
-                        Ok(file) => file,
-                        Err(err) => return Err(err.into()),
-                    };
+                let file = File::options()
+                    .read(true)
+                    .write(true)
+                    .create(true)
+                    .open(path)?;
 
-                    // TODO: try_get_or_insert_mut
-                    self.regions.put(
-                        (region_x, region_z),
-                        RegionEntry::Occupied(Box::new(Region::create(file)?)),
-                    );
-                    let Some(RegionEntry::Occupied(region)) =
-                        self.regions.get_mut(&(region_x, region_z))
-                    else {
-                        unreachable!()
-                    };
-                    region
-                }
-            };
+                // TODO: try_get_or_insert_mut
+                self.regions.put(
+                    (region_x, region_z),
+                    RegionEntry::Occupied(Box::new(Region::create(file)?)),
+                );
+                let Some(RegionEntry::Occupied(region)) =
+                    self.regions.get_mut(&(region_x, region_z))
+                else {
+                    unreachable!()
+                };
+                region
+            }
+        };
 
         region.set_chunk(
             pos_x,
@@ -267,10 +248,10 @@ impl RegionFolder {
     }
 
     /// Returns an iterator over all existing chunks in all regions.
-    pub fn iter_chunks(
+    pub fn all_chunk_positions(
         &mut self,
     ) -> Result<impl Iterator<Item = Result<(i32, i32), RegionError>> + '_, RegionError> {
-        fn get_region_coordinates(
+        fn extract_region_coordinates(
             file: std::io::Result<DirEntry>,
         ) -> Result<Option<(i32, i32)>, RegionError> {
             let file = file?;
@@ -279,20 +260,20 @@ impl RegionFolder {
                 return Ok(None);
             }
 
-            let file_name = match file.file_name().into_string() {
-                Ok(file_name) => file_name,
-                Err(_) => return Err(RegionError::OsStringConv),
-            };
+            let file_name = file
+                .file_name()
+                .into_string()
+                .map_err(|_| RegionError::OsStringConv)?;
 
             // read the file name as r.x.z.mca
             let mut split = file_name.splitn(4, '.');
             if split.next() != Some("r") {
                 return Ok(None);
             }
-            let Some(Ok(x)) = split.next().map(|x| x.parse()) else {
+            let Some(Ok(x)) = split.next().map(str::parse) else {
                 return Ok(None);
             };
-            let Some(Ok(z)) = split.next().map(|x| x.parse()) else {
+            let Some(Ok(z)) = split.next().map(str::parse) else {
                 return Ok(None);
             };
             if split.next() != Some("mca") {
@@ -302,51 +283,31 @@ impl RegionFolder {
             Ok(Some((x, z)))
         }
 
-        fn get_region_chunks(
+        fn region_chunks(
             this: &mut RegionFolder,
             pos: Result<(i32, i32), RegionError>,
         ) -> impl Iterator<Item = Result<(i32, i32), RegionError>> {
-            enum Ret<I> {
-                Iterator(I),
-                Error(std::vec::IntoIter<RegionError>),
-                Empty,
-            }
-
-            impl<I> Iterator for Ret<I>
-            where
-                I: Iterator<Item = (i32, i32)>,
-            {
-                type Item = Result<(i32, i32), RegionError>;
-
-                fn next(&mut self) -> Option<Self::Item> {
-                    match self {
-                        Ret::Iterator(iter) => iter.next().map(Ok),
-                        Ret::Error(iter) => iter.next().map(Err),
-                        Ret::Empty => None,
-                    }
-                }
-            }
-
-            match pos {
+            let positions = match pos {
                 Ok((region_x, region_z)) => {
-                    match RegionFolder::get_region(
+                    match RegionFolder::region(
                         &mut this.regions,
                         &this.region_root,
                         region_x,
                         region_z,
                     ) {
-                        Ok(Some(region)) => Ret::Iterator(region.iter_chunks(region_x, region_z)),
-                        Ok(None) => Ret::Empty,
-                        Err(err) => Ret::Error(vec![err].into_iter()),
+                        Ok(Some(region)) => region.chunk_positions(region_x, region_z),
+                        Ok(None) => Vec::new(),
+                        Err(err) => vec![Err(err)],
                     }
                 }
-                Err(err) => Ret::Error(vec![err].into_iter()),
-            }
+                Err(err) => vec![Err(err)],
+            };
+            positions.into_iter()
         }
 
         Ok(std::fs::read_dir(&self.region_root)?
-            .filter_map(|file| get_region_coordinates(file).transpose())
-            .flat_map(|pos| get_region_chunks(self, pos)))
+            .filter_map(|file| extract_region_coordinates(file).transpose())
+            .flat_map(|pos| region_chunks(self, pos)))
     }
 }
 
@@ -368,12 +329,28 @@ enum RegionEntry {
     Vacant,
 }
 
+#[bitfield(u32)]
+struct Location {
+    count: u8,
+    #[bits(24)]
+    offset: u32,
+}
+
+impl Location {
+    fn is_none(self) -> bool {
+        self.0 == 0
+    }
+
+    fn offset_and_count(self) -> (u64, usize) {
+        (self.offset() as u64, self.count() as usize)
+    }
+}
+
 #[derive(Debug)]
 struct Region {
     file: File,
-    /// The first 8 KiB in the file.
-    header: [u8; SECTOR_SIZE * 2],
-    #[cfg(feature = "write")]
+    locations: [Location; 1024],
+    timestamps: [u32; 1024],
     used_sectors: bitvec::vec::BitVec,
 }
 
@@ -384,8 +361,8 @@ impl Region {
 
         Ok(Self {
             file,
-            header,
-            #[cfg(feature = "write")]
+            locations: [Location::default(); 1024],
+            timestamps: [0; 1024],
             used_sectors: bitvec::vec::BitVec::repeat(true, 2),
         })
     }
@@ -394,40 +371,47 @@ impl Region {
         let mut header = [0; SECTOR_SIZE * 2];
         file.read_exact(&mut header)?;
 
-        #[cfg(feature = "write")]
-        let used_sectors = {
-            let mut used_sectors = bitvec::vec::BitVec::new();
-            used_sectors[0..2].fill(true);
-            for location_bytes in header.chunks_exact(4).take(SECTOR_SIZE / 4) {
-                let location_bytes = u32::from_be_bytes(location_bytes.try_into().unwrap());
-                if location_bytes == 0 {
-                    // No chunk exists at this position.
-                    continue;
-                }
+        let locations = std::array::from_fn(|i| {
+            Location(u32::from_be_bytes(
+                header[i * 4..i * 4 + 4].try_into().unwrap(),
+            ))
+        });
+        let timestamps = std::array::from_fn(|i| {
+            u32::from_be_bytes(
+                header[i * 4 + SECTOR_SIZE..i * 4 + SECTOR_SIZE + 4]
+                    .try_into()
+                    .unwrap(),
+            )
+        });
 
-                let sector_offset = Self::get_sector_offset(location_bytes);
-                let sector_count = Self::get_sector_count(location_bytes);
-                if sector_offset < 2 {
-                    // skip locations pointing inside the header
-                    continue;
-                }
-                if sector_count == 0 {
-                    continue;
-                }
-                if sector_offset * SECTOR_SIZE as u64 > file.metadata()?.len() {
-                    // this would go past the end of the file, which is impossible
-                    continue;
-                }
-
-                Self::reserve_sectors(&mut used_sectors, sector_offset, sector_count);
+        let mut used_sectors = bitvec::vec::BitVec::new();
+        used_sectors[0..2].fill(true);
+        for location in locations {
+            if location.is_none() {
+                // No chunk exists at this position.
+                continue;
             }
-            used_sectors
-        };
+
+            let (sector_offset, sector_count) = location.offset_and_count();
+            if sector_offset < 2 {
+                // skip locations pointing inside the header
+                continue;
+            }
+            if sector_count == 0 {
+                continue;
+            }
+            if sector_offset * SECTOR_SIZE as u64 > file.metadata()?.len() {
+                // this would go past the end of the file, which is impossible
+                continue;
+            }
+
+            Self::reserve_sectors(&mut used_sectors, sector_offset, sector_count);
+        }
 
         Ok(Self {
             file,
-            header,
-            #[cfg(feature = "write")]
+            locations,
+            timestamps,
             used_sectors,
         })
     }
@@ -439,18 +423,17 @@ impl Region {
         decompress_buf: &mut Vec<u8>,
         region_root: &Path,
     ) -> Result<Option<RawChunk>, RegionError> {
-        let chunk_idx = Self::get_chunk_idx(pos_x, pos_z);
+        let chunk_idx = Self::chunk_idx(pos_x, pos_z);
 
-        let location_bytes = (&self.header[chunk_idx * 4..]).read_u32::<BigEndian>()?;
-        let timestamp = (&self.header[chunk_idx * 4 + SECTOR_SIZE..]).read_u32::<BigEndian>()?;
+        let location = self.locations[chunk_idx];
+        let timestamp = self.timestamps[chunk_idx];
 
-        if location_bytes == 0 {
+        if location.is_none() {
             // No chunk exists at this position.
             return Ok(None);
         }
 
-        let sector_offset = Self::get_sector_offset(location_bytes);
-        let sector_count = Self::get_sector_count(location_bytes);
+        let (sector_offset, sector_count) = location.offset_and_count();
 
         // If the sector offset was <2, then the chunk data would be inside the region
         // header. That doesn't make any sense.
@@ -475,10 +458,10 @@ impl Region {
         let mut compression = self.file.read_u8()?;
 
         let data_buf = if Self::is_external_stream_chunk(compression) {
-            compression = Self::get_external_chunk_version(compression);
+            compression = Self::external_chunk_version(compression);
             let mut external_file =
-                File::open(Self::get_external_chunk_file(pos_x, pos_z, region_root))?;
-            let mut buf = Vec::with_capacity(external_file.metadata()?.len() as usize);
+                File::open(Self::external_chunk_file(pos_x, pos_z, region_root))?;
+            let mut buf = Vec::new();
             external_file.read_to_end(&mut buf)?;
             buf.into_boxed_slice()
         } else {
@@ -526,10 +509,10 @@ impl Region {
         delete_on_disk: bool,
         region_root: &Path,
     ) -> Result<bool, RegionError> {
-        let chunk_idx = Self::get_chunk_idx(pos_x, pos_z);
+        let chunk_idx = Self::chunk_idx(pos_x, pos_z);
 
-        let location_bytes = (&self.header[chunk_idx * 4..]).read_u32::<BigEndian>()?;
-        if location_bytes == 0 {
+        let location = self.locations[chunk_idx];
+        if location.is_none() {
             // chunk already missing, nothing to delete
             return Ok(false);
         }
@@ -541,29 +524,24 @@ impl Region {
             Self::delete_external_chunk_file(pos_x, pos_z, region_root)?;
         }
 
-        #[cfg(feature = "write")]
-        {
-            let sector_offset = Self::get_sector_offset(location_bytes);
-            let sector_count = Self::get_sector_count(location_bytes);
-            if sector_offset >= 2 {
-                let start_index = sector_offset as usize;
-                let end_index = start_index + sector_count;
-                let len = self.used_sectors.len();
-                self.used_sectors[start_index.min(len)..end_index.min(len)].fill(false);
-            }
+        let (sector_offset, sector_count) = location.offset_and_count();
+        if sector_offset >= 2 {
+            let start_index = sector_offset as usize;
+            let end_index = start_index + sector_count;
+            let len = self.used_sectors.len();
+            self.used_sectors[start_index.min(len)..end_index.min(len)].fill(false);
         }
 
-        (&mut self.header[chunk_idx * 4..]).write_u32::<BigEndian>(0)?;
+        self.locations[chunk_idx] = Location::new();
 
         Ok(true)
     }
 
-    #[cfg(feature = "write")]
     fn set_chunk(
         &mut self,
         pos_x: i32,
         pos_z: i32,
-        chunk: Compound,
+        chunk: &Compound,
         options: WriteOptions,
         compress_buf: &mut Vec<u8>,
         region_root: &Path,
@@ -596,7 +574,7 @@ impl Region {
             }
 
             // write oversized chunk to external file
-            File::create(Self::get_external_chunk_file(pos_x, pos_z, region_root))?
+            File::create(Self::external_chunk_file(pos_x, pos_z, region_root))?
                 .write_all(&*compress_buf)?;
 
             let start_sector = self.allocate_sectors(1);
@@ -630,23 +608,25 @@ impl Region {
             (start_sector, num_sectors_needed)
         };
 
-        let location_bytes = ((start_sector as u32) << 8) | num_sectors as u32;
+        let location = Location::new()
+            .with_offset(start_sector as u32)
+            .with_count(num_sectors as u8);
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map(|duration| duration.as_secs() as u32)
             .unwrap_or(0);
 
         // write changed header information to file
-        let chunk_idx = Self::get_chunk_idx(pos_x, pos_z);
+        let chunk_idx = Self::chunk_idx(pos_x, pos_z);
         self.file.seek(SeekFrom::Start(chunk_idx as u64 * 4))?;
-        self.file.write_u32::<BigEndian>(location_bytes)?;
+        self.file.write_u32::<BigEndian>(location.0)?;
         self.file
             .seek(SeekFrom::Start(chunk_idx as u64 * 4 + SECTOR_SIZE as u64))?;
         self.file.write_u32::<BigEndian>(timestamp)?;
 
         // write changed header information to our header
-        (&mut self.header[chunk_idx * 4..]).write_u32::<BigEndian>(location_bytes)?;
-        (&mut self.header[chunk_idx * 4 + SECTOR_SIZE..]).write_u32::<BigEndian>(timestamp)?;
+        self.locations[chunk_idx] = location;
+        self.timestamps[chunk_idx] = timestamp;
 
         // pad file to multiple of SECTOR_SIZE
         let file_length = self.file.seek(SeekFrom::End(0))?;
@@ -659,13 +639,16 @@ impl Region {
         Ok(())
     }
 
-    fn iter_chunks(&mut self, region_x: i32, region_z: i32) -> impl Iterator<Item = (i32, i32)> {
-        self.header
-            .chunks_exact(4)
+    fn chunk_positions(
+        &self,
+        region_x: i32,
+        region_z: i32,
+    ) -> Vec<Result<(i32, i32), RegionError>> {
+        self.locations
+            .iter()
             .enumerate()
-            .filter_map(move |(index, location_bytes)| {
-                let array: [u8; 4] = location_bytes.try_into().unwrap();
-                if array == [0; 4] {
+            .filter_map(move |(index, location)| {
+                if location.is_none() {
                     None
                 } else {
                     Some((
@@ -674,11 +657,11 @@ impl Region {
                     ))
                 }
             })
-            .collect::<Vec<_>>()
-            .into_iter()
+            .map(Ok)
+            .collect()
     }
 
-    fn get_external_chunk_file(pos_x: i32, pos_z: i32, region_root: &Path) -> PathBuf {
+    fn external_chunk_file(pos_x: i32, pos_z: i32, region_root: &Path) -> PathBuf {
         region_root
             .to_path_buf()
             .join(format!("c.{pos_x}.{pos_z}.mcc"))
@@ -689,14 +672,13 @@ impl Region {
         pos_z: i32,
         region_root: &Path,
     ) -> Result<(), RegionError> {
-        match std::fs::remove_file(Self::get_external_chunk_file(pos_x, pos_z, region_root)) {
+        match std::fs::remove_file(Self::external_chunk_file(pos_x, pos_z, region_root)) {
             Ok(()) => Ok(()),
             Err(err) if err.kind() == ErrorKind::NotFound => Ok(()),
             Err(err) => Err(err.into()),
         }
     }
 
-    #[cfg(feature = "write")]
     fn reserve_sectors(
         used_sectors: &mut bitvec::vec::BitVec,
         sector_offset: u64,
@@ -711,7 +693,6 @@ impl Region {
         }
     }
 
-    #[cfg(feature = "write")]
     fn allocate_sectors(&mut self, num_sectors: usize) -> u64 {
         // find the first set of consecutive free sectors of length num_sectors
         let mut index = 0;
@@ -743,23 +724,15 @@ impl Region {
         free_space_start as u64
     }
 
-    fn get_chunk_idx(pos_x: i32, pos_z: i32) -> usize {
+    fn chunk_idx(pos_x: i32, pos_z: i32) -> usize {
         (pos_x.rem_euclid(32) + pos_z.rem_euclid(32) * 32) as usize
-    }
-
-    fn get_sector_offset(location_bytes: u32) -> u64 {
-        (location_bytes >> 8) as u64
-    }
-
-    fn get_sector_count(location_bytes: u32) -> usize {
-        (location_bytes & 0xff) as usize
     }
 
     fn is_external_stream_chunk(stream_version: u8) -> bool {
         (stream_version & 0x80) != 0
     }
 
-    fn get_external_chunk_version(stream_version: u8) -> u8 {
+    fn external_chunk_version(stream_version: u8) -> u8 {
         stream_version & !0x80
     }
 }

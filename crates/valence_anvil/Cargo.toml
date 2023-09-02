@@ -12,12 +12,12 @@ license.workspace = true
 [features]
 bevy_plugin = ["dep:bevy_app", "dep:bevy_ecs", "dep:flume", "parsing"]
 parsing = ["dep:num-integer", "dep:valence_server"]
-write = ["dep:bitvec"]
 
 [dependencies]
 bevy_app = { workspace = true, optional = true }
 bevy_ecs = { workspace = true, optional = true }
-bitvec = { workspace = true, optional = true }
+bitfield-struct.workspace = true
+bitvec.workspace = true
 byteorder.workspace = true
 flate2.workspace = true
 flume = { workspace = true, optional = true }
