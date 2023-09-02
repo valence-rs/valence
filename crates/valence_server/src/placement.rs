@@ -8,7 +8,11 @@ use valence_generated::block::{PropName, PropValue};
 use valence_math::{Aabb, DVec3};
 use valence_protocol::{BlockKind, BlockPos, BlockState, Direction};
 
-use crate::{interact_block::InteractBlockEvent, ChunkLayer};
+use crate::{
+    client::{ClientMarker, VisibleChunkLayer},
+    interact_block::InteractBlockEvent,
+    ChunkLayer,
+};
 
 //from https://minecraft.fandom.com/wiki/Block_states
 #[derive(PartialEq, Eq, Clone, Copy)]
@@ -699,7 +703,6 @@ pub fn can_be_placed_on_bottom(this: BlockState, of: BlockState) -> bool {
 pub struct PlaceBlockCommand {
     pub block_kind: BlockKind,
     pub interact_block_event: InteractBlockEvent,
-    pub look: Look,
     pub ignore_collisions: bool,
 }
 
@@ -709,7 +712,7 @@ impl Command for PlaceBlockCommand {
             block_kind,
             interact_block_event:
                 InteractBlockEvent {
-                    client: _,
+                    client,
                     hand: _,
                     position: interact_pos,
                     face,
@@ -717,15 +720,19 @@ impl Command for PlaceBlockCommand {
                     head_inside_block,
                     sequence: _,
                 },
-            look,
             ignore_collisions,
         } = self;
 
-        let mut system_state =
-            SystemState::<(Query<&mut ChunkLayer>, Query<&Hitbox, With<LivingEntity>>)>::new(world);
-        let (mut layers, entity_hitboxes) = system_state.get_mut(world);
+        let mut system_state = SystemState::<(
+            Query<&mut ChunkLayer>,
+            Query<(&VisibleChunkLayer, &Look), With<ClientMarker>>,
+            Query<&Hitbox, With<LivingEntity>>,
+        )>::new(world);
+        let (mut layers, clients_looks, entity_hitboxes) = system_state.get_mut(world);
 
-        let mut layer = layers.single_mut();
+        let (visible_chunk_layer, look) = clients_looks.get(client).unwrap();
+
+        let mut layer = layers.get_mut(visible_chunk_layer.0).unwrap();
 
         let interact_block = layer.block(interact_pos).unwrap_or_default();
 

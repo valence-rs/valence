@@ -4,6 +4,7 @@ use valence::interact_block::InteractBlockEvent;
 use valence::inventory::HeldItem;
 use valence::prelude::*;
 use valence_inventory::PLAYER_INVENTORY_MAIN_SLOTS_COUNT;
+use valence_server::client::ClientMarker;
 use valence_server::placement;
 
 const SPAWN_Y: i32 = 64;
@@ -125,11 +126,11 @@ fn digging(
 
 fn place_blocks(
     mut commands: Commands,
-    mut clients: Query<(&mut Inventory, &GameMode, &HeldItem, &Look)>,
+    mut clients: Query<(&mut Inventory, &GameMode, &HeldItem), With<ClientMarker>>,
     mut events: EventReader<InteractBlockEvent>,
 ) {
     for event in events.iter() {
-        let Ok((mut inventory, game_mode, held, look)) = clients.get_mut(event.client) else {
+        let Ok((mut inventory, game_mode, held)) = clients.get_mut(event.client) else {
             continue;
         };
         if event.hand != Hand::Main {
@@ -167,7 +168,6 @@ fn place_blocks(
         commands.add(placement::PlaceBlockCommand {
             block_kind,
             interact_block_event: *event,
-            look: *look,
             ignore_collisions: false,
         });
     }
