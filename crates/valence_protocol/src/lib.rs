@@ -30,11 +30,13 @@ pub mod __private {
 extern crate self as valence_protocol;
 
 mod array;
+mod biome_pos;
 mod bit_set;
-mod block_pos;
+pub mod block_pos;
 mod bounded;
 mod byte_angle;
-mod chunk_pos;
+pub mod chunk_pos;
+pub mod chunk_section_pos;
 pub mod decode;
 mod difficulty;
 mod direction;
@@ -56,12 +58,14 @@ use std::io::Write;
 
 use anyhow::Context;
 pub use array::FixedArray;
+pub use biome_pos::BiomePos;
 pub use bit_set::FixedBitSet;
 pub use block::{BlockKind, BlockState};
 pub use block_pos::BlockPos;
 pub use bounded::Bounded;
 pub use byte_angle::ByteAngle;
 pub use chunk_pos::ChunkPos;
+pub use chunk_section_pos::ChunkSectionPos;
 pub use decode::PacketDecoder;
 use derive_more::{From, Into};
 pub use difficulty::Difficulty;
@@ -110,6 +114,7 @@ impl CompressionThreshold {
     pub const DEFAULT: Self = Self(-1);
 }
 
+/// No compression.
 impl Default for CompressionThreshold {
     fn default() -> Self {
         Self::DEFAULT

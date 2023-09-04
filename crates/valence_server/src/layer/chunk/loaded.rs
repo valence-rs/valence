@@ -7,10 +7,11 @@ use parking_lot::Mutex; // Using nonstandard mutex to avoid poisoning API.
 use valence_nbt::{compound, Compound};
 use valence_protocol::encode::{PacketWriter, WritePacket};
 use valence_protocol::packets::play::chunk_data_s2c::ChunkDataBlockEntity;
+use valence_protocol::packets::play::chunk_delta_update_s2c::ChunkDeltaUpdateEntry;
 use valence_protocol::packets::play::{
     BlockEntityUpdateS2c, BlockUpdateS2c, ChunkDataS2c, ChunkDeltaUpdateS2c,
 };
-use valence_protocol::{BlockPos, BlockState, ChunkPos, Encode, VarLong};
+use valence_protocol::{BlockPos, BlockState, ChunkPos, ChunkSectionPos, Encode};
 use valence_registry::biome::BiomeId;
 use valence_registry::RegistryIdx;
 
@@ -48,7 +49,7 @@ struct Section {
     biomes: BiomeContainer,
     /// Contains modifications for the update section packet. (Or the regular
     /// block update packet if len == 1).
-    section_updates: Vec<VarLong>,
+    section_updates: Vec<ChunkDeltaUpdateEntry>,
 }
 
 impl Section {
@@ -196,39 +197,35 @@ impl LoadedChunk {
 
         // Block states
         for (sect_y, sect) in self.sections.iter_mut().enumerate() {
-            match sect.section_updates.len() {
-                0 => {}
-                1 => {
-                    let packed = sect.section_updates[0].0 as u64;
-                    let offset_y = packed & 0b1111;
-                    let offset_z = (packed >> 4) & 0b1111;
-                    let offset_x = (packed >> 8) & 0b1111;
-                    let block = packed >> 12;
-
-                    let global_x = pos.x * 16 + offset_x as i32;
-                    let global_y = info.min_y + sect_y as i32 * 16 + offset_y as i32;
-                    let global_z = pos.z * 16 + offset_z as i32;
+            match sect.section_updates.as_slice() {
+                &[] => {}
+                &[entry] => {
+                    let global_x = pos.x * 16 + entry.off_x() as i32;
+                    let global_y = info.min_y + sect_y as i32 * 16 + entry.off_y() as i32;
+                    let global_z = pos.z * 16 + entry.off_z() as i32;
 
                     messages.send_local_infallible(LocalMsg::PacketAt { pos }, |buf| {
                         let mut writer = PacketWriter::new(buf, info.threshold);
 
                         writer.write_packet(&BlockUpdateS2c {
                             position: BlockPos::new(global_x, global_y, global_z),
-                            block_id: BlockState::from_raw(block as u16).unwrap(),
+                            block_id: BlockState::from_raw(entry.block_state() as u16).unwrap(),
                         });
                     });
                 }
-                _ => {
-                    let chunk_section_position = (pos.x as i64) << 42
-                        | (pos.z as i64 & 0x3fffff) << 20
-                        | (sect_y as i64 + info.min_y.div_euclid(16) as i64) & 0xfffff;
+                entries => {
+                    let chunk_sect_pos = ChunkSectionPos {
+                        x: pos.x,
+                        y: sect_y as i32 + info.min_y.div_euclid(16),
+                        z: pos.z,
+                    };
 
                     messages.send_local_infallible(LocalMsg::PacketAt { pos }, |buf| {
                         let mut writer = PacketWriter::new(buf, info.threshold);
 
                         writer.write_packet(&ChunkDeltaUpdateS2c {
-                            chunk_section_position,
-                            blocks: Cow::Borrowed(&sect.section_updates),
+                            chunk_sect_pos,
+                            blocks: Cow::Borrowed(entries),
                         });
                     });
                 }
@@ -418,8 +415,13 @@ impl Chunk for LoadedChunk {
             self.cached_init_packets.get_mut().clear();
 
             if *self.viewer_count.get_mut() > 0 {
-                let compact = (block.to_raw() as i64) << 12 | (x << 8 | z << 4 | (y % 16)) as i64;
-                sect.section_updates.push(VarLong(compact));
+                sect.section_updates.push(
+                    ChunkDeltaUpdateEntry::new()
+                        .with_off_x(x as u8)
+                        .with_off_y((y % 16) as u8)
+                        .with_off_z(z as u8)
+                        .with_block_state(block.to_raw().into()),
+                );
             }
         }
 
@@ -442,26 +444,39 @@ impl Chunk for LoadedChunk {
 
                     // Push section updates for all the blocks in the section.
                     sect.section_updates.reserve_exact(SECTION_BLOCK_COUNT);
-                    let block_bits = (block.to_raw() as i64) << 12;
                     for z in 0..16 {
                         for x in 0..16 {
-                            let packed = block_bits | (x << 8 | z << 4 | sect_y as i64);
-                            sect.section_updates.push(VarLong(packed));
+                            for y in 0..16 {
+                                sect.section_updates.push(
+                                    ChunkDeltaUpdateEntry::new()
+                                        .with_off_x(x)
+                                        .with_off_y(y)
+                                        .with_off_z(z)
+                                        .with_block_state(block.to_raw().into()),
+                                );
+                            }
                         }
                     }
                 }
             }
         } else {
-            let block_bits = (block.to_raw() as i64) << 12;
             for z in 0..16 {
                 for x in 0..16 {
-                    let idx = x + z * 16 + sect_y * (16 * 16);
-                    if block != sect.block_states.get(idx as usize) {
-                        self.cached_init_packets.get_mut().clear();
+                    for y in 0..16 {
+                        let idx = x + z * 16 + (sect_y * 16 + y) * (16 * 16);
 
-                        if *self.viewer_count.get_mut() > 0 {
-                            let packed = block_bits | (x << 8 | z << 4 | sect_y) as i64;
-                            sect.section_updates.push(VarLong(packed));
+                        if block != sect.block_states.get(idx as usize) {
+                            self.cached_init_packets.get_mut().clear();
+
+                            if *self.viewer_count.get_mut() > 0 {
+                                sect.section_updates.push(
+                                    ChunkDeltaUpdateEntry::new()
+                                        .with_off_x(x as u8)
+                                        .with_off_y(y as u8)
+                                        .with_off_z(z as u8)
+                                        .with_block_state(block.to_raw().into()),
+                                );
+                            }
                         }
                     }
                 }

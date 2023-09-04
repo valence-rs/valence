@@ -45,9 +45,9 @@ pub use chunk_view::ChunkView;
 pub use event_loop::{EventLoopPostUpdate, EventLoopPreUpdate, EventLoopUpdate};
 pub use layer::{ChunkLayer, EntityLayer, Layer, LayerBundle};
 pub use valence_protocol::{
-    block, ident, item, math, text, uuid, BlockPos, BlockState, ChunkPos, CompressionThreshold,
-    Difficulty, Direction, GameMode, Hand, Ident, ItemKind, ItemStack, Text, MINECRAFT_VERSION,
-    PROTOCOL_VERSION,
+    block, ident, item, math, text, uuid, BiomePos, BlockPos, BlockState, ChunkPos,
+    CompressionThreshold, Difficulty, Direction, GameMode, Hand, Ident, ItemKind, ItemStack, Text,
+    MINECRAFT_VERSION, PROTOCOL_VERSION,
 };
 pub use valence_server_common::*;
 pub use {

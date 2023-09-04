@@ -500,7 +500,7 @@ pub struct View {
 
 impl ViewItem<'_> {
     pub fn get(&self) -> ChunkView {
-        ChunkView::new(self.pos.to_chunk_pos(), self.view_dist.0)
+        ChunkView::new(self.pos.0.into(), self.view_dist.0)
     }
 }
 
@@ -512,7 +512,7 @@ pub struct OldView {
 
 impl OldViewItem<'_> {
     pub fn get(&self) -> ChunkView {
-        ChunkView::new(self.old_pos.chunk_pos(), self.old_view_dist.0)
+        ChunkView::new(self.old_pos.get().into(), self.old_view_dist.0)
     }
 }
 
@@ -617,7 +617,7 @@ fn handle_layer_messages(
             mut visible_entity_layers,
             old_visible_entity_layers,
         )| {
-            let block_pos = BlockPos::from_pos(old_view.old_pos.get());
+            let block_pos = BlockPos::from(old_view.old_pos.get());
             let old_view = old_view.get();
 
             fn in_radius(p0: BlockPos, p1: BlockPos, radius_squared: u32) -> bool {
@@ -883,8 +883,8 @@ pub(crate) fn update_view_and_layers(
             view_dist,
             old_view_dist,
         )| {
-            let view = ChunkView::new(ChunkPos::from_pos(pos.0), view_dist.0);
-            let old_view = ChunkView::new(ChunkPos::from_pos(old_pos.get()), old_view_dist.0);
+            let view = ChunkView::new(ChunkPos::from(pos.0), view_dist.0);
+            let old_view = ChunkView::new(ChunkPos::from(old_pos.get()), old_view_dist.0);
 
             // Make sure the center chunk is set before loading chunks! Otherwise the client
             // may ignore the chunk.

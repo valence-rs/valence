@@ -31,7 +31,7 @@ pub use valence_server::protocol::packets::play::boss_bar_s2c::{
 };
 use valence_server::protocol::packets::play::BossBarS2c;
 use valence_server::protocol::WritePacket;
-use valence_server::{ChunkPos, ChunkView, Despawned, EntityLayer, Layer, UniqueId};
+use valence_server::{ChunkView, Despawned, EntityLayer, Layer, UniqueId};
 
 mod components;
 pub use components::*;
@@ -68,9 +68,7 @@ fn update_boss_bar<T: Component + ToPacketAction>(
                 action: part.to_packet_action(),
             };
             if let Some(pos) = pos {
-                entity_layer
-                    .view_writer(pos.to_chunk_pos())
-                    .write_packet(&packet);
+                entity_layer.view_writer(pos.0).write_packet(&packet);
             } else {
                 entity_layer.write_packet(&packet);
             }
@@ -111,7 +109,7 @@ fn update_boss_bar_layer_view(
         _old_view_distance,
     ) in clients_query.iter_mut()
     {
-        let view = ChunkView::new(ChunkPos::from_pos(position.0), view_distance.get());
+        let view = ChunkView::new(position.0.into(), view_distance.get());
 
         let old_layers = old_visible_entity_layers.get();
         let current_layers = &visible_entity_layers.0;
@@ -122,7 +120,7 @@ fn update_boss_bar_layer_view(
                 .filter(|(_, _, _, _, _, layer_id, _)| layer_id.0 == added_layer)
             {
                 if let Some(position) = boss_bar_position {
-                    if view.contains(position.to_chunk_pos()) {
+                    if view.contains(position.0.into()) {
                         client.write_packet(&BossBarS2c {
                             id: id.0,
                             action: BossBarAction::Add {
@@ -155,7 +153,7 @@ fn update_boss_bar_layer_view(
                 .filter(|(_, _, _, _, _, layer_id, _)| layer_id.0 == removed_layer)
             {
                 if let Some(position) = boss_bar_position {
-                    if view.contains(position.to_chunk_pos()) {
+                    if view.contains(position.0.into()) {
                         client.write_packet(&BossBarS2c {
                             id: id.0,
                             action: BossBarAction::Remove,
@@ -205,19 +203,16 @@ fn update_boss_bar_chunk_view(
         old_view_distance,
     ) in clients_query.iter_mut()
     {
-        let view = ChunkView::new(ChunkPos::from_pos(position.0), view_distance.get());
-        let old_view = ChunkView::new(
-            ChunkPos::from_pos(old_position.get()),
-            old_view_distance.get(),
-        );
+        let view = ChunkView::new(position.0.into(), view_distance.get());
+        let old_view = ChunkView::new(old_position.get().into(), old_view_distance.get());
 
         for layer in visible_entity_layers.0.iter() {
             for (id, title, health, style, flags, _, boss_bar_position) in boss_bars_query
                 .iter()
                 .filter(|(_, _, _, _, _, layer_id, _)| layer_id.0 == *layer)
             {
-                if view.contains(boss_bar_position.to_chunk_pos())
-                    && !old_view.contains(boss_bar_position.to_chunk_pos())
+                if view.contains(boss_bar_position.0.into())
+                    && !old_view.contains(boss_bar_position.0.into())
                 {
                     client.write_packet(&BossBarS2c {
                         id: id.0,
@@ -229,8 +224,8 @@ fn update_boss_bar_chunk_view(
                             flags: *flags,
                         },
                     });
-                } else if !view.contains(boss_bar_position.to_chunk_pos())
-                    && old_view.contains(boss_bar_position.to_chunk_pos())
+                } else if !view.contains(boss_bar_position.0.into())
+                    && old_view.contains(boss_bar_position.0.into())
                 {
                     client.write_packet(&BossBarS2c {
                         id: id.0,
@@ -253,9 +248,7 @@ fn boss_bar_despawn(
                 action: BossBarAction::Remove,
             };
             if let Some(pos) = position {
-                entity_layer
-                    .view_writer(pos.to_chunk_pos())
-                    .write_packet(&packet);
+                entity_layer.view_writer(pos.0).write_packet(&packet);
             } else {
                 entity_layer.write_packet(&packet);
             }
