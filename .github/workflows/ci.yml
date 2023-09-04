@@ -45,7 +45,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libclang-dev libgtk-3-dev
 
       - name: Validate documentation
-        run: cargo doc --workspace --no-deps --all-features --document-private-items
+        run: RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --all-features --document-private-items
 
   typos:
     runs-on: ubuntu-latest
