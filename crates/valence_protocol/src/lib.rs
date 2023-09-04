@@ -31,7 +31,7 @@ extern crate self as valence_protocol;
 
 mod array;
 mod bit_set;
-mod block_pos;
+pub mod block_pos;
 mod bounded;
 mod byte_angle;
 pub mod chunk_pos;
