@@ -79,8 +79,8 @@ impl GetChunkPos for LocalMsg {
         match *self {
             LocalMsg::PacketAt { pos } => pos,
             LocalMsg::PacketAtExcept { pos, .. } => pos,
-            LocalMsg::RadiusAt { center, .. } => center.to_chunk_pos(),
-            LocalMsg::RadiusAtExcept { center, .. } => center.to_chunk_pos(),
+            LocalMsg::RadiusAt { center, .. } => center.into(),
+            LocalMsg::RadiusAtExcept { center, .. } => center.into(),
             LocalMsg::SpawnEntity { pos, .. } => pos,
             LocalMsg::SpawnEntityTransition { pos, .. } => pos,
             LocalMsg::DespawnEntity { pos, .. } => pos,
@@ -379,8 +379,8 @@ fn change_entity_positions(
     mut layers: Query<&mut EntityLayer>,
 ) {
     for (entity, entity_id, pos, old_pos, layer_id, old_layer_id, despawned) in &entities {
-        let chunk_pos = pos.to_chunk_pos();
-        let old_chunk_pos = old_pos.chunk_pos();
+        let chunk_pos = ChunkPos::from(pos.0);
+        let old_chunk_pos = ChunkPos::from(old_pos.get());
 
         if despawned {
             // Entity was deleted. Remove it from the layer.
@@ -480,7 +480,7 @@ fn send_entity_update_messages(
         for cell in layer.entities.values_mut() {
             for &entity in cell.iter() {
                 if let Ok((entity, update, is_client)) = entities.get(entity) {
-                    let chunk_pos = update.pos.to_chunk_pos();
+                    let chunk_pos = ChunkPos::from(update.pos.0);
 
                     // Send the update packets to all viewers. If the entity being updated is a
                     // client, then we need to be careful to exclude the client itself from

@@ -116,14 +116,10 @@ fn setup(
     };
     commands.spawn(ctf_objective);
 
-    let red_capture_trigger = TriggerArea::new(
-        red_flag - BlockPos::new(5, 3, 5),
-        red_flag + BlockPos::new(5, 3, 5),
-    );
-    let blue_capture_trigger = TriggerArea::new(
-        blue_flag - BlockPos::new(5, 3, 5),
-        blue_flag + BlockPos::new(5, 3, 5),
-    );
+    let red_capture_trigger =
+        TriggerArea::new(red_flag.offset(-5, -3, -5), red_flag.offset(5, 3, 5));
+    let blue_capture_trigger =
+        TriggerArea::new(blue_flag.offset(-5, -3, -5), blue_flag.offset(5, 3, 5));
     let mappos = CtfGlobals {
         scoreboard_layer: ctf_objective_layer,
 
@@ -304,14 +300,14 @@ fn build_spawn_box(layer: &mut LayerBundle, pos: impl Into<BlockPos>, commands: 
         }
         layer
             .chunk
-            .set_block(area.a - BlockPos::new(0, 1, 0), BlockState::BARRIER);
+            .set_block(area.a.offset(0, -1, 0), BlockState::BARRIER);
     }
 
     commands.insert_resource(portals);
 
     // build instruction signs
 
-    let sign_pos = pos + BlockPos::from([0, 2, SPAWN_BOX_WIDTH - 1]);
+    let sign_pos = pos.offset(0, 2, SPAWN_BOX_WIDTH - 1);
     layer.chunk.set_block(
         sign_pos,
         Block {
@@ -330,7 +326,7 @@ fn build_spawn_box(layer: &mut LayerBundle, pos: impl Into<BlockPos>, commands: 
     );
 
     layer.chunk.set_block(
-        sign_pos + BlockPos::from([-1, 0, 0]),
+        sign_pos.offset(-1, 0, 0),
         Block {
             state: BlockState::OAK_WALL_SIGN.set(PropName::Rotation, PropValue::_3),
             nbt: Some(compound! {
@@ -347,7 +343,7 @@ fn build_spawn_box(layer: &mut LayerBundle, pos: impl Into<BlockPos>, commands: 
     );
 
     layer.chunk.set_block(
-        sign_pos + BlockPos::from([1, 0, 0]),
+        sign_pos.offset(1, 0, 0),
         Block {
             state: BlockState::OAK_WALL_SIGN.set(PropName::Rotation, PropValue::_3),
             nbt: Some(compound! {
@@ -699,7 +695,7 @@ impl TriggerArea {
     }
 
     pub fn contains_pos(&self, pos: DVec3) -> bool {
-        self.contains(BlockPos::from_pos(pos))
+        self.contains(pos.into())
     }
 
     pub fn iter_block_pos(&self) -> impl Iterator<Item = BlockPos> {
@@ -1030,7 +1026,7 @@ fn necromancy(
         if let Ok((mut visible_chunk_layer, mut respawn_pos, team, mut health)) =
             clients.get_mut(event.client)
         {
-            respawn_pos.pos = BlockPos::from_pos(team.spawn_pos());
+            respawn_pos.pos = team.spawn_pos().into();
             health.0 = PLAYER_MAX_HEALTH;
 
             let main_layer = layers.single();

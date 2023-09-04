@@ -111,8 +111,8 @@ impl GetChunkPos for LocalMsg {
         match *self {
             LocalMsg::PacketAt { pos } => pos,
             LocalMsg::PacketAtExcept { pos, .. } => pos,
-            LocalMsg::RadiusAt { center, .. } => center.to_chunk_pos(),
-            LocalMsg::RadiusAtExcept { center, .. } => center.to_chunk_pos(),
+            LocalMsg::RadiusAt { center, .. } => center.into(),
+            LocalMsg::RadiusAtExcept { center, .. } => center.into(),
             LocalMsg::ChangeBiome { pos } => pos,
             LocalMsg::ChangeChunkState { pos } => pos,
         }
@@ -306,7 +306,7 @@ impl ChunkLayer {
             return None;
         }
 
-        let Some(chunk) = self.chunk(ChunkPos::from_block_pos(pos)) else {
+        let Some(chunk) = self.chunk(pos) else {
             return None;
         };
 
@@ -333,7 +333,7 @@ impl ChunkLayer {
             return None;
         }
 
-        let Some(chunk) = self.chunk_mut(ChunkPos::from_block_pos(pos)) else {
+        let Some(chunk) = self.chunk_mut(pos) else {
             return None;
         };
 
@@ -366,15 +366,14 @@ impl ChunkLayer {
     ) {
         let position = position.into();
 
-        self.view_writer(ChunkPos::from_pos(position))
-            .write_packet(&ParticleS2c {
-                particle: Cow::Borrowed(particle),
-                long_distance,
-                position,
-                offset: offset.into(),
-                max_speed,
-                count,
-            });
+        self.view_writer(position).write_packet(&ParticleS2c {
+            particle: Cow::Borrowed(particle),
+            long_distance,
+            position,
+            offset: offset.into(),
+            max_speed,
+            count,
+        });
     }
 
     // TODO: move to `valence_sound`.
@@ -391,18 +390,17 @@ impl ChunkLayer {
     ) {
         let position = position.into();
 
-        self.view_writer(ChunkPos::from_pos(position))
-            .write_packet(&PlaySoundS2c {
-                id: SoundId::Direct {
-                    id: sound.to_ident().into(),
-                    range: None,
-                },
-                category,
-                position: (position * 8.0).as_ivec3(),
-                volume,
-                pitch,
-                seed: rand::random(),
-            });
+        self.view_writer(position).write_packet(&PlaySoundS2c {
+            id: SoundId::Direct {
+                id: sound.to_ident().into(),
+                range: None,
+            },
+            category,
+            position: (position * 8.0).as_ivec3(),
+            volume,
+            pitch,
+            seed: rand::random(),
+        });
     }
 }
 
