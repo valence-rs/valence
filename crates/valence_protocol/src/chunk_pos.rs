@@ -2,7 +2,7 @@ use valence_math::DVec3;
 
 use crate::block_pos::BlockPos;
 use crate::chunk_section_pos::ChunkSectionPos;
-use crate::{Decode, Encode};
+use crate::{BiomePos, Decode, Encode};
 
 /// The X and Z position of a chunk.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash, Debug, Encode, Decode)]
@@ -39,6 +39,15 @@ impl From<BlockPos> for ChunkPos {
 impl From<ChunkSectionPos> for ChunkPos {
     fn from(pos: ChunkSectionPos) -> Self {
         Self { x: pos.x, z: pos.z }
+    }
+}
+
+impl From<BiomePos> for ChunkPos {
+    fn from(pos: BiomePos) -> Self {
+        Self {
+            x: pos.x.div_euclid(4),
+            z: pos.z.div_euclid(4),
+        }
     }
 }
 

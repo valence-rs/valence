@@ -30,6 +30,7 @@ pub mod __private {
 extern crate self as valence_protocol;
 
 mod array;
+mod biome_pos;
 mod bit_set;
 pub mod block_pos;
 mod bounded;
@@ -57,6 +58,7 @@ use std::io::Write;
 
 use anyhow::Context;
 pub use array::FixedArray;
+pub use biome_pos::BiomePos;
 pub use bit_set::FixedBitSet;
 pub use block::{BlockKind, BlockState};
 pub use block_pos::BlockPos;

@@ -20,7 +20,7 @@ use valence_protocol::encode::{PacketWriter, WritePacket};
 use valence_protocol::packets::play::particle_s2c::Particle;
 use valence_protocol::packets::play::{ParticleS2c, PlaySoundS2c};
 use valence_protocol::sound::{Sound, SoundCategory, SoundId};
-use valence_protocol::{BlockPos, ChunkPos, CompressionThreshold, Encode, Ident, Packet};
+use valence_protocol::{BiomePos, BlockPos, ChunkPos, CompressionThreshold, Encode, Ident, Packet};
 use valence_registry::biome::{BiomeId, BiomeRegistry};
 use valence_registry::DimensionTypeRegistry;
 use valence_server_common::Server;
@@ -268,79 +268,103 @@ impl ChunkLayer {
     }
 
     pub fn block(&self, pos: impl Into<BlockPos>) -> Option<BlockRef> {
-        let (chunk, x, y, z) = self.chunk_and_offsets(pos.into())?;
+        let pos = pos.into();
+
+        let y = pos
+            .y
+            .checked_sub(self.info.min_y)
+            .and_then(|y| y.try_into().ok())?;
+
+        if y >= self.info.height {
+            return None;
+        }
+
+        let chunk = self.chunk(pos)?;
+
+        let x = pos.x.rem_euclid(16) as u32;
+        let z = pos.z.rem_euclid(16) as u32;
+
         Some(chunk.block(x, y, z))
     }
 
     pub fn set_block(&mut self, pos: impl Into<BlockPos>, block: impl IntoBlock) -> Option<Block> {
-        let (chunk, x, y, z) = self.chunk_and_offsets_mut(pos.into())?;
+        let pos = pos.into();
+
+        let y = pos
+            .y
+            .checked_sub(self.info.min_y)
+            .and_then(|y| y.try_into().ok())?;
+
+        if y >= self.info.height {
+            return None;
+        }
+
+        let chunk = self.chunk_mut(pos)?;
+
+        let x = pos.x.rem_euclid(16) as u32;
+        let z = pos.z.rem_euclid(16) as u32;
+
         Some(chunk.set_block(x, y, z, block))
     }
 
     pub fn block_entity_mut(&mut self, pos: impl Into<BlockPos>) -> Option<&mut Compound> {
-        let (chunk, x, y, z) = self.chunk_and_offsets_mut(pos.into())?;
+        let pos = pos.into();
+
+        let y = pos
+            .y
+            .checked_sub(self.info.min_y)
+            .and_then(|y| y.try_into().ok())?;
+
+        if y >= self.info.height {
+            return None;
+        }
+
+        let chunk = self.chunk_mut(pos)?;
+
+        let x = pos.x.rem_euclid(16) as u32;
+        let z = pos.z.rem_euclid(16) as u32;
+
         chunk.block_entity_mut(x, y, z)
     }
 
-    pub fn biome(&self, pos: impl Into<BlockPos>) -> Option<BiomeId> {
-        let (chunk, x, y, z) = self.chunk_and_offsets(pos.into())?;
-        Some(chunk.biome(x / 4, y / 4, z / 4))
-    }
+    pub fn biome(&self, pos: impl Into<BiomePos>) -> Option<BiomeId> {
+        let pos = pos.into();
 
-    pub fn set_biome(&mut self, pos: impl Into<BlockPos>, biome: BiomeId) -> Option<BiomeId> {
-        let (chunk, x, y, z) = self.chunk_and_offsets_mut(pos.into())?;
-        Some(chunk.set_biome(x / 4, y / 4, z / 4, biome))
-    }
-
-    #[inline]
-    fn chunk_and_offsets(&self, pos: BlockPos) -> Option<(&LoadedChunk, u32, u32, u32)> {
-        let Some(y) = pos
+        let y = pos
             .y
-            .checked_sub(self.info.min_y)
-            .and_then(|y| y.try_into().ok())
-        else {
-            return None;
-        };
+            .checked_sub(self.info.min_y / 4)
+            .and_then(|y| y.try_into().ok())?;
 
-        if y >= self.info.height {
+        if y >= self.info.height / 4 {
             return None;
         }
 
-        let Some(chunk) = self.chunk(pos) else {
-            return None;
-        };
+        let chunk = self.chunk(pos)?;
 
-        let x = pos.x.rem_euclid(16) as u32;
-        let z = pos.z.rem_euclid(16) as u32;
+        let x = pos.x.rem_euclid(4) as u32;
+        let z = pos.z.rem_euclid(4) as u32;
 
-        Some((chunk, x, y, z))
+        Some(chunk.biome(x, y, z))
     }
 
-    #[inline]
-    fn chunk_and_offsets_mut(
-        &mut self,
-        pos: BlockPos,
-    ) -> Option<(&mut LoadedChunk, u32, u32, u32)> {
-        let Some(y) = pos
-            .y
-            .checked_sub(self.info.min_y)
-            .and_then(|y| y.try_into().ok())
-        else {
-            return None;
-        };
+    pub fn set_biome(&mut self, pos: impl Into<BiomePos>, biome: BiomeId) -> Option<BiomeId> {
+        let pos = pos.into();
 
-        if y >= self.info.height {
+        let y = pos
+            .y
+            .checked_sub(self.info.min_y / 4)
+            .and_then(|y| y.try_into().ok())?;
+
+        if y >= self.info.height / 4 {
             return None;
         }
 
-        let Some(chunk) = self.chunk_mut(pos) else {
-            return None;
-        };
+        let chunk = self.chunk_mut(pos)?;
 
-        let x = pos.x.rem_euclid(16) as u32;
-        let z = pos.z.rem_euclid(16) as u32;
+        let x = pos.x.rem_euclid(4) as u32;
+        let z = pos.z.rem_euclid(4) as u32;
 
-        Some((chunk, x, y, z))
+        Some(chunk.set_biome(x, y, z, biome))
     }
 
     pub(crate) fn info(&self) -> &ChunkLayerInfo {
