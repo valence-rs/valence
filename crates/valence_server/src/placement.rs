@@ -1,3 +1,4 @@
+use bevy_app::{App, Plugin, PostUpdate, Update};
 use bevy_ecs::{
     prelude::*,
     system::{Command, SystemState},
@@ -698,17 +699,33 @@ pub fn can_be_placed_on_bottom(this: BlockState, of: BlockState) -> bool {
     todo!()
 }
 
+pub struct PlaceBlockPlugin;
+
+impl Plugin for PlaceBlockPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_event::<PlaceBlockEvent>()
+            .add_systems(Update, placement);
+    }
+}
+
 //TODO: Builder
-#[derive(Clone)]
-pub struct PlaceBlockCommand {
+#[derive(Clone, Event)]
+pub struct PlaceBlockEvent {
     pub block_kind: BlockKind,
     pub interact_block_event: InteractBlockEvent,
     pub ignore_collisions: bool,
 }
 
-impl Command for PlaceBlockCommand {
-    fn apply(self, world: &mut bevy_ecs::world::World) {
-        let Self {
+pub fn placement(
+    mut events: EventReader<PlaceBlockEvent>,
+    mut layers: Query<&mut ChunkLayer>,
+    clients_looks: Query<(&VisibleChunkLayer, &Look), With<ClientMarker>>,
+    entity_hitboxes: Query<&Hitbox, With<LivingEntity>>,
+) {
+    let mut events: Vec<_> = events.iter().collect();
+    events.sort_by_cached_key(|event| event.interact_block_event.sequence);
+    for event in events.into_iter() {
+        let &PlaceBlockEvent {
             block_kind,
             interact_block_event:
                 InteractBlockEvent {
@@ -721,14 +738,7 @@ impl Command for PlaceBlockCommand {
                     sequence: _,
                 },
             ignore_collisions,
-        } = self;
-
-        let mut system_state = SystemState::<(
-            Query<&mut ChunkLayer>,
-            Query<(&VisibleChunkLayer, &Look), With<ClientMarker>>,
-            Query<&Hitbox, With<LivingEntity>>,
-        )>::new(world);
-        let (mut layers, clients_looks, entity_hitboxes) = system_state.get_mut(world);
+        } = event;
 
         let (visible_chunk_layer, look) = clients_looks.get(client).unwrap();
 

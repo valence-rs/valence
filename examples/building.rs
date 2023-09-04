@@ -5,13 +5,13 @@ use valence::inventory::HeldItem;
 use valence::prelude::*;
 use valence_inventory::PLAYER_INVENTORY_MAIN_SLOTS_COUNT;
 use valence_server::client::ClientMarker;
-use valence_server::placement;
+use valence_server::placement::{self, PlaceBlockEvent};
 
 const SPAWN_Y: i32 = 64;
 
 pub fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins((DefaultPlugins, placement::PlaceBlockPlugin))
         .add_systems(Startup, setup)
         .add_systems(
             Update,
@@ -125,11 +125,11 @@ fn digging(
 }
 
 fn place_blocks(
-    mut commands: Commands,
     mut clients: Query<(&mut Inventory, &GameMode, &HeldItem), With<ClientMarker>>,
-    mut events: EventReader<InteractBlockEvent>,
+    mut ib_events: EventReader<InteractBlockEvent>,
+    mut pb_events: EventWriter<PlaceBlockEvent>,
 ) {
-    for event in events.iter() {
+    for event in ib_events.iter() {
         let Ok((mut inventory, game_mode, held)) = clients.get_mut(event.client) else {
             continue;
         };
@@ -165,7 +165,7 @@ fn place_blocks(
             }
         }
 
-        commands.add(placement::PlaceBlockCommand {
+        pb_events.send(placement::PlaceBlockEvent {
             block_kind,
             interact_block_event: *event,
             ignore_collisions: false,
