@@ -1,6 +1,5 @@
-use crate::shared_state::Event;
-
 use super::{SharedState, Tab, View};
+use crate::shared_state::Event;
 
 pub struct Connection {}
 
