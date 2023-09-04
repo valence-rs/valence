@@ -20,38 +20,15 @@ proxying/inspecting.
 cargo r -r --example game_of_life
 ```
 
-Next up, we need to run the proxy server, this can be done in 2 different ways,
-either using the GUI application (default) or by using the `cli` feature gate.
-
-To launch in a Gui environment, simply run `packet_inspector`.
+Next up, we need to run the proxy server, To launch in a GUI environment, simply run `packet_inspector`.
 
 ```sh
 cargo r -r -p packet_inspector
 ```
 
-To Launch in a Cli environment, build `packet_inspector` with the default
-features disabled, and supplying the `cli` feature. note that you **must**
-supply the listener and server addresses as arguments.
+Then click the "Start Listening" button in the top left of the UI.
 
-```bash
-cargo r -r -p packet_inspector --no-default-features --features cli -- 127.0.0.1:25566 127.0.0.1:25565
-```
-
-To assist, `--help` will produce the following:
-
-```
-A simple Minecraft proxy for inspecting packets.
-
-Usage: packet_inspector <LISTENER_ADDR> <SERVER_ADDR>
-
-Arguments:
-  <LISTENER_ADDR>  The socket address to listen for connections on. This is the address clients should connect to
-  <SERVER_ADDR>    The socket address the proxy will connect to. This is the address of the server
-```
-
-The client can now connect to `localhost:25566`. You should see the packets in
-`stdout` when running in cli mode, or you should see packets streaming in on the
-Gui.
+The client can now connect to `localhost:25566`. You should see packets streaming in on the GUI.
 
 ## Quick start with Vanilla Server via Docker
 
