@@ -1,8 +1,10 @@
 #![allow(clippy::mutable_key_type)]
 
+use std::collections::HashMap;
+use std::sync::RwLock;
+
 use egui::Context;
 use packet_inspector::Packet;
-use std::{collections::HashMap, sync::RwLock};
 
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct PacketFilter {

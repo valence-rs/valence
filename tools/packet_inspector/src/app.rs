@@ -1,7 +1,5 @@
-use std::{
-    net::SocketAddr,
-    sync::{Arc, RwLock},
-};
+use std::net::SocketAddr;
+use std::sync::{Arc, RwLock};
 
 use egui_dock::{DockArea, NodeIndex, Style, Tree};
 use packet_inspector::Proxy;
