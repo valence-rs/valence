@@ -1,6 +1,4 @@
-use std::fmt;
-use std::fmt::Formatter;
-
+/// One of the possible NBT data types.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Tag {
     // Variant order is significant!
@@ -20,7 +18,7 @@ pub enum Tag {
 }
 
 impl Tag {
-    pub const fn name(self) -> &'static str {
+    pub(crate) const fn name(self) -> &'static str {
         match self {
             Tag::End => "end",
             Tag::Byte => "byte",
@@ -36,11 +34,5 @@ impl Tag {
             Tag::IntArray => "int array",
             Tag::LongArray => "long array",
         }
-    }
-}
-
-impl fmt::Display for Tag {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.name())
     }
 }

@@ -25,7 +25,8 @@ impl Compound {
 
         if root_tag != Tag::Compound {
             return Err(Error::new_owned(format!(
-                "expected root tag for compound (got {root_tag})",
+                "expected root tag for compound (got {})",
+                root_tag.name(),
             )));
         }
 
@@ -221,7 +222,8 @@ impl DecodeState<'_, '_> {
 
         if len.is_negative() {
             return Err(Error::new_owned(format!(
-                "negative {elem_type} list length of {len}",
+                "negative {} list length of {len}",
+                elem_type.name()
             )));
         }
 
@@ -229,7 +231,8 @@ impl DecodeState<'_, '_> {
         // the size of the remaining input.
         if len as u64 * elem_size as u64 > self.slice.len() as u64 {
             return Err(Error::new_owned(format!(
-                "{elem_type} list of length {len} exceeds remainder of input"
+                "{} list of length {len} exceeds remainder of input",
+                elem_type.name()
             )));
         }
 
