@@ -183,23 +183,23 @@ impl DecodeState<'_, '_> {
                 .read_list(Tag::Double, 8, |st| st.read_double())?
                 .into()),
             Tag::ByteArray => Ok(self
-                .read_list(Tag::ByteArray, 4, |st| st.read_byte_array())?
+                .read_list(Tag::ByteArray, 0, |st| st.read_byte_array())?
                 .into()),
             Tag::String => Ok(self
-                .read_list(Tag::String, 2, |st| st.read_string())?
+                .read_list(Tag::String, 0, |st| st.read_string())?
                 .into()),
             Tag::List => self
-                .check_depth(|st| Ok(st.read_list(Tag::List, 5, |st| st.read_any_list())?.into())),
+                .check_depth(|st| Ok(st.read_list(Tag::List, 0, |st| st.read_any_list())?.into())),
             Tag::Compound => self.check_depth(|st| {
                 Ok(st
-                    .read_list(Tag::Compound, 1, |st| st.read_compound())?
+                    .read_list(Tag::Compound, 0, |st| st.read_compound())?
                     .into())
             }),
             Tag::IntArray => Ok(self
-                .read_list(Tag::IntArray, 4, |st| st.read_int_array())?
+                .read_list(Tag::IntArray, 0, |st| st.read_int_array())?
                 .into()),
             Tag::LongArray => Ok(self
-                .read_list(Tag::LongArray, 4, |st| st.read_long_array())?
+                .read_list(Tag::LongArray, 0, |st| st.read_long_array())?
                 .into()),
         }
     }
@@ -211,7 +211,7 @@ impl DecodeState<'_, '_> {
     fn read_list<T, F>(
         &mut self,
         elem_type: Tag,
-        min_elem_size: usize,
+        elem_size: usize,
         mut read_elem: F,
     ) -> Result<Vec<T>>
     where
@@ -227,13 +227,14 @@ impl DecodeState<'_, '_> {
 
         // Ensure we don't reserve more than the maximum amount of memory required given
         // the size of the remaining input.
-        if len as u64 * min_elem_size as u64 > self.slice.len() as u64 {
+        if len as u64 * elem_size as u64 > self.slice.len() as u64 {
             return Err(Error::new_owned(format!(
                 "{elem_type} list of length {len} exceeds remainder of input"
             )));
         }
 
-        let mut list = Vec::with_capacity(len as usize);
+        let mut list = Vec::with_capacity(if elem_size == 0 { 0 } else { len as usize });
+
         for _ in 0..len {
             list.push(read_elem(self)?);
         }
