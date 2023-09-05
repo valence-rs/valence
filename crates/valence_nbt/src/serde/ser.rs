@@ -1,3 +1,4 @@
+use std::hash::Hash;
 use std::marker::PhantomData;
 
 use serde::ser::{Impossible, SerializeMap, SerializeSeq, SerializeStruct};
@@ -7,7 +8,10 @@ use super::Error;
 use crate::conv::{i8_slice_as_u8_slice, u8_vec_into_i8_vec};
 use crate::{Compound, List, Value};
 
-impl Serialize for Value {
+impl<Str> Serialize for Value<Str>
+where
+    Str: Serialize + Eq + Ord + Hash,
+{
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -20,7 +24,7 @@ impl Serialize for Value {
             Value::Float(v) => serializer.serialize_f32(*v),
             Value::Double(v) => serializer.serialize_f64(*v),
             Value::ByteArray(v) => serializer.serialize_bytes(i8_slice_as_u8_slice(v)),
-            Value::String(v) => serializer.serialize_str(v),
+            Value::String(v) => v.serialize(serializer),
             Value::List(v) => v.serialize(serializer),
             Value::Compound(v) => v.serialize(serializer),
             Value::IntArray(v) => v.serialize(serializer),
@@ -29,7 +33,10 @@ impl Serialize for Value {
     }
 }
 
-impl Serialize for List {
+impl<Str> Serialize for List<Str>
+where
+    Str: Serialize + Eq + Ord + Hash,
+{
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,

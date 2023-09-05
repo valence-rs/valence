@@ -1,3 +1,4 @@
+use std::hash::Hash;
 use std::iter::FusedIterator;
 
 use crate::value::{ValueMut, ValueRef};
@@ -15,8 +16,8 @@ use crate::{Compound, Tag, Value};
 ///
 /// Every possible element type has its own variant in this enum. As a result,
 /// heterogeneous lists are unrepresentable.
-#[derive(Clone, Default, PartialEq, Debug)]
-pub enum List {
+#[derive(Clone, Default, Debug)]
+pub enum List<S = String> {
     /// The list with the element type of `TAG_End` and length of zero.
     #[default]
     End,
@@ -27,16 +28,47 @@ pub enum List {
     Float(Vec<f32>),
     Double(Vec<f64>),
     ByteArray(Vec<Vec<i8>>),
-    String(Vec<String>),
-    List(Vec<List>),
-    Compound(Vec<Compound>),
+    String(Vec<S>),
+    List(Vec<List<S>>),
+    Compound(Vec<Compound<S>>),
     IntArray(Vec<Vec<i32>>),
     LongArray(Vec<Vec<i64>>),
 }
 
-impl List {
+impl<S> PartialEq for List<S>
+where
+    S: Eq + Ord + Hash,
+{
+    fn eq(&self, other: &Self) -> bool {
+        match self {
+            List::End => matches!(other, List::End),
+            List::Byte(list) => matches!(other, List::Byte(other_list) if list == other_list),
+            List::Short(list) => matches!(other, List::Short(other_list) if list == other_list),
+            List::Int(list) => matches!(other, List::Int(other_list) if list == other_list),
+            List::Long(list) => matches!(other, List::Long(other_list) if list == other_list),
+            List::Float(list) => matches!(other, List::Float(other_list) if list == other_list),
+            List::Double(list) => matches!(other, List::Double(other_list) if list == other_list),
+            List::ByteArray(list) => {
+                matches!(other, List::ByteArray(other_list) if list == other_list)
+            }
+            List::String(list) => matches!(other, List::String(other_list) if list == other_list),
+            List::List(list) => matches!(other, List::List(other_list) if list == other_list),
+            List::Compound(list) => {
+                matches!(other, List::Compound(other_list) if list == other_list)
+            }
+            List::IntArray(list) => {
+                matches!(other, List::IntArray(other_list) if list == other_list)
+            }
+            List::LongArray(list) => {
+                matches!(other, List::LongArray(other_list) if list == other_list)
+            }
+        }
+    }
+}
+
+impl<S> List<S> {
     /// Constructs a new empty NBT list, with the element type of `TAG_End`.
-    pub fn new() -> List {
+    pub fn new() -> Self {
         Self::End
     }
 
@@ -85,7 +117,7 @@ impl List {
 
     /// Gets a reference to the value at the given index in this list, or `None`
     /// if the index is out of bounds.
-    pub fn get(&self, index: usize) -> Option<ValueRef> {
+    pub fn get(&self, index: usize) -> Option<ValueRef<S>> {
         match self {
             List::End => None,
             List::Byte(list) => list.get(index).map(ValueRef::Byte),
@@ -95,7 +127,7 @@ impl List {
             List::Float(list) => list.get(index).map(ValueRef::Float),
             List::Double(list) => list.get(index).map(ValueRef::Double),
             List::ByteArray(list) => list.get(index).map(|arr| ValueRef::ByteArray(&arr[..])),
-            List::String(list) => list.get(index).map(|str| ValueRef::String(&str[..])),
+            List::String(list) => list.get(index).map(ValueRef::String),
             List::List(list) => list.get(index).map(ValueRef::List),
             List::Compound(list) => list.get(index).map(ValueRef::Compound),
             List::IntArray(list) => list.get(index).map(|arr| ValueRef::IntArray(&arr[..])),
@@ -105,7 +137,7 @@ impl List {
 
     /// Gets a mutable reference to the value at the given index in this list,
     /// or `None` if the index is out of bounds.
-    pub fn get_mut(&mut self, index: usize) -> Option<ValueMut> {
+    pub fn get_mut(&mut self, index: usize) -> Option<ValueMut<S>> {
         match self {
             List::End => None,
             List::Byte(list) => list.get_mut(index).map(ValueMut::Byte),
@@ -128,7 +160,7 @@ impl List {
     /// multiple types inside it). Returns `true` if the value was added,
     /// `false` otherwise.
     #[must_use]
-    pub fn try_push(&mut self, value: impl Into<Value>) -> bool {
+    pub fn try_push(&mut self, value: impl Into<Value<S>>) -> bool {
         let value = value.into();
         match self {
             List::End => {
@@ -243,7 +275,7 @@ impl List {
     ///
     /// Panics if the index is greater than the length of the list.
     #[must_use]
-    pub fn try_insert(&mut self, index: usize, value: impl Into<Value>) -> bool {
+    pub fn try_insert(&mut self, index: usize, value: impl Into<Value<S>>) -> bool {
         let value = value.into();
 
         #[cold]
@@ -366,7 +398,7 @@ impl List {
     ///
     /// Panics if `index` is out of bounds.
     #[track_caller]
-    pub fn remove(&mut self, index: usize) -> Value {
+    pub fn remove(&mut self, index: usize) -> Value<S> {
         #[cold]
         #[inline(never)]
         #[track_caller]
@@ -406,7 +438,7 @@ impl List {
     /// retained elements.
     pub fn retain<F>(&mut self, mut f: F)
     where
-        F: FnMut(ValueMut) -> bool,
+        F: FnMut(ValueMut<S>) -> bool,
     {
         match self {
             List::End => {}
@@ -430,7 +462,7 @@ impl List {
     }
 
     /// Returns an iterator over this list. This iterator yields [ValueRef]s.
-    pub fn iter(&self) -> Iter {
+    pub fn iter(&self) -> Iter<S> {
         Iter {
             inner: match self {
                 List::End => IterInner::End,
@@ -452,7 +484,7 @@ impl List {
 
     /// Returns a mutable iterator over this list. This iterator yields
     /// [ValueMut]s.
-    pub fn iter_mut(&mut self) -> IterMut {
+    pub fn iter_mut(&mut self) -> IterMut<S> {
         IterMut {
             inner: match self {
                 List::End => IterMutInner::End,
@@ -473,81 +505,81 @@ impl List {
     }
 }
 
-impl From<Vec<i8>> for List {
+impl<S> From<Vec<i8>> for List<S> {
     fn from(v: Vec<i8>) -> Self {
         List::Byte(v)
     }
 }
 
-impl From<Vec<i16>> for List {
+impl<S> From<Vec<i16>> for List<S> {
     fn from(v: Vec<i16>) -> Self {
         List::Short(v)
     }
 }
 
-impl From<Vec<i32>> for List {
+impl<S> From<Vec<i32>> for List<S> {
     fn from(v: Vec<i32>) -> Self {
         List::Int(v)
     }
 }
 
-impl From<Vec<i64>> for List {
+impl<S> From<Vec<i64>> for List<S> {
     fn from(v: Vec<i64>) -> Self {
         List::Long(v)
     }
 }
 
-impl From<Vec<f32>> for List {
+impl<S> From<Vec<f32>> for List<S> {
     fn from(v: Vec<f32>) -> Self {
         List::Float(v)
     }
 }
 
-impl From<Vec<f64>> for List {
+impl<S> From<Vec<f64>> for List<S> {
     fn from(v: Vec<f64>) -> Self {
         List::Double(v)
     }
 }
 
-impl From<Vec<Vec<i8>>> for List {
+impl<S> From<Vec<Vec<i8>>> for List<S> {
     fn from(v: Vec<Vec<i8>>) -> Self {
         List::ByteArray(v)
     }
 }
 
-impl From<Vec<String>> for List {
+impl From<Vec<String>> for List<String> {
     fn from(v: Vec<String>) -> Self {
         List::String(v)
     }
 }
 
-impl From<Vec<List>> for List {
-    fn from(v: Vec<List>) -> Self {
+impl<S> From<Vec<List<S>>> for List<S> {
+    fn from(v: Vec<List<S>>) -> Self {
         List::List(v)
     }
 }
 
-impl From<Vec<Compound>> for List {
-    fn from(v: Vec<Compound>) -> Self {
+impl<S> From<Vec<Compound<S>>> for List<S> {
+    fn from(v: Vec<Compound<S>>) -> Self {
         List::Compound(v)
     }
 }
 
-impl From<Vec<Vec<i32>>> for List {
+impl<S> From<Vec<Vec<i32>>> for List<S> {
     fn from(v: Vec<Vec<i32>>) -> Self {
         List::IntArray(v)
     }
 }
 
-impl From<Vec<Vec<i64>>> for List {
+impl<S> From<Vec<Vec<i64>>> for List<S> {
     fn from(v: Vec<Vec<i64>>) -> Self {
         List::LongArray(v)
     }
 }
 
 /// Converts a value to a singleton list.
-impl From<Value> for List {
-    fn from(value: Value) -> Self {
+impl<S> From<Value<S>> for List<S> {
+    fn from(value: Value<S>) -> Self {
         match value {
             Value::Byte(v) => List::Byte(vec![v]),
             Value::Short(v) => List::Short(vec![v]),
@@ -565,9 +597,9 @@ impl From<Value> for List {
     }
 }
 
-impl IntoIterator for List {
-    type Item = Value;
-    type IntoIter = IntoIter;
+impl<S> IntoIterator for List<S> {
+    type Item = Value<S>;
+    type IntoIter = IntoIter<S>;
 
     fn into_iter(self) -> Self::IntoIter {
         IntoIter {
@@ -590,18 +622,18 @@ impl IntoIterator for List {
     }
 }
 
-impl<'a> IntoIterator for &'a List {
-    type Item = ValueRef<'a>;
-    type IntoIter = Iter<'a>;
+impl<'a, S> IntoIterator for &'a List<S> {
+    type Item = ValueRef<'a, S>;
+    type IntoIter = Iter<'a, S>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
     }
 }
 
-impl<'a> IntoIterator for &'a mut List {
-    type Item = ValueMut<'a>;
-    type IntoIter = IterMut<'a>;
+impl<'a, S> IntoIterator for &'a mut List<S> {
+    type Item = ValueMut<'a, S>;
+    type IntoIter = IterMut<'a, S>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter_mut()
@@ -609,11 +641,11 @@ impl<'a> IntoIterator for &'a mut List {
 }
 
 /// The owned iterator type for [List].
-pub struct IntoIter {
-    inner: IntoIterInner,
+pub struct IntoIter<S = String> {
+    inner: IntoIterInner<S>,
 }
 
-enum IntoIterInner {
+enum IntoIterInner<S> {
     End,
     Byte(std::vec::IntoIter<i8>),
     Short(std::vec::IntoIter<i16>),
@@ -622,15 +654,15 @@ enum IntoIterInner {
     Float(std::vec::IntoIter<f32>),
     Double(std::vec::IntoIter<f64>),
     ByteArray(std::vec::IntoIter<Vec<i8>>),
-    String(std::vec::IntoIter<String>),
-    List(std::vec::IntoIter<List>),
-    Compound(std::vec::IntoIter<Compound>),
+    String(std::vec::IntoIter<S>),
+    List(std::vec::IntoIter<List<S>>),
+    Compound(std::vec::IntoIter<Compound<S>>),
     IntArray(std::vec::IntoIter<Vec<i32>>),
     LongArray(std::vec::IntoIter<Vec<i64>>),
 }
 
-impl Iterator for IntoIter {
-    type Item = Value;
+impl<S> Iterator for IntoIter<S> {
+    type Item = Value<S>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.inner {
@@ -669,7 +701,7 @@ impl Iterator for IntoIter {
     }
 }
 
-impl DoubleEndedIterator for IntoIter {
+impl<S> DoubleEndedIterator for IntoIter<S> {
     fn next_back(&mut self) -> Option<Self::Item> {
         match self.inner {
             IntoIterInner::End => None,
@@ -689,7 +721,7 @@ impl DoubleEndedIterator for IntoIter {
     }
 }
 
-impl ExactSizeIterator for IntoIter {
+impl<S> ExactSizeIterator for IntoIter<S> {
     fn len(&self) -> usize {
         match self.inner {
             IntoIterInner::End => 0,
@@ -709,14 +741,14 @@ impl ExactSizeIterator for IntoIter {
     }
 }
 
-impl FusedIterator for IntoIter {}
+impl<S> FusedIterator for IntoIter<S> {}
 
 /// The borrowing iterator type for [List].
-pub struct Iter<'a> {
-    inner: IterInner<'a>,
+pub struct Iter<'a, S = String> {
+    inner: IterInner<'a, S>,
 }
 
-enum IterInner<'a> {
+enum IterInner<'a, S> {
     End,
     Byte(std::slice::Iter<'a, i8>),
     Short(std::slice::Iter<'a, i16>),
@@ -725,15 +757,15 @@ enum IterInner<'a> {
     Float(std::slice::Iter<'a, f32>),
     Double(std::slice::Iter<'a, f64>),
     ByteArray(std::slice::Iter<'a, Vec<i8>>),
-    String(std::slice::Iter<'a, String>),
-    List(std::slice::Iter<'a, List>),
-    Compound(std::slice::Iter<'a, Compound>),
+    String(std::slice::Iter<'a, S>),
+    List(std::slice::Iter<'a, List<S>>),
+    Compound(std::slice::Iter<'a, Compound<S>>),
     IntArray(std::slice::Iter<'a, Vec<i32>>),
     LongArray(std::slice::Iter<'a, Vec<i64>>),
 }
 
-impl<'a> Iterator for Iter<'a> {
-    type Item = ValueRef<'a>;
+impl<'a, S> Iterator for Iter<'a, S> {
+    type Item = ValueRef<'a, S>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.inner {
@@ -745,7 +777,7 @@ impl<'a> Iterator for Iter<'a> {
             IterInner::Float(ref mut i) => i.next().map(ValueRef::Float),
             IterInner::Double(ref mut i) => i.next().map(ValueRef::Double),
             IterInner::ByteArray(ref mut i) => i.next().map(|arr| ValueRef::ByteArray(&arr[..])),
-            IterInner::String(ref mut i) => i.next().map(|str| ValueRef::String(&str[..])),
+            IterInner::String(ref mut i) => i.next().map(ValueRef::String),
             IterInner::List(ref mut i) => i.next().map(ValueRef::List),
             IterInner::Compound(ref mut i) => i.next().map(ValueRef::Compound),
             IterInner::IntArray(ref mut i) => i.next().map(|arr| ValueRef::IntArray(&arr[..])),
@@ -772,7 +804,7 @@ impl<'a> Iterator for Iter<'a> {
     }
 }
 
-impl DoubleEndedIterator for Iter<'_> {
+impl<S> DoubleEndedIterator for Iter<'_, S> {
     fn next_back(&mut self) -> Option<Self::Item> {
         match self.inner {
             IterInner::End => None,
@@ -785,7 +817,7 @@ impl DoubleEndedIterator for Iter<'_> {
             IterInner::ByteArray(ref mut i) => {
                 i.next_back().map(|arr| ValueRef::ByteArray(&arr[..]))
             }
-            IterInner::String(ref mut i) => i.next_back().map(|str| ValueRef::String(&str[..])),
+            IterInner::String(ref mut i) => i.next_back().map(ValueRef::String),
             IterInner::List(ref mut i) => i.next_back().map(ValueRef::List),
             IterInner::Compound(ref mut i) => i.next_back().map(ValueRef::Compound),
             IterInner::IntArray(ref mut i) => i.next_back().map(|arr| ValueRef::IntArray(&arr[..])),
@@ -796,7 +828,7 @@ impl DoubleEndedIterator for Iter<'_> {
     }
 }
 
-impl ExactSizeIterator for Iter<'_> {
+impl<S> ExactSizeIterator for Iter<'_, S> {
     fn len(&self) -> usize {
         match self.inner {
             IterInner::End => 0,
@@ -816,14 +848,14 @@ impl ExactSizeIterator for Iter<'_> {
     }
 }
 
-impl FusedIterator for Iter<'_> {}
+impl<S> FusedIterator for Iter<'_, S> {}
 
 /// The mutable borrowing iterator type for [List].
-pub struct IterMut<'a> {
-    inner: IterMutInner<'a>,
+pub struct IterMut<'a, S = String> {
+    inner: IterMutInner<'a, S>,
 }
 
-enum IterMutInner<'a> {
+enum IterMutInner<'a, S> {
     End,
     Byte(std::slice::IterMut<'a, i8>),
     Short(std::slice::IterMut<'a, i16>),
@@ -832,15 +864,15 @@ enum IterMutInner<'a> {
     Float(std::slice::IterMut<'a, f32>),
     Double(std::slice::IterMut<'a, f64>),
     ByteArray(std::slice::IterMut<'a, Vec<i8>>),
-    String(std::slice::IterMut<'a, String>),
-    List(std::slice::IterMut<'a, List>),
-    Compound(std::slice::IterMut<'a, Compound>),
+    String(std::slice::IterMut<'a, S>),
+    List(std::slice::IterMut<'a, List<S>>),
+    Compound(std::slice::IterMut<'a, Compound<S>>),
     IntArray(std::slice::IterMut<'a, Vec<i32>>),
     LongArray(std::slice::IterMut<'a, Vec<i64>>),
 }
 
-impl<'a> Iterator for IterMut<'a> {
-    type Item = ValueMut<'a>;
+impl<'a, S> Iterator for IterMut<'a, S> {
+    type Item = ValueMut<'a, S>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.inner {
@@ -879,7 +911,7 @@ impl<'a> Iterator for IterMut<'a> {
     }
 }
 
-impl DoubleEndedIterator for IterMut<'_> {
+impl<S> DoubleEndedIterator for IterMut<'_, S> {
     fn next_back(&mut self) -> Option<Self::Item> {
         match self.inner {
             IterMutInner::End => None,
@@ -899,7 +931,7 @@ impl DoubleEndedIterator for IterMut<'_> {
     }
 }
 
-impl ExactSizeIterator for IterMut<'_> {
+impl<S> ExactSizeIterator for IterMut<'_, S> {
     fn len(&self) -> usize {
         match self.inner {
             IterMutInner::End => 0,
@@ -919,4 +951,4 @@ impl ExactSizeIterator for IterMut<'_> {
     }
 }
 
-impl FusedIterator for IterMut<'_> {}
+impl<S> FusedIterator for IterMut<'_, S> {}
