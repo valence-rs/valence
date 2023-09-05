@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap};
 use std::hash::{Hash, Hasher};
+
 use ordered_float::OrderedFloat;
 
 #[derive(Clone, Debug)]
@@ -32,8 +33,8 @@ pub enum ModifierValue {
 #[allow(clippy::unit_hash)]
 impl Hash for ModifierValue {
     fn hash<H>(&self, hasher: &mut H)
-        where
-            H: Hasher
+    where
+        H: Hasher,
     {
         self.discriminant().hash(hasher);
         match *self {
@@ -70,14 +71,22 @@ impl PartialEq for ModifierValue {
             (&ModifierValue::I16(v0), &ModifierValue::I16(v1)) if v0 == v1 => true,
             (&ModifierValue::I32(v0), &ModifierValue::I32(v1)) if v0 == v1 => true,
             (&ModifierValue::I64(v0), &ModifierValue::I64(v1)) if v0 == v1 => true,
-            (&ModifierValue::F32(v0), &ModifierValue::F32(v1)) if OrderedFloat(v0) == OrderedFloat(v1) => true,
-            (&ModifierValue::F64(v0), &ModifierValue::F64(v1)) if OrderedFloat(v0) == OrderedFloat(v1) => true,
+            (&ModifierValue::F32(v0), &ModifierValue::F32(v1))
+                if OrderedFloat(v0) == OrderedFloat(v1) =>
+            {
+                true
+            }
+            (&ModifierValue::F64(v0), &ModifierValue::F64(v1))
+                if OrderedFloat(v0) == OrderedFloat(v1) =>
+            {
+                true
+            }
             (&ModifierValue::Char(v0), &ModifierValue::Char(v1)) if v0 == v1 => true,
-            (&ModifierValue::String(ref v0), &ModifierValue::String(ref v1)) if v0 == v1 => true,
-            (&ModifierValue::Unit, &ModifierValue::Unit) => true,
-            (&ModifierValue::Option(ref v0), &ModifierValue::Option(ref v1)) if v0 == v1 => true,
-            (&ModifierValue::Seq(ref v0), &ModifierValue::Seq(ref v1)) if v0 == v1 => true,
-            (&ModifierValue::Map(ref v0), &ModifierValue::Map(ref v1)) if v0 == v1 => true,
+            (ModifierValue::String(v0), ModifierValue::String(v1)) if v0 == v1 => true,
+            (ModifierValue::Unit, ModifierValue::Unit) => true,
+            (ModifierValue::Option(v0), ModifierValue::Option(v1)) if v0 == v1 => true,
+            (ModifierValue::Seq(v0), ModifierValue::Seq(v1)) if v0 == v1 => true,
+            (ModifierValue::Map(v0), ModifierValue::Map(v1)) if v0 == v1 => true,
             _ => false,
         }
     }
@@ -86,24 +95,28 @@ impl PartialEq for ModifierValue {
 impl Ord for ModifierValue {
     fn cmp(&self, rhs: &Self) -> Ordering {
         match (self, rhs) {
-            (&ModifierValue::Bool(v0), &ModifierValue::Bool(ref v1)) => v0.cmp(v1),
-            (&ModifierValue::U8(v0), &ModifierValue::U8(ref v1)) => v0.cmp(v1),
-            (&ModifierValue::U16(v0), &ModifierValue::U16(ref v1)) => v0.cmp(v1),
-            (&ModifierValue::U32(v0), &ModifierValue::U32(ref v1)) => v0.cmp(v1),
-            (&ModifierValue::U64(v0), &ModifierValue::U64(ref v1)) => v0.cmp(v1),
-            (&ModifierValue::I8(v0), &ModifierValue::I8(ref v1)) => v0.cmp(v1),
-            (&ModifierValue::I16(v0), &ModifierValue::I16(ref v1)) => v0.cmp(v1),
-            (&ModifierValue::I32(v0), &ModifierValue::I32(ref v1)) => v0.cmp(v1),
-            (&ModifierValue::I64(v0), &ModifierValue::I64(ref v1)) => v0.cmp(v1),
-            (&ModifierValue::F32(v0), &ModifierValue::F32(v1)) => OrderedFloat(v0).cmp(&OrderedFloat(v1)),
-            (&ModifierValue::F64(v0), &ModifierValue::F64(v1)) => OrderedFloat(v0).cmp(&OrderedFloat(v1)),
-            (&ModifierValue::Char(v0), &ModifierValue::Char(ref v1)) => v0.cmp(v1),
-            (&ModifierValue::String(ref v0), &ModifierValue::String(ref v1)) => v0.cmp(v1),
-            (&ModifierValue::Unit, &ModifierValue::Unit) => Ordering::Equal,
-            (&ModifierValue::Option(ref v0), &ModifierValue::Option(ref v1)) => v0.cmp(v1),
-            (&ModifierValue::Seq(ref v0), &ModifierValue::Seq(ref v1)) => v0.cmp(v1),
-            (&ModifierValue::Map(ref v0), &ModifierValue::Map(ref v1)) => v0.cmp(v1),
-            (ref v0, ref v1) => v0.discriminant().cmp(&v1.discriminant()),
+            (&ModifierValue::Bool(v0), ModifierValue::Bool(v1)) => v0.cmp(v1),
+            (&ModifierValue::U8(v0), ModifierValue::U8(v1)) => v0.cmp(v1),
+            (&ModifierValue::U16(v0), ModifierValue::U16(v1)) => v0.cmp(v1),
+            (&ModifierValue::U32(v0), ModifierValue::U32(v1)) => v0.cmp(v1),
+            (&ModifierValue::U64(v0), ModifierValue::U64(v1)) => v0.cmp(v1),
+            (&ModifierValue::I8(v0), ModifierValue::I8(v1)) => v0.cmp(v1),
+            (&ModifierValue::I16(v0), ModifierValue::I16(v1)) => v0.cmp(v1),
+            (&ModifierValue::I32(v0), ModifierValue::I32(v1)) => v0.cmp(v1),
+            (&ModifierValue::I64(v0), ModifierValue::I64(v1)) => v0.cmp(v1),
+            (&ModifierValue::F32(v0), &ModifierValue::F32(v1)) => {
+                OrderedFloat(v0).cmp(&OrderedFloat(v1))
+            }
+            (&ModifierValue::F64(v0), &ModifierValue::F64(v1)) => {
+                OrderedFloat(v0).cmp(&OrderedFloat(v1))
+            }
+            (ModifierValue::Char(v0), ModifierValue::Char(ref v1)) => v0.cmp(v1),
+            (ModifierValue::String(ref v0), ModifierValue::String(ref v1)) => v0.cmp(v1),
+            (ModifierValue::Unit, &ModifierValue::Unit) => Ordering::Equal,
+            (ModifierValue::Option(ref v0), ModifierValue::Option(ref v1)) => v0.cmp(v1),
+            (ModifierValue::Seq(ref v0), ModifierValue::Seq(ref v1)) => v0.cmp(v1),
+            (ModifierValue::Map(ref v0), ModifierValue::Map(ref v1)) => v0.cmp(v1),
+            (v0, v1) => v0.discriminant().cmp(&v1.discriminant()),
         }
     }
 }
@@ -132,7 +145,7 @@ impl ModifierValue {
     }
 }
 
-impl Eq for ModifierValue { }
+impl Eq for ModifierValue {}
 impl PartialOrd for ModifierValue {
     fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
         Some(self.cmp(rhs))
@@ -146,7 +159,7 @@ macro_rules! impl_from {
                 ModifierValue::$variant(v)
             }
         }
-    }
+    };
 }
 
 impl_from!(bool, Bool);
@@ -165,7 +178,7 @@ impl_from!(char, Char);
 impl_from!(String, String);
 
 impl From<()> for ModifierValue {
-    fn from(v: ()) -> Self {
+    fn from(_: ()) -> Self {
         ModifierValue::Unit
     }
 }
@@ -199,4 +212,3 @@ impl<K: Into<ModifierValue>, V: Into<ModifierValue>> From<HashMap<K, V>> for Mod
         ModifierValue::Map(v.into_iter().map(|(k, v)| (k.into(), v.into())).collect())
     }
 }
-

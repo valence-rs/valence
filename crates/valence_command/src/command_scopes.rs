@@ -283,7 +283,11 @@ impl CommandScopeRegistry {
     ///     "valence:command:tp"
     /// ));
     /// ```
-    pub fn any_grants(&self, scopes: &Vec<impl Into<Scope> + Clone>, other: impl Into<Scope>) -> bool {
+    pub fn any_grants(
+        &self,
+        scopes: &Vec<impl Into<Scope> + Clone>,
+        other: impl Into<Scope>,
+    ) -> bool {
         let other = other.into();
 
         for scope in scopes {

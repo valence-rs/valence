@@ -1,14 +1,15 @@
 #![allow(clippy::type_complexity)]
 
 use std::ops::Shl;
+
 use valence::prelude::*;
-use valence_command::arg_parser::{CommandArg, EntitySelector, EntitySelectors, GreedyString, QuotableString};
-
-use valence_command::command_scopes::CommandScopes;
-use valence_command::handler::{CommandResultEvent, CommandHandler};
-
-use valence_command::{arg_parser, Command, CommandScopeRegistry, ModifierValue};
+use valence_command::arg_parser::{
+    CommandArg, EntitySelector, EntitySelectors, GreedyString, QuotableString,
+};
 use valence_command::command_graph::CommandGraphBuilder;
+use valence_command::command_scopes::CommandScopes;
+use valence_command::handler::{CommandHandler, CommandResultEvent};
+use valence_command::{arg_parser, Command, CommandApp, CommandScopeRegistry, ModifierValue};
 use valence_command_derive::Command;
 use valence_server::op_level::OpLevel;
 
@@ -23,7 +24,10 @@ enum Teleport {
     #[paths = "{target}"]
     ExecutorToTarget { target: EntitySelector },
     #[paths = "{from} {to}"]
-    TargetToTarget { from: EntitySelector, to: EntitySelector },
+    TargetToTarget {
+        from: EntitySelector,
+        to: EntitySelector,
+    },
     #[paths = "{target} {location}"]
     TargetToLocation {
         target: EntitySelector,
@@ -52,8 +56,8 @@ enum Test {
     // 3 literals with an arg each
     #[paths("a {a} b {b} c {c}", "{a} {b} {c}")]
     A { a: String, b: i32, c: f32 },
-    // 2 literals with an arg last being optional (Because of the greedy string before the end this
-    // is technically unreachable)
+    // 2 literals with an arg last being optional (Because of the greedy string before the end
+    // this is technically unreachable)
     #[paths = "a {a} {b} b {c?}"]
     B {
         a: String,
@@ -87,15 +91,20 @@ enum ComplexRedirection {
 }
 
 impl Command for ComplexRedirection {
-    fn assemble_graph(graph: &mut CommandGraphBuilder<Self>) where Self: Sized {
-        let root =graph.literal("complex").id();
+    fn assemble_graph(graph: &mut CommandGraphBuilder<Self>)
+    where
+        Self: Sized,
+    {
+        let root = graph.literal("complex").id();
         let a = graph.literal("a").id();
 
-        graph.at(a).argument("a").with_parser::<arg_parser::Vec3>().with_executable(
-            |input| {
+        graph
+            .at(a)
+            .argument("a")
+            .with_parser::<arg_parser::Vec3>()
+            .with_executable(|input| {
                 ComplexRedirection::A(arg_parser::Vec3::parse_arg(input).unwrap())
-            },
-        );
+            });
 
         let b = graph.literal("b").id();
 
@@ -104,42 +113,52 @@ impl Command for ComplexRedirection {
 
         let c = graph.literal("c").id();
 
-        graph.at(c).argument("c").with_parser::<arg_parser::Vec2>().with_executable(
-            |input| {
+        graph
+            .at(c)
+            .argument("c")
+            .with_parser::<arg_parser::Vec2>()
+            .with_executable(|input| {
                 ComplexRedirection::C(arg_parser::Vec2::parse_arg(input).unwrap())
-            },
-        );
+            });
 
-        let d = graph.at(root).literal("d").with_modifier(|_, modifiers| {
-            let entry = modifiers.entry("d_pass_count".into()).or_insert(0.into());
-            if let ModifierValue::I32(i) = entry {
-                *i += 1;
-            }
-        }
-        ).id();
+        let d = graph
+            .at(root)
+            .literal("d")
+            .with_modifier(|_, modifiers| {
+                let entry = modifiers.entry("d_pass_count".into()).or_insert(0.into());
+                if let ModifierValue::I32(i) = entry {
+                    *i += 1;
+                }
+            })
+            .id();
 
         graph.at(d).with_executable(|_| ComplexRedirection::D);
         graph.at(d).redirect_to(root);
 
         let e = graph.literal("e").id();
 
-        graph.at(e).argument("e").with_parser::<arg_parser::Vec3>().with_executable(
-            |input| {
+        graph
+            .at(e)
+            .argument("e")
+            .with_parser::<arg_parser::Vec3>()
+            .with_executable(|input| {
                 ComplexRedirection::E(arg_parser::Vec3::parse_arg(input).unwrap())
-            },
-        );
-
+            });
     }
 }
 
 pub fn main() {
     App::new()
-        .add_plugins((
-            DefaultPlugins,
-            CommandHandler::<Teleport>::from_command(),
-            CommandHandler::<Test>::from_command(),
-            CommandHandler::<ComplexRedirection>::from_command(),
-            CommandHandler::<Gamemode>::from_command(),
+        .add_plugins((DefaultPlugins,))
+        .add_command::<Test>()
+        .add_command::<Teleport>()
+        .add_command::<Gamemode>()
+        .add_command::<ComplexRedirection>()
+        .add_command_handlers((
+            handle_test_command,
+            handle_teleport_command,
+            handle_complex_command,
+            handle_gamemode_command,
         ))
         .add_systems(Startup, setup)
         .add_systems(
@@ -148,10 +167,6 @@ pub fn main() {
                 init_clients,
                 despawn_disconnected_clients,
                 toggle_perms_on_sneak,
-                handle_test_command,
-                handle_teleport_command,
-                handle_complex_command,
-                handle_gamemode_command,
             ),
         )
         .run();
@@ -160,7 +175,7 @@ pub fn main() {
 fn handle_teleport_command(
     mut events: EventReader<CommandResultEvent<Teleport>>,
     mut clients: Query<(&mut Client, &mut Position)>,
-    usernames: Query<(Entity, &Username)>, // mut commands: Commands
+    usernames: Query<(Entity, &Username)>,
 ) {
     for event in events.iter() {
         match &event.result {
@@ -177,8 +192,7 @@ fn handle_teleport_command(
             }
             Teleport::ExecutorToTarget { target } => {
                 let raw_target = match target {
-                    EntitySelector::SimpleSelector(x) => match
-                    x {
+                    EntitySelector::SimpleSelector(x) => match x {
                         EntitySelectors::SinglePlayer(x) => x,
                         _ => "not implemented",
                     },
@@ -208,17 +222,17 @@ fn handle_teleport_command(
             }
             Teleport::TargetToTarget { from, to } => {
                 let from_raw_target = match from {
-                    EntitySelector::SimpleSelector(x) => match
-                    x {
+                    EntitySelector::SimpleSelector(x) => match x {
                         EntitySelectors::SinglePlayer(x) => x,
                         _ => "not implemented",
                     },
                     _ => "not implemented",
                 };
-                let from_target = usernames.iter().find(|(_, name)| name.0 == *from_raw_target);
+                let from_target = usernames
+                    .iter()
+                    .find(|(_, name)| name.0 == *from_raw_target);
                 let to_raw_target = match to {
-                    EntitySelector::SimpleSelector(x) => match
-                    x {
+                    EntitySelector::SimpleSelector(x) => match x {
                         EntitySelectors::SinglePlayer(x) => &x,
                         _ => "not implemented",
                     },
@@ -233,11 +247,17 @@ fn handle_teleport_command(
                 ));
                 match from_target {
                     None => {
-                        client.send_chat_message(format!("Could not find target: {}", from_raw_target));
+                        client.send_chat_message(format!(
+                            "Could not find target: {}",
+                            from_raw_target
+                        ));
                     }
                     Some(from_target_entity) => match to_target {
                         None => {
-                            client.send_chat_message(format!("Could not find target: {}", to_raw_target));
+                            client.send_chat_message(format!(
+                                "Could not find target: {}",
+                                to_raw_target
+                            ));
                         }
                         Some(to_target_entity) => {
                             let target_pos = *clients.get(to_target_entity.0).unwrap().1;
@@ -259,13 +279,9 @@ fn handle_teleport_command(
                     },
                 }
             }
-            Teleport::TargetToLocation {
-                target,
-                location,
-            } => {
+            Teleport::TargetToLocation { target, location } => {
                 let raw_target = match target {
-                    EntitySelector::SimpleSelector(x) => match
-                    x {
+                    EntitySelector::SimpleSelector(x) => match x {
                         EntitySelectors::SinglePlayer(x) => x,
                         _ => "not implemented",
                     },
@@ -320,8 +336,7 @@ fn handle_complex_command(
         let client = &mut clients.get_mut(event.executor).unwrap();
         client.send_chat_message(format!(
             "complex command executed with data:\n {:#?}\n and with the modifiers:\n {:#?}",
-            &event.result,
-            &event.modifiers
+            &event.result, &event.modifiers
         ));
     }
 }
@@ -390,7 +405,7 @@ fn init_clients(
             &mut CommandScopes,
             &mut Position,
             &mut GameMode,
-            &mut OpLevel
+            &mut OpLevel,
         ),
         Added<Client>,
     >,

@@ -7,7 +7,7 @@ pub trait CommandArgSet {
     fn from_args(args: Vec<String>) -> Self;
 }
 
-pub trait CommandArg:Sized {
+pub trait CommandArg: Sized {
     fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
         Self::parse_arg(&mut ParseInput::new(string))
     }
@@ -25,7 +25,10 @@ pub struct ParseInput {
 
 impl ParseInput {
     pub fn new(input: impl Into<String>) -> Self {
-        Self { input: input.into(), cursor: 0 }
+        Self {
+            input: input.into(),
+            cursor: 0,
+        }
     }
 
     pub fn set_cursor(&mut self, cursor: usize) {
@@ -206,8 +209,7 @@ macro_rules! impl_parser_for_number {
 
                 let parsed = s.parse::<$type>();
 
-                parsed
-                    .map_err(|_| CommandArgParseError::InvalidArgument($name.to_string(), s))
+                parsed.map_err(|_| CommandArgParseError::InvalidArgument($name.to_string(), s))
             }
 
             fn display() -> Parser {
@@ -376,9 +378,10 @@ pub enum EntitySelectors {
 }
 
 impl CommandArg for EntitySelector {
-    // we want to get either a simple string [`@e`, `@a`, `@p`, `@r`, `<player_name>`] or a full
-    // selector: [`@e[<selector>]`, `@a[<selector>]`, `@p[<selector>]`, `@r[<selector>]`]
-    // the selectors can have spaces in them, so we need to be careful
+    // we want to get either a simple string [`@e`, `@a`, `@p`, `@r`,
+    // `<player_name>`] or a full selector: [`@e[<selector>]`, `@a[<selector>]`,
+    // `@p[<selector>]`, `@r[<selector>]`] the selectors can have spaces in
+    // them, so we need to be careful
     fn parse_arg(input: &mut ParseInput) -> Result<Self, CommandArgParseError> {
         input.skip_whitespace();
         let mut s = String::new();
@@ -425,9 +428,9 @@ impl CommandArg for EntitySelector {
                     return Err(CommandArgParseError::InvalidArgLength);
                 }
                 _ => {
-                    return Ok(EntitySelector::SimpleSelector(EntitySelectors::SinglePlayer(
-                        String::parse_arg(input)?,
-                    )))
+                    return Ok(EntitySelector::SimpleSelector(
+                        EntitySelectors::SinglePlayer(String::parse_arg(input)?),
+                    ))
                 }
             }
         }

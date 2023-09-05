@@ -67,29 +67,24 @@
 //!                                               │ Argument: <destination:entity> │
 //!                                               └────────────────────────────────┘
 //! ```
-//! If you want a cool graph of your own command graph you can use the display trait on the
-//! [CommandGraph] struct. Then you can use a tool like
+//! If you want a cool graph of your own command graph you can use the display
+//! trait on the [CommandGraph] struct. Then you can use a tool like
 //! [Graphviz Online](https://dreampuf.github.io/GraphvizOnline) to look at the graph.
-//!
 
-use std::collections::{HashMap};
+use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
-
-
 
 use petgraph::dot::Dot;
 use petgraph::prelude::*;
-use serde_value::Value;
 use valence_server::protocol::packets::play::command_tree_s2c::{
     Node, NodeData as PacketNodeData, Parser, StringArg, Suggestion,
 };
 use valence_server::protocol::packets::play::CommandTreeS2c;
-use valence_server::protocol::{VarInt};
-
+use valence_server::protocol::VarInt;
 
 use crate::arg_parser::{CommandArg, ParseInput};
-use crate::{CommandRegistry};
 use crate::modifier_value::ModifierValue;
+use crate::CommandRegistry;
 
 /// This struct is used to store the command graph.(see module level docs for
 /// more info)
@@ -333,6 +328,7 @@ impl From<CommandGraph> for CommandTreeS2c {
 ///
 /// the executables from these commands will both return a `TestCommand` with
 /// the value `1`
+#[allow(clippy::type_complexity)]
 pub struct CommandGraphBuilder<'a, T> {
     // We do not own the graph, we just have a mutable reference to it
     graph: &'a mut CommandGraph,
@@ -348,11 +344,15 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
     /// # Arguments
     /// * registry - the command registry to add the commands to
     /// * executables - the map of node indices to executable parser functions
+    #[allow(clippy::type_complexity)]
     pub fn new(
         registry: &'a mut CommandRegistry,
         executables: &'a mut HashMap<NodeIndex, fn(&mut ParseInput) -> T>,
         parsers: &'a mut HashMap<NodeIndex, fn(&mut ParseInput) -> bool>,
-        modifiers: &'a mut HashMap<NodeIndex, fn(String, &mut HashMap<ModifierValue, ModifierValue>)>,
+        modifiers: &'a mut HashMap<
+            NodeIndex,
+            fn(String, &mut HashMap<ModifierValue, ModifierValue>),
+        >,
     ) -> Self {
         CommandGraphBuilder {
             current_node: registry.graph.root,
@@ -437,8 +437,12 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
     /// let mut executable_map = HashMap::new();
     /// let mut parser_map = HashMap::new();
     /// let mut modifier_map = HashMap::new();
-    /// let mut command_graph_builder =
-    ///     CommandGraphBuilder::<TestCommand>::new(&mut command_graph, &mut executable_map, &mut parser_map, &mut modifier_map);
+    /// let mut command_graph_builder = CommandGraphBuilder::<TestCommand>::new(
+    ///     &mut command_graph,
+    ///     &mut executable_map,
+    ///     &mut parser_map,
+    ///     &mut modifier_map,
+    /// );
     ///
     /// let simple_command = command_graph_builder
     ///   .root() // transition to the root node
@@ -512,7 +516,10 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
     ///     .literal("command") // add a literal node then transition to it
     ///     .with_executable(|_| TestCommand);
     /// ```
-    pub fn with_modifier(&mut self, modifier: fn(String, &mut HashMap<ModifierValue, ModifierValue>)) -> &mut Self {
+    pub fn with_modifier(
+        &mut self,
+        modifier: fn(String, &mut HashMap<ModifierValue, ModifierValue>),
+    ) -> &mut Self {
         let current_node = &mut self.current_node;
 
         self.modifiers.insert(*current_node, modifier);
@@ -545,14 +552,13 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
     ///
     /// # Type Parameters
     /// * `P` - the parser to use for the current node (must be [CommandArg])
-    pub fn with_parser<P:CommandArg>(&mut self) -> &mut Self {
+    pub fn with_parser<P: CommandArg>(&mut self) -> &mut Self {
         let graph = &mut self.graph.graph;
         let current_node = self.current_node;
 
         let node = graph.node_weight_mut(current_node).unwrap();
-        self.parsers.insert(current_node,|input| {
-            P::parse_arg(input).is_ok()
-        });
+        self.parsers
+            .insert(current_node, |input| P::parse_arg(input).is_ok());
 
         let parser = P::display();
 

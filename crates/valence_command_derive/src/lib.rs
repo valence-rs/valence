@@ -1,10 +1,7 @@
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, TokenTree};
 use quote::{format_ident, quote};
-
-use syn::{
-    parse_macro_input, Attribute, Data, DeriveInput, Expr, Fields, Meta,
-};
+use syn::{parse_macro_input, Attribute, Data, DeriveInput, Expr, Fields, Meta};
 
 #[proc_macro_derive(Command, attributes(command, scopes, paths))]
 pub fn derive_command(a_input: TokenStream) -> TokenStream {
@@ -167,7 +164,7 @@ fn process_paths(
         }
 
         let path = path.0;
-        
+
         let mut final_executable = Vec::new();
         for (i, arg) in path.iter().enumerate() {
             match arg {
@@ -322,7 +319,10 @@ fn parse_path(path: &Attribute) -> Option<Vec<(Vec<CommandArg>, bool)>> {
         let mut args = Vec::new();
         let at_root = path_str.starts_with("{/}");
 
-        for word in path_str.split_whitespace().skip(if at_root { 1 } else { 0 }) {
+        for word in path_str
+            .split_whitespace()
+            .skip(if at_root { 1 } else { 0 })
+        {
             if word.starts_with('{') && word.ends_with('}') {
                 if word.ends_with("?}") {
                     args.push(CommandArg::Optional(format_ident!(

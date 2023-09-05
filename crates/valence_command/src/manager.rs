@@ -1,21 +1,26 @@
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
+
 use bevy_app::{App, Plugin, PreUpdate, Update};
 use bevy_ecs::entity::Entity;
-use bevy_ecs::prelude::{Added, Commands, EventReader, EventWriter, IntoSystemConfigs, Or, Query, Res};
+use bevy_ecs::prelude::{
+    Added, Commands, EventReader, EventWriter, IntoSystemConfigs, Or, Query, Res,
+};
 use bevy_ecs::query::Changed;
-use petgraph::Graph;
 use petgraph::graph::NodeIndex;
+use petgraph::Graph;
 use valence_server::client::{Client, SpawnClientsSet};
 use valence_server::event_loop::PacketEvent;
 use valence_server::protocol::packets::play::{CommandExecutionC2s, CommandTreeS2c};
-use valence_server::protocol::packets::play::command_suggestions_s2c::CommandSuggestionsMatch;
 use valence_server::protocol::WritePacket;
 
+use crate::arg_parser::ParseInput;
 use crate::command_graph::{CommandEdgeType, CommandGraph, CommandNode, NodeData};
 use crate::command_scopes::CommandScopes;
-use crate::{CommandExecutionEvent, CommandProcessedEvent, CommandRegistry, CommandScopeRegistry};
-use crate::arg_parser::ParseInput;
+use crate::{
+    CommandExecutionEvent, CommandProcessedEvent, CommandRegistry, CommandScopeRegistry,
+    CommandSystemSet,
+};
 
 pub struct CommandManagerPlugin;
 
@@ -24,17 +29,29 @@ impl Plugin for CommandManagerPlugin {
         app.add_event::<CommandExecutionEvent>()
             .add_event::<CommandProcessedEvent>()
             .add_systems(
-            PreUpdate,
-            insert_permissions_component.after(SpawnClientsSet),
-        )
-        .add_systems(Update, (update_command_tree, read_incoming_packets, parse_incoming_commands));
+                PreUpdate,
+                insert_permissions_component.after(SpawnClientsSet),
+            )
+            .add_systems(
+                Update,
+                (
+                    update_command_tree,
+                    read_incoming_packets.before(CommandSystemSet::Update),
+                    parse_incoming_commands.in_set(CommandSystemSet::Update),
+                ),
+            );
 
         let graph: CommandGraph = CommandGraph::new();
         let modifiers = HashMap::new();
         let parsers = HashMap::new();
         let executables = HashSet::new();
 
-        app.insert_resource(CommandRegistry { graph, modifiers, parsers, executables });
+        app.insert_resource(CommandRegistry {
+            graph,
+            modifiers,
+            parsers,
+            executables,
+        });
 
         app.insert_resource(CommandScopeRegistry::new());
     }
@@ -50,7 +67,10 @@ pub fn insert_permissions_component(
     }
 }
 
-pub fn read_incoming_packets(mut packets: EventReader<PacketEvent>, mut event_writer: EventWriter<CommandExecutionEvent>) {
+pub fn read_incoming_packets(
+    mut packets: EventReader<PacketEvent>,
+    mut event_writer: EventWriter<CommandExecutionEvent>,
+) {
     for packet in packets.iter() {
         let client = packet.client;
         if let Some(packet) = packet.decode::<CommandExecutionC2s>() {
@@ -84,9 +104,7 @@ pub fn update_command_tree(
                 continue;
             }
             for permission in node_scopes.iter() {
-                if !premission_registry
-                    .any_grants(&client_permissions.scopes, permission)
-                {
+                if !premission_registry.any_grants(&client_permissions.scopes, permission) {
                     // this should be enough to remove the node and all of its children (when it
                     // gets converted into a packet)
                     nodes_to_remove.push(node);
@@ -110,59 +128,63 @@ fn parse_incoming_commands(
     mut event_writer: EventWriter<CommandProcessedEvent>,
     command_registry: Res<CommandRegistry>,
     scope_registry: Res<CommandScopeRegistry>,
-    entity_scopes: Query<&CommandScopes>
+    entity_scopes: Query<&CommandScopes>,
 ) {
-        for command_event in event_reader.iter() {
-            let timer = Instant::now();
-            let executor = command_event.executor;
-            println!("Received command: {:?}", command_event);
-            // theese are the leafs of the graph that are executable under this command group
-            let executable_leafs = command_registry.executables.iter().collect::<Vec<&NodeIndex>>();
-            println!("Executable leafs: {:?}", executable_leafs);
-            let root = command_registry.graph.root;
+    for command_event in event_reader.iter() {
+        let timer = Instant::now();
+        let executor = command_event.executor;
+        println!("Received command: {:?}", command_event);
+        // theese are the leafs of the graph that are executable under this command
+        // group
+        let executable_leafs = command_registry
+            .executables
+            .iter()
+            .collect::<Vec<&NodeIndex>>();
+        println!("Executable leafs: {:?}", executable_leafs);
+        let root = command_registry.graph.root;
 
-            let command_input = &command_event.command;
-            let graph = &command_registry.graph.graph;
-            let mut input = ParseInput::new(command_input);
+        let command_input = &command_event.command;
+        let graph = &command_registry.graph.graph;
+        let mut input = ParseInput::new(command_input);
 
-            let mut to_be_executed = Vec::new();
+        let mut to_be_executed = Vec::new();
 
-            let mut args = Vec::new();
-            let mut modifiers_to_be_executed = Vec::new();
+        let mut args = Vec::new();
+        let mut modifiers_to_be_executed = Vec::new();
 
-            parse_command_args(
-                &mut args,
-                &mut modifiers_to_be_executed,
-                &mut input,
-                graph,
-                &executable_leafs,
-                command_registry.as_ref(),
-                &mut to_be_executed,
-                root,
-                executor,
-                &entity_scopes,
-                scope_registry.as_ref(),
-                false,
-            );
+        parse_command_args(
+            &mut args,
+            &mut modifiers_to_be_executed,
+            &mut input,
+            graph,
+            &executable_leafs,
+            command_registry.as_ref(),
+            &mut to_be_executed,
+            root,
+            executor,
+            &entity_scopes,
+            scope_registry.as_ref(),
+            false,
+        );
 
-            let mut modifiers = HashMap::new();
-            for (node, modifier) in modifiers_to_be_executed {
-                println!("Executing modifier with data: {:?}", modifier);
-                command_registry.modifiers.get(&node).unwrap()(modifier, &mut modifiers);
-            }
-
-            for node in to_be_executed {
-                println!("Executing command with data: {:?}", args);
-                event_writer.send(CommandProcessedEvent {
-                    command: args.join(" "),
-                    executor,
-                    modifiers: modifiers.clone(),
-                    node,
-                });
-            }
-
-            println!("Command processed in: {:?}", timer.elapsed());
+        let mut modifiers = HashMap::new();
+        for (node, modifier) in modifiers_to_be_executed {
+            println!("Executing modifier with data: {:?}", modifier);
+            command_registry.modifiers.get(&node).unwrap()(modifier, &mut modifiers);
         }
+
+        for node in to_be_executed {
+            println!("Executing command with data: {:?}", args);
+            event_writer.send(CommandProcessedEvent {
+                command: args.join(" "),
+                executor,
+                modifiers: modifiers.clone(),
+                node,
+            });
+        }
+
+        println!("Command processed in: {:?}", timer.elapsed());
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -223,7 +245,6 @@ fn parse_command_args(
             }
             // if the node is an argument, we want to parse the argument
             NodeData::Argument { .. } => {
-
                 let parser = match command_registry.parsers.get(&curent_node) {
                     Some(parser) => parser,
                     None => {
@@ -238,7 +259,10 @@ fn parse_command_args(
                 if valid {
                     command_args.push(input.input[before_cursor..after_cursor].to_string());
                     if command_registry.modifiers.contains_key(&curent_node) {
-                        modifiers_to_be_executed.push((curent_node, input.input[before_cursor..after_cursor].to_string()));
+                        modifiers_to_be_executed.push((
+                            curent_node,
+                            input.input[before_cursor..after_cursor].to_string(),
+                        ));
                     }
                 } else {
                     return false;
@@ -277,12 +301,7 @@ fn parse_command_args(
             scope_registry,
             {
                 let edge = graph.find_edge(curent_node, neighbor).unwrap();
-                match &graph[edge] {
-                    CommandEdgeType::Redirect => {
-                        true
-                    }
-                    _ => false,
-                }
+                matches!(&graph[edge], CommandEdgeType::Redirect)
             },
         );
         if valid {
