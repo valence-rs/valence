@@ -7,36 +7,28 @@ use super::{Error, Result};
 use crate::tag::Tag;
 use crate::{Compound, List, Value};
 
-impl Compound {
-    /// Decodes uncompressed NBT binary data from the provided slice.
-    ///
-    /// The string returned in the tuple is the name of the root compound
-    /// (typically the empty string).
-    pub fn from_binary(slice: &mut &[u8]) -> Result<(Self, String)> {
-        let mut state = DecodeState { slice, depth: 0 };
+/// Decodes uncompressed NBT binary data from the provided slice.
+///
+/// The string returned in the tuple is the name of the root compound
+/// (typically the empty string).
+pub fn from_binary(slice: &mut &[u8]) -> Result<(Compound, String)> {
+    let mut state = DecodeState { slice, depth: 0 };
 
-        let root_tag = state.read_tag()?;
+    let root_tag = state.read_tag()?;
 
-        // For cases such as Block Entity Data in the chunk packet.
-        // https://wiki.vg/Protocol#Chunk_Data_and_Update_Light
-        if root_tag == Tag::End {
-            return Ok((Compound::new(), String::new()));
-        }
-
-        if root_tag != Tag::Compound {
-            return Err(Error::new_owned(format!(
-                "expected root tag for compound (got {})",
-                root_tag.name(),
-            )));
-        }
-
-        let root_name = state.read_string()?;
-        let root = state.read_compound()?;
-
-        debug_assert_eq!(state.depth, 0);
-
-        Ok((root, root_name))
+    if root_tag != Tag::Compound {
+        return Err(Error::new_owned(format!(
+            "expected root tag for compound (got {})",
+            root_tag.name(),
+        )));
     }
+
+    let root_name = state.read_string()?;
+    let root = state.read_compound()?;
+
+    debug_assert_eq!(state.depth, 0);
+
+    Ok((root, root_name))    
 }
 
 /// Maximum recursion depth to prevent overflowing the call stack.

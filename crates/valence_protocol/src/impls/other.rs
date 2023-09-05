@@ -44,7 +44,7 @@ impl<'a> Decode<'a> for Uuid {
 
 impl Encode for Compound {
     fn encode(&self, w: impl Write) -> anyhow::Result<()> {
-        Ok(self.to_binary(w, "")?)
+        Ok(valence_nbt::to_binary(self, w, "")?)
     }
 }
 
@@ -52,7 +52,7 @@ impl Decode<'_> for Compound {
     fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         // TODO: Bound the input slice or do something else to prevent this from eating
         // too much memory.
-        Ok(Self::from_binary(r)?.0)
+        Ok(valence_nbt::from_binary(r)?.0)
     }
 }
 

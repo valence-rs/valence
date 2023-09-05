@@ -7,82 +7,80 @@ use crate::conv::i8_slice_as_u8_slice;
 use crate::tag::Tag;
 use crate::{Compound, List, Value};
 
-impl Compound {
-    /// Encodes uncompressed NBT binary data to the provided writer.
-    ///
-    /// Only compounds are permitted at the top level. This is why the function
-    /// accepts a [`Compound`] reference rather than a [`Value`].
-    ///
-    /// Additionally, the root compound can be given a name. Typically the empty
-    /// string `""` is used.
-    pub fn to_binary<W: Write>(&self, writer: W, root_name: &str) -> Result<()> {
-        let mut state = EncodeState { writer };
+/// Encodes uncompressed NBT binary data to the provided writer.
+///
+/// Only compounds are permitted at the top level. This is why the function
+/// accepts a [`Compound`] reference rather than a [`Value`].
+///
+/// Additionally, the root compound can be given a name. Typically the empty
+/// string `""` is used.
+pub fn to_binary<W: Write>(comp: &Compound, writer: W, root_name: &str) -> Result<()> {
+    let mut state = EncodeState { writer };
 
-        state.write_tag(Tag::Compound)?;
-        state.write_string(root_name)?;
-        state.write_compound(self)?;
+    state.write_tag(Tag::Compound)?;
+    state.write_string(root_name)?;
+    state.write_compound(comp)?;
 
-        Ok(())
+    Ok(())
+}
+
+/// Returns the number of bytes that will be written when
+/// [`Compound::to_binary`] is called with this compound and root name.
+///
+/// If `to_binary` results in `Ok`, the exact number of bytes
+/// reported by this function will have been written. If the result is
+/// `Err`, then the reported count will be greater than or equal to the
+/// number of bytes that have actually been written.
+pub fn written_size(comp: &Compound, root_name: &str) -> usize {
+    fn value_size(val: &Value) -> usize {
+        match val {
+            Value::Byte(_) => 1,
+            Value::Short(_) => 2,
+            Value::Int(_) => 4,
+            Value::Long(_) => 8,
+            Value::Float(_) => 4,
+            Value::Double(_) => 8,
+            Value::ByteArray(v) => 4 + v.len(),
+            Value::String(v) => string_size(v),
+            Value::List(v) => list_size(v),
+            Value::Compound(v) => compound_size(v),
+            Value::IntArray(v) => 4 + v.len() * 4,
+            Value::LongArray(v) => 4 + v.len() * 8,
+        }
     }
 
-    /// Returns the number of bytes that will be written when
-    /// [`Compound::to_binary`] is called with this compound and root name.
-    ///
-    /// If `to_binary` results in `Ok`, the exact number of bytes
-    /// reported by this function will have been written. If the result is
-    /// `Err`, then the reported count will be greater than or equal to the
-    /// number of bytes that have actually been written.
-    pub fn written_size(&self, root_name: &str) -> usize {
-        fn value_size(val: &Value) -> usize {
-            match val {
-                Value::Byte(_) => 1,
-                Value::Short(_) => 2,
-                Value::Int(_) => 4,
-                Value::Long(_) => 8,
-                Value::Float(_) => 4,
-                Value::Double(_) => 8,
-                Value::ByteArray(v) => 4 + v.len(),
-                Value::String(v) => string_size(v),
-                Value::List(v) => list_size(v),
-                Value::Compound(v) => compound_size(v),
-                Value::IntArray(v) => 4 + v.len() * 4,
-                Value::LongArray(v) => 4 + v.len() * 8,
-            }
-        }
+    fn list_size(l: &List) -> usize {
+        let elems_size = match l {
+            List::End => 0,
+            List::Byte(v) => v.len(),
+            List::Short(v) => v.len() * 2,
+            List::Int(v) => v.len() * 4,
+            List::Long(v) => v.len() * 8,
+            List::Float(v) => v.len() * 4,
+            List::Double(v) => v.len() * 8,
+            List::ByteArray(v) => v.iter().map(|b| 4 + b.len()).sum(),
+            List::String(v) => v.iter().map(|s| string_size(s)).sum(),
+            List::List(v) => v.iter().map(list_size).sum(),
+            List::Compound(v) => v.iter().map(compound_size).sum(),
+            List::IntArray(v) => v.iter().map(|i| 4 + i.len() * 4).sum(),
+            List::LongArray(v) => v.iter().map(|l| 4 + l.len() * 8).sum(),
+        };
 
-        fn list_size(l: &List) -> usize {
-            let elems_size = match l {
-                List::End => 0,
-                List::Byte(v) => v.len(),
-                List::Short(v) => v.len() * 2,
-                List::Int(v) => v.len() * 4,
-                List::Long(v) => v.len() * 8,
-                List::Float(v) => v.len() * 4,
-                List::Double(v) => v.len() * 8,
-                List::ByteArray(v) => v.iter().map(|b| 4 + b.len()).sum(),
-                List::String(v) => v.iter().map(|s| string_size(s)).sum(),
-                List::List(v) => v.iter().map(list_size).sum(),
-                List::Compound(v) => v.iter().map(compound_size).sum(),
-                List::IntArray(v) => v.iter().map(|i| 4 + i.len() * 4).sum(),
-                List::LongArray(v) => v.iter().map(|l| 4 + l.len() * 8).sum(),
-            };
-
-            1 + 4 + elems_size
-        }
-
-        fn string_size(s: &str) -> usize {
-            2 + modified_utf8::encoded_len(s)
-        }
-
-        fn compound_size(c: &Compound) -> usize {
-            c.iter()
-                .map(|(k, v)| 1 + string_size(k) + value_size(v))
-                .sum::<usize>()
-                + 1
-        }
-
-        1 + string_size(root_name) + compound_size(self)
+        1 + 4 + elems_size
     }
+
+    fn string_size(s: &str) -> usize {
+        2 + modified_utf8::encoded_len(s)
+    }
+
+    fn compound_size(c: &Compound) -> usize {
+        c.iter()
+            .map(|(k, v)| 1 + string_size(k) + value_size(v))
+            .sum::<usize>()
+            + 1
+    }
+
+    1 + string_size(root_name) + compound_size(comp)
 }
 
 struct EncodeState<W> {
@@ -224,8 +222,9 @@ impl<W: Write> EncodeState<W> {
             Ok(len) => self.writer.write_i32::<BigEndian>(len)?,
             Err(_) => {
                 return Err(Error::new_owned(format!(
-                    "{elem_type} list of length {} exceeds maximum of i32::MAX",
+                    "{} list of length {} exceeds maximum of i32::MAX",
                     list.len(),
+                    elem_type.name()
                 )))
             }
         }

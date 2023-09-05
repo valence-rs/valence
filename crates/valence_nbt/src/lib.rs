@@ -17,6 +17,8 @@
     clippy::dbg_macro
 )]
 
+#[cfg(feature = "binary")]
+pub use binary::{from_binary, to_binary};
 pub use compound::Compound;
 pub use list::List;
 pub use tag::Tag;

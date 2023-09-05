@@ -52,7 +52,7 @@ impl RegistryCodec {
 impl Default for RegistryCodec {
     fn default() -> Self {
         let codec = include_bytes!("../extracted/registry_codec.dat");
-        let compound = Compound::from_binary(&mut codec.as_slice())
+        let compound = valence_nbt::from_binary(&mut codec.as_slice())
             .expect("failed to decode vanilla registry codec")
             .0;
 

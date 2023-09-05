@@ -10,6 +10,7 @@
 //! with zero-cost and no `unsafe` code on your part.
 //!
 //! [`Value`]: crate::Value
+//! [`Value::ByteArray`]: crate::Value::ByteArray
 //! [`Write::write_all`]: std::io::Write::write_all
 
 use std::mem::ManuallyDrop;
