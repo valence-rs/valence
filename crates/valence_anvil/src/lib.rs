@@ -17,441 +17,724 @@
     clippy::dbg_macro
 )]
 
-use std::collections::hash_map::Entry;
-use std::collections::{BTreeMap, HashMap, HashSet};
-use std::fs::File;
-use std::io::{ErrorKind, Read, Seek, SeekFrom};
+use std::fs::{DirEntry, File};
+use std::io::{Cursor, ErrorKind, Read, Seek, SeekFrom, Write};
 use std::num::NonZeroUsize;
-use std::path::PathBuf;
-use std::thread;
+use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 
-use bevy_app::prelude::*;
-use bevy_ecs::prelude::*;
-use byteorder::{BigEndian, ReadBytesExt};
+#[cfg(feature = "bevy_plugin")]
+pub use bevy::*;
+use bitfield_struct::bitfield;
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use flate2::bufread::{GzDecoder, ZlibDecoder};
-use flume::{Receiver, Sender};
+use flate2::write::{GzEncoder, ZlibEncoder};
 use lru::LruCache;
-use tracing::warn;
-use valence_server::client::{Client, OldView, View};
-use valence_server::entity::{EntityLayerId, OldEntityLayerId};
-use valence_server::layer::chunk::UnloadedChunk;
-use valence_server::layer::UpdateLayersPreClientSet;
-use valence_server::nbt::Compound;
-use valence_server::protocol::anyhow::{bail, ensure};
-use valence_server::protocol::{anyhow, ChunkPos};
-use valence_server::registry::biome::BiomeId;
-use valence_server::registry::BiomeRegistry;
-use valence_server::{ChunkLayer, Ident};
+use thiserror::Error;
+use valence_nbt::Compound;
 
-mod parse_chunk;
-
-#[derive(Component, Debug)]
-pub struct AnvilLevel {
-    /// Chunk worker state to be moved to another thread.
-    worker_state: Option<ChunkWorkerState>,
-    /// The set of chunk positions that should not be loaded or unloaded by
-    /// the anvil system.
-    ///
-    /// This set is empty by default, but you can modify it at any time.
-    pub ignored_chunks: HashSet<ChunkPos>,
-    /// Chunks that need to be loaded. Chunks with `None` priority have already
-    /// been sent to the anvil thread.
-    pending: HashMap<ChunkPos, Option<Priority>>,
-    /// Sender for the chunk worker thread.
-    sender: Sender<ChunkPos>,
-    /// Receiver for the chunk worker thread.
-    receiver: Receiver<(ChunkPos, WorkerResult)>,
-}
-
-type WorkerResult = anyhow::Result<Option<(UnloadedChunk, u32)>>;
-
-impl AnvilLevel {
-    pub fn new(world_root: impl Into<PathBuf>, biomes: &BiomeRegistry) -> Self {
-        let mut region_root = world_root.into();
-        region_root.push("region");
-
-        let (pending_sender, pending_receiver) = flume::unbounded();
-        let (finished_sender, finished_receiver) = flume::bounded(4096);
-
-        Self {
-            worker_state: Some(ChunkWorkerState {
-                regions: LruCache::new(LRU_CACHE_SIZE),
-                region_root,
-                sender: finished_sender,
-                receiver: pending_receiver,
-                decompress_buf: vec![],
-                biome_to_id: biomes
-                    .iter()
-                    .map(|(id, name, _)| (name.to_string_ident(), id))
-                    .collect(),
-            }),
-            ignored_chunks: HashSet::new(),
-            pending: HashMap::new(),
-            sender: pending_sender,
-            receiver: finished_receiver,
-        }
-    }
-
-    /// Forces a chunk to be loaded at a specific position in this world. This
-    /// will bypass [`AnvilLevel::ignored_chunks`].
-    /// Note that the chunk will be unloaded next tick unless it has been added
-    /// to [`AnvilLevel::ignored_chunks`] or it is in view of a client.
-    ///
-    /// This has no effect if a chunk at the position is already present.
-    pub fn force_chunk_load(&mut self, pos: ChunkPos) {
-        match self.pending.entry(pos) {
-            Entry::Occupied(oe) => {
-                // If the chunk is already scheduled to load but hasn't been sent to the chunk
-                // worker yet, then give it the highest priority.
-                if let Some(priority) = oe.into_mut() {
-                    *priority = 0;
-                }
-            }
-            Entry::Vacant(ve) => {
-                ve.insert(Some(0));
-            }
-        }
-    }
-}
+#[cfg(feature = "bevy_plugin")]
+mod bevy;
+#[cfg(feature = "parsing")]
+pub mod parsing;
 
 const LRU_CACHE_SIZE: NonZeroUsize = match NonZeroUsize::new(256) {
     Some(n) => n,
     None => unreachable!(),
 };
 
-/// The order in which chunks should be processed by the anvil worker. Smaller
-/// values are sent first.
-type Priority = u64;
+#[derive(Debug, Error)]
+#[non_exhaustive]
+pub enum RegionError {
+    #[error("an I/O error occurred: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("failed to convert OsString")]
+    OsStringConv,
+    #[error("chunk is allocated, but stream is missing")]
+    MissingChunkStream,
+    #[error("invalid chunk sector offset")]
+    InvalidChunkSectorOffset,
+    #[error("invalid chunk size")]
+    InvalidChunkSize,
+    #[error("invalid compression scheme number of {0}")]
+    InvalidCompressionScheme(u8),
+    #[error("failed to parse NBT: {0}")]
+    Nbt(#[from] valence_nbt::binary::Error),
+    #[error("not all chunk NBT data was read")]
+    TrailingNbtData,
+    #[error("oversized chunk")]
+    OversizedChunk,
+}
+
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[repr(u8)]
+#[non_exhaustive]
+pub enum Compression {
+    Gzip = 1,
+    #[default]
+    Zlib = 2,
+    None = 3,
+}
+
+impl Compression {
+    fn from_u8(compression: u8) -> Option<Compression> {
+        match compression {
+            1 => Some(Compression::Gzip),
+            2 => Some(Compression::Zlib),
+            3 => Some(Compression::None),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, Default)]
+#[non_exhaustive]
+pub struct WriteOptions {
+    /// Set the compression method used to write chunks. This can be useful to
+    /// change in order to write anvil files compatible with older Minecraft
+    /// versions.
+    pub compression: Compression,
+
+    /// Set whether to skip writing oversized chunks (>1MiB after compression).
+    /// Versions older than 1.15 (19w36a) cannot read oversized chunks, so this
+    /// may be useful for writing region files compatible with those
+    /// versions.
+    pub skip_oversized_chunks: bool,
+}
 
 #[derive(Debug)]
-struct ChunkWorkerState {
+pub struct RegionFolder {
     /// Region files. An LRU cache is used to limit the number of open file
     /// handles.
     regions: LruCache<RegionPos, RegionEntry>,
-    /// Path to the "region" subdirectory in the world root.
+    /// Path to the directory containing the region files and chunk files.
     region_root: PathBuf,
-    /// Sender of finished chunks.
-    sender: Sender<(ChunkPos, WorkerResult)>,
-    /// Receiver of pending chunks.
-    receiver: Receiver<ChunkPos>,
-    /// Scratch buffer for decompression.
-    decompress_buf: Vec<u8>,
-    /// Mapping of biome names to their biome ID.
-    biome_to_id: BTreeMap<Ident<String>, BiomeId>,
+    /// Scratch buffer for (de)compression.
+    compression_buf: Vec<u8>,
+    /// Options to use for writing the chunk.
+    pub write_options: WriteOptions,
 }
 
-impl ChunkWorkerState {
-    fn get_chunk(&mut self, pos: ChunkPos) -> anyhow::Result<Option<AnvilChunk>> {
-        let region_x = pos.x.div_euclid(32);
-        let region_z = pos.z.div_euclid(32);
+impl RegionFolder {
+    pub fn new(region_root: impl Into<PathBuf>) -> Self {
+        Self {
+            regions: LruCache::new(LRU_CACHE_SIZE),
+            region_root: region_root.into(),
+            compression_buf: Vec::new(),
+            write_options: WriteOptions::default(),
+        }
+    }
 
-        let region = match self.regions.get_mut(&(region_x, region_z)) {
-            Some(RegionEntry::Occupied(region)) => region,
-            Some(RegionEntry::Vacant) => return Ok(None),
+    fn region<'a>(
+        regions: &'a mut LruCache<RegionPos, RegionEntry>,
+        region_root: &Path,
+        region_x: i32,
+        region_z: i32,
+    ) -> Result<Option<&'a mut Region>, RegionError> {
+        // Need to double get the entry from the cache to make the borrow checker happy.
+        // Polonius will fix this eventually.
+        if regions.get_mut(&(region_x, region_z)).is_some() {
+            match regions.get_mut(&(region_x, region_z)) {
+                Some(RegionEntry::Occupied(region)) => return Ok(Some(region)),
+                Some(RegionEntry::Vacant) => return Ok(None),
+                None => unreachable!(),
+            }
+        }
+
+        let path = region_root.join(format!("r.{region_x}.{region_z}.mca"));
+
+        let file = match File::options().read(true).write(true).open(path) {
+            Ok(file) => file,
+            Err(e) if e.kind() == ErrorKind::NotFound => {
+                regions.put((region_x, region_z), RegionEntry::Vacant);
+                return Ok(None);
+            }
+            Err(e) => return Err(e.into()),
+        };
+
+        // TODO: this is ugly.
+        // TODO: try_get_or_insert_mut
+        regions.try_get_or_insert((region_x, region_z), || {
+            Region::open(file).map(|region| RegionEntry::Occupied(Box::new(region)))
+        })?;
+        let Some(RegionEntry::Occupied(res)) = regions.get_mut(&(region_x, region_z)) else {
+            unreachable!()
+        };
+        Ok(Some(res))
+    }
+
+    /// Gets the raw chunk at the given chunk position.
+    ///
+    /// Returns `Ok(Some(chunk))` if the chunk exists and no errors occurred
+    /// loading it. Returns `Ok(None)` if the chunk does not exist and no
+    /// errors occurred attempting to load it. Returns `Err(_)` if an error
+    /// occurred attempting to load the chunk.
+    pub fn get_chunk(&mut self, pos_x: i32, pos_z: i32) -> Result<Option<RawChunk>, RegionError> {
+        let region_x = pos_x.div_euclid(32);
+        let region_z = pos_z.div_euclid(32);
+
+        let Some(region) = Self::region(&mut self.regions, &self.region_root, region_x, region_z)?
+        else {
+            return Ok(None);
+        };
+
+        region.get_chunk(pos_x, pos_z, &mut self.compression_buf, &self.region_root)
+    }
+
+    /// Deletes the chunk at the given chunk position, returning whether the
+    /// chunk existed before it was deleted.
+    ///
+    /// Note that this only marks the chunk as deleted so that it cannot be
+    /// retrieved, and can be overwritten by other chunks later. It does not
+    /// decrease the size of the region file.
+    pub fn delete_chunk(&mut self, pos_x: i32, pos_z: i32) -> Result<bool, RegionError> {
+        let region_x = pos_x.div_euclid(32);
+        let region_z = pos_z.div_euclid(32);
+
+        let Some(region) = Self::region(&mut self.regions, &self.region_root, region_x, region_z)?
+        else {
+            return Ok(false);
+        };
+
+        region.delete_chunk(pos_x, pos_z, true, &self.region_root)
+    }
+
+    /// Sets the raw chunk at the given position, overwriting the old chunk if
+    /// it exists.
+    pub fn set_chunk(
+        &mut self,
+        pos_x: i32,
+        pos_z: i32,
+        chunk: &Compound,
+    ) -> Result<(), RegionError> {
+        let region_x = pos_x.div_euclid(32);
+        let region_z = pos_z.div_euclid(32);
+
+        let region = match Self::region(&mut self.regions, &self.region_root, region_x, region_z)? {
+            Some(region) => region,
             None => {
                 let path = self
                     .region_root
                     .join(format!("r.{region_x}.{region_z}.mca"));
 
-                let mut file = match File::options().read(true).write(true).open(path) {
-                    Ok(file) => file,
-                    Err(e) if e.kind() == ErrorKind::NotFound => {
-                        self.regions.put((region_x, region_z), RegionEntry::Vacant);
-                        return Ok(None);
-                    }
-                    Err(e) => return Err(e.into()),
+                let file = File::options()
+                    .read(true)
+                    .write(true)
+                    .create(true)
+                    .open(path)?;
+
+                // TODO: try_get_or_insert_mut
+                self.regions.put(
+                    (region_x, region_z),
+                    RegionEntry::Occupied(Box::new(Region::create(file)?)),
+                );
+                let Some(RegionEntry::Occupied(region)) =
+                    self.regions.get_mut(&(region_x, region_z))
+                else {
+                    unreachable!()
                 };
-
-                let mut header = [0; SECTOR_SIZE * 2];
-
-                file.read_exact(&mut header)?;
-
-                // TODO: this is ugly.
-                let res = self.regions.get_or_insert_mut((region_x, region_z), || {
-                    RegionEntry::Occupied(Region { file, header })
-                });
-
-                match res {
-                    RegionEntry::Occupied(r) => r,
-                    RegionEntry::Vacant => unreachable!(),
-                }
+                region
             }
         };
 
-        let chunk_idx = (pos.x.rem_euclid(32) + pos.z.rem_euclid(32) * 32) as usize;
+        region.set_chunk(
+            pos_x,
+            pos_z,
+            chunk,
+            self.write_options,
+            &mut self.compression_buf,
+            &self.region_root,
+        )
+    }
 
-        let location_bytes = (&region.header[chunk_idx * 4..]).read_u32::<BigEndian>()?;
-        let timestamp = (&region.header[chunk_idx * 4 + SECTOR_SIZE..]).read_u32::<BigEndian>()?;
+    /// Returns an iterator over all existing chunks in all regions.
+    pub fn all_chunk_positions(
+        &mut self,
+    ) -> Result<impl Iterator<Item = Result<(i32, i32), RegionError>> + '_, RegionError> {
+        fn extract_region_coordinates(
+            file: std::io::Result<DirEntry>,
+        ) -> Result<Option<(i32, i32)>, RegionError> {
+            let file = file?;
 
-        if location_bytes == 0 {
-            // No chunk exists at this position.
-            return Ok(None);
+            if !file.file_type()?.is_file() {
+                return Ok(None);
+            }
+
+            let file_name = file
+                .file_name()
+                .into_string()
+                .map_err(|_| RegionError::OsStringConv)?;
+
+            // read the file name as r.x.z.mca
+            let mut split = file_name.splitn(4, '.');
+            if split.next() != Some("r") {
+                return Ok(None);
+            }
+            let Some(Ok(x)) = split.next().map(str::parse) else {
+                return Ok(None);
+            };
+            let Some(Ok(z)) = split.next().map(str::parse) else {
+                return Ok(None);
+            };
+            if split.next() != Some("mca") {
+                return Ok(None);
+            }
+
+            Ok(Some((x, z)))
         }
 
-        let sector_offset = (location_bytes >> 8) as u64;
-        let sector_count = (location_bytes & 0xff) as usize;
+        fn region_chunks(
+            this: &mut RegionFolder,
+            pos: Result<(i32, i32), RegionError>,
+        ) -> impl Iterator<Item = Result<(i32, i32), RegionError>> {
+            let positions = match pos {
+                Ok((region_x, region_z)) => {
+                    match RegionFolder::region(
+                        &mut this.regions,
+                        &this.region_root,
+                        region_x,
+                        region_z,
+                    ) {
+                        Ok(Some(region)) => region.chunk_positions(region_x, region_z),
+                        Ok(None) => Vec::new(),
+                        Err(err) => vec![Err(err)],
+                    }
+                }
+                Err(err) => vec![Err(err)],
+            };
+            positions.into_iter()
+        }
 
-        // If the sector offset was <2, then the chunk data would be inside the region
-        // header. That doesn't make any sense.
-        ensure!(sector_offset >= 2, "invalid chunk sector offset");
-
-        // Seek to the beginning of the chunk's data.
-        region
-            .file
-            .seek(SeekFrom::Start(sector_offset * SECTOR_SIZE as u64))?;
-
-        let exact_chunk_size = region.file.read_u32::<BigEndian>()? as usize;
-
-        // size of this chunk in sectors must always be >= the exact size.
-        ensure!(
-            sector_count * SECTOR_SIZE >= exact_chunk_size,
-            "invalid chunk size"
-        );
-
-        let mut data_buf = vec![0; exact_chunk_size].into_boxed_slice();
-        region.file.read_exact(&mut data_buf)?;
-
-        let mut r = data_buf.as_ref();
-
-        self.decompress_buf.clear();
-
-        // What compression does the chunk use?
-        let mut nbt_slice = match r.read_u8()? {
-            // GZip
-            1 => {
-                let mut z = GzDecoder::new(r);
-                z.read_to_end(&mut self.decompress_buf)?;
-                self.decompress_buf.as_slice()
-            }
-            // Zlib
-            2 => {
-                let mut z = ZlibDecoder::new(r);
-                z.read_to_end(&mut self.decompress_buf)?;
-                self.decompress_buf.as_slice()
-            }
-            // Uncompressed
-            3 => r,
-            // Unknown
-            b => bail!("unknown compression scheme number of {b}"),
-        };
-
-        let (data, _) = Compound::from_binary(&mut nbt_slice)?;
-
-        ensure!(nbt_slice.is_empty(), "not all chunk NBT data was read");
-
-        Ok(Some(AnvilChunk { data, timestamp }))
+        Ok(std::fs::read_dir(&self.region_root)?
+            .filter_map(|file| extract_region_coordinates(file).transpose())
+            .flat_map(|pos| region_chunks(self, pos)))
     }
 }
 
-struct AnvilChunk {
-    data: Compound,
-    timestamp: u32,
+/// A chunk represented by the raw compound data.
+pub struct RawChunk {
+    pub data: Compound,
+    pub timestamp: u32,
 }
 
 /// X and Z positions of a region.
 type RegionPos = (i32, i32);
 
-#[allow(clippy::large_enum_variant)] // We're not moving this around.
 #[derive(Debug)]
 enum RegionEntry {
     /// There is a region file loaded here.
-    Occupied(Region),
+    Occupied(Box<Region>),
     /// There is no region file at this position. Don't try to read it from the
     /// filesystem again.
     Vacant,
 }
 
+#[bitfield(u32)]
+struct Location {
+    count: u8,
+    #[bits(24)]
+    offset: u32,
+}
+
+impl Location {
+    fn is_none(self) -> bool {
+        self.0 == 0
+    }
+
+    fn offset_and_count(self) -> (u64, usize) {
+        (self.offset() as u64, self.count() as usize)
+    }
+}
+
 #[derive(Debug)]
 struct Region {
     file: File,
-    /// The first 8 KiB in the file.
-    header: [u8; SECTOR_SIZE * 2],
+    locations: [Location; 1024],
+    timestamps: [u32; 1024],
+    used_sectors: bitvec::vec::BitVec,
+}
+
+impl Region {
+    fn create(mut file: File) -> Result<Self, RegionError> {
+        let header = [0; SECTOR_SIZE * 2];
+        file.write_all(&header)?;
+
+        Ok(Self {
+            file,
+            locations: [Location::default(); 1024],
+            timestamps: [0; 1024],
+            used_sectors: bitvec::vec::BitVec::repeat(true, 2),
+        })
+    }
+
+    fn open(mut file: File) -> Result<Self, RegionError> {
+        let mut header = [0; SECTOR_SIZE * 2];
+        file.read_exact(&mut header)?;
+
+        let locations = std::array::from_fn(|i| {
+            Location(u32::from_be_bytes(
+                header[i * 4..i * 4 + 4].try_into().unwrap(),
+            ))
+        });
+        let timestamps = std::array::from_fn(|i| {
+            u32::from_be_bytes(
+                header[i * 4 + SECTOR_SIZE..i * 4 + SECTOR_SIZE + 4]
+                    .try_into()
+                    .unwrap(),
+            )
+        });
+
+        let mut used_sectors = bitvec::vec::BitVec::new();
+        used_sectors[0..2].fill(true);
+        for location in locations {
+            if location.is_none() {
+                // No chunk exists at this position.
+                continue;
+            }
+
+            let (sector_offset, sector_count) = location.offset_and_count();
+            if sector_offset < 2 {
+                // skip locations pointing inside the header
+                continue;
+            }
+            if sector_count == 0 {
+                continue;
+            }
+            if sector_offset * SECTOR_SIZE as u64 > file.metadata()?.len() {
+                // this would go past the end of the file, which is impossible
+                continue;
+            }
+
+            Self::reserve_sectors(&mut used_sectors, sector_offset, sector_count);
+        }
+
+        Ok(Self {
+            file,
+            locations,
+            timestamps,
+            used_sectors,
+        })
+    }
+
+    fn get_chunk(
+        &mut self,
+        pos_x: i32,
+        pos_z: i32,
+        decompress_buf: &mut Vec<u8>,
+        region_root: &Path,
+    ) -> Result<Option<RawChunk>, RegionError> {
+        let chunk_idx = Self::chunk_idx(pos_x, pos_z);
+
+        let location = self.locations[chunk_idx];
+        let timestamp = self.timestamps[chunk_idx];
+
+        if location.is_none() {
+            // No chunk exists at this position.
+            return Ok(None);
+        }
+
+        let (sector_offset, sector_count) = location.offset_and_count();
+
+        // If the sector offset was <2, then the chunk data would be inside the region
+        // header. That doesn't make any sense.
+        if sector_offset < 2 {
+            return Err(RegionError::InvalidChunkSectorOffset);
+        }
+
+        // Seek to the beginning of the chunk's data.
+        self.file
+            .seek(SeekFrom::Start(sector_offset * SECTOR_SIZE as u64))?;
+
+        let exact_chunk_size = self.file.read_u32::<BigEndian>()? as usize;
+        if exact_chunk_size == 0 {
+            return Err(RegionError::MissingChunkStream);
+        }
+
+        // size of this chunk in sectors must always be >= the exact size.
+        if sector_count * SECTOR_SIZE < exact_chunk_size {
+            return Err(RegionError::InvalidChunkSize);
+        }
+
+        let mut compression = self.file.read_u8()?;
+
+        let data_buf = if Self::is_external_stream_chunk(compression) {
+            compression = Self::external_chunk_version(compression);
+            let mut external_file =
+                File::open(Self::external_chunk_file(pos_x, pos_z, region_root))?;
+            let mut buf = Vec::new();
+            external_file.read_to_end(&mut buf)?;
+            buf.into_boxed_slice()
+        } else {
+            // the size includes the version of the stream, but we have already read that
+            let mut data_buf = vec![0; exact_chunk_size - 1].into_boxed_slice();
+            self.file.read_exact(&mut data_buf)?;
+            data_buf
+        };
+
+        let r = data_buf.as_ref();
+
+        decompress_buf.clear();
+
+        // What compression does the chunk use?
+        let mut nbt_slice = match Compression::from_u8(compression) {
+            Some(Compression::Gzip) => {
+                let mut z = GzDecoder::new(r);
+                z.read_to_end(decompress_buf)?;
+                decompress_buf.as_slice()
+            }
+            Some(Compression::Zlib) => {
+                let mut z = ZlibDecoder::new(r);
+                z.read_to_end(decompress_buf)?;
+                decompress_buf.as_slice()
+            }
+            // Uncompressed
+            Some(Compression::None) => r,
+            // Unknown
+            None => return Err(RegionError::InvalidCompressionScheme(compression)),
+        };
+
+        let (data, _) = Compound::from_binary(&mut nbt_slice)?;
+
+        if !nbt_slice.is_empty() {
+            return Err(RegionError::TrailingNbtData);
+        }
+
+        Ok(Some(RawChunk { data, timestamp }))
+    }
+
+    fn delete_chunk(
+        &mut self,
+        pos_x: i32,
+        pos_z: i32,
+        delete_on_disk: bool,
+        region_root: &Path,
+    ) -> Result<bool, RegionError> {
+        let chunk_idx = Self::chunk_idx(pos_x, pos_z);
+
+        let location = self.locations[chunk_idx];
+        if location.is_none() {
+            // chunk already missing, nothing to delete
+            return Ok(false);
+        }
+
+        if delete_on_disk {
+            self.file.seek(SeekFrom::Start(chunk_idx as u64 * 4))?;
+            self.file.write_u32::<BigEndian>(0)?;
+
+            Self::delete_external_chunk_file(pos_x, pos_z, region_root)?;
+        }
+
+        let (sector_offset, sector_count) = location.offset_and_count();
+        if sector_offset >= 2 {
+            let start_index = sector_offset as usize;
+            let end_index = start_index + sector_count;
+            let len = self.used_sectors.len();
+            self.used_sectors[start_index.min(len)..end_index.min(len)].fill(false);
+        }
+
+        self.locations[chunk_idx] = Location::new();
+
+        Ok(true)
+    }
+
+    fn set_chunk(
+        &mut self,
+        pos_x: i32,
+        pos_z: i32,
+        chunk: &Compound,
+        options: WriteOptions,
+        compress_buf: &mut Vec<u8>,
+        region_root: &Path,
+    ) -> Result<(), RegionError> {
+        // erase the chunk from allocated chunks (not from disk)
+        self.delete_chunk(pos_x, pos_z, false, region_root)?;
+
+        // write the chunk into NBT and compress it according to the compression method
+        compress_buf.clear();
+        let mut compress_cursor = Cursor::new(compress_buf);
+        match options.compression {
+            Compression::Gzip => chunk.to_binary(
+                GzEncoder::new(&mut compress_cursor, flate2::Compression::default()),
+                "",
+            )?,
+            Compression::Zlib => chunk.to_binary(
+                ZlibEncoder::new(&mut compress_cursor, flate2::Compression::default()),
+                "",
+            )?,
+            Compression::None => chunk.to_binary(&mut compress_cursor, "")?,
+        }
+        let compress_buf = compress_cursor.into_inner();
+
+        // additional 5 bytes for exact chunk size + compression type, then add
+        // SECTOR_SIZE - 1 for rounding up
+        let num_sectors_needed = (compress_buf.len() + 5 + SECTOR_SIZE - 1) / SECTOR_SIZE;
+        let (start_sector, num_sectors) = if num_sectors_needed >= 256 {
+            if options.skip_oversized_chunks {
+                return Err(RegionError::OversizedChunk);
+            }
+
+            // write oversized chunk to external file
+            File::create(Self::external_chunk_file(pos_x, pos_z, region_root))?
+                .write_all(&*compress_buf)?;
+
+            let start_sector = self.allocate_sectors(1);
+            self.file
+                .seek(SeekFrom::Start(start_sector * SECTOR_SIZE as u64))?;
+
+            // write the exact chunk size, which includes *only* the compression version
+            // (the rest of the chunk is external)
+            self.file.write_u32::<BigEndian>(1)?;
+            // write the compression, with the marker which says our chunk is oversized
+            self.file.write_u8((options.compression as u8) | 0x80)?;
+
+            (start_sector, 1)
+        } else {
+            // delete the oversized chunk if it existed before
+            Self::delete_external_chunk_file(pos_x, pos_z, region_root)?;
+
+            let start_sector = self.allocate_sectors(num_sectors_needed);
+            self.file
+                .seek(SeekFrom::Start(start_sector * SECTOR_SIZE as u64))?;
+
+            // write the exact chunk size, which accounts for the compression version which
+            // is not in our compress_buf
+            self.file
+                .write_u32::<BigEndian>((compress_buf.len() + 1) as u32)?;
+            // write the compression
+            self.file.write_u8(options.compression as u8)?;
+            // write the data
+            self.file.write_all(&*compress_buf)?;
+
+            (start_sector, num_sectors_needed)
+        };
+
+        let location = Location::new()
+            .with_offset(start_sector as u32)
+            .with_count(num_sectors as u8);
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|duration| duration.as_secs() as u32)
+            .unwrap_or(0);
+
+        // write changed header information to file
+        let chunk_idx = Self::chunk_idx(pos_x, pos_z);
+        self.file.seek(SeekFrom::Start(chunk_idx as u64 * 4))?;
+        self.file.write_u32::<BigEndian>(location.0)?;
+        self.file
+            .seek(SeekFrom::Start(chunk_idx as u64 * 4 + SECTOR_SIZE as u64))?;
+        self.file.write_u32::<BigEndian>(timestamp)?;
+
+        // write changed header information to our header
+        self.locations[chunk_idx] = location;
+        self.timestamps[chunk_idx] = timestamp;
+
+        // pad file to multiple of SECTOR_SIZE
+        let file_length = self.file.seek(SeekFrom::End(0))?;
+        let rem = file_length as usize % SECTOR_SIZE;
+        if rem != 0 {
+            self.file
+                .write_all(&[0; SECTOR_SIZE][..SECTOR_SIZE - rem])?;
+        }
+
+        Ok(())
+    }
+
+    fn chunk_positions(
+        &self,
+        region_x: i32,
+        region_z: i32,
+    ) -> Vec<Result<(i32, i32), RegionError>> {
+        self.locations
+            .iter()
+            .enumerate()
+            .filter_map(move |(index, location)| {
+                if location.is_none() {
+                    None
+                } else {
+                    Some((
+                        region_x * 32 + (index % 32) as i32,
+                        region_z * 32 + (index / 32) as i32,
+                    ))
+                }
+            })
+            .map(Ok)
+            .collect()
+    }
+
+    fn external_chunk_file(pos_x: i32, pos_z: i32, region_root: &Path) -> PathBuf {
+        region_root
+            .to_path_buf()
+            .join(format!("c.{pos_x}.{pos_z}.mcc"))
+    }
+
+    fn delete_external_chunk_file(
+        pos_x: i32,
+        pos_z: i32,
+        region_root: &Path,
+    ) -> Result<(), RegionError> {
+        match std::fs::remove_file(Self::external_chunk_file(pos_x, pos_z, region_root)) {
+            Ok(()) => Ok(()),
+            Err(err) if err.kind() == ErrorKind::NotFound => Ok(()),
+            Err(err) => Err(err.into()),
+        }
+    }
+
+    fn reserve_sectors(
+        used_sectors: &mut bitvec::vec::BitVec,
+        sector_offset: u64,
+        sector_count: usize,
+    ) {
+        let start_index = sector_offset as usize;
+        let end_index = sector_offset as usize + sector_count;
+        if used_sectors.len() < end_index {
+            used_sectors.resize(start_index, false);
+        } else {
+            used_sectors[start_index..end_index].fill(true);
+        }
+    }
+
+    fn allocate_sectors(&mut self, num_sectors: usize) -> u64 {
+        // find the first set of consecutive free sectors of length num_sectors
+        let mut index = 0;
+        let free_space_start = loop {
+            let Some(mut free_space_start) = self.used_sectors[index..].first_zero() else {
+                // we have reached a sequence of 1's at the end of the list, so next free space
+                // is at the end of the file
+                break self.used_sectors.len();
+            };
+            free_space_start += index;
+
+            let Some(mut free_space_end) = self.used_sectors[free_space_start..].first_one() else {
+                // there is no 1 after this 0, so we have enough space here (even if we have to
+                // increase the file size)
+                break free_space_start;
+            };
+            free_space_end += free_space_start;
+
+            if free_space_end - free_space_start >= num_sectors {
+                // if the free space end is far enough from the free space start, we have enough
+                // space
+                break free_space_start;
+            }
+
+            index = free_space_end;
+        };
+
+        Self::reserve_sectors(&mut self.used_sectors, free_space_start as u64, num_sectors);
+        free_space_start as u64
+    }
+
+    fn chunk_idx(pos_x: i32, pos_z: i32) -> usize {
+        (pos_x.rem_euclid(32) + pos_z.rem_euclid(32) * 32) as usize
+    }
+
+    fn is_external_stream_chunk(stream_version: u8) -> bool {
+        (stream_version & 0x80) != 0
+    }
+
+    fn external_chunk_version(stream_version: u8) -> u8 {
+        stream_version & !0x80
+    }
 }
 
 const SECTOR_SIZE: usize = 4096;
-
-pub struct AnvilPlugin;
-
-impl Plugin for AnvilPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_event::<ChunkLoadEvent>()
-            .add_event::<ChunkUnloadEvent>()
-            .add_systems(PreUpdate, remove_unviewed_chunks)
-            .add_systems(
-                PostUpdate,
-                (init_anvil, update_client_views, send_recv_chunks)
-                    .chain()
-                    .before(UpdateLayersPreClientSet),
-            );
-    }
-}
-
-fn init_anvil(mut query: Query<&mut AnvilLevel, (Added<AnvilLevel>, With<ChunkLayer>)>) {
-    for mut level in &mut query {
-        if let Some(state) = level.worker_state.take() {
-            thread::spawn(move || anvil_worker(state));
-        }
-    }
-}
-
-/// Removes all chunks no longer viewed by clients.
-///
-/// This needs to run in `PreUpdate` where the chunk viewer counts have been
-/// updated from the previous tick.
-fn remove_unviewed_chunks(
-    mut chunk_layers: Query<(Entity, &mut ChunkLayer, &AnvilLevel)>,
-    mut unload_events: EventWriter<ChunkUnloadEvent>,
-) {
-    for (entity, mut layer, anvil) in &mut chunk_layers {
-        layer.retain_chunks(|pos, chunk| {
-            if chunk.viewer_count_mut() > 0 || anvil.ignored_chunks.contains(&pos) {
-                true
-            } else {
-                unload_events.send(ChunkUnloadEvent {
-                    chunk_layer: entity,
-                    pos,
-                });
-                false
-            }
-        });
-    }
-}
-
-fn update_client_views(
-    clients: Query<(&EntityLayerId, Ref<OldEntityLayerId>, View, OldView), With<Client>>,
-    mut chunk_layers: Query<(&ChunkLayer, &mut AnvilLevel)>,
-) {
-    for (loc, old_loc, view, old_view) in &clients {
-        let view = view.get();
-        let old_view = old_view.get();
-
-        if loc != &*old_loc || view != old_view || old_loc.is_added() {
-            let Ok((layer, mut anvil)) = chunk_layers.get_mut(loc.0) else {
-                continue;
-            };
-
-            let queue_pos = |pos| {
-                if !anvil.ignored_chunks.contains(&pos) && layer.chunk(pos).is_none() {
-                    // Chunks closer to clients are prioritized.
-                    match anvil.pending.entry(pos) {
-                        Entry::Occupied(mut oe) => {
-                            if let Some(priority) = oe.get_mut() {
-                                let dist = view.pos.distance_squared(pos);
-                                *priority = (*priority).min(dist);
-                            }
-                        }
-                        Entry::Vacant(ve) => {
-                            let dist = view.pos.distance_squared(pos);
-                            ve.insert(Some(dist));
-                        }
-                    }
-                }
-            };
-
-            // Queue all the new chunks in the view to be sent to the anvil worker.
-            if old_loc.is_added() {
-                view.iter().for_each(queue_pos);
-            } else {
-                view.diff(old_view).for_each(queue_pos);
-            }
-        }
-    }
-}
-
-fn send_recv_chunks(
-    mut layers: Query<(Entity, &mut ChunkLayer, &mut AnvilLevel)>,
-    mut to_send: Local<Vec<(Priority, ChunkPos)>>,
-    mut load_events: EventWriter<ChunkLoadEvent>,
-) {
-    for (entity, mut layer, anvil) in &mut layers {
-        let anvil = anvil.into_inner();
-
-        // Insert the chunks that are finished loading into the chunk layer and send
-        // load events.
-        for (pos, res) in anvil.receiver.drain() {
-            anvil.pending.remove(&pos);
-
-            let status = match res {
-                Ok(Some((chunk, timestamp))) => {
-                    layer.insert_chunk(pos, chunk);
-                    ChunkLoadStatus::Success { timestamp }
-                }
-                Ok(None) => ChunkLoadStatus::Empty,
-                Err(e) => ChunkLoadStatus::Failed(e),
-            };
-
-            load_events.send(ChunkLoadEvent {
-                chunk_layer: entity,
-                pos,
-                status,
-            });
-        }
-
-        // Collect all the new chunks that need to be loaded this tick.
-        for (pos, priority) in &mut anvil.pending {
-            if let Some(pri) = priority.take() {
-                to_send.push((pri, *pos));
-            }
-        }
-
-        // Sort chunks by ascending priority.
-        to_send.sort_unstable_by_key(|(pri, _)| *pri);
-
-        // Send the sorted chunks to be loaded.
-        for (_, pos) in to_send.drain(..) {
-            let _ = anvil.sender.try_send(pos);
-        }
-    }
-}
-
-fn anvil_worker(mut state: ChunkWorkerState) {
-    while let Ok(pos) = state.receiver.recv() {
-        let res = get_chunk(pos, &mut state);
-
-        let _ = state.sender.send((pos, res));
-    }
-
-    fn get_chunk(pos: ChunkPos, state: &mut ChunkWorkerState) -> WorkerResult {
-        let Some(anvil_chunk) = state.get_chunk(pos)? else {
-            return Ok(None);
-        };
-
-        let chunk = parse_chunk::parse_chunk(anvil_chunk.data, &state.biome_to_id)?;
-
-        Ok(Some((chunk, anvil_chunk.timestamp)))
-    }
-}
-
-/// An event sent by `valence_anvil` after an attempt to load a chunk is made.
-#[derive(Event, Debug)]
-pub struct ChunkLoadEvent {
-    /// The [`ChunkLayer`] where the chunk is located.
-    pub chunk_layer: Entity,
-    /// The position of the chunk in the layer.
-    pub pos: ChunkPos,
-    pub status: ChunkLoadStatus,
-}
-
-#[derive(Debug)]
-pub enum ChunkLoadStatus {
-    /// A new chunk was successfully loaded and inserted into the layer.
-    Success {
-        /// The time this chunk was last modified, measured in seconds since the
-        /// epoch.
-        timestamp: u32,
-    },
-    /// The Anvil level does not have a chunk at the position. No chunk was
-    /// loaded.
-    Empty,
-    /// An attempt was made to load the chunk, but something went wrong.
-    Failed(anyhow::Error),
-}
-
-/// An event sent by `valence_anvil` when a chunk is unloaded from an layer.
-#[derive(Event, Debug)]
-pub struct ChunkUnloadEvent {
-    /// The [`ChunkLayer`] where the chunk was unloaded.
-    pub chunk_layer: Entity,
-    /// The position of the chunk that was unloaded.
-    pub pos: ChunkPos,
-}

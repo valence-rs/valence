@@ -47,7 +47,9 @@ bytes.workspace = true
 rand.workspace = true
 uuid.workspace = true
 valence_advancement = { workspace = true, optional = true }
-valence_anvil = { workspace = true, optional = true }
+valence_anvil = { workspace = true, optional = true, features = [
+    "bevy_plugin",
+] }
 valence_boss_bar = { workspace = true, optional = true }
 valence_command = { workspace = true, optional = true }
 valence_command_derive = { workspace = true, optional = true }
@@ -116,6 +118,7 @@ bevy_log = { version = "0.11" }
 bevy_mod_debugdump = { version = "0.8.0", default-features = false }
 bevy_utils = { version = "0.11" }
 bitfield-struct = "0.5.3"
+bitvec = "1.0.1"
 byteorder = "1.4.3"
 bytes = "1.2.1"
 cesu8 = "1.1.0"
@@ -127,7 +130,6 @@ directories = "5.0.0"
 eframe = { version = "0.22.0", default-features = false }
 egui = "0.22.0"
 egui_dock = "0.6"
-enum-map = "2.5.0"
 flate2 = "1.0.24"
 flume = "0.11.0"
 fs_extra = "1.2.0"
@@ -190,7 +192,7 @@ valence_lang = { path = "crates/valence_lang", version = "0.2.0-alpha.1" }
 valence_math = { path = "crates/valence_math", version = "0.2.0-alpha.1" }
 valence_nbt = { path = "crates/valence_nbt", features = [
     "uuid",
-], version = "0.6.1" }
+], version = "0.7.0" }
 valence_network = { path = "crates/valence_network", version = "0.2.0-alpha.1" }
 valence_player_list = { path = "crates/valence_player_list", version = "0.2.0-alpha.1" }
 valence_protocol = { path = "crates/valence_protocol", version = "0.2.0-alpha.1" }

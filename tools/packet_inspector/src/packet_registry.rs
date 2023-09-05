@@ -3,8 +3,8 @@ use std::sync::RwLock;
 
 use bytes::Bytes;
 use time::OffsetDateTime;
-use valence::protocol::decode::PacketFrame;
-use valence::CompressionThreshold;
+use valence_protocol::decode::PacketFrame;
+use valence_protocol::{CompressionThreshold, PacketSide, PacketState};
 
 pub struct PacketRegistry {
     packets: RwLock<Vec<Packet>>,
@@ -82,18 +82,23 @@ impl PacketRegistry {
     }
 }
 
-#[derive(Clone, Debug, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+impl Default for PacketRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[derive(Clone, Debug, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Packet {
     pub side: PacketSide,
     pub state: PacketState,
     pub id: i32,
-    #[cfg_attr(feature = "serde", serde[skip])]
+    #[serde(skip)]
     pub timestamp: Option<OffsetDateTime>,
-    #[cfg_attr(feature = "serde", serde[skip])]
+    #[serde(skip)]
     pub name: &'static str,
     /// Uncompressed packet data
-    #[cfg_attr(feature = "serde", serde[skip])]
+    #[serde(skip)]
     pub data: Option<Bytes>,
 }
 
@@ -112,20 +117,4 @@ impl Hash for Packet {
         self.side.hash(state);
         self.state.hash(state);
     }
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum PacketState {
-    Handshaking,
-    Status,
-    Login,
-    Play,
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum PacketSide {
-    Clientbound,
-    Serverbound,
 }

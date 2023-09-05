@@ -5,7 +5,7 @@ readme = "README.md"
 documentation = "https://docs.rs/valence_nbt/"
 license.workspace = true
 keywords = ["nbt", "minecraft", "serialization"]
-version = "0.6.1"
+version = "0.7.0"
 edition.workspace = true
 repository.workspace = true
 

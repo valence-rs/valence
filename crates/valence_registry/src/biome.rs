@@ -72,7 +72,7 @@ pub struct BiomeRegistry {
 }
 
 impl BiomeRegistry {
-    pub const KEY: Ident<&str> = ident!("worldgen/biome");
+    pub const KEY: Ident<&'static str> = ident!("worldgen/biome");
 }
 
 impl Deref for BiomeRegistry {

@@ -30,11 +30,13 @@ pub mod __private {
 extern crate self as valence_protocol;
 
 mod array;
+mod biome_pos;
 mod bit_set;
-mod block_pos;
+pub mod block_pos;
 mod bounded;
 mod byte_angle;
-mod chunk_pos;
+pub mod chunk_pos;
+pub mod chunk_section_pos;
 pub mod decode;
 mod difficulty;
 mod direction;
@@ -56,12 +58,14 @@ use std::io::Write;
 
 use anyhow::Context;
 pub use array::FixedArray;
+pub use biome_pos::BiomePos;
 pub use bit_set::FixedBitSet;
 pub use block::{BlockKind, BlockState};
 pub use block_pos::BlockPos;
 pub use bounded::Bounded;
 pub use byte_angle::ByteAngle;
 pub use chunk_pos::ChunkPos;
+pub use chunk_section_pos::ChunkSectionPos;
 pub use decode::PacketDecoder;
 use derive_more::{From, Into};
 pub use difficulty::Difficulty;
@@ -74,6 +78,7 @@ pub use ident::ident;
 pub use item::{ItemKind, ItemStack};
 pub use packets::play::particle_s2c::Particle;
 pub use raw::RawBytes;
+use serde::{Deserialize, Serialize};
 pub use sound::Sound;
 pub use text::Text;
 pub use valence_generated::{block, packet_id};
@@ -110,6 +115,7 @@ impl CompressionThreshold {
     pub const DEFAULT: Self = Self(-1);
 }
 
+/// No compression.
 impl Default for CompressionThreshold {
     fn default() -> Self {
         Self::DEFAULT
@@ -290,7 +296,7 @@ pub trait Packet: std::fmt::Debug {
 }
 
 /// The side a packet is intended for.
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
 pub enum PacketSide {
     /// Server -> Client
     Clientbound,
@@ -299,7 +305,7 @@ pub enum PacketSide {
 }
 
 /// The statein  which a packet is used.
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
 pub enum PacketState {
     Handshaking,
     Status,
@@ -390,7 +396,7 @@ mod tests {
         f: BlockPos,
         g: Hand,
         h: Ident<Cow<'a, str>>,
-        i: Option<ItemStack>,
+        i: ItemStack,
         j: Text,
         k: VarInt,
         l: VarLong,
@@ -410,7 +416,7 @@ mod tests {
                 f: BlockPos::new(1, 2, 3),
                 g: Hand::Off,
                 h: Ident::new("minecraft:whatever").unwrap(),
-                i: Some(ItemStack::new(ItemKind::WoodenSword, 12, None)),
+                i: ItemStack::new(ItemKind::WoodenSword, 12, None),
                 j: "my ".into_text() + "fancy".italic() + " text",
                 k: VarInt(123),
                 l: VarLong(456),

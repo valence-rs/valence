@@ -347,7 +347,7 @@ pub enum AdvancementFrameType {
 pub struct AdvancementDisplay {
     pub title: Text,
     pub description: Text,
-    pub icon: Option<ItemStack>,
+    pub icon: ItemStack,
     pub frame_type: AdvancementFrameType,
     pub show_toast: bool,
     pub hidden: bool,

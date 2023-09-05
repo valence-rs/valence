@@ -4,6 +4,7 @@ use rand::seq::IteratorRandom;
 use rand::Rng;
 use valence::prelude::*;
 use valence::registry::biome::BiomeEffects;
+use valence_server::BiomePos;
 
 const SPAWN_Y: i32 = 0;
 const SIZE: i32 = 5;
@@ -73,8 +74,8 @@ fn set_biomes(mut layers: Query<&mut ChunkLayer>, biomes: Res<BiomeRegistry>) {
     let mut rng = rand::thread_rng();
 
     for _ in 0..10 {
-        let x = rng.gen_range(-SIZE * 16..SIZE * 16);
-        let z = rng.gen_range(-SIZE * 16..SIZE * 16);
+        let x = rng.gen_range(-SIZE * 4..SIZE * 4);
+        let z = rng.gen_range(-SIZE * 4..SIZE * 4);
 
         let biome = biomes
             .iter()
@@ -82,7 +83,7 @@ fn set_biomes(mut layers: Query<&mut ChunkLayer>, biomes: Res<BiomeRegistry>) {
             .map(|(biome, _, _)| biome)
             .unwrap_or_default();
 
-        layer.set_biome([x, SPAWN_Y, z], biome);
+        layer.set_biome(BiomePos::new(x, SPAWN_Y / 4, z), biome);
     }
 }
 

@@ -1,12 +1,9 @@
 use std::collections::HashMap;
-use std::path::Path;
-use std::process::Command;
-use std::{env, fs};
 
-use anyhow::Context;
 use proc_macro2::TokenStream;
 use quote::quote;
 use serde::Deserialize;
+use valence_build_utils::write_generated_file;
 
 #[derive(Deserialize)]
 struct Packet {
@@ -59,17 +56,17 @@ fn write_packets(packets: &Vec<Packet>) -> anyhow::Result<()> {
         };
 
         let id = packet.id;
-        let side = match &packet.side {
-            s if s == "clientbound" => quote! { crate::packet_registry::PacketSide::Clientbound },
-            s if s == "serverbound" => quote! { crate::packet_registry::PacketSide::Serverbound },
+        let side = match packet.side.as_str() {
+            "clientbound" => quote! { valence_protocol::PacketSide::Clientbound },
+            "serverbound" => quote! { valence_protocol::PacketSide::Serverbound },
             _ => unreachable!(),
         };
 
-        let state = match &packet.state {
-            s if s == "handshaking" => quote! { crate::packet_registry::PacketState::Handshaking },
-            s if s == "status" => quote! { crate::packet_registry::PacketState::Status },
-            s if s == "login" => quote! { crate::packet_registry::PacketState::Login },
-            s if s == "play" => quote! { crate::packet_registry::PacketState::Play },
+        let state = match packet.state.as_str() {
+            "handshaking" => quote! { valence_protocol::PacketState::Handshaking },
+            "status" => quote! { valence_protocol::PacketState::Status },
+            "login" => quote! { valence_protocol::PacketState::Login },
+            "play" => quote! { valence_protocol::PacketState::Play },
             _ => unreachable!(),
         };
 
@@ -147,8 +144,8 @@ fn write_transformer(packets: &[Packet]) -> anyhow::Result<()> {
             name
         };
 
-        let state_map = acc.entry(side).or_insert_with(HashMap::new);
-        let id_map = state_map.entry(state).or_insert_with(Vec::new);
+        let state_map = acc.entry(side).or_default();
+        let id_map = state_map.entry(state).or_default();
         id_map.push(name);
 
         acc
@@ -174,7 +171,7 @@ fn write_transformer(packets: &[Packet]) -> anyhow::Result<()> {
             let state = syn::parse_str::<syn::Ident>(state).unwrap();
 
             side_arms.extend(quote! {
-                PacketState::#state => match packet.id {
+                valence_protocol::PacketState::#state => match packet.id {
                     #match_arms
                     _ => Ok(NOT_AVAILABLE.to_string()),
                 },
@@ -190,7 +187,7 @@ fn write_transformer(packets: &[Packet]) -> anyhow::Result<()> {
         let side = syn::parse_str::<syn::Ident>(side).unwrap();
 
         generated.extend(quote! {
-            PacketSide::#side => match packet.state {
+            valence_protocol::PacketSide::#side => match packet.state {
                 #side_arms
             },
         });
@@ -211,20 +208,6 @@ fn write_transformer(packets: &[Packet]) -> anyhow::Result<()> {
     };
 
     write_generated_file(generated, "packet_to_string.rs")?;
-
-    Ok(())
-}
-
-pub fn write_generated_file(content: TokenStream, out_file: &str) -> anyhow::Result<()> {
-    let out_dir = env::var_os("OUT_DIR").context("failed to get OUT_DIR env var")?;
-    let path = Path::new(&out_dir).join(out_file);
-    let code = content.to_string();
-
-    fs::write(&path, code)?;
-
-    // Try to format the output for debugging purposes.
-    // Doesn't matter if rustfmt is unavailable.
-    let _ = Command::new("rustfmt").arg(path).output();
 
     Ok(())
 }

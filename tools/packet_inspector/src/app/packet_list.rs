@@ -3,8 +3,8 @@ use egui::{
     Color32, Pos2, Rect, Response, Rgba, Rounding, Sense, Shape, Stroke, TextStyle, Ui, Vec2,
     WidgetText,
 };
-
-use packet_inspector::{Packet, PacketSide};
+use packet_inspector::Packet;
+use valence_protocol::PacketSide;
 
 use super::{SharedState, Tab, View};
 
@@ -34,7 +34,7 @@ impl View for PacketList {
     }
 }
 
-fn handle_keyboard_input(state: &mut SharedState, ui: &mut Ui) {
+fn handle_keyboard_input(state: &mut SharedState, ui: &Ui) {
     if ui.input(|i| i.key_pressed(egui::Key::ArrowUp)) {
         // select previous packet
         let index = state.selected_packet.unwrap_or(1);
@@ -72,7 +72,7 @@ fn handle_keyboard_input(state: &mut SharedState, ui: &mut Ui) {
     }
 }
 
-fn draw_packet_counter(state: &mut SharedState, ui: &mut Ui) {
+fn draw_packet_counter(state: &SharedState, ui: &mut Ui) {
     let packets = state.packets.read().unwrap();
     let length = packets.len();
 

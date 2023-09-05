@@ -6,6 +6,6 @@ use crate::{Decode, Encode, ItemStack, Packet, VarInt};
 pub struct InventoryS2c<'a> {
     pub window_id: u8,
     pub state_id: VarInt,
-    pub slots: Cow<'a, [Option<ItemStack>]>,
-    pub carried_item: Cow<'a, Option<ItemStack>>,
+    pub slots: Cow<'a, [ItemStack]>,
+    pub carried_item: Cow<'a, ItemStack>,
 }

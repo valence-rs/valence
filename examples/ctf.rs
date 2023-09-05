@@ -116,14 +116,10 @@ fn setup(
     };
     commands.spawn(ctf_objective);
 
-    let red_capture_trigger = TriggerArea::new(
-        red_flag - BlockPos::new(5, 3, 5),
-        red_flag + BlockPos::new(5, 3, 5),
-    );
-    let blue_capture_trigger = TriggerArea::new(
-        blue_flag - BlockPos::new(5, 3, 5),
-        blue_flag + BlockPos::new(5, 3, 5),
-    );
+    let red_capture_trigger =
+        TriggerArea::new(red_flag.offset(-5, -3, -5), red_flag.offset(5, 3, 5));
+    let blue_capture_trigger =
+        TriggerArea::new(blue_flag.offset(-5, -3, -5), blue_flag.offset(5, 3, 5));
     let mappos = CtfGlobals {
         scoreboard_layer: ctf_objective_layer,
 
@@ -304,14 +300,14 @@ fn build_spawn_box(layer: &mut LayerBundle, pos: impl Into<BlockPos>, commands: 
         }
         layer
             .chunk
-            .set_block(area.a - BlockPos::new(0, 1, 0), BlockState::BARRIER);
+            .set_block(area.a.offset(0, -1, 0), BlockState::BARRIER);
     }
 
     commands.insert_resource(portals);
 
     // build instruction signs
 
-    let sign_pos = pos + BlockPos::from([0, 2, SPAWN_BOX_WIDTH - 1]);
+    let sign_pos = pos.offset(0, 2, SPAWN_BOX_WIDTH - 1);
     layer.chunk.set_block(
         sign_pos,
         Block {
@@ -330,7 +326,7 @@ fn build_spawn_box(layer: &mut LayerBundle, pos: impl Into<BlockPos>, commands: 
     );
 
     layer.chunk.set_block(
-        sign_pos + BlockPos::from([-1, 0, 0]),
+        sign_pos.offset(-1, 0, 0),
         Block {
             state: BlockState::OAK_WALL_SIGN.set(PropName::Rotation, PropValue::_3),
             nbt: Some(compound! {
@@ -347,7 +343,7 @@ fn build_spawn_box(layer: &mut LayerBundle, pos: impl Into<BlockPos>, commands: 
     );
 
     layer.chunk.set_block(
-        sign_pos + BlockPos::from([1, 0, 0]),
+        sign_pos.offset(1, 0, 0),
         Block {
             state: BlockState::OAK_WALL_SIGN.set(PropName::Rotation, PropValue::_3),
             nbt: Some(compound! {
@@ -492,12 +488,12 @@ fn digging(
             if let Some(prev) = prev {
                 let kind: ItemKind = prev.state.to_kind().to_item_kind();
                 if let Some(slot) = inv.first_slot_with_item_in(kind, 64, 9..45) {
-                    let count = inv.slot(slot).unwrap().count();
+                    let count = inv.slot(slot).count;
                     inv.set_slot_amount(slot, count + 1);
                 } else {
                     let stack = ItemStack::new(kind, 1, None);
                     if let Some(empty_slot) = inv.first_empty_slot_in(9..45) {
-                        inv.set_slot(empty_slot, Some(stack));
+                        inv.set_slot(empty_slot, stack);
                     } else {
                         debug!("No empty slot to give item to player: {:?}", kind);
                     }
@@ -524,10 +520,10 @@ fn place_blocks(
 
         // get the held item
         let slot_id = held.slot();
-        let Some(stack) = inventory.slot(slot_id) else {
-            // no item in the slot
+        let stack = inventory.slot(slot_id);
+        if stack.is_empty() {
             continue;
-        };
+        }
 
         let Some(block_kind) = BlockKind::from_item_kind(stack.item) else {
             // can't place this item as a block
@@ -537,11 +533,11 @@ fn place_blocks(
         if *game_mode == GameMode::Survival {
             // check if the player has the item in their inventory and remove
             // it.
-            if stack.count() > 1 {
-                let count = stack.count();
+            if stack.count > 1 {
+                let count = stack.count;
                 inventory.set_slot_amount(slot_id, count - 1);
             } else {
-                inventory.set_slot(slot_id, None);
+                inventory.set_slot(slot_id, ItemStack::EMPTY);
             }
         }
         let real_pos = event.position.get_in_direction(event.face);
@@ -600,17 +596,17 @@ fn do_team_selector_portals(
         if let Some(team) = team {
             *game_mode = GameMode::Survival;
             let mut inventory = Inventory::new(InventoryKind::Player);
-            inventory.set_slot(36, Some(ItemStack::new(ItemKind::WoodenSword, 1, None)));
+            inventory.set_slot(36, ItemStack::new(ItemKind::WoodenSword, 1, None));
             inventory.set_slot(
                 37,
-                Some(ItemStack::new(
+                ItemStack::new(
                     match team {
                         Team::Red => ItemKind::RedWool,
                         Team::Blue => ItemKind::BlueWool,
                     },
                     64,
                     None,
-                )),
+                ),
             );
             let combat_state = CombatState::default();
             commands
@@ -699,7 +695,7 @@ impl TriggerArea {
     }
 
     pub fn contains_pos(&self, pos: DVec3) -> bool {
-        self.contains(BlockPos::from_pos(pos))
+        self.contains(pos.into())
     }
 
     pub fn iter_block_pos(&self) -> impl Iterator<Item = BlockPos> {
@@ -993,17 +989,16 @@ fn handle_combat_events(
         victim.client.trigger_status(EntityStatus::PlayAttackSound);
         victim.statuses.trigger(EntityStatus::PlayAttackSound);
 
-        let damage = if let Some(item) = attacker.inventory.slot(attacker.held_item.slot()) {
-            match item.item {
-                ItemKind::WoodenSword => 4.0,
-                ItemKind::StoneSword => 5.0,
-                ItemKind::IronSword => 6.0,
-                ItemKind::DiamondSword => 7.0,
-                _ => 1.0,
-            }
-        } else {
-            1.0
+        let stack = attacker.inventory.slot(attacker.held_item.slot());
+
+        let damage = match stack.item {
+            ItemKind::WoodenSword => 4.0,
+            ItemKind::StoneSword => 5.0,
+            ItemKind::IronSword => 6.0,
+            ItemKind::DiamondSword => 7.0,
+            _ => 1.0,
         };
+
         victim.health.0 -= damage;
     }
 }
@@ -1031,7 +1026,7 @@ fn necromancy(
         if let Ok((mut visible_chunk_layer, mut respawn_pos, team, mut health)) =
             clients.get_mut(event.client)
         {
-            respawn_pos.pos = BlockPos::from_pos(team.spawn_pos());
+            respawn_pos.pos = team.spawn_pos().into();
             health.0 = PLAYER_MAX_HEALTH;
 
             let main_layer = layers.single();

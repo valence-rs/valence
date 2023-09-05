@@ -32,7 +32,7 @@ use paste::paste;
 use tracing::warn;
 use tracked_data::TrackedData;
 use valence_math::{DVec3, Vec3};
-use valence_protocol::{BlockPos, ChunkPos, Decode, Encode, VarInt};
+use valence_protocol::{Decode, Encode, VarInt};
 use valence_server_common::{Despawned, UniqueId};
 
 include!(concat!(env!("OUT_DIR"), "/entity.rs"));
@@ -209,14 +209,6 @@ impl Position {
         Self(pos.into())
     }
 
-    pub fn to_chunk_pos(self) -> ChunkPos {
-        ChunkPos::from_pos(self.0)
-    }
-
-    pub fn to_block_pos(self) -> BlockPos {
-        BlockPos::from_pos(self.0)
-    }
-
     pub fn get(self) -> DVec3 {
         self.0
     }
@@ -245,14 +237,6 @@ impl OldPosition {
 
     pub fn get(&self) -> DVec3 {
         self.0
-    }
-
-    pub fn chunk_pos(&self) -> ChunkPos {
-        ChunkPos::from_pos(self.0)
-    }
-
-    pub fn to_block_pos(&self) -> BlockPos {
-        BlockPos::from_pos(self.0)
     }
 }
 
