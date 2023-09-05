@@ -493,7 +493,7 @@ impl Region {
             None => return Err(RegionError::InvalidCompressionScheme(compression)),
         };
 
-        let (data, _) = Compound::from_binary(&mut nbt_slice)?;
+        let (data, _) = valence_nbt::from_binary(&mut nbt_slice)?;
 
         if !nbt_slice.is_empty() {
             return Err(RegionError::TrailingNbtData);
@@ -553,15 +553,17 @@ impl Region {
         compress_buf.clear();
         let mut compress_cursor = Cursor::new(compress_buf);
         match options.compression {
-            Compression::Gzip => chunk.to_binary(
+            Compression::Gzip => valence_nbt::to_binary(
+                chunk,
                 GzEncoder::new(&mut compress_cursor, flate2::Compression::default()),
                 "",
             )?,
-            Compression::Zlib => chunk.to_binary(
+            Compression::Zlib => valence_nbt::to_binary(
+                chunk,
                 ZlibEncoder::new(&mut compress_cursor, flate2::Compression::default()),
                 "",
             )?,
-            Compression::None => chunk.to_binary(&mut compress_cursor, "")?,
+            Compression::None => valence_nbt::to_binary(chunk, &mut compress_cursor, "")?,
         }
         let compress_buf = compress_cursor.into_inner();
 
