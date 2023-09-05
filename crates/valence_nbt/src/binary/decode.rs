@@ -28,7 +28,7 @@ pub fn from_binary(slice: &mut &[u8]) -> Result<(Compound, String)> {
 
     debug_assert_eq!(state.depth, 0);
 
-    Ok((root, root_name))    
+    Ok((root, root_name))
 }
 
 /// Maximum recursion depth to prevent overflowing the call stack.
