@@ -3,8 +3,9 @@ use std::io::Write;
 use byteorder::{BigEndian, WriteBytesExt};
 
 use super::{modified_utf8, Error, Result};
+use crate::conv::i8_slice_as_u8_slice;
 use crate::tag::Tag;
-use crate::{i8_slice_as_u8_slice, Compound, List, Value};
+use crate::{Compound, List, Value};
 
 impl Compound {
     /// Encodes uncompressed NBT binary data to the provided writer.
