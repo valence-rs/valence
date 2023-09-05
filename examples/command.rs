@@ -1,19 +1,21 @@
 #![allow(clippy::type_complexity)]
 
+use std::ops::Shl;
 use valence::prelude::*;
 use valence_command::arg_parser::{CommandArg, EntitySelector, EntitySelectors, GreedyString, QuotableString};
 
 use valence_command::command_scopes::CommandScopes;
 use valence_command::handler::{CommandResultEvent, CommandHandler};
 
-use valence_command::{arg_parser, Command, CommandScopeRegistry};
+use valence_command::{arg_parser, Command, CommandScopeRegistry, ModifierValue};
 use valence_command::command_graph::CommandGraphBuilder;
 use valence_command_derive::Command;
+use valence_server::op_level::OpLevel;
 
 const SPAWN_Y: i32 = 64;
 
 #[derive(Command, Debug, Clone)]
-#[paths("teleport", "tp ")]
+#[paths("teleport", "tp")]
 #[scopes("valence:command:teleport")]
 enum Teleport {
     #[paths = "{location}"]
@@ -27,6 +29,20 @@ enum Teleport {
         target: EntitySelector,
         location: arg_parser::Vec3,
     },
+}
+
+#[derive(Command, Debug, Clone)]
+#[paths("gamemode", "gm")]
+#[scopes("valence:command:teleport")]
+enum Gamemode {
+    #[paths("survival", "{/} gms")]
+    Survival,
+    #[paths("creative", "{/} gmc")]
+    Creative,
+    #[paths("adventure", "{/} gma")]
+    Adventure,
+    #[paths("spectator", "{/} gmsp")]
+    Spectator,
 }
 
 #[derive(Command, Debug, Clone)]
@@ -95,9 +111,10 @@ impl Command for ComplexRedirection {
         );
 
         let d = graph.at(root).literal("d").with_modifier(|_, modifiers| {
-            let entry = modifiers.entry("d_pass_count").or_insert("0".into());
-            let count = entry.parse::<u32>().unwrap();
-            *entry = (count + 1).to_string();
+            let entry = modifiers.entry("d_pass_count".into()).or_insert(0.into());
+            if let ModifierValue::I32(i) = entry {
+                *i += 1;
+            }
         }
         ).id();
 
@@ -122,17 +139,19 @@ pub fn main() {
             CommandHandler::<Teleport>::from_command(),
             CommandHandler::<Test>::from_command(),
             CommandHandler::<ComplexRedirection>::from_command(),
+            CommandHandler::<Gamemode>::from_command(),
         ))
         .add_systems(Startup, setup)
         .add_systems(
             Update,
             (
-                handle_complex_command,
                 init_clients,
                 despawn_disconnected_clients,
                 toggle_perms_on_sneak,
                 handle_test_command,
                 handle_teleport_command,
+                handle_complex_command,
+                handle_gamemode_command,
             ),
         )
         .run();
@@ -307,6 +326,33 @@ fn handle_complex_command(
     }
 }
 
+fn handle_gamemode_command(
+    mut events: EventReader<CommandResultEvent<Gamemode>>,
+    mut clients: Query<(&mut Client, &mut GameMode)>,
+) {
+    for event in events.iter() {
+        let (mut client, mut gamemode) = clients.get_mut(event.executor).unwrap();
+        match event.result {
+            Gamemode::Adventure => {
+                *gamemode = GameMode::Adventure;
+                client.send_chat_message("Gamemode set to adventure");
+            }
+            Gamemode::Creative => {
+                *gamemode = GameMode::Creative;
+                client.send_chat_message("Gamemode set to creative");
+            }
+            Gamemode::Spectator => {
+                *gamemode = GameMode::Spectator;
+                client.send_chat_message("Gamemode set to spectator");
+            }
+            Gamemode::Survival => {
+                *gamemode = GameMode::Survival;
+                client.send_chat_message("Gamemode set to survival");
+            }
+        }
+    }
+}
+
 fn setup(
     mut commands: Commands,
     server: Res<Server>,
@@ -344,6 +390,7 @@ fn init_clients(
             &mut CommandScopes,
             &mut Position,
             &mut GameMode,
+            &mut OpLevel
         ),
         Added<Client>,
     >,
@@ -356,6 +403,7 @@ fn init_clients(
         mut permissions,
         mut pos,
         mut game_mode,
+        mut op_level,
     ) in &mut clients
     {
         let layer = layers.single();
@@ -366,6 +414,7 @@ fn init_clients(
 
         pos.0 = [0.0, SPAWN_Y as f64 + 1.0, 0.0].into();
         *game_mode = GameMode::Creative;
+        op_level.set(4);
 
         permissions.add("valence:command:teleport");
     }

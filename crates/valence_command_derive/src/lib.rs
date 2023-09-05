@@ -129,7 +129,7 @@ pub fn derive_command(a_input: TokenStream) -> TokenStream {
 
 fn process_paths(
     enum_name: &Ident,
-    paths: Vec<Vec<CommandArg>>,
+    paths: Vec<(Vec<CommandArg>, bool)>,
     fields: &Fields,
     variant_ident: Ident,
     executables: bool,
@@ -139,7 +139,7 @@ fn process_paths(
 
     for path in paths {
         if !first {
-            inner_expansion = if executables {
+            inner_expansion = if executables && !path.1 {
                 quote! {
                         #inner_expansion;
 
@@ -153,7 +153,7 @@ fn process_paths(
                 }
             };
         } else {
-            inner_expansion = if executables {
+            inner_expansion = if executables && !path.1 {
                 quote! {
                     command_graph.at(command_root_node)
                 }
@@ -166,6 +166,8 @@ fn process_paths(
             first = false;
         }
 
+        let path = path.0;
+        
         let mut final_executable = Vec::new();
         for (i, arg) in path.iter().enumerate() {
             match arg {
@@ -309,7 +311,7 @@ enum CommandArg {
 
 // example input: #[paths = "strawberry {0?}"]
 // example output: [CommandArg::Literal("Strawberry"), CommandArg::Optional(0)]
-fn parse_path(path: &Attribute) -> Option<Vec<Vec<CommandArg>>> {
+fn parse_path(path: &Attribute) -> Option<Vec<(Vec<CommandArg>, bool)>> {
     let path_strings: Vec<String> = get_lit_list_attr(path, "paths")?;
 
     let mut paths = Vec::new();
@@ -318,7 +320,9 @@ fn parse_path(path: &Attribute) -> Option<Vec<Vec<CommandArg>>> {
     // the next word is an optional arg with the index 0
     for path_str in path_strings {
         let mut args = Vec::new();
-        for word in path_str.split_whitespace() {
+        let at_root = path_str.starts_with("{/}");
+
+        for word in path_str.split_whitespace().skip(if at_root { 1 } else { 0 }) {
             if word.starts_with('{') && word.ends_with('}') {
                 if word.ends_with("?}") {
                     args.push(CommandArg::Optional(format_ident!(
@@ -335,7 +339,7 @@ fn parse_path(path: &Attribute) -> Option<Vec<Vec<CommandArg>>> {
                 args.push(CommandArg::Literal(word.to_string()));
             }
         }
-        paths.push(args);
+        paths.push((args, at_root));
     }
 
     Some(paths)

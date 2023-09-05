@@ -6,12 +6,13 @@ edition.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-valence_server.workspace = true
+anyhow.workspace = true
 bevy_app.workspace = true
 bevy_ecs.workspace = true
-tracing.workspace = true
-anyhow.workspace = true
 byteorder.workspace = true
+ordered-float.workspace = true
 petgraph.workspace = true
-thiserror.workspace = true
 serde-value.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+valence_server.workspace = true

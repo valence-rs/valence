@@ -89,6 +89,7 @@ use valence_server::protocol::{VarInt};
 
 use crate::arg_parser::{CommandArg, ParseInput};
 use crate::{CommandRegistry};
+use crate::modifier_value::ModifierValue;
 
 /// This struct is used to store the command graph.(see module level docs for
 /// more info)
@@ -338,7 +339,7 @@ pub struct CommandGraphBuilder<'a, T> {
     current_node: NodeIndex,
     executables: &'a mut HashMap<NodeIndex, fn(&mut ParseInput) -> T>,
     parsers: &'a mut HashMap<NodeIndex, fn(&mut ParseInput) -> bool>,
-    modifiers: &'a mut HashMap<NodeIndex, fn(String, &mut HashMap<&str, String>)>,
+    modifiers: &'a mut HashMap<NodeIndex, fn(String, &mut HashMap<ModifierValue, ModifierValue>)>,
 }
 
 impl<'a, T> CommandGraphBuilder<'a, T> {
@@ -351,7 +352,7 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
         registry: &'a mut CommandRegistry,
         executables: &'a mut HashMap<NodeIndex, fn(&mut ParseInput) -> T>,
         parsers: &'a mut HashMap<NodeIndex, fn(&mut ParseInput) -> bool>,
-        modifiers: &'a mut HashMap<NodeIndex, fn(String, &mut HashMap<&str, String>)>,
+        modifiers: &'a mut HashMap<NodeIndex, fn(String, &mut HashMap<ModifierValue, ModifierValue>)>,
     ) -> Self {
         CommandGraphBuilder {
             current_node: registry.graph.root,
@@ -506,13 +507,12 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
     ///     .root() // transition to the root node
     ///     .literal("test") // add a literal node then transition to it    ///
     ///     .with_modifier(|_, modifiers| {
-    ///        modifiers.insert("test", "test".into()); // this will trigger when the node is passed
+    ///        modifiers.insert("test".into(), "test".into()); // this will trigger when the node is passed
     ///     })
     ///     .literal("command") // add a literal node then transition to it
     ///     .with_executable(|_| TestCommand);
     /// ```
-    pub fn with_modifier(&mut self, modifier: fn(String, &mut HashMap<&str, String>)) -> &mut Self {
-        let graph = &mut self.graph.graph;
+    pub fn with_modifier(&mut self, modifier: fn(String, &mut HashMap<ModifierValue, ModifierValue>)) -> &mut Self {
         let current_node = &mut self.current_node;
 
         self.modifiers.insert(*current_node, modifier);
