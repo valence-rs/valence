@@ -1,14 +1,12 @@
 #![allow(clippy::type_complexity)]
 
-use std::ops::Shl;
-
 use valence::prelude::*;
 use valence_command::arg_parser::{
     CommandArg, EntitySelector, EntitySelectors, GreedyString, QuotableString,
 };
 use valence_command::command_graph::CommandGraphBuilder;
 use valence_command::command_scopes::CommandScopes;
-use valence_command::handler::{CommandHandler, CommandResultEvent};
+use valence_command::handler::CommandResultEvent;
 use valence_command::{arg_parser, Command, CommandApp, CommandScopeRegistry, ModifierValue};
 use valence_command_derive::Command;
 use valence_server::op_level::OpLevel;
@@ -52,6 +50,7 @@ enum Gamemode {
 #[derive(Command, Debug, Clone)]
 #[paths("test ", "t ")]
 #[scopes("valence:command:teleport")]
+#[allow(dead_code)]
 enum Test {
     // 3 literals with an arg each
     #[paths("a {a} b {b} c {c}", "{a} {b} {c}")]
@@ -192,10 +191,7 @@ fn handle_teleport_command(
             }
             Teleport::ExecutorToTarget { target } => {
                 let raw_target = match target {
-                    EntitySelector::SimpleSelector(x) => match x {
-                        EntitySelectors::SinglePlayer(x) => x,
-                        _ => "not implemented",
-                    },
+                    EntitySelector::SimpleSelector(EntitySelectors::SinglePlayer(x)) => x,
                     _ => "not implemented",
                 };
                 let target = usernames.iter().find(|(_, name)| name.0 == *raw_target);
@@ -222,20 +218,14 @@ fn handle_teleport_command(
             }
             Teleport::TargetToTarget { from, to } => {
                 let from_raw_target = match from {
-                    EntitySelector::SimpleSelector(x) => match x {
-                        EntitySelectors::SinglePlayer(x) => x,
-                        _ => "not implemented",
-                    },
+                    EntitySelector::SimpleSelector(EntitySelectors::SinglePlayer(x)) => x,
                     _ => "not implemented",
                 };
                 let from_target = usernames
                     .iter()
                     .find(|(_, name)| name.0 == *from_raw_target);
                 let to_raw_target = match to {
-                    EntitySelector::SimpleSelector(x) => match x {
-                        EntitySelectors::SinglePlayer(x) => &x,
-                        _ => "not implemented",
-                    },
+                    EntitySelector::SimpleSelector(EntitySelectors::SinglePlayer(x)) => x,
                     _ => "not implemented",
                 };
                 let to_target = usernames.iter().find(|(_, name)| name.0 == *to_raw_target);
@@ -281,10 +271,7 @@ fn handle_teleport_command(
             }
             Teleport::TargetToLocation { target, location } => {
                 let raw_target = match target {
-                    EntitySelector::SimpleSelector(x) => match x {
-                        EntitySelectors::SinglePlayer(x) => x,
-                        _ => "not implemented",
-                    },
+                    EntitySelector::SimpleSelector(EntitySelectors::SinglePlayer(x)) => x,
                     _ => "not implemented",
                 };
                 let target = usernames.iter().find(|(_, name)| name.0 == *raw_target);
