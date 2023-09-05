@@ -25,7 +25,7 @@ pub fn to_binary<W: Write>(comp: &Compound, writer: W, root_name: &str) -> Resul
 }
 
 /// Returns the number of bytes that will be written when
-/// [`Compound::to_binary`] is called with this compound and root name.
+/// [`to_binary`] is called with this compound and root name.
 ///
 /// If `to_binary` results in `Ok`, the exact number of bytes
 /// reported by this function will have been written. If the result is
