@@ -4,7 +4,7 @@ use std::mem;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use parking_lot::Mutex; // Using nonstandard mutex to avoid poisoning API.
-use valence_nbt::{compound, Compound};
+use valence_nbt::{compound, Compound, Value};
 use valence_protocol::encode::{PacketWriter, WritePacket};
 use valence_protocol::packets::play::chunk_data_s2c::ChunkDataBlockEntity;
 use valence_protocol::packets::play::{
@@ -40,6 +40,8 @@ pub struct LoadedChunk {
     /// invalidated if empty. This should be cleared whenever the chunk is
     /// modified in an observable way, even if the chunk is not viewed.
     cached_init_packets: Mutex<Vec<u8>>,
+    // A heightmap for the client to calculate when rain should stop falling
+    motion_blocking: Vec<Vec<i16>> // TODO does this need to be in a Mutex?
 }
 
 #[derive(Clone, Default, Debug)]
@@ -90,6 +92,9 @@ impl LoadedChunk {
             changed_block_entities: BTreeSet::new(),
             changed_biomes: false,
             cached_init_packets: Mutex::new(vec![]),
+            // TODO this needs to be updated (when the chunk is loaded and when a block is updated)
+            // TODO should this hold in-game values (negative values allowed) or the values that are sent in the ChunkData packet?
+            motion_blocking: vec![vec![-66;16];16],
         }
     }
 
@@ -295,6 +300,25 @@ impl LoadedChunk {
         self.assert_no_changes();
     }
 
+    // TODO is this the right place for a method like this?
+    // TODO should the encoded height map be cached?
+    // TODO documentation
+    fn encode_heightmap(&self, heightmap: &Vec<Vec<i16>>) -> Value {
+        let mut encoded: Vec<i64> = vec![0;37];
+        let mut iter = heightmap.into_iter().flatten();
+
+        for i in 0..37 {
+            for j in 0..7 {
+                match iter.next() {
+                    None => break,
+                    Some(y) => encoded[i] += i64::from(*y + 66) << 9*j,
+                }
+            }
+        }
+
+        Value::LongArray(encoded)
+    }
+
     /// Writes the packet data needed to initialize this chunk.
     pub(crate) fn write_init_packets(
         &self,
@@ -306,7 +330,8 @@ impl LoadedChunk {
 
         if init_packets.is_empty() {
             let heightmaps = compound! {
-                // TODO: MOTION_BLOCKING and WORLD_SURFACE heightmaps.
+                "MOTION_BLOCKING" => self.encode_heightmap(&self.motion_blocking),
+                // TODO what is the WORLD_SURFACE heightmap used for?
             };
 
             let mut blocks_and_biomes: Vec<u8> = vec![];
