@@ -50,8 +50,14 @@ impl Encode for Compound {
 
 impl Decode<'_> for Compound {
     fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
-        // TODO: Bound the input slice or do something else to prevent this from eating
-        // too much memory.
+        // Check for null compound.
+        if r.first() == Some(&0) {
+            *r = &r[1..];
+            return Ok(Compound::new());
+        }
+
+        // TODO: consider if we need to bound the input slice or add some other
+        // mitigation to prevent excessive memory usage on hostile input.
         Ok(valence_nbt::from_binary(r)?.0)
     }
 }
