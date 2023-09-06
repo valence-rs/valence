@@ -40,8 +40,6 @@ pub struct LoadedChunk {
     /// invalidated if empty. This should be cleared whenever the chunk is
     /// modified in an observable way, even if the chunk is not viewed.
     cached_init_packets: Mutex<Vec<u8>>,
-    // A heightmap for the client to calculate when rain should stop falling
-    motion_blocking: Vec<Vec<i16>> // TODO does this need to be in a Mutex?
 }
 
 #[derive(Clone, Default, Debug)]
@@ -78,7 +76,6 @@ impl Section {
                 }
             }
         }
-
         count
     }
 }
@@ -92,9 +89,6 @@ impl LoadedChunk {
             changed_block_entities: BTreeSet::new(),
             changed_biomes: false,
             cached_init_packets: Mutex::new(vec![]),
-            // TODO this needs to be updated (when the chunk is loaded and when a block is updated)
-            // TODO should this hold in-game values (negative values allowed) or the values that are sent in the ChunkData packet?
-            motion_blocking: vec![vec![-66;16];16],
         }
     }
 
@@ -125,7 +119,6 @@ impl LoadedChunk {
         self.changed_block_entities.clear();
         self.changed_biomes = false;
         self.cached_init_packets.get_mut().clear();
-
         self.assert_no_changes();
 
         UnloadedChunk {
@@ -300,10 +293,55 @@ impl LoadedChunk {
         self.assert_no_changes();
     }
 
-    // TODO is this the right place for a method like this?
-    // TODO should the encoded height map be cached?
+
+    // TODO is this the right place for methods like this?
+    //      should there be a heightmaps.rs file?
     // TODO documentation
-    fn encode_heightmap(&self, heightmap: &Vec<Vec<i16>>) -> Value {
+    fn world_surface(&self) -> Vec<Vec<u32>> {
+        let height = self.height();
+        let mut heightmap: Vec<Vec<u32>> = vec![vec![0;16];16];
+
+        for z in 0..16 {
+            for x in 0..16 {
+                for y in (0..height).rev() {
+                    if !self.block_state(x as u32, y, z as u32).is_air() {
+                        heightmap[z][x] = y;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        heightmap
+    }
+
+    // TODO documentation
+    fn motion_blocking(&self, world_surface: &Vec<Vec<u32>>) -> Vec<Vec<u32>> {
+        let mut heightmap: Vec<Vec<u32>> = vec![vec![0;16];16];
+
+        for z in 0..16 {
+            for x in 0..16 {
+                if !self.block_state(x as u32, world_surface[z][x], z as u32).is_air() { // .is_motion_blocking()
+                    heightmap[z][x] = world_surface[z][x];
+                }
+                else {
+                    for y in (0..world_surface[z][x]).rev() {
+                        // TODO replace with !.is_air() with (currently non-existing) .is_motion_blocking()
+                        // TODO which blocks are "motion-blocking"?
+                        if !self.block_state(x as u32, y, z as u32).is_air() {
+                            heightmap[z][x] = y;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        
+        heightmap
+    }
+
+
+    fn encode_heightmap(&self, heightmap: Vec<Vec<u32>>) -> Value {
         let mut encoded: Vec<i64> = vec![0;37];
         let mut iter = heightmap.into_iter().flatten();
 
@@ -311,7 +349,8 @@ impl LoadedChunk {
             for j in 0..7 {
                 match iter.next() {
                     None => break,
-                    Some(y) => encoded[i] += i64::from(*y + 66) << 9*j,
+                    // TODO why do we need to add 2?
+                    Some(y) => encoded[i] += i64::from(y + 2) << 9*j,
                 }
             }
         }
@@ -329,9 +368,12 @@ impl LoadedChunk {
         let mut init_packets = self.cached_init_packets.lock();
 
         if init_packets.is_empty() {
+            let world_surface = self.world_surface();
+            let motion_blocking = self.motion_blocking(&world_surface);
+
             let heightmaps = compound! {
-                "MOTION_BLOCKING" => self.encode_heightmap(&self.motion_blocking),
-                // TODO what is the WORLD_SURFACE heightmap used for?
+                "MOTION_BLOCKING" => self.encode_heightmap(motion_blocking),
+                "WORLD_SURFACE" => self.encode_heightmap(world_surface),
             };
 
             let mut blocks_and_biomes: Vec<u8> = vec![];

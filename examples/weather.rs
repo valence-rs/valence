@@ -2,6 +2,7 @@ use std::f64::consts::TAU;
 
 use valence::prelude::*;
 use valence::weather::{Rain, Thunder, WeatherBundle};
+use valence_server::nbt::{compound, List};
 
 pub fn main() {
     App::new()
@@ -30,9 +31,32 @@ fn setup(
 
     for z in -25..25 {
         for x in -25..25 {
-            layer.chunk.set_block([x, 64, z], BlockState::GRASS_BLOCK);
+            layer.chunk.set_block([x, 0, z], BlockState::GRASS_BLOCK);
         }
     }
+
+    for z in 1..25 {
+        for x in -10..10 {
+            layer.chunk.set_block([x, z, z+5], BlockState::STONE);
+        }
+    }
+
+    layer.chunk.set_block(
+        [2,1,5],
+        Block {
+            state: BlockState::OAK_SIGN.set(PropName::Rotation, PropValue::_7),
+            nbt: Some(compound! {
+                "front_text" => compound! {
+                    "messages" => List::String(vec![
+                        "This stairway".into_text().into(),
+                        "demonstrates the ".into_text().into(),
+                        "MOTION_BLOCKING".into_text().into(),
+                        "heightmap.".into_text().into(),
+                    ]),
+                }
+            }),
+        },
+    );
 
     commands.spawn((layer, WeatherBundle::default()));
 }
@@ -63,7 +87,7 @@ fn init_clients(
         layer_id.0 = layer;
         visible_chunk_layer.0 = layer;
         visible_entity_layers.0.insert(layer);
-        pos.set([0.0, 65.0, 0.0]);
+        pos.set([0.0, 1.0, 0.0]);
         *game_mode = GameMode::Creative;
     }
 }
@@ -72,7 +96,7 @@ fn change_weather(
     mut layers: Query<(&mut Rain, &mut Thunder), With<ChunkLayer>>,
     server: Res<Server>,
 ) {
-    let period = 5.0;
+    let period = 10.0;
 
     let level = ((server.current_tick() as f64 / 20.0 * TAU / period).sin() + 1.0) / 2.0;
 
