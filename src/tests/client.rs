@@ -1,6 +1,6 @@
 use crate::abilities::PlayerAbilitiesFlags;
-use crate::layer::chunk::Chunk;
-use crate::layer::ChunkLayer;
+use crate::layer_old::chunk::Chunk;
+use crate::layer_old::ChunkLayer;
 use crate::math::DVec3;
 use crate::protocol::packets::play::{
     FullC2s, MoveRelativeS2c, PlayerPositionLookS2c, TeleportConfirmC2s,

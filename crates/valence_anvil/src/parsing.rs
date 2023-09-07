@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use num_integer::div_ceil;
 use thiserror::Error;
 use valence_server::block::{PropName, PropValue};
-use valence_server::layer::chunk::{ChunkOps, Chunk};
+use valence_server::layer_old::chunk::{ChunkOps, Chunk};
 use valence_server::nbt::{Compound, List, Value};
 use valence_server::protocol::BlockKind;
 use valence_server::registry::biome::BiomeId;

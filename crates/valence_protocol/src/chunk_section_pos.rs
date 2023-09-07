@@ -5,7 +5,7 @@ use bitfield_struct::bitfield;
 use derive_more::From;
 use thiserror::Error;
 
-use crate::{BlockPos, Decode, Encode};
+use crate::{BiomePos, BlockPos, Decode, Encode};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct ChunkSectionPos {
@@ -56,6 +56,16 @@ impl From<BlockPos> for ChunkSectionPos {
             x: pos.x.div_euclid(16),
             y: pos.y.div_euclid(16),
             z: pos.z.div_euclid(16),
+        }
+    }
+}
+
+impl From<BiomePos> for ChunkSectionPos {
+    fn from(pos: BiomePos) -> Self {
+        Self {
+            x: pos.x.div_euclid(4),
+            y: pos.y.div_euclid(4),
+            z: pos.z.div_euclid(4),
         }
     }
 }

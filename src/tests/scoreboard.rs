@@ -2,7 +2,7 @@ use valence_scoreboard::*;
 
 use crate::client::VisibleEntityLayers;
 use crate::entity::EntityLayerId;
-use crate::layer::EntityLayer;
+use crate::layer_old::EntityLayer;
 use crate::protocol::packets::play::{
     ScoreboardDisplayS2c, ScoreboardObjectiveUpdateS2c, ScoreboardPlayerUpdateS2c,
 };

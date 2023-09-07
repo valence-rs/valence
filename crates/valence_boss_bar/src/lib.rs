@@ -120,7 +120,7 @@ fn update_boss_bar_layer_view(
                 .filter(|(_, _, _, _, _, layer_id, _)| layer_id.0 == added_layer)
             {
                 if let Some(position) = boss_bar_position {
-                    if view.contains(position.0) {
+                    if view.contains(position.0.into()) {
                         client.write_packet(&BossBarS2c {
                             id: id.0,
                             action: BossBarAction::Add {
@@ -153,7 +153,7 @@ fn update_boss_bar_layer_view(
                 .filter(|(_, _, _, _, _, layer_id, _)| layer_id.0 == removed_layer)
             {
                 if let Some(position) = boss_bar_position {
-                    if view.contains(position.0) {
+                    if view.contains(position.0.into()) {
                         client.write_packet(&BossBarS2c {
                             id: id.0,
                             action: BossBarAction::Remove,
@@ -211,7 +211,9 @@ fn update_boss_bar_chunk_view(
                 .iter()
                 .filter(|(_, _, _, _, _, layer_id, _)| layer_id.0 == *layer)
             {
-                if view.contains(boss_bar_position.0) && !old_view.contains(boss_bar_position.0) {
+                if view.contains(boss_bar_position.0.into())
+                    && !old_view.contains(boss_bar_position.0.into())
+                {
                     client.write_packet(&BossBarS2c {
                         id: id.0,
                         action: BossBarAction::Add {
@@ -222,8 +224,8 @@ fn update_boss_bar_chunk_view(
                             flags: *flags,
                         },
                     });
-                } else if !view.contains(boss_bar_position.0)
-                    && old_view.contains(boss_bar_position.0)
+                } else if !view.contains(boss_bar_position.0.into())
+                    && old_view.contains(boss_bar_position.0.into())
                 {
                     client.write_packet(&BossBarS2c {
                         id: id.0,

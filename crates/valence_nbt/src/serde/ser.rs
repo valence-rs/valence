@@ -4,7 +4,8 @@ use serde::ser::{Impossible, SerializeMap, SerializeSeq, SerializeStruct};
 use serde::{Serialize, Serializer};
 
 use super::Error;
-use crate::{i8_slice_as_u8_slice, u8_vec_into_i8_vec, Compound, List, Value};
+use crate::conv::{i8_slice_as_u8_slice, u8_vec_into_i8_vec};
+use crate::{Compound, List, Value};
 
 impl Serialize for Value {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

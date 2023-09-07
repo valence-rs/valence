@@ -5,7 +5,7 @@ use anyhow::bail;
 use bitfield_struct::bitfield;
 use derive_more::From;
 use thiserror::Error;
-use valence_math::DVec3;
+use valence_math::{DVec3, IVec3};
 
 use crate::direction::Direction;
 use crate::{Decode, Encode};
@@ -34,7 +34,7 @@ impl BlockPos {
     /// let adj = pos.get_in_direction(Direction::South);
     /// assert_eq!(adj, BlockPos::new(0, 0, 1));
     /// ```
-    pub const fn get_in_direction(self, dir: Direction) -> BlockPos {
+    pub const fn get_in_direction(self, dir: Direction) -> Self {
         match dir {
             Direction::Down => BlockPos::new(self.x, self.y - 1, self.z),
             Direction::Up => BlockPos::new(self.x, self.y + 1, self.z),
@@ -43,6 +43,10 @@ impl BlockPos {
             Direction::West => BlockPos::new(self.x - 1, self.y, self.z),
             Direction::East => BlockPos::new(self.x + 1, self.y, self.z),
         }
+    }
+
+    pub const fn offset(self, x: i32, y: i32, z: i32) -> Self {
+        Self::new(self.x + x, self.y + y, self.z + z)
     }
 
     pub const fn packed(self) -> Result<PackedBlockPos, Error> {
@@ -140,8 +144,41 @@ impl From<BlockPos> for [i32; 3] {
     }
 }
 
+impl Add<IVec3> for BlockPos {
+    type Output = Self;
+
+    fn add(self, rhs: IVec3) -> Self::Output {
+        Self::new(self.x + rhs.x, self.y + rhs.y, self.z + rhs.z)
+    }
+}
+
+impl Sub<IVec3> for BlockPos {
+    type Output = Self;
+
+    fn sub(self, rhs: IVec3) -> Self::Output {
+        Self::new(self.x - rhs.x, self.y - rhs.y, self.z - rhs.z)
+    }
+}
+
+impl Add<BlockPos> for IVec3 {
+    type Output = BlockPos;
+
+    fn add(self, rhs: BlockPos) -> Self::Output {
+        BlockPos::new(self.x + rhs.x, self.y + rhs.y, self.z + rhs.z)
+    }
+}
+
+impl Sub<BlockPos> for IVec3 {
+    type Output = BlockPos;
+
+    fn sub(self, rhs: BlockPos) -> Self::Output {
+        BlockPos::new(self.x - rhs.x, self.y - rhs.y, self.z - rhs.z)
+    }
+}
+
 impl fmt::Display for BlockPos {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Display the block position as a tuple.
         fmt::Debug::fmt(&(self.x, self.y, self.z), f)
     }
 }

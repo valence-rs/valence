@@ -3,8 +3,8 @@ use egui::{
     Color32, Pos2, Rect, Response, Rgba, Rounding, Sense, Shape, Stroke, TextStyle, Ui, Vec2,
     WidgetText,
 };
-
-use packet_inspector::{Packet, PacketSide};
+use packet_inspector::Packet;
+use valence_protocol::PacketSide;
 
 use super::{SharedState, Tab, View};
 

@@ -12,6 +12,7 @@ env:
 
 jobs:
   valence-fmt:
+    name: Formatting
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Actions Repository
@@ -30,6 +31,7 @@ jobs:
         run: cargo fmt --all -- --check
 
   valence-docs:
+    name: Documentation
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Actions Repository
@@ -45,9 +47,10 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libclang-dev libgtk-3-dev
 
       - name: Validate documentation
-        run: cargo doc --workspace --no-deps --all-features --document-private-items
+        run: RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --all-features --document-private-items
 
   typos:
+    name: Typos
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Actions Repository
@@ -57,6 +60,7 @@ jobs:
         uses: crate-ci/typos@v1.16.5
 
   valence-clippy:
+    name: Clippy
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Actions Repository
@@ -88,9 +92,8 @@ jobs:
         include:
           - style: default
             flags: ""
-
+    name: Tests (${{ matrix.platform }})
     runs-on: ${{ matrix.platform }}
-
     steps:
       - name: Checkout Actions Repository
         uses: actions/checkout@v3
@@ -114,7 +117,8 @@ jobs:
       - name: Run valence_nbt tests without preserve_order feature
         run: cargo test -p valence_nbt --all-targets
 
-  extractor-tests:
+  extractor-build:
+    name: Build Extractor
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Actions Repository
@@ -131,6 +135,7 @@ jobs:
         working-directory: extractor
 
   check-depgraph:
+    name: Dependency Graph (assets/depgraph.svg)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Actions Repository
@@ -183,3 +188,22 @@ jobs:
         with:
           name: bad-depgraph
           path: bad-depgraph/
+  udeps:
+    name: Unused Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Actions Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Rust toolchain and cache
+        uses: actions-rust-lang/setup-rust-toolchain@v1.5.0
+        with:
+          toolchain: "nightly"
+
+      - name: Install cargo-udeps
+        uses: baptiste0928/cargo-install@v2.1.0
+        with:
+          crate: cargo-udeps
+
+      - name: Check for unused dependencies
+        run: cargo udeps --all --all-features

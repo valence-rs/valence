@@ -8,7 +8,7 @@ use bevy_ecs::prelude::*;
 use flume::{Receiver, Sender};
 use valence_server::client::{Client, OldView, View};
 use valence_server::entity::{EntityLayerId, OldEntityLayerId};
-use valence_server::layer::UpdateLayersPreClientSet;
+use valence_server::layer_old::UpdateLayersPreClientSet;
 use valence_server::protocol::anyhow;
 use valence_server::registry::BiomeRegistry;
 use valence_server::{ChunkLayer, ChunkPos};

@@ -883,8 +883,8 @@ pub(crate) fn update_view_and_layers(
             view_dist,
             old_view_dist,
         )| {
-            let view = ChunkView::new(pos.0.into(), view_dist.0);
-            let old_view = ChunkView::new(old_pos.get().into(), old_view_dist.0);
+            let view = ChunkView::new(ChunkPos::from(pos.0), view_dist.0);
+            let old_view = ChunkView::new(ChunkPos::from(old_pos.get()), old_view_dist.0);
 
             // Make sure the center chunk is set before loading chunks! Otherwise the client
             // may ignore the chunk.

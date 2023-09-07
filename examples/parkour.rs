@@ -113,7 +113,7 @@ fn reset_clients(
 
             // Init chunks.
             for pos in ChunkView::new(START_POS.into(), VIEW_DIST).iter() {
-                layer.insert_chunk(pos, Chunk::new());
+                layer.insert_chunk(pos, UnloadedChunk::new());
             }
 
             state.score = 0;
@@ -191,8 +191,8 @@ fn manage_blocks(mut clients: Query<(&mut Client, &Position, &mut GameState, &mu
 
 fn manage_chunks(mut clients: Query<(&Position, &OldPosition, &mut ChunkLayer), With<Client>>) {
     for (pos, old_pos, mut layer) in &mut clients {
-        let old_view = ChunkView::new(old_pos.chunk_pos(), VIEW_DIST);
-        let view = ChunkView::new(pos.to_chunk_pos(), VIEW_DIST);
+        let old_view = ChunkView::new(old_pos.get().into(), VIEW_DIST);
+        let view = ChunkView::new(pos.0.into(), VIEW_DIST);
 
         if old_view != view {
             for pos in old_view.diff(view) {

@@ -1,4 +1,4 @@
-use crate::layer::chunk::Chunk;
+use crate::layer_old::chunk::Chunk;
 use crate::protocol::packets::play::{PlayerListS2c, PlayerSpawnS2c};
 use crate::testing::{create_mock_client, ScenarioSingleClient};
 use crate::ChunkLayer;

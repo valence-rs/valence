@@ -1,10 +1,9 @@
 use egui::{RichText, Ui, Widget};
 use itertools::Itertools;
-use packet_inspector::PacketState;
-
-use crate::tri_checkbox::{TriCheckbox, TriCheckboxState};
+use valence_protocol::PacketState;
 
 use super::{SharedState, Tab, View};
+use crate::tri_checkbox::{TriCheckbox, TriCheckboxState};
 
 pub struct Filter {}
 

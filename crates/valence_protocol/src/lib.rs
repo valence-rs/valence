@@ -30,6 +30,7 @@ pub mod __private {
 extern crate self as valence_protocol;
 
 mod array;
+mod biome_pos;
 mod bit_set;
 pub mod block_pos;
 mod bounded;
@@ -57,6 +58,7 @@ use std::io::Write;
 
 use anyhow::Context;
 pub use array::FixedArray;
+pub use biome_pos::BiomePos;
 pub use bit_set::FixedBitSet;
 pub use block::{BlockKind, BlockState};
 pub use block_pos::BlockPos;
@@ -76,6 +78,7 @@ pub use ident::ident;
 pub use item::{ItemKind, ItemStack};
 pub use packets::play::particle_s2c::Particle;
 pub use raw::RawBytes;
+use serde::{Deserialize, Serialize};
 pub use sound::Sound;
 pub use text::Text;
 pub use valence_generated::{block, packet_id};
@@ -293,7 +296,7 @@ pub trait Packet: std::fmt::Debug {
 }
 
 /// The side a packet is intended for.
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
 pub enum PacketSide {
     /// Server -> Client
     Clientbound,
@@ -302,7 +305,7 @@ pub enum PacketSide {
 }
 
 /// The statein  which a packet is used.
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
 pub enum PacketState {
     Handshaking,
     Status,

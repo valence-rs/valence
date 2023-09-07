@@ -16,6 +16,8 @@ parsing = ["dep:num-integer", "dep:valence_server"]
 [dependencies]
 bevy_app = { workspace = true, optional = true }
 bevy_ecs = { workspace = true, optional = true }
+bitfield-struct.workspace = true
+bitvec.workspace = true
 byteorder.workspace = true
 flate2.workspace = true
 flume = { workspace = true, optional = true }
