@@ -1,0 +1,16 @@
+[package]
+name = "valence_java_string"
+description = "An implementation of Java strings, tolerant of invalid UTF-16 encoding"
+readme = "README.md"
+version = "0.1.0"
+keywords = ["java", "string", "utf16"]
+edition.workspace = true
+repository.workspace = true
+documentation.workspace = true
+license.workspace = true
+
+[features]
+serde = ["dep:serde"]
+
+[dependencies]
+serde = { workspace = true, optional = true }
