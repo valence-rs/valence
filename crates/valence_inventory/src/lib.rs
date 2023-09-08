@@ -399,8 +399,6 @@ impl ClientInventoryState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Deref)]
 pub struct HeldItem {
     held_item_slot: u16,
-    #[deref(ignore)]
-    changed: bool,
 }
 
 impl HeldItem {
@@ -418,7 +416,6 @@ impl HeldItem {
         );
 
         self.held_item_slot = slot;
-        self.changed = true;
     }
 }
 
@@ -593,7 +590,6 @@ fn init_new_client_inventories(clients: Query<Entity, Added<Client>>, mut comman
             HeldItem {
                 // First slot of the hotbar.
                 held_item_slot: 36,
-                changed: false,
             },
         ));
     }
@@ -672,20 +668,6 @@ fn update_player_inventories(
         }
 
         inv_state.client_updated_cursor_item = false;
-    }
-}
-
-/// Handles the `HeldItem` component being changed on a client, which
-/// indicates that the server has changed the selected hotbar slot.
-fn update_player_selected_slot(mut clients: Query<(&mut Client, &mut HeldItem)>) {
-    for (mut client, mut held_item) in &mut clients {
-        if held_item.changed {
-            client.write_packet(&UpdateSelectedSlotS2c {
-                slot: (held_item.held_item_slot - PLAYER_INVENTORY_MAIN_SLOTS_COUNT) as u8,
-            });
-
-            held_item.changed = false;
-        }
     }
 }
 
@@ -1246,6 +1228,17 @@ pub struct UpdateSelectedSlotEvent {
     pub slot: u8,
 }
 
+/// Handles the `HeldItem` component being changed on a client, which
+/// indicates that the server has changed the selected hotbar slot.
+fn update_player_selected_slot(mut clients: Query<(&mut Client, &HeldItem), Changed<HeldItem>>) {
+    for (mut client, held_item) in &mut clients {
+        client.write_packet(&UpdateSelectedSlotS2c {
+            slot: (held_item.held_item_slot - PLAYER_INVENTORY_MAIN_SLOTS_COUNT) as u8,
+        });
+    }
+}
+
+/// Client to Server HeldItem Slot
 fn handle_update_selected_slot(
     mut packets: EventReader<PacketEvent>,
     mut clients: Query<&mut HeldItem>,
@@ -1253,11 +1246,13 @@ fn handle_update_selected_slot(
 ) {
     for packet in packets.iter() {
         if let Some(pkt) = packet.decode::<UpdateSelectedSlotC2s>() {
-            if let Ok(mut held) = clients.get_mut(packet.client) {
+            if let Ok(mut mut_held) = clients.get_mut(packet.client) {
+                let held = mut_held.bypass_change_detection();
                 if pkt.slot > 8 {
                     // The client is trying to interact with a slot that does not exist, ignore.
                     continue;
                 }
+
                 held.held_item_slot = convert_hotbar_slot_id(pkt.slot);
 
                 events.send(UpdateSelectedSlotEvent {
