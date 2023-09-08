@@ -54,6 +54,7 @@ impl Plugin for InventoryPlugin {
             PostUpdate,
             (
                 update_client_on_close_inventory.before(update_open_inventories),
+                update_player_selected_slot,
                 update_open_inventories,
                 update_player_inventories,
             )
@@ -397,6 +398,8 @@ impl ClientInventoryState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Deref)]
 pub struct HeldItem {
     held_item_slot: u16,
+    #[deref(ignore)]
+    changed: bool,
 }
 
 impl HeldItem {
@@ -404,6 +407,17 @@ impl HeldItem {
     /// This value is safe to use on the player's inventory directly.
     pub fn slot(&self) -> u16 {
         self.held_item_slot
+    }
+
+    pub fn set_slot(&mut self, slot: u16) {
+        // temp
+        assert!(
+            (36..=44).contains(&slot),
+            "slot index of {slot} out of bounds"
+        );
+
+        self.held_item_slot = slot;
+        self.changed = true;
     }
 }
 
@@ -578,6 +592,7 @@ fn init_new_client_inventories(clients: Query<Entity, Added<Client>>, mut comman
             HeldItem {
                 // First slot of the hotbar.
                 held_item_slot: 36,
+                changed: false,
             },
         ));
     }
@@ -656,6 +671,20 @@ fn update_player_inventories(
         }
 
         inv_state.client_updated_cursor_item = false;
+    }
+}
+
+fn update_player_selected_slot(mut clients: Query<(&mut Client, &mut HeldItem)>) {
+    for (mut client, mut held_item) in &mut clients {
+        if held_item.changed {
+            client.write_packet(
+                &valence_server::protocol::packets::play::UpdateSelectedSlotS2c {
+                    slot: (held_item.held_item_slot - PLAYER_INVENTORY_MAIN_SLOTS_COUNT) as u8,
+                },
+            );
+
+            held_item.changed = false;
+        }
     }
 }
 
