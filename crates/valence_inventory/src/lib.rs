@@ -1228,7 +1228,7 @@ pub struct UpdateSelectedSlotEvent {
     pub slot: u8,
 }
 
-/// Handles the `HeldItem` component being changed on a client, which
+/// Handles the `HeldItem` component being changed on a client entity, which
 /// indicates that the server has changed the selected hotbar slot.
 fn update_player_selected_slot(mut clients: Query<(&mut Client, &HeldItem), Changed<HeldItem>>) {
     for (mut client, held_item) in &mut clients {
