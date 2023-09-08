@@ -35,6 +35,7 @@ pub use valence_server::protocol::packets::play::player_action_c2s::PlayerAction
 use valence_server::protocol::packets::play::{
     ClickSlotC2s, CloseHandledScreenC2s, CloseScreenS2c, CreativeInventoryActionC2s, InventoryS2c,
     OpenScreenS2c, PlayerActionC2s, ScreenHandlerSlotUpdateS2c, UpdateSelectedSlotC2s,
+    UpdateSelectedSlotS2c,
 };
 use valence_server::protocol::{VarInt, WritePacket};
 use valence_server::text::IntoText;
@@ -674,14 +675,14 @@ fn update_player_inventories(
     }
 }
 
+/// Handles the `HeldItem` component being changed on a client, which
+/// indicates that the server has changed the selected hotbar slot.
 fn update_player_selected_slot(mut clients: Query<(&mut Client, &mut HeldItem)>) {
     for (mut client, mut held_item) in &mut clients {
         if held_item.changed {
-            client.write_packet(
-                &valence_server::protocol::packets::play::UpdateSelectedSlotS2c {
-                    slot: (held_item.held_item_slot - PLAYER_INVENTORY_MAIN_SLOTS_COUNT) as u8,
-                },
-            );
+            client.write_packet(&UpdateSelectedSlotS2c {
+                slot: (held_item.held_item_slot - PLAYER_INVENTORY_MAIN_SLOTS_COUNT) as u8,
+            });
 
             held_item.changed = false;
         }
