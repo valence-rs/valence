@@ -4,6 +4,7 @@ use crate::parsers::{CommandArg, CommandArgParseError, ParseInput};
 
 impl CommandArg for String {
     fn parse_arg(input: &mut ParseInput) -> Result<Self, CommandArgParseError> {
+        input.skip_whitespace();
         Ok(match input.pop_to_next_whitespace_or_end() {
             Some(s) => s,
             None => return Err(CommandArgParseError::InvalidArgLength),

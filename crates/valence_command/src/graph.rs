@@ -76,7 +76,9 @@ use std::fmt::{Display, Formatter};
 
 use petgraph::dot::Dot;
 use petgraph::prelude::*;
-use valence_server::protocol::packets::play::command_tree_s2c::{Node, NodeData, Parser, StringArg};
+use valence_server::protocol::packets::play::command_tree_s2c::{
+    Node, NodeData, Parser, StringArg,
+};
 use valence_server::protocol::packets::play::CommandTreeS2c;
 use valence_server::protocol::VarInt;
 
@@ -84,7 +86,8 @@ use crate::modifier_value::ModifierValue;
 use crate::parsers::{CommandArg, ParseInput};
 use crate::CommandRegistry;
 
-/// This struct is used to store the command graph. (see module level docs for more info)
+/// This struct is used to store the command graph. (see module level docs for
+/// more info)
 #[derive(Debug, Clone)]
 pub struct CommandGraph {
     pub graph: Graph<CommandNode, CommandEdgeType>,
@@ -97,8 +100,8 @@ impl Default for CommandGraph {
     }
 }
 
-/// Output the graph in graphviz dot format to do visual debugging. (this was used to make the cool
-/// graph in the module level docs)
+/// Output the graph in graphviz dot format to do visual debugging. (this was
+/// used to make the cool graph in the module level docs)
 impl Display for CommandGraph {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", Dot::new(&self.graph))
@@ -156,22 +159,29 @@ impl From<CommandGraph> for CommandTreeS2c {
         let graph = command_graph.graph;
         let nodes_and_edges = graph.into_nodes_edges();
 
-        let mut nodes: Vec<Node> = nodes_and_edges.0.into_iter().map(|node| Node {
-            children: Vec::new(),
-            data: node.weight.data,
-            executable: node.weight.executable,
-            redirect_node: None,
-        }).collect();
+        let mut nodes: Vec<Node> = nodes_and_edges
+            .0
+            .into_iter()
+            .map(|node| Node {
+                children: Vec::new(),
+                data: node.weight.data,
+                executable: node.weight.executable,
+                redirect_node: None,
+            })
+            .collect();
 
         let edges = nodes_and_edges.1;
 
         for edge in edges {
             match edge.weight {
                 CommandEdgeType::Child => {
-                    nodes[edge.source().index()].children.push(VarInt::from(edge.target().index() as i32));
+                    nodes[edge.source().index()]
+                        .children
+                        .push(VarInt::from(edge.target().index() as i32));
                 }
                 CommandEdgeType::Redirect => {
-                    nodes[edge.source().index()].redirect_node = Some(VarInt::from(edge.target().index() as i32));
+                    nodes[edge.source().index()].redirect_node =
+                        Some(VarInt::from(edge.target().index() as i32));
                 }
             }
         }
@@ -183,8 +193,8 @@ impl From<CommandGraph> for CommandTreeS2c {
     }
 }
 
-/// ergonomic builder pattern for adding executables literals and arguments to a
-/// command graph. See the derive macro for a more ergonomic way of doing this
+/// Ergonomic builder pattern for adding executables, literals and arguments to
+/// a command graph. See the derive macro for a more ergonomic way of doing this
 /// for a basic command with an enum.
 ///
 /// # Type Parameters
@@ -195,11 +205,11 @@ impl From<CommandGraph> for CommandTreeS2c {
 /// ```
 /// use std::collections::HashMap;
 /// use petgraph::visit::{EdgeCount, NodeCount};
-/// use valence_command::arg_parser::CommandArg;
 /// use valence_command::graph::{
-///     CommandGraph, CommandGraphBuilder, Parser
+///     CommandGraph, CommandGraphBuilder
 /// };
-/// use valence_command::{CommandArgSet, CommandRegistry};
+/// use valence_command::{CommandRegistry};
+/// use valence_command::parsers::CommandArg;
 ///
 /// struct TestCommand {
 ///    test: i32,

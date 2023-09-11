@@ -12,19 +12,19 @@ use petgraph::graph::NodeIndex;
 use petgraph::Graph;
 use valence_server::client::{Client, SpawnClientsSet};
 use valence_server::event_loop::PacketEvent;
+use valence_server::protocol::packets::play::command_tree_s2c::NodeData;
 use valence_server::protocol::packets::play::{CommandExecutionC2s, CommandTreeS2c};
 use valence_server::protocol::WritePacket;
 use valence_server::EventLoopPreUpdate;
-use valence_server::protocol::packets::play::command_tree_s2c::NodeData;
 
 use crate::graph::{CommandEdgeType, CommandGraph, CommandNode};
 use crate::parsers::ParseInput;
 use crate::scopes::CommandScopes;
 use crate::{CommandRegistry, CommandScopeRegistry, CommandSystemSet, ModifierValue};
 
-pub struct CommandManagerPlugin;
+pub struct CommandPlugin;
 
-impl Plugin for CommandManagerPlugin {
+impl Plugin for CommandPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<CommandExecutionEvent>()
             .add_event::<CommandProcessedEvent>()
@@ -124,11 +124,7 @@ pub fn command_tree_update_with_client(
             }
             for scope in node_scopes.iter() {
                 if !scope_registry.any_grants(
-                    &client_scopes
-                        .scopes
-                        .iter()
-                        .map(|scope| scope.as_str())
-                        .collect(),
+                    &client_scopes.0.iter().map(|scope| scope.as_str()).collect(),
                     scope,
                 ) {
                     // this should be enough to remove the node and all of its children (when it
@@ -170,11 +166,7 @@ pub fn update_command_tree(
                 }
                 for scope in node_scopes.iter() {
                     if !scope_registry.any_grants(
-                        &client_scopes
-                            .scopes
-                            .iter()
-                            .map(|scope| scope.as_str())
-                            .collect(),
+                        &client_scopes.0.iter().map(|scope| scope.as_str()).collect(),
                         scope,
                     ) {
                         // this should be enough to remove the node and all of its children (when it
@@ -278,10 +270,10 @@ fn parse_command_args(
 ) -> bool {
     let node_scopes = &graph[curent_node].scopes;
     let default_scopes = CommandScopes::new();
-    let client_scopes:Vec<&str> = scopes
+    let client_scopes: Vec<&str> = scopes
         .get(executor)
         .unwrap_or(&default_scopes)
-        .scopes
+        .0
         .iter()
         .map(|scope| scope.as_str())
         .collect();

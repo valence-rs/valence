@@ -5,7 +5,6 @@ pub mod block_pos;
 pub mod bool;
 pub mod colour;
 pub mod column_pos;
-pub mod dimension;
 pub mod entity_anchor;
 pub mod entity_selector;
 pub mod gamemode;

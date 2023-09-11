@@ -4,6 +4,8 @@ use std::hash::{Hash, Hasher};
 
 use ordered_float::OrderedFloat;
 
+/// Used to store keys values for command modifiers. Heavily inspired by
+/// serde-value.
 #[derive(Clone, Debug)]
 pub enum ModifierValue {
     Bool(bool),

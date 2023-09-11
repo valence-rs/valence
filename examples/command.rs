@@ -1,6 +1,7 @@
 #![allow(clippy::type_complexity)]
 
 use std::ops::DerefMut;
+
 use parsers::vec2::Vec2 as Vec2Parser;
 use parsers::vec3::Vec3 as Vec3Parser;
 use valence::prelude::*;
@@ -62,7 +63,7 @@ enum Test {
     // this is technically unreachable)
     #[paths = "a {a} {b} b {c?}"]
     B {
-        a: parsers::dimension::Dimension,
+        a: Vec3Parser,
         b: GreedyString,
         c: Option<String>,
     },
@@ -85,7 +86,7 @@ enum Test {
 
 #[derive(Debug, Clone)]
 enum ComplexRedirection {
-    A(parsers::dimension::Dimension),
+    A(Vec3Parser),
     B,
     C(Vec2Parser),
     D,
@@ -109,7 +110,9 @@ impl Command for ComplexRedirection {
             .at(a)
             .argument("a")
             .with_parser::<parsers::dimension::Dimension>()
-            .with_executable(|input| ComplexRedirection::A(parsers::dimension::Dimension::parse_arg(input).unwrap()));
+            .with_executable(|input| {
+                ComplexRedirection::A(parsers::dimension::Dimension::parse_arg(input).unwrap())
+            });
 
         let b = graph.literal("b").id();
 
@@ -362,7 +365,9 @@ fn setup(
     biomes: Res<BiomeRegistry>,
     mut command_scopes: ResMut<CommandScopeRegistry>,
 ) {
-    dimensions.deref_mut().insert(Ident::new("pooland").unwrap(), DimensionType::default());
+    dimensions
+        .deref_mut()
+        .insert(Ident::new("pooland").unwrap(), DimensionType::default());
 
     let mut layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
 

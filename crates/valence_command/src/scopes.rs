@@ -1,19 +1,20 @@
 //! Scope graph for the Valence Command system.
 //!
 //! ## Breakdown
-//! Each scope is a node in the graph. a path from one node to another indicates that the first
-//! scope implies the second. A colon in the scope name indicates a sub-scope. you can use this to
-//! create a hierarchy of scopes. for example, the scope "valence:command" implies
-//! "valence:command:tp". this means that if a player has the "valence:command" scope, they can use
-//! the "tp" command.
+//! Each scope is a node in the graph. a path from one node to another indicates
+//! that the first scope implies the second. A colon in the scope name indicates
+//! a sub-scope. you can use this to create a hierarchy of scopes. for example,
+//! the scope "valence:command" implies "valence:command:tp". this means that if
+//! a player has the "valence:command" scope, they can use the "tp" command.
 //!
-//! You may also link scopes together in the registry. this is useful for admin scope umbrellas. for
-//! example, if the scope "valence:admin" is linked to "valence:command", It means that if
-//! a player has the "valence:admin" scope, they can use all commands under the command scope.
+//! You may also link scopes together in the registry. this is useful for admin
+//! scope umbrellas. for example, if the scope "valence:admin" is linked to
+//! "valence:command", It means that if a player has the "valence:admin" scope,
+//! they can use all commands under the command scope.
 //!
 //! # Example
 //! ```
-//! use valence_command::scopes::{CommandScopeRegistry, Scope};
+//! use valence_command::scopes::CommandScopeRegistry;
 //!
 //! let mut registry = CommandScopeRegistry::new();
 //!
@@ -49,9 +50,7 @@ use petgraph::prelude::*;
 /// has. if a player has a scope, they can use any command that requires
 /// that scope.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, Component, Default)]
-pub struct CommandScopes {
-    pub scopes: Vec<String>,
-}
+pub struct CommandScopes(pub Vec<String>);
 
 impl CommandScopes {
     /// create a new scope component
@@ -61,13 +60,13 @@ impl CommandScopes {
 
     /// add a scope to this component
     pub fn add(&mut self, scope: &str) {
-        self.scopes.push(scope.into());
+        self.0.push(scope.into());
     }
 
     /// remove a scope from this component
     pub fn remove(&mut self, scope: &str) {
         // let scope = scope.into();
-        self.scopes.retain(|p| p != scope);
+        self.0.retain(|p| p != scope);
     }
 }
 
@@ -103,12 +102,12 @@ impl Debug for CommandScopeRegistry {
 }
 
 impl CommandScopeRegistry {
-    /// create a new scope registry
+    /// Create a new scope registry.
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// add a scope to the registry.
+    /// Add a scope to the registry.
     ///
     /// # Example
     /// ```
@@ -144,7 +143,7 @@ impl CommandScopeRegistry {
         }
     }
 
-    /// remove a scope from the registry
+    /// Remove a scope from the registry.
     ///
     /// # Example
     /// ```
@@ -167,7 +166,7 @@ impl CommandScopeRegistry {
         };
     }
 
-    /// check if a scope grants another scope
+    /// Check if a scope grants another scope.
     ///
     /// # Example
     /// ```
@@ -266,16 +265,16 @@ impl CommandScopeRegistry {
         let scope_idx = *self
             .string_to_node
             .get(scope)
-            .unwrap_or_else(|| panic!("scope {} does not exist", scope));
+            .unwrap_or_else(|| panic!("scope {scope} does not exist"));
         let other_idx = *self
             .string_to_node
             .get(other)
-            .unwrap_or_else(|| panic!("scope {} does not exist", scope));
+            .unwrap_or_else(|| panic!("scope {scope} does not exist"));
 
         self.graph.add_edge(scope_idx, other_idx, ());
     }
 
-    /// get the number of scopes in the registry
+    /// Get the number of scopes in the registry.
     pub fn scope_count(&self) -> usize {
         self.graph.node_count()
     }

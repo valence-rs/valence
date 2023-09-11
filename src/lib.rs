@@ -242,7 +242,7 @@ impl PluginGroup for DefaultPlugins {
 
         #[cfg(feature = "command")]
         {
-            group = group.add(valence_command::manager::CommandManagerPlugin);
+            group = group.add(valence_command::manager::CommandPlugin);
         }
 
         #[cfg(feature = "scoreboard")]
