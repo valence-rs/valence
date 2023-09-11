@@ -15,13 +15,13 @@ pub struct CommandTreeS2c {
 
 #[derive(Clone, Debug)]
 pub struct Node {
-    pub children: Vec<VarInt>,
     pub data: NodeData,
     pub executable: bool,
+    pub children: Vec<VarInt>,
     pub redirect_node: Option<VarInt>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum NodeData {
     Root,
     Literal {

@@ -97,7 +97,7 @@ pub use valence_world_border as world_border;
 /// ```
 pub mod prelude {
     pub use bevy_app::prelude::*;
-    pub use bevy_ecs; // Needed for bevy_ecs valence_command_derive to function correctly.
+    pub use bevy_ecs; // Needed for bevy_ecs macros to function correctly.
     pub use bevy_ecs::prelude::*;
     pub use uuid::Uuid;
     #[cfg(feature = "advancement")]

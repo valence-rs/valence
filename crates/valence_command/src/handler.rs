@@ -3,15 +3,16 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::time::Instant;
 
-use bevy_app::{App, Plugin, PostStartup, Update};
+use bevy_app::{App, Plugin, PostStartup};
 use bevy_ecs::change_detection::ResMut;
 use bevy_ecs::event::{Event, EventReader, EventWriter};
 use bevy_ecs::prelude::{Entity, IntoSystemConfigs, Resource};
 use petgraph::prelude::NodeIndex;
+use valence_server::EventLoopPreUpdate;
 
-use crate::arg_parser::ParseInput;
-use crate::command_graph::CommandGraphBuilder;
+use crate::graph::CommandGraphBuilder;
 use crate::modifier_value::ModifierValue;
+use crate::parsers::ParseInput;
 use crate::{Command, CommandProcessedEvent, CommandRegistry, CommandSystemSet};
 
 impl<T> Plugin for CommandHandler<T>
@@ -22,10 +23,8 @@ where
         app.add_event::<CommandResultEvent<T>>()
             .insert_resource(CommandResource::<T>::new())
             .add_systems(
-                Update,
-                command_event_system::<T>
-                    .after(CommandSystemSet::Update)
-                    .before(CommandSystemSet::PostUpdate),
+                EventLoopPreUpdate,
+                command_event_system::<T>.after(CommandSystemSet),
             )
             .add_systems(PostStartup, command_startup_system::<T>);
     }

@@ -1,13 +1,16 @@
 #![allow(clippy::type_complexity)]
 
+use std::ops::DerefMut;
+use parsers::vec2::Vec2 as Vec2Parser;
+use parsers::vec3::Vec3 as Vec3Parser;
 use valence::prelude::*;
-use valence_command::arg_parser::{
-    CommandArg, EntitySelector, EntitySelectors, GreedyString, QuotableString,
-};
-use valence_command::command_graph::CommandGraphBuilder;
-use valence_command::command_scopes::CommandScopes;
+use valence_command::graph::CommandGraphBuilder;
 use valence_command::handler::CommandResultEvent;
-use valence_command::{arg_parser, Command, CommandApp, CommandScopeRegistry, ModifierValue};
+use valence_command::parsers::entity_selector::{EntitySelector, EntitySelectors};
+use valence_command::parsers::strings::{GreedyString, QuotableString};
+use valence_command::parsers::CommandArg;
+use valence_command::scopes::CommandScopes;
+use valence_command::{parsers, Command, CommandApp, CommandScopeRegistry, ModifierValue};
 use valence_command_derive::Command;
 use valence_server::op_level::OpLevel;
 
@@ -18,7 +21,7 @@ const SPAWN_Y: i32 = 64;
 #[scopes("valence:command:teleport")]
 enum Teleport {
     #[paths = "{location}"]
-    ExecutorToLocation { location: arg_parser::Vec3 },
+    ExecutorToLocation { location: Vec3Parser },
     #[paths = "{target}"]
     ExecutorToTarget { target: EntitySelector },
     #[paths = "{from} {to}"]
@@ -29,13 +32,13 @@ enum Teleport {
     #[paths = "{target} {location}"]
     TargetToLocation {
         target: EntitySelector,
-        location: arg_parser::Vec3,
+        location: Vec3Parser,
     },
 }
 
 #[derive(Command, Debug, Clone)]
 #[paths("gamemode", "gm")]
-#[scopes("valence:command:teleport")]
+#[scopes("valence:command:gamemode")]
 enum Gamemode {
     #[paths("survival", "{/} gms")]
     Survival,
@@ -49,7 +52,7 @@ enum Gamemode {
 
 #[derive(Command, Debug, Clone)]
 #[paths("test ", "t ")]
-#[scopes("valence:command:teleport")]
+#[scopes("valence:command:test")]
 #[allow(dead_code)]
 enum Test {
     // 3 literals with an arg each
@@ -59,7 +62,7 @@ enum Test {
     // this is technically unreachable)
     #[paths = "a {a} {b} b {c?}"]
     B {
-        a: String,
+        a: parsers::dimension::Dimension,
         b: GreedyString,
         c: Option<String>,
     },
@@ -74,19 +77,19 @@ enum Test {
     E {
         a: Option<i32>,
         b: Option<QuotableString>,
-        c: Option<arg_parser::Vec2>,
-        d: Option<arg_parser::Vec3>,
+        c: Option<Vec2Parser>,
+        d: Option<Vec3Parser>,
         e: Option<GreedyString>,
     },
 }
 
 #[derive(Debug, Clone)]
 enum ComplexRedirection {
-    A(arg_parser::Vec3),
+    A(parsers::dimension::Dimension),
     B,
-    C(arg_parser::Vec2),
+    C(Vec2Parser),
     D,
-    E(arg_parser::Vec3),
+    E(Vec3Parser),
 }
 
 impl Command for ComplexRedirection {
@@ -94,16 +97,19 @@ impl Command for ComplexRedirection {
     where
         Self: Sized,
     {
-        let root = graph.literal("complex").id();
+        let root = graph.root().id();
+
+        let command_root = graph
+            .literal("complex")
+            .with_scopes(vec!["valence:command:complex"])
+            .id();
         let a = graph.literal("a").id();
 
         graph
             .at(a)
             .argument("a")
-            .with_parser::<arg_parser::Vec3>()
-            .with_executable(|input| {
-                ComplexRedirection::A(arg_parser::Vec3::parse_arg(input).unwrap())
-            });
+            .with_parser::<parsers::dimension::Dimension>()
+            .with_executable(|input| ComplexRedirection::A(parsers::dimension::Dimension::parse_arg(input).unwrap()));
 
         let b = graph.literal("b").id();
 
@@ -115,13 +121,11 @@ impl Command for ComplexRedirection {
         graph
             .at(c)
             .argument("c")
-            .with_parser::<arg_parser::Vec2>()
-            .with_executable(|input| {
-                ComplexRedirection::C(arg_parser::Vec2::parse_arg(input).unwrap())
-            });
+            .with_parser::<Vec2Parser>()
+            .with_executable(|input| ComplexRedirection::C(Vec2Parser::parse_arg(input).unwrap()));
 
         let d = graph
-            .at(root)
+            .at(command_root)
             .literal("d")
             .with_modifier(|_, modifiers| {
                 let entry = modifiers.entry("d_pass_count".into()).or_insert(0.into());
@@ -132,17 +136,15 @@ impl Command for ComplexRedirection {
             .id();
 
         graph.at(d).with_executable(|_| ComplexRedirection::D);
-        graph.at(d).redirect_to(root);
+        graph.at(d).redirect_to(command_root);
 
         let e = graph.literal("e").id();
 
         graph
             .at(e)
             .argument("e")
-            .with_parser::<arg_parser::Vec3>()
-            .with_executable(|input| {
-                ComplexRedirection::E(arg_parser::Vec3::parse_arg(input).unwrap())
-            });
+            .with_parser::<Vec3Parser>()
+            .with_executable(|input| ComplexRedirection::E(Vec3Parser::parse_arg(input).unwrap()));
     }
 }
 
@@ -153,19 +155,17 @@ pub fn main() {
         .add_command::<Teleport>()
         .add_command::<Gamemode>()
         .add_command::<ComplexRedirection>()
-        .add_command_handlers((
-            handle_test_command,
-            handle_teleport_command,
-            handle_complex_command,
-            handle_gamemode_command,
-        ))
         .add_systems(Startup, setup)
         .add_systems(
             Update,
             (
                 init_clients,
                 despawn_disconnected_clients,
-                toggle_perms_on_sneak,
+                // Command handlers
+                handle_test_command,
+                handle_teleport_command,
+                handle_complex_command,
+                handle_gamemode_command,
             ),
         )
         .run();
@@ -358,10 +358,12 @@ fn handle_gamemode_command(
 fn setup(
     mut commands: Commands,
     server: Res<Server>,
-    dimensions: Res<DimensionTypeRegistry>,
+    mut dimensions: ResMut<DimensionTypeRegistry>,
     biomes: Res<BiomeRegistry>,
-    mut permissions: ResMut<CommandScopeRegistry>,
+    mut command_scopes: ResMut<CommandScopeRegistry>,
 ) {
+    dimensions.deref_mut().insert(Ident::new("pooland").unwrap(), DimensionType::default());
+
     let mut layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     for z in -5..5 {
@@ -378,7 +380,12 @@ fn setup(
         }
     }
 
-    permissions.add_scope("valence:command:teleport");
+    command_scopes.add_scope("valence:command:teleport");
+    command_scopes.add_scope("valence:command:gamemode");
+    command_scopes.add_scope("valence:command:test");
+    command_scopes.add_scope("valence:command:complex");
+    command_scopes.add_scope("valence:admin");
+    command_scopes.link("valence:admin", "valence:command");
 
     commands.spawn(layer);
 }
@@ -418,24 +425,6 @@ fn init_clients(
         *game_mode = GameMode::Creative;
         op_level.set(4);
 
-        permissions.add("valence:command:teleport");
-    }
-}
-
-fn toggle_perms_on_sneak(
-    mut clients: Query<&mut CommandScopes>,
-    mut events: EventReader<SneakEvent>,
-) {
-    for event in events.iter() {
-        let Ok(mut perms) = clients.get_mut(event.client) else {
-            continue;
-        };
-        if event.state == SneakState::Start {
-            match perms.scopes.len() {
-                0 => perms.add("valence:command:teleport"),
-                1 => perms.remove("valence:command:teleport"),
-                _ => panic!("Too many permissions!"),
-            };
-        }
+        permissions.add("valence:admin");
     }
 }

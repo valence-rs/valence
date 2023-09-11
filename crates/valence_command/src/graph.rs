@@ -76,18 +76,15 @@ use std::fmt::{Display, Formatter};
 
 use petgraph::dot::Dot;
 use petgraph::prelude::*;
-use valence_server::protocol::packets::play::command_tree_s2c::{
-    Node, NodeData as PacketNodeData, Parser, StringArg, Suggestion,
-};
+use valence_server::protocol::packets::play::command_tree_s2c::{Node, NodeData, Parser, StringArg};
 use valence_server::protocol::packets::play::CommandTreeS2c;
 use valence_server::protocol::VarInt;
 
-use crate::arg_parser::{CommandArg, ParseInput};
 use crate::modifier_value::ModifierValue;
+use crate::parsers::{CommandArg, ParseInput};
 use crate::CommandRegistry;
 
-/// This struct is used to store the command graph.(see module level docs for
-/// more info)
+/// This struct is used to store the command graph. (see module level docs for more info)
 #[derive(Debug, Clone)]
 pub struct CommandGraph {
     pub graph: Graph<CommandNode, CommandEdgeType>,
@@ -100,8 +97,8 @@ impl Default for CommandGraph {
     }
 }
 
-/// Output the graph in graphviz dot format to do visual debugging. (this was
-/// used to make the cool graph in the module level docs)
+/// Output the graph in graphviz dot format to do visual debugging. (this was used to make the cool
+/// graph in the module level docs)
 impl Display for CommandGraph {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", Dot::new(&self.graph))
@@ -139,19 +136,6 @@ impl Display for CommandNode {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum NodeData {
-    Root,
-    Literal {
-        name: String,
-    },
-    Argument {
-        name: String,
-        parser: Parser,
-        suggestion: Option<Suggestion>,
-    },
-}
-
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum CommandEdgeType {
     Redirect,
@@ -167,26 +151,9 @@ impl Display for CommandEdgeType {
     }
 }
 
-impl From<NodeData> for PacketNodeData {
-    fn from(value: NodeData) -> Self {
-        match value {
-            NodeData::Root => PacketNodeData::Root,
-            NodeData::Literal { name } => PacketNodeData::Literal { name },
-            NodeData::Argument {
-                name,
-                parser,
-                suggestion,
-            } => PacketNodeData::Argument {
-                name,
-                parser,
-                suggestion,
-            },
-        }
-    }
-}
-
 impl From<CommandGraph> for CommandTreeS2c {
-    fn from(value: CommandGraph) -> Self {
+    fn from(command_graph: CommandGraph) -> Self {
+
         let mut nodes = Vec::new();
         let graph = value.graph;
         let root_index_graph = value.root;
@@ -266,6 +233,34 @@ impl From<CommandGraph> for CommandTreeS2c {
             commands: packet_nodes,
             root_index: root_index.into(),
         }
+
+        let graph = command_graph.graph;
+        let nodes_and_edges = graph.into_nodes_edges();
+
+        let mut nodes: Vec<Node> = nodes_and_edges.0.into_iter().map(|node| Node {
+            children: Vec::new(),
+            data: node.weight.data,
+            executable: node.weight.executable,
+            redirect_node: None,
+        }).collect();
+
+        let edges = nodes_and_edges.1;
+
+        for edge in edges {
+            match edge.weight {
+                CommandEdgeType::Child => {
+                    nodes[edge.source().index()].children.push(VarInt::from(edge.target().index() as i32));
+                }
+                CommandEdgeType::Redirect => {
+                    nodes[edge.source().index()].redirect_node = Some(VarInt::from(edge.target().index() as i32));
+                }
+            }
+        }
+
+        CommandTreeS2c {
+            commands: nodes,
+            root_index: VarInt::from(command_graph.root.index() as i32),
+        }
     }
 }
 
@@ -282,7 +277,7 @@ impl From<CommandGraph> for CommandTreeS2c {
 /// use std::collections::HashMap;
 /// use petgraph::visit::{EdgeCount, NodeCount};
 /// use valence_command::arg_parser::CommandArg;
-/// use valence_command::command_graph::{
+/// use valence_command::graph::{
 ///     CommandGraph, CommandGraphBuilder, Parser
 /// };
 /// use valence_command::{CommandArgSet, CommandRegistry};
@@ -428,7 +423,7 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
     /// ```
     /// use std::collections::HashMap;
     ///
-    /// use valence_command::command_graph::CommandGraphBuilder;
+    /// use valence_command::graph::CommandGraphBuilder;
     /// use valence_command::CommandRegistry;
     ///
     /// struct TestCommand;
@@ -495,7 +490,7 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
     /// ```
     /// use std::collections::HashMap;
     ///
-    /// use valence_command::command_graph::CommandGraphBuilder;
+    /// use valence_command::graph::CommandGraphBuilder;
     /// use valence_command::CommandRegistry;
     ///
     /// struct TestCommand;
@@ -533,7 +528,7 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
     /// * scopes - a list of scopes for that are aloud to access a command node
     ///   and its children
     /// (list of strings following the system described in
-    /// [command_scopes](crate::command_scopes))
+    /// [command_scopes](crate::scopes))
     pub fn with_scopes(&mut self, scopes: Vec<impl Into<String>>) -> &mut Self {
         let graph = &mut self.graph.graph;
         let current_node = &mut self.current_node;

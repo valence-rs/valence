@@ -1,0 +1,1 @@
+Simplify the creation of Valence commands with a derive macro.

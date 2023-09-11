@@ -111,7 +111,8 @@ pub fn derive_command(a_input: TokenStream) -> TokenStream {
     let expanded = quote! {
 
         impl valence_command::Command for #enum_name {
-            fn assemble_graph(command_graph: &mut valence_command::command_graph::CommandGraphBuilder<Self>) {
+            fn assemble_graph(command_graph: &mut valence_command::graph::CommandGraphBuilder<Self>) {
+                use valence_command::parsers::CommandArg;
                 #base_command_expansion
 
                 #command_alias_expansion

@@ -1,10 +1,11 @@
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 
-use bevy_app::{App, Plugin, PreUpdate, Update};
+use bevy_app::{App, Plugin, PreUpdate};
 use bevy_ecs::entity::Entity;
 use bevy_ecs::prelude::{
-    Added, Commands, EventReader, EventWriter, IntoSystemConfigs, Or, Query, Res,
+    Added, Commands, DetectChanges, Event, EventReader, EventWriter, IntoSystemConfigs, Or, Query,
+    Res,
 };
 use bevy_ecs::query::Changed;
 use petgraph::graph::NodeIndex;
@@ -13,14 +14,13 @@ use valence_server::client::{Client, SpawnClientsSet};
 use valence_server::event_loop::PacketEvent;
 use valence_server::protocol::packets::play::{CommandExecutionC2s, CommandTreeS2c};
 use valence_server::protocol::WritePacket;
+use valence_server::EventLoopPreUpdate;
+use valence_server::protocol::packets::play::command_tree_s2c::NodeData;
 
-use crate::arg_parser::ParseInput;
-use crate::command_graph::{CommandEdgeType, CommandGraph, CommandNode, NodeData};
-use crate::command_scopes::CommandScopes;
-use crate::{
-    CommandExecutionEvent, CommandProcessedEvent, CommandRegistry, CommandScopeRegistry,
-    CommandSystemSet,
-};
+use crate::graph::{CommandEdgeType, CommandGraph, CommandNode};
+use crate::parsers::ParseInput;
+use crate::scopes::CommandScopes;
+use crate::{CommandRegistry, CommandScopeRegistry, CommandSystemSet, ModifierValue};
 
 pub struct CommandManagerPlugin;
 
@@ -28,16 +28,14 @@ impl Plugin for CommandManagerPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<CommandExecutionEvent>()
             .add_event::<CommandProcessedEvent>()
+            .add_systems(PreUpdate, insert_scope_component.after(SpawnClientsSet))
             .add_systems(
-                PreUpdate,
-                insert_permissions_component.after(SpawnClientsSet),
-            )
-            .add_systems(
-                Update,
+                EventLoopPreUpdate,
                 (
                     update_command_tree,
-                    read_incoming_packets.before(CommandSystemSet::Update),
-                    parse_incoming_commands.in_set(CommandSystemSet::Update),
+                    command_tree_update_with_client,
+                    read_incoming_packets.before(CommandSystemSet),
+                    parse_incoming_commands.in_set(CommandSystemSet),
                 ),
             );
 
@@ -57,12 +55,34 @@ impl Plugin for CommandManagerPlugin {
     }
 }
 
-pub fn insert_permissions_component(
-    mut clients: Query<Entity, Added<Client>>,
-    mut commands: Commands,
-) {
+/// This event is sent when a command is sent (you can send this with any
+/// entity)
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Event)]
+pub struct CommandExecutionEvent {
+    /// the command that was executed eg. "teleport @p 0 ~ 0"
+    pub command: String,
+    /// usually the Client entity but it could be a command block or something
+    /// (whatever the library user wants)
+    pub executor: Entity,
+}
+
+/// This will only be sent if the command was successfully parsed and an
+/// executable was found
+#[derive(Debug, Clone, PartialEq, Eq, Event)]
+pub struct CommandProcessedEvent {
+    /// the command that was executed eg. "teleport @p 0 ~ 0"
+    pub command: String,
+    /// usually the Client entity but it could be a command block or something
+    /// (whatever the library user wants)
+    pub executor: Entity,
+    /// the modifiers that were applied to the command
+    pub modifiers: HashMap<ModifierValue, ModifierValue>,
+    /// the node that was executed
+    pub node: NodeIndex,
+}
+
+pub fn insert_scope_component(mut clients: Query<Entity, Added<Client>>, mut commands: Commands) {
     for client in clients.iter_mut() {
-        println!("Inserting permissions component for client: {:?}", client);
         commands.entity(client).insert(CommandScopes::new());
     }
 }
@@ -79,22 +99,21 @@ pub fn read_incoming_packets(
                 executor: client,
             });
         }
-        // if let Some(packet) = packet.decode::<>() {
-        //     println!("Received command tree from client: {:?}", packet);
-        // }
     }
 }
 
 #[allow(clippy::type_complexity)]
-pub fn update_command_tree(
+pub fn command_tree_update_with_client(
     command_registry: Res<CommandRegistry>,
-    premission_registry: Res<CommandScopeRegistry>,
+    scope_registry: Res<CommandScopeRegistry>,
     mut new_clients: Query<
         (&mut Client, &CommandScopes),
         Or<(Added<Client>, Changed<CommandScopes>)>,
     >,
 ) {
-    for (mut client, client_permissions) in new_clients.iter_mut() {
+    for (mut client, client_scopes) in new_clients.iter_mut() {
+        println!("updating command tree for client");
+        let time = Instant::now();
         let mut graph = command_registry.graph.clone();
         // trim the graph to only include commands the client has permission to execute
         let mut nodes_to_remove = Vec::new();
@@ -103,8 +122,15 @@ pub fn update_command_tree(
             if node_scopes.is_empty() {
                 continue;
             }
-            for permission in node_scopes.iter() {
-                if !premission_registry.any_grants(&client_permissions.scopes, permission) {
+            for scope in node_scopes.iter() {
+                if !scope_registry.any_grants(
+                    &client_scopes
+                        .scopes
+                        .iter()
+                        .map(|scope| scope.as_str())
+                        .collect(),
+                    scope,
+                ) {
                     // this should be enough to remove the node and all of its children (when it
                     // gets converted into a packet)
                     nodes_to_remove.push(node);
@@ -117,9 +143,56 @@ pub fn update_command_tree(
             graph.graph.remove_node(node);
         }
 
+        println!("converting graph to packet");
+        let time2 = Instant::now();
         let packet: CommandTreeS2c = graph.into();
+        println!("converting graph to packet took {:?}", time2.elapsed());
 
         client.write_packet(&packet);
+        println!("command tree update took {:?}", time.elapsed());
+    }
+}
+
+pub fn update_command_tree(
+    command_registry: Res<CommandRegistry>,
+    scope_registry: Res<CommandScopeRegistry>,
+    mut clients: Query<(&mut Client, &CommandScopes)>,
+) {
+    if command_registry.is_changed() {
+        for (mut client, client_scopes) in clients.iter_mut() {
+            let mut graph = command_registry.graph.clone();
+            // trim the graph to only include commands the client has permission to execute
+            let mut nodes_to_remove = Vec::new();
+            'nodes: for node in graph.graph.node_indices() {
+                let node_scopes = &graph.graph[node].scopes;
+                if node_scopes.is_empty() {
+                    continue;
+                }
+                for scope in node_scopes.iter() {
+                    if !scope_registry.any_grants(
+                        &client_scopes
+                            .scopes
+                            .iter()
+                            .map(|scope| scope.as_str())
+                            .collect(),
+                        scope,
+                    ) {
+                        // this should be enough to remove the node and all of its children (when it
+                        // gets converted into a packet)
+                        nodes_to_remove.push(node);
+                        continue 'nodes;
+                    }
+                }
+            }
+
+            for node in nodes_to_remove {
+                graph.graph.remove_node(node);
+            }
+
+            let packet: CommandTreeS2c = graph.into();
+
+            client.write_packet(&packet);
+        }
     }
 }
 
@@ -205,12 +278,18 @@ fn parse_command_args(
 ) -> bool {
     let node_scopes = &graph[curent_node].scopes;
     let default_scopes = CommandScopes::new();
-    let client_scopes = &scopes.get(executor).unwrap_or(&default_scopes).scopes;
+    let client_scopes:Vec<&str> = scopes
+        .get(executor)
+        .unwrap_or(&default_scopes)
+        .scopes
+        .iter()
+        .map(|scope| scope.as_str())
+        .collect();
     // if empty, we assume the node is global
     if !node_scopes.is_empty() {
         let mut has_scope = false;
         for scope in node_scopes {
-            if scope_registry.any_grants(client_scopes, scope) {
+            if scope_registry.any_grants(&client_scopes, scope) {
                 has_scope = true;
                 break;
             }

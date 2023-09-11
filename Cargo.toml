@@ -9,6 +9,7 @@ readme = "README.md"
 license.workspace = true
 keywords = ["minecraft", "gamedev", "server", "ecs"]
 categories = ["game-engines"]
+include = ["/src", "/benches", "/examples", "/README.md", "/LICENSE.txt"]
 
 [features]
 default = [
