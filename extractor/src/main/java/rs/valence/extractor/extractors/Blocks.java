@@ -7,12 +7,16 @@ import net.minecraft.registry.Registries;
 import net.minecraft.item.VerticallyAttachableBlockItem;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.EmptyBlockView;
+import net.minecraft.block.Block;
+
 import rs.valence.extractor.Main;
 import rs.valence.extractor.mixin.ExposeWallBlock;
 
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Objects;
+
+import java.lang.reflect.*;
 
 public class Blocks implements Main.Extractor {
     public Blocks() {
@@ -25,15 +29,15 @@ public class Blocks implements Main.Extractor {
 
     @Override
     public JsonElement extract() {
-        var topLevelJson = new JsonObject();
+        JsonObject topLevelJson = new JsonObject();
 
-        var blocksJson = new JsonArray();
-        var stateIdCounter = 0;
+        JsonArray blocksJson = new JsonArray();
+        int stateIdCounter = 0;
 
-        var shapes = new LinkedHashMap<Shape, Integer>();
+        LinkedHashMap<Shape, Integer> shapes = new LinkedHashMap<Shape, Integer>();
 
-        for (var block : Registries.BLOCK) {
-            var blockJson = new JsonObject();
+        for (Block block : Registries.BLOCK) {
+            JsonObject blockJson = new JsonObject();
             blockJson.addProperty("id", Registries.BLOCK.getRawId(block));
             blockJson.addProperty("name", Registries.BLOCK.getId(block).getPath());
             blockJson.addProperty("translation_key", block.getTranslationKey());
@@ -41,12 +45,12 @@ public class Blocks implements Main.Extractor {
 
             if (block.asItem() instanceof VerticallyAttachableBlockItem wsbItem) {
                 if (wsbItem.getBlock() == block) {
-                    var wallBlock = ((ExposeWallBlock) wsbItem).getWallBlock();
+                    Block wallBlock = ((ExposeWallBlock) wsbItem).getWallBlock();
                     blockJson.addProperty("wall_variant_id", Registries.BLOCK.getRawId(wallBlock));
                 }
             }
 
-            var propsJson = new JsonArray();
+            JsonArray propsJson = new JsonArray();
             for (var prop : block.getStateManager().getProperties()) {
                 var propJson = new JsonObject();
 
@@ -70,6 +74,7 @@ public class Blocks implements Main.Extractor {
                 stateJson.addProperty("luminance", state.getLuminance());
                 stateJson.addProperty("opaque", state.isOpaque());
                 stateJson.addProperty("replaceable", state.isReplaceable());
+                stateJson.addProperty("blocks_motion", state.blocksMovement());
 
                 if (block.getDefaultState().equals(state)) {
                     blockJson.addProperty("default_state_id", id);

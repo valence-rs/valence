@@ -321,14 +321,12 @@ impl LoadedChunk {
 
         for z in 0..16 {
             for x in 0..16 {
-                if !self.block_state(x as u32, world_surface[z][x], z as u32).is_air() { // .is_motion_blocking()
+                if !self.block_state(x as u32, world_surface[z][x], z as u32).blocks_motion() {
                     heightmap[z][x] = world_surface[z][x];
                 }
                 else {
                     for y in (0..world_surface[z][x]).rev() {
-                        // TODO replace with !.is_air() with (currently non-existing) .is_motion_blocking()
-                        // TODO which blocks are "motion-blocking"?
-                        if !self.block_state(x as u32, y, z as u32).is_air() {
+                        if !self.block_state(x as u32, y, z as u32).blocks_motion() {
                             heightmap[z][x] = y;
                             break;
                         }
