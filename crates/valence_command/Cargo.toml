@@ -15,7 +15,6 @@ bevy_ecs.workspace = true
 byteorder.workspace = true
 ordered-float.workspace = true
 petgraph.workspace = true
-serde-value.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 
