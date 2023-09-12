@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::marker::PhantomData;
-=
+
 #[cfg(not(feature = "valence"))]
 use bevy_app::PreUpdate;
 use bevy_app::{App, Plugin, PostStartup};
