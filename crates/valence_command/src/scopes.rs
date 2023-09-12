@@ -231,7 +231,7 @@ impl CommandScopeRegistry {
     /// ));
     /// ```
     pub fn any_grants(&self, scopes: &Vec<&str>, other: &str) -> bool {
-        let other = other.into();
+        let other = other;
 
         for scope in scopes {
             if self.grants(scope, other) {

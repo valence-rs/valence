@@ -33,8 +33,8 @@ pub struct CommandRegistry {
 
 pub trait Command {
     fn assemble_graph(graph: &mut CommandGraphBuilder<Self>)
-        where
-            Self: Sized;
+    where
+        Self: Sized;
 }
 
 pub trait CommandApp {

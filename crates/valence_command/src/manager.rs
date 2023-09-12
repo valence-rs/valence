@@ -81,13 +81,13 @@ pub struct CommandProcessedEvent {
     pub node: NodeIndex,
 }
 
-pub fn insert_scope_component(mut clients: Query<Entity, Added<Client>>, mut commands: Commands) {
+fn insert_scope_component(mut clients: Query<Entity, Added<Client>>, mut commands: Commands) {
     for client in clients.iter_mut() {
         commands.entity(client).insert(CommandScopes::new());
     }
 }
 
-pub fn read_incoming_packets(
+fn read_incoming_packets(
     mut packets: EventReader<PacketEvent>,
     mut event_writer: EventWriter<CommandExecutionEvent>,
 ) {
@@ -103,7 +103,7 @@ pub fn read_incoming_packets(
 }
 
 #[allow(clippy::type_complexity)]
-pub fn command_tree_update_with_client(
+fn command_tree_update_with_client(
     command_registry: Res<CommandRegistry>,
     scope_registry: Res<CommandScopeRegistry>,
     mut new_clients: Query<
@@ -149,7 +149,7 @@ pub fn command_tree_update_with_client(
     }
 }
 
-pub fn update_command_tree(
+fn update_command_tree(
     command_registry: Res<CommandRegistry>,
     scope_registry: Res<CommandScopeRegistry>,
     mut clients: Query<(&mut Client, &CommandScopes)>,
@@ -199,7 +199,7 @@ fn parse_incoming_commands(
         let timer = Instant::now();
         let executor = command_event.executor;
         println!("Received command: {:?}", command_event);
-        // theese are the leafs of the graph that are executable under this command
+        // these are the leafs of the graph that are executable under this command
         // group
         let executable_leafs = command_registry
             .executables
@@ -262,13 +262,13 @@ fn parse_command_args(
     executable_leafs: &[&NodeIndex],
     command_registry: &CommandRegistry,
     to_be_executed: &mut Vec<NodeIndex>,
-    curent_node: NodeIndex,
+    current_node: NodeIndex,
     executor: Entity,
     scopes: &Query<&CommandScopes>,
     scope_registry: &CommandScopeRegistry,
     coming_from_redirect: bool,
 ) -> bool {
-    let node_scopes = &graph[curent_node].scopes;
+    let node_scopes = &graph[current_node].scopes;
     let default_scopes = CommandScopes::new();
     let client_scopes: Vec<&str> = scopes
         .get(executor)
@@ -294,11 +294,11 @@ fn parse_command_args(
     if !coming_from_redirect {
         // we want to skip whitespace before matching the node
         input.skip_whitespace();
-        match &graph[curent_node].data {
+        match &graph[current_node].data {
             // no real need to check for root node
             NodeData::Root => {
-                if command_registry.modifiers.contains_key(&curent_node) {
-                    modifiers_to_be_executed.push((curent_node, String::new()));
+                if command_registry.modifiers.contains_key(&current_node) {
+                    modifiers_to_be_executed.push((current_node, String::new()));
                 }
             }
             // if the node is a literal, we want to match the name of the literal
@@ -307,8 +307,8 @@ fn parse_command_args(
                 match input.match_next(name) {
                     true => {
                         input.pop(); // we want to pop the whitespace after the literal
-                        if command_registry.modifiers.contains_key(&curent_node) {
-                            modifiers_to_be_executed.push((curent_node, String::new()));
+                        if command_registry.modifiers.contains_key(&current_node) {
+                            modifiers_to_be_executed.push((current_node, String::new()));
                         }
                     }
                     false => return false,
@@ -316,7 +316,7 @@ fn parse_command_args(
             }
             // if the node is an argument, we want to parse the argument
             NodeData::Argument { .. } => {
-                let parser = match command_registry.parsers.get(&curent_node) {
+                let parser = match command_registry.parsers.get(&current_node) {
                     Some(parser) => parser,
                     None => {
                         return false;
@@ -329,9 +329,9 @@ fn parse_command_args(
                 let after_cursor = input.cursor;
                 if valid {
                     command_args.push(input.input[before_cursor..after_cursor].to_string());
-                    if command_registry.modifiers.contains_key(&curent_node) {
+                    if command_registry.modifiers.contains_key(&current_node) {
                         modifiers_to_be_executed.push((
-                            curent_node,
+                            current_node,
                             input.input[before_cursor..after_cursor].to_string(),
                         ));
                     }
@@ -346,15 +346,15 @@ fn parse_command_args(
 
     let pre_cursor = input.cursor;
     input.skip_whitespace();
-    if input.is_done() && executable_leafs.contains(&&curent_node) {
-        to_be_executed.push(curent_node);
+    if input.is_done() && executable_leafs.contains(&&current_node) {
+        to_be_executed.push(current_node);
         return true;
     } else {
         input.cursor = pre_cursor;
     }
 
     let mut all_invalid = true;
-    for neighbor in graph.neighbors(curent_node) {
+    for neighbor in graph.neighbors(current_node) {
         let pre_cursor = input.cursor;
         let mut args = command_args.clone();
         let mut modifiers = modifiers_to_be_executed.clone();
@@ -371,7 +371,7 @@ fn parse_command_args(
             scopes,
             scope_registry,
             {
-                let edge = graph.find_edge(curent_node, neighbor).unwrap();
+                let edge = graph.find_edge(current_node, neighbor).unwrap();
                 matches!(&graph[edge], CommandEdgeType::Redirect)
             },
         );

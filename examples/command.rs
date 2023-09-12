@@ -109,10 +109,8 @@ impl Command for ComplexRedirection {
         graph
             .at(a)
             .argument("a")
-            .with_parser::<parsers::dimension::Dimension>()
-            .with_executable(|input| {
-                ComplexRedirection::A(parsers::dimension::Dimension::parse_arg(input).unwrap())
-            });
+            .with_parser::<Vec3Parser>()
+            .with_executable(|input| ComplexRedirection::A(Vec3Parser::parse_arg(input).unwrap()));
 
         let b = graph.literal("b").id();
 
