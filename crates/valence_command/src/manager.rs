@@ -212,7 +212,6 @@ fn parse_incoming_commands(
     entity_scopes: Query<&CommandScopes>,
 ) {
     for command_event in event_reader.iter() {
-        let timer = Instant::now();
         let executor = command_event.executor;
         // these are the leafs of the graph that are executable under this command
         // group

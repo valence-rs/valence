@@ -114,7 +114,6 @@ fn command_event_system<T>(
 {
     for command_event in commands_executed.iter() {
         if command.executables.contains_key(&command_event.node) {
-            let timer = Instant::now();
             let result = command.executables.get(&command_event.node).unwrap()(
                 &mut ParseInput::new(&command_event.command),
             );
