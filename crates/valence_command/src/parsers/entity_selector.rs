@@ -26,17 +26,17 @@ impl CommandArg for EntitySelector {
     fn parse_arg(input: &mut ParseInput) -> Result<Self, CommandArgParseError> {
         input.skip_whitespace();
         let mut s = String::new();
-        let mut selector = None;
+        let mut simple_selector = None;
         while let Some(c) = input.peek() {
             match c {
                 '@' => {
-                    input.pop();
+                    input.pop(); // pop the '@'
                     match input.pop() {
-                        Some('e') => selector = Some(EntitySelectors::AllEntities),
-                        Some('a') => selector = Some(EntitySelectors::AllPlayers),
-                        Some('p') => selector = Some(EntitySelectors::NearestPlayer),
-                        Some('r') => selector = Some(EntitySelectors::RandomPlayer),
-                        Some('s') => selector = Some(EntitySelectors::SelfPlayer),
+                        Some('e') => simple_selector = Some(EntitySelectors::AllEntities),
+                        Some('a') => simple_selector = Some(EntitySelectors::AllPlayers),
+                        Some('p') => simple_selector = Some(EntitySelectors::NearestPlayer),
+                        Some('r') => simple_selector = Some(EntitySelectors::RandomPlayer),
+                        Some('s') => simple_selector = Some(EntitySelectors::SelfPlayer),
                         _ => {
                             return Err(CommandArgParseError::InvalidArgument(
                                 "entity selector".to_string(),
@@ -44,13 +44,13 @@ impl CommandArg for EntitySelector {
                             ))
                         }
                     }
-                    if input.peek() != Some('[') {
-                        return Ok(EntitySelector::SimpleSelector(selector.unwrap()));
+                    if input.peek() != Some('[') { // if there's no complex selector, we're done
+                        return Ok(EntitySelector::SimpleSelector(simple_selector.unwrap()));
                     }
                 }
                 '[' => {
                     input.pop();
-                    if selector.is_none() {
+                    if simple_selector.is_none() {
                         return Err(CommandArgParseError::InvalidArgument(
                             "entity selector".to_string(),
                             c.to_string(),
@@ -59,7 +59,7 @@ impl CommandArg for EntitySelector {
                     while let Some(c) = input.pop() {
                         if c == ']' {
                             return Ok(EntitySelector::ComplexSelector(
-                                selector.unwrap(),
+                                simple_selector.unwrap(),
                                 s.trim().to_string(),
                             ));
                         } else {
