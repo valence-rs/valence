@@ -227,6 +227,7 @@ impl From<CommandGraph> for CommandTreeS2c {
 ///    .literal("test") // add a literal node then transition to it
 ///    .argument("test")
 ///    // a player needs one of these scopes to execute the command
+///    //(note: if you want an admin scope you should use the link method on the scope registry.)
 ///    .with_scopes(vec!["test:admin", "command:test"])
 ///    .with_parser::<i32>()
 ///    // it is reasonably safe to unwrap here because we know that the argument is an integer
@@ -287,14 +288,14 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
         }
     }
 
-    /// sets the current node to the root node. This is useful for when you want
-    /// to add a new command to the graph in the same builder.
+    /// Transitions to the root node. Use this to start building a new command
+    /// from root.
     pub fn root(&mut self) -> &mut Self {
         self.current_node = self.graph.root;
         self
     }
 
-    /// creates a new literal node and transitions to it
+    /// Creates a new literal node and transitions to it.
     ///
     /// # Default Values
     /// * executable - `false`
@@ -318,7 +319,7 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
         self
     }
 
-    /// creates a new argument node and transitions to it
+    /// Creates a new argument node and transitions to it.
     ///
     /// # Default Values
     /// * executable - `false`
@@ -346,7 +347,8 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
         self
     }
 
-    /// creates a new redirect edge from the current node to the node specified
+    /// Creates a new redirect edge from the current node to the node specified.
+    /// For info on what a redirect edge is, see the module level documentation.
     ///
     /// # Example
     /// ```
@@ -390,8 +392,9 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
         self
     }
 
-    /// sets the executable flag on the current node to true and adds the
-    /// executable to the map
+    /// Sets up the executable function for the current node. This function will
+    /// be called when the command is executed and should parse the args and
+    /// return the `T` type.
     ///
     /// # Arguments
     /// * executable - the executable function to add
@@ -433,7 +436,7 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
     ///
     /// command_graph_builder
     ///     .root() // transition to the root node
-    ///     .literal("test") // add a literal node then transition to it    ///
+    ///     .literal("test") // add a literal node then transition to it
     ///     .with_modifier(|_, modifiers| {
     ///        modifiers.insert("test".into(), "test".into()); // this will trigger when the node is passed
     ///     })
@@ -469,7 +472,7 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
         self
     }
 
-    /// sets the parser for the current node. This will decide how the argument
+    /// Sets the parser for the current node. This will decide how the argument
     /// is parsed client side and will be used to check the argument before
     /// it is passed to the executable. The node should be an argument node
     /// or nothing will happen.
@@ -501,14 +504,14 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
         self
     }
 
-    /// transitions to the node specified
+    /// Transitions to the node specified.
     pub fn at(&mut self, node: NodeIndex) -> &mut Self {
         self.current_node = node;
         self
     }
 
-    /// gets the id of the current node (useful for commands that have multiple
-    /// children)
+    /// Gets the id of the current node (useful for commands that have multiple
+    /// children).
     pub fn id(&self) -> NodeIndex {
         self.current_node
     }
