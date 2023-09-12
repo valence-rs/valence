@@ -1,6 +1,10 @@
-use valence_server::protocol::packets::play::command_tree_s2c::{Parser, StringArg};
+#[cfg(feature = "valence")]
+use valence_server::protocol::packets::play::command_tree_s2c::StringArg;
 
+use super::Parser;
 use crate::parsers::{CommandArg, CommandArgParseError, ParseInput};
+#[cfg(not(feature = "valence"))]
+use crate::StringArg;
 
 impl CommandArg for String {
     fn parse_arg(input: &mut ParseInput) -> Result<Self, CommandArgParseError> {

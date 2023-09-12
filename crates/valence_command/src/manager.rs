@@ -3,23 +3,26 @@ use std::time::Instant;
 
 use bevy_app::{App, Plugin, PreUpdate};
 use bevy_ecs::entity::Entity;
-use bevy_ecs::prelude::{
-    Added, Commands, DetectChanges, Event, EventReader, EventWriter, IntoSystemConfigs, Or, Query,
-    Res,
-};
-use bevy_ecs::query::Changed;
+#[cfg(feature = "valence")]
+use bevy_ecs::prelude::{Added, Changed, Commands, DetectChanges, Or};
+use bevy_ecs::prelude::{Event, EventReader, EventWriter, IntoSystemConfigs, Query, Res};
 use petgraph::graph::NodeIndex;
 use petgraph::Graph;
-use valence_server::client::{Client, SpawnClientsSet};
-use valence_server::event_loop::PacketEvent;
-use valence_server::protocol::packets::play::command_tree_s2c::NodeData;
-use valence_server::protocol::packets::play::{CommandExecutionC2s, CommandTreeS2c};
-use valence_server::protocol::WritePacket;
-use valence_server::EventLoopPreUpdate;
+#[cfg(feature = "valence")]
+use valence_server::{
+    client::{Client, SpawnClientsSet},
+    event_loop::PacketEvent,
+    protocol::packets::play::command_tree_s2c::NodeData,
+    protocol::packets::play::{CommandExecutionC2s, CommandTreeS2c},
+    protocol::WritePacket,
+    EventLoopPreUpdate,
+};
 
 use crate::graph::{CommandEdgeType, CommandGraph, CommandNode};
 use crate::parsers::ParseInput;
 use crate::scopes::CommandScopes;
+#[cfg(not(feature = "valence"))]
+use crate::NodeData;
 use crate::{CommandRegistry, CommandScopeRegistry, CommandSystemSet, ModifierValue};
 
 pub struct CommandPlugin;
@@ -27,8 +30,20 @@ pub struct CommandPlugin;
 impl Plugin for CommandPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<CommandExecutionEvent>()
-            .add_event::<CommandProcessedEvent>()
-            .add_systems(PreUpdate, insert_scope_component.after(SpawnClientsSet))
+            .add_event::<CommandProcessedEvent>();
+        // .add_systems(PreUpdate, insert_scope_component.after(SpawnClientsSet))
+        // .add_systems(
+        //     EventLoopPreUpdate,
+        //     (
+        //         update_command_tree,
+        //         command_tree_update_with_client,
+        //         // read_incoming_packets.before(CommandSystemSet),
+        //         parse_incoming_commands.in_set(CommandSystemSet),
+        //     ),
+        // );
+
+        #[cfg(feature = "valence")]
+        app.add_systems(PreUpdate, insert_scope_component.after(SpawnClientsSet))
             .add_systems(
                 EventLoopPreUpdate,
                 (
@@ -38,6 +53,9 @@ impl Plugin for CommandPlugin {
                     parse_incoming_commands.in_set(CommandSystemSet),
                 ),
             );
+
+        #[cfg(not(feature = "valence"))]
+        app.add_systems(PreUpdate, parse_incoming_commands.in_set(CommandSystemSet));
 
         let graph: CommandGraph = CommandGraph::new();
         let modifiers = HashMap::new();
@@ -81,12 +99,14 @@ pub struct CommandProcessedEvent {
     pub node: NodeIndex,
 }
 
+#[cfg(feature = "valence")]
 fn insert_scope_component(mut clients: Query<Entity, Added<Client>>, mut commands: Commands) {
     for client in clients.iter_mut() {
         commands.entity(client).insert(CommandScopes::new());
     }
 }
 
+#[cfg(feature = "valence")]
 fn read_incoming_packets(
     mut packets: EventReader<PacketEvent>,
     mut event_writer: EventWriter<CommandExecutionEvent>,
@@ -102,6 +122,7 @@ fn read_incoming_packets(
     }
 }
 
+#[cfg(feature = "valence")]
 #[allow(clippy::type_complexity)]
 fn command_tree_update_with_client(
     command_registry: Res<CommandRegistry>,
@@ -112,8 +133,6 @@ fn command_tree_update_with_client(
     >,
 ) {
     for (mut client, client_scopes) in new_clients.iter_mut() {
-        println!("updating command tree for client");
-        let time = Instant::now();
         let mut graph = command_registry.graph.clone();
         // trim the graph to only include commands the client has permission to execute
         let mut nodes_to_remove = Vec::new();
@@ -139,16 +158,13 @@ fn command_tree_update_with_client(
             graph.graph.remove_node(node);
         }
 
-        println!("converting graph to packet");
-        let time2 = Instant::now();
         let packet: CommandTreeS2c = graph.into();
-        println!("converting graph to packet took {:?}", time2.elapsed());
 
         client.write_packet(&packet);
-        println!("command tree update took {:?}", time.elapsed());
     }
 }
 
+#[cfg(feature = "valence")]
 fn update_command_tree(
     command_registry: Res<CommandRegistry>,
     scope_registry: Res<CommandScopeRegistry>,
@@ -198,14 +214,12 @@ fn parse_incoming_commands(
     for command_event in event_reader.iter() {
         let timer = Instant::now();
         let executor = command_event.executor;
-        println!("Received command: {:?}", command_event);
         // these are the leafs of the graph that are executable under this command
         // group
         let executable_leafs = command_registry
             .executables
             .iter()
             .collect::<Vec<&NodeIndex>>();
-        println!("Executable leafs: {:?}", executable_leafs);
         let root = command_registry.graph.root;
 
         let command_input = &command_event.command;
@@ -234,22 +248,17 @@ fn parse_incoming_commands(
 
         let mut modifiers = HashMap::new();
         for (node, modifier) in modifiers_to_be_executed {
-            println!("Executing modifier with data: {:?}", modifier);
             command_registry.modifiers.get(&node).unwrap()(modifier, &mut modifiers);
         }
 
         for node in to_be_executed {
-            println!("Executing command with data: {:?}", args);
-            println!("Executing command with modifiers: {:?}", modifiers);
-            event_writer.send(CommandProcessedEvent {
+              event_writer.send(CommandProcessedEvent {
                 command: args.join(" "),
                 executor,
                 modifiers: modifiers.clone(),
                 node,
             });
         }
-
-        println!("Command processed in: {:?}", timer.elapsed());
     }
 }
 

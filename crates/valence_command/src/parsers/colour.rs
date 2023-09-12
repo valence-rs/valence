@@ -1,7 +1,7 @@
-use valence_server::protocol::packets::play::command_tree_s2c::Parser;
 use valence_text::color::NamedColor;
 use valence_text::Color;
 
+use super::Parser;
 use crate::parsers::{CommandArg, CommandArgParseError, ParseInput};
 
 impl CommandArg for Color {

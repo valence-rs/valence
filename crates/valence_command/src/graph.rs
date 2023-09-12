@@ -76,15 +76,18 @@ use std::fmt::{Display, Formatter};
 
 use petgraph::dot::Dot;
 use petgraph::prelude::*;
-use valence_server::protocol::packets::play::command_tree_s2c::{
-    Node, NodeData, Parser, StringArg,
+#[cfg(feature = "valence")]
+use valence_server::{
+    protocol::packets::play::command_tree_s2c::{Node, NodeData, Parser, StringArg},
+    protocol::packets::play::CommandTreeS2c,
+    protocol::VarInt,
 };
-use valence_server::protocol::packets::play::CommandTreeS2c;
-use valence_server::protocol::VarInt;
 
 use crate::modifier_value::ModifierValue;
 use crate::parsers::{CommandArg, ParseInput};
 use crate::CommandRegistry;
+#[cfg(not(feature = "valence"))]
+use crate::{NodeData, Parser, StringArg};
 
 /// This struct is used to store the command graph. (see module level docs for
 /// more info)
@@ -154,6 +157,7 @@ impl Display for CommandEdgeType {
     }
 }
 
+#[cfg(feature = "valence")]
 impl From<CommandGraph> for CommandTreeS2c {
     fn from(command_graph: CommandGraph) -> Self {
         let graph = command_graph.graph;

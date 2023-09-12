@@ -18,5 +18,8 @@ petgraph.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 
-valence_server.workspace = true
-valence_text.workspace = true
+valence_server = { workspace = true, optional = true }
+valence_text = { workspace = true, optional = true }
+
+[features]
+valence = ["dep:valence_server", "dep:valence_text"]

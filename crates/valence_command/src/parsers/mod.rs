@@ -3,10 +3,12 @@
 pub mod angle;
 pub mod block_pos;
 pub mod bool;
+#[cfg(feature = "valence")]
 pub mod colour;
 pub mod column_pos;
 pub mod entity_anchor;
 pub mod entity_selector;
+#[cfg(feature = "valence")]
 pub mod gamemode;
 pub mod inventory_slot;
 pub mod numbers;
@@ -21,7 +23,11 @@ pub mod vec3;
 use std::ops::Add;
 
 use thiserror::Error;
-use valence_server::protocol::packets::play::command_tree_s2c::Parser;
+#[cfg(feature = "valence")]
+pub(crate) use valence_server::protocol::packets::play::command_tree_s2c::Parser;
+
+#[cfg(not(feature = "valence"))]
+pub(crate) use crate::Parser;
 
 pub trait CommandArg: Sized {
     fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {

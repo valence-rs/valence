@@ -1,5 +1,4 @@
-use valence_server::protocol::packets::play::command_tree_s2c::Parser;
-
+use super::Parser;
 use crate::parsers::vec2::Vec2;
 use crate::parsers::{CommandArg, CommandArgParseError, ParseInput};
 

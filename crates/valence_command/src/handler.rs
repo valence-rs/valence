@@ -8,7 +8,10 @@ use bevy_ecs::change_detection::ResMut;
 use bevy_ecs::event::{Event, EventReader, EventWriter};
 use bevy_ecs::prelude::{Entity, IntoSystemConfigs, Resource};
 use petgraph::prelude::NodeIndex;
+#[cfg(feature = "valence")]
 use valence_server::EventLoopPreUpdate;
+#[cfg(not(feature = "valence"))]
+use bevy_app::PreUpdate;
 
 use crate::graph::CommandGraphBuilder;
 use crate::modifier_value::ModifierValue;
@@ -22,11 +25,16 @@ where
     fn build(&self, app: &mut App) {
         app.add_event::<CommandResultEvent<T>>()
             .insert_resource(CommandResource::<T>::new())
-            .add_systems(
-                EventLoopPreUpdate,
-                command_event_system::<T>.after(CommandSystemSet),
-            )
             .add_systems(PostStartup, command_startup_system::<T>);
+
+        #[cfg(feature = "valence")]
+        app.add_systems(
+            EventLoopPreUpdate,
+            command_event_system::<T>.after(CommandSystemSet),
+        );
+
+        #[cfg(not(feature = "valence"))]
+        app.add_systems(PreUpdate, command_event_system::<T>.after(CommandSystemSet));
     }
 }
 
@@ -94,8 +102,6 @@ fn command_startup_system<T>(
     registry.parsers.extend(parsers);
     registry.modifiers.extend(modifiers);
     registry.executables.extend(executables.keys());
-
-    println!("Command graph: {}", registry.graph);
 }
 
 /// this system reads incoming command events and prints them to the console
@@ -117,7 +123,6 @@ fn command_event_system<T>(
                 executor: command_event.executor,
                 modifiers: command_event.modifiers.clone(),
             });
-            println!("Command took: {:?}", timer.elapsed());
         }
     }
 }
