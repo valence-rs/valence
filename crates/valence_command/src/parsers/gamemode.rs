@@ -17,7 +17,7 @@ impl CommandArg for GameMode {
         } else {
             Err(CommandArgParseError::InvalidArgument(
                 "game_mode".to_string(),
-                "not a valid game mode".to_string(),
+                "not a valid gamemode".to_string(),
             ))
         }
     }
