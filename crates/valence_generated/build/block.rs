@@ -151,16 +151,16 @@ pub fn build() -> anyhow::Result<TokenStream> {
         .collect::<TokenStream>();
 
     let state_to_blocks_motion_arms = blocks
-    .iter()
-    .flat_map(|b| {
-        b.states.iter().filter(|s| !s.blocks_motion).map(|s| {
-            let id = s.id;
-            quote! {
-                #id => false,
-            }
+        .iter()
+        .flat_map(|b| {
+            b.states.iter().filter(|s| !s.blocks_motion).map(|s| {
+                let id = s.id;
+                quote! {
+                    #id => false,
+                }
+            })
         })
-    })
-    .collect::<TokenStream>();
+        .collect::<TokenStream>();
 
     let shapes = shapes.iter().map(|s| {
         let min_x = s.min_x;

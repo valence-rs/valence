@@ -293,13 +293,16 @@ impl LoadedChunk {
         self.assert_no_changes();
     }
 
-
     // TODO is this the right place for methods like this?
     //      should there be a heightmaps.rs file?
-    // TODO documentation
+
+    /// Generates the `WORLD_SURFACE` heightmap for this chunk, which stores
+    /// the height of the highest non-air block in each column.
+    ///
+    /// The lowest value of the heightmap is 0, which is -64 ingame.
     fn world_surface(&self) -> Vec<Vec<u32>> {
         let height = self.height();
-        let mut heightmap: Vec<Vec<u32>> = vec![vec![0;16];16];
+        let mut heightmap: Vec<Vec<u32>> = vec![vec![0; 16]; 16];
 
         for z in 0..16 {
             for x in 0..16 {
@@ -311,20 +314,30 @@ impl LoadedChunk {
                 }
             }
         }
-        
+
         heightmap
     }
 
-    // TODO documentation
-    fn motion_blocking(&self, world_surface: &Vec<Vec<u32>>) -> Vec<Vec<u32>> {
-        let mut heightmap: Vec<Vec<u32>> = vec![vec![0;16];16];
+    /// Generates the `MOTION_BLOCKING` heightmap for this chunk, which stores
+    /// the height of the highest non motion-blocking block in each column.
+    ///
+    /// Air does not block motion, so this heightmap is always lower than
+    /// `WORLD_SURFACE`. Therefore, we can save some resources by starting
+    /// to check at the first block in the `WORLD_SURFACE` heightmap.
+    ///
+    /// The lowest value of the heightmap is 0, which is -64 ingame.
+    fn motion_blocking(&self, world_surface: &[Vec<u32>]) -> Vec<Vec<u32>> {
+        let mut heightmap: Vec<Vec<u32>> = vec![vec![0; 16]; 16];
 
         for z in 0..16 {
             for x in 0..16 {
-                if !self.block_state(x as u32, world_surface[z][x], z as u32).blocks_motion() {
+                // In most cases, the block given by `world_surface` already blocks motion
+                if !self
+                    .block_state(x as u32, world_surface[z][x], z as u32)
+                    .blocks_motion()
+                {
                     heightmap[z][x] = world_surface[z][x];
-                }
-                else {
+                } else {
                     for y in (0..world_surface[z][x]).rev() {
                         if !self.block_state(x as u32, y, z as u32).blocks_motion() {
                             heightmap[z][x] = y;
@@ -334,21 +347,40 @@ impl LoadedChunk {
                 }
             }
         }
-        
+
         heightmap
     }
 
-
+    /// Encodes a given heightmap into the correct format of the
+    /// `ChunkDataS2c` packet.
+    ///
+    /// The heightmap values are stored in a long array. Each value is encoded
+    /// as a 9-bit unsigned integer, so every long can hold at most seven
+    /// values. The long is padded at the left side with a single zero. Since
+    /// there are 256 values for 256 columns in a chunk, there will be 36
+    /// fully filled longs and one half-filled long with four values.
+    ///
+    /// For example, the `WORLD_SURFACE` heightmap in a superflat world is
+    /// always 4. The first 36 long values will then be
+    ///
+    ///     0 000000100 000000100 000000100 000000100 000000100 000000100 000000100,
+    ///
+    /// and the last long will be
+    ///
+    ///     0 000000000 000000000 000000000 000000100 000000100 000000100 000000100.
+    ///
+    /// TODO For some bizarre reason, I need to add 2 to the heightmap so that
+    /// it matches the expectation that a height of 0 corresponds to a height of
+    /// -64 ingame. There should be an explanation for that.
     fn encode_heightmap(&self, heightmap: Vec<Vec<u32>>) -> Value {
-        let mut encoded: Vec<i64> = vec![0;37];
+        let mut encoded: Vec<i64> = vec![0; 37];
         let mut iter = heightmap.into_iter().flatten();
 
-        for i in 0..37 {
+        for entry in encoded.iter_mut() {
             for j in 0..7 {
                 match iter.next() {
                     None => break,
-                    // TODO why do we need to add 2?
-                    Some(y) => encoded[i] += i64::from(y + 2) << 9*j,
+                    Some(y) => *entry += i64::from(y + 2) << (9 * j),
                 }
             }
         }
