@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use num_integer::div_ceil;
 use thiserror::Error;
 use valence_server::block::{PropName, PropValue};
-use valence_server::layer_old::chunk::{ChunkOps, Chunk};
+use valence_server::layer_old::chunk::{Chunk, ChunkOps};
 use valence_server::nbt::{Compound, List, Value};
 use valence_server::protocol::BlockKind;
 use valence_server::registry::biome::BiomeId;
@@ -128,8 +128,7 @@ fn parse_chunk(
         return Ok(Chunk::new());
     }
 
-    let mut chunk =
-        Chunk::with_height((sections.len() * 16).try_into().unwrap_or(u32::MAX));
+    let mut chunk = Chunk::with_height((sections.len() * 16).try_into().unwrap_or(u32::MAX));
 
     let min_sect_y = sections
         .iter()

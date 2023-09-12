@@ -34,7 +34,7 @@ use valence_protocol::sound::{Sound, SoundCategory, SoundId};
 use valence_protocol::text::{IntoText, Text};
 use valence_protocol::var_int::VarInt;
 use valence_protocol::{BlockPos, Encode, GameMode, Packet};
-use valence_registry::RegistrySet;
+use valence_registry::UpdateRegistrySet;
 use valence_server_common::{Despawned, UniqueId};
 
 use crate::layer::{ChunkLayer, EntityLayer, UpdateLayersPostClientSet, UpdateLayersPreClientSet};
@@ -65,7 +65,7 @@ impl Plugin for ClientPlugin {
             PostUpdate,
             (
                 (
-                    crate::spawn::initial_join.after(RegistrySet),
+                    crate::spawn::initial_join.after(UpdateRegistrySet),
                     update_chunk_load_dist,
                     handle_layer_messages.after(update_chunk_load_dist),
                     update_view_and_layers
@@ -120,7 +120,7 @@ pub struct ClientBundle {
     pub old_visible_entity_layers: OldVisibleEntityLayers,
     pub keepalive_state: crate::keepalive::KeepaliveState,
     pub ping: crate::keepalive::Ping,
-    pub teleport_state: crate::teleport::TeleportState,
+    pub teleport_state: crate::position::TeleportState,
     pub game_mode: GameMode,
     pub prev_game_mode: crate::spawn::PrevGameMode,
     pub death_location: crate::spawn::DeathLocation,
@@ -161,7 +161,7 @@ impl ClientBundle {
             old_visible_entity_layers: OldVisibleEntityLayers(BTreeSet::new()),
             keepalive_state: crate::keepalive::KeepaliveState::new(),
             ping: Default::default(),
-            teleport_state: crate::teleport::TeleportState::new(),
+            teleport_state: crate::position::TeleportState::new(),
             game_mode: GameMode::default(),
             prev_game_mode: Default::default(),
             death_location: Default::default(),
@@ -275,13 +275,9 @@ impl Client {
     }
 
     /// Flushes the packet queue to the underlying connection.
-    ///
-    /// This is called automatically at the end of the tick and when the client
-    /// is dropped. Unless you're in a hurry, there's usually no reason to
-    /// call this method yourself.
-    ///
-    /// Returns an error if flushing was unsuccessful.
-    pub fn flush_packets(&mut self) -> anyhow::Result<()> {
+    // Note: This is private because flushing packets early would make us miss
+    // prepended packets.
+    fn flush_packets(&mut self) -> anyhow::Result<()> {
         let bytes = self.enc.take();
         if !bytes.is_empty() {
             self.conn.try_send(bytes)
@@ -591,6 +587,7 @@ fn update_chunk_load_dist(
     }
 }
 
+/*
 fn handle_layer_messages(
     mut clients: Query<(
         Entity,
@@ -1061,7 +1058,7 @@ pub(crate) fn update_view_and_layers(
             }
         },
     );
-}
+}*/
 
 pub(crate) fn update_game_mode(mut clients: Query<(&mut Client, &GameMode), Changed<GameMode>>) {
     for (mut client, game_mode) in &mut clients {

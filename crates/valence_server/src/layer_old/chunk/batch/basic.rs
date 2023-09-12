@@ -1,3 +1,4 @@
+/*/
 use bevy_ecs::prelude::Component;
 use bitfield_struct::bitfield;
 use valence_protocol::{BlockPos, BlockState, ChunkPos};
@@ -162,11 +163,7 @@ struct BlockUpdate {
     off_z: u32,
     #[bits(4)]
     off_y: u32,
-    /// `false` if `state` is a block state, `true` if it's an index into the
-    /// `full` array.
-    is_index: bool,
-    /// Bits of the [`BlockState`] or an index into the `full` array.
-    #[bits(31)]
+    /// Bits of the [`BlockState`].
     state: u32,
 }
 
@@ -242,4 +239,5 @@ impl Ord for BlockUpdate {
         (self.0 & Self::BLOCK_POS_MASK).cmp(&(other.0 & Self::BLOCK_POS_MASK))
     }
 }
+*/
 */

@@ -28,7 +28,7 @@ pub use components::*;
 use tracing::{debug, warn};
 use valence_server::client::{Client, OldVisibleEntityLayers, VisibleEntityLayers};
 use valence_server::entity::EntityLayerId;
-use valence_server::layer::UpdateLayersPreClientSet;
+use valence_server::layer_old::UpdateLayersPreClientSet;
 use valence_server::protocol::packets::play::scoreboard_display_s2c::ScoreboardPosition;
 use valence_server::protocol::packets::play::scoreboard_objective_update_s2c::{
     ObjectiveMode, ObjectiveRenderType,

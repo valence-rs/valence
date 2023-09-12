@@ -51,9 +51,7 @@ fn run_many_players(
 
     for z in -world_size..world_size {
         for x in -world_size..world_size {
-            layer
-                .chunk
-                .insert_chunk(ChunkPos::new(x, z), Chunk::new());
+            layer.chunk.insert_chunk(ChunkPos::new(x, z), Chunk::new());
         }
     }
 

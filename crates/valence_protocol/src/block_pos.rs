@@ -1,5 +1,6 @@
 use std::fmt;
 use std::io::Write;
+use std::ops::{Add, Sub};
 
 use anyhow::bail;
 use bitfield_struct::bitfield;

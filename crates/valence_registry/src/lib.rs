@@ -39,17 +39,15 @@ use valence_ident::Ident;
 
 pub struct RegistryPlugin;
 
-/// The [`SystemSet`] where the [`RegistryCodec`](codec::RegistryCodec) and
-/// [`TagsRegistry`](tags::TagsRegistry) caches are rebuilt. Systems that modify
-/// the registry codec or tags registry should run _before_ this.
-///
-/// This set lives in [`PostUpdate`].
+/// The [`SystemSet`] where the dynamic registry caches are rebuilt. Systems
+/// that modify any of the dynamic registries should run _before_ this. Systems
+/// that read the cached packets should run _after_ this.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct RegistrySet;
+pub struct UpdateRegistrySet;
 
 impl Plugin for RegistryPlugin {
     fn build(&self, app: &mut bevy_app::App) {
-        app.configure_set(PostUpdate, RegistrySet);
+        app.configure_set(PostUpdate, UpdateRegistrySet);
 
         codec::build(app);
         tags::build(app);
@@ -109,8 +107,32 @@ impl<I: RegistryIdx, V> Registry<I, V> {
         self.items.get_mut(name.as_str())
     }
 
+    #[track_caller]
+    pub fn by_index(&self, idx: I) -> (Ident<&str>, &V) {
+        let (k, v) = self
+            .items
+            .get_index(idx.to_index())
+            .unwrap_or_else(|| panic!("out of bounds registry index of {}", idx.to_index()));
+
+        (k.as_str_ident(), v)
+    }
+
+    #[track_caller]
+    pub fn by_index_mut(&mut self, idx: I) -> (Ident<&str>, &mut V) {
+        let (k, v) = self
+            .items
+            .get_index_mut(idx.to_index())
+            .unwrap_or_else(|| panic!("out of bounds registry index of {}", idx.to_index()));
+
+        (k.as_str_ident(), v)
+    }
+
     pub fn index_of(&self, name: Ident<&str>) -> Option<I> {
         self.items.get_index_of(name.as_str()).map(I::from_index)
+    }
+
+    pub fn len(&self) -> usize {
+        self.items.len()
     }
 
     pub fn iter(
@@ -136,19 +158,13 @@ impl<I: RegistryIdx, V> Index<I> for Registry<I, V> {
     type Output = V;
 
     fn index(&self, index: I) -> &Self::Output {
-        self.items
-            .get_index(index.to_index())
-            .unwrap_or_else(|| panic!("out of bounds registry index of {}", index.to_index()))
-            .1
+        self.by_index(index).1
     }
 }
 
 impl<I: RegistryIdx, V> IndexMut<I> for Registry<I, V> {
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
-        self.items
-            .get_index_mut(index.to_index())
-            .unwrap_or_else(|| panic!("out of bounds registry index of {}", index.to_index()))
-            .1
+        self.by_index_mut(index).1
     }
 }
 

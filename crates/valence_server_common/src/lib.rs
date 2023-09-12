@@ -19,6 +19,8 @@
 #![allow(clippy::unusual_byte_groupings)]
 
 mod despawn;
+pub mod entity_event;
+mod layer_id;
 mod uuid;
 
 use std::num::NonZeroU32;
@@ -31,7 +33,8 @@ pub use despawn::*;
 use valence_protocol::CompressionThreshold;
 
 use crate::despawn::despawn_marked_entities;
-pub use crate::uuid::*;
+pub use crate::layer_id::LayerId;
+pub use crate::uuid::UniqueId;
 
 /// Minecraft's standard ticks per second (TPS).
 pub const DEFAULT_TPS: NonZeroU32 = match NonZeroU32::new(20) {

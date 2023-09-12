@@ -25,6 +25,8 @@ pub mod client;
 pub mod client_command;
 pub mod client_settings;
 pub mod custom_payload;
+pub mod dimension_layer;
+pub mod entity_layer;
 pub mod event_loop;
 pub mod hand_swing;
 pub mod interact_block;
@@ -38,10 +40,10 @@ pub mod op_level;
 pub mod resource_pack;
 pub mod spawn;
 pub mod status;
-pub mod teleport;
 pub mod title;
 
 pub use chunk_view::ChunkView;
+pub use client::Client;
 pub use event_loop::{EventLoopPostUpdate, EventLoopPreUpdate, EventLoopUpdate};
 pub use layer::{ChunkLayer, EntityLayer, Layer, LayerBundle};
 pub use valence_protocol::{

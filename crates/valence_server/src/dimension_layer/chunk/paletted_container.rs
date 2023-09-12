@@ -5,7 +5,7 @@ use arrayvec::ArrayVec;
 use num_integer::div_ceil;
 use valence_protocol::{Encode, VarInt};
 
-use super::chunk::bit_width;
+use crate::dimension_layer::chunk::bit_width;
 
 /// `HALF_LEN` must be equal to `ceil(LEN / 2)`.
 #[derive(Clone, Debug)]

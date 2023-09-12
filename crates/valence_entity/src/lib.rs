@@ -225,9 +225,7 @@ impl PartialEq<OldPosition> for Position {
 }
 
 /// The value of [`Position`] from the end of the previous tick.
-///
-/// **NOTE**: You should not modify this component after the entity is spawned.
-#[derive(Component, Clone, PartialEq, Default, Debug, Deref)]
+#[derive(Component, Clone, PartialEq, Debug, Deref)]
 pub struct OldPosition(DVec3);
 
 impl OldPosition {
@@ -237,6 +235,12 @@ impl OldPosition {
 
     pub fn get(&self) -> DVec3 {
         self.0
+    }
+}
+
+impl Default for OldPosition {
+    fn default() -> Self {
+        Self(DVec3::NAN)
     }
 }
 

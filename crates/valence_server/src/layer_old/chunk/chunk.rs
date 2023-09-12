@@ -2,7 +2,7 @@ use valence_nbt::Compound;
 use valence_protocol::{BlockPos, BlockState, ChunkPos};
 use valence_registry::biome::BiomeId;
 
-use super::{BiomePos, BlockRef, Block};
+use super::{BiomePos, Block, BlockRef};
 
 /// Common operations on chunks. Notable implementors are
 /// [`LoadedChunk`](super::loaded::LoadedChunk) and
@@ -38,8 +38,9 @@ pub trait ChunkOps {
         let old_state = self.set_block_state(x, y, z, block.state);
 
         let old_nbt = if block.nbt.is_none() && block.state.block_entity_kind().is_some() {
-            // Make sure there's always NBT data for the block entity. Otherwise, it will
-            // appear invisible to clients when loading the chunk.
+            // If the block state is associated with a block entity, make sure there's
+            // always some NBT data. Otherwise, the block will appear invisible to clients
+            // when loading the chunk.
             self.set_block_entity(x, y, z, Some(Compound::default()))
         } else {
             self.set_block_entity(x, y, z, block.nbt)
@@ -261,7 +262,7 @@ pub(super) fn biome_offsets(biome_pos: BiomePos, min_y: i32, height: i32) -> Opt
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::layer::chunk::{Chunk, LoadedChunk};
+    use crate::layer_old::chunk::{Chunk, LoadedChunk};
 
     #[test]
     fn chunk_get_set() {

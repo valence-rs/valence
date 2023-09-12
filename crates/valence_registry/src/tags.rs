@@ -7,7 +7,7 @@ pub use valence_protocol::packets::play::synchronize_tags_s2c::RegistryMap;
 use valence_protocol::packets::play::SynchronizeTagsS2c;
 use valence_server_common::Server;
 
-use crate::RegistrySet;
+use crate::UpdateRegistrySet;
 
 #[derive(Debug, Resource, Default)]
 pub struct TagsRegistry {
@@ -18,7 +18,7 @@ pub struct TagsRegistry {
 pub(super) fn build(app: &mut App) {
     app.init_resource::<TagsRegistry>()
         .add_systems(PreStartup, init_tags_registry)
-        .add_systems(PostUpdate, cache_tags_packet.in_set(RegistrySet));
+        .add_systems(PostUpdate, cache_tags_packet.in_set(UpdateRegistrySet));
 }
 
 impl TagsRegistry {

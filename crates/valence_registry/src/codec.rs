@@ -6,11 +6,11 @@ use tracing::error;
 use valence_ident::Ident;
 use valence_nbt::{compound, Compound, List, Value};
 
-use crate::RegistrySet;
+use crate::UpdateRegistrySet;
 
 pub(super) fn build(app: &mut App) {
     app.init_resource::<RegistryCodec>()
-        .add_systems(PostUpdate, cache_registry_codec.in_set(RegistrySet));
+        .add_systems(PostUpdate, cache_registry_codec.in_set(UpdateRegistrySet));
 }
 
 /// Contains the registry codec sent to all players while joining. This contains

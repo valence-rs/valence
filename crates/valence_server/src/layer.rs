@@ -1,139 +1,176 @@
-//! Defines chunk layers and entity layers. Chunk layers contain the chunks and
-//! dimension data of a world, while entity layers contain all the Minecraft
-//! entities.
-//!
-//! These two together are analogous to Minecraft "levels" or "worlds".
-
-pub mod bvh;
-pub mod chunk;
-pub mod entity;
+pub mod action_buf;
+mod chunk_view_index;
 pub mod message;
+mod packet_buf;
+
+use std::collections::BTreeSet;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-pub use chunk::ChunkLayer;
-pub use entity::EntityLayer;
-use valence_entity::{InitEntitiesSet, UpdateTrackedDataSet};
-use valence_protocol::encode::WritePacket;
-use valence_protocol::{BlockPos, ChunkPos, Ident};
-use valence_registry::{BiomeRegistry, DimensionTypeRegistry};
-use valence_server_common::Server;
+use bevy_ecs::query::Has;
+pub use chunk_view_index::ChunkViewIndex;
+use derive_more::{Deref, DerefMut};
+pub use packet_buf::PacketBuf;
+use valence_entity::{OldPosition, Position};
+use valence_protocol::ChunkPos;
+use valence_server_common::Despawned;
 
+use self::message::LayerMessages;
+use crate::layer::message::MessageScope;
+use crate::Client;
+
+/// Enables core functionality for layers.
 pub struct LayerPlugin;
 
-/// When entity and chunk changes are written to layers. Systems that modify
-/// chunks and entities should run _before_ this. Systems that need to read
-/// layer messages should run _after_ this.
-#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct UpdateLayersPreClientSet;
-
-/// When layers are cleared and messages from this tick are lost. Systems that
-/// read layer messages should run _before_ this.
-#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct UpdateLayersPostClientSet;
+/// When queued messages in layers are written to the [`Client`] packet buffer
+/// of all viewers.
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub struct BroadcastLayerMessagesSet;
 
 impl Plugin for LayerPlugin {
     fn build(&self, app: &mut App) {
-        app.configure_sets(
-            PostUpdate,
-            (
-                UpdateLayersPreClientSet
-                    .after(InitEntitiesSet)
-                    .after(UpdateTrackedDataSet),
-                UpdateLayersPostClientSet.after(UpdateLayersPreClientSet),
-            ),
-        );
-
-        chunk::build(app);
-        entity::build(app);
+        todo!()
     }
 }
 
-/// Common functionality for layers. Notable implementors are [`ChunkLayer`] and
-/// [`EntityLayer`].
-///
-/// Layers support sending packets to viewers of the layer under various
-/// conditions. These are the "packet writers" exposed by this trait.
-///
-/// Layers themselves implement the [`WritePacket`] trait. Writing directly to a
-/// layer will send packets to all viewers unconditionally.
-pub trait Layer: WritePacket {
-    /// Packet writer returned by [`except_writer`](Self::except_writer).
-    type ExceptWriter<'a>: WritePacket
-    where
-        Self: 'a;
-
-    /// Packet writer returned by [`view_writer`](Self::ViewWriter).
-    type ViewWriter<'a>: WritePacket
-    where
-        Self: 'a;
-
-    /// Packet writer returned by
-    /// [`view_except_writer`](Self::ViewExceptWriter).
-    type ViewExceptWriter<'a>: WritePacket
-    where
-        Self: 'a;
-
-    /// Packet writer returned by [`radius_writer`](Self::radius_writer).
-    type RadiusWriter<'a>: WritePacket
-    where
-        Self: 'a;
-
-    /// Packet writer returned by
-    /// [`radius_except_writer`](Self::radius_except_writer).
-    type RadiusExceptWriter<'a>: WritePacket
-    where
-        Self: 'a;
-
-    /// Returns a packet writer which sends packets to all viewers not
-    /// identified by `except`.
-    fn except_writer(&mut self, except: Entity) -> Self::ExceptWriter<'_>;
-
-    /// Returns a packet writer which sends packets to viewers in view of
-    /// the chunk position `pos`.
-    fn view_writer(&mut self, pos: impl Into<ChunkPos>) -> Self::ViewWriter<'_>;
-
-    /// Returns a packet writer which sends packets to viewers in
-    /// view of the chunk position `pos` and not identified by `except`.
-    fn view_except_writer(
-        &mut self,
-        pos: impl Into<ChunkPos>,
-        except: Entity,
-    ) -> Self::ViewExceptWriter<'_>;
-
-    /// Returns a packet writer which sends packets to viewers within `radius`
-    /// blocks of the block position `pos`.
-    fn radius_writer(&mut self, pos: impl Into<BlockPos>, radius: u32) -> Self::RadiusWriter<'_>;
-
-    /// Returns a packet writer which sends packets to viewers within `radius`
-    /// blocks of the block position `pos` and not identified by `except`.
-    fn radius_except_writer(
-        &mut self,
-        pos: impl Into<BlockPos>,
-        radius: u32,
-        except: Entity,
-    ) -> Self::RadiusExceptWriter<'_>;
-}
-
-/// Convenience [`Bundle`] for spawning a layer entity with both [`ChunkLayer`]
-/// and [`EntityLayer`] components.
 #[derive(Bundle)]
-pub struct LayerBundle {
-    pub chunk: ChunkLayer,
-    pub entity: EntityLayer,
+pub struct DimensionEntityLayerBundle {
+    // TODO
 }
 
-impl LayerBundle {
-    /// Returns a new layer bundle.
-    pub fn new(
-        dimension_type_name: impl Into<Ident<String>>,
-        dimensions: &DimensionTypeRegistry,
-        biomes: &BiomeRegistry,
-        server: &Server,
-    ) -> Self {
-        Self {
-            chunk: ChunkLayer::new(dimension_type_name, dimensions, biomes, server),
-            entity: EntityLayer::new(server),
+/// The set of layers a client is viewing.
+#[derive(Component, Clone, Default, DerefMut, Deref, Debug)]
+pub struct VisibleLayers(pub BTreeSet<Entity>);
+
+/// The contents of [`VisibleLayers`] from the previous tick.
+#[derive(Component, Default, Deref, Debug)]
+pub struct OldVisibleLayers(BTreeSet<Entity>);
+
+/// The set of clients that are viewing a layer.
+///
+/// This is updated automatically at the same time as [`ChunkViewIndex`].
+#[derive(Component, Clone, Default, Deref, Debug)]
+pub struct LayerViewers(BTreeSet<Entity>);
+
+fn update_view_index(
+    mut clients: Query<(
+        Entity,
+        Has<Despawned>,
+        &OldPosition,
+        Ref<Position>,
+        &OldVisibleLayers,
+        Ref<VisibleLayers>,
+    )>,
+    mut layers: Query<(&mut LayerViewers, &mut ChunkViewIndex)>,
+) {
+    for (client, is_despawned, old_pos, pos, old_visible, visible) in &clients {
+        if is_despawned {
+            // Remove from old layers.
+            for &layer in old_visible.iter() {
+                if let Ok((mut viewers, mut index)) = layers.get_mut(layer) {
+                    let removed = viewers.remove(&client);
+                    debug_assert!(removed);
+
+                    let removed = index.remove(old_pos.get(), client);
+                    debug_assert!(removed);
+                }
+            }
+        } else if visible.is_changed() {
+            // Remove from old layers.
+            for &layer in old_visible.iter() {
+                if let Ok((mut viewers, mut index)) = layers.get_mut(layer) {
+                    let removed = viewers.remove(&client);
+                    debug_assert!(removed);
+
+                    let removed = index.remove(old_pos.get(), client);
+                    debug_assert!(removed);
+                }
+            }
+
+            // Insert in new layers.
+            for &layer in visible.iter() {
+                if let Ok((mut viewers, mut index)) = layers.get_mut(layer) {
+                    let inserted = viewers.insert(client);
+                    debug_assert!(inserted);
+
+                    let inserted = index.insert(pos.0, client);
+                    debug_assert!(inserted);
+                }
+            }
+        } else if pos.is_changed() {
+            // Change chunk cell in layers.
+
+            let old_pos = ChunkPos::from(old_pos.get());
+            let pos = ChunkPos::from(pos.0);
+
+            if old_pos != pos {
+                for &layer in visible.iter() {
+                    if let Ok((_, mut index)) = layers.get_mut(layer) {
+                        let removed = index.remove(old_pos, client);
+                        debug_assert!(removed);
+
+                        let inserted = index.insert(pos, client);
+                        debug_assert!(inserted);
+                    }
+                }
+            }
         }
+    }
+}
+
+fn update_old_visible_layers(
+    mut layers: Query<(&mut OldVisibleLayers, &VisibleLayers), Changed<VisibleLayers>>,
+) {
+    for (mut old, new) in &mut layers {
+        old.0.clone_from(&new.0);
+    }
+}
+
+// fn remove_despawned_from_chunk_view_index(
+//     mut layers: Query<(&mut ChunkViewIndex, &mut LayerViewers)>,
+//     clients: Query<(Entity, &OldPosition, &OldVisibleLayers),
+// (With<Despawned>, With<Client>)>,
+// ) { for (client, pos, visible_layers) in &clients { let pos =
+//   ChunkPos::from(pos.get());
+
+//         for &layer in visible_layers.iter() {
+//             if let Ok((mut index, mut viewers)) = layers.get_mut(layer) {
+//                 index.remove(pos, client);
+//                 viewers.remove(&client);
+//             }
+//         }
+//     }
+// }
+
+fn broadcast_layer_messages(
+    mut layers: Query<(&mut LayerMessages, &LayerViewers, &ChunkViewIndex)>,
+    mut clients: Query<(&mut Client, &OldPosition, &Position)>,
+) {
+    for (mut messages, viewers, index) in &mut layers {
+        for (scope, kind) in messages.messages() {
+            let mut send = |client: Entity| {
+                if let Ok((client, old_pos, pos)) = clients.get_mut(client) {
+                    match kind {
+                        message::MessageKind::Packet { len } => todo!(),
+                        message::MessageKind::EntityDespawn { entity } => todo!(),
+                    }
+                }
+            };
+
+            match scope {
+                MessageScope::All => viewers.iter().copied().for_each(send),
+                MessageScope::Only { only } => send(only),
+                MessageScope::Except { except } => viewers
+                    .iter()
+                    .copied()
+                    .filter(|&c| c != except)
+                    .for_each(send),
+                MessageScope::ChunkView { pos } => todo!(),
+                MessageScope::ChunkViewExcept { pos, except } => todo!(),
+                MessageScope::TransitionChunkView { old_pos, pos } => todo!(),
+            }
+        }
+
+        todo!();
     }
 }

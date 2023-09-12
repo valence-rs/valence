@@ -4,14 +4,13 @@ mod basic;
 
 use std::borrow::Cow;
 
-pub use basic::BasicBatch;
 use valence_protocol::encode::PacketWriter;
 use valence_protocol::packets::play::chunk_delta_update_s2c::ChunkDeltaUpdateEntry;
 use valence_protocol::packets::play::{BlockEntityUpdateS2c, BlockUpdateS2c, ChunkDeltaUpdateS2c};
 use valence_protocol::{BlockPos, ChunkPos, ChunkSectionPos, WritePacket};
 
 use super::{block_offsets, Block, BlockRef, ChunkOps, LoadedChunk};
-use crate::layer::chunk::LocalMsg;
+use crate::layer_old::chunk::LocalMsg;
 use crate::{BlockState, ChunkLayer, Layer};
 
 impl ChunkLayer {
@@ -183,14 +182,3 @@ impl ChunkLayer {
     }
 }
 
-pub trait Batch {
-    /// An iterator over the blocks modified by this batch.
-    ///
-    /// **NOTE:** For optimal performance, the blocks iterated over should be
-    /// sorted by chunk position and then chunk section position within those
-    /// groups.
-    type BlockStateIter: Iterator<Item = (BlockPos, Block)>;
-    type BlockEntityIter: Iterator<Item = ()>
-
-    fn into_batch_iters(self) -> Self::BlockIter;
-}
