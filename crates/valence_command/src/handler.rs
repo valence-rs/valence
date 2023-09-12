@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::marker::PhantomData;
-use std::time::Instant;
-
+=
+#[cfg(not(feature = "valence"))]
+use bevy_app::PreUpdate;
 use bevy_app::{App, Plugin, PostStartup};
 use bevy_ecs::change_detection::ResMut;
 use bevy_ecs::event::{Event, EventReader, EventWriter};
@@ -10,8 +11,6 @@ use bevy_ecs::prelude::{Entity, IntoSystemConfigs, Resource};
 use petgraph::prelude::NodeIndex;
 #[cfg(feature = "valence")]
 use valence_server::EventLoopPreUpdate;
-#[cfg(not(feature = "valence"))]
-use bevy_app::PreUpdate;
 
 use crate::graph::CommandGraphBuilder;
 use crate::modifier_value::ModifierValue;

@@ -1,5 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::time::Instant;
 
 use bevy_app::{App, Plugin, PreUpdate};
 use bevy_ecs::entity::Entity;
@@ -251,7 +250,7 @@ fn parse_incoming_commands(
         }
 
         for node in to_be_executed {
-              event_writer.send(CommandProcessedEvent {
+            event_writer.send(CommandProcessedEvent {
                 command: args.join(" "),
                 executor,
                 modifiers: modifiers.clone(),
