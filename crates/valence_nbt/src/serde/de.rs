@@ -5,7 +5,8 @@ use serde::de::{self, IntoDeserializer, SeqAccess, Visitor};
 use serde::{forward_to_deserialize_any, Deserialize, Deserializer};
 
 use super::Error;
-use crate::{i8_vec_into_u8_vec, u8_slice_as_i8_slice, u8_vec_into_i8_vec, Compound, List, Value};
+use crate::conv::{i8_vec_into_u8_vec, u8_slice_as_i8_slice, u8_vec_into_i8_vec};
+use crate::{Compound, List, Value};
 
 impl<'de> Deserialize<'de> for Value {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
