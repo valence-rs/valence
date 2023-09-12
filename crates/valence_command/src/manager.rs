@@ -240,6 +240,7 @@ fn parse_incoming_commands(
 
         for node in to_be_executed {
             println!("Executing command with data: {:?}", args);
+            println!("Executing command with modifiers: {:?}", modifiers);
             event_writer.send(CommandProcessedEvent {
                 command: args.join(" "),
                 executor,

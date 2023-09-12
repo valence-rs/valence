@@ -52,7 +52,7 @@ enum Gamemode {
 }
 
 #[derive(Command, Debug, Clone)]
-#[paths("test ", "t ")]
+#[paths("test", "t")]
 #[scopes("valence:command:test")]
 #[allow(dead_code)]
 enum Test {
