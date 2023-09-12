@@ -349,7 +349,7 @@ fn parse_path(path: &Attribute) -> Option<Vec<(Vec<CommandArg>, bool)>> {
 fn get_lit_list_attr(attr: &Attribute, ident: &str) -> Option<Vec<String>> {
     match attr.meta {
         Meta::NameValue(ref key_value) => {
-            if !key_value.path.is_ident(ident.strip_suffix('s').unwrap_or(ident)) {
+            if !key_value.path.is_ident(ident) {
                 return None;
             }
 

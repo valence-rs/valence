@@ -73,9 +73,9 @@ enum Test {
 
 ## attributes
 
-### `#[paths(...)]` or `#[path = "..."]`
+### `#[paths(...)]` or `#[paths = "..."]`
 
-The `#[paths(...)]` or `#[path = "..."]` attribute is used to specify the different paths that can be used to invoke
+The `#[paths(...)]` or `#[paths = "..."]` attribute is used to specify the different paths that can be used to invoke
 the command. The paths are specified as string literals, where any arguments are enclosed in curly braces `{}`.
 The arguments are then mapped to fields in the command enum variant.
 
@@ -91,9 +91,9 @@ used at the start of the command to specify it as a direct child of the root nod
 represents an optional argument. The optional argument must only be followed by other optional arguments or the end of 
 the path.
 
-### `#[scopes(...)]` or `#[scope = "..."]`
+### `#[scopes(...)]` or `#[scopes = "..."]`
 
-The `#[scopes(...)]` or `#[scope = "..."]` attribute is used to specify the scopes that the command belongs to. Scopes
+The `#[scopes(...)]` or `#[scopes = "..."]` attribute is used to specify the scopes that the command belongs to. Scopes
 are used to specify who can use the command. The scopes are specified as string literals, where each scope is separated
 by a colon.
 
