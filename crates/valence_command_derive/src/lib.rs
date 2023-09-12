@@ -13,7 +13,7 @@ pub fn derive_command(a_input: TokenStream) -> TokenStream {
         .attrs
         .iter()
         .filter_map(parse_path)// get_command_attr returns Option<(String, Vec<String>)>
-        .next()// there should only be one command name
+        .next()// there should only be one base command name
         .expect("Command names not provided");
 
     let base_path = alias_paths.remove(0);
@@ -349,7 +349,7 @@ fn parse_path(path: &Attribute) -> Option<Vec<(Vec<CommandArg>, bool)>> {
 fn get_lit_list_attr(attr: &Attribute, ident: &str) -> Option<Vec<String>> {
     match attr.meta {
         Meta::NameValue(ref key_value) => {
-            if !key_value.path.is_ident(ident) {
+            if !key_value.path.is_ident(ident.strip_suffix('s').unwrap_or(ident)) {
                 return None;
             }
 
