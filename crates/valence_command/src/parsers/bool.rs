@@ -36,17 +36,6 @@ fn test_bool() {
 
     let mut input = ParseInput::new("falSe trUe".to_string());
     assert!(!bool::parse_arg(&mut input).unwrap());
-    assert!(!input.is_done());
-
-    let mut input = ParseInput::new("fAlse true".to_string());
-    assert!(!bool::parse_arg(&mut input).unwrap());
-    assert!(!input.is_done());
-
-    let mut input = ParseInput::new("false true".to_string());
-    assert!(!bool::parse_arg(&mut input).unwrap());
-    assert!(!input.is_done());
-
-    let mut input = ParseInput::new("false true".to_string());
-    assert!(!bool::parse_arg(&mut input).unwrap());
+    assert!(bool::parse_arg(&mut input).unwrap());
     assert!(!input.is_done());
 }
