@@ -3,6 +3,7 @@ use crate::parsers::{CommandArg, CommandArgParseError, ParseInput};
 
 impl CommandArg for bool {
     fn parse_arg(input: &mut ParseInput) -> Result<Self, CommandArgParseError> {
+        input.skip_whitespace();
         if input.match_next("true") {
             Ok(true)
         } else if input.match_next("false") {
