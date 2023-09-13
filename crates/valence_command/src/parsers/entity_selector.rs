@@ -44,7 +44,8 @@ impl CommandArg for EntitySelector {
                             ))
                         }
                     }
-                    if input.peek() != Some('[') { // if there's no complex selector, we're done
+                    if input.peek() != Some('[') {
+                        // if there's no complex selector, we're done
                         return Ok(EntitySelector::SimpleSelector(simple_selector.unwrap()));
                     }
                 }

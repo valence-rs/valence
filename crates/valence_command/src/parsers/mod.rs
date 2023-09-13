@@ -4,7 +4,7 @@ pub mod angle;
 pub mod block_pos;
 pub mod bool;
 #[cfg(feature = "valence")]
-pub mod colour;
+pub mod color;
 pub mod column_pos;
 pub mod entity_anchor;
 pub mod entity_selector;

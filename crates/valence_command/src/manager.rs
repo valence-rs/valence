@@ -30,16 +30,6 @@ impl Plugin for CommandPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<CommandExecutionEvent>()
             .add_event::<CommandProcessedEvent>();
-        // .add_systems(PreUpdate, insert_scope_component.after(SpawnClientsSet))
-        // .add_systems(
-        //     EventLoopPreUpdate,
-        //     (
-        //         update_command_tree,
-        //         command_tree_update_with_client,
-        //         // read_incoming_packets.before(CommandSystemSet),
-        //         parse_incoming_commands.in_set(CommandSystemSet),
-        //     ),
-        // );
 
         #[cfg(feature = "valence")]
         app.add_systems(PreUpdate, insert_scope_component.after(SpawnClientsSet))
