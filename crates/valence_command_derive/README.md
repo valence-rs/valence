@@ -71,7 +71,7 @@ enum Test {
 }
 ```
 
-## attributes
+## Attributes
 
 ### `#[paths(...)]` or `#[paths = "..."]`
 
