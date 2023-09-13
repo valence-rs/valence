@@ -153,10 +153,10 @@ pub fn build() -> anyhow::Result<TokenStream> {
     let state_to_blocks_motion_arms = blocks
         .iter()
         .flat_map(|b| {
-            b.states.iter().filter(|s| !s.blocks_motion).map(|s| {
+            b.states.iter().filter(|s| s.blocks_motion).map(|s| {
                 let id = s.id;
                 quote! {
-                    #id => false,
+                    #id => true,
                 }
             })
         })

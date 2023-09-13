@@ -300,6 +300,7 @@ impl LoadedChunk {
     /// the height of the highest non-air block in each column.
     ///
     /// The lowest value of the heightmap is 0, which is -64 ingame.
+    #[allow(clippy::needless_range_loop)]
     fn world_surface(&self) -> Vec<Vec<u32>> {
         let height = self.height();
         let mut heightmap: Vec<Vec<u32>> = vec![vec![0; 16]; 16];
@@ -307,6 +308,11 @@ impl LoadedChunk {
         for z in 0..16 {
             for x in 0..16 {
                 for y in (0..height).rev() {
+                    let state = self.block_state(x as u32, y, z as u32);
+                    // if state != BlockState::AIR {
+                    //     println!("{x}, {y}, {z}: {state}, {:?}", state.blocks_motion());
+                    // }
+
                     if !self.block_state(x as u32, y, z as u32).is_air() {
                         heightmap[z][x] = y;
                         break;
@@ -326,20 +332,21 @@ impl LoadedChunk {
     /// to check at the first block in the `WORLD_SURFACE` heightmap.
     ///
     /// The lowest value of the heightmap is 0, which is -64 ingame.
+    #[allow(clippy::needless_range_loop)]
     fn motion_blocking(&self, world_surface: &[Vec<u32>]) -> Vec<Vec<u32>> {
         let mut heightmap: Vec<Vec<u32>> = vec![vec![0; 16]; 16];
 
         for z in 0..16 {
             for x in 0..16 {
                 // In most cases, the block given by `world_surface` already blocks motion
-                if !self
+                if self
                     .block_state(x as u32, world_surface[z][x], z as u32)
                     .blocks_motion()
                 {
                     heightmap[z][x] = world_surface[z][x];
                 } else {
                     for y in (0..world_surface[z][x]).rev() {
-                        if !self.block_state(x as u32, y, z as u32).blocks_motion() {
+                        if self.block_state(x as u32, y, z as u32).blocks_motion() {
                             heightmap[z][x] = y;
                             break;
                         }
@@ -358,18 +365,19 @@ impl LoadedChunk {
     /// as a 9-bit unsigned integer, so every long can hold at most seven
     /// values. The long is padded at the left side with a single zero. Since
     /// there are 256 values for 256 columns in a chunk, there will be 36
-    /// fully filled longs and one half-filled long with four values.
+    /// fully filled longs and one half-filled long with four values. The
+    /// remaining three values in the last long are left unused.
     ///
-    /// For example, the `WORLD_SURFACE` heightmap in a superflat world is
-    /// always 4. The first 36 long values will then be
+    /// For example, the `WORLD_SURFACE` heightmap in an empty superflat world
+    /// is always 4. The first 36 long values will then be
     ///
-    ///     0 000000100 000000100 000000100 000000100 000000100 000000100 000000100,
+    /// 0 000000100 000000100 000000100 000000100 000000100 000000100 000000100,
     ///
     /// and the last long will be
     ///
-    ///     0 000000000 000000000 000000000 000000100 000000100 000000100 000000100.
+    /// 0 000000000 000000000 000000000 000000100 000000100 000000100 000000100.
     ///
-    /// TODO For some bizarre reason, I need to add 2 to the heightmap so that
+    /// TODO For some bizarre reason, we need to add 2 to the heightmap so that
     /// it matches the expectation that a height of 0 corresponds to a height of
     /// -64 ingame. There should be an explanation for that.
     fn encode_heightmap(&self, heightmap: Vec<Vec<u32>>) -> Value {
