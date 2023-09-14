@@ -11,7 +11,10 @@ pub struct ChunkViewIndex {
 }
 
 impl ChunkViewIndex {
-    pub fn get(&self, pos: impl Into<ChunkPos>) -> impl ExactSizeIterator<Item = Entity> + Clone + '_ {
+    pub fn get(
+        &self,
+        pos: impl Into<ChunkPos>,
+    ) -> impl ExactSizeIterator<Item = Entity> + Clone + '_ {
         self.map
             .get(&pos.into())
             .map(|v| v.iter().copied())

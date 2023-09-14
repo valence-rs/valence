@@ -41,6 +41,23 @@ pub struct KeepaliveState {
     last_send: Instant,
 }
 
+impl KeepaliveState {
+    /// When the last keepalive was sent for this client.
+    pub fn last_send(&self) -> Instant {
+        self.last_send
+    }
+}
+
+impl Default for KeepaliveState {
+    fn default() -> Self {
+        Self {
+            got_keepalive: true,
+            last_keepalive_id: 0,
+            last_send: Instant::now(),
+        }
+    }
+}
+
 /// Delay measured in milliseconds. Negative values indicate absence.
 #[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Deref)]
 pub struct Ping(pub i32);
@@ -48,21 +65,6 @@ pub struct Ping(pub i32);
 impl Default for Ping {
     fn default() -> Self {
         Self(-1)
-    }
-}
-
-impl KeepaliveState {
-    pub(super) fn new() -> Self {
-        Self {
-            got_keepalive: true,
-            last_keepalive_id: 0,
-            last_send: Instant::now(),
-        }
-    }
-
-    /// When the last keepalive was sent for this client.
-    pub fn last_send(&self) -> Instant {
-        self.last_send
     }
 }
 

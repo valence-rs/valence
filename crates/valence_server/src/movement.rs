@@ -11,8 +11,8 @@ use valence_protocol::packets::play::{
 use valence_protocol::{BlockPos, WritePacket};
 
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
-use crate::Client;
 use crate::layer::BroadcastLayerMessagesSet;
+use crate::Client;
 
 /// Handles client movement and teleports.
 pub struct PositionPlugin;

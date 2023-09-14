@@ -2,19 +2,19 @@ pub mod batch;
 pub mod block;
 pub mod chunk;
 pub mod index;
-pub mod plugin;
+mod plugin;
 
-use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_ecs::query::WorldQuery;
 use block::BlockRef;
 use chunk::LoadedChunk;
 pub use index::ChunkIndex;
+pub use plugin::*;
 use valence_protocol::packets::play::UnloadChunkS2c;
 use valence_protocol::{BiomePos, BlockPos, ChunkPos, CompressionThreshold, WritePacket};
 use valence_registry::biome::BiomeId;
 use valence_registry::dimension_type::DimensionTypeId;
-use valence_registry::DimensionTypeRegistry;
+use valence_registry::{BiomeRegistry, DimensionTypeRegistry};
 use valence_server_common::Server;
 
 use self::batch::BlockBatch;
@@ -27,6 +27,7 @@ use crate::layer::{ChunkViewIndex, LayerViewers};
 pub struct DimensionLayerBundle {
     pub chunk_index: ChunkIndex,
     pub block_batch: BlockBatch,
+    pub dimension_info: DimensionInfo,
     pub chunk_view_index: ChunkViewIndex,
     pub layer_viewers: LayerViewers,
     pub layer_messages: LayerMessages,
@@ -36,13 +37,21 @@ impl DimensionLayerBundle {
     pub fn new(
         dimension_type: DimensionTypeId,
         dimensions: &DimensionTypeRegistry,
+        biomes: &BiomeRegistry,
         server: &Server,
     ) -> Self {
         let dim = &dimensions[dimension_type];
 
         Self {
-            chunk_index: ChunkIndex::new(dimension_type, dimensions, server),
+            chunk_index: ChunkIndex::new(dim.height),
             block_batch: Default::default(),
+            dimension_info: DimensionInfo {
+                dimension_type,
+                height: dim.height,
+                min_y: dim.min_y,
+                biome_registry_len: biomes.iter().len() as i32,
+                threshold: server.compression_threshold(),
+            },
             chunk_view_index: Default::default(),
             layer_viewers: Default::default(),
             layer_messages: LayerMessages::new(server.compression_threshold()),
@@ -55,6 +64,7 @@ impl DimensionLayerBundle {
 pub struct DimensionLayerQuery {
     pub chunk_index: &'static mut ChunkIndex,
     pub block_batch: &'static mut BlockBatch,
+    pub dimension_info: &'static DimensionInfo,
     pub chunk_view_index: &'static mut ChunkViewIndex,
     pub layer_viewers: &'static LayerViewers,
     pub layer_messages: &'static mut LayerMessages,
@@ -63,15 +73,15 @@ pub struct DimensionLayerQuery {
 macro_rules! immutable_query_methods {
     () => {
         pub fn dimension_type(&self) -> DimensionTypeId {
-            self.chunk_index.dimension_type()
+            self.dimension_info.dimension_type
         }
 
         pub fn height(&self) -> i32 {
-            self.chunk_index.height()
+            self.dimension_info.height
         }
 
         pub fn min_y(&self) -> i32 {
-            self.chunk_index.height()
+            self.dimension_info.min_y
         }
 
         pub fn biome(&self, pos: impl Into<BiomePos>) -> Option<BiomeId> {
@@ -123,15 +133,15 @@ impl DimensionLayerQueryItem<'_> {
     pub fn chunk_entry(&mut self, pos: impl Into<ChunkPos>) -> Entry {
         match self.chunk_index.entry(pos) {
             index::Entry::Occupied(entry) => Entry::Occupied(OccupiedEntry {
-                chunk_index: self.chunk_index,
                 chunk_view_index: &*self.chunk_view_index,
-                layer_messages: self.layer_messages,
+                layer_messages: self.layer_messages.reborrow(),
+                info: &self.dimension_info,
                 entry,
             }),
             index::Entry::Vacant(entry) => Entry::Vacant(VacantEntry {
-                chunk_index: self.chunk_index,
                 chunk_view_index: &*self.chunk_view_index,
-                layer_messages: self.layer_messages,
+                layer_messages: self.layer_messages.reborrow(),
+                info: &self.dimension_info,
                 entry,
             }),
         }
@@ -142,12 +152,27 @@ impl DimensionLayerQueryReadOnlyItem<'_> {
     immutable_query_methods!();
 }
 
-struct DimensionInfo {
+#[derive(Component, Clone, Debug)]
+pub struct DimensionInfo {
     dimension_type: DimensionTypeId,
     height: i32,
     min_y: i32,
     biome_registry_len: i32,
     threshold: CompressionThreshold,
+}
+
+impl DimensionInfo {
+    pub fn dimension_type(&self) -> DimensionTypeId {
+        self.dimension_type
+    }
+
+    pub fn height(&self) -> i32 {
+        self.height
+    }
+
+    pub fn min_y(&self) -> i32 {
+        self.height
+    }
 }
 
 #[derive(Debug)]
@@ -167,9 +192,9 @@ impl<'a> Entry<'a> {
 
 #[derive(Debug)]
 pub struct OccupiedEntry<'a> {
-    chunk_index: Mut<'a, ChunkIndex>,
     chunk_view_index: &'a ChunkViewIndex,
     layer_messages: Mut<'a, LayerMessages>,
+    info: &'a DimensionInfo,
     entry: index::OccupiedEntry<'a>,
 }
 
@@ -186,7 +211,6 @@ impl<'a> OccupiedEntry<'a> {
         let pos = *self.key();
 
         let viewer_count = self.entry.get().viewer_count;
-
         let res = self.entry.insert(chunk);
 
         if viewer_count > 0 {
@@ -196,7 +220,7 @@ impl<'a> OccupiedEntry<'a> {
                 .layer_messages
                 .packet_writer(MessageScope::ChunkView { pos });
 
-            loaded.write_chunk_init_packet(w, pos, &self.chunk_index.info);
+            loaded.write_chunk_init_packet(w, pos, self.info);
             loaded.viewer_count = viewer_count;
         }
 
@@ -227,9 +251,9 @@ impl<'a> OccupiedEntry<'a> {
 
 #[derive(Debug)]
 pub struct VacantEntry<'a> {
-    chunk_index: Mut<'a, ChunkIndex>,
     chunk_view_index: &'a ChunkViewIndex,
     layer_messages: Mut<'a, LayerMessages>,
+    info: &'a DimensionInfo,
     entry: index::VacantEntry<'a>,
 }
 
@@ -246,7 +270,7 @@ impl<'a> VacantEntry<'a> {
                 .layer_messages
                 .packet_writer(MessageScope::ChunkView { pos });
 
-            loaded.write_chunk_init_packet(w, pos, &self.chunk_index.info);
+            loaded.write_chunk_init_packet(w, pos, self.info);
             loaded.viewer_count = viewer_count as u32;
         }
 

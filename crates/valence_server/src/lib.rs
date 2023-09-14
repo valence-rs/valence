@@ -44,8 +44,8 @@ pub mod title;
 
 pub use chunk_view::ChunkView;
 pub use client::Client;
+pub use dimension_layer::DimensionLayerBundle;
 pub use event_loop::{EventLoopPostUpdate, EventLoopPreUpdate, EventLoopUpdate};
-pub use layer::{ChunkLayer, EntityLayer, Layer, LayerBundle};
 pub use valence_protocol::{
     block, ident, item, math, text, uuid, BiomePos, BlockPos, BlockState, ChunkPos,
     CompressionThreshold, Difficulty, Direction, GameMode, Hand, Ident, ItemKind, ItemStack, Text,

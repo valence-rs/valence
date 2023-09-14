@@ -8,36 +8,28 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_ecs::query::WorldQuery;
 use bevy_ecs::system::Command;
-use byteorder::{NativeEndian, ReadBytesExt};
 use bytes::{Bytes, BytesMut};
 use derive_more::{Deref, DerefMut, From, Into};
 use tracing::warn;
 use uuid::Uuid;
 use valence_entity::player::PlayerEntityBundle;
-use valence_entity::query::EntityInitQuery;
 use valence_entity::tracked_data::TrackedData;
-use valence_entity::{
-    ClearEntityChangesSet, EntityId, EntityStatus, OldPosition, Position, Velocity,
-};
+use valence_entity::{EntityStatus, OldPosition, Position, Velocity};
 use valence_math::{DVec3, Vec3};
 use valence_protocol::encode::{PacketEncoder, WritePacket};
-use valence_protocol::packets::play::chunk_biome_data_s2c::ChunkBiome;
 use valence_protocol::packets::play::game_state_change_s2c::GameEventKind;
 use valence_protocol::packets::play::particle_s2c::Particle;
 use valence_protocol::packets::play::{
-    ChunkBiomeDataS2c, ChunkLoadDistanceS2c, ChunkRenderDistanceCenterS2c, DeathMessageS2c,
-    DisconnectS2c, EntitiesDestroyS2c, EntityStatusS2c, EntityTrackerUpdateS2c,
-    EntityVelocityUpdateS2c, GameStateChangeS2c, ParticleS2c, PlaySoundS2c, UnloadChunkS2c,
+    ChunkLoadDistanceS2c, DeathMessageS2c, DisconnectS2c, EntitiesDestroyS2c, EntityStatusS2c,
+    EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, GameStateChangeS2c, ParticleS2c, PlaySoundS2c,
 };
 use valence_protocol::profile::Property;
 use valence_protocol::sound::{Sound, SoundCategory, SoundId};
 use valence_protocol::text::{IntoText, Text};
 use valence_protocol::var_int::VarInt;
-use valence_protocol::{BlockPos, Encode, GameMode, Packet};
-use valence_registry::UpdateRegistrySet;
+use valence_protocol::{Encode, GameMode, Packet};
 use valence_server_common::{Despawned, UniqueId};
 
-use crate::layer::{ChunkLayer, EntityLayer, UpdateLayersPostClientSet, UpdateLayersPreClientSet};
 use crate::ChunkView;
 
 pub struct ClientPlugin;
@@ -61,40 +53,45 @@ pub struct UpdateClientsSet;
 
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            PostUpdate,
-            (
-                (
-                    crate::spawn::initial_join.after(UpdateRegistrySet),
-                    update_chunk_load_dist,
-                    handle_layer_messages.after(update_chunk_load_dist),
-                    update_view_and_layers
-                        .after(crate::spawn::initial_join)
-                        .after(handle_layer_messages),
-                    cleanup_chunks_after_client_despawn.after(update_view_and_layers),
-                    crate::spawn::update_respawn_position.after(update_view_and_layers),
-                    crate::spawn::respawn.after(crate::spawn::update_respawn_position),
-                    update_old_view_dist.after(update_view_and_layers),
-                    update_game_mode,
-                    update_tracked_data,
-                    init_tracked_data,
-                )
-                    .in_set(UpdateClientsSet),
-                flush_packets.in_set(FlushPacketsSet),
-            ),
-        )
-        .configure_set(PreUpdate, SpawnClientsSet)
-        .configure_sets(
-            PostUpdate,
-            (
-                UpdateClientsSet
-                    .after(UpdateLayersPreClientSet)
-                    .before(UpdateLayersPostClientSet)
-                    .before(FlushPacketsSet),
-                ClearEntityChangesSet.after(UpdateClientsSet),
-                FlushPacketsSet,
-            ),
-        );
+        todo!()
+
+        // app.add_systems(
+        //     PostUpdate,
+        //     (
+        //         (
+        //             crate::spawn::initial_join.after(UpdateRegistrySet),
+        //             update_chunk_load_dist,
+        //             handle_layer_messages.after(update_chunk_load_dist),
+        //             update_view_and_layers
+        //                 .after(crate::spawn::initial_join)
+        //                 .after(handle_layer_messages),
+        //
+        // cleanup_chunks_after_client_despawn.after(update_view_and_layers),
+        //
+        // crate::spawn::update_respawn_position.after(update_view_and_layers),
+        //
+        // crate::spawn::respawn.after(crate::spawn::update_respawn_position),
+        //             update_old_view_dist.after(update_view_and_layers),
+        //             update_game_mode,
+        //             update_tracked_data,
+        //             init_tracked_data,
+        //         )
+        //             .in_set(UpdateClientsSet),
+        //         flush_packets.in_set(FlushPacketsSet),
+        //     ),
+        // )
+        // .configure_set(PreUpdate, SpawnClientsSet)
+        // .configure_sets(
+        //     PostUpdate,
+        //     (
+        //         UpdateClientsSet
+        //             .after(UpdateLayersPreClientSet)
+        //             .before(UpdateLayersPostClientSet)
+        //             .before(FlushPacketsSet),
+        //         ClearEntityChangesSet.after(UpdateClientsSet),
+        //         FlushPacketsSet,
+        //     ),
+        // );
     }
 }
 
@@ -109,7 +106,7 @@ pub struct ClientBundle {
     pub username: Username,
     pub ip: Ip,
     pub properties: Properties,
-    pub respawn_pos: crate::spawn::RespawnPosition,
+    pub respawn_pos: crate::movement::RespawnPosition,
     pub op_level: crate::op_level::OpLevel,
     pub action_sequence: crate::action::ActionSequence,
     pub view_distance: ViewDistance,
@@ -120,7 +117,7 @@ pub struct ClientBundle {
     pub old_visible_entity_layers: OldVisibleEntityLayers,
     pub keepalive_state: crate::keepalive::KeepaliveState,
     pub ping: crate::keepalive::Ping,
-    pub teleport_state: crate::position::TeleportState,
+    pub teleport_state: crate::movement::TeleportState,
     pub game_mode: GameMode,
     pub prev_game_mode: crate::spawn::PrevGameMode,
     pub death_location: crate::spawn::DeathLocation,
@@ -156,12 +153,12 @@ impl ClientBundle {
             view_distance: Default::default(),
             old_view_distance: OldViewDistance(2),
             visible_chunk_layer: Default::default(),
-            old_visible_chunk_layer: OldVisibleChunkLayer(Entity::PLACEHOLDER),
+            old_visible_chunk_layer: OldVisibleChunkLayer::default(),
             visible_entity_layers: Default::default(),
-            old_visible_entity_layers: OldVisibleEntityLayers(BTreeSet::new()),
-            keepalive_state: crate::keepalive::KeepaliveState::new(),
+            old_visible_entity_layers: OldVisibleEntityLayers::default(),
+            keepalive_state: crate::keepalive::KeepaliveState::default(),
             ping: Default::default(),
-            teleport_state: crate::position::TeleportState::new(),
+            teleport_state: crate::movement::TeleportState::default(),
             game_mode: GameMode::default(),
             prev_game_mode: Default::default(),
             death_location: Default::default(),
@@ -529,6 +526,12 @@ impl Default for VisibleChunkLayer {
 /// The value of [`VisibleChunkLayer`] from the end of the previous tick.
 #[derive(Component, PartialEq, Eq, Debug, Deref)]
 pub struct OldVisibleChunkLayer(Entity);
+
+impl Default for OldVisibleChunkLayer {
+    fn default() -> Self {
+        Self(Entity::PLACEHOLDER)
+    }
+}
 
 impl OldVisibleChunkLayer {
     pub fn get(&self) -> Entity {
@@ -1116,6 +1119,7 @@ fn update_tracked_data(mut clients: Query<(&mut Client, &TrackedData)>) {
     }
 }
 
+/*
 /// Decrement viewer count of chunks when the client is despawned.
 fn cleanup_chunks_after_client_despawn(
     mut clients: Query<(View, &VisibleChunkLayer), (With<ClientMarker>, With<Despawned>)>,
@@ -1131,3 +1135,4 @@ fn cleanup_chunks_after_client_despawn(
         }
     }
 }
+*/

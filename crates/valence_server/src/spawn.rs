@@ -14,7 +14,7 @@ use valence_registry::tags::TagsRegistry;
 use valence_registry::{DimensionTypeRegistry, RegistryCodec, UpdateRegistrySet};
 
 use crate::client::{Client, FlushPacketsSet, ViewDistance, VisibleChunkLayer};
-use crate::dimension_layer::{ChunkIndex, UpdateDimensionLayerSet};
+use crate::dimension_layer::{ChunkIndex, DimensionInfo, UpdateDimensionLayerSet};
 
 /// Handles spawning and respawning of clients.
 pub struct SpawnPlugin;
@@ -109,10 +109,10 @@ pub(super) fn initial_join(
     codec: Res<RegistryCodec>,
     tags: Res<TagsRegistry>,
     dimensions: Res<DimensionTypeRegistry>,
-    dimension_layers: Query<&ChunkIndex>,
+    dimension_layers: Query<(&ChunkIndex, &DimensionInfo)>,
 ) {
     for (mut client, visible_chunk_layer, spawn) in &mut clients {
-        let Ok(chunk_index) = dimension_layers.get(visible_chunk_layer.0) else {
+        let Ok((chunk_index, info)) = dimension_layers.get(visible_chunk_layer.0) else {
             continue;
         };
 
@@ -122,7 +122,7 @@ pub(super) fn initial_join(
             .map(|value| value.name.as_str_ident().into())
             .collect();
 
-        let dimension_name = dimensions.by_index(chunk_index.dimension_type()).0;
+        let dimension_name = dimensions.by_index(info.dimension_type()).0;
 
         // The login packet is prepended so that it's sent before all the other packets.
         // Some packets don't work correctly when sent before the game join packet.
@@ -172,7 +172,7 @@ fn respawn(
         ),
         Changed<VisibleChunkLayer>,
     >,
-    chunk_layers: Query<&ChunkIndex>,
+    chunk_layers: Query<(&ChunkIndex, &DimensionInfo)>,
     dimensions: Res<DimensionTypeRegistry>,
 ) {
     for (mut client, loc, death_loc, hashed_seed, game_mode, prev_game_mode, is_debug, is_flat) in
@@ -183,11 +183,11 @@ fn respawn(
             continue;
         }
 
-        let Ok(chunk_index) = chunk_layers.get(loc.0) else {
+        let Ok((chunk_index, info)) = chunk_layers.get(loc.0) else {
             continue;
         };
 
-        let dimension_name = dimensions.by_index(chunk_index.dimension_type()).0;
+        let dimension_name = dimensions.by_index(info.dimension_type()).0;
 
         let last_death_location = death_loc.0.as_ref().map(|(id, pos)| GlobalPos {
             dimension_name: id.as_str_ident().into(),

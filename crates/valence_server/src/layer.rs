@@ -1,7 +1,5 @@
-pub mod action_buf;
 mod chunk_view_index;
 pub mod message;
-mod packet_buf;
 
 use std::collections::BTreeSet;
 
@@ -10,7 +8,6 @@ use bevy_ecs::prelude::*;
 use bevy_ecs::query::Has;
 pub use chunk_view_index::ChunkViewIndex;
 use derive_more::{Deref, DerefMut};
-pub use packet_buf::PacketBuf;
 use valence_entity::{OldPosition, Position};
 use valence_protocol::ChunkPos;
 use valence_server_common::Despawned;
@@ -68,7 +65,7 @@ fn update_view_index(
             // Remove from old layers.
             for &layer in old_visible.iter() {
                 if let Ok((mut viewers, mut index)) = layers.get_mut(layer) {
-                    let removed = viewers.remove(&client);
+                    let removed = viewers.0.remove(&client);
                     debug_assert!(removed);
 
                     let removed = index.remove(old_pos.get(), client);
@@ -79,7 +76,7 @@ fn update_view_index(
             // Remove from old layers.
             for &layer in old_visible.iter() {
                 if let Ok((mut viewers, mut index)) = layers.get_mut(layer) {
-                    let removed = viewers.remove(&client);
+                    let removed = viewers.0.remove(&client);
                     debug_assert!(removed);
 
                     let removed = index.remove(old_pos.get(), client);
@@ -90,7 +87,7 @@ fn update_view_index(
             // Insert in new layers.
             for &layer in visible.iter() {
                 if let Ok((mut viewers, mut index)) = layers.get_mut(layer) {
-                    let inserted = viewers.insert(client);
+                    let inserted = viewers.0.insert(client);
                     debug_assert!(inserted);
 
                     let inserted = index.insert(pos.0, client);

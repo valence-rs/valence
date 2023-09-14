@@ -1,57 +1,26 @@
 pub use bevy_ecs::prelude::*;
 use rustc_hash::FxHashMap;
-use valence_protocol::ChunkPos;
-use valence_registry::dimension_type::DimensionTypeId;
-use valence_registry::DimensionTypeRegistry;
-use valence_server_common::Server;
+use valence_protocol::{BlockPos, ChunkPos};
 
+use super::block::{Block, BlockRef};
 use super::chunk::{Chunk, LoadedChunk};
-use super::DimensionInfo;
 
 /// The mapping of chunk positions to [`LoadedChunk`]s in a dimension layer.
 ///
-/// **NOTE**: Modifying the chunk index directly does not send packets to
-/// clients and may lead to desync.
+/// **NOTE**: By design, directly modifying the chunk index does not send
+/// packets to synchronize state with clients.
 #[derive(Component, Debug)]
 pub struct ChunkIndex {
     map: FxHashMap<ChunkPos, LoadedChunk>,
-    pub(super) info: DimensionInfo,
+    height: i32,
 }
 
 impl ChunkIndex {
-    pub fn new(
-        dimension_type: DimensionTypeId,
-        dimensions: &DimensionTypeRegistry,
-        server: &Server,
-    ) -> Self {
-        let dim = dimensions[dimension_type];
-
+    pub(super) fn new(height: i32) -> Self {
         Self {
             map: Default::default(),
-            info: DimensionInfo {
-                dimension_type,
-                height: dim.height,
-                min_y: dim.min_y,
-                biome_registry_len: dimensions.len() as i32,
-                threshold: server.compression_threshold(),
-            },
+            height,
         }
-    }
-
-    pub(super) fn info(&self) -> &DimensionInfo {
-        &self.info
-    }
-
-    pub fn dimension_type(&self) -> DimensionTypeId {
-        self.info.dimension_type
-    }
-
-    pub fn height(&self) -> i32 {
-        self.info.height
-    }
-
-    pub fn min_y(&self) -> i32 {
-        self.info.min_y
     }
 
     pub fn get(&self, pos: impl Into<ChunkPos>) -> Option<&LoadedChunk> {
@@ -86,9 +55,21 @@ impl ChunkIndex {
             }
             std::collections::hash_map::Entry::Vacant(v) => Entry::Vacant(VacantEntry {
                 entry: v,
-                height: self.info.height,
+                height: self.height,
             }),
         }
+    }
+
+    pub fn block(&self, pos: impl Into<BlockPos>) -> Option<BlockRef> {
+        todo!()
+    }
+
+    pub fn set_block(
+        &mut self,
+        pos: impl Into<BlockPos>,
+        block: impl Into<Block>,
+    ) -> Option<Block> {
+        todo!()
     }
 
     // TODO: iter, iter_mut, clear
