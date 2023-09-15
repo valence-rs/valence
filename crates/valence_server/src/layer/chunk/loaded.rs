@@ -293,63 +293,32 @@ impl LoadedChunk {
         self.assert_no_changes();
     }
 
-    // TODO is this the right place for methods like this?
-    //      should there be a heightmaps.rs file?
-
-    /// Generates the `WORLD_SURFACE` heightmap for this chunk, which stores
-    /// the height of the highest non-air block in each column.
-    ///
-    /// The lowest value of the heightmap is 0, which is -64 ingame.
-    #[allow(clippy::needless_range_loop)]
-    fn world_surface(&self) -> Vec<Vec<u32>> {
-        let height = self.height();
-        let mut heightmap: Vec<Vec<u32>> = vec![vec![0; 16]; 16];
-
-        for z in 0..16 {
-            for x in 0..16 {
-                for y in (0..height).rev() {
-                    let state = self.block_state(x as u32, y, z as u32);
-                    // if state != BlockState::AIR {
-                    //     println!("{x}, {y}, {z}: {state}, {:?}", state.blocks_motion());
-                    // }
-
-                    if !self.block_state(x as u32, y, z as u32).is_air() {
-                        heightmap[z][x] = y;
-                        break;
-                    }
-                }
-            }
-        }
-
-        heightmap
-    }
-
     /// Generates the `MOTION_BLOCKING` heightmap for this chunk, which stores
     /// the height of the highest non motion-blocking block in each column.
     ///
-    /// Air does not block motion, so this heightmap is always lower than
-    /// `WORLD_SURFACE`. Therefore, we can save some resources by starting
-    /// to check at the first block in the `WORLD_SURFACE` heightmap.
+    /// The lowest value of the heightmap is 0, which means that there are no
+    /// motion-blocking blocks in the column. In this case, rain will fall
+    /// through the void and there will be no rain particles.
     ///
-    /// The lowest value of the heightmap is 0, which is -64 ingame.
+    /// A value of 1 means that rain particles will appear at the lowest
+    /// possible height y=-64, but note that blocks cannot be placed at y=-65.
+    ///
+    /// We take these two special cases into account by adding a value of 2 to
+    /// our heightmap if we find a motion-blocking block, since
+    ///
+    ///     `self.block_state(x, 0, z)`
+    ///
+    /// corresponds to the block at (0, -64, 0) ingame.
     #[allow(clippy::needless_range_loop)]
-    fn motion_blocking(&self, world_surface: &[Vec<u32>]) -> Vec<Vec<u32>> {
+    fn motion_blocking(&self) -> Vec<Vec<u32>> {
         let mut heightmap: Vec<Vec<u32>> = vec![vec![0; 16]; 16];
 
         for z in 0..16 {
             for x in 0..16 {
-                // In most cases, the block given by `world_surface` already blocks motion
-                if self
-                    .block_state(x as u32, world_surface[z][x], z as u32)
-                    .blocks_motion()
-                {
-                    heightmap[z][x] = world_surface[z][x];
-                } else {
-                    for y in (0..world_surface[z][x]).rev() {
-                        if self.block_state(x as u32, y, z as u32).blocks_motion() {
-                            heightmap[z][x] = y;
-                            break;
-                        }
+                for y in (0..self.height()).rev() {
+                    if self.block_state(x as u32, y, z as u32).blocks_motion() {
+                        heightmap[z][x] = y + 2;
+                        break;
                     }
                 }
             }
@@ -376,10 +345,6 @@ impl LoadedChunk {
     /// and the last long will be
     ///
     /// 0 000000000 000000000 000000000 000000100 000000100 000000100 000000100.
-    ///
-    /// TODO For some bizarre reason, we need to add 2 to the heightmap so that
-    /// it matches the expectation that a height of 0 corresponds to a height of
-    /// -64 ingame. There should be an explanation for that.
     fn encode_heightmap(&self, heightmap: Vec<Vec<u32>>) -> Value {
         let mut encoded: Vec<i64> = vec![0; 37];
         let mut iter = heightmap.into_iter().flatten();
@@ -388,7 +353,8 @@ impl LoadedChunk {
             for j in 0..7 {
                 match iter.next() {
                     None => break,
-                    Some(y) => *entry += i64::from(y + 2) << (9 * j),
+                    // Some(y) => *entry += i64::from(y + 2) << (9 * j),
+                    Some(y) => *entry += i64::from(y) << (9 * j),
                 }
             }
         }
@@ -406,12 +372,10 @@ impl LoadedChunk {
         let mut init_packets = self.cached_init_packets.lock();
 
         if init_packets.is_empty() {
-            let world_surface = self.world_surface();
-            let motion_blocking = self.motion_blocking(&world_surface);
-
             let heightmaps = compound! {
-                "MOTION_BLOCKING" => self.encode_heightmap(motion_blocking),
-                "WORLD_SURFACE" => self.encode_heightmap(world_surface),
+                "MOTION_BLOCKING" => self.encode_heightmap(self.motion_blocking()),
+                // TODO Implement `WORLD_SURFACE` (or explain why we don't need it)
+                // "WORLD_SURFACE" => self.encode_heightmap(self.world_surface()),
             };
 
             let mut blocks_and_biomes: Vec<u8> = vec![];

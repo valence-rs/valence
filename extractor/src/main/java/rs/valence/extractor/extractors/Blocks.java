@@ -16,8 +16,6 @@ import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Objects;
 
-import java.lang.reflect.*;
-
 public class Blocks implements Main.Extractor {
     public Blocks() {
     }
