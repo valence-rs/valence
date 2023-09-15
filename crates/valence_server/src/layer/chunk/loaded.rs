@@ -351,7 +351,6 @@ impl LoadedChunk {
             for j in 0..7 {
                 match iter.next() {
                     None => break,
-                    // Some(y) => *entry += i64::from(y + 2) << (9 * j),
                     Some(y) => *entry += i64::from(y) << (9 * j),
                 }
             }
