@@ -305,10 +305,8 @@ impl LoadedChunk {
     ///
     /// We take these two special cases into account by adding a value of 2 to
     /// our heightmap if we find a motion-blocking block, since
-    ///
-    ///     `self.block_state(x, 0, z)`
-    ///
-    /// corresponds to the block at (0, -64, 0) ingame.
+    /// `self.block_state(x, 0, z)` corresponds to the block at (x, -64, z)
+    /// ingame.
     #[allow(clippy::needless_range_loop)]
     fn motion_blocking(&self) -> Vec<Vec<u32>> {
         let mut heightmap: Vec<Vec<u32>> = vec![vec![0; 16]; 16];
