@@ -2,24 +2,23 @@
 
 use std::ops::DerefMut;
 
-use parsers::vec2::Vec2 as Vec2Parser;
-use parsers::vec3::Vec3 as Vec3Parser;
+use command::graph::CommandGraphBuilder;
+use command::handler::CommandResultEvent;
+use command::parsers::entity_selector::{EntitySelector, EntitySelectors};
+use command::parsers::{CommandArg, GreedyString, QuotableString};
+use command::scopes::CommandScopes;
+use command::{parsers, Command, CommandApp, CommandScopeRegistry, ModifierValue};
+use command_macros::Command;
+use parsers::{Vec2 as Vec2Parser, Vec3 as Vec3Parser};
 use valence::prelude::*;
-use valence_command::graph::CommandGraphBuilder;
-use valence_command::handler::CommandResultEvent;
-use valence_command::parsers::entity_selector::{EntitySelector, EntitySelectors};
-use valence_command::parsers::strings::{GreedyString, QuotableString};
-use valence_command::parsers::CommandArg;
-use valence_command::scopes::CommandScopes;
-use valence_command::{parsers, Command, CommandApp, CommandScopeRegistry, ModifierValue};
-use valence_command_derive::Command;
+use valence::*;
 use valence_server::op_level::OpLevel;
 
 const SPAWN_Y: i32 = 64;
 
 #[derive(Command, Debug, Clone)]
 #[paths("teleport", "tp")]
-#[scopes("valence:command:teleport")]
+#[scopes("valence.command.teleport")]
 enum Teleport {
     #[paths = "{location}"]
     ExecutorToLocation { location: Vec3Parser },
@@ -39,7 +38,7 @@ enum Teleport {
 
 #[derive(Command, Debug, Clone)]
 #[paths("gamemode", "gm")]
-#[scopes("valence:command:gamemode")]
+#[scopes("valence.command.gamemode")]
 enum Gamemode {
     #[paths("survival", "{/} gms")]
     Survival,
@@ -53,7 +52,7 @@ enum Gamemode {
 
 #[derive(Command, Debug, Clone)]
 #[paths("test", "t")]
-#[scopes("valence:command:test")]
+#[scopes("valence.command.test")]
 #[allow(dead_code)]
 enum Test {
     // 3 literals with an arg each
@@ -102,7 +101,7 @@ impl Command for ComplexRedirection {
 
         let command_root = graph
             .literal("complex")
-            .with_scopes(vec!["valence:command:complex"])
+            .with_scopes(vec!["valence.command.complex"])
             .id();
         let a = graph.literal("a").id();
 

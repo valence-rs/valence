@@ -1,3 +1,4 @@
+use bevy_derive::Deref;
 use valence_server::protocol::packets::play::command_tree_s2c::StringArg;
 
 use super::Parser;
@@ -25,8 +26,8 @@ fn test_string() {
     assert!(input.is_done());
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct GreedyString(String);
+#[derive(Debug, Clone, PartialEq, Eq, Default, Deref)]
+pub struct GreedyString(pub String);
 
 impl CommandArg for GreedyString {
     fn parse_arg(input: &mut ParseInput) -> Result<Self, CommandArgParseError> {
@@ -54,8 +55,8 @@ fn test_greedy_string() {
     assert!(input.is_done());
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct QuotableString(String);
+#[derive(Debug, Clone, PartialEq, Eq, Default, Deref)]
+pub struct QuotableString(pub String);
 
 impl CommandArg for QuotableString {
     fn parse_arg(input: &mut ParseInput) -> Result<Self, CommandArgParseError> {

@@ -46,7 +46,7 @@ pub use valence_boss_bar as boss_bar;
 #[cfg(feature = "command")]
 pub use valence_command as command;
 #[cfg(feature = "command")]
-pub use valence_command_derive as command_derive;
+pub use valence_command_macros as command_macros;
 #[cfg(feature = "inventory")]
 pub use valence_inventory as inventory;
 pub use valence_lang as lang;

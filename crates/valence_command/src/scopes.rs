@@ -4,12 +4,12 @@
 //! Each scope is a node in the graph. a path from one node to another indicates
 //! that the first scope implies the second. A colon in the scope name indicates
 //! a sub-scope. you can use this to create a hierarchy of scopes. for example,
-//! the scope "valence:command" implies "valence:command:tp". this means that if
-//! a player has the "valence:command" scope, they can use the "tp" command.
+//! the scope "valence.command" implies "valence.command.tp". this means that if
+//! a player has the "valence.command" scope, they can use the "tp" command.
 //!
 //! You may also link scopes together in the registry. this is useful for admin
-//! scope umbrellas. for example, if the scope "valence:admin" is linked to
-//! "valence:command", It means that if a player has the "valence:admin" scope,
+//! scope umbrellas. for example, if the scope "valence.admin" is linked to
+//! "valence.command", It means that if a player has the "valence.admin" scope,
 //! they can use all commands under the command scope.
 //!
 //! # Example
@@ -19,20 +19,20 @@
 //! let mut registry = CommandScopeRegistry::new();
 //!
 //! // add a scope to the registry
-//! registry.add_scope("valence:command:teleport");
+//! registry.add_scope("valence.command.teleport");
 //!
-//! // we added 4 scopes to the registry. "valence", "valence:command", "valence:command:teleport",
+//! // we added 4 scopes to the registry. "valence", "valence.command", "valence.command.teleport",
 //! // and the root scope.
 //! assert_eq!(registry.scope_count(), 4);
 //!
-//! registry.add_scope("valence:admin");
+//! registry.add_scope("valence.admin");
 //!
 //! // add a scope to the registry with a link to another scope
-//! registry.link("valence:admin", "valence:command:teleport");
+//! registry.link("valence.admin", "valence.command.teleport");
 //!
-//! // the "valence:admin" scope implies the "valence:command:teleport" scope
+//! // the "valence.admin" scope implies the "valence.command.teleport" scope
 //! assert_eq!(
-//!     registry.grants("valence:admin", "valence:command:teleport"),
+//!     registry.grants("valence.admin", "valence.command.teleport"),
 //!     true
 //! );
 //! ```
@@ -40,6 +40,7 @@
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 
+use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::prelude::Component;
 use bevy_ecs::system::Resource;
 use petgraph::dot;
@@ -49,7 +50,9 @@ use petgraph::prelude::*;
 /// Command scope Component for players. this is a list of scopes that a player
 /// has. if a player has a scope, they can use any command that requires
 /// that scope.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, Component, Default)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, Component, Default, Deref, DerefMut,
+)]
 pub struct CommandScopes(pub Vec<String>);
 
 impl CommandScopes {
@@ -115,11 +118,11 @@ impl CommandScopeRegistry {
     ///
     /// let mut registry = CommandScopeRegistry::new();
     ///
-    /// // creates two nodes: "valence" and "command" with an edge from "valence" to "command"
-    /// registry.add_scope("valence:command");
-    /// // creates one node: "valence:command:tp" with an edge from "valence:command" to
-    /// // "valence:command:tp"
-    /// registry.add_scope("valence:command:tp");
+    /// // creates two nodes. "valence" and "command" with an edge from "valence" to "command"
+    /// registry.add_scope("valence.command");
+    /// // creates one node. "valence.command.tp" with an edge from "valence.command" to
+    /// // "valence.command.tp"
+    /// registry.add_scope("valence.command.tp");
     ///
     /// // the root node is always present
     /// assert_eq!(registry.scope_count(), 4);
@@ -128,7 +131,7 @@ impl CommandScopeRegistry {
         let scope = scope.into();
         let mut current_node = self.root;
         let mut prefix = String::new();
-        for part in scope.split(':') {
+        for part in scope.split('.') {
             let node = self
                 .string_to_node
                 .entry(prefix.clone() + part)
@@ -139,7 +142,7 @@ impl CommandScopeRegistry {
                 });
             current_node = *node;
 
-            prefix = prefix + part + ":";
+            prefix = prefix + part + ".";
         }
     }
 
@@ -151,12 +154,12 @@ impl CommandScopeRegistry {
     ///
     /// let mut registry = CommandScopeRegistry::new();
     ///
-    /// registry.add_scope("valence:command");
-    /// registry.add_scope("valence:command:tp");
+    /// registry.add_scope("valence.command");
+    /// registry.add_scope("valence.command.tp");
     ///
     /// assert_eq!(registry.scope_count(), 4);
     ///
-    /// registry.remove_scope("valence:command:tp");
+    /// registry.remove_scope("valence.command.tp");
     ///
     /// assert_eq!(registry.scope_count(), 3);
     /// ```
@@ -174,11 +177,11 @@ impl CommandScopeRegistry {
     ///
     /// let mut registry = CommandScopeRegistry::new();
     ///
-    /// registry.add_scope("valence:command");
-    /// registry.add_scope("valence:command:tp");
+    /// registry.add_scope("valence.command");
+    /// registry.add_scope("valence.command.tp");
     ///
-    /// assert!(registry.grants("valence:command", "valence:command:tp")); // command implies tp
-    /// assert!(!registry.grants("valence:command:tp", "valence:command")); // tp does not imply command
+    /// assert!(registry.grants("valence.command", "valence.command.tp")); // command implies tp
+    /// assert!(!registry.grants("valence.command.tp", "valence.command")); // tp does not imply command
     /// ```
     pub fn grants(&self, scope: &str, other: &str) -> bool {
         if scope == other {
@@ -221,13 +224,13 @@ impl CommandScopeRegistry {
     ///
     /// let mut registry = CommandScopeRegistry::new();
     ///
-    /// registry.add_scope("valence:command");
-    /// registry.add_scope("valence:command:tp");
-    /// registry.add_scope("valence:admin");
+    /// registry.add_scope("valence.command");
+    /// registry.add_scope("valence.command.tp");
+    /// registry.add_scope("valence.admin");
     ///
     /// assert!(registry.any_grants(
-    ///     &vec!["valence:admin", "valence:command"],
-    ///     "valence:command:tp"
+    ///     &vec!["valence.admin", "valence.command"],
+    ///     "valence.command.tp"
     /// ));
     /// ```
     pub fn any_grants(&self, scopes: &Vec<&str>, other: &str) -> bool {
@@ -252,14 +255,14 @@ impl CommandScopeRegistry {
     ///
     /// let mut registry = CommandScopeRegistry::new();
     ///
-    /// registry.add_scope("valence:command");
-    /// registry.add_scope("valence:command:tp");
-    /// registry.add_scope("valence:admin");
+    /// registry.add_scope("valence.command");
+    /// registry.add_scope("valence.command.tp");
+    /// registry.add_scope("valence.admin");
     ///
-    /// registry.link("valence:admin", "valence:command");
+    /// registry.link("valence.admin", "valence.command");
     ///
-    /// assert!(registry.grants("valence:admin", "valence:command"));
-    /// assert!(registry.grants("valence:admin", "valence:command:tp"));
+    /// assert!(registry.grants("valence.admin", "valence.command"));
+    /// assert!(registry.grants("valence.admin", "valence.command.tp"));
     /// ```
     pub fn link(&mut self, scope: &str, other: &str) {
         let scope_idx = *self

@@ -1,5 +1,5 @@
 [package]
-name = "valence_command_derive"
+name = "valence_command_macros"
 description = "Simplify the creation of Valence commands with a derive macro."
 readme = "README.md"
 version.workspace = true

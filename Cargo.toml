@@ -35,7 +35,7 @@ network = ["dep:valence_network"]
 player_list = ["dep:valence_player_list"]
 scoreboard = ["dep:valence_scoreboard"]
 world_border = ["dep:valence_world_border"]
-command = ["dep:valence_command", "dep:valence_command_derive"]
+command = ["dep:valence_command", "dep:valence_command_macros"]
 weather = ["dep:valence_weather"]
 testing = []
 
@@ -53,7 +53,7 @@ valence_anvil = { workspace = true, optional = true, features = [
 ] }
 valence_boss_bar = { workspace = true, optional = true }
 valence_command = { workspace = true, optional = true }
-valence_command_derive = { workspace = true, optional = true }
+valence_command_macros = { workspace = true, optional = true }
 valence_ident_macros.workspace = true
 valence_ident.workspace = true
 valence_inventory = { workspace = true, optional = true }
@@ -111,6 +111,7 @@ async-trait = "0.1.60"
 atty = "0.2.14"
 base64 = "0.21.0"
 bevy_app = { version = "0.11", default-features = false }
+bevy_derive = "0.11.2"
 bevy_ecs = { version = "0.11", default-features = false, features = [
     "multi-threaded",
 ] }
@@ -183,7 +184,7 @@ valence_anvil = { path = "crates/valence_anvil", version = "0.2.0-alpha.1" }
 valence_boss_bar = { path = "crates/valence_boss_bar", version = "0.2.0-alpha.1" }
 valence_build_utils = { path = "crates/valence_build_utils", version = "0.2.0-alpha.1" }
 valence_command = { path = "crates/valence_command", version = "0.2.0-alpha.1" }
-valence_command_derive = { path = "crates/valence_command_derive", version = "0.2.0-alpha.1" }
+valence_command_macros = { path = "crates/valence_command_macros", version = "0.2.0-alpha.1" }
 valence_entity = { path = "crates/valence_entity", version = "0.2.0-alpha.1" }
 valence_generated = { path = "crates/valence_generated", version = "0.2.0-alpha.1" }
 valence_ident = { path = "crates/valence_ident", version = "0.2.0-alpha.1" }

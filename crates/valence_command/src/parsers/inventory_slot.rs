@@ -1,8 +1,10 @@
+use bevy_derive::Deref;
+
 use super::Parser;
 use crate::parsers::{CommandArg, CommandArgParseError, ParseInput};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct InventorySlot(u32);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deref)]
+pub struct InventorySlot(pub u32);
 
 impl CommandArg for InventorySlot {
     fn parse_arg(input: &mut ParseInput) -> Result<Self, CommandArgParseError> {

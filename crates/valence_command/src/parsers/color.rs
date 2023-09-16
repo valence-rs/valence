@@ -1,4 +1,3 @@
-use valence_text::color::NamedColor;
 use valence_text::Color;
 
 use super::Parser;
@@ -8,37 +7,37 @@ impl CommandArg for Color {
     fn parse_arg(input: &mut ParseInput) -> Result<Self, CommandArgParseError> {
         input.skip_whitespace();
         if input.match_next("black") {
-            Ok(Self::Named(NamedColor::Black))
+            Ok(Self::BLACK)
         } else if input.match_next("dark_blue") {
-            Ok(Self::Named(NamedColor::DarkBlue))
+            Ok(Self::DARK_BLUE)
         } else if input.match_next("dark_green") {
-            Ok(Self::Named(NamedColor::DarkGreen))
+            Ok(Self::DARK_GREEN)
         } else if input.match_next("dark_aqua") {
-            Ok(Self::Named(NamedColor::DarkAqua))
+            Ok(Self::DARK_AQUA)
         } else if input.match_next("dark_red") {
-            Ok(Self::Named(NamedColor::DarkRed))
+            Ok(Self::DARK_RED)
         } else if input.match_next("dark_purple") {
-            Ok(Self::Named(NamedColor::DarkPurple))
+            Ok(Self::DARK_PURPLE)
         } else if input.match_next("gold") {
-            Ok(Self::Named(NamedColor::Gold))
+            Ok(Self::GOLD)
         } else if input.match_next("gray") {
-            Ok(Self::Named(NamedColor::Gray))
+            Ok(Self::GRAY)
         } else if input.match_next("dark_gray") {
-            Ok(Self::Named(NamedColor::DarkGray))
+            Ok(Self::DARK_GRAY)
         } else if input.match_next("blue") {
-            Ok(Self::Named(NamedColor::Blue))
+            Ok(Self::BLUE)
         } else if input.match_next("green") {
-            Ok(Self::Named(NamedColor::Green))
+            Ok(Self::GREEN)
         } else if input.match_next("aqua") {
-            Ok(Self::Named(NamedColor::Aqua))
+            Ok(Self::AQUA)
         } else if input.match_next("red") {
-            Ok(Self::Named(NamedColor::Red))
+            Ok(Self::RED)
         } else if input.match_next("light_purple") {
-            Ok(Self::Named(NamedColor::LightPurple))
+            Ok(Self::LIGHT_PURPLE)
         } else if input.match_next("yellow") {
-            Ok(Self::Named(NamedColor::Yellow))
+            Ok(Self::YELLOW)
         } else if input.match_next("white") {
-            Ok(Self::Named(NamedColor::White))
+            Ok(Self::WHITE)
         } else if input.match_next("reset") {
             Ok(Self::Reset)
         } else {

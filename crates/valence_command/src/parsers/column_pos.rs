@@ -3,9 +3,9 @@ use crate::parsers::{AbsoluteOrRelative, CommandArg, CommandArgParseError, Parse
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct ColumnPos {
-    x: AbsoluteOrRelative<i32>,
-    y: AbsoluteOrRelative<i32>,
-    z: AbsoluteOrRelative<i32>,
+    pub x: AbsoluteOrRelative<i32>,
+    pub y: AbsoluteOrRelative<i32>,
+    pub z: AbsoluteOrRelative<i32>,
 }
 
 impl CommandArg for ColumnPos {

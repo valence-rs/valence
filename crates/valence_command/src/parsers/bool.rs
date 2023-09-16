@@ -38,5 +38,5 @@ fn test_bool() {
     let mut input = ParseInput::new("falSe trUe".to_string());
     assert!(!bool::parse_arg(&mut input).unwrap());
     assert!(bool::parse_arg(&mut input).unwrap());
-    assert!(!input.is_done());
+    assert!(input.is_done());
 }
