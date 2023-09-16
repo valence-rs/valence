@@ -7,7 +7,6 @@ import net.minecraft.registry.Registries;
 import net.minecraft.item.VerticallyAttachableBlockItem;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.EmptyBlockView;
-import net.minecraft.block.Block;
 
 import rs.valence.extractor.Main;
 import rs.valence.extractor.mixin.ExposeWallBlock;

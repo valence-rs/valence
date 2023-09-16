@@ -354,7 +354,7 @@ impl LoadedChunk {
         // Unless `ENTRIES_PER_LONG` is a power of 2 and therefore evenly divides 16*16,
         // we need to add one extra long to fit all values in the packet.
         const LONGS_PER_PACKET: u32 =
-            16 * 16 / ENTRIES_PER_LONG + ENTRIES_PER_LONG.is_power_of_two() as u32;
+            16 * 16 / ENTRIES_PER_LONG + !ENTRIES_PER_LONG.is_power_of_two() as u32;
 
         let mut encoded: Vec<i64> = vec![0; LONGS_PER_PACKET as usize];
         let mut iter = heightmap.into_iter().flatten();
