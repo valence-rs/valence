@@ -1,21 +1,28 @@
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, TokenTree};
 use quote::{format_ident, quote};
-use syn::{parse_macro_input, Attribute, Data, DeriveInput, Expr, Fields, Meta};
+use syn::{parse_macro_input, Attribute, Data, DeriveInput, Error, Expr, Fields, Meta, Result};
 
 #[proc_macro_derive(Command, attributes(command, scopes, paths))]
-pub fn derive_command(a_input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(a_input as DeriveInput);
+pub fn derive_command(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    match command(input) {
+        Ok(expansion) => expansion,
+        Err(err) => err.to_compile_error().into(),
+    }
+}
 
+fn command(input: DeriveInput) -> Result<TokenStream> {
     let enum_name = input.ident;
 
     let mut alias_paths = match input.attrs.iter().filter_map(parse_path).next() {
         // there should only be one base command name set
         Some(paths) => paths,
         None => {
-            return TokenStream::from(quote! {
-                compile_error!("No base paths attribute found");
-            });
+            return Err(Error::new_spanned(
+                enum_name,
+                "No paths attribute found for command enum",
+            ))
         }
     };
 
@@ -30,10 +37,17 @@ pub fn derive_command(a_input: TokenStream) -> TokenStream {
 
     let fields = match input.data {
         Data::Enum(ref data_enum) => &data_enum.variants,
-        _ => {
-            return TokenStream::from(quote! {
-                compile_error!("Command can only be derived for enums!");
-            });
+        Data::Struct(x) => {
+            return Err(Error::new_spanned(
+                x.struct_token,
+                "Command enum must be an enum, not a struct",
+            ))
+        }
+        Data::Union(x) => {
+            return Err(Error::new_spanned(
+                x.union_token,
+                "Command enum must be an enum, not a union",
+            ))
         }
     };
 
@@ -115,7 +129,7 @@ pub fn derive_command(a_input: TokenStream) -> TokenStream {
 
     let _new_struct = format_ident!("{}Command", enum_name);
 
-    let expanded = quote! {
+    Ok(TokenStream::from(quote! {
 
         impl valence_command::Command for #enum_name {
             fn assemble_graph(command_graph: &mut valence_command::graph::CommandGraphBuilder<Self>) {
@@ -127,9 +141,7 @@ pub fn derive_command(a_input: TokenStream) -> TokenStream {
                 #(#expanded_nodes)*
             }
         }
-    };
-
-    proc_macro::TokenStream::from(expanded)
+    }))
 }
 
 fn process_paths(
@@ -230,45 +242,57 @@ fn process_paths(
                         syn::Type::Path(ref type_path) => {
                             let path = &type_path.path;
                             if path.segments.len() != 1 {
-                                return quote! {
-                                    compile_error!("Option type must be a single path segment");
-                                };
+                                return Error::new_spanned(
+                                    path,
+                                    "Option type must be a single path segment",
+                                )
+                                .into_compile_error();
                             }
                             let segment = &path.segments.first().unwrap();
                             if segment.ident != "Option" {
-                                return quote! {
-                                    compile_error!("Option type must be a single path segment");
-                                };
+                                return Error::new_spanned(
+                                    &segment.ident,
+                                    "Option type must be a option",
+                                )
+                                .into_compile_error();
                             }
                             match &segment.arguments {
                                 syn::PathArguments::AngleBracketed(ref angle_bracketed) => {
                                     if angle_bracketed.args.len() != 1 {
-                                        return quote! {
-                                            compile_error!("Option type must have a single generic argument");
-                                        };
+                                        return Error::new_spanned(
+                                            angle_bracketed,
+                                            "Option type must have a single generic argument",
+                                        )
+                                        .into_compile_error();
                                     }
                                     match angle_bracketed.args.first().unwrap() {
                                         syn::GenericArgument::Type(ref generic_type) => {
                                             generic_type
                                         }
                                         _ => {
-                                            return quote! {
-                                                compile_error!("Option type must have a single generic argument");
-                                            };
+                                            return Error::new_spanned(
+                                                angle_bracketed,
+                                                "Option type must have a single generic argument",
+                                            )
+                                            .into_compile_error();
                                         }
                                     }
                                 }
                                 _ => {
-                                    return quote! {
-                                        compile_error!("Option type must have a single generic argument");
-                                    };
+                                    return Error::new_spanned(
+                                        segment,
+                                        "Option type must have a single generic argument",
+                                    )
+                                    .into_compile_error();
                                 }
                             }
                         }
                         _ => {
-                            return quote! {
-                                compile_error!("Option type must be a single path segment");
-                            };
+                            return Error::new_spanned(
+                                field_type,
+                                "Option type must be a single path segment",
+                            )
+                            .into_compile_error();
                         }
                     };
 
@@ -280,9 +304,11 @@ fn process_paths(
                         match next_arg {
                             CommandArg::Optional(ident) => next_optional_args.push(ident),
                             _ => {
-                                return quote! {
-                                    compile_error!("Only optional args can follow an optional arg, found {:?}", next_arg);
-                                };
+                                return Error::new_spanned(
+                                    variant_ident,
+                                    "Only optional args can follow an optional arg",
+                                )
+                                .into_compile_error();
                             }
                         }
                     }
