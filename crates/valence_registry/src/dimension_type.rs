@@ -79,7 +79,7 @@ pub struct DimensionTypeRegistry {
 }
 
 impl DimensionTypeRegistry {
-    pub const KEY: Ident<&str> = ident!("dimension_type");
+    pub const KEY: Ident<&'static str> = ident!("dimension_type");
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]

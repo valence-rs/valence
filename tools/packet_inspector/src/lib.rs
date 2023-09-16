@@ -18,11 +18,13 @@ use valence_protocol::packets::login::{
 };
 use valence_protocol::text::color::NamedColor;
 use valence_protocol::text::{Color, IntoText};
-use valence_protocol::{CompressionThreshold, Decode, Encode, Packet as ValencePacket};
+use valence_protocol::{
+    CompressionThreshold, Decode, Encode, Packet as ValencePacket, PacketSide, PacketState,
+};
 
 use crate::packet_io::PacketIo;
+pub use crate::packet_registry::Packet;
 use crate::packet_registry::PacketRegistry;
-pub use crate::packet_registry::{Packet, PacketSide, PacketState};
 
 include!(concat!(env!("OUT_DIR"), "/packets.rs"));
 
@@ -196,12 +198,7 @@ impl Proxy {
                 registry
                     .write()
                     .await
-                    .process(
-                        crate::packet_registry::PacketSide::Serverbound,
-                        state,
-                        threshold,
-                        &packet,
-                    )
+                    .process(PacketSide::Serverbound, state, threshold, &packet)
                     .await?;
 
                 if state == PacketState::Handshaking {
@@ -251,12 +248,7 @@ impl Proxy {
                 registry
                     .write()
                     .await
-                    .process(
-                        crate::packet_registry::PacketSide::Clientbound,
-                        state,
-                        threshold,
-                        &packet,
-                    )
+                    .process(PacketSide::Clientbound, state, threshold, &packet)
                     .await?;
 
                 // (The check is done in this if rather than the one above, to still send the

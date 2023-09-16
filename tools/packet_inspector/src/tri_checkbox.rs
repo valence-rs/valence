@@ -85,7 +85,8 @@ impl<'a> Widget for TriCheckbox<'a> {
         });
 
         if ui.is_rect_visible(rect) {
-            // let visuals = ui.style().interact_selectable(&response, *checked); // too colorful
+            // Too colorful
+            // let visuals = ui.style().interact_selectable(&response, *checked);
             let visuals = ui.style().interact(&response);
             let (small_icon_rect, big_icon_rect) = ui.spacing().icon_rectangles(rect);
             ui.painter().add(epaint::RectShape {

@@ -3,14 +3,16 @@ use std::io::Write;
 use std::ops::{Add, Sub};
 
 use anyhow::bail;
-use valence_math::DVec3;
+use bitfield_struct::bitfield;
+use derive_more::From;
+use thiserror::Error;
+use valence_math::{DVec3, IVec3};
 
-use crate::chunk_pos::ChunkPos;
 use crate::direction::Direction;
 use crate::{Decode, Encode};
 
 /// Represents an absolute block position in world space.
-#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct BlockPos {
     pub x: i32,
     pub y: i32,
@@ -23,19 +25,6 @@ impl BlockPos {
         Self { x, y, z }
     }
 
-    /// Returns the block position a point in world space is contained within.
-    pub fn from_pos(pos: DVec3) -> Self {
-        Self {
-            x: pos.x.floor() as i32,
-            y: pos.y.floor() as i32,
-            z: pos.z.floor() as i32,
-        }
-    }
-
-    pub const fn to_chunk_pos(self) -> ChunkPos {
-        ChunkPos::from_block_pos(self)
-    }
-
     /// Get a new [`BlockPos`] that is adjacent to this position in `dir`
     /// direction.
     ///
@@ -46,7 +35,7 @@ impl BlockPos {
     /// let adj = pos.get_in_direction(Direction::South);
     /// assert_eq!(adj, BlockPos::new(0, 0, 1));
     /// ```
-    pub const fn get_in_direction(self, dir: Direction) -> BlockPos {
+    pub const fn get_in_direction(self, dir: Direction) -> Self {
         match dir {
             Direction::Down => BlockPos::new(self.x, self.y - 1, self.z),
             Direction::Up => BlockPos::new(self.x, self.y + 1, self.z),
@@ -56,32 +45,79 @@ impl BlockPos {
             Direction::East => BlockPos::new(self.x + 1, self.y, self.z),
         }
     }
+
+    pub const fn offset(self, x: i32, y: i32, z: i32) -> Self {
+        Self::new(self.x + x, self.y + y, self.z + z)
+    }
+
+    pub const fn packed(self) -> Result<PackedBlockPos, Error> {
+        match (self.x, self.y, self.z) {
+            (-0x2000000..=0x1ffffff, -0x800..=0x7ff, -0x2000000..=0x1ffffff) => {
+                Ok(PackedBlockPos::new()
+                    .with_x(self.x)
+                    .with_y(self.y)
+                    .with_z(self.z))
+            }
+            _ => Err(Error(self)),
+        }
+    }
+}
+
+#[bitfield(u64)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Encode, Decode)]
+pub struct PackedBlockPos {
+    #[bits(12)]
+    pub y: i32,
+    #[bits(26)]
+    pub z: i32,
+    #[bits(26)]
+    pub x: i32,
 }
 
 impl Encode for BlockPos {
     fn encode(&self, w: impl Write) -> anyhow::Result<()> {
-        match (self.x, self.y, self.z) {
-            (-0x2000000..=0x1ffffff, -0x800..=0x7ff, -0x2000000..=0x1ffffff) => {
-                let (x, y, z) = (self.x as u64, self.y as u64, self.z as u64);
-                (x << 38 | z << 38 >> 26 | y & 0xfff).encode(w)
-            }
-            _ => bail!("out of range: {self:?}"),
+        match self.packed() {
+            Ok(p) => p.encode(w),
+            Err(e) => bail!("{e}: {self}"),
         }
     }
 }
 
 impl Decode<'_> for BlockPos {
     fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
-        // Use arithmetic right shift to determine sign.
-        let val = i64::decode(r)?;
-        let x = val >> 38;
-        let z = val << 26 >> 38;
-        let y = val << 52 >> 52;
-        Ok(Self {
-            x: x as i32,
-            y: y as i32,
-            z: z as i32,
-        })
+        PackedBlockPos::decode(r).map(Into::into)
+    }
+}
+
+impl From<PackedBlockPos> for BlockPos {
+    fn from(p: PackedBlockPos) -> Self {
+        Self {
+            x: p.x(),
+            y: p.y(),
+            z: p.z(),
+        }
+    }
+}
+
+impl TryFrom<BlockPos> for PackedBlockPos {
+    type Error = Error;
+
+    fn try_from(pos: BlockPos) -> Result<Self, Self::Error> {
+        pos.packed()
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Error, From)]
+#[error("block position of {0} is out of range")]
+pub struct Error(pub BlockPos);
+
+impl From<DVec3> for BlockPos {
+    fn from(pos: DVec3) -> Self {
+        Self {
+            x: pos.x.floor() as i32,
+            y: pos.y.floor() as i32,
+            z: pos.z.floor() as i32,
+        }
     }
 }
 
@@ -109,39 +145,42 @@ impl From<BlockPos> for [i32; 3] {
     }
 }
 
-impl fmt::Debug for BlockPos {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self, f)
+impl Add<IVec3> for BlockPos {
+    type Output = Self;
+
+    fn add(self, rhs: IVec3) -> Self::Output {
+        Self::new(self.x + rhs.x, self.y + rhs.y, self.z + rhs.z)
+    }
+}
+
+impl Sub<IVec3> for BlockPos {
+    type Output = Self;
+
+    fn sub(self, rhs: IVec3) -> Self::Output {
+        Self::new(self.x - rhs.x, self.y - rhs.y, self.z - rhs.z)
+    }
+}
+
+impl Add<BlockPos> for IVec3 {
+    type Output = BlockPos;
+
+    fn add(self, rhs: BlockPos) -> Self::Output {
+        BlockPos::new(self.x + rhs.x, self.y + rhs.y, self.z + rhs.z)
+    }
+}
+
+impl Sub<BlockPos> for IVec3 {
+    type Output = BlockPos;
+
+    fn sub(self, rhs: BlockPos) -> Self::Output {
+        BlockPos::new(self.x - rhs.x, self.y - rhs.y, self.z - rhs.z)
     }
 }
 
 impl fmt::Display for BlockPos {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "({}, {}, {})", self.x, self.y, self.z)
-    }
-}
-
-impl Add for BlockPos {
-    type Output = BlockPos;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Self {
-            x: self.x + rhs.x,
-            y: self.y + rhs.y,
-            z: self.z + rhs.z,
-        }
-    }
-}
-
-impl Sub for BlockPos {
-    type Output = BlockPos;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        Self {
-            x: self.x - rhs.x,
-            y: self.y - rhs.y,
-            z: self.z - rhs.z,
-        }
+        // Display the block position as a tuple.
+        fmt::Debug::fmt(&(self.x, self.y, self.z), f)
     }
 }
 
@@ -150,7 +189,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn position() {
+    fn block_position() {
         let xzs = [
             (-33554432, true),
             (-33554433, false),
@@ -170,17 +209,15 @@ mod tests {
             (-1, true),
         ];
 
-        let mut buf = [0; 8];
-
         for (x, x_valid) in xzs {
             for (y, y_valid) in ys {
                 for (z, z_valid) in xzs {
                     let pos = BlockPos::new(x, y, z);
                     if x_valid && y_valid && z_valid {
-                        pos.encode(&mut &mut buf[..]).unwrap();
-                        assert_eq!(BlockPos::decode(&mut &buf[..]).unwrap(), pos);
+                        let c = pos.packed().unwrap();
+                        assert_eq!((c.x(), c.y(), c.z()), (pos.x, pos.y, pos.z));
                     } else {
-                        assert!(pos.encode(&mut &mut buf[..]).is_err());
+                        assert_eq!(pos.packed(), Err(Error(pos)));
                     }
                 }
             }

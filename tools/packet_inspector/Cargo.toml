@@ -8,51 +8,34 @@ documentation.workspace = true
 license.workspace = true
 publish = false
 
-[features]
-default = ["gui"]
-gui = [
-    "image",
-    "syntect",
-    "serde",
-    "egui",
-    "eframe",
-    "egui_dock",
-    "itertools",
-    "enum-map",
-]
-cli = ["clap"]
-
 [dependencies]
 valence_protocol = { workspace = true, features = ["compression"] }
-anyhow = { workspace = true }
-thiserror = { workspace = true }
-bytes = { workspace = true }
-flate2 = { workspace = true }
-flume = { workspace = true }
+anyhow.workspace = true
+thiserror.workspace = true
+bytes.workspace = true
+flate2.workspace = true
+flume.workspace = true
 tokio = { workspace = true, features = ["full"] }
-tracing = { workspace = true }
+tracing.workspace = true
 time = { workspace = true, features = ["local-offset"] }
-image = { workspace = true, optional = true }
-tracing-subscriber = { workspace = true }
-egui = { workspace = true, optional = true }
-eframe = { workspace = true, optional = true, features = [
+image.workspace = true
+egui.workspace = true
+eframe = { workspace = true, features = [
     "persistence",
     "wgpu",
 ] }
-egui_dock = { workspace = true, optional = true, features = ["serde"] }
-itertools = { workspace = true, optional = true }
-enum-map = { workspace = true, optional = true, features = ["serde"] }
-syntect = { workspace = true, default-features = false, optional = true, features = [
+egui_dock = { workspace = true, features = ["serde"] }
+itertools.workspace = true
+syntect = { workspace = true, default-features = false, features = [
     "default-fancy",
 ] }
-serde = { workspace = true, optional = true, features = ["derive"] }
-clap = { workspace = true, optional = true, features = ["derive"] }
+serde = { workspace = true, features = ["derive"] }
 
 [build-dependencies]
 syn.workspace = true
 anyhow.workspace = true
-heck.workspace = true
 proc-macro2.workspace = true
 quote.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
+valence_build_utils.workspace = true
