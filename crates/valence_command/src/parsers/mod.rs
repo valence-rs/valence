@@ -164,7 +164,10 @@ impl ParseInput {
 pub enum CommandArgParseError {
     // these should be player facing and not disclose internal information
     #[error("invalid argument, expected {0} got {1}")] // e.g. "integer" number
-    InvalidArgument(String, String),
+    InvalidArgument {
+        expected: String,
+        got: String,
+    },
     #[error("invalid argument length")]
     InvalidArgLength,
 }
