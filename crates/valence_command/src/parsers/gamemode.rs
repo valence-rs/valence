@@ -15,10 +15,10 @@ impl CommandArg for GameMode {
         } else if input.match_next("spectator") {
             Ok(GameMode::Spectator)
         } else {
-            Err(CommandArgParseError::InvalidArgument(
-                "game_mode".to_string(),
-                "not a valid gamemode".to_string(),
-            ))
+            Err(CommandArgParseError::InvalidArgument {
+                expected: "game_mode".to_string(),
+                got: input.input[input.cursor..].to_string(),
+            })
         }
     }
 

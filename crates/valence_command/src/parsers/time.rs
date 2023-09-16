@@ -16,26 +16,26 @@ impl CommandArg for Time {
             match c {
                 't' => {
                     return Ok(Time::Ticks(number_str.parse::<f32>().map_err(|_| {
-                        CommandArgParseError::InvalidArgument(
-                            "time".to_string(),
-                            "not a valid time".to_string(),
-                        )
+                        CommandArgParseError::InvalidArgument {
+                            expected: "time".to_string(),
+                            got: "not a valid time".to_string(),
+                        }
                     })?));
                 }
                 's' => {
                     return Ok(Time::Seconds(number_str.parse::<f32>().map_err(|_| {
-                        CommandArgParseError::InvalidArgument(
-                            "time".to_string(),
-                            "not a valid time".to_string(),
-                        )
+                        CommandArgParseError::InvalidArgument {
+                            expected: "time".to_string(),
+                            got: "not a valid time".to_string(),
+                        }
                     })?));
                 }
                 'd' => {
                     return Ok(Time::Days(number_str.parse::<f32>().map_err(|_| {
-                        CommandArgParseError::InvalidArgument(
-                            "time".to_string(),
-                            "not a valid time".to_string(),
-                        )
+                        CommandArgParseError::InvalidArgument {
+                            expected: "time".to_string(),
+                            got: "not a valid time".to_string(),
+                        }
                     })?));
                 }
                 _ => {
@@ -45,17 +45,17 @@ impl CommandArg for Time {
         }
         if !number_str.is_empty() {
             return Ok(Time::Ticks(number_str.parse::<f32>().map_err(|_| {
-                CommandArgParseError::InvalidArgument(
-                    "time".to_string(),
-                    "not a valid time".to_string(),
-                )
+                CommandArgParseError::InvalidArgument {
+                    expected: "time".to_string(),
+                    got: "not a valid time".to_string(),
+                }
             })?));
         }
 
-        Err(CommandArgParseError::InvalidArgument(
-            "time".to_string(),
-            "not a valid time".to_string(),
-        ))
+        Err(CommandArgParseError::InvalidArgument {
+            expected: "time".to_string(),
+            got: "not a valid time".to_string(),
+        })
     }
 
     fn display() -> Parser {

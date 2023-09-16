@@ -42,10 +42,10 @@ impl CommandArg for Color {
         } else if input.match_next("reset") {
             Ok(Self::Reset)
         } else {
-            Err(CommandArgParseError::InvalidArgument(
-                "chat_color".to_string(),
-                "not a valid chat color".to_string(),
-            ))
+            Err(CommandArgParseError::InvalidArgument {
+                expected: "chat_color".to_string(),
+                got: "not a valid chat color".to_string(),
+            })
         }
     }
 

@@ -2,26 +2,22 @@ use std::collections::{HashMap, HashSet};
 
 use bevy_app::{App, Plugin, PreUpdate};
 use bevy_ecs::entity::Entity;
-#[cfg(feature = "valence")]
-use bevy_ecs::prelude::{Added, Changed, Commands, DetectChanges, Or};
-use bevy_ecs::prelude::{Event, EventReader, EventWriter, IntoSystemConfigs, Query, Res};
+use bevy_ecs::prelude::{
+    Added, Changed, Commands, DetectChanges, Event, EventReader, EventWriter, IntoSystemConfigs,
+    Or, Query, Res,
+};
 use petgraph::graph::NodeIndex;
 use petgraph::Graph;
-#[cfg(feature = "valence")]
-use valence_server::{
-    client::{Client, SpawnClientsSet},
-    event_loop::PacketEvent,
-    protocol::packets::play::command_tree_s2c::NodeData,
-    protocol::packets::play::{CommandExecutionC2s, CommandTreeS2c},
-    protocol::WritePacket,
-    EventLoopPreUpdate,
-};
+use valence_server::client::{Client, SpawnClientsSet};
+use valence_server::event_loop::PacketEvent;
+use valence_server::protocol::packets::play::command_tree_s2c::NodeData;
+use valence_server::protocol::packets::play::{CommandExecutionC2s, CommandTreeS2c};
+use valence_server::protocol::WritePacket;
+use valence_server::EventLoopPreUpdate;
 
 use crate::graph::{CommandEdgeType, CommandGraph, CommandNode};
 use crate::parsers::ParseInput;
 use crate::scopes::CommandScopes;
-#[cfg(not(feature = "valence"))]
-use crate::NodeData;
 use crate::{CommandRegistry, CommandScopeRegistry, CommandSystemSet, ModifierValue};
 
 pub struct CommandPlugin;
@@ -31,7 +27,6 @@ impl Plugin for CommandPlugin {
         app.add_event::<CommandExecutionEvent>()
             .add_event::<CommandProcessedEvent>();
 
-        #[cfg(feature = "valence")]
         app.add_systems(PreUpdate, insert_scope_component.after(SpawnClientsSet))
             .add_systems(
                 EventLoopPreUpdate,
@@ -42,9 +37,6 @@ impl Plugin for CommandPlugin {
                     parse_incoming_commands.in_set(CommandSystemSet),
                 ),
             );
-
-        #[cfg(not(feature = "valence"))]
-        app.add_systems(PreUpdate, parse_incoming_commands.in_set(CommandSystemSet));
 
         let graph: CommandGraph = CommandGraph::new();
         let modifiers = HashMap::new();
@@ -88,14 +80,12 @@ pub struct CommandProcessedEvent {
     pub node: NodeIndex,
 }
 
-#[cfg(feature = "valence")]
 fn insert_scope_component(mut clients: Query<Entity, Added<Client>>, mut commands: Commands) {
     for client in clients.iter_mut() {
         commands.entity(client).insert(CommandScopes::new());
     }
 }
 
-#[cfg(feature = "valence")]
 fn read_incoming_packets(
     mut packets: EventReader<PacketEvent>,
     mut event_writer: EventWriter<CommandExecutionEvent>,
@@ -111,7 +101,6 @@ fn read_incoming_packets(
     }
 }
 
-#[cfg(feature = "valence")]
 #[allow(clippy::type_complexity)]
 fn command_tree_update_with_client(
     command_registry: Res<CommandRegistry>,
@@ -153,7 +142,6 @@ fn command_tree_update_with_client(
     }
 }
 
-#[cfg(feature = "valence")]
 fn update_command_tree(
     command_registry: Res<CommandRegistry>,
     scope_registry: Res<CommandScopeRegistry>,

@@ -2,14 +2,11 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
-#[cfg(not(feature = "valence"))]
-use bevy_app::PreUpdate;
 use bevy_app::{App, Plugin, PostStartup};
 use bevy_ecs::change_detection::ResMut;
 use bevy_ecs::event::{Event, EventReader, EventWriter};
 use bevy_ecs::prelude::{Entity, IntoSystemConfigs, Resource};
 use petgraph::prelude::NodeIndex;
-#[cfg(feature = "valence")]
 use valence_server::EventLoopPreUpdate;
 
 use crate::graph::CommandGraphBuilder;
@@ -24,16 +21,11 @@ where
     fn build(&self, app: &mut App) {
         app.add_event::<CommandResultEvent<T>>()
             .insert_resource(CommandResource::<T>::new())
-            .add_systems(PostStartup, command_startup_system::<T>);
-
-        #[cfg(feature = "valence")]
-        app.add_systems(
-            EventLoopPreUpdate,
-            command_event_system::<T>.after(CommandSystemSet),
-        );
-
-        #[cfg(not(feature = "valence"))]
-        app.add_systems(PreUpdate, command_event_system::<T>.after(CommandSystemSet));
+            .add_systems(PostStartup, command_startup_system::<T>)
+            .add_systems(
+                EventLoopPreUpdate,
+                command_event_system::<T>.after(CommandSystemSet),
+            );
     }
 }
 

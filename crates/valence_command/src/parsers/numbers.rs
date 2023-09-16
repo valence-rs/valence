@@ -12,7 +12,10 @@ macro_rules! impl_parser_for_number {
 
                 let parsed = s.parse::<$type>();
 
-                parsed.map_err(|_| CommandArgParseError::InvalidArgument($name.to_string(), s))
+                parsed.map_err(|_| CommandArgParseError::InvalidArgument {
+                    expected: $name.to_string(),
+                    got: s,
+                })
             }
 
             fn display() -> Parser {

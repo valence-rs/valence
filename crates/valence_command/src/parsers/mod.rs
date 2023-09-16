@@ -3,12 +3,10 @@
 pub mod angle;
 pub mod block_pos;
 pub mod bool;
-#[cfg(feature = "valence")]
 pub mod color;
 pub mod column_pos;
 pub mod entity_anchor;
 pub mod entity_selector;
-#[cfg(feature = "valence")]
 pub mod gamemode;
 pub mod inventory_slot;
 pub mod numbers;
@@ -23,11 +21,7 @@ pub mod vec3;
 use std::ops::Add;
 
 use thiserror::Error;
-#[cfg(feature = "valence")]
 pub(crate) use valence_server::protocol::packets::play::command_tree_s2c::Parser;
-
-#[cfg(not(feature = "valence"))]
-pub(crate) use crate::Parser;
 
 pub trait CommandArg: Sized {
     fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
@@ -163,11 +157,8 @@ impl ParseInput {
 #[derive(Debug, Error)]
 pub enum CommandArgParseError {
     // these should be player facing and not disclose internal information
-    #[error("invalid argument, expected {0} got {1}")] // e.g. "integer" number
-    InvalidArgument {
-        expected: String,
-        got: String,
-    },
+    #[error("invalid argument, expected {expected} got {got}")] // e.g. "integer" number
+    InvalidArgument { expected: String, got: String },
     #[error("invalid argument length")]
     InvalidArgLength,
 }

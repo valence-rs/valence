@@ -38,10 +38,10 @@ impl CommandArg for EntitySelector {
                         Some('r') => simple_selector = Some(EntitySelectors::RandomPlayer),
                         Some('s') => simple_selector = Some(EntitySelectors::SelfPlayer),
                         _ => {
-                            return Err(CommandArgParseError::InvalidArgument(
-                                "entity selector".to_string(),
-                                c.to_string(),
-                            ))
+                            return Err(CommandArgParseError::InvalidArgument {
+                                expected: "entity selector".to_string(),
+                                got: c.to_string(),
+                            })
                         }
                     }
                     if input.peek() != Some('[') {
@@ -52,10 +52,10 @@ impl CommandArg for EntitySelector {
                 '[' => {
                     input.pop();
                     if simple_selector.is_none() {
-                        return Err(CommandArgParseError::InvalidArgument(
-                            "entity selector".to_string(),
-                            c.to_string(),
-                        ));
+                        return Err(CommandArgParseError::InvalidArgument {
+                            expected: "entity selector".to_string(),
+                            got: c.to_string(),
+                        });
                     }
                     while let Some(c) = input.pop() {
                         if c == ']' {

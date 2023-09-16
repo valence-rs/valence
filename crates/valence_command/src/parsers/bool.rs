@@ -9,10 +9,10 @@ impl CommandArg for bool {
         } else if input.match_next("false") {
             Ok(false)
         } else {
-            Err(CommandArgParseError::InvalidArgument(
-                "bool".to_string(),
-                input.input.clone(),
-            ))
+            Err(CommandArgParseError::InvalidArgument {
+                expected: "bool".to_string(),
+                got: input.input.clone(),
+            })
         }
     }
 

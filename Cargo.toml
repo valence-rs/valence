@@ -182,7 +182,7 @@ valence_advancement = { path = "crates/valence_advancement", version = "0.2.0-al
 valence_anvil = { path = "crates/valence_anvil", version = "0.2.0-alpha.1" }
 valence_boss_bar = { path = "crates/valence_boss_bar", version = "0.2.0-alpha.1" }
 valence_build_utils = { path = "crates/valence_build_utils", version = "0.2.0-alpha.1" }
-valence_command = { path = "crates/valence_command", version = "0.2.0-alpha.1", features = ["valence"]}
+valence_command = { path = "crates/valence_command", version = "0.2.0-alpha.1" }
 valence_command_derive = { path = "crates/valence_command_derive", version = "0.2.0-alpha.1" }
 valence_entity = { path = "crates/valence_entity", version = "0.2.0-alpha.1" }
 valence_generated = { path = "crates/valence_generated", version = "0.2.0-alpha.1" }
