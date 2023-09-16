@@ -45,9 +45,13 @@ pub struct RegistryPlugin;
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct UpdateRegistrySet;
 
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct CachePacketsSet;
+
 impl Plugin for RegistryPlugin {
     fn build(&self, app: &mut bevy_app::App) {
-        app.configure_set(PostUpdate, UpdateRegistrySet);
+        app.configure_set(PostUpdate, UpdateRegistrySet)
+            .configure_set(PostUpdate, CachePacketsSet.in_set(UpdateRegistrySet));
 
         codec::build(app);
         tags::build(app);

@@ -1,13 +1,15 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use valence_entity::Position;
-use valence_protocol::packets::play::{ChunkRenderDistanceCenterS2c, UnloadChunkS2c};
-use valence_protocol::WritePacket;
+use valence_protocol::packets::play::{
+    ChunkLoadDistanceS2c, ChunkRenderDistanceCenterS2c, UnloadChunkS2c,
+};
+use valence_protocol::{VarInt, WritePacket};
 use valence_server_common::Despawned;
 
 use super::{ChunkIndex, DimensionInfo};
 use crate::client::{Client, ClientMarker, OldView, View};
-use crate::layer::{OldVisibleLayers, VisibleLayers};
+use crate::layer::{BroadcastLayerMessagesSet, OldVisibleLayers, VisibleLayers};
 
 pub struct DimensionLayerPlugin;
 
@@ -18,12 +20,21 @@ pub struct UpdateDimensionLayerSet;
 
 impl Plugin for DimensionLayerPlugin {
     fn build(&self, app: &mut App) {
-        todo!()
+        app.configure_set(
+            PostUpdate,
+            UpdateDimensionLayerSet.before(BroadcastLayerMessagesSet),
+        )
+        .add_systems(
+            PostUpdate,
+            (
+                update_dimension_layer_views,
+                update_dimension_layer_views_client_despawn,
+            )
+                .chain()
+                .in_set(UpdateDimensionLayerSet),
+        );
     }
 }
-
-#[derive(SystemSet, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub struct UpdateEntityLayers;
 
 fn update_dimension_layer_views(
     mut clients: Query<
@@ -49,6 +60,14 @@ fn update_dimension_layer_views(
             client.write_packet(&ChunkRenderDistanceCenterS2c {
                 chunk_x: view.pos.x.into(),
                 chunk_z: view.pos.z.into(),
+            });
+        }
+
+        // Update view distance fog.
+        // Note: this is just aesthetic.
+        if old_view.dist() != view.dist() {
+            client.write_packet(&ChunkLoadDistanceS2c {
+                view_distance: VarInt(view.dist().into()),
             });
         }
 

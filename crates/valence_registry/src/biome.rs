@@ -18,7 +18,7 @@ use valence_ident::{ident, Ident};
 use valence_nbt::serde::CompoundSerializer;
 
 use crate::codec::{RegistryCodec, RegistryValue};
-use crate::{Registry, RegistryIdx, UpdateRegistrySet};
+use crate::{CachePacketsSet, Registry, RegistryIdx, UpdateRegistrySet};
 
 pub struct BiomePlugin;
 
@@ -26,7 +26,12 @@ impl Plugin for BiomePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<BiomeRegistry>()
             .add_systems(PreStartup, load_default_biomes)
-            .add_systems(PostUpdate, update_biome_registry.before(UpdateRegistrySet));
+            .add_systems(
+                PostUpdate,
+                update_biome_registry
+                    .in_set(UpdateRegistrySet)
+                    .before(CachePacketsSet),
+            );
     }
 }
 

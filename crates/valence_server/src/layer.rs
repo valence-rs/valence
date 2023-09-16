@@ -9,12 +9,17 @@ use bevy_ecs::query::Has;
 pub use chunk_view_index::ChunkViewIndex;
 use derive_more::{Deref, DerefMut};
 use valence_entity::{OldPosition, Position};
-use valence_protocol::ChunkPos;
-use valence_server_common::Despawned;
+use valence_protocol::{ChunkPos, WritePacket};
+use valence_registry::dimension_type::DimensionTypeId;
+use valence_registry::{BiomeRegistry, DimensionTypeRegistry};
+use valence_server_common::{Despawned, Server};
 
-use self::message::LayerMessages;
+use self::message::{LayerMessages, MessageKind};
+use crate::client::FlushPacketsSet;
+use crate::dimension_layer::batch::BlockBatch;
+use crate::dimension_layer::{ChunkIndex, DimensionInfo};
 use crate::layer::message::MessageScope;
-use crate::Client;
+use crate::{Client, DimensionLayerBundle};
 
 /// Enables core functionality for layers.
 pub struct LayerPlugin;
@@ -26,13 +31,59 @@ pub struct BroadcastLayerMessagesSet;
 
 impl Plugin for LayerPlugin {
     fn build(&self, app: &mut App) {
-        todo!()
+        app.configure_set(
+            PostUpdate,
+            BroadcastLayerMessagesSet.before(FlushPacketsSet),
+        )
+        .add_systems(
+            PostUpdate,
+            (
+                update_view_index,
+                update_old_visible_layers,
+                broadcast_layer_messages,
+            )
+                .chain()
+                .in_set(BroadcastLayerMessagesSet),
+        );
     }
 }
 
 #[derive(Bundle)]
 pub struct DimensionEntityLayerBundle {
-    // TODO
+    pub chunk_index: ChunkIndex,
+    pub block_batch: BlockBatch,
+    pub dimension_info: DimensionInfo,
+    // TODO: entity layer components.
+    pub chunk_view_index: ChunkViewIndex,
+    pub layer_viewers: LayerViewers,
+    pub layer_messages: LayerMessages,
+}
+
+impl DimensionEntityLayerBundle {
+    pub fn new(
+        dimension_type: DimensionTypeId,
+        dimensions: &DimensionTypeRegistry,
+        biomes: &BiomeRegistry,
+        server: &Server,
+    ) -> Self {
+        let DimensionLayerBundle {
+            chunk_index,
+            block_batch,
+            dimension_info,
+            chunk_view_index,
+            layer_viewers,
+            layer_messages,
+        } = DimensionLayerBundle::new(dimension_type, dimensions, biomes, server);
+
+        Self {
+            chunk_index,
+            block_batch,
+            dimension_info,
+            chunk_view_index,
+            layer_viewers,
+            layer_messages,
+        }
+    }
 }
 
 /// The set of layers a client is viewing.
@@ -50,7 +101,7 @@ pub struct OldVisibleLayers(BTreeSet<Entity>);
 pub struct LayerViewers(BTreeSet<Entity>);
 
 fn update_view_index(
-    mut clients: Query<(
+    clients: Query<(
         Entity,
         Has<Despawned>,
         &OldPosition,
@@ -123,33 +174,21 @@ fn update_old_visible_layers(
     }
 }
 
-// fn remove_despawned_from_chunk_view_index(
-//     mut layers: Query<(&mut ChunkViewIndex, &mut LayerViewers)>,
-//     clients: Query<(Entity, &OldPosition, &OldVisibleLayers),
-// (With<Despawned>, With<Client>)>,
-// ) { for (client, pos, visible_layers) in &clients { let pos =
-//   ChunkPos::from(pos.get());
-
-//         for &layer in visible_layers.iter() {
-//             if let Ok((mut index, mut viewers)) = layers.get_mut(layer) {
-//                 index.remove(pos, client);
-//                 viewers.remove(&client);
-//             }
-//         }
-//     }
-// }
-
 fn broadcast_layer_messages(
     mut layers: Query<(&mut LayerMessages, &LayerViewers, &ChunkViewIndex)>,
-    mut clients: Query<(&mut Client, &OldPosition, &Position)>,
+    mut clients: Query<&mut Client>,
 ) {
-    for (mut messages, viewers, index) in &mut layers {
+    for (mut messages, viewers, view_index) in &mut layers {
+        let mut acc = 0;
+
         for (scope, kind) in messages.messages() {
             let mut send = |client: Entity| {
-                if let Ok((client, old_pos, pos)) = clients.get_mut(client) {
+                if let Ok(mut client) = clients.get_mut(client) {
                     match kind {
-                        message::MessageKind::Packet { len } => todo!(),
-                        message::MessageKind::EntityDespawn { entity } => todo!(),
+                        MessageKind::Packet { len } => {
+                            client.write_packet_bytes(&messages.bytes()[acc..acc + len]);
+                        }
+                        MessageKind::EntityDespawn { entity } => todo!(),
                     }
                 }
             };
@@ -162,12 +201,18 @@ fn broadcast_layer_messages(
                     .copied()
                     .filter(|&c| c != except)
                     .for_each(send),
-                MessageScope::ChunkView { pos } => todo!(),
-                MessageScope::ChunkViewExcept { pos, except } => todo!(),
-                MessageScope::TransitionChunkView { old_pos, pos } => todo!(),
+                MessageScope::ChunkView { pos } => view_index.get(pos).for_each(send),
+                MessageScope::ChunkViewExcept { pos, except } => {
+                    view_index.get(pos).filter(|&e| e != except).for_each(send)
+                }
+                MessageScope::TransitionChunkView { include, exclude } => todo!(),
+            }
+
+            if let MessageKind::Packet { len } = kind {
+                acc += len;
             }
         }
 
-        todo!();
+        messages.clear();
     }
 }

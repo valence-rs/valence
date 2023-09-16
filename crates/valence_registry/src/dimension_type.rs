@@ -16,7 +16,7 @@ use valence_ident::{ident, Ident};
 use valence_nbt::serde::CompoundSerializer;
 
 use crate::codec::{RegistryCodec, RegistryValue};
-use crate::{Registry, RegistryIdx, UpdateRegistrySet};
+use crate::{CachePacketsSet, Registry, RegistryIdx, UpdateRegistrySet};
 pub struct DimensionTypePlugin;
 
 impl Plugin for DimensionTypePlugin {
@@ -25,7 +25,9 @@ impl Plugin for DimensionTypePlugin {
             .add_systems(PreStartup, load_default_dimension_types)
             .add_systems(
                 PostUpdate,
-                update_dimension_type_registry.before(UpdateRegistrySet),
+                update_dimension_type_registry
+                    .in_set(UpdateRegistrySet)
+                    .before(CachePacketsSet),
             );
     }
 }

@@ -21,14 +21,16 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use derive_more::{Deref, DerefMut};
-use valence_server::client::{Client, UpdateClientsSet, VisibleChunkLayer};
+use valence_server::client::Client;
+use valence_server::layer::message::LayerMessages;
+use valence_server::layer::{BroadcastLayerMessagesSet, OldVisibleLayers, VisibleLayers};
 use valence_server::protocol::packets::play::{
     WorldBorderCenterChangedS2c, WorldBorderInitializeS2c, WorldBorderInterpolateSizeS2c,
     WorldBorderSizeChangedS2c, WorldBorderWarningBlocksChangedS2c,
     WorldBorderWarningTimeChangedS2c,
 };
 use valence_server::protocol::WritePacket;
-use valence_server::{ChunkLayer, Server};
+use valence_server::Server;
 
 // https://minecraft.fandom.com/wiki/World_border
 pub const DEFAULT_PORTAL_LIMIT: i32 = 29999984;
@@ -43,24 +45,27 @@ pub struct UpdateWorldBorderSet;
 
 impl Plugin for WorldBorderPlugin {
     fn build(&self, app: &mut App) {
-        app.configure_set(PostUpdate, UpdateWorldBorderSet.before(UpdateClientsSet))
-            .add_systems(
-                PostUpdate,
-                (
-                    init_world_border_for_new_clients,
-                    tick_world_border_lerp,
-                    change_world_border_center,
-                    change_world_border_warning_blocks,
-                    change_world_border_warning_time,
-                    change_world_border_portal_tp_boundary,
-                )
-                    .in_set(UpdateWorldBorderSet),
-            );
+        app.configure_set(
+            PostUpdate,
+            UpdateWorldBorderSet.before(BroadcastLayerMessagesSet),
+        )
+        .add_systems(
+            PostUpdate,
+            (
+                init_world_border_on_layer_join,
+                tick_world_border_lerp,
+                update_world_border_center,
+                update_world_border_warning_blocks,
+                update_world_border_warning_time,
+                update_world_border_portal_tp_boundary,
+            )
+                .in_set(UpdateWorldBorderSet),
+        );
     }
 }
 
 /// A bundle containing necessary components to enable world border
-/// functionality. Add this to an entity with the [`ChunkLayer`] component.
+/// functionality. This can be added to "layer" entities.
 #[derive(Bundle, Default, Debug)]
 pub struct WorldBorderBundle {
     pub center: WorldBorderCenter,
@@ -97,6 +102,7 @@ pub struct WorldBorderLerp {
     /// automatically.
     pub remaining_ticks: u64,
 }
+
 #[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Deref, DerefMut)]
 pub struct WorldBorderWarnTime(pub i32);
 
@@ -134,9 +140,9 @@ impl Default for WorldBorderLerp {
     }
 }
 
-fn init_world_border_for_new_clients(
-    mut clients: Query<(&mut Client, &VisibleChunkLayer), Changed<VisibleChunkLayer>>,
-    wbs: Query<(
+fn init_world_border_on_layer_join(
+    mut clients: Query<(&mut Client, &VisibleLayers, &OldVisibleLayers), Changed<VisibleLayers>>,
+    layers: Query<(
         &WorldBorderCenter,
         &WorldBorderLerp,
         &WorldBorderPortalTpBoundary,
@@ -145,8 +151,11 @@ fn init_world_border_for_new_clients(
     )>,
     server: Res<Server>,
 ) {
-    for (mut client, layer) in &mut clients {
-        if let Ok((center, lerp, portal_tp_boundary, warn_time, warn_blocks)) = wbs.get(layer.0) {
+    for (mut client, vis_layers, old_vis_layers) in &mut clients {
+        if let Some((center, lerp, portal_tp_boundary, warn_time, warn_blocks)) = vis_layers
+            .difference(old_vis_layers)
+            .find_map(|&layer| layers.get(layer).ok())
+        {
             let millis = lerp.remaining_ticks as i64 * 1000 / server.tick_rate().get() as i64;
 
             client.write_packet(&WorldBorderInitializeS2c {
@@ -164,13 +173,13 @@ fn init_world_border_for_new_clients(
 }
 
 fn tick_world_border_lerp(
-    mut wbs: Query<(&mut ChunkLayer, &mut WorldBorderLerp)>,
+    mut layers: Query<(&mut LayerMessages, &mut WorldBorderLerp)>,
     server: Res<Server>,
 ) {
-    for (mut layer, mut lerp) in &mut wbs {
+    for (mut msgs, mut lerp) in &mut layers {
         if lerp.is_changed() {
             if lerp.remaining_ticks == 0 {
-                layer.write_packet(&WorldBorderSizeChangedS2c {
+                msgs.write_packet(&WorldBorderSizeChangedS2c {
                     diameter: lerp.target_diameter,
                 });
 
@@ -178,7 +187,7 @@ fn tick_world_border_lerp(
             } else {
                 let millis = lerp.remaining_ticks as i64 * 1000 / server.tick_rate().get() as i64;
 
-                layer.write_packet(&WorldBorderInterpolateSizeS2c {
+                msgs.write_packet(&WorldBorderInterpolateSizeS2c {
                     old_diameter: lerp.current_diameter,
                     new_diameter: lerp.target_diameter,
                     duration_millis: millis.into(),
@@ -195,41 +204,41 @@ fn tick_world_border_lerp(
     }
 }
 
-fn change_world_border_center(
-    mut wbs: Query<(&mut ChunkLayer, &WorldBorderCenter), Changed<WorldBorderCenter>>,
+fn update_world_border_center(
+    mut layers: Query<(&mut LayerMessages, &WorldBorderCenter), Changed<WorldBorderCenter>>,
 ) {
-    for (mut layer, center) in &mut wbs {
-        layer.write_packet(&WorldBorderCenterChangedS2c {
+    for (mut msgs, center) in &mut layers {
+        msgs.write_packet(&WorldBorderCenterChangedS2c {
             x_pos: center.x,
             z_pos: center.z,
         });
     }
 }
 
-fn change_world_border_warning_blocks(
-    mut wbs: Query<(&mut ChunkLayer, &WorldBorderWarnBlocks), Changed<WorldBorderWarnBlocks>>,
+fn update_world_border_warning_blocks(
+    mut layers: Query<(&mut LayerMessages, &WorldBorderWarnBlocks), Changed<WorldBorderWarnBlocks>>,
 ) {
-    for (mut layer, warn_blocks) in &mut wbs {
-        layer.write_packet(&WorldBorderWarningBlocksChangedS2c {
+    for (mut msgs, warn_blocks) in &mut layers {
+        msgs.write_packet(&WorldBorderWarningBlocksChangedS2c {
             warning_blocks: warn_blocks.0.into(),
         });
     }
 }
 
-fn change_world_border_warning_time(
-    mut wbs: Query<(&mut ChunkLayer, &WorldBorderWarnTime), Changed<WorldBorderWarnTime>>,
+fn update_world_border_warning_time(
+    mut layers: Query<(&mut LayerMessages, &WorldBorderWarnTime), Changed<WorldBorderWarnTime>>,
 ) {
-    for (mut layer, warn_time) in &mut wbs {
-        layer.write_packet(&WorldBorderWarningTimeChangedS2c {
+    for (mut msgs, warn_time) in &mut layers {
+        msgs.write_packet(&WorldBorderWarningTimeChangedS2c {
             warning_time: warn_time.0.into(),
         });
     }
 }
 
-fn change_world_border_portal_tp_boundary(
-    mut wbs: Query<
+fn update_world_border_portal_tp_boundary(
+    mut layers: Query<
         (
-            &mut ChunkLayer,
+            &mut LayerMessages,
             &WorldBorderCenter,
             &WorldBorderLerp,
             &WorldBorderPortalTpBoundary,
@@ -240,10 +249,10 @@ fn change_world_border_portal_tp_boundary(
     >,
     server: Res<Server>,
 ) {
-    for (mut layer, center, lerp, portal_tp_boundary, warn_time, warn_blocks) in &mut wbs {
+    for (mut msgs, center, lerp, portal_tp_boundary, warn_time, warn_blocks) in &mut layers {
         let millis = lerp.remaining_ticks as i64 * 1000 / server.tick_rate().get() as i64;
 
-        layer.write_packet(&WorldBorderInitializeS2c {
+        msgs.write_packet(&WorldBorderInitializeS2c {
             x: center.x,
             z: center.z,
             old_diameter: lerp.current_diameter,

@@ -28,6 +28,7 @@ pub use components::*;
 use tracing::{debug, warn};
 use valence_server::client::{Client, OldVisibleEntityLayers, VisibleEntityLayers};
 use valence_server::entity::EntityLayerId;
+use valence_server::layer::BroadcastLayerMessagesSet;
 use valence_server::layer_old::UpdateLayersPreClientSet;
 use valence_server::protocol::packets::play::scoreboard_display_s2c::ScoreboardPosition;
 use valence_server::protocol::packets::play::scoreboard_objective_update_s2c::{
@@ -39,35 +40,26 @@ use valence_server::protocol::packets::play::{
 };
 use valence_server::protocol::{VarInt, WritePacket};
 use valence_server::text::IntoText;
-use valence_server::{Despawned, EntityLayer};
+use valence_server::Despawned;
 
 /// Provides all necessary systems to manage scoreboards.
 pub struct ScoreboardPlugin;
 
 impl Plugin for ScoreboardPlugin {
     fn build(&self, app: &mut App) {
-        app.configure_set(PostUpdate, ScoreboardSet.before(UpdateLayersPreClientSet));
-
-        app.add_systems(
-            PostUpdate,
-            (
-                create_or_update_objectives,
-                display_objectives.after(create_or_update_objectives),
-            )
-                .in_set(ScoreboardSet),
-        )
-        .add_systems(
-            PostUpdate,
-            remove_despawned_objectives.in_set(ScoreboardSet),
-        )
-        .add_systems(PostUpdate, handle_new_clients.in_set(ScoreboardSet))
-        .add_systems(
-            PostUpdate,
-            update_scores
-                .after(create_or_update_objectives)
-                .after(handle_new_clients)
-                .in_set(ScoreboardSet),
-        );
+        app.configure_set(PostUpdate, ScoreboardSet.before(BroadcastLayerMessagesSet))
+            .add_systems(
+                PostUpdate,
+                (
+                    create_or_update_objectives,
+                    display_objectives.after(create_or_update_objectives),
+                    remove_despawned_objectives,
+                    update_scores
+                        .after(create_or_update_objectives)
+                        .after(handle_new_clients),
+                )
+                    .in_set(ScoreboardSet),
+            );
     }
 }
 

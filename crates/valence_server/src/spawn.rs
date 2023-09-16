@@ -7,14 +7,14 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_ecs::query::WorldQuery;
 use derive_more::{Deref, DerefMut};
-use valence_entity::EntityLayerId;
 use valence_protocol::packets::play::{GameJoinS2c, PlayerRespawnS2c};
 use valence_protocol::{BlockPos, GameMode, GlobalPos, Ident, VarInt, WritePacket};
 use valence_registry::tags::TagsRegistry;
 use valence_registry::{DimensionTypeRegistry, RegistryCodec, UpdateRegistrySet};
 
-use crate::client::{Client, FlushPacketsSet, ViewDistance, VisibleChunkLayer};
-use crate::dimension_layer::{ChunkIndex, DimensionInfo, UpdateDimensionLayerSet};
+use crate::client::{Client, FlushPacketsSet, ViewDistance};
+use crate::dimension_layer::{DimensionInfo, UpdateDimensionLayerSet};
+use crate::layer::VisibleLayers;
 
 /// Handles spawning and respawning of clients.
 pub struct SpawnPlugin;
@@ -22,19 +22,24 @@ pub struct SpawnPlugin;
 /// When clients are sent the "respawn" packet after their dimension layer has
 /// changed.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub struct RespawnSystemSet;
+pub struct RespawnSet;
+
+/// When the initial join packets are written to clients.
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub struct JoinGameSet;
 
 impl Plugin for SpawnPlugin {
     fn build(&self, app: &mut App) {
         app
             // Send the respawn packet before chunks are sent.
-            .configure_set(PostUpdate, RespawnSystemSet.before(UpdateDimensionLayerSet))
-            .add_systems(PostUpdate, respawn.in_set(RespawnSystemSet))
+            .configure_set(PostUpdate, RespawnSet.before(UpdateDimensionLayerSet))
+            .add_systems(PostUpdate, respawn.in_set(RespawnSet))
             // The join game packet is prepended to the client's packet buffer, so
             // it can be sent any time before packets are flushed. Additionally,
             // this must be scheduled after registries are updated because we read
             // the cached packets.
-            .add_systems(PostUpdate, initial_join.after(UpdateRegistrySet).before(FlushPacketsSet));
+            .configure_set(PostUpdate, JoinGameSet.after(UpdateRegistrySet).before(FlushPacketsSet))
+            .add_systems(PostUpdate, initial_join.in_set(JoinGameSet));
     }
 }
 
@@ -105,14 +110,17 @@ pub struct PortalCooldown(pub i32);
 pub struct PrevGameMode(pub Option<GameMode>);
 
 pub(super) fn initial_join(
-    mut clients: Query<(&mut Client, &VisibleChunkLayer, ClientSpawnQueryReadOnly), Added<Client>>,
+    mut clients: Query<(&mut Client, &VisibleLayers, ClientSpawnQueryReadOnly), Added<Client>>,
     codec: Res<RegistryCodec>,
     tags: Res<TagsRegistry>,
     dimensions: Res<DimensionTypeRegistry>,
-    dimension_layers: Query<(&ChunkIndex, &DimensionInfo)>,
+    dimension_layers: Query<&DimensionInfo>,
 ) {
-    for (mut client, visible_chunk_layer, spawn) in &mut clients {
-        let Ok((chunk_index, info)) = dimension_layers.get(visible_chunk_layer.0) else {
+    for (mut client, vis_layers, spawn) in &mut clients {
+        let Some(info) = vis_layers
+            .iter()
+            .find_map(|&layer| dimension_layers.get(layer).ok())
+        else {
             continue;
         };
 
@@ -162,7 +170,7 @@ fn respawn(
     mut clients: Query<
         (
             &mut Client,
-            &EntityLayerId,
+            &VisibleLayers,
             &DeathLocation,
             &HashedSeed,
             &GameMode,
@@ -170,20 +178,31 @@ fn respawn(
             &IsDebug,
             &IsFlat,
         ),
-        Changed<VisibleChunkLayer>,
+        Changed<VisibleLayers>,
     >,
-    chunk_layers: Query<(&ChunkIndex, &DimensionInfo)>,
+    dimension_layers: Query<&DimensionInfo>,
     dimensions: Res<DimensionTypeRegistry>,
 ) {
-    for (mut client, loc, death_loc, hashed_seed, game_mode, prev_game_mode, is_debug, is_flat) in
-        &mut clients
+    for (
+        mut client,
+        vis_layers,
+        death_loc,
+        hashed_seed,
+        game_mode,
+        prev_game_mode,
+        is_debug,
+        is_flat,
+    ) in &mut clients
     {
         if client.is_added() {
             // No need to respawn since we are sending the game join packet this tick.
             continue;
         }
 
-        let Ok((chunk_index, info)) = chunk_layers.get(loc.0) else {
+        let Some(info) = vis_layers
+            .iter()
+            .find_map(|&layer| dimension_layers.get(layer).ok())
+        else {
             continue;
         };
 

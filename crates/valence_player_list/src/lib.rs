@@ -24,8 +24,8 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use derive_more::{Deref, DerefMut};
 use valence_server::client::{Client, Properties, Username};
+use valence_server::entity_layer::UpdateEntityLayerSet;
 use valence_server::keepalive::Ping;
-use valence_server::layer_old::UpdateLayersPreClientSet;
 use valence_server::protocol::encode::PacketWriter;
 use valence_server::protocol::packets::play::{
     player_list_s2c as packet, PlayerListHeaderS2c, PlayerListS2c, PlayerRemoveS2c,
@@ -47,7 +47,7 @@ impl Plugin for PlayerListPlugin {
                 PostUpdate,
                 // Needs to happen before player entities are initialized. Otherwise, they will
                 // appear invisible.
-                PlayerListSet.before(UpdateLayersPreClientSet),
+                PlayerListSet.before(UpdateEntityLayerSet),
             )
             .add_systems(
                 PostUpdate,

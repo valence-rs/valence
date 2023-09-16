@@ -28,6 +28,7 @@ pub mod custom_payload;
 pub mod dimension_layer;
 pub mod entity_layer;
 pub mod event_loop;
+pub mod game_mode;
 pub mod hand_swing;
 pub mod interact_block;
 pub mod interact_entity;
@@ -44,8 +45,9 @@ pub mod title;
 
 pub use chunk_view::ChunkView;
 pub use client::Client;
-pub use dimension_layer::DimensionLayerBundle;
+pub use dimension_layer::{Chunk, DimensionLayerBundle, LoadedChunk};
 pub use event_loop::{EventLoopPostUpdate, EventLoopPreUpdate, EventLoopUpdate};
+pub use layer::DimensionEntityLayerBundle;
 pub use valence_protocol::{
     block, ident, item, math, text, uuid, BiomePos, BlockPos, BlockState, ChunkPos,
     CompressionThreshold, Difficulty, Direction, GameMode, Hand, Ident, ItemKind, ItemStack, Text,

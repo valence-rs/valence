@@ -59,20 +59,23 @@ use valence_server::client::ClientPlugin;
 use valence_server::client_command::ClientCommandPlugin;
 use valence_server::client_settings::ClientSettingsPlugin;
 use valence_server::custom_payload::CustomPayloadPlugin;
+use valence_server::dimension_layer::DimensionLayerPlugin;
 use valence_server::entity::hitbox::HitboxPlugin;
 use valence_server::entity::EntityPlugin;
+use valence_server::entity_layer::EntityLayerPlugin;
 use valence_server::event_loop::EventLoopPlugin;
+use valence_server::game_mode::UpdateGameModePlugin;
 use valence_server::hand_swing::HandSwingPlugin;
 use valence_server::interact_block::InteractBlockPlugin;
 use valence_server::interact_entity::InteractEntityPlugin;
 use valence_server::interact_item::InteractItemPlugin;
 use valence_server::keepalive::KeepalivePlugin;
-use valence_server::layer_old::LayerPlugin;
+use valence_server::layer::LayerPlugin;
 use valence_server::message::MessagePlugin;
 use valence_server::movement::MovementPlugin;
 use valence_server::op_level::OpLevelPlugin;
-use valence_server::position::TeleportPlugin;
 use valence_server::resource_pack::ResourcePackPlugin;
+use valence_server::spawn::SpawnPlugin;
 use valence_server::status::StatusPlugin;
 pub use valence_server::*;
 #[cfg(feature = "weather")]
@@ -117,8 +120,7 @@ pub mod prelude {
     pub use valence_server::action::{DiggingEvent, DiggingState};
     pub use valence_server::block::{BlockKind, BlockState, PropName, PropValue};
     pub use valence_server::client::{
-        despawn_disconnected_clients, Client, Ip, OldView, OldViewDistance, Properties, Username,
-        View, ViewDistance, VisibleChunkLayer, VisibleEntityLayers,
+        Client, Ip, OldView, OldViewDistance, Properties, Username, View, ViewDistance,
     };
     pub use valence_server::client_command::{
         ClientCommand, JumpWithHorseEvent, JumpWithHorseState, LeaveBedEvent, SneakEvent,
@@ -134,20 +136,17 @@ pub mod prelude {
     };
     pub use valence_server::ident::Ident;
     pub use valence_server::interact_entity::{EntityInteraction, InteractEntityEvent};
-    pub use valence_server::layer_old::chunk::{
-        Block, BlockRef, Chunk, ChunkLayer, ChunkOps, LoadedChunk,
-    };
-    pub use valence_server::layer_old::{EntityLayer, LayerBundle};
     pub use valence_server::math::{DVec2, DVec3, Vec2, Vec3};
     pub use valence_server::message::SendMessage as _;
+    pub use valence_server::movement::{MovementEvent, RespawnPosition};
     pub use valence_server::nbt::Compound;
     pub use valence_server::protocol::packets::play::particle_s2c::Particle;
     pub use valence_server::protocol::text::{Color, IntoText, Text};
-    pub use valence_server::spawn::{ClientSpawnQuery, ClientSpawnQueryReadOnly, RespawnPosition};
+    pub use valence_server::spawn::{ClientSpawnQuery, ClientSpawnQueryReadOnly};
     pub use valence_server::title::SetTitle as _;
     pub use valence_server::{
-        ident, BlockPos, ChunkPos, ChunkView, Despawned, Direction, GameMode, Hand, ItemKind,
-        ItemStack, Server, UniqueId,
+        ident, BlockPos, Chunk, ChunkPos, ChunkView, Despawned, DimensionEntityLayerBundle,
+        Direction, GameMode, Hand, ItemKind, ItemStack, LoadedChunk, Server, UniqueId,
     };
 
     pub use super::DefaultPlugins;
@@ -169,18 +168,21 @@ impl PluginGroup for DefaultPlugins {
             .add(RegistryPlugin)
             .add(BiomePlugin)
             .add(DimensionTypePlugin)
+            .add(LayerPlugin)
+            .add(DimensionLayerPlugin)
+            .add(EntityLayerPlugin)
             .add(EntityPlugin)
             .add(HitboxPlugin)
-            .add(LayerPlugin)
             .add(ClientPlugin)
             .add(EventLoopPlugin)
+            .add(SpawnPlugin)
             .add(MovementPlugin)
+            .add(UpdateGameModePlugin)
             .add(ClientCommandPlugin)
             .add(KeepalivePlugin)
             .add(InteractEntityPlugin)
             .add(ClientSettingsPlugin)
             .add(ActionPlugin)
-            .add(TeleportPlugin)
             .add(MessagePlugin)
             .add(CustomPayloadPlugin)
             .add(HandSwingPlugin)

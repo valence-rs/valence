@@ -39,9 +39,11 @@ pub enum MessageScope {
         pos: ChunkPos,
         except: Entity,
     },
+    /// All clients in view of `include` but _not_ in view of `exclude` will
+    /// receive the message.
     TransitionChunkView {
-        old_pos: ChunkPos,
-        pos: ChunkPos,
+        include: ChunkPos,
+        exclude: ChunkPos,
     },
 }
 
@@ -96,7 +98,7 @@ impl LayerMessages {
                     }
                 }
 
-                writer.write_packet_fallible(packet);
+                writer.write_packet_fallible(packet)?;
                 let end = writer.buf.len();
 
                 self.messages

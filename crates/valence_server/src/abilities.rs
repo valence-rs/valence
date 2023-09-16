@@ -5,7 +5,7 @@ pub use valence_protocol::packets::play::player_abilities_s2c::PlayerAbilitiesFl
 use valence_protocol::packets::play::{PlayerAbilitiesS2c, UpdatePlayerAbilitiesC2s};
 use valence_protocol::{GameMode, WritePacket};
 
-use crate::client::{update_game_mode, Client, UpdateClientsSet};
+use crate::client::Client;
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 
 /// [`Component`] that stores the player's flying speed ability.
@@ -34,13 +34,13 @@ impl Default for FovModifier {
 }
 
 /// Send if the client sends [`UpdatePlayerAbilitiesC2s::StartFlying`]
-#[derive(Event)]
+#[derive(Event, Debug)]
 pub struct PlayerStartFlyingEvent {
     pub client: Entity,
 }
 
 /// Send if the client sends [`UpdatePlayerAbilitiesC2s::StopFlying`]
-#[derive(Event)]
+#[derive(Event, Debug)]
 pub struct PlayerStopFlyingEvent {
     pub client: Entity,
 }
@@ -64,6 +64,8 @@ pub struct AbilitiesPlugin;
 
 impl Plugin for AbilitiesPlugin {
     fn build(&self, app: &mut App) {
+
+        /*
         app.add_event::<PlayerStartFlyingEvent>()
             .add_event::<PlayerStopFlyingEvent>()
             .add_systems(
@@ -76,6 +78,7 @@ impl Plugin for AbilitiesPlugin {
                     .after(update_game_mode),
             )
             .add_systems(EventLoopPreUpdate, update_server_player_abilities);
+        */
     }
 }
 

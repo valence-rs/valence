@@ -10,12 +10,13 @@ use valence_protocol::packets::play::{
 };
 use valence_protocol::{BlockPos, WritePacket};
 
+use crate::client::FlushPacketsSet;
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 use crate::layer::BroadcastLayerMessagesSet;
 use crate::Client;
 
 /// Handles client movement and teleports.
-pub struct PositionPlugin;
+pub struct MovementPlugin;
 
 /// When client positions are synchronized by sending the clientbound position
 /// packet. This set also includes the system that updates the client's respawn
@@ -23,7 +24,7 @@ pub struct PositionPlugin;
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct SyncPositionSet;
 
-impl Plugin for PositionPlugin {
+impl Plugin for MovementPlugin {
     fn build(&self, app: &mut App) {
         app
             .init_resource::<MovementSettings>()
@@ -31,7 +32,7 @@ impl Plugin for PositionPlugin {
             .add_systems(EventLoopPreUpdate, (handle_teleport_confirmations, handle_client_movement))
             // Sync position after chunks are loaded so the client doesn't fall through the floor.
             // Setting the respawn position also closes the "downloading terrain" screen.
-            .configure_set(PostUpdate, SyncPositionSet.after(BroadcastLayerMessagesSet))
+            .configure_set(PostUpdate, SyncPositionSet.after(BroadcastLayerMessagesSet).before(FlushPacketsSet))
             .add_systems(PostUpdate, (update_respawn_position, teleport).chain().in_set(SyncPositionSet));
     }
 }

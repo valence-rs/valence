@@ -26,7 +26,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
         .add_systems(First, record_tick_start_time)
-        .add_systems(Update, (init_clients, despawn_disconnected_clients))
+        .add_systems(Update, init_clients)
         .add_systems(Last, print_tick_time)
         .run();
 }
@@ -51,18 +51,19 @@ fn setup(
     dimensions: Res<DimensionTypeRegistry>,
     biomes: Res<BiomeRegistry>,
 ) {
-    let mut layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let mut layer =
+        DimensionEntityLayerBundle::new(Default::default(), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {
-            layer.chunk.insert_chunk([x, z], Chunk::new());
+            layer.chunk_index.insert([x, z], Chunk::new());
         }
     }
 
     for z in -50..50 {
         for x in -50..50 {
             layer
-                .chunk
+                .chunk_index
                 .set_block([x, SPAWN_Y, z], BlockState::GRASS_BLOCK);
         }
     }

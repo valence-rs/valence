@@ -7,7 +7,7 @@ mod plugin;
 use bevy_ecs::prelude::*;
 use bevy_ecs::query::WorldQuery;
 use block::BlockRef;
-use chunk::LoadedChunk;
+pub use chunk::{Chunk, LoadedChunk};
 pub use index::ChunkIndex;
 pub use plugin::*;
 use valence_protocol::packets::play::UnloadChunkS2c;
@@ -19,7 +19,6 @@ use valence_server_common::Server;
 
 use self::batch::BlockBatch;
 use self::block::Block;
-use self::chunk::Chunk;
 use crate::layer::message::{LayerMessages, MessageScope};
 use crate::layer::{ChunkViewIndex, LayerViewers};
 

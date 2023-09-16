@@ -7,15 +7,19 @@ use tracing::warn;
 use valence_protocol::packets::play::{KeepAliveC2s, KeepAliveS2c};
 use valence_protocol::WritePacket;
 
-use crate::client::{Client, UpdateClientsSet};
+use crate::client::{Client, FlushPacketsSet};
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 
 pub struct KeepalivePlugin;
 
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct SendKeepaliveSet;
+
 impl Plugin for KeepalivePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<KeepaliveSettings>()
-            .add_systems(PostUpdate, send_keepalive.in_set(UpdateClientsSet))
+            .configure_set(PostUpdate, SendKeepaliveSet.before(FlushPacketsSet))
+            .add_systems(PostUpdate, send_keepalive.in_set(SendKeepaliveSet))
             .add_systems(EventLoopPreUpdate, handle_keepalive_response);
     }
 }

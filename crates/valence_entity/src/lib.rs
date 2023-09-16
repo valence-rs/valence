@@ -165,6 +165,7 @@ fn clear_tracked_data_changes(mut tracked_data: Query<&mut TrackedData, Changed<
 
 /// Contains the entity layer an entity is on.
 #[derive(Component, Copy, Clone, PartialEq, Eq, Debug, Deref)]
+#[deprecated]
 pub struct EntityLayerId(pub Entity);
 
 impl Default for EntityLayerId {

@@ -16,7 +16,7 @@ pub struct ChunkIndex {
 }
 
 impl ChunkIndex {
-    pub(super) fn new(height: i32) -> Self {
+    pub(crate) fn new(height: i32) -> Self {
         Self {
             map: Default::default(),
             height,

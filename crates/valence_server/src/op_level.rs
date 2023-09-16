@@ -4,13 +4,17 @@ use derive_more::Deref;
 use valence_protocol::packets::play::EntityStatusS2c;
 use valence_protocol::WritePacket;
 
-use crate::client::{Client, UpdateClientsSet};
+use crate::client::{Client, FlushPacketsSet};
 
 pub struct OpLevelPlugin;
 
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct UpdateOpLevelSet;
+
 impl Plugin for OpLevelPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PostUpdate, update_op_level.in_set(UpdateClientsSet));
+        app.configure_set(PostUpdate, UpdateOpLevelSet.before(FlushPacketsSet))
+            .add_systems(PostUpdate, update_op_level.in_set(UpdateOpLevelSet));
     }
 }
 
