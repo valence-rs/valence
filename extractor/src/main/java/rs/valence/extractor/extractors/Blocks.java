@@ -27,15 +27,15 @@ public class Blocks implements Main.Extractor {
 
     @Override
     public JsonElement extract() {
-        JsonObject topLevelJson = new JsonObject();
+        var topLevelJson = new JsonObject();
 
-        JsonArray blocksJson = new JsonArray();
-        int stateIdCounter = 0;
+        var blocksJson = new JsonArray();
+        var stateIdCounter = 0;
 
-        LinkedHashMap<Shape, Integer> shapes = new LinkedHashMap<Shape, Integer>();
+        var shapes = new LinkedHashMap<Shape, Integer>();
 
-        for (Block block : Registries.BLOCK) {
-            JsonObject blockJson = new JsonObject();
+        for (var block : Registries.BLOCK) {
+            var blockJson = new JsonObject();
             blockJson.addProperty("id", Registries.BLOCK.getRawId(block));
             blockJson.addProperty("name", Registries.BLOCK.getId(block).getPath());
             blockJson.addProperty("translation_key", block.getTranslationKey());
@@ -43,12 +43,12 @@ public class Blocks implements Main.Extractor {
 
             if (block.asItem() instanceof VerticallyAttachableBlockItem wsbItem) {
                 if (wsbItem.getBlock() == block) {
-                    Block wallBlock = ((ExposeWallBlock) wsbItem).getWallBlock();
+                    var wallBlock = ((ExposeWallBlock) wsbItem).getWallBlock();
                     blockJson.addProperty("wall_variant_id", Registries.BLOCK.getRawId(wallBlock));
                 }
             }
 
-            JsonArray propsJson = new JsonArray();
+            var propsJson = new JsonArray();
             for (var prop : block.getStateManager().getProperties()) {
                 var propJson = new JsonObject();
 
