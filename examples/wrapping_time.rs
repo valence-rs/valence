@@ -13,7 +13,9 @@ const SPAWN_Y: i32 = 64;
 
 fn main() {
     App::new()
-        .insert_resource(LastTickTimestamp { time: Instant::now() })
+        .insert_resource(LastTickTimestamp {
+            time: Instant::now(),
+        })
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
         .add_systems(
@@ -28,10 +30,9 @@ fn main() {
         .run();
 }
 
-
 #[derive(Resource)]
 struct LastTickTimestamp {
-    time: Instant
+    time: Instant,
 }
 
 fn setup(
@@ -66,7 +67,7 @@ fn show_time_info(
     layers: Query<(&WorldTime, &LinearTimeTicking)>,
     mut clients: Query<&mut Client>,
     server: Res<Server>,
-    mut lt: ResMut<LastTickTimestamp>
+    mut lt: ResMut<LastTickTimestamp>,
 ) {
     let layer = layers.single();
     for mut c in &mut clients {

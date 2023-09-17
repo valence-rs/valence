@@ -36,8 +36,6 @@ impl From<MoonPhase> for u64 {
     }
 }
 
-
-
 impl WorldTime {
     /// This function ensure that adding time will not resulting in
     /// time_of_day flipping sign.
