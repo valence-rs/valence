@@ -89,10 +89,11 @@ pub mod extra;
 use bevy_app::{App, Plugin, PostUpdate};
 use bevy_ecs::bundle::Bundle;
 use bevy_ecs::component::Component;
+use bevy_ecs::query::Changed;
 use bevy_ecs::schedule::IntoSystemConfigs;
 use bevy_ecs::system::{Query, Res};
 use derive_more::{Deref, DerefMut};
-use valence_server::client::FlushPacketsSet;
+use valence_server::client::{Client, FlushPacketsSet, VisibleChunkLayer};
 use valence_server::protocol::packets::play::WorldTimeUpdateS2c;
 use valence_server::protocol::WritePacket;
 use valence_server::{ChunkLayer, Server};
@@ -111,7 +112,11 @@ impl Plugin for WorldTimePlugin {
                 .before(FlushPacketsSet)
                 .before(handle_layer_time_boardcast),
         )
-        .add_systems(PostUpdate, handle_layer_time_boardcast);
+        .add_systems(
+            PostUpdate,
+            handle_layer_time_boardcast.before(init_time_for_new_clients),
+        )
+        .add_systems(PostUpdate, init_time_for_new_clients);
     }
 }
 
@@ -122,6 +127,8 @@ pub struct WorldTimeBundle {
     pub interval: IntervalBroadcast,
     pub linear_ticker: LinearTimeTicking,
     pub linear_ticker_timestamp: LinearTimeTickerTimestamp,
+    pub linear_world_age: LinearWorldAging,
+    pub linear_world_age_timestamp: LinearWorldAgingTimestamp,
 }
 
 /// The base component to store time in a layer.
@@ -159,8 +166,6 @@ impl Default for IntervalBroadcast {
     }
 }
 
-
-
 /// Use this struct to set time and broadcast it immediately at
 /// this tick
 #[derive(Debug)]
@@ -173,14 +178,14 @@ impl Deref for SetTimeQuery {
     type Target = WorldTime;
 
     fn deref(&self) -> &Self::Target {
-        &self.time
+        self.time
     }
 }
 
 impl DerefMut for SetTimeQuery {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.broadcast.will_broadcast_this_tick = true;
-        &mut self.time
+        self.time
     }
 }
 
@@ -235,6 +240,19 @@ impl Default for LinearWorldAging {
 #[derive(Component, Default, Deref, DerefMut, Clone, Copy, Debug)]
 pub struct LinearWorldAgingTimestamp(pub i64);
 
+fn init_time_for_new_clients(
+    mut clients: Query<(&mut Client, &VisibleChunkLayer), Changed<VisibleChunkLayer>>,
+    layers: Query<&WorldTime>,
+) {
+    for (mut client, layer_ref) in &mut clients {
+        if let Ok(time) = layers.get(layer_ref.0) {
+            client.write_packet(&WorldTimeUpdateS2c {
+                time_of_day: time.time_of_day,
+                world_age: time.world_age,
+            })
+        }
+    }
+}
 
 fn handle_layer_time_boardcast(
     mut layers: Query<(&mut ChunkLayer, &WorldTime, &mut WorldTimeBroadcast)>,
