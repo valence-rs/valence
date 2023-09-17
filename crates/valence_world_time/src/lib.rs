@@ -150,8 +150,16 @@ pub struct WorldTimeBroadcast {
 /// [`WorldTimeUpdateS2c`] packet on an interval. Note that
 /// it compares the last broadcasted timestamp with the
 /// current server tick to determine if an update should be sent.
-#[derive(Component, Default, Deref, DerefMut, Clone, Copy, Debug)]
+#[derive(Component, Deref, DerefMut, Clone, Copy, Debug)]
 pub struct IntervalBroadcast(pub i64);
+
+impl Default for IntervalBroadcast {
+    fn default() -> Self {
+        Self(20)
+    }
+}
+
+
 
 /// Use this struct to set time and broadcast it immediately at
 /// this tick
@@ -191,6 +199,15 @@ pub struct LinearTimeTicking {
     pub rate: i64,
 }
 
+impl Default for LinearTimeTicking {
+    fn default() -> Self {
+        Self {
+            interval: 1,
+            rate: 1,
+        }
+    }
+}
+
 #[derive(Component, Default, Deref, DerefMut, Clone, Copy, Debug)]
 pub struct LinearTimeTickerTimestamp(pub i64);
 
@@ -206,10 +223,7 @@ pub struct LinearWorldAging {
     pub rate: i64,
 }
 
-#[derive(Component, Default, Deref, DerefMut, Clone, Copy, Debug)]
-pub struct LinearWorldAgingTimestamp(pub i64);
-
-impl Default for LinearTimeTicking {
+impl Default for LinearWorldAging {
     fn default() -> Self {
         Self {
             interval: 1,
@@ -217,6 +231,10 @@ impl Default for LinearTimeTicking {
         }
     }
 }
+
+#[derive(Component, Default, Deref, DerefMut, Clone, Copy, Debug)]
+pub struct LinearWorldAgingTimestamp(pub i64);
+
 
 fn handle_layer_time_boardcast(
     mut layers: Query<(&mut ChunkLayer, &WorldTime, &mut WorldTimeBroadcast)>,

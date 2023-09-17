@@ -7,3 +7,4 @@ mod player_list;
 mod scoreboard;
 mod weather;
 mod world_border;
+mod world_time;
