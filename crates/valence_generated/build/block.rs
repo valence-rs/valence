@@ -54,6 +54,7 @@ struct State {
     luminance: u8,
     opaque: bool,
     replaceable: bool,
+    blocks_motion: bool,
     collision_shapes: Vec<u16>,
     block_entity_type: Option<u32>,
 }
@@ -141,6 +142,18 @@ pub fn build() -> anyhow::Result<TokenStream> {
         .iter()
         .flat_map(|b| {
             b.states.iter().filter(|s| s.replaceable).map(|s| {
+                let id = s.id;
+                quote! {
+                    #id => true,
+                }
+            })
+        })
+        .collect::<TokenStream>();
+
+    let state_to_blocks_motion_arms = blocks
+        .iter()
+        .flat_map(|b| {
+            b.states.iter().filter(|s| s.blocks_motion).map(|s| {
                 let id = s.id;
                 quote! {
                     #id => true,
@@ -668,6 +681,13 @@ pub fn build() -> anyhow::Result<TokenStream> {
             pub const fn is_replaceable(self) -> bool {
                 match self.0 {
                     #state_to_replaceable_arms
+                    _ => false,
+                }
+            }
+
+            pub const fn blocks_motion(self) -> bool {
+                match self.0 {
+                    #state_to_blocks_motion_arms
                     _ => false,
                 }
             }
