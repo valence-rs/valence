@@ -44,11 +44,11 @@ impl Plugin for WorldTimePlugin {
                 handle_linear_world_aging,
             )
                 .before(FlushPacketsSet)
-                .before(handle_layer_time_boardcast),
+                .before(handle_layer_time_broadcastcast),
         )
         .add_systems(
             PostUpdate,
-            handle_layer_time_boardcast.before(init_time_for_new_clients),
+            handle_layer_time_broadcastcast.before(init_time_for_new_clients),
         )
         .add_systems(PostUpdate, init_time_for_new_clients);
     }
@@ -188,7 +188,7 @@ fn init_time_for_new_clients(
     }
 }
 
-fn handle_layer_time_boardcast(
+fn handle_layer_time_broadcastcast(
     mut layers: Query<(&mut ChunkLayer, &WorldTime, &mut WorldTimeBroadcast)>,
     server: Res<Server>,
 ) {
