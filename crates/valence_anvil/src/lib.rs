@@ -24,7 +24,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[cfg(feature = "bevy_plugin")]
-pub use bevy::*;
+pub use plugin::*;
 use bitfield_struct::bitfield;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use flate2::bufread::{GzDecoder, ZlibDecoder};
@@ -34,7 +34,7 @@ use thiserror::Error;
 use valence_nbt::Compound;
 
 #[cfg(feature = "bevy_plugin")]
-mod bevy;
+mod plugin;
 #[cfg(feature = "parsing")]
 pub mod parsing;
 

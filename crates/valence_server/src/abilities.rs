@@ -5,8 +5,9 @@ pub use valence_protocol::packets::play::player_abilities_s2c::PlayerAbilitiesFl
 use valence_protocol::packets::play::{PlayerAbilitiesS2c, UpdatePlayerAbilitiesC2s};
 use valence_protocol::{GameMode, WritePacket};
 
-use crate::client::Client;
+use crate::client::{Client, FlushPacketsSet};
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
+use crate::game_mode::UpdateGameModeSet;
 
 /// [`Component`] that stores the player's flying speed ability.
 ///
@@ -62,23 +63,26 @@ pub struct PlayerStopFlyingEvent {
 /// according to the packet
 pub struct AbilitiesPlugin;
 
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct AbilitiesSet;
+
 impl Plugin for AbilitiesPlugin {
     fn build(&self, app: &mut App) {
-
-        /*
         app.add_event::<PlayerStartFlyingEvent>()
             .add_event::<PlayerStopFlyingEvent>()
+            .configure_set(
+                PostUpdate,
+                AbilitiesSet
+                    .before(FlushPacketsSet)
+                    .after(UpdateGameModeSet),
+            )
             .add_systems(
                 PostUpdate,
-                (
-                    update_client_player_abilities,
-                    update_player_abilities.before(update_client_player_abilities),
-                )
-                    .in_set(UpdateClientsSet)
-                    .after(update_game_mode),
+                (update_player_abilities, update_client_player_abilities)
+                    .chain()
+                    .in_set(AbilitiesSet),
             )
             .add_systems(EventLoopPreUpdate, update_server_player_abilities);
-        */
     }
 }
 

@@ -30,7 +30,7 @@ pub enum BossBarAction<'a> {
 }
 
 /// The color of a boss bar.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Default)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Default)]
 pub enum BossBarColor {
     #[default]
     Pink,
@@ -43,7 +43,7 @@ pub enum BossBarColor {
 }
 
 /// The division of a boss bar.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Default)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Default)]
 pub enum BossBarDivision {
     #[default]
     NoDivision,

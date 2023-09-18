@@ -33,7 +33,8 @@ pub use despawn::*;
 use valence_protocol::CompressionThreshold;
 
 use crate::despawn::despawn_marked_entities;
-pub use crate::layer_id::LayerId;
+use crate::layer_id::update_old_layer_id;
+pub use crate::layer_id::{LayerId, OldLayerId};
 pub use crate::uuid::UniqueId;
 
 /// Minecraft's standard ticks per second (TPS).
@@ -106,7 +107,14 @@ impl Plugin for ServerPlugin {
             server.current_tick += 1;
         }
 
-        app.add_systems(Last, (increment_tick_counter, despawn_marked_entities));
+        app.add_systems(
+            Last,
+            (
+                increment_tick_counter,
+                despawn_marked_entities,
+                update_old_layer_id,
+            ),
+        );
     }
 }
 
