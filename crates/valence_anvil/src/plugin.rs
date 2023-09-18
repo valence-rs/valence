@@ -7,11 +7,12 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use flume::{Receiver, Sender};
 use valence_server::client::{Client, OldView, View};
-use valence_server::entity::{EntityLayerId, OldEntityLayerId};
-use valence_server::layer_old::UpdateLayersPreClientSet;
+use valence_server::dimension_layer::{
+    ChunkIndex, DimensionInfo, DimensionLayerQuery, UpdateDimensionLayerSet,
+};
 use valence_server::protocol::anyhow;
 use valence_server::registry::BiomeRegistry;
-use valence_server::{ChunkLayer, ChunkPos};
+use valence_server::{ChunkPos, LayerId, OldLayerId};
 
 use crate::parsing::{DimensionFolder, ParsedChunk};
 
@@ -92,21 +93,25 @@ struct ChunkWorkerState {
 
 pub struct AnvilPlugin;
 
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct AnvilSet;
+
 impl Plugin for AnvilPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<ChunkLoadEvent>()
             .add_event::<ChunkUnloadEvent>()
             .add_systems(PreUpdate, remove_unviewed_chunks)
+            .configure_set(PostUpdate, AnvilSet.before(UpdateDimensionLayerSet))
             .add_systems(
                 PostUpdate,
                 (init_anvil, update_client_views, send_recv_chunks)
                     .chain()
-                    .before(UpdateLayersPreClientSet),
+                    .in_set(AnvilSet),
             );
     }
 }
 
-fn init_anvil(mut query: Query<&mut AnvilLevel, (Added<AnvilLevel>, With<ChunkLayer>)>) {
+fn init_anvil(mut query: Query<&mut AnvilLevel, (Added<AnvilLevel>, With<DimensionInfo>)>) {
     for mut level in &mut query {
         if let Some(state) = level.worker_state.take() {
             thread::spawn(move || anvil_worker(state));
@@ -119,12 +124,12 @@ fn init_anvil(mut query: Query<&mut AnvilLevel, (Added<AnvilLevel>, With<ChunkLa
 /// This needs to run in `PreUpdate` where the chunk viewer counts have been
 /// updated from the previous tick.
 fn remove_unviewed_chunks(
-    mut chunk_layers: Query<(Entity, &mut ChunkLayer, &AnvilLevel)>,
+    mut chunk_layers: Query<(Entity, DimensionLayerQuery, &AnvilLevel)>,
     mut unload_events: EventWriter<ChunkUnloadEvent>,
 ) {
     for (entity, mut layer, anvil) in &mut chunk_layers {
         layer.retain_chunks(|pos, chunk| {
-            if chunk.viewer_count_mut() > 0 || anvil.ignored_chunks.contains(&pos) {
+            if chunk.viewer_count() > 0 || anvil.ignored_chunks.contains(&pos) {
                 true
             } else {
                 unload_events.send(ChunkUnloadEvent {
@@ -138,20 +143,20 @@ fn remove_unviewed_chunks(
 }
 
 fn update_client_views(
-    clients: Query<(&EntityLayerId, Ref<OldEntityLayerId>, View, OldView), With<Client>>,
-    mut chunk_layers: Query<(&ChunkLayer, &mut AnvilLevel)>,
+    clients: Query<(&LayerId, Ref<OldLayerId>, View, OldView), With<Client>>,
+    mut chunk_layers: Query<(&ChunkIndex, &mut AnvilLevel)>,
 ) {
     for (loc, old_loc, view, old_view) in &clients {
         let view = view.get();
         let old_view = old_view.get();
 
         if loc != &*old_loc || view != old_view || old_loc.is_added() {
-            let Ok((layer, mut anvil)) = chunk_layers.get_mut(loc.0) else {
+            let Ok((chunk_index, mut anvil)) = chunk_layers.get_mut(loc.0) else {
                 continue;
             };
 
             let queue_pos = |pos| {
-                if !anvil.ignored_chunks.contains(&pos) && layer.chunk(pos).is_none() {
+                if !anvil.ignored_chunks.contains(&pos) && chunk_index.get(pos).is_none() {
                     // Chunks closer to clients are prioritized.
                     match anvil.pending.entry(pos) {
                         Entry::Occupied(mut oe) => {
@@ -179,7 +184,7 @@ fn update_client_views(
 }
 
 fn send_recv_chunks(
-    mut layers: Query<(Entity, &mut ChunkLayer, &mut AnvilLevel)>,
+    mut layers: Query<(Entity, DimensionLayerQuery, &mut AnvilLevel)>,
     mut to_send: Local<Vec<(Priority, ChunkPos)>>,
     mut load_events: EventWriter<ChunkLoadEvent>,
 ) {

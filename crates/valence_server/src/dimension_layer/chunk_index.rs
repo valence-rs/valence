@@ -72,6 +72,18 @@ impl ChunkIndex {
         todo!()
     }
 
+    pub fn retain(&mut self, mut f: impl FnMut(ChunkPos, &mut LoadedChunk) -> bool) {
+        self.map.retain(|pos, chunk| f(*pos, chunk))
+    }
+
+    pub fn clear(&mut self) {
+        self.map.clear();
+    }
+
+    pub fn shrink_to_fit(&mut self) {
+        self.map.shrink_to_fit()
+    }
+
     // TODO: iter, iter_mut, clear
 }
 

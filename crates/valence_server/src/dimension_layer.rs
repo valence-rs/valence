@@ -1,14 +1,14 @@
 pub mod batch;
 pub mod block;
 pub mod chunk;
-pub mod index;
+pub mod chunk_index;
 mod plugin;
 
 use bevy_ecs::prelude::*;
 use bevy_ecs::query::WorldQuery;
 use block::BlockRef;
 pub use chunk::{Chunk, LoadedChunk};
-pub use index::ChunkIndex;
+pub use chunk_index::ChunkIndex;
 pub use plugin::*;
 use valence_protocol::packets::play::UnloadChunkS2c;
 use valence_protocol::{BiomePos, BlockPos, ChunkPos, CompressionThreshold, WritePacket};
@@ -131,19 +131,34 @@ impl DimensionLayerQueryItem<'_> {
 
     pub fn chunk_entry(&mut self, pos: impl Into<ChunkPos>) -> Entry {
         match self.chunk_index.entry(pos) {
-            index::Entry::Occupied(entry) => Entry::Occupied(OccupiedEntry {
+            chunk_index::Entry::Occupied(entry) => Entry::Occupied(OccupiedEntry {
                 chunk_view_index: &*self.chunk_view_index,
                 layer_messages: self.layer_messages.reborrow(),
                 info: &self.dimension_info,
                 entry,
             }),
-            index::Entry::Vacant(entry) => Entry::Vacant(VacantEntry {
+            chunk_index::Entry::Vacant(entry) => Entry::Vacant(VacantEntry {
                 chunk_view_index: &*self.chunk_view_index,
                 layer_messages: self.layer_messages.reborrow(),
                 info: &self.dimension_info,
                 entry,
             }),
         }
+    }
+
+    pub fn retain_chunks(&mut self, mut f: impl FnMut(ChunkPos, &mut LoadedChunk) -> bool) {
+        self.chunk_index.retain(|pos, chunk| {
+            if f(pos, chunk) {
+                true
+            } else {
+                if chunk.viewer_count > 0 {
+                    self.layer_messages
+                        .send_packet(MessageScope::ChunkView { pos }, &UnloadChunkS2c { pos });
+                }
+
+                false
+            }
+        });
     }
 }
 
@@ -194,7 +209,7 @@ pub struct OccupiedEntry<'a> {
     chunk_view_index: &'a ChunkViewIndex,
     layer_messages: Mut<'a, LayerMessages>,
     info: &'a DimensionInfo,
-    entry: index::OccupiedEntry<'a>,
+    entry: chunk_index::OccupiedEntry<'a>,
 }
 
 impl<'a> OccupiedEntry<'a> {
@@ -253,7 +268,7 @@ pub struct VacantEntry<'a> {
     chunk_view_index: &'a ChunkViewIndex,
     layer_messages: Mut<'a, LayerMessages>,
     info: &'a DimensionInfo,
-    entry: index::VacantEntry<'a>,
+    entry: chunk_index::VacantEntry<'a>,
 }
 
 impl<'a> VacantEntry<'a> {
