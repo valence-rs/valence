@@ -22,236 +22,199 @@ use std::borrow::Cow;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use valence_server::client::{
-    Client, OldViewDistance, OldVisibleEntityLayers, ViewDistance, VisibleEntityLayers,
-};
-use valence_server::layer::UpdateLayersPreClientSet;
+use bevy_ecs::query::WorldQuery;
+use derive_more::{Deref, DerefMut};
+use valence_server::client::Client;
+use valence_server::layer::message::LayerMessages;
+use valence_server::layer::{BroadcastLayerMessagesSet, OldVisibleLayers, VisibleLayers};
 pub use valence_server::protocol::packets::play::boss_bar_s2c::{
     BossBarAction, BossBarColor, BossBarDivision, BossBarFlags,
 };
 use valence_server::protocol::packets::play::BossBarS2c;
 use valence_server::protocol::WritePacket;
-use valence_server::{ChunkView, Despawned, EntityLayer, Layer, UniqueId};
-
-mod components;
-pub use components::*;
-use valence_entity::{EntityLayerId, OldPosition, Position};
+use valence_server::{Despawned, LayerId, OldLayerId, Text, UniqueId};
 
 pub struct BossBarPlugin;
 
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct BossBarSet;
+
 impl Plugin for BossBarPlugin {
     fn build(&self, app: &mut bevy_app::App) {
-        app.add_systems(
-            PostUpdate,
-            (
-                update_boss_bar::<BossBarTitle>,
-                update_boss_bar::<BossBarHealth>,
-                update_boss_bar::<BossBarStyle>,
-                update_boss_bar::<BossBarFlags>,
-                update_boss_bar_layer_view,
-                update_boss_bar_chunk_view,
-                boss_bar_despawn,
-            )
-                .before(UpdateLayersPreClientSet),
-        );
+        app.configure_set(PostUpdate, BossBarSet.before(BroadcastLayerMessagesSet))
+            .add_systems(
+                PostUpdate,
+                (
+                    init_boss_bar_for_client,
+                    update_boss_bar_layer,
+                    update_boss_bar_title,
+                    update_boss_bar_health,
+                    update_boss_bar_style,
+                    update_boss_bar_flags,
+                    despawn_boss_bar,
+                )
+                    .chain()
+                    .in_set(BossBarSet),
+            );
     }
 }
 
-fn update_boss_bar<T: Component + ToPacketAction>(
-    boss_bars_query: Query<(&UniqueId, &T, &EntityLayerId, Option<&Position>), Changed<T>>,
-    mut entity_layers_query: Query<&mut EntityLayer>,
-) {
-    for (id, part, entity_layer_id, pos) in boss_bars_query.iter() {
-        if let Ok(mut entity_layer) = entity_layers_query.get_mut(entity_layer_id.0) {
-            let packet = BossBarS2c {
-                id: id.0,
-                action: part.to_packet_action(),
-            };
-            if let Some(pos) = pos {
-                entity_layer.view_writer(pos.0).write_packet(&packet);
-            } else {
-                entity_layer.write_packet(&packet);
-            }
-        }
-    }
+/// The bundle of components that make up a boss bar.
+#[derive(Bundle, Default)]
+pub struct BossBarBundle {
+    pub uuid: UniqueId,
+    pub title: BossBarTitle,
+    pub health: BossBarHealth,
+    pub color: BossBarColor,
+    pub division: BossBarDivision,
+    pub flags: BossBarFlags,
+    pub layer: LayerId,
+    pub old_layer: OldLayerId,
 }
 
-fn update_boss_bar_layer_view(
-    mut clients_query: Query<
-        (
-            &mut Client,
-            &VisibleEntityLayers,
-            &OldVisibleEntityLayers,
-            &Position,
-            &OldPosition,
-            &ViewDistance,
-            &OldViewDistance,
-        ),
-        Changed<VisibleEntityLayers>,
-    >,
-    boss_bars_query: Query<(
-        &UniqueId,
-        &BossBarTitle,
-        &BossBarHealth,
-        &BossBarStyle,
-        &BossBarFlags,
-        &EntityLayerId,
-        Option<&Position>,
-    )>,
+/// The title of a boss bar.
+#[derive(Component, Clone, Default, Deref, DerefMut)]
+pub struct BossBarTitle(pub Text);
+
+/// The health of a boss bar.
+#[derive(Component, Default, Deref, DerefMut)]
+pub struct BossBarHealth(pub f32);
+
+#[derive(WorldQuery)]
+struct FullBossBarQuery {
+    uuid: &'static UniqueId,
+    title: &'static BossBarTitle,
+    health: &'static BossBarHealth,
+    color: &'static BossBarColor,
+    division: &'static BossBarDivision,
+    flags: &'static BossBarFlags,
+    layer: &'static LayerId,
+}
+
+fn init_boss_bar_for_client(
+    mut clients: Query<(&mut Client, &VisibleLayers, &OldVisibleLayers), Changed<VisibleLayers>>,
+    boss_bars: Query<FullBossBarQuery>,
 ) {
-    for (
-        mut client,
-        visible_entity_layers,
-        old_visible_entity_layers,
-        position,
-        _old_position,
-        view_distance,
-        _old_view_distance,
-    ) in clients_query.iter_mut()
-    {
-        let view = ChunkView::new(position.0.into(), view_distance.get());
-
-        let old_layers = old_visible_entity_layers.get();
-        let current_layers = &visible_entity_layers.0;
-
-        for &added_layer in current_layers.difference(old_layers) {
-            for (id, title, health, style, flags, _, boss_bar_position) in boss_bars_query
-                .iter()
-                .filter(|(_, _, _, _, _, layer_id, _)| layer_id.0 == added_layer)
-            {
-                if let Some(position) = boss_bar_position {
-                    if view.contains(position.0.into()) {
-                        client.write_packet(&BossBarS2c {
-                            id: id.0,
-                            action: BossBarAction::Add {
-                                title: Cow::Borrowed(&title.0),
-                                health: health.0,
-                                color: style.color,
-                                division: style.division,
-                                flags: *flags,
-                            },
-                        });
-                    }
-                } else {
+    for (mut client, layers, old_layers) in &mut clients {
+        for &layer in layers.difference(&old_layers) {
+            // Find every boss bar that points at this layer.
+            // TODO: This could be improved with fragmenting relations.
+            for bb in &boss_bars {
+                if bb.layer.0 == layer {
                     client.write_packet(&BossBarS2c {
-                        id: id.0,
+                        id: bb.uuid.0,
                         action: BossBarAction::Add {
-                            title: Cow::Borrowed(&title.0),
-                            health: health.0,
-                            color: style.color,
-                            division: style.division,
-                            flags: *flags,
+                            title: Cow::Borrowed(&bb.title.0),
+                            health: bb.health.0,
+                            color: *bb.color,
+                            division: *bb.division,
+                            flags: *bb.flags,
                         },
                     });
                 }
             }
         }
-
-        for &removed_layer in old_layers.difference(current_layers) {
-            for (id, _, _, _, _, _, boss_bar_position) in boss_bars_query
-                .iter()
-                .filter(|(_, _, _, _, _, layer_id, _)| layer_id.0 == removed_layer)
-            {
-                if let Some(position) = boss_bar_position {
-                    if view.contains(position.0.into()) {
-                        client.write_packet(&BossBarS2c {
-                            id: id.0,
-                            action: BossBarAction::Remove,
-                        });
-                    }
-                } else {
-                    client.write_packet(&BossBarS2c {
-                        id: id.0,
-                        action: BossBarAction::Remove,
-                    });
-                }
-            }
-        }
     }
 }
 
-fn update_boss_bar_chunk_view(
-    mut clients_query: Query<
-        (
-            &mut Client,
-            &VisibleEntityLayers,
-            &OldVisibleEntityLayers,
-            &Position,
-            &OldPosition,
-            &ViewDistance,
-            &OldViewDistance,
-        ),
-        Changed<Position>,
-    >,
-    boss_bars_query: Query<(
-        &UniqueId,
-        &BossBarTitle,
-        &BossBarHealth,
-        &BossBarStyle,
-        &BossBarFlags,
-        &EntityLayerId,
-        &Position,
-    )>,
+fn update_boss_bar_layer(
+    boss_bars: Query<(FullBossBarQuery, &OldLayerId), Changed<LayerId>>,
+    mut layers: Query<&mut LayerMessages>,
 ) {
-    for (
-        mut client,
-        visible_entity_layers,
-        _old_visible_entity_layers,
-        position,
-        old_position,
-        view_distance,
-        old_view_distance,
-    ) in clients_query.iter_mut()
-    {
-        let view = ChunkView::new(position.0.into(), view_distance.get());
-        let old_view = ChunkView::new(old_position.get().into(), old_view_distance.get());
-
-        for layer in visible_entity_layers.0.iter() {
-            for (id, title, health, style, flags, _, boss_bar_position) in boss_bars_query
-                .iter()
-                .filter(|(_, _, _, _, _, layer_id, _)| layer_id.0 == *layer)
-            {
-                if view.contains(boss_bar_position.0.into())
-                    && !old_view.contains(boss_bar_position.0.into())
-                {
-                    client.write_packet(&BossBarS2c {
-                        id: id.0,
-                        action: BossBarAction::Add {
-                            title: Cow::Borrowed(&title.0),
-                            health: health.0,
-                            color: style.color,
-                            division: style.division,
-                            flags: *flags,
-                        },
-                    });
-                } else if !view.contains(boss_bar_position.0.into())
-                    && old_view.contains(boss_bar_position.0.into())
-                {
-                    client.write_packet(&BossBarS2c {
-                        id: id.0,
-                        action: BossBarAction::Remove,
-                    });
-                }
-            }
-        }
-    }
-}
-
-fn boss_bar_despawn(
-    boss_bars_query: Query<(&UniqueId, &EntityLayerId, Option<&Position>), With<Despawned>>,
-    mut entity_layer_query: Query<&mut EntityLayer>,
-) {
-    for (id, entity_layer_id, position) in boss_bars_query.iter() {
-        if let Ok(mut entity_layer) = entity_layer_query.get_mut(entity_layer_id.0) {
-            let packet = BossBarS2c {
-                id: id.0,
+    for (bb, old_layer) in &boss_bars {
+        // Remove from old layer.
+        if let Ok(mut msgs) = layers.get_mut(old_layer.get()) {
+            msgs.write_packet(&BossBarS2c {
+                id: bb.uuid.0,
                 action: BossBarAction::Remove,
-            };
-            if let Some(pos) = position {
-                entity_layer.view_writer(pos.0).write_packet(&packet);
-            } else {
-                entity_layer.write_packet(&packet);
-            }
+            })
+        }
+
+        // Init in new layer.
+        if let Ok(mut msgs) = layers.get_mut(bb.layer.0) {
+            msgs.write_packet(&BossBarS2c {
+                id: bb.uuid.0,
+                action: BossBarAction::Add {
+                    title: Cow::Borrowed(&bb.title.0),
+                    health: bb.health.0,
+                    color: *bb.color,
+                    division: *bb.division,
+                    flags: *bb.flags,
+                },
+            });
+        }
+    }
+}
+
+fn update_boss_bar_title(
+    boss_bars: Query<(&UniqueId, &LayerId, &BossBarTitle), Changed<BossBarTitle>>,
+    mut layers: Query<&mut LayerMessages>,
+) {
+    for (uuid, layer, title) in &boss_bars {
+        if let Ok(mut msgs) = layers.get_mut(layer.0) {
+            msgs.write_packet(&BossBarS2c {
+                id: uuid.0,
+                action: BossBarAction::UpdateTitle(Cow::Borrowed(&title.0)),
+            });
+        }
+    }
+}
+
+fn update_boss_bar_health(
+    boss_bars: Query<(&UniqueId, &LayerId, &BossBarHealth), Changed<BossBarHealth>>,
+    mut layers: Query<&mut LayerMessages>,
+) {
+    for (uuid, layer, health) in &boss_bars {
+        if let Ok(mut msgs) = layers.get_mut(layer.0) {
+            msgs.write_packet(&BossBarS2c {
+                id: uuid.0,
+                action: BossBarAction::UpdateHealth(health.0),
+            });
+        }
+    }
+}
+
+fn update_boss_bar_style(
+    boss_bars: Query<
+        (&UniqueId, &LayerId, &BossBarColor, &BossBarDivision),
+        Or<(Changed<BossBarColor>, Changed<BossBarDivision>)>,
+    >,
+    mut layers: Query<&mut LayerMessages>,
+) {
+    for (uuid, layer, color, division) in &boss_bars {
+        if let Ok(mut msgs) = layers.get_mut(layer.0) {
+            msgs.write_packet(&BossBarS2c {
+                id: uuid.0,
+                action: BossBarAction::UpdateStyle(*color, *division),
+            });
+        }
+    }
+}
+
+fn update_boss_bar_flags(
+    boss_bars: Query<(&UniqueId, &LayerId, &BossBarFlags), Changed<BossBarFlags>>,
+    mut layers: Query<&mut LayerMessages>,
+) {
+    for (uuid, layer, flags) in &boss_bars {
+        if let Ok(mut msgs) = layers.get_mut(layer.0) {
+            msgs.write_packet(&BossBarS2c {
+                id: uuid.0,
+                action: BossBarAction::UpdateFlags(*flags),
+            });
+        }
+    }
+}
+
+fn despawn_boss_bar(
+    boss_bars: Query<(&UniqueId, &LayerId), With<Despawned>>,
+    mut layers: Query<&mut LayerMessages>,
+) {
+    for (uuid, layer_id) in &boss_bars {
+        if let Ok(mut msgs) = layers.get_mut(layer_id.0) {
+            msgs.write_packet(&BossBarS2c {
+                id: uuid.0,
+                action: BossBarAction::Remove,
+            });
         }
     }
 }
