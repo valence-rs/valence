@@ -26,10 +26,9 @@ use bevy_ecs::change_detection::DetectChanges;
 use bevy_ecs::prelude::*;
 pub use components::*;
 use tracing::{debug, warn};
-use valence_server::client::{Client, OldVisibleEntityLayers, VisibleEntityLayers};
-use valence_server::entity::EntityLayerId;
-use valence_server::layer::BroadcastLayerMessagesSet;
-use valence_server::layer_old::UpdateLayersPreClientSet;
+use valence_server::client::Client;
+use valence_server::layer::message::LayerMessages;
+use valence_server::layer::{BroadcastLayerMessagesSet, OldVisibleLayers, VisibleLayers};
 use valence_server::protocol::packets::play::scoreboard_display_s2c::ScoreboardPosition;
 use valence_server::protocol::packets::play::scoreboard_objective_update_s2c::{
     ObjectiveMode, ObjectiveRenderType,
@@ -40,7 +39,7 @@ use valence_server::protocol::packets::play::{
 };
 use valence_server::protocol::{VarInt, WritePacket};
 use valence_server::text::IntoText;
-use valence_server::Despawned;
+use valence_server::{Despawned, LayerId};
 
 /// Provides all necessary systems to manage scoreboards.
 pub struct ScoreboardPlugin;
@@ -51,6 +50,7 @@ impl Plugin for ScoreboardPlugin {
             .add_systems(
                 PostUpdate,
                 (
+                    handle_new_clients,
                     create_or_update_objectives,
                     display_objectives.after(create_or_update_objectives),
                     remove_despawned_objectives,
@@ -72,11 +72,11 @@ fn create_or_update_objectives(
             Ref<Objective>,
             &ObjectiveDisplay,
             &ObjectiveRenderType,
-            &EntityLayerId,
+            &LayerId,
         ),
         Or<(Changed<ObjectiveDisplay>, Changed<ObjectiveRenderType>)>,
     >,
-    mut layers: Query<&mut EntityLayer>,
+    mut layers: Query<&mut LayerMessages>,
 ) {
     for (objective, display, render_type, entity_layer) in objectives.iter() {
         if objective.name().is_empty() {
@@ -111,11 +111,8 @@ fn create_or_update_objectives(
 
 /// Must occur after `create_or_update_objectives`.
 fn display_objectives(
-    objectives: Query<
-        (&Objective, Ref<ScoreboardPosition>, &EntityLayerId),
-        Changed<ScoreboardPosition>,
-    >,
-    mut layers: Query<&mut EntityLayer>,
+    objectives: Query<(&Objective, Ref<ScoreboardPosition>, &LayerId), Changed<ScoreboardPosition>>,
+    mut layers: Query<&mut LayerMessages>,
 ) {
     for (objective, position, entity_layer) in objectives.iter() {
         let packet = ScoreboardDisplayS2c {
@@ -137,8 +134,8 @@ fn display_objectives(
 
 fn remove_despawned_objectives(
     mut commands: Commands,
-    objectives: Query<(Entity, &Objective, &EntityLayerId), With<Despawned>>,
-    mut layers: Query<&mut EntityLayer>,
+    objectives: Query<(Entity, &Objective, &LayerId), With<Despawned>>,
+    mut layers: Query<&mut LayerMessages>,
 ) {
     for (entity, objective, entity_layer) in objectives.iter() {
         commands.entity(entity).despawn();
@@ -159,8 +156,8 @@ fn remove_despawned_objectives(
 
 fn handle_new_clients(
     mut clients: Query<
-        (&mut Client, &VisibleEntityLayers, &OldVisibleEntityLayers),
-        Or<(Added<Client>, Changed<VisibleEntityLayers>)>,
+        (&mut Client, &VisibleLayers, &OldVisibleLayers),
+        Or<(Added<Client>, Changed<VisibleLayers>)>,
     >,
     objectives: Query<
         (
@@ -169,7 +166,7 @@ fn handle_new_clients(
             &ObjectiveRenderType,
             &ScoreboardPosition,
             &ObjectiveScores,
-            &EntityLayerId,
+            &LayerId,
         ),
         Without<Despawned>,
     >,
@@ -177,10 +174,8 @@ fn handle_new_clients(
     // Remove objectives from the old visible layers that are not in the new visible
     // layers.
     for (mut client, visible_layers, old_visible_layers) in clients.iter_mut() {
-        let removed_layers: BTreeSet<_> = old_visible_layers
-            .get()
-            .difference(&visible_layers.0)
-            .collect();
+        let removed_layers: BTreeSet<_> =
+            old_visible_layers.difference(&visible_layers.0).collect();
 
         for (objective, _, _, _, _, layer) in objectives.iter() {
             if !removed_layers.contains(&layer.0) {
@@ -203,7 +198,7 @@ fn handle_new_clients(
         } else {
             visible_layers
                 .0
-                .difference(old_visible_layers.get())
+                .difference(&old_visible_layers)
                 .copied()
                 .collect::<BTreeSet<_>>()
         };
@@ -246,11 +241,11 @@ fn update_scores(
             &Objective,
             &ObjectiveScores,
             &mut OldObjectiveScores,
-            &EntityLayerId,
+            &LayerId,
         ),
         (Changed<ObjectiveScores>, Without<Despawned>),
     >,
-    mut layers: Query<&mut EntityLayer>,
+    mut layers: Query<&mut LayerMessages>,
 ) {
     for (objective, scores, mut old_scores, entity_layer) in objectives.iter_mut() {
         let Ok(mut layer) = layers.get_mut(entity_layer.0) else {
