@@ -131,9 +131,9 @@ fn command(input: DeriveInput) -> Result<TokenStream> {
 
     Ok(TokenStream::from(quote! {
 
-        impl valence_command::Command for #enum_name {
-            fn assemble_graph(command_graph: &mut valence_command::graph::CommandGraphBuilder<Self>) {
-                use valence_command::parsers::CommandArg;
+        impl valence::command::Command for #enum_name {
+            fn assemble_graph(command_graph: &mut valence::command::graph::CommandGraphBuilder<Self>) {
+                use valence::command::parsers::CommandArg;
                 #base_command_expansion
 
                 #command_alias_expansion
