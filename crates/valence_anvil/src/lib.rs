@@ -23,20 +23,20 @@ use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[cfg(feature = "bevy_plugin")]
-pub use plugin::*;
 use bitfield_struct::bitfield;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use flate2::bufread::{GzDecoder, ZlibDecoder};
 use flate2::write::{GzEncoder, ZlibEncoder};
 use lru::LruCache;
+#[cfg(feature = "bevy_plugin")]
+pub use plugin::*;
 use thiserror::Error;
 use valence_nbt::Compound;
 
-#[cfg(feature = "bevy_plugin")]
-mod plugin;
 #[cfg(feature = "parsing")]
 pub mod parsing;
+#[cfg(feature = "bevy_plugin")]
+mod plugin;
 
 const LRU_CACHE_SIZE: NonZeroUsize = match NonZeroUsize::new(256) {
     Some(n) => n,

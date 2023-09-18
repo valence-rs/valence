@@ -12,12 +12,12 @@ use valence_protocol::packets::play::{
 };
 use valence_protocol::var_int::VarInt;
 use valence_protocol::ByteAngle;
-use valence_server_common::UniqueId;
+use valence_server_common::{LayerId, OldLayerId, UniqueId};
 
 use crate::tracked_data::TrackedData;
 use crate::{
-    EntityAnimations, EntityId, EntityKind, EntityLayerId, EntityStatuses, HeadYaw, Look,
-    ObjectData, OldEntityLayerId, OldPosition, OnGround, Position, Velocity,
+    EntityAnimations, EntityId, EntityKind, EntityStatuses, HeadYaw, Look, ObjectData, OldPosition,
+    OnGround, Position, Velocity,
 };
 
 #[derive(WorldQuery)]
@@ -89,8 +89,8 @@ pub struct UpdateEntityQuery {
     pub id: &'static EntityId,
     pub pos: &'static Position,
     pub old_pos: &'static OldPosition,
-    pub loc: &'static EntityLayerId,
-    pub old_loc: &'static OldEntityLayerId,
+    pub layer: &'static LayerId,
+    pub old_layer: &'static OldLayerId,
     pub look: Ref<'static, Look>,
     pub head_yaw: Ref<'static, HeadYaw>,
     pub on_ground: &'static OnGround,

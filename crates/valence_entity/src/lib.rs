@@ -33,7 +33,7 @@ use tracing::warn;
 use tracked_data::TrackedData;
 use valence_math::{DVec3, Vec3};
 use valence_protocol::{Decode, Encode, VarInt};
-use valence_server_common::{Despawned, UniqueId};
+use valence_server_common::{Despawned, LayerId, OldLayerId, UniqueId};
 
 include!(concat!(env!("OUT_DIR"), "/entity.rs"));
 pub struct EntityPlugin;
@@ -90,7 +90,6 @@ impl Plugin for EntityPlugin {
                     clear_animation_changes,
                     clear_tracked_data_changes,
                     update_old_position,
-                    update_old_layer_id,
                 )
                     .in_set(ClearEntityChangesSet),
             );
@@ -102,12 +101,6 @@ impl Plugin for EntityPlugin {
 fn update_old_position(mut query: Query<(&Position, &mut OldPosition)>) {
     for (pos, mut old_pos) in &mut query {
         old_pos.0 = pos.0;
-    }
-}
-
-fn update_old_layer_id(mut query: Query<(&EntityLayerId, &mut OldEntityLayerId)>) {
-    for (loc, mut old_loc) in &mut query {
-        old_loc.0 = loc.0;
     }
 }
 
@@ -160,45 +153,6 @@ fn clear_animation_changes(
 fn clear_tracked_data_changes(mut tracked_data: Query<&mut TrackedData, Changed<TrackedData>>) {
     for mut tracked_data in &mut tracked_data {
         tracked_data.clear_update_values();
-    }
-}
-
-/// Contains the entity layer an entity is on.
-#[derive(Component, Copy, Clone, PartialEq, Eq, Debug, Deref)]
-#[deprecated]
-pub struct EntityLayerId(pub Entity);
-
-impl Default for EntityLayerId {
-    fn default() -> Self {
-        Self(Entity::PLACEHOLDER)
-    }
-}
-
-impl PartialEq<OldEntityLayerId> for EntityLayerId {
-    fn eq(&self, other: &OldEntityLayerId) -> bool {
-        self.0 == other.0
-    }
-}
-
-/// The value of [`EntityLayerId`] from the end of the previous tick.
-#[derive(Component, Copy, Clone, PartialEq, Eq, Debug, Deref)]
-pub struct OldEntityLayerId(Entity);
-
-impl OldEntityLayerId {
-    pub fn get(&self) -> Entity {
-        self.0
-    }
-}
-
-impl Default for OldEntityLayerId {
-    fn default() -> Self {
-        Self(Entity::PLACEHOLDER)
-    }
-}
-
-impl PartialEq<EntityLayerId> for OldEntityLayerId {
-    fn eq(&self, other: &EntityLayerId) -> bool {
-        self.0 == other.0
     }
 }
 

@@ -47,13 +47,13 @@ pub use chunk_view::ChunkView;
 pub use client::Client;
 pub use dimension_layer::{Chunk, DimensionLayerBundle, LoadedChunk};
 pub use event_loop::{EventLoopPostUpdate, EventLoopPreUpdate, EventLoopUpdate};
-pub use layer::CombinedLayerBundle;
+pub use layer::{CombinedLayerBundle, OldVisibleLayers, VisibleLayers};
 pub use valence_protocol::{
     block, ident, item, math, text, uuid, BiomePos, BlockPos, BlockState, ChunkPos,
     CompressionThreshold, Difficulty, Direction, GameMode, Hand, Ident, ItemKind, ItemStack, Text,
     MINECRAFT_VERSION, PROTOCOL_VERSION,
 };
-pub use valence_server_common::*;
+pub use valence_server_common::{LayerId, OldLayerId, *};
 pub use {
     bevy_app as app, bevy_ecs as ecs, rand, valence_entity as entity, valence_nbt as nbt,
     valence_protocol as protocol, valence_registry as registry,

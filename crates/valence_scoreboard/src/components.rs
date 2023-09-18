@@ -5,7 +5,7 @@ use derive_more::{Deref, DerefMut};
 use valence_server::protocol::packets::play::scoreboard_display_s2c::ScoreboardPosition;
 use valence_server::protocol::packets::play::scoreboard_objective_update_s2c::ObjectiveRenderType;
 use valence_server::text::IntoText;
-use valence_server::{Text, LayerId};
+use valence_server::{LayerId, Text};
 
 /// A string that identifies an objective. There is one scoreboard per
 /// objective. It's generally not safe to modify this after it's been created.

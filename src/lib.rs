@@ -128,8 +128,8 @@ pub mod prelude {
     };
     pub use valence_server::entity::hitbox::{Hitbox, HitboxShape};
     pub use valence_server::entity::{
-        EntityAnimation, EntityKind, EntityLayerId, EntityManager, EntityStatus, HeadYaw, Look,
-        OldEntityLayerId, OldPosition, Position,
+        EntityAnimation, EntityKind, EntityManager, EntityStatus, HeadYaw, Look, OldPosition,
+        Position,
     };
     pub use valence_server::event_loop::{
         EventLoopPostUpdate, EventLoopPreUpdate, EventLoopUpdate,
@@ -145,8 +145,9 @@ pub mod prelude {
     pub use valence_server::spawn::{ClientSpawnQuery, ClientSpawnQueryReadOnly};
     pub use valence_server::title::SetTitle as _;
     pub use valence_server::{
-        ident, BlockPos, Chunk, ChunkPos, ChunkView, Despawned, CombinedLayerBundle,
-        Direction, GameMode, Hand, ItemKind, ItemStack, LoadedChunk, Server, UniqueId,
+        ident, BlockPos, Chunk, ChunkPos, ChunkView, CombinedLayerBundle, Despawned, Direction,
+        GameMode, Hand, ItemKind, ItemStack, LayerId, LoadedChunk, OldLayerId, OldVisibleLayers,
+        Server, UniqueId, VisibleLayers, MINECRAFT_VERSION,
     };
 
     pub use super::DefaultPlugins;

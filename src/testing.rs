@@ -7,7 +7,6 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bytes::{Buf, BufMut, BytesMut};
 use uuid::Uuid;
-use valence_ident::ident;
 use valence_network::NetworkPlugin;
 use valence_registry::{BiomeRegistry, DimensionTypeRegistry};
 use valence_server::client::ClientBundleArgs;
