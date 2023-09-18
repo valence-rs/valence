@@ -12,13 +12,15 @@ use valence_network::NetworkPlugin;
 use valence_registry::{BiomeRegistry, DimensionTypeRegistry};
 use valence_server::client::ClientBundleArgs;
 use valence_server::keepalive::KeepaliveSettings;
+use valence_server::layer::CombinedLayerBundle;
 use valence_server::protocol::decode::PacketFrame;
 use valence_server::protocol::packets::play::{PlayerPositionLookS2c, TeleportConfirmC2s};
 use valence_server::protocol::{Decode, Encode, Packet, PacketDecoder, PacketEncoder, VarInt};
-use valence_server::{ChunkLayer, EntityLayer, Server, ServerSettings};
+use valence_server::{Server, ServerSettings};
 
 use crate::client::{ClientBundle, ClientConnection, ReceivedPacket};
 use crate::DefaultPlugins;
+
 pub struct ScenarioSingleClient {
     /// The new bevy application.
     pub app: App,
@@ -26,13 +28,13 @@ pub struct ScenarioSingleClient {
     pub client: Entity,
     /// Helper for sending and receiving packets from the mock client.
     pub helper: MockClientHelper,
-    /// Entity with [`ChunkLayer`] and [`EntityLayer`] components.
+    /// Entity with [`CombinedLayerBundle`] components.
     pub layer: Entity,
 }
 
 impl ScenarioSingleClient {
-    /// Sets up Valence with a single mock client and entity+chunk layer. The
-    /// client is configured to be placed within the layer.
+    /// Sets up Valence with a single mock client and dimension+entity layer.
+    /// The client is configured to be placed within the layer.
     ///
     /// Reduces boilerplate in unit tests.
     pub fn new() -> Self {
@@ -49,19 +51,19 @@ impl ScenarioSingleClient {
 
         app.update(); // Initialize plugins.
 
-        let chunk_layer = ChunkLayer::new(
-            ident!("overworld"),
-            app.world.resource::<DimensionTypeRegistry>(),
-            app.world.resource::<BiomeRegistry>(),
-            app.world.resource::<Server>(),
-        );
-        let entity_layer = EntityLayer::new(app.world.resource::<Server>());
-        let layer = app.world.spawn((chunk_layer, entity_layer)).id();
+        let layer = app
+            .world
+            .spawn(CombinedLayerBundle::new(
+                Default::default(),
+                app.world.resource::<DimensionTypeRegistry>(),
+                app.world.resource::<BiomeRegistry>(),
+                app.world.resource::<Server>(),
+            ))
+            .id();
 
         let (mut client, helper) = create_mock_client("test");
         client.player.layer.0 = layer;
-        client.visible_chunk_layer.0 = layer;
-        client.visible_entity_layers.0.insert(layer);
+        client.visible_layers.insert(layer);
         let client = app.world.spawn(client).id();
 
         ScenarioSingleClient {

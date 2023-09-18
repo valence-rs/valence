@@ -48,8 +48,11 @@ impl Plugin for LayerPlugin {
     }
 }
 
+/// Combination of components from [`DimensionLayerBundle`] and
+/// [`EntityLayerBundle`]. The spawned entity from this bundle is considered
+/// both a "dimension layer" and an "entity layer".
 #[derive(Bundle)]
-pub struct DimensionEntityLayerBundle {
+pub struct CombinedLayerBundle {
     pub chunk_index: ChunkIndex,
     pub block_batch: BlockBatch,
     pub dimension_info: DimensionInfo,
@@ -59,7 +62,7 @@ pub struct DimensionEntityLayerBundle {
     pub layer_messages: LayerMessages,
 }
 
-impl DimensionEntityLayerBundle {
+impl CombinedLayerBundle {
     pub fn new(
         dimension_type: DimensionTypeId,
         dimensions: &DimensionTypeRegistry,

@@ -145,7 +145,7 @@ pub mod prelude {
     pub use valence_server::spawn::{ClientSpawnQuery, ClientSpawnQueryReadOnly};
     pub use valence_server::title::SetTitle as _;
     pub use valence_server::{
-        ident, BlockPos, Chunk, ChunkPos, ChunkView, Despawned, DimensionEntityLayerBundle,
+        ident, BlockPos, Chunk, ChunkPos, ChunkView, Despawned, CombinedLayerBundle,
         Direction, GameMode, Hand, ItemKind, ItemStack, LoadedChunk, Server, UniqueId,
     };
 

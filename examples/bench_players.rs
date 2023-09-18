@@ -52,7 +52,7 @@ fn setup(
     biomes: Res<BiomeRegistry>,
 ) {
     let mut layer =
-        DimensionEntityLayerBundle::new(Default::default(), &dimensions, &biomes, &server);
+        CombinedLayerBundle::new(Default::default(), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {

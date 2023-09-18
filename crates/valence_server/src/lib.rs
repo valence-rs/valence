@@ -47,7 +47,7 @@ pub use chunk_view::ChunkView;
 pub use client::Client;
 pub use dimension_layer::{Chunk, DimensionLayerBundle, LoadedChunk};
 pub use event_loop::{EventLoopPostUpdate, EventLoopPreUpdate, EventLoopUpdate};
-pub use layer::DimensionEntityLayerBundle;
+pub use layer::CombinedLayerBundle;
 pub use valence_protocol::{
     block, ident, item, math, text, uuid, BiomePos, BlockPos, BlockState, ChunkPos,
     CompressionThreshold, Difficulty, Direction, GameMode, Hand, Ident, ItemKind, ItemStack, Text,
