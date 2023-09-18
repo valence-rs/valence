@@ -96,9 +96,22 @@ fn init_boss_bar_for_client(
     boss_bars: Query<FullBossBarQuery>,
 ) {
     for (mut client, layers, old_layers) in &mut clients {
+        // TODO: this could be improved with fragmenting relations.
+
+        // Remove boss bars from old layers.
+        for &layer in old_layers.difference(&layers) {
+            for bb in &boss_bars {
+                if bb.layer.0 == layer {
+                    client.write_packet(&BossBarS2c {
+                        id: bb.uuid.0,
+                        action: BossBarAction::Remove,
+                    });
+                }
+            }
+        }
+
+        // Add boss bars from new layers.
         for &layer in layers.difference(&old_layers) {
-            // Find every boss bar that points at this layer.
-            // TODO: This could be improved with fragmenting relations.
             for bb in &boss_bars {
                 if bb.layer.0 == layer {
                     client.write_packet(&BossBarS2c {
