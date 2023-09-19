@@ -1,9 +1,10 @@
 pub use bevy_ecs::prelude::*;
 use rustc_hash::FxHashMap;
-use valence_protocol::{BlockPos, ChunkPos};
+use valence_protocol::{BiomePos, BlockPos, ChunkPos};
+use valence_registry::biome::BiomeId;
 
 use super::block::{Block, BlockRef};
-use super::chunk::{Chunk, LoadedChunk};
+use super::chunk::{biome_offsets, block_offsets, Chunk, ChunkOps, LoadedChunk};
 
 /// The mapping of chunk positions to [`LoadedChunk`]s in a dimension layer.
 ///
@@ -13,13 +14,15 @@ use super::chunk::{Chunk, LoadedChunk};
 pub struct ChunkIndex {
     map: FxHashMap<ChunkPos, LoadedChunk>,
     height: i32,
+    min_y: i32,
 }
 
 impl ChunkIndex {
-    pub(crate) fn new(height: i32) -> Self {
+    pub(crate) fn new(height: i32, min_y: i32) -> Self {
         Self {
             map: Default::default(),
             height,
+            min_y,
         }
     }
 
@@ -34,7 +37,7 @@ impl ChunkIndex {
     pub fn insert(&mut self, pos: impl Into<ChunkPos>, chunk: Chunk) -> Option<Chunk> {
         match self.entry(pos.into()) {
             Entry::Occupied(mut o) => Some(o.insert(chunk)),
-            Entry::Vacant(mut v) => {
+            Entry::Vacant(v) => {
                 v.insert(chunk);
                 None
             }
@@ -61,7 +64,11 @@ impl ChunkIndex {
     }
 
     pub fn block(&self, pos: impl Into<BlockPos>) -> Option<BlockRef> {
-        todo!()
+        let pos = pos.into();
+        let chunk = self.get(pos)?;
+
+        let [x, y, z] = block_offsets(pos, self.min_y, self.height)?;
+        Some(chunk.block(x, y, z))
     }
 
     pub fn set_block(
@@ -69,7 +76,28 @@ impl ChunkIndex {
         pos: impl Into<BlockPos>,
         block: impl Into<Block>,
     ) -> Option<Block> {
-        todo!()
+        let pos = pos.into();
+        let chunk = self.map.get_mut(&ChunkPos::from(pos))?;
+
+        let [x, y, z] = block_offsets(pos, self.min_y, self.height)?;
+        Some(chunk.set_block(x, y, z, block))
+    }
+
+    pub fn biome(&self, pos: impl Into<BiomePos>) -> Option<BiomeId> {
+        let pos = pos.into();
+        let chunk_pos = ChunkPos::from(pos);
+
+        let chunk = self.get(chunk_pos)?;
+        let [x, y, z] = biome_offsets(pos, self.min_y, self.height)?;
+        Some(chunk.biome(x, y, z))
+    }
+
+    pub fn set_biome(&mut self, pos: impl Into<BiomePos>, biome: BiomeId) -> Option<BiomeId> {
+        let pos = pos.into();
+        let chunk = self.map.get_mut(&ChunkPos::from(pos))?;
+
+        let [x, y, z] = biome_offsets(pos, self.min_y, self.height)?;
+        Some(chunk.set_biome(x, y, z, biome))
     }
 
     pub fn retain(&mut self, mut f: impl FnMut(ChunkPos, &mut LoadedChunk) -> bool) {
@@ -84,7 +112,7 @@ impl ChunkIndex {
         self.map.shrink_to_fit()
     }
 
-    // TODO: iter, iter_mut, clear
+    // TODO: iter, iter_mut
 }
 
 #[derive(Debug)]

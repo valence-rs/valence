@@ -51,7 +51,8 @@ pub struct SelfTrackedDataSet;
 
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
-        app.configure_set(PostUpdate, SelfTrackedDataSet.before(FlushPacketsSet))
+        app.init_resource::<ClientDespawnSettings>()
+            .configure_set(PostUpdate, SelfTrackedDataSet.before(FlushPacketsSet))
             .add_systems(
                 PostUpdate,
                 (

@@ -78,7 +78,7 @@ fn update_dimension_layer_views(
             for &layer in old_visible.difference(&visible) {
                 if let Ok((mut index, _)) = layers.get_mut(layer) {
                     for pos in old_view.iter() {
-                        if let Some(mut chunk) = index.get_mut(pos) {
+                        if let Some(chunk) = index.get_mut(pos) {
                             client.write_packet(&UnloadChunkS2c { pos });
                             chunk.viewer_count -= 1;
                         }
@@ -93,7 +93,7 @@ fn update_dimension_layer_views(
             for &layer in visible.difference(&old_visible) {
                 if let Ok((mut index, info)) = layers.get_mut(layer) {
                     for pos in view.iter() {
-                        if let Some(mut chunk) = index.get_mut(pos) {
+                        if let Some(chunk) = index.get_mut(pos) {
                             chunk.write_chunk_init_packet(&mut *client, pos, info);
                             chunk.viewer_count += 1;
                         }
@@ -110,7 +110,7 @@ fn update_dimension_layer_views(
                 if let Ok((mut index, info)) = layers.get_mut(layer) {
                     // Unload old chunks in view.
                     for pos in old_view.diff(view) {
-                        if let Some(mut chunk) = index.get_mut(pos) {
+                        if let Some(chunk) = index.get_mut(pos) {
                             client.write_packet(&UnloadChunkS2c { pos });
                             chunk.viewer_count -= 1;
                         }
@@ -118,7 +118,7 @@ fn update_dimension_layer_views(
 
                     // Load new chunks in view.
                     for pos in view.diff(old_view) {
-                        if let Some(mut chunk) = index.get_mut(pos) {
+                        if let Some(chunk) = index.get_mut(pos) {
                             chunk.write_chunk_init_packet(&mut *client, pos, info);
                             chunk.viewer_count += 1;
                         }

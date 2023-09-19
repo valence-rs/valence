@@ -242,6 +242,7 @@ pub(super) const fn bit_width(n: usize) -> usize {
     (usize::BITS - n.leading_zeros()) as _
 }
 
+#[inline]
 pub(super) fn block_offsets(block_pos: BlockPos, min_y: i32, height: i32) -> Option<[u32; 3]> {
     let off_x = block_pos.x.rem_euclid(16);
     let off_z = block_pos.z.rem_euclid(16);
@@ -254,6 +255,7 @@ pub(super) fn block_offsets(block_pos: BlockPos, min_y: i32, height: i32) -> Opt
     }
 }
 
+#[inline]
 pub(super) fn biome_offsets(biome_pos: BiomePos, min_y: i32, height: i32) -> Option<[u32; 3]> {
     let off_x = biome_pos.x.rem_euclid(4);
     let off_z = biome_pos.z.rem_euclid(4);

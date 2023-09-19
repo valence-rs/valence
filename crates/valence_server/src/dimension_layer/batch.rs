@@ -6,7 +6,8 @@ use valence_generated::block::BlockEntityKind;
 use valence_nbt::Compound;
 use valence_protocol::packets::play::chunk_delta_update_s2c::ChunkDeltaUpdateEntry;
 use valence_protocol::packets::play::{BlockEntityUpdateS2c, BlockUpdateS2c, ChunkDeltaUpdateS2c};
-use valence_protocol::{BlockPos, ChunkSectionPos, WritePacket};
+use valence_protocol::{BiomePos, BlockPos, ChunkSectionPos, WritePacket};
+use valence_registry::biome::BiomeId;
 
 use super::block::Block;
 use super::chunk::LoadedChunk;
@@ -15,14 +16,20 @@ use crate::dimension_layer::chunk::ChunkOps;
 use crate::layer::message::{LayerMessages, MessageScope};
 use crate::BlockState;
 
+/// Batched block and biome mutations.
+///
+/// Changes are automatically applied at the end of the tick or when
+/// [`apply_batch`] is called.
+///
+/// [`apply_batch`]: super::DimensionLayerQueryItem::apply_batch
 #[derive(Component, Default)]
-pub struct BlockBatch {
+pub struct Batch {
     state_updates: Vec<StateUpdate>,
     block_entities: Vec<(BlockPos, BlockEntityKind, Compound)>,
     sect_update_buf: Vec<ChunkDeltaUpdateEntry>,
 }
 
-impl BlockBatch {
+impl Batch {
     pub fn set_block(&mut self, pos: impl Into<BlockPos>, block: impl Into<Block>) {
         let pos = pos.into();
         let block = block.into();
@@ -35,14 +42,25 @@ impl BlockBatch {
         }
     }
 
+    pub fn set_biome(&mut self, pos: impl Into<BiomePos>, biome: BiomeId) {
+        todo!()
+    }
+
     pub fn clear(&mut self) {
         self.state_updates.clear();
         self.block_entities.clear();
     }
 
     pub fn shrink_to_fit(&mut self) {
-        self.state_updates.shrink_to_fit();
-        self.block_entities.shrink_to_fit();
+        let Self {
+            state_updates,
+            block_entities,
+            sect_update_buf,
+        } = self;
+
+        state_updates.shrink_to_fit();
+        block_entities.shrink_to_fit();
+        sect_update_buf.shrink_to_fit();
     }
 
     pub fn is_empty(&self) -> bool {

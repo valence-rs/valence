@@ -16,7 +16,7 @@ use valence_server_common::{Despawned, Server};
 
 use self::message::{LayerMessages, MessageKind};
 use crate::client::FlushPacketsSet;
-use crate::dimension_layer::batch::BlockBatch;
+use crate::dimension_layer::batch::Batch;
 use crate::dimension_layer::{ChunkIndex, DimensionInfo};
 use crate::layer::message::MessageScope;
 use crate::{Client, DimensionLayerBundle};
@@ -54,7 +54,7 @@ impl Plugin for LayerPlugin {
 #[derive(Bundle)]
 pub struct CombinedLayerBundle {
     pub chunk_index: ChunkIndex,
-    pub block_batch: BlockBatch,
+    pub block_batch: Batch,
     pub dimension_info: DimensionInfo,
     // TODO: entity layer components.
     pub chunk_view_index: ChunkViewIndex,

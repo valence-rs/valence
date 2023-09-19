@@ -17,7 +17,7 @@ use valence_registry::dimension_type::DimensionTypeId;
 use valence_registry::{BiomeRegistry, DimensionTypeRegistry};
 use valence_server_common::Server;
 
-use self::batch::BlockBatch;
+use self::batch::Batch;
 use self::block::Block;
 use crate::layer::message::{LayerMessages, MessageScope};
 use crate::layer::{ChunkViewIndex, LayerViewers};
@@ -25,7 +25,7 @@ use crate::layer::{ChunkViewIndex, LayerViewers};
 #[derive(Component)]
 pub struct DimensionLayerBundle {
     pub chunk_index: ChunkIndex,
-    pub block_batch: BlockBatch,
+    pub block_batch: Batch,
     pub dimension_info: DimensionInfo,
     pub chunk_view_index: ChunkViewIndex,
     pub layer_viewers: LayerViewers,
@@ -42,7 +42,7 @@ impl DimensionLayerBundle {
         let dim = &dimensions[dimension_type];
 
         Self {
-            chunk_index: ChunkIndex::new(dim.height),
+            chunk_index: ChunkIndex::new(dim.height, dim.min_y),
             block_batch: Default::default(),
             dimension_info: DimensionInfo {
                 dimension_type,
@@ -62,7 +62,7 @@ impl DimensionLayerBundle {
 #[world_query(mutable)]
 pub struct DimensionLayerQuery {
     pub chunk_index: &'static mut ChunkIndex,
-    pub block_batch: &'static mut BlockBatch,
+    pub batch: &'static mut Batch,
     pub dimension_info: &'static DimensionInfo,
     pub chunk_view_index: &'static mut ChunkViewIndex,
     pub layer_viewers: &'static LayerViewers,
@@ -84,11 +84,11 @@ macro_rules! immutable_query_methods {
         }
 
         pub fn biome(&self, pos: impl Into<BiomePos>) -> Option<BiomeId> {
-            todo!()
+            self.chunk_index.biome(pos)
         }
 
         pub fn block(&self, pos: impl Into<BlockPos>) -> Option<BlockRef> {
-            todo!()
+            self.chunk_index.block(pos)
         }
 
         pub fn chunk(&self, pos: impl Into<ChunkPos>) -> Option<&LoadedChunk> {
@@ -100,12 +100,23 @@ macro_rules! immutable_query_methods {
 impl DimensionLayerQueryItem<'_> {
     immutable_query_methods!();
 
-    pub fn set_biome(&mut self, pos: impl Into<BiomePos>, biome: BiomeId) -> Option<BiomeId> {
-        todo!()
+    pub fn set_block(&mut self, pos: impl Into<BlockPos>, block: impl Into<Block>) {
+        self.batch.set_block(pos, block)
     }
 
-    pub fn set_block(&mut self, pos: impl Into<BlockPos>, block: impl Into<Block>) {
-        todo!()
+    pub fn set_biome(&mut self, pos: impl Into<BiomePos>, biome: BiomeId) {
+        self.batch.set_biome(pos, biome)
+    }
+
+    /// Apply the batched block and biome mutations to the layer.
+    pub fn apply_batch(&mut self) {
+        self.batch.apply(
+            &mut *self.chunk_index,
+            self.dimension_info,
+            &mut *self.layer_messages,
+        );
+
+        self.batch.clear();
     }
 
     pub fn chunk_mut(&mut self, pos: impl Into<ChunkPos>) -> Option<&mut LoadedChunk> {
@@ -132,7 +143,6 @@ impl DimensionLayerQueryItem<'_> {
     pub fn chunk_entry(&mut self, pos: impl Into<ChunkPos>) -> Entry {
         match self.chunk_index.entry(pos) {
             chunk_index::Entry::Occupied(entry) => Entry::Occupied(OccupiedEntry {
-                chunk_view_index: &*self.chunk_view_index,
                 layer_messages: self.layer_messages.reborrow(),
                 info: &self.dimension_info,
                 entry,
@@ -206,7 +216,6 @@ impl<'a> Entry<'a> {
 
 #[derive(Debug)]
 pub struct OccupiedEntry<'a> {
-    chunk_view_index: &'a ChunkViewIndex,
     layer_messages: Mut<'a, LayerMessages>,
     info: &'a DimensionInfo,
     entry: chunk_index::OccupiedEntry<'a>,

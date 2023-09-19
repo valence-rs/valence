@@ -11,7 +11,7 @@ use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 pub struct ActionPlugin;
 
 impl Plugin for ActionPlugin {
-    fn build(&self, app: &mut App) {
+    fn build(&self, _app: &mut App) {
         /*
         app.add_event::<DiggingEvent>()
             .add_systems(EventLoopPreUpdate, handle_player_action)
