@@ -444,6 +444,32 @@ impl Properties {
     pub fn textures_mut(&mut self) -> Option<&mut Property> {
         self.0.iter_mut().find(|p| p.name == "textures")
     }
+
+    /// Returns the value of the "textures" property. It's a base64-encoded
+    /// JSON string that contains the skin and cape URLs.
+    pub fn skin(&self) -> Option<&str> {
+        self.textures().map(|p| p.value.as_str())
+    }
+
+    /// Sets the value of the "textures" property, or adds it if it does not
+    /// exist. Can be used for custom skins on player entities.
+    ///
+    /// `signature` is the Yggdrasil signature for the texture data. It is
+    /// required if you want the skin to show up on vanilla Notchian
+    /// clients. You can't sign skins yourself, so you'll have to get it from
+    /// Mojang.
+    pub fn set_skin(&mut self, skin: impl Into<String>, signature: impl Into<String>) {
+        if let Some(prop) = self.textures_mut() {
+            prop.value = skin.into();
+            prop.signature = Some(signature.into());
+        } else {
+            self.0.push(Property {
+                name: "textures".to_owned(),
+                value: skin.into(),
+                signature: Some(signature.into()),
+            });
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
