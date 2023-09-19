@@ -3,12 +3,15 @@
 use valence::interact_block::InteractBlockEvent;
 use valence::inventory::HeldItem;
 use valence::prelude::*;
+use valence_inventory::PLAYER_INVENTORY_MAIN_SLOTS_COUNT;
+use valence_server::client::ClientMarker;
+use valence_server::placement::{self, PlaceBlockEvent};
 
 const SPAWN_Y: i32 = 64;
 
 pub fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins((DefaultPlugins, placement::PlaceBlockPlugin))
         .add_systems(Startup, setup)
         .add_systems(
             Update,
@@ -122,13 +125,11 @@ fn digging(
 }
 
 fn place_blocks(
-    mut clients: Query<(&mut Inventory, &GameMode, &HeldItem)>,
-    mut layers: Query<&mut ChunkLayer>,
-    mut events: EventReader<InteractBlockEvent>,
+    mut clients: Query<(&mut Inventory, &GameMode, &HeldItem), With<ClientMarker>>,
+    mut ib_events: EventReader<InteractBlockEvent>,
+    mut pb_events: EventWriter<PlaceBlockEvent>,
 ) {
-    let mut layer = layers.single_mut();
-
-    for event in events.iter() {
+    for event in ib_events.iter() {
         let Ok((mut inventory, game_mode, held)) = clients.get_mut(event.client) else {
             continue;
         };
@@ -137,7 +138,11 @@ fn place_blocks(
         }
 
         // get the held item
-        let slot_id = held.slot();
+        let slot_id = match event.hand {
+            Hand::Main => held.slot(),
+            Hand::Off => PLAYER_INVENTORY_MAIN_SLOTS_COUNT + 9,
+        };
+
         let stack = inventory.slot(slot_id);
         if stack.is_empty() {
             // no item in the slot
@@ -159,7 +164,11 @@ fn place_blocks(
                 inventory.set_slot(slot_id, ItemStack::EMPTY);
             }
         }
-        let real_pos = event.position.get_in_direction(event.face);
-        layer.set_block(real_pos, block_kind.to_state());
+
+        pb_events.send(placement::PlaceBlockEvent {
+            block_kind,
+            interact_block_event: *event,
+            ignore_collisions: false,
+        });
     }
 }
