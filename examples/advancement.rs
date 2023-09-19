@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use valence::advancement::bevy_hierarchy::{BuildChildren, Children, Parent};
 use valence::advancement::ForceTabUpdate;
 use valence::prelude::*;
+use valence_server::dimension_layer::DimensionInfo;
 
 #[derive(Component)]
 struct RootCriteria;
@@ -47,17 +48,19 @@ fn setup(
     dimensions: Res<DimensionTypeRegistry>,
     biomes: Res<BiomeRegistry>,
 ) {
-    let mut layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let mut layer = CombinedLayerBundle::new(Default::default(), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {
-            layer.chunk.insert_chunk([x, z], Chunk::new());
+            layer.chunk_index.insert([x, z], Chunk::new());
         }
     }
 
     for z in -25..25 {
         for x in -25..25 {
-            layer.chunk.set_block([x, 64, z], BlockState::GRASS_BLOCK);
+            layer
+                .chunk_index
+                .set_block([x, 64, z], BlockState::GRASS_BLOCK);
         }
     }
 
@@ -167,29 +170,20 @@ fn setup(
 fn init_clients(
     mut clients: Query<
         (
-            &mut EntityLayerId,
-            &mut VisibleChunkLayer,
-            &mut VisibleEntityLayers,
+            &mut LayerId,
+            &mut VisibleLayers,
             &mut Position,
             &mut GameMode,
         ),
         Added<Client>,
     >,
-    layers: Query<Entity, With<ChunkLayer>>,
+    layers: Query<Entity, With<DimensionInfo>>,
 ) {
-    for (
-        mut layer_id,
-        mut visible_chunk_layer,
-        mut visible_entity_layers,
-        mut pos,
-        mut game_mode,
-    ) in &mut clients
-    {
+    for (mut layer_id, mut visible_layers, mut pos, mut game_mode) in &mut clients {
         let layer = layers.single();
 
         layer_id.0 = layer;
-        visible_chunk_layer.0 = layer;
-        visible_entity_layers.0.insert(layer);
+        visible_layers.0.insert(layer);
         pos.set([0.5, 65.0, 0.5]);
         *game_mode = GameMode::Creative;
     }

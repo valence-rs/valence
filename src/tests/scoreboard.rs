@@ -1,7 +1,6 @@
 use valence_scoreboard::*;
 
 use crate::client::VisibleEntityLayers;
-use crate::entity::EntityLayerId;
 use crate::layer_old::EntityLayer;
 use crate::protocol::packets::play::{
     ScoreboardDisplayS2c, ScoreboardObjectiveUpdateS2c, ScoreboardPlayerUpdateS2c,
@@ -38,7 +37,7 @@ fn show_scoreboard_when_added_to_layer() {
         name: Objective::new("foo"),
         display: ObjectiveDisplay("Foo".into_text()),
         scores: ObjectiveScores::new(),
-        layer: EntityLayerId(obj_layer),
+        layer: LayerId(obj_layer),
         ..Default::default()
     });
 
@@ -78,7 +77,7 @@ fn show_scoreboard_when_client_join() {
         name: Objective::new("foo"),
         display: ObjectiveDisplay("Foo".into_text()),
         scores: ObjectiveScores::new(),
-        layer: EntityLayerId(obj_layer),
+        layer: LayerId(obj_layer),
         ..Default::default()
     });
 
@@ -121,7 +120,7 @@ fn should_update_score() {
             name: Objective::new("foo"),
             display: ObjectiveDisplay("Foo".into_text()),
             scores: ObjectiveScores::with_map([("foo".to_owned(), 0)]),
-            layer: EntityLayerId(obj_layer),
+            layer: LayerId(obj_layer),
             ..Default::default()
         })
         .id();
@@ -169,7 +168,7 @@ fn should_only_update_score_diff() {
             name: Objective::new("foo"),
             display: ObjectiveDisplay("Foo".into_text()),
             scores: ObjectiveScores::with_map([("foo".to_owned(), 0), ("bar".to_owned(), 0)]),
-            layer: EntityLayerId(obj_layer),
+            layer: LayerId(obj_layer),
             ..Default::default()
         })
         .id();

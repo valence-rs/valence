@@ -1,7 +1,7 @@
-use valence::client::despawn_disconnected_clients;
 use valence::log::LogPlugin;
 use valence::network::ConnectionMode;
 use valence::prelude::*;
+use valence_server::dimension_layer::DimensionInfo;
 
 #[allow(unused_imports)]
 use crate::extras::*;
@@ -16,7 +16,7 @@ pub fn build_app(app: &mut App) {
     .add_plugins(DefaultPlugins.build().disable::<LogPlugin>())
     .add_systems(Startup, setup)
     .add_systems(EventLoopUpdate, toggle_gamemode_on_sneak)
-    .add_systems(Update, (init_clients, despawn_disconnected_clients))
+    .add_systems(Update, init_clients)
     .run();
 }
 
@@ -26,11 +26,11 @@ fn setup(
     biomes: Res<BiomeRegistry>,
     dimensions: Res<DimensionTypeRegistry>,
 ) {
-    let mut layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let mut layer = CombinedLayerBundle::new(Default::default(), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {
-            layer.chunk.insert_chunk([x, z], UnloadedChunk::new());
+            layer.chunk_index.insert([x, z], UnloadedChunk::new());
         }
     }
 
@@ -48,29 +48,20 @@ fn setup(
 fn init_clients(
     mut clients: Query<
         (
-            &mut EntityLayerId,
-            &mut VisibleChunkLayer,
-            &mut VisibleEntityLayers,
+            &mut LayerId,
+            &mut VisibleLayers,
             &mut Position,
             &mut GameMode,
         ),
         Added<Client>,
     >,
-    layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
+    layers: Query<Entity, With<DimensionInfo>>,
 ) {
-    for (
-        mut layer_id,
-        mut visible_chunk_layer,
-        mut visible_entity_layers,
-        mut pos,
-        mut game_mode,
-    ) in &mut clients
-    {
+    for (mut layer_id, mut visible_layers, mut pos, mut game_mode) in &mut clients {
         let layer = layers.single();
 
         layer_id.0 = layer;
-        visible_chunk_layer.0 = layer;
-        visible_entity_layers.0.insert(layer);
+        visible_layers.0.insert(layer);
         pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
         *game_mode = GameMode::Creative;
     }

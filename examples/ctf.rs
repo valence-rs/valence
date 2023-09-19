@@ -17,6 +17,7 @@ use valence::nbt::{compound, List};
 use valence::prelude::*;
 use valence::scoreboard::*;
 use valence::status::RequestRespawnEvent;
+use valence_server::dimension_layer::DimensionInfo;
 
 const ARENA_Y: i32 = 64;
 const ARENA_MID_WIDTH: i32 = 2;
@@ -43,7 +44,6 @@ pub fn main() {
             Update,
             (
                 init_clients,
-                despawn_disconnected_clients,
                 digging,
                 place_blocks,
                 do_team_selector_portals,
@@ -65,11 +65,11 @@ fn setup(
     dimensions: Res<DimensionTypeRegistry>,
     biomes: Res<BiomeRegistry>,
 ) {
-    let mut layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let mut layer = CombinedLayerBundle::new(Default::default(), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {
-            layer.chunk.insert_chunk([x, z], Chunk::new());
+            layer.chunk_index.insert([x, z], Chunk::new());
         }
     }
 
@@ -80,7 +80,7 @@ fn setup(
                 x if x > ARENA_MID_WIDTH => BlockState::BLUE_CONCRETE,
                 _ => BlockState::WHITE_CONCRETE,
             };
-            layer.chunk.set_block([x, ARENA_Y, z], block);
+            layer.chunk_index.set_block([x, ARENA_Y, z], block);
         }
     }
 
@@ -111,7 +111,7 @@ fn setup(
     let ctf_objective = ObjectiveBundle {
         name: Objective::new("ctf-captures"),
         display: ObjectiveDisplay("Captures".into_text()),
-        layer: EntityLayerId(ctf_objective_layer),
+        layer: LayerId(ctf_objective_layer),
         ..Default::default()
     };
     commands.spawn(ctf_objective);
@@ -142,7 +142,7 @@ fn setup(
     let mut flags = Flags::default();
     flags.set_glowing(true);
     let mut pig = commands.spawn(PigEntityBundle {
-        layer: EntityLayerId(ctf_team_layers.friendly_layers[&Team::Red]),
+        layer: LayerId(ctf_team_layers.friendly_layers[&Team::Red]),
         position: Position([-30.0, 65.0, 2.0].into()),
         entity_flags: flags.clone(),
         ..Default::default()
@@ -150,7 +150,7 @@ fn setup(
     pig.insert(Team::Red);
 
     let mut cow = commands.spawn(CowEntityBundle {
-        layer: EntityLayerId(ctf_team_layers.friendly_layers[&Team::Blue]),
+        layer: LayerId(ctf_team_layers.friendly_layers[&Team::Blue]),
         position: Position([30.0, 65.0, 2.0].into()),
         entity_flags: flags,
         ..Default::default()
@@ -170,11 +170,11 @@ fn build_flag(layer: &mut LayerBundle, team: Team, pos: impl Into<BlockPos>) -> 
 
     // build the flag pole
     for _ in 0..3 {
-        layer.chunk.set_block(pos, BlockState::OAK_FENCE);
+        layer.chunk_index.set_block(pos, BlockState::OAK_FENCE);
         pos.y += 1;
     }
     let moving_east = pos.x < 0;
-    layer.chunk.set_block(
+    layer.chunk_index.set_block(
         pos,
         BlockState::OAK_FENCE.set(
             if moving_east {
@@ -186,14 +186,14 @@ fn build_flag(layer: &mut LayerBundle, team: Team, pos: impl Into<BlockPos>) -> 
         ),
     );
     pos.x += if pos.x < 0 { 1 } else { -1 };
-    layer.chunk.set_block(
+    layer.chunk_index.set_block(
         pos,
         BlockState::OAK_FENCE
             .set(PropName::East, PropValue::True)
             .set(PropName::West, PropValue::True),
     );
     pos.x += if pos.x < 0 { 1 } else { -1 };
-    layer.chunk.set_block(
+    layer.chunk_index.set_block(
         pos,
         BlockState::OAK_FENCE.set(
             if moving_east {
@@ -207,7 +207,7 @@ fn build_flag(layer: &mut LayerBundle, team: Team, pos: impl Into<BlockPos>) -> 
     pos.y -= 1;
 
     // build the flag
-    layer.chunk.set_block(
+    layer.chunk_index.set_block(
         pos,
         match team {
             Team::Red => BlockState::RED_WOOL,
@@ -229,7 +229,7 @@ fn build_spawn_box(layer: &mut LayerBundle, pos: impl Into<BlockPos>, commands: 
             layer
                 .chunk
                 .set_block([pos.x + x, pos.y, pos.z + z], spawn_box_block);
-            layer.chunk.set_block(
+            layer.chunk_index.set_block(
                 [pos.x + x, pos.y + SPAWN_BOX_HEIGHT, pos.z + z],
                 spawn_box_block,
             );
@@ -270,7 +270,7 @@ fn build_spawn_box(layer: &mut LayerBundle, pos: impl Into<BlockPos>, commands: 
     ] {
         for z in 0..3 {
             for x in 0..3 {
-                layer.chunk.set_block(
+                layer.chunk_index.set_block(
                     [pos.x + offset.x + x, pos.y + offset.y, pos.z + offset.z + z],
                     block,
                 );
@@ -296,7 +296,7 @@ fn build_spawn_box(layer: &mut LayerBundle, pos: impl Into<BlockPos>, commands: 
 
     for area in portals.portals.values() {
         for pos in area.iter_block_pos() {
-            layer.chunk.set_block(pos, BlockState::AIR);
+            layer.chunk_index.set_block(pos, BlockState::AIR);
         }
         layer
             .chunk
@@ -308,7 +308,7 @@ fn build_spawn_box(layer: &mut LayerBundle, pos: impl Into<BlockPos>, commands: 
     // build instruction signs
 
     let sign_pos = pos.offset(0, 2, SPAWN_BOX_WIDTH - 1);
-    layer.chunk.set_block(
+    layer.chunk_index.set_block(
         sign_pos,
         Block {
             state: BlockState::OAK_WALL_SIGN.set(PropName::Rotation, PropValue::_3),
@@ -325,7 +325,7 @@ fn build_spawn_box(layer: &mut LayerBundle, pos: impl Into<BlockPos>, commands: 
         },
     );
 
-    layer.chunk.set_block(
+    layer.chunk_index.set_block(
         sign_pos.offset(-1, 0, 0),
         Block {
             state: BlockState::OAK_WALL_SIGN.set(PropName::Rotation, PropValue::_3),
@@ -342,7 +342,7 @@ fn build_spawn_box(layer: &mut LayerBundle, pos: impl Into<BlockPos>, commands: 
         },
     );
 
-    layer.chunk.set_block(
+    layer.chunk_index.set_block(
         sign_pos.offset(1, 0, 0),
         Block {
             state: BlockState::OAK_WALL_SIGN.set(PropName::Rotation, PropValue::_3),
@@ -364,34 +364,25 @@ fn init_clients(
     mut clients: Query<
         (
             &mut Client,
-            &mut EntityLayerId,
-            &mut VisibleChunkLayer,
-            &mut VisibleEntityLayers,
+            &mut LayerId,
+            &mut VisibleLayers,
             &mut Position,
             &mut GameMode,
             &mut Health,
         ),
         Added<Client>,
     >,
-    main_layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
+    main_layers: Query<Entity, With<DimensionInfo>>,
     globals: Res<CtfGlobals>,
 ) {
-    for (
-        mut client,
-        mut layer_id,
-        mut visible_chunk_layer,
-        mut visible_entity_layers,
-        mut pos,
-        mut game_mode,
-        mut health,
-    ) in &mut clients
+    for (mut client, mut layer_id, mut visible_layers, mut pos, mut game_mode, mut health) in
+        &mut clients
     {
         let layer = main_layers.single();
 
         layer_id.0 = layer;
-        visible_chunk_layer.0 = layer;
-        visible_entity_layers.0.insert(layer);
-        visible_entity_layers.0.insert(globals.scoreboard_layer);
+        visible_layers.0.insert(layer);
+        visible_layers.0.insert(globals.scoreboard_layer);
         pos.set(SPAWN_POS);
         *game_mode = GameMode::Adventure;
         health.0 = PLAYER_MAX_HEALTH;
@@ -567,7 +558,7 @@ fn do_team_selector_portals(
     portals: Res<Portals>,
     mut commands: Commands,
     ctf_layers: Res<CtfLayers>,
-    main_layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
+    main_layers: Query<Entity, With<DimensionInfo>>,
 ) {
     for player in players.iter_mut() {
         let (
@@ -640,7 +631,7 @@ fn do_team_selector_portals(
             let mut flags = Flags::default();
             flags.set_glowing(true);
             let mut player_glowing = commands.spawn(PlayerEntityBundle {
-                layer: EntityLayerId(friendly_layer),
+                layer: LayerId(friendly_layer),
                 uuid: *unique_id,
                 entity_flags: flags,
                 position: *pos,
@@ -650,7 +641,7 @@ fn do_team_selector_portals(
 
             let enemy_layer = ctf_layers.enemy_layers[&team];
             let mut player_enemy = commands.spawn(PlayerEntityBundle {
-                layer: EntityLayerId(enemy_layer),
+                layer: LayerId(enemy_layer),
                 uuid: *unique_id,
                 position: *pos,
                 ..Default::default()
@@ -1013,17 +1004,12 @@ fn teleport_oob_clients(mut clients: Query<(&mut Position, &Team), With<Client>>
 
 /// Handles respawning dead players.
 fn necromancy(
-    mut clients: Query<(
-        &mut VisibleChunkLayer,
-        &mut RespawnPosition,
-        &Team,
-        &mut Health,
-    )>,
+    mut clients: Query<(&mut VisibleLayers, &mut RespawnPosition, &Team, &mut Health)>,
     mut events: EventReader<RequestRespawnEvent>,
-    layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
+    layers: Query<Entity, With<DimensionInfo>>,
 ) {
     for event in events.iter() {
-        if let Ok((mut visible_chunk_layer, mut respawn_pos, team, mut health)) =
+        if let Ok((mut visible_layers, mut respawn_pos, team, mut health)) =
             clients.get_mut(event.client)
         {
             respawn_pos.pos = team.spawn_pos().into();

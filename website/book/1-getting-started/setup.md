@@ -39,12 +39,12 @@ fn setup(
     biomes: Res<BiomeRegistry>,
     dimensions: Res<DimensionTypeRegistry>,
 ) {
-    let mut layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let mut layer = CombinedLayerBundle::new(Default::default(), &dimensions, &biomes, &server);
 
     // We have to add chunks to the world first, they start empty.
     for z in -5..5 {
         for x in -5..5 {
-            layer.chunk.insert_chunk([x, z], UnloadedChunk::new());
+            layer.chunk_index.insert([x, z], UnloadedChunk::new());
         }
     }
 
@@ -64,29 +64,20 @@ Now we need to handle clients when they join the server. Valence automatically s
 fn init_clients(
     mut clients: Query<
         (
-            &mut EntityLayerId,
-            &mut VisibleChunkLayer,
-            &mut VisibleEntityLayers,
+            &mut LayerId,
+            &mut VisibleLayers,
             &mut Position,
             &mut GameMode,
         ),
         Added<Client>,
     >,
-    layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
+    layers: Query<Entity, With<DimensionInfo>>,
 ) {
-    for (
-        mut layer_id,
-        mut visible_chunk_layer,
-        mut visible_entity_layers,
-        mut pos,
-        mut game_mode,
-    ) in &mut clients
-    {
+    for (mut layer_id, mut visible_layers, mut pos, mut game_mode) in &mut clients {
         let layer = layers.single();
 
         layer_id.0 = layer;
-        visible_chunk_layer.0 = layer;
-        visible_entity_layers.insert(layer);
+        visible_layers.insert(layer);
         pos.set([0.5, 65.0, 0.5]);
         *game_mode = GameMode::Creative;
     }

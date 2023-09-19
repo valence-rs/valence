@@ -2,6 +2,7 @@
 
 use valence::interact_block::InteractBlockEvent;
 use valence::prelude::*;
+use valence_server::dimension_layer::DimensionInfo;
 
 const SPAWN_Y: i32 = 64;
 const CHEST_POS: [i32; 3] = [0, SPAWN_Y + 1, 3];
@@ -10,15 +11,7 @@ pub fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
-        .add_systems(
-            Update,
-            (
-                init_clients,
-                toggle_gamemode_on_sneak,
-                open_chest,
-                despawn_disconnected_clients,
-            ),
-        )
+        .add_systems(Update, (init_clients, toggle_gamemode_on_sneak, open_chest))
         .run();
 }
 
@@ -28,11 +21,11 @@ fn setup(
     dimensions: Res<DimensionTypeRegistry>,
     biomes: Res<BiomeRegistry>,
 ) {
-    let mut layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let mut layer = CombinedLayerBundle::new(Default::default(), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {
-            layer.chunk.insert_chunk([x, z], Chunk::new());
+            layer.chunk_index.insert([x, z], Chunk::new());
         }
     }
 
@@ -44,7 +37,7 @@ fn setup(
         }
     }
 
-    layer.chunk.set_block(CHEST_POS, BlockState::CHEST);
+    layer.chunk_index.set_block(CHEST_POS, BlockState::CHEST);
 
     commands.spawn(layer);
 
@@ -59,24 +52,16 @@ fn setup(
 fn init_clients(
     mut clients: Query<
         (
-            &mut EntityLayerId,
-            &mut VisibleChunkLayer,
-            &mut VisibleEntityLayers,
+            &mut LayerId,
+            &mut VisibleLayers,
             &mut Position,
             &mut GameMode,
         ),
         Added<Client>,
     >,
-    layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
+    layers: Query<Entity, With<DimensionInfo>>,
 ) {
-    for (
-        mut layer_id,
-        mut visible_chunk_layer,
-        mut visible_entity_layers,
-        mut pos,
-        mut game_mode,
-    ) in &mut clients
-    {
+    for (mut layer_id, mut visible_layers, mut pos, mut game_mode) in &mut clients {
         let layer = layers.single();
 
         layer_id.0 = layer;

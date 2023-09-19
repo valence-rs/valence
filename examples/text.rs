@@ -2,6 +2,7 @@
 
 use valence::lang::keys;
 use valence::prelude::*;
+use valence_server::dimension_layer::DimensionInfo;
 
 const SPAWN_Y: i32 = 64;
 
@@ -9,7 +10,7 @@ pub fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
-        .add_systems(Update, (init_clients, despawn_disconnected_clients))
+        .add_systems(Update, init_clients)
         .run();
 }
 
@@ -19,18 +20,18 @@ fn setup(
     dimensions: Res<DimensionTypeRegistry>,
     biomes: Res<BiomeRegistry>,
 ) {
-    let mut layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let mut layer = CombinedLayerBundle::new(Default::default(), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {
-            layer.chunk.insert_chunk([x, z], Chunk::new());
+            layer.chunk_index.insert([x, z], Chunk::new());
         }
     }
 
     for z in -25..25 {
         for x in -25..25 {
             layer
-                .chunk
+                .chunk_index
                 .set_block([x, SPAWN_Y, z], BlockState::GRASS_BLOCK);
         }
     }
@@ -43,30 +44,20 @@ fn init_clients(
         (
             &mut Client,
             &mut Position,
-            &mut EntityLayerId,
-            &mut VisibleChunkLayer,
-            &mut VisibleEntityLayers,
+            &mut LayerId,
+            &mut VisibleLayers,
             &mut GameMode,
         ),
         Added<Client>,
     >,
-    layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
+    layers: Query<Entity, With<DimensionInfo>>,
 ) {
-    for (
-        mut client,
-        mut pos,
-        mut layer_id,
-        mut visible_chunk_layer,
-        mut visible_entity_layers,
-        mut game_mode,
-    ) in &mut clients
-    {
+    for (mut client, mut pos, mut layer_id, mut visible_layers, mut game_mode) in &mut clients {
         let layer = layers.single();
 
         pos.0 = [0.0, SPAWN_Y as f64 + 1.0, 0.0].into();
         layer_id.0 = layer;
-        visible_chunk_layer.0 = layer;
-        visible_entity_layers.0.insert(layer);
+        visible_layers.insert(layer);
         *game_mode = GameMode::Creative;
 
         client.send_chat_message("Welcome to the text example.".bold());

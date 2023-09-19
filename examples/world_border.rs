@@ -1,11 +1,12 @@
 #![allow(clippy::type_complexity)]
 
 use bevy_app::App;
-use valence::client::despawn_disconnected_clients;
 use valence::inventory::HeldItem;
 use valence::message::{ChatMessageEvent, SendMessage};
 use valence::prelude::*;
 use valence::world_border::*;
+use valence_server::dimension_layer::DimensionInfo;
+use valence_server::layer::message::LayerMessages;
 
 const SPAWN_Y: i32 = 64;
 
@@ -13,15 +14,7 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
-        .add_systems(
-            Update,
-            (
-                despawn_disconnected_clients,
-                init_clients,
-                border_controls,
-                display_diameter,
-            ),
-        )
+        .add_systems(Update, (init_clients, border_controls, display_diameter))
         .run();
 }
 
@@ -31,18 +24,18 @@ fn setup(
     biomes: Res<BiomeRegistry>,
     dimensions: Res<DimensionTypeRegistry>,
 ) {
-    let mut layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let mut layer = CombinedLayerBundle::new(Default::default(), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {
-            layer.chunk.insert_chunk([x, z], Chunk::new());
+            layer.chunk_index.insert([x, z], Chunk::new());
         }
     }
 
     for z in -25..25 {
         for x in -25..25 {
             layer
-                .chunk
+                .chunk_index
                 .set_block([x, SPAWN_Y, z], BlockState::MOSSY_COBBLESTONE);
         }
     }
@@ -63,32 +56,22 @@ fn init_clients(
     mut clients: Query<
         (
             &mut Client,
-            &mut EntityLayerId,
-            &mut VisibleChunkLayer,
-            &mut VisibleEntityLayers,
+            &mut LayerId,
+            &mut VisibleLayers,
             &mut Position,
             &mut Inventory,
             &HeldItem,
         ),
         Added<Client>,
     >,
-    layers: Query<Entity, With<ChunkLayer>>,
+    layers: Query<Entity, With<DimensionInfo>>,
 ) {
-    for (
-        mut client,
-        mut layer_id,
-        mut visible_chunk_layer,
-        mut visible_entity_layers,
-        mut pos,
-        mut inv,
-        main_slot,
-    ) in &mut clients
+    for (mut client, mut layer_id, mut visible_layers, mut pos, mut inv, main_slot) in &mut clients
     {
         let layer = layers.single();
 
         layer_id.0 = layer;
-        visible_chunk_layer.0 = layer;
-        visible_entity_layers.0.insert(layer);
+        visible_layers.0.insert(layer);
         pos.set([0.5, SPAWN_Y as f64 + 1.0, 0.5]);
         let pickaxe = ItemStack::new(ItemKind::WoodenPickaxe, 1, None);
         inv.set_slot(main_slot.slot(), pickaxe);
@@ -97,17 +80,17 @@ fn init_clients(
     }
 }
 
-fn display_diameter(mut layers: Query<(&mut ChunkLayer, &WorldBorderLerp)>) {
-    for (mut layer, lerp) in &mut layers {
+fn display_diameter(mut layers: Query<(&mut LayerMessages, &WorldBorderLerp)>) {
+    for (mut msgs, lerp) in &mut layers {
         if lerp.remaining_ticks > 0 {
-            layer.send_chat_message(format!("diameter = {}", lerp.current_diameter));
+            msgs.send_chat_message(format!("diameter = {}", lerp.current_diameter));
         }
     }
 }
 
 fn border_controls(
     mut events: EventReader<ChatMessageEvent>,
-    mut layers: Query<(&mut WorldBorderCenter, &mut WorldBorderLerp), With<ChunkLayer>>,
+    mut layers: Query<(&mut WorldBorderCenter, &mut WorldBorderLerp), With<DimensionInfo>>,
 ) {
     for x in events.iter() {
         let parts: Vec<&str> = x.message.split(' ').collect();

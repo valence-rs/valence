@@ -2,15 +2,13 @@ use std::f64::consts::TAU;
 
 use valence::prelude::*;
 use valence::weather::{Rain, Thunder, WeatherBundle};
+use valence_server::dimension_layer::DimensionInfo;
 
 pub fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
-        .add_systems(
-            Update,
-            (init_clients, despawn_disconnected_clients, change_weather),
-        )
+        .add_systems(Update, (init_clients, change_weather))
         .run();
 }
 
@@ -20,17 +18,19 @@ fn setup(
     dimensions: Res<DimensionTypeRegistry>,
     biomes: Res<BiomeRegistry>,
 ) {
-    let mut layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let mut layer = CombinedLayerBundle::new(Default::default(), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {
-            layer.chunk.insert_chunk([x, z], Chunk::new());
+            layer.chunk_index.insert([x, z], Chunk::new());
         }
     }
 
     for z in -25..25 {
         for x in -25..25 {
-            layer.chunk.set_block([x, 64, z], BlockState::GRASS_BLOCK);
+            layer
+                .chunk_index
+                .set_block([x, 64, z], BlockState::GRASS_BLOCK);
         }
     }
 
@@ -40,36 +40,27 @@ fn setup(
 fn init_clients(
     mut clients: Query<
         (
-            &mut EntityLayerId,
-            &mut VisibleChunkLayer,
-            &mut VisibleEntityLayers,
+            &mut LayerId,
+            &mut VisibleLayers,
             &mut Position,
             &mut GameMode,
         ),
         Added<Client>,
     >,
-    layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
+    layers: Query<Entity, With<DimensionInfo>>,
 ) {
-    for (
-        mut layer_id,
-        mut visible_chunk_layer,
-        mut visible_entity_layers,
-        mut pos,
-        mut game_mode,
-    ) in &mut clients
-    {
+    for (mut layer_id, mut visible_layers, mut pos, mut game_mode) in &mut clients {
         let layer = layers.single();
 
         layer_id.0 = layer;
-        visible_chunk_layer.0 = layer;
-        visible_entity_layers.0.insert(layer);
+        visible_layers.insert(layer);
         pos.set([0.0, 65.0, 0.0]);
         *game_mode = GameMode::Creative;
     }
 }
 
 fn change_weather(
-    mut layers: Query<(&mut Rain, &mut Thunder), With<ChunkLayer>>,
+    mut layers: Query<(&mut Rain, &mut Thunder), With<DimensionInfo>>,
     server: Res<Server>,
 ) {
     let period = 5.0;

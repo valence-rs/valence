@@ -11,6 +11,7 @@ use noise::{NoiseFn, SuperSimplex};
 use tracing::info;
 use valence::prelude::*;
 use valence::spawn::IsFlat;
+use valence_server::dimension_layer::DimensionInfo;
 
 const SPAWN_POS: DVec3 = DVec3::new(0.0, 200.0, 0.0);
 const HEIGHT: u32 = 384;
@@ -45,16 +46,13 @@ pub fn main() {
         .add_systems(Startup, setup)
         .add_systems(
             Update,
-            (
-                (
-                    init_clients,
-                    remove_unviewed_chunks,
-                    update_client_views,
-                    send_recv_chunks,
-                )
-                    .chain(),
-                despawn_disconnected_clients,
-            ),
+            ((
+                init_clients,
+                remove_unviewed_chunks,
+                update_client_views,
+                send_recv_chunks,
+            )
+                .chain(),),
         )
         .run();
 }
@@ -105,7 +103,7 @@ fn setup(
         receiver: finished_receiver,
     });
 
-    let layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let layer = CombinedLayerBundle::new(Default::default(), &dimensions, &biomes, &server);
 
     commands.spawn(layer);
 }
@@ -113,31 +111,21 @@ fn setup(
 fn init_clients(
     mut clients: Query<
         (
-            &mut EntityLayerId,
-            &mut VisibleChunkLayer,
-            &mut VisibleEntityLayers,
+            &mut LayerId,
+            &mut VisibleLayers,
             &mut Position,
             &mut GameMode,
             &mut IsFlat,
         ),
         Added<Client>,
     >,
-    layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
+    layers: Query<Entity, With<DimensionInfo>>,
 ) {
-    for (
-        mut layer_id,
-        mut visible_chunk_layer,
-        mut visible_entity_layers,
-        mut pos,
-        mut game_mode,
-        mut is_flat,
-    ) in &mut clients
-    {
+    for (mut layer_id, mut visible_layers, mut pos, mut game_mode, mut is_flat) in &mut clients {
         let layer = layers.single();
 
         layer_id.0 = layer;
-        visible_chunk_layer.0 = layer;
-        visible_entity_layers.0.insert(layer);
+        visible_layers.0.insert(layer);
         pos.set(SPAWN_POS);
         *game_mode = GameMode::Creative;
         is_flat.0 = true;

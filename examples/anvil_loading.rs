@@ -7,6 +7,7 @@ use valence::abilities::{FlyingSpeed, FovModifier, PlayerAbilitiesFlags};
 use valence::message::SendMessage;
 use valence::prelude::*;
 use valence_anvil::{AnvilLevel, ChunkLoadEvent, ChunkLoadStatus};
+use valence_server::dimension_layer::DimensionInfo;
 
 const SPAWN_POS: DVec3 = DVec3::new(0.0, 256.0, 0.0);
 
@@ -40,7 +41,6 @@ pub fn main() {
         .add_systems(
             Update,
             (
-                despawn_disconnected_clients,
                 (init_clients, handle_chunk_loads).chain(),
                 display_loaded_chunk_count,
             ),
@@ -55,7 +55,7 @@ fn setup(
     server: Res<Server>,
     cli: Res<Cli>,
 ) {
-    let layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let layer = CombinedLayerBundle::new(Default::default(), &dimensions, &biomes, &server);
     let mut level = AnvilLevel::new(&cli.path, &biomes);
 
     // Force a 16x16 area of chunks around the origin to be loaded at all times.
@@ -76,9 +76,8 @@ fn setup(
 fn init_clients(
     mut clients: Query<
         (
-            &mut EntityLayerId,
-            &mut VisibleChunkLayer,
-            &mut VisibleEntityLayers,
+            &mut LayerId,
+            &mut VisibleLayers,
             &mut Position,
             &mut GameMode,
             &mut PlayerAbilitiesFlags,
@@ -87,12 +86,11 @@ fn init_clients(
         ),
         Added<Client>,
     >,
-    layers: Query<Entity, With<ChunkLayer>>,
+    layers: Query<Entity, With<DimensionInfo>>,
 ) {
     for (
         mut layer_id,
-        mut visible_chunk_layer,
-        mut visible_entity_layers,
+        mut visible_layers,
         mut pos,
         mut game_mode,
         mut abilities,
@@ -103,8 +101,7 @@ fn init_clients(
         let layer = layers.single();
 
         layer_id.0 = layer;
-        visible_chunk_layer.0 = layer;
-        visible_entity_layers.0.insert(layer);
+        visible_layers.0.insert(layer);
         pos.set(SPAWN_POS);
         *game_mode = GameMode::Adventure;
         abilities.set_allow_flying(true);

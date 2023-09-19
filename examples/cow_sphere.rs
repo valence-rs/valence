@@ -6,6 +6,7 @@ use valence::abilities::{PlayerStartFlyingEvent, PlayerStopFlyingEvent};
 use valence::math::{DQuat, EulerRot};
 use valence::message::SendMessage;
 use valence::prelude::*;
+use valence_server::dimension_layer::DimensionInfo;
 use valence_text::color::NamedColor;
 
 type SpherePartBundle = valence::entity::cow::CowEntityBundle;
@@ -26,15 +27,7 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
-        .add_systems(
-            Update,
-            (
-                init_clients,
-                update_sphere,
-                despawn_disconnected_clients,
-                display_is_flying,
-            ),
-        )
+        .add_systems(Update, (init_clients, update_sphere, display_is_flying))
         .run();
 }
 
@@ -44,22 +37,22 @@ fn setup(
     dimensions: Res<DimensionTypeRegistry>,
     biomes: Res<BiomeRegistry>,
 ) {
-    let mut layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let mut layer = CombinedLayerBundle::new(Default::default(), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {
-            layer.chunk.insert_chunk([x, z], Chunk::new());
+            layer.chunk_index.insert([x, z], Chunk::new());
         }
     }
 
-    layer.chunk.set_block(SPAWN_POS, BlockState::BEDROCK);
+    layer.chunk_index.set_block(SPAWN_POS, BlockState::BEDROCK);
 
     let layer_id = commands.spawn(layer).id();
 
     commands.spawn_batch([0; SPHERE_AMOUNT].map(|_| {
         (
             SpherePartBundle {
-                layer: EntityLayerId(layer_id),
+                layer: LayerId(layer_id),
                 ..Default::default()
             },
             SpherePart,
@@ -70,29 +63,20 @@ fn setup(
 fn init_clients(
     mut clients: Query<
         (
-            &mut EntityLayerId,
-            &mut VisibleChunkLayer,
-            &mut VisibleEntityLayers,
+            &mut LayerId,
+            &mut VisibleLayers,
             &mut Position,
             &mut GameMode,
         ),
         Added<Client>,
     >,
-    layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
+    layers: Query<Entity, With<DimensionInfo>>,
 ) {
-    for (
-        mut layer_id,
-        mut visible_chunk_layer,
-        mut visible_entity_layers,
-        mut pos,
-        mut game_mode,
-    ) in &mut clients
-    {
+    for (mut layer_id, mut visible_layers, mut pos, mut game_mode) in &mut clients {
         let layer = layers.single();
 
         layer_id.0 = layer;
-        visible_chunk_layer.0 = layer;
-        visible_entity_layers.0.insert(layer);
+        visible_layers.0.insert(layer);
         pos.set([
             SPAWN_POS.x as f64 + 0.5,
             SPAWN_POS.y as f64 + 1.0,

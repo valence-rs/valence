@@ -4,6 +4,7 @@ use rand::seq::IteratorRandom;
 use rand::Rng;
 use valence::prelude::*;
 use valence::registry::biome::BiomeEffects;
+use valence_server::dimension_layer::DimensionInfo;
 use valence_server::BiomePos;
 
 const SPAWN_Y: i32 = 0;
@@ -13,10 +14,7 @@ pub fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
-        .add_systems(
-            Update,
-            (init_clients, despawn_disconnected_clients, set_biomes),
-        )
+        .add_systems(Update, (init_clients, set_biomes))
         .run();
 }
 
@@ -49,11 +47,11 @@ fn setup(
         biomes.insert(name, biome);
     }
 
-    let mut layer = LayerBundle::new(ident!("overworld"), &dimensions, &biomes, &server);
+    let mut layer = CombinedLayerBundle::new(Default::default(), &dimensions, &biomes, &server);
 
     for z in -SIZE..SIZE {
         for x in -SIZE..SIZE {
-            layer.chunk.insert_chunk([x, z], Chunk::new());
+            layer.chunk_index.insert([x, z], Chunk::new());
         }
     }
 
@@ -90,29 +88,20 @@ fn set_biomes(mut layers: Query<&mut ChunkLayer>, biomes: Res<BiomeRegistry>) {
 fn init_clients(
     mut clients: Query<
         (
-            &mut EntityLayerId,
-            &mut VisibleChunkLayer,
-            &mut VisibleEntityLayers,
+            &mut LayerId,
+            &mut VisibleLayers,
             &mut Position,
             &mut GameMode,
         ),
         Added<Client>,
     >,
-    layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
+    layers: Query<Entity, With<DimensionInfo>>,
 ) {
-    for (
-        mut layer_id,
-        mut visible_chunk_layer,
-        mut visible_entity_layers,
-        mut pos,
-        mut game_mode,
-    ) in &mut clients
-    {
+    for (mut layer_id, mut visible_layers, mut pos, mut game_mode) in &mut clients {
         let layer = layers.single();
 
         layer_id.0 = layer;
-        visible_chunk_layer.0 = layer;
-        visible_entity_layers.0.insert(layer);
+        visible_layers.0.insert(layer);
         pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
         *game_mode = GameMode::Creative;
     }

@@ -3,7 +3,7 @@ use valence_boss_bar::{
     BossBarTitle,
 };
 use valence_server::client::VisibleEntityLayers;
-use valence_server::entity::EntityLayerId;
+use valence_server::entity::LayerId;
 use valence_server::protocol::packets::play::BossBarS2c;
 use valence_server::text::IntoText;
 use valence_server::Despawned;
@@ -23,7 +23,7 @@ fn test_initialize_on_join() {
         .insert(BossBarBundle {
             title: BossBarTitle("Boss Bar".into_text()),
             health: BossBarHealth(0.5),
-            layer: EntityLayerId(scenario.layer),
+            layer: LayerId(scenario.layer),
             ..Default::default()
         });
 
@@ -183,7 +183,7 @@ fn prepare() -> ScenarioSingleClient {
     s.app.world.entity_mut(s.layer).insert(BossBarBundle {
         title: BossBarTitle("Boss Bar".into_text()),
         health: BossBarHealth(0.5),
-        layer: EntityLayerId(s.layer),
+        layer: LayerId(s.layer),
         ..Default::default()
     });
 

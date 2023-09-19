@@ -32,7 +32,6 @@ pub fn main() {
                 reset_clients.after(init_clients),
                 manage_chunks.after(reset_clients).before(manage_blocks),
                 manage_blocks,
-                despawn_disconnected_clients,
             ),
         )
         .run();
@@ -52,7 +51,7 @@ fn init_clients(
         (
             Entity,
             &mut Client,
-            &mut VisibleChunkLayer,
+            &mut VisibleLayers,
             &mut IsFlat,
             &mut GameMode,
         ),
