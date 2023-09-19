@@ -5,21 +5,20 @@ use valence_protocol::packets::play::player_action_c2s::PlayerAction;
 use valence_protocol::packets::play::{PlayerActionC2s, PlayerActionResponseS2c};
 use valence_protocol::{BlockPos, Direction, VarInt, WritePacket};
 
-use crate::client::Client;
+use crate::client::{Client, FlushPacketsSet};
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 
 pub struct ActionPlugin;
 
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct ActionSet;
+
 impl Plugin for ActionPlugin {
-    fn build(&self, _app: &mut App) {
-        /*
+    fn build(&self, app: &mut App) {
         app.add_event::<DiggingEvent>()
+            .configure_set(PostUpdate, ActionSet.before(FlushPacketsSet))
             .add_systems(EventLoopPreUpdate, handle_player_action)
-            .add_systems(
-                PostUpdate,
-                acknowledge_player_actions.in_set(UpdateClientsSet),
-            );
-        */
+            .add_systems(PostUpdate, acknowledge_player_actions.in_set(ActionSet));
     }
 }
 
