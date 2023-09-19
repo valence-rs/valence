@@ -25,6 +25,7 @@ use std::ops::Range;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+use bevy_ecs::schedule::SystemSet;
 use derive_more::{Deref, DerefMut};
 use tracing::{debug, warn};
 use valence_server::client::{Client, FlushPacketsSet, SpawnClientsSet};
@@ -44,36 +45,44 @@ mod validate;
 
 pub struct InventoryPlugin;
 
+#[derive(SystemSet, Clone, Copy, Eq, PartialEq, Hash, Debug)]
+pub struct InventorySet;
+
 impl Plugin for InventoryPlugin {
     fn build(&self, app: &mut bevy_app::App) {
-        app.add_systems(
-            PreUpdate,
-            init_new_client_inventories.after(SpawnClientsSet),
-        )
-        .add_systems(
-            PostUpdate,
-            (
-                update_client_on_close_inventory.before(update_open_inventories),
-                update_open_inventories,
-                update_player_inventories,
+        app.configure_set(PostUpdate, InventorySet.before(FlushPacketsSet))
+            .add_systems(
+                PreUpdate,
+                init_new_client_inventories
+                    .after(SpawnClientsSet)
+                    .in_set(InventorySet),
             )
-                .before(FlushPacketsSet),
-        )
-        .add_systems(
-            EventLoopPreUpdate,
-            (
-                handle_update_selected_slot,
-                handle_click_slot,
-                handle_creative_inventory_action,
-                handle_close_handled_screen,
-                handle_player_actions,
-            ),
-        )
-        .init_resource::<InventorySettings>()
-        .add_event::<ClickSlotEvent>()
-        .add_event::<DropItemStackEvent>()
-        .add_event::<CreativeInventoryActionEvent>()
-        .add_event::<UpdateSelectedSlotEvent>();
+            .add_systems(
+                PostUpdate,
+                (
+                    update_client_on_close_inventory.before(update_open_inventories),
+                    update_open_inventories,
+                    update_player_inventories,
+                )
+                    .before(FlushPacketsSet)
+                    .in_set(InventorySet),
+            )
+            .add_systems(
+                EventLoopPreUpdate,
+                (
+                    handle_update_selected_slot,
+                    handle_click_slot,
+                    handle_creative_inventory_action,
+                    handle_close_handled_screen,
+                    handle_player_actions,
+                )
+                    .in_set(InventorySet),
+            )
+            .init_resource::<InventorySettings>()
+            .add_event::<ClickSlotEvent>()
+            .add_event::<DropItemStackEvent>()
+            .add_event::<CreativeInventoryActionEvent>()
+            .add_event::<UpdateSelectedSlotEvent>();
     }
 }
 

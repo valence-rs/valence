@@ -9,6 +9,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+use bevy_ecs::schedule::SystemSet;
 use bevy_ecs::system::SystemParam;
 pub use bevy_hierarchy;
 use bevy_hierarchy::{Children, HierarchyPlugin, Parent};
@@ -27,21 +28,12 @@ use valence_server::{Ident, ItemStack, Text};
 pub struct AdvancementPlugin;
 
 #[derive(SystemSet, Clone, Copy, Eq, PartialEq, Hash, Debug)]
-pub struct WriteAdvancementPacketToClientsSet;
-
-#[derive(SystemSet, Clone, Copy, Eq, PartialEq, Hash, Debug)]
-pub struct WriteAdvancementToCacheSet;
+pub struct AdvancementSet;
 
 impl Plugin for AdvancementPlugin {
     fn build(&self, app: &mut bevy_app::App) {
         app.add_plugins(HierarchyPlugin)
-            .configure_sets(
-                PostUpdate,
-                (
-                    WriteAdvancementPacketToClientsSet.before(FlushPacketsSet),
-                    WriteAdvancementToCacheSet.before(WriteAdvancementPacketToClientsSet),
-                ),
-            )
+            .configure_set(PostUpdate, AdvancementSet.before(FlushPacketsSet))
             .add_event::<AdvancementTabChangeEvent>()
             .add_systems(
                 PreUpdate,
@@ -53,9 +45,10 @@ impl Plugin for AdvancementPlugin {
             .add_systems(
                 PostUpdate,
                 (
-                    update_advancement_cached_bytes.in_set(WriteAdvancementToCacheSet),
-                    send_advancement_update_packet.in_set(WriteAdvancementPacketToClientsSet),
-                ),
+                    update_advancement_cached_bytes.before(send_advancement_update_packet),
+                    send_advancement_update_packet,
+                )
+                    .in_set(AdvancementSet),
             );
     }
 }
