@@ -167,8 +167,13 @@ pub(super) fn validate_click_slot_packet(
                 if should_swap {
                     // assert that a swap occurs
                     ensure!(
-                        *old_slot == packet.carried_item
-                            && cursor_item.0 == packet.slot_changes[0].stack,
+                        // TODO: Patch for moving items with incorrect NBT Data.
+                        // The client has added NBT data to the item which does not exist
+                        // on the item in the inventory.
+                        old_slot.item == packet.carried_item.item &&
+                        old_slot.count == packet.carried_item.count &&
+
+                        cursor_item.0 == packet.slot_changes[0].stack,
                         "swapped items must match"
                     );
                 } else {
