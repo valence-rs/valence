@@ -167,9 +167,8 @@ pub(super) fn validate_click_slot_packet(
                 if should_swap {
                     // assert that a swap occurs
                     ensure!(
-                        // TODO: Patch for moving items with incorrect NBT Data.
-                        // The client has added NBT data to the item which does not exist
-                        // on the item in the inventory.
+                        // There are some cases where the client will add NBT data that 
+                        // did not previously exist.
                         old_slot.item == packet.carried_item.item
                             && old_slot.count == packet.carried_item.count
                             && cursor_item.0 == packet.slot_changes[0].stack,
