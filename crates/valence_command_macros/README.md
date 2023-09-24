@@ -5,7 +5,7 @@ Simplify the creation of Valence commands with a derive macro.
 ```rust
 #[derive(Command, Debug, Clone)]
 #[paths("teleport", "tp")]
-#[scopes("valence:command:teleport")]
+#[scopes("valence.command.teleport")]
 enum Teleport {
     #[paths = "{location}"]
     ExecutorToLocation { location: Vec3Parser },
@@ -25,7 +25,7 @@ enum Teleport {
 
 #[derive(Command, Debug, Clone)]
 #[paths("gamemode", "gm")]
-#[scopes("valence:command:gamemode")]
+#[scopes("valence.command.gamemode")]
 enum Gamemode {
     #[paths("survival", "{/} gms")]
     Survival,
@@ -39,7 +39,7 @@ enum Gamemode {
 
 #[derive(Command, Debug, Clone)]
 #[paths("test", "t")]
-#[scopes("valence:command:test")]
+#[scopes("valence.command.test")]
 #[allow(dead_code)]
 enum Test {
     // 3 literals with an arg each
@@ -102,3 +102,42 @@ can be used by anyone with the `valence:command:teleport`, `valence:command` or 
 
 The scopes attribute can have multiple values separated by commas, representing the different scopes that the command
 belongs to.
+
+## How do command graphs work anyway?
+
+This is the core of the command system. It is a graph of `CommandNode`s that are connected by the `CommandEdgeType`. The
+graph is used to determine what command to run when a command is entered. The graph is also used to generate the command
+tree that is sent to the client. You can think of it as a tree where each leaf is part of a command, and the path to the
+leaf is the command. See the documentation for `command.rs` in `valence_command` for more information.
+
+
+### Our teleport command from the example (made with graphviz)
+```text
+                                              ┌────────────────────────────────┐
+                                              │              Root              │ ─┐
+                                              └────────────────────────────────┘  │
+                                                │                                 │
+                                                │ Child                           │
+                                                ▼                                 │
+                                              ┌────────────────────────────────┐  │
+                                              │          Literal: tp           │  │
+                                              └────────────────────────────────┘  │
+                                                │                                 │
+                                                │ Redirect                        │ Child
+                                                ▼                                 ▼
+┌──────────────────────────────────┐  Child   ┌──────────────────────────────────────────────────────────────────────────────┐
+│  Argument: <destination:entity>  │ ◀─────── │                              Literal: teleport                               │
+└──────────────────────────────────┘          └──────────────────────────────────────────────────────────────────────────────┘
+                                                │                                           │
+                                                │ Child                                     │ Child
+                                                ▼                                           ▼
+┌──────────────────────────────────┐  Child   ┌────────────────────────────────┐          ┌──────────────────────────────────┐
+│ Argument: <destination:location> │ ◀─────── │   Argument: <target:entity>    │          │ Argument: <destination:location> │
+└──────────────────────────────────┘          └────────────────────────────────┘          └──────────────────────────────────┘
+                                                │
+                                                │ Child
+                                                ▼
+                                              ┌────────────────────────────────┐
+                                              │ Argument: <destination:entity> │
+                                              └────────────────────────────────┘
+```

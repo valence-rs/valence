@@ -17,17 +17,17 @@ use valence_server::EventLoopPreUpdate;
 
 use crate::graph::{CommandEdgeType, CommandGraph, CommandNode};
 use crate::parsers::ParseInput;
-use crate::scopes::CommandScopes;
+use crate::scopes::{CommandScopePlugin, CommandScopes};
 use crate::{CommandRegistry, CommandScopeRegistry, CommandSystemSet, ModifierValue};
 
 pub struct CommandPlugin;
 
 impl Plugin for CommandPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<CommandExecutionEvent>()
-            .add_event::<CommandProcessedEvent>();
-
-        app.add_systems(PreUpdate, insert_scope_component.after(SpawnClientsSet))
+        app.add_plugins(CommandScopePlugin)
+            .add_event::<CommandExecutionEvent>()
+            .add_event::<CommandProcessedEvent>()
+            .add_systems(PreUpdate, insert_scope_component.after(SpawnClientsSet))
             .add_systems(
                 EventLoopPreUpdate,
                 (
@@ -49,8 +49,6 @@ impl Plugin for CommandPlugin {
             parsers,
             executables,
         });
-
-        app.insert_resource(CommandScopeRegistry::new());
     }
 }
 

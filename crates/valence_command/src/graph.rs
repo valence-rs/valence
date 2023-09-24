@@ -1,4 +1,4 @@
-//! Command graph implementation
+//! # Command graph implementation
 //!
 //! This is the core of the command system. It is a graph of `CommandNode`s that
 //! are connected by the `CommandEdgeType`. The graph is used to determine what
@@ -84,7 +84,7 @@ use valence_server::protocol::VarInt;
 
 use crate::modifier_value::ModifierValue;
 use crate::parsers::{CommandArg, ParseInput};
-use crate::CommandRegistry;
+use crate::{CommandRegistry, CommandScopeRegistry};
 
 /// This struct is used to store the command graph. (see module level docs for
 /// more info)
@@ -261,10 +261,12 @@ pub struct CommandGraphBuilder<'a, T> {
     executables: &'a mut HashMap<NodeIndex, fn(&mut ParseInput) -> T>,
     parsers: &'a mut HashMap<NodeIndex, fn(&mut ParseInput) -> bool>,
     modifiers: &'a mut HashMap<NodeIndex, fn(String, &mut HashMap<ModifierValue, ModifierValue>)>,
+    scopes_added: Vec<String>, /* we need to keep track of added scopes so we can add them to
+                                * the registry later */
 }
 
 impl<'a, T> CommandGraphBuilder<'a, T> {
-    /// creates a new command graph builder
+    /// Creates a new command graph builder
     ///
     /// # Arguments
     /// * registry - the command registry to add the commands to
@@ -285,6 +287,7 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
             executables,
             parsers,
             modifiers,
+            scopes_added: Vec::new(),
         }
     }
 
@@ -413,7 +416,7 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
         self
     }
 
-    /// adds a modifier to the current node
+    /// Adds a modifier to the current node
     ///
     /// # Arguments
     /// * modifier - the modifier function to add
@@ -454,13 +457,12 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
         self
     }
 
-    /// sets the required scopes for the current node
+    /// Sets the required scopes for the current node
     ///
     /// # Arguments
     /// * scopes - a list of scopes for that are aloud to access a command node
-    ///   and its children
-    /// (list of strings following the system described in
-    /// [command_scopes](crate::scopes))
+    ///   and its children (list of strings following the system described in
+    ///   [command_scopes](crate::scopes))
     pub fn with_scopes(&mut self, scopes: Vec<impl Into<String>>) -> &mut Self {
         let graph = &mut self.graph.graph;
         let current_node = &mut self.current_node;
@@ -468,7 +470,20 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
         let node = graph.node_weight_mut(*current_node).unwrap();
 
         node.scopes = scopes.into_iter().map(|s| s.into()).collect();
+        self.scopes_added.extend(node.scopes.clone());
 
+        self
+    }
+
+    /// Applies the scopes to the registry
+    ///
+    /// # Arguments
+    /// * registry - the registry to apply the scopes to
+    pub fn apply_scopes(&mut self, registry: &mut CommandScopeRegistry) -> &mut Self {
+        for scope in self.scopes_added.clone() {
+            registry.add_scope(scope);
+        }
+        self.scopes_added.clear();
         self
     }
 

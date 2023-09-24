@@ -37,23 +37,49 @@
 //! );
 //! ```
 
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::fmt::{Debug, Formatter};
 
+use bevy_app::{App, Plugin, Update};
 use bevy_derive::{Deref, DerefMut};
-use bevy_ecs::prelude::Component;
-use bevy_ecs::system::Resource;
+use bevy_ecs::prelude::{Component, ResMut};
+use bevy_ecs::query::Changed;
+use bevy_ecs::system::{Query, Resource};
 use petgraph::dot;
 use petgraph::dot::Dot;
 use petgraph::prelude::*;
 
-/// Command scope Component for players. this is a list of scopes that a player
-/// has. if a player has a scope, they can use any command that requires
+pub struct CommandScopePlugin;
+
+impl Plugin for CommandScopePlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<CommandScopeRegistry>()
+            .add_systems(Update, add_new_scopes);
+    }
+}
+
+/// Command scope Component for players. This is a list of scopes that a player
+/// has. If a player has a scope, they can use any command that requires
 /// that scope.
 #[derive(
     Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, Component, Default, Deref, DerefMut,
 )]
-pub struct CommandScopes(pub Vec<String>);
+pub struct CommandScopes(pub BTreeSet<String>);
+
+/// This system makes it a bit easier to add new scopes to the registry without
+/// having to explicitly add them to the registry on app startup.
+fn add_new_scopes(
+    mut registry: ResMut<CommandScopeRegistry>,
+    scopes: Query<&CommandScopes, Changed<CommandScopes>>,
+) {
+    for scopes in scopes.iter() {
+        for scope in scopes.iter() {
+            if !registry.string_to_node.contains_key(scope) {
+                registry.add_scope(scope);
+            }
+        }
+    }
+}
 
 impl CommandScopes {
     /// create a new scope component
@@ -63,7 +89,7 @@ impl CommandScopes {
 
     /// add a scope to this component
     pub fn add(&mut self, scope: &str) {
-        self.0.push(scope.into());
+        self.0.insert(scope.into());
     }
 
     /// remove a scope from this component

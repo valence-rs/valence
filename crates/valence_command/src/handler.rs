@@ -12,7 +12,9 @@ use valence_server::EventLoopPreUpdate;
 use crate::graph::CommandGraphBuilder;
 use crate::modifier_value::ModifierValue;
 use crate::parsers::ParseInput;
-use crate::{Command, CommandProcessedEvent, CommandRegistry, CommandSystemSet};
+use crate::{
+    Command, CommandProcessedEvent, CommandRegistry, CommandScopeRegistry, CommandSystemSet,
+};
 
 impl<T> Plugin for CommandHandler<T>
 where
@@ -75,6 +77,7 @@ where
 
 fn command_startup_system<T>(
     mut registry: ResMut<CommandRegistry>,
+    mut scope_registry: ResMut<CommandScopeRegistry>,
     mut command: ResMut<CommandResource<T>>,
 ) where
     T: Command + Send + Sync + 'static,
@@ -89,6 +92,8 @@ fn command_startup_system<T>(
         &mut modifiers,
     );
     T::assemble_graph(graph_builder);
+
+    graph_builder.apply_scopes(&mut scope_registry);
     command.executables.extend(executables.clone());
     registry.parsers.extend(parsers);
     registry.modifiers.extend(modifiers);
