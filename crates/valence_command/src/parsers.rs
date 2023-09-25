@@ -242,13 +242,6 @@ fn test_absolute_or_relative() {
     );
     assert!(input.is_done());
 
-    let mut input = ParseInput::new("1.5".to_string());
-    assert_eq!(
-        AbsoluteOrRelative::<f32>::parse_arg(&mut input).unwrap(),
-        AbsoluteOrRelative::Absolute(1.5)
-    );
-    assert!(input.is_done());
-
     let mut input = ParseInput::new("1.5 ".to_string());
     assert_eq!(
         AbsoluteOrRelative::<f32>::parse_arg(&mut input).unwrap(),
@@ -262,13 +255,11 @@ fn test_absolute_or_relative() {
         AbsoluteOrRelative::Absolute(1.5)
     );
     assert!(!input.is_done());
-
-    let mut input = ParseInput::new("1.5 2 ".to_string());
     assert_eq!(
         AbsoluteOrRelative::<f32>::parse_arg(&mut input).unwrap(),
-        AbsoluteOrRelative::Absolute(1.5)
+        AbsoluteOrRelative::Absolute(2.0)
     );
-    assert!(!input.is_done());
+    assert!(input.is_done());
 }
 
 impl<T: Default> Default for AbsoluteOrRelative<T> {

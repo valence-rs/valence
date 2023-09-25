@@ -325,7 +325,9 @@ fn parse_command_args(
             NodeData::Literal { name } => {
                 match input.match_next(name) {
                     true => {
-                        input.pop(); // we want to pop the whitespace after the literal
+                        if !input.match_next(" ") && !input.is_done() {
+                            return false;
+                        } // we want to pop the whitespace after the literal
                         if command_registry.modifiers.contains_key(&current_node) {
                             modifiers_to_be_executed.push((current_node, String::new()));
                         }
