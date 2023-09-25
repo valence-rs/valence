@@ -160,6 +160,14 @@ fn place_blocks(
             }
         }
         let real_pos = event.position.get_in_direction(event.face);
-        layer.set_block(real_pos, block_kind.to_state());
+        let state = block_kind.to_state().set(
+            PropName::Axis,
+            match event.face {
+                Direction::Down | Direction::Up => PropValue::Y,
+                Direction::North | Direction::South => PropValue::Z,
+                Direction::West | Direction::East => PropValue::X,
+            },
+        );
+        layer.set_block(real_pos, state);
     }
 }
