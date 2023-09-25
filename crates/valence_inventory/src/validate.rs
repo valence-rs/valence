@@ -167,7 +167,10 @@ pub(super) fn validate_click_slot_packet(
                 if should_swap {
                     // assert that a swap occurs
                     ensure!(
-                        *old_slot == packet.carried_item
+                        // There are some cases where the client will add NBT data that
+                        // did not previously exist.
+                        old_slot.item == packet.carried_item.item
+                            && old_slot.count == packet.carried_item.count
                             && cursor_item.0 == packet.slot_changes[0].stack,
                         "swapped items must match"
                     );
@@ -355,6 +358,8 @@ fn calculate_net_item_delta(
 
 #[cfg(test)]
 mod tests {
+    use valence_server::nbt::Compound;
+    use valence_server::nbt::Value::Int;
     use valence_server::protocol::packets::play::click_slot_c2s::SlotChange;
     use valence_server::protocol::VarInt;
     use valence_server::{ItemKind, ItemStack};
@@ -458,6 +463,41 @@ mod tests {
             }]
             .into(),
             carried_item: inventory.slot(0).clone(),
+        };
+
+        validate_click_slot_packet(&packet, &player_inventory, Some(&inventory), &cursor_item)
+            .expect("packet should be valid");
+    }
+
+    #[test]
+    fn click_filled_slot_with_incorrect_nbt_and_empty_cursor_success() {
+        let player_inventory = Inventory::new(InventoryKind::Player);
+        let cursor_item = CursorItem(ItemStack::EMPTY);
+
+        let mut inventory = Inventory::new(InventoryKind::Generic9x1);
+        // Insert an item with no NBT data that should have NBT Data.
+        inventory.set_slot(0, ItemStack::new(ItemKind::DiamondPickaxe, 1, None));
+
+        // Proper NBT Compound
+        let mut compound = Compound::new();
+        compound.insert("Damage", Int(1));
+
+        let packet = ClickSlotC2s {
+            window_id: 1,
+            state_id: VarInt(0),
+            slot_idx: 0,
+            button: 0,
+            mode: ClickMode::Click,
+            slot_changes: vec![SlotChange {
+                idx: 0,
+                stack: ItemStack::EMPTY,
+            }]
+            .into(),
+            carried_item: ItemStack {
+                item: ItemKind::DiamondPickaxe,
+                count: 1,
+                nbt: Some(compound),
+            },
         };
 
         validate_click_slot_packet(&packet, &player_inventory, Some(&inventory), &cursor_item)

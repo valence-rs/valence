@@ -384,8 +384,7 @@ impl Region {
             )
         });
 
-        let mut used_sectors = bitvec::vec::BitVec::new();
-        used_sectors[0..2].fill(true);
+        let mut used_sectors = bitvec::vec::BitVec::repeat(true, 2);
         for location in locations {
             if location.is_none() {
                 // No chunk exists at this position.
@@ -690,6 +689,7 @@ impl Region {
         let end_index = sector_offset as usize + sector_count;
         if used_sectors.len() < end_index {
             used_sectors.resize(start_index, false);
+            used_sectors.resize(end_index, true);
         } else {
             used_sectors[start_index..end_index].fill(true);
         }

@@ -4,7 +4,8 @@ use std::mem;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use parking_lot::Mutex; // Using nonstandard mutex to avoid poisoning API.
-use valence_nbt::{compound, Compound};
+use valence_generated::block::{PropName, PropValue};
+use valence_nbt::{compound, Compound, Value};
 use valence_protocol::encode::{PacketWriter, WritePacket};
 use valence_protocol::packets::play::chunk_data_s2c::ChunkDataBlockEntity;
 use valence_protocol::packets::play::chunk_delta_update_s2c::ChunkDeltaUpdateEntry;
@@ -77,7 +78,6 @@ impl Section {
                 }
             }
         }
-
         count
     }
 }
@@ -121,7 +121,6 @@ impl LoadedChunk {
         self.changed_block_entities.clear();
         self.changed_biomes = false;
         self.cached_init_packets.get_mut().clear();
-
         self.assert_no_changes();
 
         UnloadedChunk {
@@ -292,6 +291,86 @@ impl LoadedChunk {
         self.assert_no_changes();
     }
 
+    /// Generates the `MOTION_BLOCKING` heightmap for this chunk, which stores
+    /// the height of the highest non motion-blocking block in each column.
+    ///
+    /// The lowest value of the heightmap is 0, which means that there are no
+    /// motion-blocking blocks in the column. In this case, rain will fall
+    /// through the void and there will be no rain particles.
+    ///
+    /// A value of 1 means that rain particles will appear at the lowest
+    /// possible height given by
+    /// [valence_registry::dimension_type::DimensionType::min_y]. Note that
+    /// blocks cannot be placed at `min_y - 1`.
+    ///
+    /// We take these two special cases into account by adding a value of 2 to
+    /// our heightmap if we find a motion-blocking block, since
+    /// `self.block_state(x, 0, z)` corresponds to the block at (x, min_y, z)
+    /// ingame.
+    #[allow(clippy::needless_range_loop)]
+    fn motion_blocking(&self) -> Vec<Vec<u32>> {
+        let mut heightmap: Vec<Vec<u32>> = vec![vec![0; 16]; 16];
+
+        for z in 0..16 {
+            for x in 0..16 {
+                for y in (0..self.height()).rev() {
+                    let state = self.block_state(x as u32, y, z as u32);
+                    if state.blocks_motion()
+                        || state.is_liquid()
+                        || state.get(PropName::Waterlogged) == Some(PropValue::True)
+                    {
+                        heightmap[z][x] = y + 2;
+                        break;
+                    }
+                }
+            }
+        }
+
+        heightmap
+    }
+
+    /// Encodes a given heightmap into the correct format of the
+    /// `ChunkDataS2c` packet.
+    ///
+    /// The heightmap values are stored in a long array. Each value is encoded
+    /// as a 9-bit unsigned integer, so every long with 64 bits can hold at
+    /// most seven values. The long is padded at the left side with a single
+    /// zero. Since there are 256 values for 256 columns in a chunk, there
+    /// will be 36 fully filled longs and one half-filled long with four
+    /// values. The remaining three values in the last long are left unused.
+    ///
+    /// For example, the `MOTION_BLOCKING` heightmap in an empty superflat
+    /// world is always 4. The first 36 long values will then be
+    ///
+    /// 0 000000100 000000100 000000100 000000100 000000100 000000100 000000100,
+    ///
+    /// and the last long will be
+    ///
+    /// 0 000000000 000000000 000000000 000000100 000000100 000000100 000000100.
+    fn encode_heightmap(heightmap: Vec<Vec<u32>>) -> Value {
+        const BITS_PER_ENTRY: u32 = 9;
+        const ENTRIES_PER_LONG: u32 = i64::BITS / BITS_PER_ENTRY;
+
+        // Unless `ENTRIES_PER_LONG` is a power of 2 and therefore evenly divides 16*16,
+        // we need to add one extra long to fit all values in the packet.
+        const LONGS_PER_PACKET: u32 =
+            16 * 16 / ENTRIES_PER_LONG + (16 * 16 % ENTRIES_PER_LONG != 0) as u32;
+
+        let mut encoded: Vec<i64> = vec![0; LONGS_PER_PACKET as usize];
+        let mut iter = heightmap.into_iter().flatten();
+
+        for long in encoded.iter_mut() {
+            for j in 0..ENTRIES_PER_LONG {
+                match iter.next() {
+                    None => break,
+                    Some(y) => *long += i64::from(y) << (BITS_PER_ENTRY * j),
+                }
+            }
+        }
+
+        Value::LongArray(encoded)
+    }
+
     /// Writes the packet data needed to initialize this chunk.
     pub(crate) fn write_init_packets(
         &self,
@@ -303,7 +382,9 @@ impl LoadedChunk {
 
         if init_packets.is_empty() {
             let heightmaps = compound! {
-                // TODO: MOTION_BLOCKING and WORLD_SURFACE heightmaps.
+                "MOTION_BLOCKING" => LoadedChunk::encode_heightmap(self.motion_blocking()),
+                // TODO Implement `WORLD_SURFACE` (or explain why we don't need it)
+                // "WORLD_SURFACE" => self.encode_heightmap(self.world_surface()),
             };
 
             let mut blocks_and_biomes: Vec<u8> = vec![];

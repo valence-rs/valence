@@ -1,13 +1,13 @@
 use std::borrow::Cow;
 
-use valence_math::DVec3;
+use valence_math::{DVec3, Vec3};
 
-use crate::{BlockPos, Decode, Encode, Packet, Velocity};
+use crate::{Decode, Encode, Packet};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 pub struct ExplosionS2c<'a> {
     pub pos: DVec3,
-    pub radius: f32,
-    pub affected_blocks: Cow<'a, [BlockPos]>,
-    pub player_velocity: Velocity,
+    pub strength: f32,
+    pub affected_blocks: Cow<'a, [[i8; 3]]>,
+    pub player_motion: Vec3,
 }
