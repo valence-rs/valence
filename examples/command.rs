@@ -1,5 +1,6 @@
 #![allow(clippy::type_complexity)]
 
+use rand::prelude::IteratorRandom;
 use std::ops::DerefMut;
 
 use command::graph::CommandGraphBuilder;
@@ -10,6 +11,7 @@ use command::scopes::CommandScopes;
 use command::{parsers, Command, CommandApp, CommandScopeRegistry, ModifierValue};
 use command_macros::Command;
 use parsers::{Vec2 as Vec2Parser, Vec3 as Vec3Parser};
+use valence::entity::living::LivingEntity;
 use valence::prelude::*;
 use valence::*;
 use valence_server::op_level::OpLevel;
@@ -40,14 +42,14 @@ enum Teleport {
 #[paths("gamemode", "gm")]
 #[scopes("valence.command.gamemode")]
 enum Gamemode {
-    #[paths("survival", "{/} gms")]
-    Survival,
-    #[paths("creative", "{/} gmc")]
-    Creative,
-    #[paths("adventure", "{/} gma")]
-    Adventure,
-    #[paths("spectator", "{/} gmsp")]
-    Spectator,
+    #[paths("survival {target?}", "{/} gms {target?}")]
+    Survival { target: Option<EntitySelector> },
+    #[paths("creative {target?}", "{/} gmc {target?}")]
+    Creative { target: Option<EntitySelector> },
+    #[paths("adventure {target?}", "{/} gma {target?}")]
+    Adventure { target: Option<EntitySelector> },
+    #[paths("spectator {target?}", "{/} gmspec {target?}")]
+    Spectator { target: Option<EntitySelector> },
 }
 
 #[derive(Command, Debug, Clone)]
@@ -171,133 +173,221 @@ pub fn main() {
         .run();
 }
 
+enum TeleportTarget {
+    Targets(Vec<Entity>),
+}
+
+#[derive(Debug)]
+enum TeleportDestination {
+    Location(Vec3Parser),
+    Target(Option<Entity>),
+}
+
 fn handle_teleport_command(
     mut events: EventReader<CommandResultEvent<Teleport>>,
-    mut clients: Query<(&mut Client, &mut Position)>,
+    living_entities: Query<Entity, With<LivingEntity>>,
+    mut clients: Query<(Entity, &mut Client)>,
+    entity_layers: Query<&EntityLayerId>,
+    mut positions: Query<&mut Position>,
     usernames: Query<(Entity, &Username)>,
 ) {
     for event in events.iter() {
-        match &event.result {
-            Teleport::ExecutorToLocation { location } => {
-                let (client, pos) = &mut clients.get_mut(event.executor).unwrap();
-                pos.0.x = location.x.get(pos.0.x as f32) as f64;
-                pos.0.y = location.y.get(pos.0.y as f32) as f64;
-                pos.0.z = location.z.get(pos.0.z as f32) as f64;
+        let compiled_command = match &event.result {
+            Teleport::ExecutorToLocation { location } => (
+                TeleportTarget::Targets(vec![event.executor]),
+                TeleportDestination::Location(*location),
+            ),
+            Teleport::ExecutorToTarget { target } => (
+                TeleportTarget::Targets(vec![event.executor]),
+                TeleportDestination::Target(
+                    find_targets(
+                        &living_entities,
+                        &mut clients,
+                        &positions,
+                        &entity_layers,
+                        &usernames,
+                        &event,
+                        target,
+                    )
+                    .first()
+                    .copied(),
+                ),
+            ),
+            Teleport::TargetToTarget { from, to } => (
+                TeleportTarget::Targets(
+                    find_targets(
+                        &living_entities,
+                        &mut clients,
+                        &positions,
+                        &entity_layers,
+                        &usernames,
+                        &event,
+                        from,
+                    )
+                    .to_vec(),
+                ),
+                TeleportDestination::Target(
+                    find_targets(
+                        &living_entities,
+                        &mut clients,
+                        &positions,
+                        &entity_layers,
+                        &usernames,
+                        &event,
+                        to,
+                    )
+                    .first()
+                    .copied(),
+                ),
+            ),
+            Teleport::TargetToLocation { target, location } => (
+                TeleportTarget::Targets(
+                    find_targets(
+                        &living_entities,
+                        &mut clients,
+                        &positions,
+                        &entity_layers,
+                        &usernames,
+                        &event,
+                        target,
+                    )
+                    .to_vec(),
+                ),
+                TeleportDestination::Location(*location),
+            ),
+        };
 
-                client.send_chat_message(format!(
-                    "Teleport command executor -> location executed with data:\n {:#?}",
-                    &event.result
-                ));
-            }
-            Teleport::ExecutorToTarget { target } => {
-                let raw_target = match target {
-                    EntitySelector::SimpleSelector(EntitySelectors::SinglePlayer(x)) => x,
-                    _ => "not implemented",
-                };
-                let target = usernames.iter().find(|(_, name)| name.0 == *raw_target);
+        let (TeleportTarget::Targets(targets), destination) = compiled_command;
 
-                match target {
-                    None => {
-                        let client = &mut clients.get_mut(event.executor).unwrap().0;
-                        client.send_chat_message(format!("Could not find target: {}", raw_target));
-                    }
-                    Some(target_entity) => {
-                        let target_pos = clients.get(target_entity.0).unwrap().1 .0;
-                        let pos = &mut clients.get_mut(event.executor).unwrap().1 .0;
-                        pos.x = target_pos.x;
-                        pos.y = target_pos.y;
-                        pos.z = target_pos.z;
-                    }
+        println!(
+            "executing teleport command {:#?} -> {:#?}",
+            targets, destination
+        );
+        match destination {
+            TeleportDestination::Location(location) => {
+                for target in targets {
+                    let mut pos = positions.get_mut(target).unwrap();
+                    pos.0.x = location.x.get(pos.0.x as f32) as f64;
+                    pos.0.y = location.y.get(pos.0.y as f32) as f64;
+                    pos.0.z = location.z.get(pos.0.z as f32) as f64;
                 }
-
-                let client = &mut clients.get_mut(event.executor).unwrap().0;
-                client.send_chat_message(format!(
-                    "Teleport command executor -> target executed with data:\n {:#?}",
-                    &event.result
-                ));
             }
-            Teleport::TargetToTarget { from, to } => {
-                let from_raw_target = match from {
-                    EntitySelector::SimpleSelector(EntitySelectors::SinglePlayer(x)) => x,
-                    _ => "not implemented",
-                };
-                let from_target = usernames
+            TeleportDestination::Target(target) => {
+                let target = target.unwrap();
+                let target_pos = **positions.get(target).unwrap();
+                for target in targets {
+                    let mut position = positions.get_mut(target).unwrap();
+                    position.0 = target_pos;
+                }
+            }
+        }
+    }
+}
+
+fn find_targets(
+    living_entities: &Query<Entity, With<LivingEntity>>,
+    clients: &mut Query<(Entity, &mut Client)>,
+    mut positions: &Query<&mut Position>,
+    entity_layers: &Query<&EntityLayerId>,
+    usernames: &Query<(Entity, &Username)>,
+    event: &&CommandResultEvent<Teleport>,
+    target: &EntitySelector,
+) -> Vec<Entity> {
+    match target {
+        EntitySelector::SimpleSelector(selector) => match selector {
+            EntitySelectors::AllEntities => {
+                let executor_entity_layer = *entity_layers.get(event.executor).unwrap();
+                living_entities
                     .iter()
-                    .find(|(_, name)| name.0 == *from_raw_target);
-                let to_raw_target = match to {
-                    EntitySelector::SimpleSelector(EntitySelectors::SinglePlayer(x)) => x,
-                    _ => "not implemented",
-                };
-                let to_target = usernames.iter().find(|(_, name)| name.0 == *to_raw_target);
-
-                let client = &mut clients.get_mut(event.executor).unwrap().0;
-                client.send_chat_message(format!(
-                    "Teleport command target -> location with data:\n {:#?}",
-                    &event.result
-                ));
-                match from_target {
-                    None => {
-                        client.send_chat_message(format!(
-                            "Could not find target: {}",
-                            from_raw_target
-                        ));
-                    }
-                    Some(from_target_entity) => match to_target {
-                        None => {
-                            client.send_chat_message(format!(
-                                "Could not find target: {}",
-                                to_raw_target
-                            ));
-                        }
-                        Some(to_target_entity) => {
-                            let target_pos = *clients.get(to_target_entity.0).unwrap().1;
-                            let (from_client, from_pos) =
-                                &mut clients.get_mut(from_target_entity.0).unwrap();
-                            from_pos.0 = target_pos.0;
-
-                            from_client.send_chat_message(format!(
-                                "You have been teleported to {}",
-                                to_target_entity.1
-                            ));
-
-                            let to_client = &mut clients.get_mut(to_target_entity.0).unwrap().0;
-                            to_client.send_chat_message(format!(
-                                "{} has been teleported to your location",
-                                from_target_entity.1
-                            ));
-                        }
-                    },
-                }
+                    .filter(|entity| {
+                        let entity_layer = entity_layers.get(*entity).unwrap();
+                        entity_layer.0 == executor_entity_layer.0
+                    })
+                    .collect()
             }
-            Teleport::TargetToLocation { target, location } => {
-                let raw_target = match target {
-                    EntitySelector::SimpleSelector(EntitySelectors::SinglePlayer(x)) => x,
-                    _ => "not implemented",
-                };
-                let target = usernames.iter().find(|(_, name)| name.0 == *raw_target);
-
-                let client = &mut clients.get_mut(event.executor).unwrap().0;
-                client.send_chat_message(format!(
-                    "Teleport command target -> location with data:\n {:#?}",
-                    &event.result
-                ));
+            EntitySelectors::SinglePlayer(name) => {
+                let target = usernames.iter().find(|(_, username)| username.0 == *name);
                 match target {
                     None => {
-                        client.send_chat_message(format!("Could not find target: {}", raw_target));
+                        let client = &mut clients.get_mut(event.executor).unwrap().1;
+                        client.send_chat_message(format!("Could not find target: {}", name));
+                        vec![]
                     }
                     Some(target_entity) => {
-                        let (client, pos) = &mut clients.get_mut(target_entity.0).unwrap();
-                        pos.0.x = location.x.get(pos.0.x as f32) as f64;
-                        pos.0.y = location.y.get(pos.0.y as f32) as f64;
-                        pos.0.z = location.z.get(pos.0.z as f32) as f64;
-
-                        client.send_chat_message(format!(
-                            "Teleport command executor -> location executed with data:\n {:#?}",
-                            &event.result
-                        ));
+                        vec![target_entity.0]
                     }
                 }
             }
+            EntitySelectors::AllPlayers => {
+                let executor_entity_layer = *entity_layers.get(event.executor).unwrap();
+                clients
+                    .iter_mut()
+                    .filter_map(|(entity, ..)| {
+                        let entity_layer = entity_layers.get(entity).unwrap();
+                        if entity_layer.0 == executor_entity_layer.0 {
+                            Some(entity)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+            }
+            EntitySelectors::SelfPlayer => {
+                vec![event.executor]
+            }
+            EntitySelectors::NearestPlayer => {
+                let executor_entity_layer = *entity_layers.get(event.executor).unwrap();
+                let executor_pos = positions.get(event.executor).unwrap();
+                let target = clients
+                    .iter_mut()
+                    .filter(|(entity, ..)| {
+                        *entity_layers.get(*entity).unwrap() == executor_entity_layer
+                    })
+                    .filter(|(target, ..)| *target != event.executor)
+                    .map(|(target, ..)| target)
+                    .min_by(|(target), (target2)| {
+                        let target_pos = positions.get(*target).unwrap();
+                        let target2_pos = positions.get(*target2).unwrap();
+                        let target_dist = target_pos.distance(**executor_pos);
+                        let target2_dist = target2_pos.distance(**executor_pos);
+                        target_dist.partial_cmp(&target2_dist).unwrap()
+                    });
+                match target {
+                    None => {
+                        let mut client = clients.get_mut(event.executor).unwrap().1;
+                        client.send_chat_message("Could not find target".to_string());
+                        vec![]
+                    }
+                    Some(target_entity) => {
+                        vec![target_entity]
+                    }
+                }
+            }
+            EntitySelectors::RandomPlayer => {
+                let executor_entity_layer = *entity_layers.get(event.executor).unwrap();
+                let target = clients
+                    .iter_mut()
+                    .filter(|(entity, ..)| {
+                        *entity_layers.get(*entity).unwrap() == executor_entity_layer
+                    })
+                    .choose(&mut rand::thread_rng())
+                    .map(|(target, ..)| target);
+                match target {
+                    None => {
+                        let mut client = clients.get_mut(event.executor).unwrap().1;
+                        client.send_chat_message("Could not find target".to_string());
+                        vec![]
+                    }
+                    Some(target_entity) => {
+                        vec![target_entity]
+                    }
+                }
+            }
+        },
+        EntitySelector::ComplexSelector(_, _) => {
+            let mut client = clients.get_mut(event.executor).unwrap().1;
+            client.send_chat_message("complex selector not implemented".to_string());
+            vec![]
         }
     }
 }
@@ -330,27 +420,147 @@ fn handle_complex_command(
 
 fn handle_gamemode_command(
     mut events: EventReader<CommandResultEvent<Gamemode>>,
-    mut clients: Query<(&mut Client, &mut GameMode)>,
+    mut clients: Query<(&mut Client, &mut GameMode, &Username, Entity)>,
+    mut positions: Query<&Position>,
 ) {
     for event in events.iter() {
-        let (mut client, mut gamemode) = clients.get_mut(event.executor).unwrap();
-        match event.result {
-            Gamemode::Adventure => {
-                *gamemode = GameMode::Adventure;
-                client.send_chat_message("Gamemode set to adventure");
+        let game_mode_to_set = match &event.result {
+            Gamemode::Survival { .. } => GameMode::Survival,
+            Gamemode::Creative { .. } => GameMode::Creative,
+            Gamemode::Adventure { .. } => GameMode::Adventure,
+            Gamemode::Spectator { .. } => GameMode::Spectator,
+        };
+
+        let selector = match &event.result {
+            Gamemode::Survival { target } => target.clone(),
+            Gamemode::Creative { target } => target.clone(),
+            Gamemode::Adventure { target } => target.clone(),
+            Gamemode::Spectator { target } => target.clone(),
+        };
+
+        match selector {
+            None => {
+                let (mut client, mut game_mode, ..) = clients.get_mut(event.executor).unwrap();
+                *game_mode = game_mode_to_set;
+                client.send_chat_message(format!(
+                    "Gamemode command executor -> self executed with data:\n {:#?}",
+                    &event.result
+                ));
             }
-            Gamemode::Creative => {
-                *gamemode = GameMode::Creative;
-                client.send_chat_message("Gamemode set to creative");
-            }
-            Gamemode::Spectator => {
-                *gamemode = GameMode::Spectator;
-                client.send_chat_message("Gamemode set to spectator");
-            }
-            Gamemode::Survival => {
-                *gamemode = GameMode::Survival;
-                client.send_chat_message("Gamemode set to survival");
-            }
+            Some(selector) => match selector {
+                EntitySelector::SimpleSelector(selector) => match selector {
+                    EntitySelectors::AllEntities => {
+                        for (mut client, mut game_mode, ..) in &mut clients.iter_mut() {
+                            *game_mode = game_mode_to_set;
+                            client.send_chat_message(format!(
+                                "Gamemode command executor -> all entities executed with data:\n {:#?}",
+                                &event.result
+                            ));
+                        }
+                    }
+                    EntitySelectors::SinglePlayer(name) => {
+                        let target = clients
+                            .iter_mut()
+                            .find(|(.., username, _)| username.0 == *name)
+                            .map(|(.., target)| target);
+
+                        match target {
+                            None => {
+                                let client = &mut clients.get_mut(event.executor).unwrap().0;
+                                client
+                                    .send_chat_message(format!("Could not find target: {}", name));
+                            }
+                            Some(target) => {
+                                let mut game_mode = clients.get_mut(target).unwrap().1;
+                                *game_mode = game_mode_to_set;
+
+                                let client = &mut clients.get_mut(event.executor).unwrap().0;
+                                client.send_chat_message(format!(
+                                    "Gamemode command executor -> single player executed with data:\n {:#?}",
+                                    &event.result
+                                ));
+                            }
+                        }
+                    }
+                    EntitySelectors::AllPlayers => {
+                        for (mut client, mut game_mode, ..) in &mut clients.iter_mut() {
+                            *game_mode = game_mode_to_set;
+                            client.send_chat_message(format!(
+                                "Gamemode command executor -> all entities executed with data:\n {:#?}",
+                                &event.result
+                            ));
+                        }
+                    }
+                    EntitySelectors::SelfPlayer => {
+                        let (mut client, mut game_mode, ..) =
+                            clients.get_mut(event.executor).unwrap();
+                        *game_mode = game_mode_to_set;
+                        client.send_chat_message(format!(
+                            "Gamemode command executor -> self executed with data:\n {:#?}",
+                            &event.result
+                        ));
+                    }
+                    EntitySelectors::NearestPlayer => {
+                        let executor_pos = positions.get(event.executor).unwrap();
+                        let target = clients
+                            .iter_mut()
+                            .filter(|(.., target)| *target != event.executor)
+                            .min_by(|(.., target), (.., target2)| {
+                                let target_pos = positions.get(*target).unwrap();
+                                let target2_pos = positions.get(*target2).unwrap();
+                                let target_dist = target_pos.distance(**executor_pos);
+                                let target2_dist = target2_pos.distance(**executor_pos);
+                                target_dist.partial_cmp(&target2_dist).unwrap()
+                            })
+                            .map(|(.., target)| target);
+
+                        match target {
+                            None => {
+                                let client = &mut clients.get_mut(event.executor).unwrap().0;
+                                client.send_chat_message("Could not find target".to_string());
+                            }
+                            Some(target) => {
+                                let mut game_mode = clients.get_mut(target).unwrap().1;
+                                *game_mode = game_mode_to_set;
+
+                                let client = &mut clients.get_mut(event.executor).unwrap().0;
+                                client.send_chat_message(format!(
+                                    "Gamemode command executor -> single player executed with data:\n {:#?}",
+                                    &event.result
+                                ));
+                            }
+                        }
+                    }
+                    EntitySelectors::RandomPlayer => {
+                        let target = clients
+                            .iter_mut()
+                            .choose(&mut rand::thread_rng())
+                            .map(|(.., target)| target);
+
+                        match target {
+                            None => {
+                                let client = &mut clients.get_mut(event.executor).unwrap().0;
+                                client.send_chat_message("Could not find target".to_string());
+                            }
+                            Some(target) => {
+                                let mut game_mode = clients.get_mut(target).unwrap().1;
+                                *game_mode = game_mode_to_set;
+
+                                let client = &mut clients.get_mut(event.executor).unwrap().0;
+                                client.send_chat_message(format!(
+                                    "Gamemode command executor -> single player executed with data:\n {:#?}",
+                                    &event.result
+                                ));
+                            }
+                        }
+                    }
+                },
+                EntitySelector::ComplexSelector(_, _) => {
+                    let client = &mut clients.get_mut(event.executor).unwrap().0;
+                    client
+                        .send_chat_message("Complex selectors are not implemented yet".to_string());
+                }
+            },
         }
     }
 }

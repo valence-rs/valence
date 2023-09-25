@@ -1,14 +1,14 @@
 //! Scope graph for the Valence Command system.
 //!
 //! ## Breakdown
-//! Each scope is a node in the graph. a path from one node to another indicates
-//! that the first scope implies the second. A colon in the scope name indicates
-//! a sub-scope. you can use this to create a hierarchy of scopes. for example,
+//! Each scope is a node in a graph. A path from one node to another indicates
+//! that the first scope implies the second. A dot in the scope name indicates
+//! a sub-scope. You can use this to create a hierarchy of scopes. For example,
 //! the scope "valence.command" implies "valence.command.tp". this means that if
 //! a player has the "valence.command" scope, they can use the "tp" command.
 //!
-//! You may also link scopes together in the registry. this is useful for admin
-//! scope umbrellas. for example, if the scope "valence.admin" is linked to
+//! You may also link scopes together in the registry. This is useful for admin
+//! scope umbrellas. For example, if the scope "valence.admin" is linked to
 //! "valence.command", It means that if a player has the "valence.admin" scope,
 //! they can use all commands under the command scope.
 //!
