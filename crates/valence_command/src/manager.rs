@@ -200,12 +200,12 @@ fn update_client_command_tree(
             }
             None => {
                 warn!(
-                    "Client has no permissions to execute any commands so we sent them nothing.\
-                It is generally a bad idea to scope the root node of the command graph as it can \
-                cause undefined behavior. For example, if the player has permission to execute \
-                a command before you change the scope of the root node, the packet will not be \
-                sent to the client and so the client will still think they can execute the \
-                command."
+                    "Client has no permissions to execute any commands so we sent them nothing.It \
+                     is generally a bad idea to scope the root node of the command graph as it \
+                     can cause undefined behavior. For example, if the player has permission to \
+                     execute a command before you change the scope of the root node, the packet \
+                     will not be sent to the client and so the client will still think they can \
+                     execute the command."
                 )
             }
         }

@@ -271,8 +271,8 @@ impl CommandScopeRegistry {
         false
     }
 
-    /// Create a link between two scopes so that one implies the other. It will add them if they
-    /// don't exist.
+    /// Create a link between two scopes so that one implies the other. It will
+    /// add them if they don't exist.
     ///
     /// # Example
     /// ```
