@@ -382,12 +382,7 @@ fn setup(
         }
     }
 
-    command_scopes.add_scope("valence:command:teleport");
-    command_scopes.add_scope("valence:command:gamemode");
-    command_scopes.add_scope("valence:command:test");
-    command_scopes.add_scope("valence:command:complex");
-    command_scopes.add_scope("valence:admin");
-    command_scopes.link("valence:admin", "valence:command");
+    command_scopes.link("valence.admin", "valence.command");
 
     commands.spawn(layer);
 }
@@ -427,6 +422,6 @@ fn init_clients(
         *game_mode = GameMode::Creative;
         op_level.set(4);
 
-        permissions.add("valence:admin");
+        permissions.add("valence.admin");
     }
 }

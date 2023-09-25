@@ -155,6 +155,9 @@ impl CommandScopeRegistry {
     /// ```
     pub fn add_scope(&mut self, scope: impl Into<String>) {
         let scope = scope.into();
+        if self.string_to_node.contains_key(&scope) {
+            return;
+        }
         let mut current_node = self.root;
         let mut prefix = String::new();
         for part in scope.split('.') {
@@ -270,10 +273,8 @@ impl CommandScopeRegistry {
         false
     }
 
-    /// Create a link between two scopes so that one implies the other.
-    ///
-    /// # Panics
-    /// Panics if either scope does not exist.
+    /// Create a link between two scopes so that one implies the other. It will add them if they
+    /// don't exist.
     ///
     /// # Example
     /// ```
@@ -291,16 +292,13 @@ impl CommandScopeRegistry {
     /// assert!(registry.grants("valence.admin", "valence.command.tp"));
     /// ```
     pub fn link(&mut self, scope: &str, other: &str) {
-        let scope_idx = *self
-            .string_to_node
-            .get(scope)
-            .unwrap_or_else(|| panic!("scope {scope} does not exist"));
-        let other_idx = *self
-            .string_to_node
-            .get(other)
-            .unwrap_or_else(|| panic!("scope {scope} does not exist"));
+        self.add_scope(scope);
+        self.add_scope(other);
 
-        self.graph.add_edge(scope_idx, other_idx, ());
+        let scope_idx = self.string_to_node.get(scope).unwrap();
+        let other_idx = self.string_to_node.get(other).unwrap();
+
+        self.graph.add_edge(*scope_idx, *other_idx, ());
     }
 
     /// Get the number of scopes in the registry.
