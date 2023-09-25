@@ -1,4 +1,6 @@
-# What's This?
+# Packet Inspector
+
+![packet inspector screenshot](https://raw.githubusercontent.com/valence-rs/valence/main/assets/packet-inspector.png)
 
 The packet inspector is a Minecraft proxy for viewing the contents of packets as
 they are sent/received. It uses Valence's protocol facilities to display packet
@@ -15,81 +17,25 @@ Firstly, we should have a server running that we're going to be
 proxying/inspecting.
 
 ```sh
-cargo r -r --example conway
+cargo r -r --example game_of_life
 ```
 
-Next up, we need to run the proxy server, this can be done in 2 different ways,
-either using the GUI application (default) or using the `--nogui` flag to log
-the packets to a terminal instance.
-
-To assist, `--help` will produce the following:
-
-```
-A simple Minecraft proxy for inspecting packets.
-
-Usage: packet_inspector [OPTIONS] [CLIENT_ADDR] [SERVER_ADDR]
-
-Arguments:
-  [CLIENT_ADDR]  The socket address to listen for connections on. This is the address clients should connect to
-  [SERVER_ADDR]  The socket address the proxy will connect to. This is the address of the server
-
-Options:
-  -m, --max-connections <MAX_CONNECTIONS>
-          The maximum number of connections allowed to the proxy. By default, there is no limit
-      --nogui
-          Disable the GUI. Logging to stdout
-  -i, --include-filter <INCLUDE_FILTER>
-          Only show packets that match the filter
-  -e, --exclude-filter <EXCLUDE_FILTER>
-          Hide packets that match the filter. Note: Only in effect if nogui is set
-  -h, --help
-          Print help
-  -V, --version
-          Print version
-```
-
-To launch in a Gui environment, simply launch `packet_inspector[.exe]` (or
-`cargo r -r -p packet_inspector` to run from source). The gui will prompt you
-for the `CLIENT_ADDR` and `SERVER_ADDR` if they have not been supplied via the
-command line arguments.
-
-In a terminal only environment, use the `--nogui` option and supply
-`CLIENT_ADDR` and `SERVER_ADDR` as arguments.
-
-```bash
-cargo r -r -p packet_inspector -- --nogui 127.0.0.1:25566 127.0.0.1:25565
-```
-
-The client must connect to `localhost:25566`. You should see the packets in
-`stdout` when running in `--nogui`, or you should see packets streaming in on
-the Gui.
-
-The `-i` and `-e` flags accept a regex to filter packets according to their
-name. The `-i` regex includes matching packets while the `-e` regex excludes
-matching packets. Do note that `-e` only applies in `--nogui` environment, as
-the Gui has a "packet selector" to enable/disable packets dynamically. The `-i`
-parameter value will be included in the `Filter` input field on the Gui.
-
-For instance, if you only want to print the packets `Foo`, `Bar`, and `Baz`, you
-can use a regex such as `^(Foo|Bar|Baz)$` with the `-i` flag.
+Next up, we need to run the proxy server, To launch in a GUI environment, simply run `packet_inspector`.
 
 ```sh
-cargo r -r -p packet_inspector -- --nogui 127.0.0.1:25566 127.0.0.1:25565 -i '^(Foo|Bar|Baz)$'
+cargo r -r -p packet_inspector
 ```
 
-Packets are printed to `stdout` while errors are printed to `stderr`. If you
-only want to see errors in your terminal, direct `stdout` elsewhere.
+Then click the "Start Listening" button in the top left of the UI.
 
-```sh
-cargo r -r -p packet_inspector -- --nogui 127.0.0.1:25566 127.0.0.1:25565 > log.txt
-```
+The client can now connect to `localhost:25566`. You should see packets streaming in on the GUI.
 
 ## Quick start with Vanilla Server via Docker
 
 Start the server
 
 ```sh
-docker run -e EULA=TRUE -e ONLINE_MODE=false -d -p 25565:25565 --name mc itzg/minecraft-server
+docker run -e EULA=TRUE -e ONLINE_MODE=false -e ANNOUNCE_PLAYER_ACHIEVEMENTS=false -e GENERATE_STRUCTURES=false -e SPAWN_ANIMALS=false -e SPAWN_MONSTERS=false -e SPAWN_NPCS=false -e SPAWN_PROTECTION=0 -e VIEW_DISTANCE=16 -e MODE=creative -e LEVEL_TYPE=flat -e RCON_CMDS_STARTUP="gamerule doWeatherCycle false" -d -p 25565:25565 --name mc itzg/minecraft-server
 ```
 
 View server logs
@@ -107,7 +53,7 @@ docker exec -i mc rcon-cli
 In a separate terminal, start the packet inspector.
 
 ```sh
-cargo r -r -p packet_inspector -- --nogui 127.0.0.1:25566 127.0.0.1:25565
+cargo r -r -p packet_inspector --no-default-features --features cli -- 127.0.0.1:25566 127.0.0.1:25565
 ```
 
 Open Minecraft and connect to `localhost:25566`.

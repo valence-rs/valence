@@ -1,0 +1,5 @@
+[files]
+extend-exclude = ["*.svg", "*.json"]
+
+[default]
+extend-ignore-re = ['\d+ths', 'CC BY-NC-ND']

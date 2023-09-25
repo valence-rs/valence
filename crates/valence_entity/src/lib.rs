@@ -16,26 +16,26 @@
     unreachable_pub,
     clippy::dbg_macro
 )]
+#![allow(clippy::type_complexity)]
 
-use std::num::Wrapping;
-use std::ops::Range;
+mod flags;
+pub mod hitbox;
+pub mod manager;
+pub mod query;
+pub mod tracked_data;
 
-use bevy_app::{App, CoreSet, Plugin};
+use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use glam::{DVec3, Vec3};
+use derive_more::{Deref, DerefMut};
+pub use manager::EntityManager;
 use paste::paste;
-use rustc_hash::FxHashMap;
 use tracing::warn;
-use uuid::Uuid;
-use valence_core::chunk_pos::ChunkPos;
-use valence_core::despawn::Despawned;
-use valence_core::packet::var_int::VarInt;
-use valence_core::packet::{Decode, Encode};
-use valence_core::uuid::UniqueId;
-use valence_core::DEFAULT_TPS;
+use tracked_data::TrackedData;
+use valence_math::{DVec3, Vec3};
+use valence_protocol::{Decode, Encode, VarInt};
+use valence_server_common::{Despawned, UniqueId};
 
 include!(concat!(env!("OUT_DIR"), "/entity.rs"));
-
 pub struct EntityPlugin;
 
 /// When new Minecraft entities are initialized and added to
@@ -43,11 +43,15 @@ pub struct EntityPlugin;
 ///
 /// Systems that need Minecraft entities to be in a valid state should run
 /// _after_ this set.
+///
+/// This set lives in [`PostUpdate`].
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct InitEntitiesSet;
 
 /// When tracked data is written to the entity's [`TrackedData`] component.
 /// Systems that modify tracked data should run _before_ this.
+///
+/// This set lives in [`PostUpdate`].
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct UpdateTrackedDataSet;
 
@@ -55,32 +59,38 @@ pub struct UpdateTrackedDataSet;
 /// Systems that need to observe changes to entities (Such as the difference
 /// between [`Position`] and [`OldPosition`]) should run _before_ this set (and
 /// probably after [`InitEntitiesSet`]).
+///
+/// This set lives in [`PostUpdate`].
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ClearEntityChangesSet;
 
 impl Plugin for EntityPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(EntityManager::new())
-            .configure_sets((
-                InitEntitiesSet.in_base_set(CoreSet::PostUpdate),
-                UpdateTrackedDataSet.in_base_set(CoreSet::PostUpdate),
-                ClearEntityChangesSet
-                    .after(InitEntitiesSet)
-                    .after(UpdateTrackedDataSet)
-                    .in_base_set(CoreSet::PostUpdate),
-            ))
+            .configure_sets(
+                PostUpdate,
+                (
+                    InitEntitiesSet,
+                    UpdateTrackedDataSet,
+                    ClearEntityChangesSet
+                        .after(InitEntitiesSet)
+                        .after(UpdateTrackedDataSet),
+                ),
+            )
             .add_systems(
-                (init_entities, remove_despawned_from_manager)
+                PostUpdate,
+                (remove_despawned_from_manager, init_entities)
                     .chain()
                     .in_set(InitEntitiesSet),
             )
             .add_systems(
+                PostUpdate,
                 (
                     clear_status_changes,
                     clear_animation_changes,
                     clear_tracked_data_changes,
                     update_old_position,
-                    update_old_location,
+                    update_old_layer_id,
                 )
                     .in_set(ClearEntityChangesSet),
             );
@@ -95,26 +105,29 @@ fn update_old_position(mut query: Query<(&Position, &mut OldPosition)>) {
     }
 }
 
-fn update_old_location(mut query: Query<(&Location, &mut OldLocation)>) {
+fn update_old_layer_id(mut query: Query<(&EntityLayerId, &mut OldEntityLayerId)>) {
     for (loc, mut old_loc) in &mut query {
         old_loc.0 = loc.0;
     }
 }
 
+fn remove_despawned_from_manager(
+    entities: Query<&EntityId, (With<EntityKind>, With<Despawned>)>,
+    mut manager: ResMut<EntityManager>,
+) {
+    for id in &entities {
+        manager.id_to_entity.remove(&id.0);
+    }
+}
+
 fn init_entities(
     mut entities: Query<
-        (
-            Entity,
-            &mut EntityId,
-            &mut UniqueId,
-            &Position,
-            &mut OldPosition,
-        ),
-        Added<EntityKind>,
+        (Entity, &mut EntityId, &Position, &mut OldPosition),
+        (Added<EntityKind>, Without<Despawned>),
     >,
     mut manager: ResMut<EntityManager>,
 ) {
-    for (entity, mut id, uuid, pos, mut old_pos) in &mut entities {
+    for (entity, mut id, pos, mut old_pos) in &mut entities {
         *old_pos = OldPosition::new(pos.0);
 
         if *id == EntityId::default() {
@@ -127,24 +140,6 @@ fn init_entities(
                 id.0
             );
         }
-
-        if let Some(conflict) = manager.uuid_to_entity.insert(uuid.0, entity) {
-            warn!(
-                "entity {entity:?} has conflicting UUID of {} with entity {conflict:?}",
-                uuid.0
-            );
-        }
-    }
-}
-
-#[allow(clippy::type_complexity)]
-fn remove_despawned_from_manager(
-    entities: Query<(&EntityId, &UniqueId), (With<EntityKind>, With<Despawned>)>,
-    mut manager: ResMut<EntityManager>,
-) {
-    for (id, uuid) in &entities {
-        manager.id_to_entity.remove(&id.0);
-        manager.uuid_to_entity.remove(&uuid.0);
     }
 }
 
@@ -168,61 +163,50 @@ fn clear_tracked_data_changes(mut tracked_data: Query<&mut TrackedData, Changed<
     }
 }
 
-/// Contains the `Instance` an entity is located in. For the coordinates
-/// within the instance, see [`Position`].
-#[derive(Component, Copy, Clone, PartialEq, Eq, Debug)]
-pub struct Location(pub Entity);
+/// Contains the entity layer an entity is on.
+#[derive(Component, Copy, Clone, PartialEq, Eq, Debug, Deref)]
+pub struct EntityLayerId(pub Entity);
 
-impl Default for Location {
+impl Default for EntityLayerId {
     fn default() -> Self {
         Self(Entity::PLACEHOLDER)
     }
 }
 
-impl PartialEq<OldLocation> for Location {
-    fn eq(&self, other: &OldLocation) -> bool {
+impl PartialEq<OldEntityLayerId> for EntityLayerId {
+    fn eq(&self, other: &OldEntityLayerId) -> bool {
         self.0 == other.0
     }
 }
 
-/// The value of [`Location`] from the end of the previous tick.
-///
-/// **NOTE**: You should not modify this component after the entity is spawned.
-#[derive(Component, Copy, Clone, PartialEq, Eq, Debug)]
-pub struct OldLocation(Entity);
+/// The value of [`EntityLayerId`] from the end of the previous tick.
+#[derive(Component, Copy, Clone, PartialEq, Eq, Debug, Deref)]
+pub struct OldEntityLayerId(Entity);
 
-impl OldLocation {
-    pub fn new(instance: Entity) -> Self {
-        Self(instance)
-    }
-
+impl OldEntityLayerId {
     pub fn get(&self) -> Entity {
         self.0
     }
 }
 
-impl Default for OldLocation {
+impl Default for OldEntityLayerId {
     fn default() -> Self {
         Self(Entity::PLACEHOLDER)
     }
 }
 
-impl PartialEq<Location> for OldLocation {
-    fn eq(&self, other: &Location) -> bool {
+impl PartialEq<EntityLayerId> for OldEntityLayerId {
+    fn eq(&self, other: &EntityLayerId) -> bool {
         self.0 == other.0
     }
 }
 
-#[derive(Component, Copy, Clone, PartialEq, Default, Debug)]
+#[derive(Component, Copy, Clone, PartialEq, Default, Debug, Deref, DerefMut)]
 pub struct Position(pub DVec3);
 
 impl Position {
     pub fn new(pos: impl Into<DVec3>) -> Self {
         Self(pos.into())
-    }
-
-    pub fn chunk_pos(&self) -> ChunkPos {
-        ChunkPos::from_dvec3(self.0)
     }
 
     pub fn get(self) -> DVec3 {
@@ -243,7 +227,7 @@ impl PartialEq<OldPosition> for Position {
 /// The value of [`Position`] from the end of the previous tick.
 ///
 /// **NOTE**: You should not modify this component after the entity is spawned.
-#[derive(Component, Copy, Clone, PartialEq, Default, Debug)]
+#[derive(Component, Clone, PartialEq, Default, Debug, Deref)]
 pub struct OldPosition(DVec3);
 
 impl OldPosition {
@@ -251,12 +235,8 @@ impl OldPosition {
         Self(pos.into())
     }
 
-    pub fn get(self) -> DVec3 {
+    pub fn get(&self) -> DVec3 {
         self.0
-    }
-
-    pub fn chunk_pos(self) -> ChunkPos {
-        ChunkPos::from_dvec3(self.0)
     }
 }
 
@@ -269,9 +249,18 @@ impl PartialEq<Position> for OldPosition {
 /// Describes the direction an entity is looking using pitch and yaw angles.
 #[derive(Component, Copy, Clone, PartialEq, Default, Debug)]
 pub struct Look {
-    /// The yaw angle in degrees.
+    /// The yaw angle in degrees, where:
+    /// - `-90` is looking east (towards positive x).
+    /// - `0` is looking south (towards positive z).
+    /// - `90` is looking west (towards negative x).
+    /// - `180` is looking north (towards negative z).
+    ///
+    /// Values -180 to 180 are also valid.
     pub yaw: f32,
-    /// The pitch angle in degrees.
+    /// The pitch angle in degrees, where:
+    /// - `-90` is looking straight up.
+    /// - `0` is looking straight ahead.
+    /// - `90` is looking straight down.
     pub pitch: f32,
 }
 
@@ -304,7 +293,7 @@ impl Look {
     }
 }
 
-#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug, Deref, DerefMut)]
 pub struct OnGround(pub bool);
 
 /// A Minecraft entity's ID according to the protocol.
@@ -314,7 +303,7 @@ pub struct OnGround(pub bool);
 /// something else on the tick the entity is added. If you need to know the ID
 /// ahead of time, set this component to the value returned by
 /// [`EntityManager::next_id`] before spawning.
-#[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Deref)]
 pub struct EntityId(i32);
 
 impl EntityId {
@@ -331,23 +320,22 @@ impl Default for EntityId {
     }
 }
 
-#[derive(Component, Copy, Clone, PartialEq, Default, Debug)]
+#[derive(Component, Copy, Clone, PartialEq, Default, Debug, Deref, DerefMut)]
 pub struct HeadYaw(pub f32);
 
 /// Entity velocity in m/s.
-#[derive(Component, Copy, Clone, Default, Debug)]
+#[derive(Component, Copy, Clone, Default, Debug, Deref, DerefMut)]
 pub struct Velocity(pub Vec3);
 
 impl Velocity {
-    pub fn to_packet_units(self) -> [i16; 3] {
-        // The saturating casts to i16 are desirable.
-        (8000.0 / DEFAULT_TPS.get() as f32 * self.0)
-            .to_array()
-            .map(|v| v as i16)
+    pub fn to_packet_units(self) -> valence_protocol::Velocity {
+        valence_protocol::Velocity::from_ms_f32(self.0.into())
     }
 }
 
-#[derive(Component, Copy, Clone, Default, Debug)]
+// TODO: don't make statuses and animations components.
+
+#[derive(Component, Copy, Clone, Default, Debug, Deref, DerefMut)]
 pub struct EntityStatuses(pub u64);
 
 impl EntityStatuses {
@@ -364,7 +352,7 @@ impl EntityStatuses {
     }
 }
 
-#[derive(Component, Default, Debug)]
+#[derive(Component, Default, Debug, Copy, Clone, Deref, DerefMut)]
 pub struct EntityAnimations(pub u8);
 
 impl EntityAnimations {
@@ -391,118 +379,8 @@ impl EntityAnimations {
 /// - **Falling Block**: Block state
 /// - **Fishing Bobber**: Hook entity ID
 /// - **Warden**: Initial pose
-#[derive(Component, Default, Debug)]
+#[derive(Component, Default, Debug, Deref, DerefMut)]
 pub struct ObjectData(pub i32);
-
-/// The range of packet bytes for this entity within the cell the entity is
-/// located in. For internal use only.
-#[derive(Component, Default, Debug)]
-pub struct PacketByteRange(pub Range<usize>);
-
-/// Cache for all the tracked data of an entity. Used for the
-/// [`EntityTrackerUpdateS2c`][packet] packet.
-///
-/// [packet]: valence_core::packet::s2c::play::EntityTrackerUpdateS2c
-#[derive(Component, Default, Debug)]
-pub struct TrackedData {
-    init_data: Vec<u8>,
-    /// A map of tracked data indices to the byte length of the entry in
-    /// `init_data`.
-    init_entries: Vec<(u8, u32)>,
-    update_data: Vec<u8>,
-}
-
-impl TrackedData {
-    /// Returns initial tracked data for the entity, ready to be sent in the
-    /// [`EntityTrackerUpdateS2c`][packet] packet. This is used when the entity
-    /// enters the view of a client.
-    ///
-    /// [packet]: valence_core::packet::s2c::play::EntityTrackerUpdateS2c
-    pub fn init_data(&self) -> Option<&[u8]> {
-        if self.init_data.len() > 1 {
-            Some(&self.init_data)
-        } else {
-            None
-        }
-    }
-
-    /// Contains updated tracked data for the entity, ready to be sent in the
-    /// [`EntityTrackerUpdateS2c`][packet] packet. This is used when tracked
-    /// data is changed and the client is already in view of the entity.
-    ///
-    /// [packet]: valence_core::packet::s2c::play::EntityTrackerUpdateS2c
-    pub fn update_data(&self) -> Option<&[u8]> {
-        if self.update_data.len() > 1 {
-            Some(&self.update_data)
-        } else {
-            None
-        }
-    }
-
-    pub fn insert_init_value(&mut self, index: u8, type_id: u8, value: impl Encode) {
-        debug_assert!(
-            index != 0xff,
-            "index of 0xff is reserved for the terminator"
-        );
-
-        self.remove_init_value(index);
-
-        self.init_data.pop(); // Remove terminator.
-
-        // Append the new value to the end.
-        let len_before = self.init_data.len();
-
-        self.init_data.extend_from_slice(&[index, type_id]);
-        if let Err(e) = value.encode(&mut self.init_data) {
-            warn!("failed to encode initial tracked data: {e:#}");
-        }
-
-        let len = self.init_data.len() - len_before;
-
-        self.init_entries.push((index, len as u32));
-
-        self.init_data.push(0xff); // Add terminator.
-    }
-
-    pub fn remove_init_value(&mut self, index: u8) -> bool {
-        let mut start = 0;
-
-        for (pos, &(idx, len)) in self.init_entries.iter().enumerate() {
-            if idx == index {
-                let end = start + len as usize;
-
-                self.init_data.drain(start..end);
-                self.init_entries.remove(pos);
-
-                return true;
-            }
-
-            start += len as usize;
-        }
-
-        false
-    }
-
-    pub fn append_update_value(&mut self, index: u8, type_id: u8, value: impl Encode) {
-        debug_assert!(
-            index != 0xff,
-            "index of 0xff is reserved for the terminator"
-        );
-
-        self.update_data.pop(); // Remove terminator.
-
-        self.update_data.extend_from_slice(&[index, type_id]);
-        if let Err(e) = value.encode(&mut self.update_data) {
-            warn!("failed to encode updated tracked data: {e:#}");
-        }
-
-        self.update_data.push(0xff); // Add terminator.
-    }
-
-    pub fn clear_update_values(&mut self) {
-        self.update_data.clear();
-    }
-}
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Encode, Decode)]
 pub struct VillagerData {
@@ -694,216 +572,5 @@ impl Decode<'_> for OptionalInt {
         } else {
             Some(n.wrapping_sub(1))
         }))
-    }
-}
-
-/// A [`Resource`] which maintains information about all spawned Minecraft
-/// entities.
-#[derive(Resource, Debug)]
-pub struct EntityManager {
-    /// Maps protocol IDs to ECS entities.
-    id_to_entity: FxHashMap<i32, Entity>,
-    uuid_to_entity: FxHashMap<Uuid, Entity>,
-    next_id: Wrapping<i32>,
-}
-
-impl EntityManager {
-    fn new() -> Self {
-        Self {
-            id_to_entity: FxHashMap::default(),
-            uuid_to_entity: FxHashMap::default(),
-            next_id: Wrapping(1), // Skip 0.
-        }
-    }
-
-    /// Returns the next unique entity ID and increments the counter.
-    pub fn next_id(&mut self) -> EntityId {
-        if self.next_id.0 == 0 {
-            warn!("entity ID overflow!");
-            // ID 0 is reserved for clients, so skip over it.
-            self.next_id.0 = 1;
-        }
-
-        let id = EntityId(self.next_id.0);
-
-        self.next_id += 1;
-
-        id
-    }
-
-    /// Gets the entity with the given entity ID.
-    pub fn get_by_id(&self, entity_id: i32) -> Option<Entity> {
-        self.id_to_entity.get(&entity_id).cloned()
-    }
-
-    /// Gets the entity with the given UUID.
-    pub fn get_by_uuid(&self, uuid: Uuid) -> Option<Entity> {
-        self.uuid_to_entity.get(&uuid).cloned()
-    }
-}
-
-// TODO: should `set_if_neq` behavior be the default behavior for setters?
-macro_rules! flags {
-    (
-        $(
-            $component:path {
-                $($flag:ident: $offset:literal),* $(,)?
-            }
-        )*
-
-    ) => {
-        $(
-            impl $component {
-                $(
-                    #[doc = "Gets the bit at offset "]
-                    #[doc = stringify!($offset)]
-                    #[doc = "."]
-                    #[inline]
-                    pub const fn $flag(&self) -> bool {
-                        (self.0 >> $offset) & 1 == 1
-                    }
-
-                    paste! {
-                        #[doc = "Sets the bit at offset "]
-                        #[doc = stringify!($offset)]
-                        #[doc = "."]
-                        #[inline]
-                        pub fn [< set_$flag >] (&mut self, $flag: bool) {
-                            self.0 = (self.0 & !(1 << $offset)) | (($flag as i8) << $offset);
-                        }
-                    }
-                )*
-            }
-        )*
-    }
-}
-
-flags! {
-    entity::Flags {
-        on_fire: 0,
-        sneaking: 1,
-        sprinting: 3,
-        swimming: 4,
-        invisible: 5,
-        glowing: 6,
-        fall_flying: 7,
-    }
-    persistent_projectile::ProjectileFlags {
-        critical: 0,
-        no_clip: 1,
-    }
-    living::LivingFlags {
-        using_item: 0,
-        off_hand_active: 1,
-        using_riptide: 2,
-    }
-    player::PlayerModelParts {
-        cape: 0,
-        jacket: 1,
-        left_sleeve: 2,
-        right_sleeve: 3,
-        left_pants_leg: 4,
-        right_pants_leg: 5,
-        hat: 6,
-    }
-    player::MainArm {
-        right: 0,
-    }
-    armor_stand::ArmorStandFlags {
-        small: 0,
-        show_arms: 1,
-        hide_base_plate: 2,
-        marker: 3,
-    }
-    mob::MobFlags {
-        ai_disabled: 0,
-        left_handed: 1,
-        attacking: 2,
-    }
-    bat::BatFlags {
-        hanging: 0,
-    }
-    abstract_horse::HorseFlags {
-        tamed: 1,
-        saddled: 2,
-        bred: 3,
-        eating_grass: 4,
-        angry: 5,
-        eating: 6,
-    }
-    fox::FoxFlags {
-        sitting: 0,
-        crouching: 2,
-        rolling_head: 3,
-        chasing: 4,
-        sleeping: 5,
-        walking: 6,
-        aggressive: 7,
-    }
-    panda::PandaFlags {
-        sneezing: 1,
-        playing: 2,
-        sitting: 3,
-        lying_on_back: 4,
-    }
-    tameable::TameableFlags {
-        sitting_pose: 0,
-        tamed: 2,
-    }
-    iron_golem::IronGolemFlags {
-        player_created: 0,
-    }
-    snow_golem::SnowGolemFlags {
-        has_pumpkin: 4,
-    }
-    blaze::BlazeFlags {
-        fire_active: 0,
-    }
-    vex::VexFlags {
-        charging: 0,
-    }
-    spider::SpiderFlags {
-        climbing_wall: 0,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn insert_remove_init_tracked_data() {
-        let mut td = TrackedData::default();
-
-        td.insert_init_value(0, 3, "foo");
-        td.insert_init_value(10, 6, "bar");
-        td.insert_init_value(5, 9, "baz");
-
-        assert!(td.remove_init_value(10));
-        assert!(!td.remove_init_value(10));
-
-        // Insertion overwrites value at index 0.
-        td.insert_init_value(0, 64, "quux");
-
-        assert!(td.remove_init_value(0));
-        assert!(td.remove_init_value(5));
-
-        assert!(td.init_data.as_slice().is_empty() || td.init_data.as_slice() == [0xff]);
-        assert!(td.init_data().is_none());
-
-        assert!(td.update_data.is_empty());
-    }
-
-    #[test]
-    fn get_set_flags() {
-        let mut flags = entity::Flags(0);
-
-        flags.set_on_fire(true);
-        let before = flags.clone();
-        assert_ne!(flags.0, 0);
-        flags.set_on_fire(true);
-        assert_eq!(before, flags);
-        flags.set_on_fire(false);
-        assert_eq!(flags.0, 0);
     }
 }

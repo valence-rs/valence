@@ -1,0 +1,176 @@
+{% import "_macros.html" as macros %}
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+  <head>
+    <meta charset="UTF-8" />
+    <title>{% block title %}{{ config.title }}{% endblock title %}</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    {% block favicon %}
+    <link rel="icon" href="{{ config.base_url }}favicon.ico" />
+    {% endblock favicon %} {% include "_variables.html" %} {% block fonts %}
+    <link
+      href="https://fonts.googleapis.com/css?family=Alfa+Slab+One&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css?family=Fira+Sans:400,500,600&display=swap"
+      rel="stylesheet"
+  />
+  {% endblock fonts %}
+  <link rel="stylesheet" href="{{ get_url(path="prism.css") }}" />
+  <link rel="stylesheet" href="{{ get_url(path="normalize.css") }}" />
+  <link rel="stylesheet" href="{{ get_url(path="juice.css") }}" />
+  <link rel="stylesheet" href="{{ get_url(path="syntax-theme.css") }}" />
+</head>
+<body>
+  {% block header %}
+
+  <header style="background-color: transparent;">
+    {{ macros::render_header() }}
+  </header>
+
+  <div class="hero">
+    {% block hero %}
+      <script async defer src="https://buttons.github.io/buttons.js"></script>
+      <section class="text-center">
+        <h1
+          class="heading-text"
+          style="font-size: 50px; color: var(--header-text-color); font-weight: 900; letter-spacing: .4px;"
+        >
+          Minecraft servers for the modern age
+        </h1>
+        <h3 class="title-text" style="color: #c87b07; font-weight: 100; letter-spacing: .3px;">
+          Valence is a Rust framework for building modular and high performance Minecraft servers.
+        </h3>
+        <div>
+          <a href="https://github.com/valence-rs/valence"
+            ><img
+              class="badge"
+              alt="GitHub Repo stars"
+              src="https://img.shields.io/github/stars/valence-rs/valence?&logo=github&label=Star&color=%23FF9A00"
+          /></a>
+          <a href="https://crates.io/crates/valence"
+            ><img
+              class="badge"
+              alt="GitHub release (with filter)"
+              src="https://img.shields.io/crates/v/valence?logo=Rust&label=Version&color=%23FF9A00"
+          /></a>
+          <a href="https://discord.gg/8Fqqy9XrYb"
+            ><img
+              class="badge"
+              alt="Discord"
+              src="https://img.shields.io/discord/998132822239870997?logo=discord&logoColor=white&label=Valence&color=%23FF9A00"
+          /></a>
+        </div>
+        <a
+          href="{{ config.base_url }}book/"
+          class="title-text box-shadow button"
+          >Quick Start</a
+        >
+      </section>
+      <script src="prism.js"></script>
+      <div class="hero-code">
+        <pre
+          data-file="main.rs"
+        ><code class="language-rust">
+
+fn pause_on_crouch(
+    mut events: EventReader&ltSneakEvent&gt,
+    mut board: ResMut&ltLifeBoard&gt,
+    mut layers: Query&lt&mut EntityLayer&gt,
+) {
+    for event in events.iter() {
+        if event.state == SneakState::Start {
+            let mut layer = layers.single_mut();
+
+            if board.playing {
+                board.playing = false;
+                layer.set_action_bar("Paused".italic().color(Color::RED));
+            } else {
+                board.playing = true;
+                layer.set_action_bar("Playing".italic().color(Color::GREEN));
+            }
+        }
+    }
+}</code></pre>
+      </div>
+
+      <style>
+        .hero section {
+          padding: 0 5rem;
+        }
+
+        .badge {
+          height: 23px;
+          margin: 0.1rem;
+        }
+
+        .button {
+          display: inline-block;
+          width: 15rem;
+          margin: 2rem;
+          background-color: var(--header-text-color);
+          border-radius: 10px;
+          color: var(--primary-color);
+          border: none;
+          line-height: 1.7;
+          cursor: pointer;
+          opacity: 1;
+          transition: all ease-out 0.15s;
+        }
+
+        .button:hover {
+          opacity: 0.9;
+        }
+      </style>
+      {% endblock hero %}
+    </div>
+
+    {% endblock header %}
+
+    <main>
+      {% block toc %} {% if section.toc %} {% set toc = section.toc %} {% elif
+      page.toc %} {% set toc = page.toc %} {% endif %} {% if toc %}
+      <div class="toc">
+        <div class="toc-sticky">
+          {% for h in toc %}
+          <div class="toc-item">
+            <a class="subtext" href="{{h.permalink | safe}}">{{ h.title }}</a>
+          </div>
+          {% if h.children %} {% for h2 in h.children %}
+          <div class="toc-item-child">
+            <a class="subtext" href="{{h2.permalink | safe}}"
+              ><small>- {{ h2.title }}</small></a
+            >
+          </div>
+          {% endfor %} {% endif %} {% endfor %}
+        </div>
+      </div>
+      {% endif %} {% endblock toc %}
+
+      <div class="content text">
+        {% block content %}
+        <div id="features" class="heading-text">Overview</div>
+        {{ section.content | safe }} {% endblock content %}
+      </div>
+
+      {% block sidebar %} {% endblock sidebar %}
+    </main>
+    {% block footer %}
+    <footer>
+      <small class="subtext">
+        <a href="https://crates.io/crates/valence">Crates.io</a>
+        <a href="https://docs.rs/valence">Docs.rs</a>
+        <a
+          href="https://github.com/valence-rs/valence/blob/main/CODE_OF_CONDUCT.md"
+          >Code of Conduct</a
+        >
+        <span>© 2023</span>
+      </small>
+    </footer>
+    {% endblock footer %}
+  </body>
+</html>

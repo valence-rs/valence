@@ -1,14 +1,14 @@
 //! Put stuff in here if you find that you have to write the same code for
 //! multiple playgrounds.
 
-use valence::client::command::{SneakState, Sneaking};
+use valence::client_command::{SneakEvent, SneakState};
 use valence::prelude::*;
 
 /// Toggles client's game mode between survival and creative when they start
 /// sneaking.
 pub fn toggle_gamemode_on_sneak(
     mut clients: Query<&mut GameMode>,
-    mut events: EventReader<Sneaking>,
+    mut events: EventReader<SneakEvent>,
 ) {
     for event in events.iter() {
         if event.state == SneakState::Start {

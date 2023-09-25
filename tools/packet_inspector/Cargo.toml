@@ -1,35 +1,41 @@
 [package]
 name = "packet_inspector"
+description = "A simple Minecraft proxy for inspecting packets."
 version.workspace = true
 edition.workspace = true
-description = "A simple Minecraft proxy for inspecting packets."
-
-[features]
-default = ["syntax_highlighting"]
-syntax_highlighting = ["syntect"]
+repository.workspace = true
+documentation.workspace = true
+license.workspace = true
+publish = false
 
 [dependencies]
+valence_protocol = { workspace = true, features = ["compression"] }
 anyhow.workspace = true
-atty.workspace = true
+thiserror.workspace = true
 bytes.workspace = true
-clap.workspace = true
-directories.workspace = true
-eframe = { workspace = true, default-features = false, features = [
-    "default_fonts", # Embed the default egui fonts.
-    "glow",          # Use the glow rendering backend. Alternative: "wgpu".
-] }
+flate2.workspace = true
+flume.workspace = true
+tokio = { workspace = true, features = ["full"] }
+tracing.workspace = true
+time = { workspace = true, features = ["local-offset"] }
+image.workspace = true
 egui.workspace = true
-enum-map.workspace = true
-owo-colors.workspace = true
-regex.workspace = true
-rfd.workspace = true
-serde = { workspace = true, features = ["derive"] }
-syntect = { workspace = true, optional = true, default-features = false, features = [
+eframe = { workspace = true, features = [
+    "persistence",
+    "wgpu",
+] }
+egui_dock = { workspace = true, features = ["serde"] }
+itertools.workspace = true
+syntect = { workspace = true, default-features = false, features = [
     "default-fancy",
 ] }
-time = { workspace = true, features = ["local-offset"] }
-tokio.workspace = true
-toml.workspace = true
-tracing-subscriber.workspace = true
-valence_nbt = { workspace = true, features = ["preserve_order"] }
-valence_core = { workspace = true, features = ["compression"] }
+serde = { workspace = true, features = ["derive"] }
+
+[build-dependencies]
+syn.workspace = true
+anyhow.workspace = true
+proc-macro2.workspace = true
+quote.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+valence_build_utils.workspace = true

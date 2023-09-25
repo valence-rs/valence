@@ -7,6 +7,7 @@ import net.minecraft.registry.Registries;
 import net.minecraft.item.VerticallyAttachableBlockItem;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.EmptyBlockView;
+
 import rs.valence.extractor.Main;
 import rs.valence.extractor.mixin.ExposeWallBlock;
 
@@ -69,7 +70,9 @@ public class Blocks implements Main.Extractor {
                 stateJson.addProperty("id", id);
                 stateJson.addProperty("luminance", state.getLuminance());
                 stateJson.addProperty("opaque", state.isOpaque());
-                stateJson.addProperty("replaceable", state.getMaterial().isReplaceable());
+                stateJson.addProperty("replaceable", state.isReplaceable());
+                // TODO `blocksMovement` seems to be deprecated. How else can one get this property?
+                stateJson.addProperty("blocks_motion", state.blocksMovement());
 
                 if (block.getDefaultState().equals(state)) {
                     blockJson.addProperty("default_state_id", id);

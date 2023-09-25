@@ -19,28 +19,36 @@
 
 mod byte_channel;
 mod connect;
+mod legacy_ping;
 mod packet_io;
 
+use std::borrow::Cow;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::Context;
 pub use async_trait::async_trait;
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use connect::do_accept_loop;
+pub use connect::HandshakeData;
 use flume::{Receiver, Sender};
+pub use legacy_ping::{ServerListLegacyPingPayload, ServerListLegacyPingResponse};
 use rand::rngs::OsRng;
-use rsa::{PublicKeyParts, RsaPrivateKey};
+use rsa::traits::PublicKeyParts;
+use rsa::RsaPrivateKey;
 use serde::Serialize;
+use tokio::net::UdpSocket;
 use tokio::runtime::{Handle, Runtime};
 use tokio::sync::Semaphore;
+use tokio::time;
 use tracing::error;
 use uuid::Uuid;
-use valence_client::{ClientBundle, ClientBundleArgs, Properties, SpawnClientsSet};
-use valence_core::text::Text;
-use valence_core::Server;
+use valence_protocol::text::IntoText;
+use valence_server::client::{ClientBundle, ClientBundleArgs, Properties, SpawnClientsSet};
+use valence_server::{CompressionThreshold, Server, Text, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
 pub struct NetworkPlugin;
 
@@ -53,7 +61,7 @@ impl Plugin for NetworkPlugin {
 }
 
 fn build_plugin(app: &mut App) -> anyhow::Result<()> {
-    let compression_threshold = app
+    let threshold = app
         .world
         .get_resource::<Server>()
         .context("missing server resource")?
@@ -93,7 +101,7 @@ fn build_plugin(app: &mut App) -> anyhow::Result<()> {
         player_count: AtomicUsize::new(0),
         max_players: settings.max_players,
         connection_mode: settings.connection_mode.clone(),
-        compression_threshold,
+        threshold,
         tokio_handle,
         _tokio_runtime: runtime,
         new_clients_send,
@@ -113,6 +121,12 @@ fn build_plugin(app: &mut App) -> anyhow::Result<()> {
         tokio::spawn(do_accept_loop(shared.clone()));
     };
 
+    let start_broadcast_to_lan_loop = move |shared: Res<SharedNetworkState>| {
+        let _guard = shared.0.tokio_handle.enter();
+
+        tokio::spawn(do_broadcast_to_lan_loop(shared.clone()));
+    };
+
     // System for spawning new clients.
     let spawn_new_clients = move |world: &mut World| {
         for _ in 0..shared.0.new_clients_recv.len() {
@@ -125,14 +139,13 @@ fn build_plugin(app: &mut App) -> anyhow::Result<()> {
 
     // Start accepting connections in `PostStartup` to allow user startup code to
     // run first.
-    app.add_system(
-        start_accept_loop
-            .in_schedule(CoreSchedule::Startup)
-            .in_base_set(StartupSet::PostStartup),
-    );
+    app.add_systems(PostStartup, start_accept_loop);
+
+    // Start the loop that will broadcast messages for the LAN discovery list.
+    app.add_systems(PostStartup, start_broadcast_to_lan_loop);
 
     // Spawn new clients before the event loop starts.
-    app.add_system(spawn_new_clients.in_set(SpawnClientsSet));
+    app.add_systems(PreUpdate, spawn_new_clients.in_set(SpawnClientsSet));
 
     Ok(())
 }
@@ -165,7 +178,7 @@ struct SharedNetworkStateInner {
     player_count: AtomicUsize,
     max_players: usize,
     connection_mode: ConnectionMode,
-    compression_threshold: Option<u32>,
+    threshold: CompressionThreshold,
     tokio_handle: Handle,
     // Holding a runtime handle is not enough to keep tokio working. We need
     // to store the runtime here so we don't drop it.
@@ -324,7 +337,7 @@ pub trait NetworkCallbacks: Send + Sync + 'static {
         &self,
         shared: &SharedNetworkState,
         remote_addr: SocketAddr,
-        protocol_version: i32,
+        handshake_data: &HandshakeData,
     ) -> ServerListPing {
         #![allow(unused_variables)]
 
@@ -332,9 +345,75 @@ pub trait NetworkCallbacks: Send + Sync + 'static {
             online_players: shared.player_count().load(Ordering::Relaxed) as i32,
             max_players: shared.max_players() as i32,
             player_sample: vec![],
-            description: "A Valence Server".into(),
+            description: "A Valence Server".into_text(),
             favicon_png: &[],
+            version_name: MINECRAFT_VERSION.to_owned(),
+            protocol: PROTOCOL_VERSION,
         }
+    }
+
+    /// Called when the server receives a Server List Legacy Ping query.
+    /// Data for the response can be provided or the query can be ignored.
+    ///
+    /// This function is called from within a tokio runtime.
+    ///
+    /// # Default Implementation
+    ///
+    /// [`server_list_ping`][Self::server_list_ping] re-used.
+    async fn server_list_legacy_ping(
+        &self,
+        shared: &SharedNetworkState,
+        remote_addr: SocketAddr,
+        payload: ServerListLegacyPingPayload,
+    ) -> ServerListLegacyPing {
+        #![allow(unused_variables)]
+
+        let handshake_data = match payload {
+            ServerListLegacyPingPayload::Pre1_7 {
+                protocol,
+                hostname,
+                port,
+            } => HandshakeData {
+                protocol_version: protocol,
+                server_address: hostname,
+                server_port: port,
+            },
+            _ => HandshakeData::default(),
+        };
+
+        match self
+            .server_list_ping(shared, remote_addr, &handshake_data)
+            .await
+        {
+            ServerListPing::Respond {
+                online_players,
+                max_players,
+                player_sample,
+                description,
+                favicon_png,
+                version_name,
+                protocol,
+            } => ServerListLegacyPing::Respond(
+                ServerListLegacyPingResponse::new(protocol, online_players, max_players)
+                    .version(version_name)
+                    .description(description.to_legacy_lossy()),
+            ),
+            ServerListPing::Ignore => ServerListLegacyPing::Ignore,
+        }
+    }
+
+    /// This function is called every 1.5 seconds to broadcast a packet over the
+    /// local network in order to advertise the server to the multiplayer
+    /// screen with a configurable MOTD.
+    ///
+    /// # Default Implementation
+    ///
+    /// The default implementation returns [BroadcastToLan::Disabled], disabling
+    /// LAN discovery.
+    async fn broadcast_to_lan(&self, shared: &SharedNetworkState) -> BroadcastToLan {
+        #![allow(unused_variables)]
+
+        BroadcastToLan::Disabled
     }
 
     /// Called for each client (after successful authentication if online mode
@@ -388,7 +467,7 @@ pub trait NetworkCallbacks: Send + Sync + 'static {
             }))
         } else {
             // TODO: use correct translation key.
-            Err("Server Full".into())
+            Err("Server Full".into_text())
         }
     }
 
@@ -535,10 +614,42 @@ pub enum ServerListPing<'a> {
         ///
         /// No icon is used if the slice is empty.
         favicon_png: &'a [u8],
+        /// The version name of the server. Displayed when client is using a
+        /// different protocol.
+        ///
+        /// Can be formatted using `§` and format codes. Or use
+        /// [`valence_protocol::text::Text::to_legacy_lossy`].
+        version_name: String,
+        /// The protocol version of the server.
+        protocol: i32,
     },
     /// Ignores the query and disconnects from the client.
     #[default]
     Ignore,
+}
+
+/// The result of the Server List Legacy Ping [callback].
+///
+/// [callback]: NetworkCallbacks::server_list_legacy_ping
+#[derive(Clone, Default, Debug)]
+pub enum ServerListLegacyPing {
+    /// Responds to the server list legacy ping with the given information.
+    Respond(ServerListLegacyPingResponse),
+    /// Ignores the query and disconnects from the client.
+    #[default]
+    Ignore,
+}
+
+/// The result of the Broadcast To Lan [callback].
+///
+/// [callback]: NetworkCallbacks::broadcast_to_lan
+#[derive(Clone, Default, Debug)]
+pub enum BroadcastToLan<'a> {
+    /// Disabled Broadcast To Lan.
+    #[default]
+    Disabled,
+    /// Send packet to broadcast to LAN every 1.5 seconds with specified MOTD.
+    Enabled(Cow<'a, str>),
 }
 
 /// Represents an individual entry in the player sample.
@@ -551,4 +662,32 @@ pub struct PlayerSampleEntry {
     pub name: String,
     /// The player UUID.
     pub id: Uuid,
+}
+
+async fn do_broadcast_to_lan_loop(shared: SharedNetworkState) {
+    let port = shared.0.address.port();
+
+    let Ok(socket) = UdpSocket::bind("0.0.0.0:0").await else {
+        tracing::error!("Failed to bind to UDP socket for broadcast to LAN");
+        return;
+    };
+
+    loop {
+        let motd = match shared.0.callbacks.inner.broadcast_to_lan(&shared).await {
+            BroadcastToLan::Disabled => {
+                time::sleep(Duration::from_millis(1500)).await;
+                continue;
+            }
+            BroadcastToLan::Enabled(motd) => motd,
+        };
+
+        let message = format!("[MOTD]{motd}[/MOTD][AD]{port}[/AD]");
+
+        if let Err(e) = socket.send_to(message.as_bytes(), "224.0.2.60:4445").await {
+            tracing::warn!("Failed to send broadcast to LAN packet: {}", e);
+        }
+
+        // wait 1.5 seconds
+        tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+    }
 }

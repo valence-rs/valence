@@ -2,11 +2,16 @@
 name = "playground"
 version.workspace = true
 edition.workspace = true
+repository.workspace = true
+documentation.workspace = true
+license.workspace = true
+publish = false
 
 [dependencies]
-anyhow = "1.0.65"
-glam = "0.23.0"
-tracing = "0.1.37"
-tracing-subscriber = "0.3.16"
-valence_core.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+valence_math.workspace = true
+tracing-subscriber.workspace = true
+tracing.workspace = true
+valence_server_common.workspace = true
 valence.workspace = true

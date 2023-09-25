@@ -16,6 +16,7 @@
     unreachable_pub,
     clippy::dbg_macro
 )]
+#![allow(clippy::type_complexity)]
 
 use std::borrow::Cow;
 use std::iter::FusedIterator;
@@ -24,23 +25,21 @@ use std::ops::Range;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+use derive_more::{Deref, DerefMut};
 use tracing::{debug, warn};
-use valence_client::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent, RunEventLoopSet};
-use valence_client::{Client, FlushPacketsSet, SpawnClientsSet};
-use valence_core::game_mode::GameMode;
-use valence_core::item::ItemStack;
-use valence_core::packet::c2s::play::click_slot::{ClickMode, Slot};
-use valence_core::packet::c2s::play::{
-    ClickSlotC2s, CloseHandledScreenC2s, CreativeInventoryActionC2s, PlayerActionC2s,
-    UpdateSelectedSlotC2s,
+use valence_server::client::{Client, FlushPacketsSet, SpawnClientsSet};
+use valence_server::event_loop::{EventLoopPreUpdate, PacketEvent};
+pub use valence_server::protocol::packets::play::click_slot_c2s::{ClickMode, SlotChange};
+use valence_server::protocol::packets::play::open_screen_s2c::WindowType;
+pub use valence_server::protocol::packets::play::player_action_c2s::PlayerAction;
+use valence_server::protocol::packets::play::{
+    ClickSlotC2s, CloseHandledScreenC2s, CloseScreenS2c, CreativeInventoryActionC2s, InventoryS2c,
+    OpenScreenS2c, PlayerActionC2s, ScreenHandlerSlotUpdateS2c, UpdateSelectedSlotC2s,
+    UpdateSelectedSlotS2c,
 };
-use valence_core::packet::encode::WritePacket;
-use valence_core::packet::s2c::play::open_screen::WindowType;
-use valence_core::packet::s2c::play::{
-    CloseScreenS2c, InventoryS2c, OpenScreenS2c, ScreenHandlerSlotUpdateS2c,
-};
-use valence_core::packet::var_int::VarInt;
-use valence_core::text::Text;
+use valence_server::protocol::{VarInt, WritePacket};
+use valence_server::text::IntoText;
+use valence_server::{GameMode, ItemKind, ItemStack, Text};
 
 mod validate;
 
@@ -48,37 +47,35 @@ pub struct InventoryPlugin;
 
 impl Plugin for InventoryPlugin {
     fn build(&self, app: &mut bevy_app::App) {
-        app.add_system(
-            init_new_client_inventories
-                .in_base_set(CoreSet::PreUpdate)
-                .after(SpawnClientsSet)
-                .before(RunEventLoopSet),
+        app.add_systems(
+            PreUpdate,
+            init_new_client_inventories.after(SpawnClientsSet),
         )
         .add_systems(
+            PostUpdate,
             (
+                update_client_on_close_inventory.before(update_open_inventories),
+                update_player_selected_slot,
                 update_open_inventories,
-                update_client_on_close_inventory.after(update_open_inventories),
                 update_player_inventories,
             )
-                .in_base_set(CoreSet::PostUpdate)
                 .before(FlushPacketsSet),
         )
         .add_systems(
+            EventLoopPreUpdate,
             (
                 handle_update_selected_slot,
                 handle_click_slot,
                 handle_creative_inventory_action,
                 handle_close_handled_screen,
                 handle_player_actions,
-            )
-                .in_base_set(EventLoopSet::PreUpdate)
-                .in_schedule(EventLoopSchedule),
+            ),
         )
         .init_resource::<InventorySettings>()
-        .add_event::<ClickSlot>()
-        .add_event::<DropItemStack>()
-        .add_event::<CreativeInventoryAction>()
-        .add_event::<UpdateSelectedSlot>();
+        .add_event::<ClickSlotEvent>()
+        .add_event::<DropItemStackEvent>()
+        .add_event::<CreativeInventoryActionEvent>()
+        .add_event::<UpdateSelectedSlotEvent>();
     }
 }
 
@@ -90,7 +87,7 @@ pub const PLAYER_INVENTORY_MAIN_SLOTS_COUNT: u16 = 36;
 pub struct Inventory {
     title: Text,
     kind: InventoryKind,
-    slots: Box<[Option<ItemStack>]>,
+    slots: Box<[ItemStack]>,
     /// Contains a set bit for each modified slot in `slots`.
     #[doc(hidden)]
     pub changed: u64,
@@ -102,21 +99,20 @@ impl Inventory {
         Self::with_title(kind, "Inventory")
     }
 
-    pub fn with_title(kind: InventoryKind, title: impl Into<Text>) -> Self {
+    pub fn with_title<'a>(kind: InventoryKind, title: impl IntoText<'a>) -> Self {
         Inventory {
-            title: title.into(),
+            title: title.into_cow_text().into_owned(),
             kind,
-            slots: vec![None; kind.slot_count()].into(),
+            slots: vec![ItemStack::EMPTY; kind.slot_count()].into(),
             changed: 0,
         }
     }
 
     #[track_caller]
-    pub fn slot(&self, idx: u16) -> Option<&ItemStack> {
+    pub fn slot(&self, idx: u16) -> &ItemStack {
         self.slots
             .get(idx as usize)
             .expect("slot index out of range")
-            .as_ref()
     }
 
     /// Sets the slot at the given index to the given item stack.
@@ -125,14 +121,14 @@ impl Inventory {
     ///
     /// ```
     /// # use valence_inventory::*;
-    /// # use valence_core::item::{ItemStack, ItemKind};
+    /// # use valence_server::item::{ItemStack, ItemKind};
     /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
     /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
-    /// assert_eq!(inv.slot(0).unwrap().item, ItemKind::Diamond);
+    /// assert_eq!(inv.slot(0).item, ItemKind::Diamond);
     /// ```
     #[track_caller]
     #[inline]
-    pub fn set_slot(&mut self, idx: u16, item: impl Into<Option<ItemStack>>) {
+    pub fn set_slot(&mut self, idx: u16, item: impl Into<ItemStack>) {
         let _ = self.replace_slot(idx, item);
     }
 
@@ -143,19 +139,15 @@ impl Inventory {
     ///
     /// ```
     /// # use valence_inventory::*;
-    /// # use valence_core::item::{ItemStack, ItemKind};
+    /// # use valence_server::item::{ItemStack, ItemKind};
     /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
     /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
     /// let old = inv.replace_slot(0, ItemStack::new(ItemKind::IronIngot, 1, None));
-    /// assert_eq!(old.unwrap().item, ItemKind::Diamond);
+    /// assert_eq!(old.item, ItemKind::Diamond);
     /// ```
     #[track_caller]
     #[must_use]
-    pub fn replace_slot(
-        &mut self,
-        idx: u16,
-        item: impl Into<Option<ItemStack>>,
-    ) -> Option<ItemStack> {
+    pub fn replace_slot(&mut self, idx: u16, item: impl Into<ItemStack>) -> ItemStack {
         assert!(idx < self.slot_count(), "slot index of {idx} out of bounds");
 
         let new = item.into();
@@ -173,12 +165,12 @@ impl Inventory {
     ///
     /// ```
     /// # use valence_inventory::*;
-    /// # use valence_core::item::{ItemStack, ItemKind};
+    /// # use valence_server::item::{ItemStack, ItemKind};
     /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
     /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
-    /// assert_eq!(inv.slot(1), None);
+    /// assert!(inv.slot(1).is_empty());
     /// inv.swap_slot(0, 1);
-    /// assert_eq!(inv.slot(1).unwrap().item, ItemKind::Diamond);
+    /// assert_eq!(inv.slot(1).item, ItemKind::Diamond);
     /// ```
     #[track_caller]
     pub fn swap_slot(&mut self, idx_a: u16, idx_b: u16) {
@@ -208,21 +200,23 @@ impl Inventory {
     ///
     /// ```
     /// # use valence_inventory::*;
-    /// # use valence_core::item::{ItemStack, ItemKind};
+    /// # use valence_server::item::{ItemStack, ItemKind};
     /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
     /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
     /// inv.set_slot_amount(0, 64);
-    /// assert_eq!(inv.slot(0).unwrap().count(), 64);
+    /// assert_eq!(inv.slot(0).count, 64);
     /// ```
     #[track_caller]
-    pub fn set_slot_amount(&mut self, idx: u16, amount: u8) {
+    pub fn set_slot_amount(&mut self, idx: u16, amount: i8) {
         assert!(idx < self.slot_count(), "slot index out of range");
 
-        if let Some(item) = self.slots[idx as usize].as_mut() {
-            if item.count() == amount {
+        let item = &mut self.slots[idx as usize];
+
+        if !item.is_empty() {
+            if item.count == amount {
                 return;
             }
-            item.set_count(amount);
+            item.count = amount;
             self.changed |= 1 << idx;
         }
     }
@@ -233,12 +227,9 @@ impl Inventory {
 
     pub fn slots(
         &self,
-    ) -> impl ExactSizeIterator<Item = Option<&ItemStack>>
-           + DoubleEndedIterator
-           + FusedIterator
-           + Clone
-           + '_ {
-        self.slots.iter().map(|item| item.as_ref())
+    ) -> impl ExactSizeIterator<Item = &ItemStack> + DoubleEndedIterator + FusedIterator + Clone + '_
+    {
+        self.slots.iter()
     }
 
     pub fn kind(&self) -> InventoryKind {
@@ -249,8 +240,8 @@ impl Inventory {
     ///
     /// ```
     /// # use valence_inventory::*;
-    /// # use valence_core::item::{ItemStack, ItemKind};
-    /// # use valence_core::text::Text;
+    /// # use valence_server::item::{ItemStack, ItemKind};
+    /// # use valence_server::text::Text;
     /// let inv = Inventory::with_title(InventoryKind::Generic9x3, "Box of Holding");
     /// assert_eq!(inv.title(), &Text::from("Box of Holding"));
     /// ```
@@ -268,20 +259,20 @@ impl Inventory {
     /// inv.set_title("Box of Holding");
     /// ```
     #[inline]
-    pub fn set_title(&mut self, title: impl Into<Text>) {
+    pub fn set_title<'a>(&mut self, title: impl IntoText<'a>) {
         let _ = self.replace_title(title);
     }
 
     /// Replace the text displayed on the inventory's title bar, and returns the
     /// old text.
     #[must_use]
-    pub fn replace_title(&mut self, title: impl Into<Text>) -> Text {
+    pub fn replace_title<'a>(&mut self, title: impl IntoText<'a>) -> Text {
         // TODO: set title modified flag
-        std::mem::replace(&mut self.title, title.into())
+        std::mem::replace(&mut self.title, title.into_cow_text().into_owned())
     }
 
-    pub(crate) fn slot_slice(&self) -> &[Option<ItemStack>] {
-        self.slots.as_ref()
+    pub(crate) fn slot_slice(&self) -> &[ItemStack] {
+        &self.slots
     }
 
     /// Returns the first empty slot in the given range, or `None` if there are
@@ -289,7 +280,7 @@ impl Inventory {
     ///
     /// ```
     /// # use valence_inventory::*;
-    /// # use valence_core::item::*;
+    /// # use valence_server::item::*;
     /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
     /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
     /// inv.set_slot(2, ItemStack::new(ItemKind::GoldIngot, 1, None));
@@ -306,22 +297,74 @@ impl Inventory {
             "slot range out of range"
         );
 
-        range.find(|&idx| self.slots[idx as usize].is_none())
+        range.find(|&idx| self.slots[idx as usize].is_empty())
     }
 
     /// Returns the first empty slot in the inventory, or `None` if there are no
     /// empty slots.
     /// ```
     /// # use valence_inventory::*;
-    /// # use valence_core::item::*;
+    /// # use valence_server::item::*;
     /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
     /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
     /// inv.set_slot(2, ItemStack::new(ItemKind::GoldIngot, 1, None));
     /// inv.set_slot(3, ItemStack::new(ItemKind::IronIngot, 1, None));
     /// assert_eq!(inv.first_empty_slot(), Some(1));
     /// ```
+    #[inline]
     pub fn first_empty_slot(&self) -> Option<u16> {
         self.first_empty_slot_in(0..self.slot_count())
+    }
+
+    /// Returns the first slot with the given [`ItemKind`] in the inventory
+    /// where `count < stack_max`, or `None` if there are no empty slots.
+    /// ```
+    /// # use valence_inventory::*;
+    /// # use valence_server::item::*;
+    /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
+    /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
+    /// inv.set_slot(2, ItemStack::new(ItemKind::GoldIngot, 64, None));
+    /// inv.set_slot(3, ItemStack::new(ItemKind::IronIngot, 1, None));
+    /// inv.set_slot(4, ItemStack::new(ItemKind::GoldIngot, 1, None));
+    /// assert_eq!(
+    ///     inv.first_slot_with_item_in(ItemKind::GoldIngot, 64, 0..5),
+    ///     Some(4)
+    /// );
+    /// ```
+    pub fn first_slot_with_item_in(
+        &self,
+        item: ItemKind,
+        stack_max: i8,
+        mut range: Range<u16>,
+    ) -> Option<u16> {
+        assert!(
+            (0..=self.slot_count()).contains(&range.start)
+                && (0..=self.slot_count()).contains(&range.end),
+            "slot range out of range"
+        );
+        assert!(stack_max > 0, "stack_max must be greater than 0");
+
+        range.find(|&idx| {
+            let stack = &self.slots[idx as usize];
+            stack.item == item && stack.count < stack_max
+        })
+    }
+
+    /// Returns the first slot with the given [`ItemKind`] in the inventory
+    /// where `count < stack_max`, or `None` if there are no empty slots.
+    /// ```
+    /// # use valence_inventory::*;
+    /// # use valence_server::item::*;
+    /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
+    /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
+    /// inv.set_slot(2, ItemStack::new(ItemKind::GoldIngot, 64, None));
+    /// inv.set_slot(3, ItemStack::new(ItemKind::IronIngot, 1, None));
+    /// inv.set_slot(4, ItemStack::new(ItemKind::GoldIngot, 1, None));
+    /// assert_eq!(inv.first_slot_with_item(ItemKind::GoldIngot, 64), Some(4));
+    /// ```
+    #[inline]
+    pub fn first_slot_with_item(&self, item: ItemKind, stack_max: i8) -> Option<u16> {
+        self.first_slot_with_item_in(item, stack_max, 0..self.slot_count())
     }
 }
 
@@ -338,15 +381,9 @@ pub struct ClientInventoryState {
     /// on the `CursorItem` component to make maintaining accurate change
     /// detection for end users easier.
     client_updated_cursor_item: bool,
-    // TODO: make this a separate modifiable component.
-    held_item_slot: u16,
 }
 
 impl ClientInventoryState {
-    pub fn held_item_slot(&self) -> u16 {
-        self.held_item_slot
-    }
-
     #[doc(hidden)]
     pub fn window_id(&self) -> u8 {
         self.window_id
@@ -358,10 +395,34 @@ impl ClientInventoryState {
     }
 }
 
+/// Indicates which hotbar slot the player is currently holding.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Deref)]
+pub struct HeldItem {
+    held_item_slot: u16,
+}
+
+impl HeldItem {
+    /// The slot ID of the currently held item, in the range 36-44 inclusive.
+    /// This value is safe to use on the player's inventory directly.
+    pub fn slot(&self) -> u16 {
+        self.held_item_slot
+    }
+
+    pub fn set_slot(&mut self, slot: u16) {
+        // temp
+        assert!(
+            (36..=44).contains(&slot),
+            "slot index of {slot} out of bounds"
+        );
+
+        self.held_item_slot = slot;
+    }
+}
+
 /// The item stack that the client thinks it's holding under the mouse
 /// cursor.
-#[derive(Component, Clone, PartialEq, Default, Debug)]
-pub struct CursorItem(pub Option<ItemStack>);
+#[derive(Component, Clone, PartialEq, Default, Debug, Deref, DerefMut)]
+pub struct CursorItem(pub ItemStack);
 
 /// Used to indicate that the client with this component is currently viewing
 /// an inventory.
@@ -389,17 +450,14 @@ impl OpenInventory {
 ///
 /// ```
 /// # use valence_inventory::*;
-/// # use valence_core::item::*;
+/// # use valence_server::item::*;
 /// let mut player_inventory = Inventory::new(InventoryKind::Player);
 /// player_inventory.set_slot(36, ItemStack::new(ItemKind::Diamond, 1, None));
 ///
 /// let target_inventory = Inventory::new(InventoryKind::Generic9x3);
 /// let window = InventoryWindow::new(&player_inventory, Some(&target_inventory));
 ///
-/// assert_eq!(
-///     window.slot(54),
-///     Some(&ItemStack::new(ItemKind::Diamond, 1, None))
-/// );
+/// assert_eq!(window.slot(54), &ItemStack::new(ItemKind::Diamond, 1, None));
 /// ```
 pub struct InventoryWindow<'a> {
     player_inventory: &'a Inventory,
@@ -415,17 +473,16 @@ impl<'a> InventoryWindow<'a> {
     }
 
     #[track_caller]
-    pub fn slot(&self, idx: u16) -> Option<&ItemStack> {
+    pub fn slot(&self, idx: u16) -> &ItemStack {
         if let Some(open_inv) = self.open_inventory.as_ref() {
             if idx < open_inv.slot_count() {
-                return open_inv.slot(idx);
+                open_inv.slot(idx)
             } else {
-                return self
-                    .player_inventory
-                    .slot(convert_to_player_slot_id(open_inv.kind(), idx));
+                self.player_inventory
+                    .slot(convert_to_player_slot_id(open_inv.kind(), idx))
             }
         } else {
-            return self.player_inventory.slot(idx);
+            self.player_inventory.slot(idx)
         }
     }
 
@@ -445,7 +502,7 @@ impl<'a> InventoryWindow<'a> {
 ///
 /// ```
 /// # use valence_inventory::*;
-/// # use valence_core::item::*;
+/// # use valence_server::item::*;
 /// let mut player_inventory = Inventory::new(InventoryKind::Player);
 /// let mut target_inventory = Inventory::new(InventoryKind::Generic9x3);
 /// let mut window = InventoryWindowMut::new(&mut player_inventory, Some(&mut target_inventory));
@@ -454,7 +511,7 @@ impl<'a> InventoryWindow<'a> {
 ///
 /// assert_eq!(
 ///     player_inventory.slot(36),
-///     Some(&ItemStack::new(ItemKind::Diamond, 1, None))
+///     &ItemStack::new(ItemKind::Diamond, 1, None)
 /// );
 /// ```
 pub struct InventoryWindowMut<'a> {
@@ -474,27 +531,22 @@ impl<'a> InventoryWindowMut<'a> {
     }
 
     #[track_caller]
-    pub fn slot(&self, idx: u16) -> Option<&ItemStack> {
+    pub fn slot(&self, idx: u16) -> &ItemStack {
         if let Some(open_inv) = self.open_inventory.as_ref() {
             if idx < open_inv.slot_count() {
-                return open_inv.slot(idx);
+                open_inv.slot(idx)
             } else {
-                return self
-                    .player_inventory
-                    .slot(convert_to_player_slot_id(open_inv.kind(), idx));
+                self.player_inventory
+                    .slot(convert_to_player_slot_id(open_inv.kind(), idx))
             }
         } else {
-            return self.player_inventory.slot(idx);
+            self.player_inventory.slot(idx)
         }
     }
 
     #[track_caller]
     #[must_use]
-    pub fn replace_slot(
-        &mut self,
-        idx: u16,
-        item: impl Into<Option<ItemStack>>,
-    ) -> Option<ItemStack> {
+    pub fn replace_slot(&mut self, idx: u16, item: impl Into<ItemStack>) -> ItemStack {
         assert!(idx < self.slot_count(), "slot index of {idx} out of bounds");
 
         if let Some(open_inv) = self.open_inventory.as_mut() {
@@ -511,7 +563,7 @@ impl<'a> InventoryWindowMut<'a> {
 
     #[track_caller]
     #[inline]
-    pub fn set_slot(&mut self, idx: u16, item: impl Into<Option<ItemStack>>) {
+    pub fn set_slot(&mut self, idx: u16, item: impl Into<ItemStack>) {
         let _ = self.replace_slot(idx, item);
     }
 
@@ -528,12 +580,14 @@ fn init_new_client_inventories(clients: Query<Entity, Added<Client>>, mut comman
     for entity in &clients {
         commands.entity(entity).insert((
             Inventory::new(InventoryKind::Player),
-            CursorItem(None),
+            CursorItem(ItemStack::EMPTY),
             ClientInventoryState {
                 window_id: 0,
                 state_id: Wrapping(0),
                 slots_changed: 0,
                 client_updated_cursor_item: false,
+            },
+            HeldItem {
                 // First slot of the hotbar.
                 held_item_slot: 36,
             },
@@ -736,20 +790,20 @@ fn update_client_on_close_inventory(
 }
 
 // TODO: make this event user friendly.
-#[derive(Clone, Debug)]
-pub struct ClickSlot {
+#[derive(Event, Clone, Debug)]
+pub struct ClickSlotEvent {
     pub client: Entity,
     pub window_id: u8,
     pub state_id: i32,
     pub slot_id: i16,
     pub button: i8,
     pub mode: ClickMode,
-    pub slot_changes: Vec<Slot>,
-    pub carried_item: Option<ItemStack>,
+    pub slot_changes: Vec<SlotChange>,
+    pub carried_item: ItemStack,
 }
 
-#[derive(Clone, Debug)]
-pub struct DropItemStack {
+#[derive(Event, Clone, Debug)]
+pub struct DropItemStackEvent {
     pub client: Entity,
     pub from_slot: Option<u16>,
     pub stack: ItemStack,
@@ -765,22 +819,18 @@ fn handle_click_slot(
         &mut CursorItem,
     )>,
     mut inventories: Query<&mut Inventory, Without<Client>>,
-    mut drop_item_stack_events: EventWriter<DropItemStack>,
-    mut click_slot_events: EventWriter<ClickSlot>,
+    mut drop_item_stack_events: EventWriter<DropItemStackEvent>,
+    mut click_slot_events: EventWriter<ClickSlotEvent>,
 ) {
     for packet in packets.iter() {
         let Some(pkt) = packet.decode::<ClickSlotC2s>() else {
             // Not the packet we're looking for.
-            continue
+            continue;
         };
 
-        let Ok((
-            mut client,
-            mut client_inv,
-            mut inv_state,
-            open_inventory,
-            mut cursor_item
-        )) = clients.get_mut(packet.client) else {
+        let Ok((mut client, mut client_inv, mut inv_state, open_inventory, mut cursor_item)) =
+            clients.get_mut(packet.client)
+        else {
             // The client does not exist, ignore.
             continue;
         };
@@ -819,8 +869,10 @@ fn handle_click_slot(
         if pkt.slot_idx < 0 && pkt.mode == ClickMode::Click {
             // The client is dropping the cursor item by clicking outside the window.
 
-            if let Some(stack) = cursor_item.0.take() {
-                drop_item_stack_events.send(DropItemStack {
+            let stack = std::mem::take(&mut cursor_item.0);
+
+            if !stack.is_empty() {
+                drop_item_stack_events.send(DropItemStackEvent {
                     client: packet.client,
                     from_slot: None,
                     stack,
@@ -861,22 +913,22 @@ fn handle_click_slot(
                 if (0i16..target_inventory.slot_count() as i16).contains(&pkt.slot_idx) {
                     // The player is dropping an item from another inventory.
 
-                    if let Some(stack) = target_inventory.slot(pkt.slot_idx as u16) {
-                        let dropped = if entire_stack || stack.count() == 1 {
-                            target_inventory.replace_slot(pkt.slot_idx as u16, None)
+                    let stack = target_inventory.slot(pkt.slot_idx as u16);
+
+                    if !stack.is_empty() {
+                        let dropped = if entire_stack || stack.count == 1 {
+                            target_inventory.replace_slot(pkt.slot_idx as u16, ItemStack::EMPTY)
                         } else {
-                            let mut stack = stack.clone();
-                            stack.set_count(stack.count() - 1);
+                            let stack = stack.clone().with_count(stack.count - 1);
                             let mut old_slot =
-                                target_inventory.replace_slot(pkt.slot_idx as u16, Some(stack));
+                                target_inventory.replace_slot(pkt.slot_idx as u16, stack);
                             // we already checked that the slot was not empty and that the
                             // stack count is > 1
-                            old_slot.as_mut().unwrap().set_count(1);
+                            old_slot.count = 1;
                             old_slot
-                        }
-                        .expect("dropped item should exist"); // we already checked that the slot was not empty
+                        };
 
-                        drop_item_stack_events.send(DropItemStack {
+                        drop_item_stack_events.send(DropItemStackEvent {
                             client: packet.client,
                             from_slot: Some(pkt.slot_idx as u16),
                             stack: dropped,
@@ -886,21 +938,22 @@ fn handle_click_slot(
                     // The player is dropping an item from their inventory.
                     let slot_id =
                         convert_to_player_slot_id(target_inventory.kind, pkt.slot_idx as u16);
-                    if let Some(stack) = client_inv.slot(slot_id) {
-                        let dropped = if entire_stack || stack.count() == 1 {
-                            client_inv.replace_slot(slot_id, None)
+
+                    let stack = client_inv.slot(slot_id);
+
+                    if !stack.is_empty() {
+                        let dropped = if entire_stack || stack.count == 1 {
+                            client_inv.replace_slot(slot_id, ItemStack::EMPTY)
                         } else {
-                            let mut stack = stack.clone();
-                            stack.set_count(stack.count() - 1);
-                            let mut old_slot = client_inv.replace_slot(slot_id, Some(stack));
+                            let stack = stack.clone().with_count(stack.count - 1);
+                            let mut old_slot = client_inv.replace_slot(slot_id, stack);
                             // we already checked that the slot was not empty and that the
                             // stack count is > 1
-                            old_slot.as_mut().unwrap().set_count(1);
+                            old_slot.count = 1;
                             old_slot
-                        }
-                        .expect("dropped item should exist"); // we already checked that the slot was not empty
+                        };
 
-                        drop_item_stack_events.send(DropItemStack {
+                        drop_item_stack_events.send(DropItemStackEvent {
                             client: packet.client,
                             from_slot: Some(slot_id),
                             stack: dropped,
@@ -910,22 +963,22 @@ fn handle_click_slot(
             } else {
                 // The player has no inventory open and is dropping an item from their
                 // inventory.
-                if let Some(stack) = client_inv.slot(pkt.slot_idx as u16) {
-                    let dropped = if entire_stack || stack.count() == 1 {
-                        client_inv.replace_slot(pkt.slot_idx as u16, None)
+
+                let stack = client_inv.slot(pkt.slot_idx as u16);
+
+                if !stack.is_empty() {
+                    let dropped = if entire_stack || stack.count == 1 {
+                        client_inv.replace_slot(pkt.slot_idx as u16, ItemStack::EMPTY)
                     } else {
-                        let mut stack = stack.clone();
-                        stack.set_count(stack.count() - 1);
-                        let mut old_slot =
-                            client_inv.replace_slot(pkt.slot_idx as u16, Some(stack));
+                        let stack = stack.clone().with_count(stack.count - 1);
+                        let mut old_slot = client_inv.replace_slot(pkt.slot_idx as u16, stack);
                         // we already checked that the slot was not empty and that the
                         // stack count is > 1
-                        old_slot.as_mut().unwrap().set_count(1);
+                        old_slot.count = 1;
                         old_slot
-                    }
-                    .expect("dropped item should exist"); // we already checked that the slot was not empty
+                    };
 
-                    drop_item_stack_events.send(DropItemStack {
+                    drop_item_stack_events.send(DropItemStackEvent {
                         client: packet.client,
                         from_slot: Some(pkt.slot_idx as u16),
                         stack: dropped,
@@ -973,16 +1026,16 @@ fn handle_click_slot(
 
                 cursor_item.set_if_neq(CursorItem(pkt.carried_item.clone()));
 
-                for slot in pkt.slot_changes.clone() {
+                for slot in pkt.slot_changes.iter() {
                     if (0i16..target_inventory.slot_count() as i16).contains(&slot.idx) {
                         // The client is interacting with a slot in the target inventory.
-                        target_inventory.set_slot(slot.idx as u16, slot.item);
+                        target_inventory.set_slot(slot.idx as u16, slot.stack.clone());
                         open_inventory.client_changed |= 1 << slot.idx;
                     } else {
                         // The client is interacting with a slot in their own inventory.
                         let slot_id =
                             convert_to_player_slot_id(target_inventory.kind, slot.idx as u16);
-                        client_inv.set_slot(slot_id, slot.item);
+                        client_inv.set_slot(slot_id, slot.stack.clone());
                         inv_state.slots_changed |= 1 << slot_id;
                     }
                 }
@@ -1009,9 +1062,9 @@ fn handle_click_slot(
                 cursor_item.set_if_neq(CursorItem(pkt.carried_item.clone()));
                 inv_state.client_updated_cursor_item = true;
 
-                for slot in pkt.slot_changes.clone() {
+                for slot in pkt.slot_changes.iter() {
                     if (0i16..client_inv.slot_count() as i16).contains(&slot.idx) {
-                        client_inv.set_slot(slot.idx as u16, slot.item);
+                        client_inv.set_slot(slot.idx as u16, slot.stack.clone());
                         inv_state.slots_changed |= 1 << slot.idx;
                     } else {
                         // The client is trying to interact with a slot that does not exist,
@@ -1024,14 +1077,14 @@ fn handle_click_slot(
                 }
             }
 
-            click_slot_events.send(ClickSlot {
+            click_slot_events.send(ClickSlotEvent {
                 client: packet.client,
                 window_id: pkt.window_id,
                 state_id: pkt.state_id.0,
                 slot_id: pkt.slot_idx,
                 button: pkt.button,
                 mode: pkt.mode,
-                slot_changes: pkt.slot_changes,
+                slot_changes: pkt.slot_changes.into(),
                 carried_item: pkt.carried_item,
             });
         }
@@ -1040,51 +1093,52 @@ fn handle_click_slot(
 
 fn handle_player_actions(
     mut packets: EventReader<PacketEvent>,
-    mut clients: Query<(&mut Inventory, &mut ClientInventoryState)>,
-    mut drop_item_stack_events: EventWriter<DropItemStack>,
+    mut clients: Query<(&mut Inventory, &mut ClientInventoryState, &HeldItem)>,
+    mut drop_item_stack_events: EventWriter<DropItemStackEvent>,
 ) {
     for packet in packets.iter() {
         if let Some(pkt) = packet.decode::<PlayerActionC2s>() {
-            use valence_core::packet::c2s::play::player_action::Action;
-
             match pkt.action {
-                Action::DropAllItems => {
-                    if let Ok((mut inv, mut inv_state)) = clients.get_mut(packet.client) {
-                        if let Some(stack) = inv.replace_slot(inv_state.held_item_slot, None) {
-                            inv_state.slots_changed |= 1 << inv_state.held_item_slot;
+                PlayerAction::DropAllItems => {
+                    if let Ok((mut inv, mut inv_state, &held)) = clients.get_mut(packet.client) {
+                        let stack = inv.replace_slot(held.slot(), ItemStack::EMPTY);
 
-                            drop_item_stack_events.send(DropItemStack {
+                        if !stack.is_empty() {
+                            inv_state.slots_changed |= 1 << held.slot();
+
+                            drop_item_stack_events.send(DropItemStackEvent {
                                 client: packet.client,
-                                from_slot: Some(inv_state.held_item_slot),
+                                from_slot: Some(held.slot()),
                                 stack,
                             });
                         }
                     }
                 }
-                Action::DropItem => {
-                    if let Ok((mut inv, mut inv_state)) = clients.get_mut(packet.client) {
-                        if let Some(mut stack) = inv.replace_slot(inv_state.held_item_slot(), None)
-                        {
-                            if stack.count() > 1 {
+                PlayerAction::DropItem => {
+                    if let Ok((mut inv, mut inv_state, held)) = clients.get_mut(packet.client) {
+                        let mut stack = inv.replace_slot(held.slot(), ItemStack::EMPTY);
+
+                        if !stack.is_empty() {
+                            if stack.count > 1 {
                                 inv.set_slot(
-                                    inv_state.held_item_slot(),
-                                    stack.clone().with_count(stack.count() - 1),
+                                    held.slot(),
+                                    stack.clone().with_count(stack.count - 1),
                                 );
 
-                                stack.set_count(1);
+                                stack.count = 1;
                             }
 
-                            inv_state.slots_changed |= 1 << inv_state.held_item_slot();
+                            inv_state.slots_changed |= 1 << held.slot();
 
-                            drop_item_stack_events.send(DropItemStack {
+                            drop_item_stack_events.send(DropItemStackEvent {
                                 client: packet.client,
-                                from_slot: Some(inv_state.held_item_slot()),
+                                from_slot: Some(held.slot()),
                                 stack,
                             })
                         }
                     }
                 }
-                Action::SwapItemWithOffhand => {
+                PlayerAction::SwapItemWithOffhand => {
                     // TODO
                 }
                 _ => {}
@@ -1094,11 +1148,11 @@ fn handle_player_actions(
 }
 
 // TODO: make this event user friendly.
-#[derive(Clone, Debug)]
-pub struct CreativeInventoryAction {
+#[derive(Event, Clone, Debug)]
+pub struct CreativeInventoryActionEvent {
     pub client: Entity,
     pub slot: i16,
-    pub clicked_item: Option<ItemStack>,
+    pub clicked_item: ItemStack,
 }
 
 fn handle_creative_inventory_action(
@@ -1109,13 +1163,15 @@ fn handle_creative_inventory_action(
         &mut ClientInventoryState,
         &GameMode,
     )>,
-    mut inv_action_events: EventWriter<CreativeInventoryAction>,
-    mut drop_item_stack_events: EventWriter<DropItemStack>,
+    mut inv_action_events: EventWriter<CreativeInventoryActionEvent>,
+    mut drop_item_stack_events: EventWriter<DropItemStackEvent>,
 ) {
     for packet in packets.iter() {
         if let Some(pkt) = packet.decode::<CreativeInventoryActionC2s>() {
-            let Ok((mut client, mut inventory, mut inv_state, game_mode)) = clients.get_mut(packet.client) else {
-                continue
+            let Ok((mut client, mut inventory, mut inv_state, game_mode)) =
+                clients.get_mut(packet.client)
+            else {
+                continue;
             };
 
             if *game_mode != GameMode::Creative {
@@ -1124,8 +1180,10 @@ fn handle_creative_inventory_action(
             }
 
             if pkt.slot == -1 {
-                if let Some(stack) = pkt.clicked_item.clone() {
-                    drop_item_stack_events.send(DropItemStack {
+                let stack = pkt.clicked_item.clone();
+
+                if !stack.is_empty() {
+                    drop_item_stack_events.send(DropItemStackEvent {
                         client: packet.client,
                         from_slot: None,
                         stack,
@@ -1155,7 +1213,7 @@ fn handle_creative_inventory_action(
                 slot_data: Cow::Borrowed(&pkt.clicked_item),
             });
 
-            inv_action_events.send(CreativeInventoryAction {
+            inv_action_events.send(CreativeInventoryActionEvent {
                 client: packet.client,
                 slot: pkt.slot,
                 clicked_item: pkt.clicked_item,
@@ -1164,26 +1222,42 @@ fn handle_creative_inventory_action(
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct UpdateSelectedSlot {
+#[derive(Event, Clone, Debug)]
+pub struct UpdateSelectedSlotEvent {
     pub client: Entity,
-    pub slot: i16,
+    pub slot: u8,
 }
 
+/// Handles the `HeldItem` component being changed on a client entity, which
+/// indicates that the server has changed the selected hotbar slot.
+fn update_player_selected_slot(mut clients: Query<(&mut Client, &HeldItem), Changed<HeldItem>>) {
+    for (mut client, held_item) in &mut clients {
+        client.write_packet(&UpdateSelectedSlotS2c {
+            slot: (held_item.held_item_slot - PLAYER_INVENTORY_MAIN_SLOTS_COUNT) as u8,
+        });
+    }
+}
+
+/// Client to Server HeldItem Slot
 fn handle_update_selected_slot(
     mut packets: EventReader<PacketEvent>,
-    mut clients: Query<&mut ClientInventoryState>,
-    mut events: EventWriter<UpdateSelectedSlot>,
+    mut clients: Query<&mut HeldItem>,
+    mut events: EventWriter<UpdateSelectedSlotEvent>,
 ) {
     for packet in packets.iter() {
         if let Some(pkt) = packet.decode::<UpdateSelectedSlotC2s>() {
-            if let Ok(mut inv_state) = clients.get_mut(packet.client) {
-                // TODO: validate this.
-                inv_state.held_item_slot = convert_hotbar_slot_id(pkt.slot as u16);
+            if let Ok(mut mut_held) = clients.get_mut(packet.client) {
+                let held = mut_held.bypass_change_detection();
+                if pkt.slot > 8 {
+                    // The client is trying to interact with a slot that does not exist, ignore.
+                    continue;
+                }
 
-                events.send(UpdateSelectedSlot {
+                held.held_item_slot = convert_hotbar_slot_id(pkt.slot);
+
+                events.send(UpdateSelectedSlotEvent {
                     client: packet.client,
-                    slot: pkt.slot,
+                    slot: pkt.slot as u8,
                 });
             }
         }

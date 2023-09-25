@@ -1,7 +1,8 @@
-name: Rust
+name: CI
 
 on:
   pull_request:
+  merge_group:
   push: # Run CI on the main branch after every merge. This is important to fill the GitHub Actions cache in a way that pull requests can see it
     branches:
       - main
@@ -10,41 +11,75 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  valence-fmt-clippy:
-    strategy:
-      fail-fast: true
-      matrix:
-        platform: [windows-latest, macos-latest, ubuntu-latest]
-        style: [default]
-        rust:
-          - stable
-        include:
-          - style: default
-            flags: ""
-
-    runs-on: ${{ matrix.platform }}
-
+  valence-fmt:
+    name: Formatting
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout Actions Repository
+        uses: actions/checkout@v3
 
       - name: Setup Rust toolchain and cache
-        uses: actions-rust-lang/setup-rust-toolchain@v1.4.4
+        uses: actions-rust-lang/setup-rust-toolchain@v1.5.0
         with:
-          toolchain: "stable"
-          components: "clippy, rustfmt"
+          toolchain: "nightly"
+          components: "rustfmt"
 
-      - name: "Copy playground"
+      - name: Copy playground
         run: cp tools/playground/src/playground.template.rs tools/playground/src/playground.rs
-
-      - name: Install Dependencies (Linux)
-        run: sudo apt-get update && sudo apt-get install -y libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libclang-dev libgtk-3-dev
-        if: matrix.platform == 'ubuntu-latest'
 
       - name: cargo fmt
         run: cargo fmt --all -- --check
 
+  valence-docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Actions Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Rust toolchain and cache
+        uses: actions-rust-lang/setup-rust-toolchain@v1.5.0
+
+      - name: Copy playground
+        run: cp tools/playground/src/playground.template.rs tools/playground/src/playground.rs
+
+      - name: Install dependencies (Linux)
+        run: sudo apt-get update && sudo apt-get install -y libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libclang-dev libgtk-3-dev
+
+      - name: Validate documentation
+        run: RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --all-features --document-private-items
+
+  typos:
+    name: Typos
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Actions Repository
+        uses: actions/checkout@v3
+
+      - name: Check for spelling errors
+        uses: crate-ci/typos@v1.16.5
+
+  valence-clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Actions Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Rust toolchain and cache
+        uses: actions-rust-lang/setup-rust-toolchain@v1.5.0
+        with:
+          toolchain: "stable"
+          components: "clippy"
+
+      - name: Copy playground
+        run: cp tools/playground/src/playground.template.rs tools/playground/src/playground.rs
+
+      - name: Install dependencies (Linux)
+        run: sudo apt-get update && sudo apt-get install -y libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libclang-dev libgtk-3-dev
+
       - name: Clippy
-        run: cargo clippy --workspace ${{ matrix.flags }}--no-deps --all-features --all-targets -- -D warnings
+        run: cargo clippy --workspace --no-deps --all-features --all-targets -- -D warnings
 
   valence-tests:
     strategy:
@@ -57,54 +92,118 @@ jobs:
         include:
           - style: default
             flags: ""
-
+    name: Tests (${{ matrix.platform }})
     runs-on: ${{ matrix.platform }}
-
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout Actions Repository
+        uses: actions/checkout@v3
 
       - name: Setup Rust toolchain and cache
-        uses: actions-rust-lang/setup-rust-toolchain@v1.4.4
+        uses: actions-rust-lang/setup-rust-toolchain@v1.5.0
 
-      - name: "Copy playground"
+      - name: Copy playground
         run: cp tools/playground/src/playground.template.rs tools/playground/src/playground.rs
 
-      - name: Install Dependencies (Linux)
+      - name: Install dependencies (Linux)
         run: sudo apt-get update && sudo apt-get install -y libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libclang-dev libgtk-3-dev
         if: matrix.platform == 'ubuntu-latest'
 
       - name: Run tests
-        run: cargo test --workspace ${{ matrix.flags }}--all-features --all-targets
+        run: cargo test --workspace ${{ matrix.flags }} --all-features --all-targets
+
+      - name: Run doctests
+        run: cargo test --workspace ${{ matrix.flags }} --all-features --doc
 
       - name: Run valence_nbt tests without preserve_order feature
         run: cargo test -p valence_nbt --all-targets
 
-  valence-docs:
-    strategy:
-      fail-fast: true
-      matrix:
-        platform: [windows-latest, macos-latest, ubuntu-latest]
-        style: [default]
-        rust:
-          - stable
-        include:
-          - style: default
-            flags: ""
-
-    runs-on: ${{ matrix.platform }}
-
+  extractor-build:
+    name: Build Extractor
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout Actions Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Java
+        uses: actions/setup-java@v2
+        with:
+          distribution: "zulu"
+          java-version: "17"
+
+      - name: Test Build
+        run: ./gradlew build
+        working-directory: extractor
+
+  check-depgraph:
+    name: Dependency Graph (assets/depgraph.svg)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Actions Repository
+        uses: actions/checkout@v3
+
+      - name: Install cargo-depgraph
+        uses: baptiste0928/cargo-install@v2.1.0
+        with:
+          crate: cargo-depgraph
+
+      - name: Install graphviz
+        run: sudo apt update && sudo apt install -y graphviz
+
+      - name: Generate new depgraph
+        run: cargo depgraph --workspace-only | tred | dot -Tsvg -o assets/depgraph.svg
+
+      - name: Check depgraph diff
+        run: git diff --exit-code assets/depgraph.svg > assets/depgraph.patch
+
+      - name: Create comment artifact
+        if: ${{ failure() && github.event_name == 'pull_request' }}
+        run: |
+          mkdir ./bad-depgraph
+          echo ${{ github.event.number }} >> ./bad-depgraph/event-number
+
+          echo "It looks like this pull request changed the workspace structure. \
+          Please replace \`assets/depgraph.svg\` with the following text:
+
+          <details>
+            <summary>depgraph.svg (Don't forget the trailing newline)</summary>
+            
+          \`\`\`html
+          $(cat assets/depgraph.svg)
+
+          \`\`\`
+          </details>
+
+          For reference, here is a diff against the old \`depgraph.svg\`:
+
+          <details>
+
+          \`\`\`patch
+          $(cat assets/depgraph.patch)
+          \`\`\`
+          </details>" > ./bad-depgraph/pr-comment.txt
+
+      - name: Upload comment artifact
+        uses: actions/upload-artifact@v2
+        if: ${{ failure() && github.event_name == 'pull_request' }}
+        with:
+          name: bad-depgraph
+          path: bad-depgraph/
+  udeps:
+    name: Unused Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Actions Repository
+        uses: actions/checkout@v3
 
       - name: Setup Rust toolchain and cache
-        uses: actions-rust-lang/setup-rust-toolchain@v1.4.4
+        uses: actions-rust-lang/setup-rust-toolchain@v1.5.0
+        with:
+          toolchain: "nightly"
 
-      - name: "Copy playground"
-        run: cp tools/playground/src/playground.template.rs tools/playground/src/playground.rs
+      - name: Install cargo-udeps
+        uses: baptiste0928/cargo-install@v2.1.0
+        with:
+          crate: cargo-udeps
 
-      - name: Install Dependencies (Linux)
-        run: sudo apt-get update && sudo apt-get install -y libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libclang-dev libgtk-3-dev
-        if: matrix.platform == 'ubuntu-latest'
-
-      - name: Validate documentation
-        run: cargo doc --workspace ${{ matrix.flags }}--no-deps --all-features --document-private-items
+      - name: Check for unused dependencies
+        run: cargo udeps --all --all-features

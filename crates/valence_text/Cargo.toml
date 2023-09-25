@@ -1,0 +1,17 @@
+[package]
+name = "valence_text"
+description = "Parsing and writing Minecraft's JSON text format"
+readme = "README.md"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+documentation.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+thiserror.workspace = true
+uuid = { workspace = true, features = ["serde"] }
+valence_ident.workspace = true
+valence_nbt.workspace = true

@@ -1,20 +1,8 @@
-## Description
+# Objective
 
-Describe the changes you've made. Link to any issues this PR fixes or addresses.
+- Describe the objective or issue this PR addresses.
+- If you're fixing a specific issue, say "Fixes #X".
 
-## Test Plan
+# Solution
 
-Explain the steps necessary to test your changes. If you used a playground, include the code in the details below.
-
-Steps:
-1.
-
-<details>
-
-<summary>Playground</summary>
-
-```rust
-PASTE YOUR PLAYGROUND CODE HERE
-```
-
-</details>
+- Describe the solution used to achieve the objective above.

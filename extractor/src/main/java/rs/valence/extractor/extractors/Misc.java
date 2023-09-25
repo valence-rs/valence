@@ -11,7 +11,6 @@ import net.minecraft.network.packet.s2c.play.EntityAnimationS2CPacket;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.math.Direction;
 import rs.valence.extractor.Main;
-
 import java.lang.reflect.Modifier;
 import java.util.Locale;
 

@@ -16,52 +16,52 @@
     unreachable_pub,
     clippy::dbg_macro
 )]
+#![allow(clippy::type_complexity)]
 
 use std::borrow::Cow;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use rsa::RsaPublicKey;
-use uuid::Uuid;
-use valence_client::{Client, Ping, Properties, Username};
-use valence_core::despawn::Despawned;
-use valence_core::game_mode::GameMode;
-use valence_core::packet::c2s::play::player_session::PlayerSessionData;
-use valence_core::packet::encode::{PacketWriter, WritePacket};
-use valence_core::packet::s2c::play::player_list::{Actions, Entry, PlayerListS2c};
-use valence_core::packet::s2c::play::{PlayerListHeaderS2c, PlayerRemoveS2c};
-use valence_core::text::Text;
-use valence_core::uuid::UniqueId;
-use valence_core::Server;
-use valence_instance::WriteUpdatePacketsToInstancesSet;
+use derive_more::{Deref, DerefMut};
+use valence_server::client::{Client, Properties, Username};
+use valence_server::keepalive::Ping;
+use valence_server::layer::UpdateLayersPreClientSet;
+use valence_server::protocol::encode::PacketWriter;
+use valence_server::protocol::packets::play::{
+    player_list_s2c as packet, PlayerListHeaderS2c, PlayerListS2c, PlayerRemoveS2c,
+};
+use valence_server::protocol::WritePacket;
+use valence_server::text::IntoText;
+use valence_server::uuid::Uuid;
+use valence_server::{Despawned, GameMode, Server, Text, UniqueId};
 
 pub struct PlayerListPlugin;
 
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
-
 struct PlayerListSet;
 
 impl Plugin for PlayerListPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(PlayerList::new())
+            .configure_set(
+                PostUpdate,
+                // Needs to happen before player entities are initialized. Otherwise, they will
+                // appear invisible.
+                PlayerListSet.before(UpdateLayersPreClientSet),
+            )
             .add_systems(
+                PostUpdate,
                 (
                     update_header_footer,
                     add_new_clients_to_player_list,
-                    apply_system_buffers, // So new clients get the packets for their own entry.
+                    apply_deferred, // So new clients get the packets for their own entry.
                     update_entries,
                     init_player_list_for_clients,
                     remove_despawned_entries,
                     write_player_list_changes,
                 )
-                    .chain()
-                    .in_set(PlayerListSet),
-            )
-            .configure_set(
-                PlayerListSet
-                    .in_base_set(CoreSet::PostUpdate)
-                    // Needs to happen before player entities are initialized. Otherwise, they will appear invisible.
-                    .before(WriteUpdatePacketsToInstancesSet),
+                    .in_set(PlayerListSet)
+                    .chain(),
             );
     }
 }
@@ -69,7 +69,6 @@ impl Plugin for PlayerListPlugin {
 #[derive(Resource)]
 pub struct PlayerList {
     cached_update_packets: Vec<u8>,
-    scratch: Vec<u8>,
     header: Text,
     footer: Text,
     changed_header_or_footer: bool,
@@ -82,7 +81,6 @@ impl PlayerList {
     fn new() -> Self {
         Self {
             cached_update_packets: vec![],
-            scratch: vec![],
             header: Text::default(),
             footer: Text::default(),
             changed_header_or_footer: false,
@@ -98,8 +96,8 @@ impl PlayerList {
         &self.footer
     }
 
-    pub fn set_header(&mut self, txt: impl Into<Text>) {
-        let txt = txt.into();
+    pub fn set_header<'a>(&mut self, txt: impl IntoText<'a>) {
+        let txt = txt.into_cow_text().into_owned();
 
         if txt != self.header {
             self.changed_header_or_footer = true;
@@ -108,8 +106,8 @@ impl PlayerList {
         self.header = txt;
     }
 
-    pub fn set_footer(&mut self, txt: impl Into<Text>) {
-        let txt = txt.into();
+    pub fn set_footer<'a>(&mut self, txt: impl IntoText<'a>) {
+        let txt = txt.into_cow_text().into_owned();
 
         if txt != self.footer {
             self.changed_header_or_footer = true;
@@ -143,25 +141,17 @@ pub struct PlayerListEntryBundle {
 pub struct PlayerListEntry;
 
 /// Displayed name for a player list entry. Appears as [`Username`] if `None`.
-#[derive(Component, Default, Debug)]
+#[derive(Component, Default, Debug, Deref, DerefMut)]
 pub struct DisplayName(pub Option<Text>);
 
 /// If a player list entry is visible. Defaults to `true`.
-#[derive(Component, Copy, Clone, Debug)]
+#[derive(Component, Copy, Clone, Debug, Deref, DerefMut)]
 pub struct Listed(pub bool);
 
 impl Default for Listed {
     fn default() -> Self {
         Self(true)
     }
-}
-
-/// Contains information for the player's chat message verification.
-/// Not required.
-#[derive(Component, Clone, Debug)]
-pub struct ChatSession {
-    pub public_key: RsaPublicKey,
-    pub session_data: PlayerSessionData,
 }
 
 fn update_header_footer(player_list: ResMut<PlayerList>, server: Res<Server>) {
@@ -171,7 +161,6 @@ fn update_header_footer(player_list: ResMut<PlayerList>, server: Res<Server>) {
         let mut w = PacketWriter::new(
             &mut player_list.cached_update_packets,
             server.compression_threshold(),
-            &mut player_list.scratch,
         );
 
         w.write_packet(&PlayerListHeaderS2c {
@@ -199,7 +188,6 @@ fn add_new_clients_to_player_list(
     }
 }
 
-#[allow(clippy::type_complexity)]
 fn init_player_list_for_clients(
     mut clients: Query<&mut Client, (Added<Client>, Without<Despawned>)>,
     player_list: Res<PlayerList>,
@@ -212,42 +200,33 @@ fn init_player_list_for_clients(
             &Ping,
             &DisplayName,
             &Listed,
-            Option<&ChatSession>,
         ),
         With<PlayerListEntry>,
     >,
 ) {
     if player_list.manage_clients {
         for mut client in &mut clients {
-            let actions = Actions::new()
+            let actions = packet::PlayerListActions::new()
                 .with_add_player(true)
                 .with_update_game_mode(true)
                 .with_update_listed(true)
                 .with_update_latency(true)
-                .with_update_display_name(true)
-                .with_initialize_chat(true);
+                .with_update_display_name(true);
 
             let entries: Vec<_> = entries
                 .iter()
                 .map(
-                    |(
-                        uuid,
-                        username,
-                        props,
-                        game_mode,
-                        ping,
-                        display_name,
-                        listed,
-                        chat_session,
-                    )| Entry {
-                        player_uuid: uuid.0,
-                        username: &username.0,
-                        properties: Cow::Borrowed(&props.0),
-                        chat_data: chat_session.map(|s| s.session_data.clone().into()),
-                        listed: listed.0,
-                        ping: ping.0,
-                        game_mode: *game_mode,
-                        display_name: display_name.0.as_ref().map(Cow::Borrowed),
+                    |(uuid, username, props, game_mode, ping, display_name, listed)| {
+                        packet::PlayerListEntry {
+                            player_uuid: uuid.0,
+                            username: &username.0,
+                            properties: Cow::Borrowed(&props.0),
+                            chat_data: None,
+                            listed: listed.0,
+                            ping: ping.0,
+                            game_mode: *game_mode,
+                            display_name: display_name.0.as_ref().map(Cow::Borrowed),
+                        }
                     },
                 )
                 .collect();
@@ -286,7 +265,6 @@ fn remove_despawned_entries(
             let mut w = PacketWriter::new(
                 &mut player_list.cached_update_packets,
                 server.compression_threshold(),
-                &mut player_list.scratch,
             );
 
             w.write_packet(&PlayerRemoveS2c {
@@ -298,7 +276,6 @@ fn remove_despawned_entries(
     }
 }
 
-#[allow(clippy::type_complexity)]
 fn update_entries(
     entries: Query<
         (
@@ -309,7 +286,6 @@ fn update_entries(
             Ref<Ping>,
             Ref<DisplayName>,
             Ref<Listed>,
-            Option<Ref<ChatSession>>,
         ),
         (
             With<PlayerListEntry>,
@@ -321,7 +297,6 @@ fn update_entries(
                 Changed<Ping>,
                 Changed<DisplayName>,
                 Changed<Listed>,
-                Changed<ChatSession>,
             )>,
         ),
     >,
@@ -333,11 +308,10 @@ fn update_entries(
     let mut writer = PacketWriter::new(
         &mut player_list.cached_update_packets,
         server.compression_threshold(),
-        &mut player_list.scratch,
     );
 
-    for (uuid, username, props, game_mode, ping, display_name, listed, chat_session) in &entries {
-        let mut actions = Actions::new();
+    for (uuid, username, props, game_mode, ping, display_name, listed) in &entries {
+        let mut actions = packet::PlayerListActions::new();
 
         // Did a change occur that would force us to overwrite the entry? This also adds
         // new entries.
@@ -359,10 +333,6 @@ fn update_entries(
             if listed.0 {
                 actions.set_update_listed(true);
             }
-
-            if chat_session.is_some() {
-                actions.set_initialize_chat(true);
-            }
         } else {
             if game_mode.is_changed() {
                 actions.set_update_game_mode(true);
@@ -380,18 +350,14 @@ fn update_entries(
                 actions.set_update_listed(true);
             }
 
-            if matches!(&chat_session, Some(session) if session.is_changed()) {
-                actions.set_initialize_chat(true);
-            }
-
             debug_assert_ne!(u8::from(actions), 0);
         }
 
-        let entry = Entry {
+        let entry = packet::PlayerListEntry {
             player_uuid: uuid.0,
             username: &username.0,
-            properties: (&props.0).into(),
-            chat_data: chat_session.map(|s| s.session_data.clone().into()),
+            properties: Cow::Borrowed(&props.0),
+            chat_data: None,
             listed: listed.0,
             ping: ping.0,
             game_mode: *game_mode,
