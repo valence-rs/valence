@@ -4,10 +4,9 @@ use glam::Vec3;
 use valence_core::block_pos::BlockPos;
 use valence_core::direction::Direction;
 use valence_core::hand::Hand;
-use valence_core::packet::c2s::play::player_session::PlayerSessionData;
 use valence_core::packet::c2s::play::{
-    ChatMessageC2s, ClientStatusC2s, CommandExecutionC2s, HandSwingC2s, MessageAcknowledgmentC2s,
-    PlayerInteractBlockC2s, PlayerInteractItemC2s, PlayerSessionC2s, ResourcePackStatusC2s,
+    ClientStatusC2s, HandSwingC2s, PlayerInteractBlockC2s, PlayerInteractItemC2s,
+    ResourcePackStatusC2s,
 };
 use valence_entity::{EntityAnimation, EntityAnimations};
 
@@ -17,10 +16,6 @@ use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
 pub(super) fn build(app: &mut App) {
     app.add_event::<HandSwing>()
         .add_event::<InteractBlock>()
-        .add_event::<CommandExecution>()
-        .add_event::<ChatMessage>()
-        .add_event::<MessageAcknowledgment>()
-        .add_event::<PlayerSession>()
         .add_event::<Respawn>()
         .add_event::<RequestStats>()
         .add_event::<ResourcePackStatusChange>()
@@ -52,36 +47,6 @@ pub struct InteractBlock {
     pub head_inside_block: bool,
     /// Sequence number for synchronization
     pub sequence: i32,
-}
-
-#[derive(Clone, Debug)]
-pub struct CommandExecution {
-    pub client: Entity,
-    pub command: Box<str>,
-    pub timestamp: u64,
-}
-
-#[derive(Clone, Debug)]
-pub struct ChatMessage {
-    pub client: Entity,
-    pub message: Box<str>,
-    pub timestamp: u64,
-    pub salt: u64,
-    pub signature: Option<Box<[u8; 256]>>,
-    pub message_index: i32,
-    pub acknowledgements: [u8; 3],
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct MessageAcknowledgment {
-    pub client: Entity,
-    pub message_index: i32,
-}
-
-#[derive(Clone, Debug)]
-pub struct PlayerSession {
-    pub client: Entity,
-    pub session_data: PlayerSessionData,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -118,10 +83,6 @@ fn handle_misc_packets(
     mut clients: Query<(&mut ActionSequence, &mut EntityAnimations)>,
     mut hand_swing_events: EventWriter<HandSwing>,
     mut interact_block_events: EventWriter<InteractBlock>,
-    mut command_execution_events: EventWriter<CommandExecution>,
-    mut chat_message_events: EventWriter<ChatMessage>,
-    mut message_acknowledgement_events: EventWriter<MessageAcknowledgment>,
-    mut player_session_events: EventWriter<PlayerSession>,
     mut respawn_events: EventWriter<Respawn>,
     mut request_stats_events: EventWriter<RequestStats>,
     mut resource_pack_status_change_events: EventWriter<ResourcePackStatusChange>,
@@ -159,32 +120,6 @@ fn handle_misc_packets(
             }
 
             // TODO
-        } else if let Some(pkt) = packet.decode::<CommandExecutionC2s>() {
-            command_execution_events.send(CommandExecution {
-                client: packet.client,
-                command: pkt.command.into(),
-                timestamp: pkt.timestamp,
-            });
-        } else if let Some(pkt) = packet.decode::<ChatMessageC2s>() {
-            chat_message_events.send(ChatMessage {
-                client: packet.client,
-                message: pkt.message.into(),
-                timestamp: pkt.timestamp,
-                salt: pkt.salt,
-                signature: pkt.signature.copied().map(Box::new),
-                message_index: pkt.message_index.0,
-                acknowledgements: pkt.acknowledgement,
-            });
-        } else if let Some(pkt) = packet.decode::<MessageAcknowledgmentC2s>() {
-            message_acknowledgement_events.send(MessageAcknowledgment {
-                client: packet.client,
-                message_index: pkt.message_index.0,
-            });
-        } else if let Some(pkt) = packet.decode::<PlayerSessionC2s>() {
-            player_session_events.send(PlayerSession {
-                client: packet.client,
-                session_data: pkt.0.into_owned(),
-            });
         } else if let Some(pkt) = packet.decode::<ClientStatusC2s>() {
             match pkt {
                 ClientStatusC2s::PerformRespawn => respawn_events.send(Respawn {

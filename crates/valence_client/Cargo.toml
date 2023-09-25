@@ -3,6 +3,10 @@ name = "valence_client"
 version.workspace = true
 edition.workspace = true
 
+[features]
+chat = []
+secure_chat = ["chat"]
+
 [dependencies]
 anyhow.workspace = true
 bevy_app.workspace = true

@@ -11,13 +11,14 @@ keywords = ["minecraft", "gamedev", "server", "ecs"]
 categories = ["game-engines"]
 
 [features]
-default = ["network", "player_list", "inventory", "anvil", "advancement", "chat"]
+default = ["network", "player_list", "inventory", "anvil", "advancement", "secure_chat"]
 network = ["dep:valence_network"]
 player_list = ["dep:valence_player_list"]
 inventory = ["dep:valence_inventory"]
 anvil = ["dep:valence_anvil"]
 advancement = ["dep:valence_advancement"]
-chat = ["dep:valence_chat"]
+chat = ["dep:valence_chat", "valence_client/chat"]
+secure_chat = ["chat", "valence_chat?/secure", "valence_client/secure_chat"]
 
 [dependencies]
 bevy_app.workspace = true

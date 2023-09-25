@@ -1,6 +1,7 @@
 #![allow(clippy::type_complexity)]
 
-use valence::client::misc::{ChatMessage, InteractBlock};
+use valence::client::chat::ChatMessage;
+use valence::client::misc::InteractBlock;
 use valence::nbt::{compound, List};
 use valence::prelude::*;
 

@@ -1,8 +1,9 @@
 #![allow(clippy::type_complexity)]
 
 use tracing::warn;
+use valence::chat::ChatState;
+use valence::client::chat::{ChatMessage, CommandExecution};
 use valence::client::despawn_disconnected_clients;
-use valence::client::misc::CommandExecution;
 use valence::prelude::*;
 
 const SPAWN_Y: i32 = 64;
@@ -16,6 +17,7 @@ pub fn main() {
         .add_systems((
             init_clients,
             despawn_disconnected_clients,
+            handle_message_events.in_schedule(EventLoopSchedule),
             handle_command_events.in_schedule(EventLoopSchedule),
         ))
         .run();
@@ -54,6 +56,24 @@ fn init_clients(
         pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
 
         client.send_message("Welcome to Valence! Say something.".italic());
+    }
+}
+
+fn handle_message_events(
+    mut clients: Query<(&mut Client, &mut ChatState)>,
+    names: Query<&Username>,
+    mut messages: EventReader<ChatMessage>,
+) {
+    for message in messages.iter() {
+        let sender_name = names.get(message.client).expect("Error getting username");
+        // Need to find better way. Username is sender, while client and chat state are
+        // recievers. Maybe try to add a chat feature to Client.
+        for (mut client, mut state) in clients.iter_mut() {
+            state
+                .as_mut()
+                .send_chat_message(client.as_mut(), sender_name, message)
+                .expect("Error sending message");
+        }
     }
 }
 

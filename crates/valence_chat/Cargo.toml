@@ -3,17 +3,20 @@ name = "valence_chat"
 version.workspace = true
 edition.workspace = true
 
+[features]
+secure = ["dep:rsa", "dep:rustc-hash", "dep:sha1", "dep:sha2", "valence_client/secure_chat"]
+
 [dependencies]
 anyhow.workspace = true
 bevy_app.workspace = true
 bevy_ecs.workspace = true
-rsa.workspace = true
-rustc-hash.workspace = true
-sha1 = { workspace = true, features = ["oid"] }
-sha2 = { workspace = true, features = ["oid"] }
+rsa = { workspace = true, optional = true }
+rustc-hash = { workspace = true, optional = true }
+sha1 = { workspace = true, features = ["oid"], optional = true }
+sha2 = { workspace = true, features = ["oid"], optional = true }
 tracing.workspace = true
 valence_core.workspace = true
-valence_client.workspace = true
+valence_client = { workspace = true, features = ["chat"], optional = true }
 valence_instance.workspace = true
 valence_nbt.workspace = true
 valence_player_list.workspace = true

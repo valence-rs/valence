@@ -18,6 +18,23 @@ use valence_core::text::Color;
 use valence_nbt::{compound, Compound, List, Value};
 use valence_registry::{RegistryCodec, RegistryCodecSet, RegistryValue};
 
+pub(crate) struct ChatTypePlugin;
+
+impl Plugin for ChatTypePlugin {
+    fn build(&self, app: &mut bevy_app::App) {
+        app.insert_resource(ChatTypeRegistry {
+            id_to_chat_type: vec![],
+        })
+        .add_systems(
+            (update_chat_type_registry, remove_chat_types_from_registry)
+                .chain()
+                .in_base_set(CoreSet::PostUpdate)
+                .before(RegistryCodecSet),
+        )
+        .add_startup_system(load_default_chat_types.in_base_set(StartupSet::PreStartup));
+    }
+}
+
 #[derive(Resource)]
 pub struct ChatTypeRegistry {
     id_to_chat_type: Vec<Entity>,
@@ -117,23 +134,6 @@ pub struct ChatTypeParameters {
     sender: bool,
     target: bool,
     content: bool,
-}
-
-pub(crate) struct ChatTypePlugin;
-
-impl Plugin for ChatTypePlugin {
-    fn build(&self, app: &mut bevy_app::App) {
-        app.insert_resource(ChatTypeRegistry {
-            id_to_chat_type: vec![],
-        })
-        .add_systems(
-            (update_chat_type_registry, remove_chat_types_from_registry)
-                .chain()
-                .in_base_set(CoreSet::PostUpdate)
-                .before(RegistryCodecSet),
-        )
-        .add_startup_system(load_default_chat_types.in_base_set(StartupSet::PreStartup));
-    }
 }
 
 fn load_default_chat_types(

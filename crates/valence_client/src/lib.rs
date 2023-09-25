@@ -69,6 +69,8 @@ use valence_instance::{ClearInstanceChangesSet, Instance, WriteUpdatePacketsToIn
 use valence_registry::{RegistryCodec, RegistryCodecSet};
 
 pub mod action;
+#[cfg(feature = "chat")]
+pub mod chat;
 pub mod command;
 pub mod event_loop;
 pub mod interact_entity;
