@@ -125,7 +125,7 @@ derive_more = "1.0.0-beta.3"
 directories = "5.0.0"
 eframe = { version = "0.22.0", default-features = false }
 egui = "0.22.0"
-egui_dock = "0.6"
+egui_dock = "0.7"
 flate2 = "1.0.24"
 flume = "0.11.0"
 fs_extra = "1.2.0"
