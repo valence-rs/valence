@@ -1,6 +1,5 @@
 #![allow(clippy::type_complexity)]
 
-use rand::prelude::IteratorRandom;
 use std::ops::DerefMut;
 
 use command::graph::CommandGraphBuilder;
@@ -11,6 +10,7 @@ use command::scopes::CommandScopes;
 use command::{parsers, Command, CommandApp, CommandScopeRegistry, ModifierValue};
 use command_macros::Command;
 use parsers::{Vec2 as Vec2Parser, Vec3 as Vec3Parser};
+use rand::prelude::IteratorRandom;
 use valence::entity::living::LivingEntity;
 use valence::prelude::*;
 use valence::*;
@@ -287,7 +287,7 @@ fn handle_teleport_command(
 fn find_targets(
     living_entities: &Query<Entity, With<LivingEntity>>,
     clients: &mut Query<(Entity, &mut Client)>,
-    mut positions: &Query<&mut Position>,
+    positions: &Query<&mut Position>,
     entity_layers: &Query<&EntityLayerId>,
     usernames: &Query<(Entity, &Username)>,
     event: &&CommandResultEvent<Teleport>,
@@ -345,7 +345,7 @@ fn find_targets(
                     })
                     .filter(|(target, ..)| *target != event.executor)
                     .map(|(target, ..)| target)
-                    .min_by(|(target), (target2)| {
+                    .min_by(|target, target2| {
                         let target_pos = positions.get(*target).unwrap();
                         let target2_pos = positions.get(*target2).unwrap();
                         let target_dist = target_pos.distance(**executor_pos);
@@ -421,7 +421,7 @@ fn handle_complex_command(
 fn handle_gamemode_command(
     mut events: EventReader<CommandResultEvent<Gamemode>>,
     mut clients: Query<(&mut Client, &mut GameMode, &Username, Entity)>,
-    mut positions: Query<&Position>,
+    positions: Query<&Position>,
 ) {
     for event in events.iter() {
         let game_mode_to_set = match &event.result {
@@ -453,7 +453,8 @@ fn handle_gamemode_command(
                         for (mut client, mut game_mode, ..) in &mut clients.iter_mut() {
                             *game_mode = game_mode_to_set;
                             client.send_chat_message(format!(
-                                "Gamemode command executor -> all entities executed with data:\n {:#?}",
+                                "Gamemode command executor -> all entities executed with data:\n \
+                                 {:#?}",
                                 &event.result
                             ));
                         }
@@ -476,7 +477,8 @@ fn handle_gamemode_command(
 
                                 let client = &mut clients.get_mut(event.executor).unwrap().0;
                                 client.send_chat_message(format!(
-                                    "Gamemode command executor -> single player executed with data:\n {:#?}",
+                                    "Gamemode command executor -> single player executed with \
+                                     data:\n {:#?}",
                                     &event.result
                                 ));
                             }
@@ -486,7 +488,8 @@ fn handle_gamemode_command(
                         for (mut client, mut game_mode, ..) in &mut clients.iter_mut() {
                             *game_mode = game_mode_to_set;
                             client.send_chat_message(format!(
-                                "Gamemode command executor -> all entities executed with data:\n {:#?}",
+                                "Gamemode command executor -> all entities executed with data:\n \
+                                 {:#?}",
                                 &event.result
                             ));
                         }
@@ -525,7 +528,8 @@ fn handle_gamemode_command(
 
                                 let client = &mut clients.get_mut(event.executor).unwrap().0;
                                 client.send_chat_message(format!(
-                                    "Gamemode command executor -> single player executed with data:\n {:#?}",
+                                    "Gamemode command executor -> single player executed with \
+                                     data:\n {:#?}",
                                     &event.result
                                 ));
                             }
@@ -548,7 +552,8 @@ fn handle_gamemode_command(
 
                                 let client = &mut clients.get_mut(event.executor).unwrap().0;
                                 client.send_chat_message(format!(
-                                    "Gamemode command executor -> single player executed with data:\n {:#?}",
+                                    "Gamemode command executor -> single player executed with \
+                                     data:\n {:#?}",
                                     &event.result
                                 ));
                             }
