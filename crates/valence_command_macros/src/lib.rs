@@ -75,7 +75,8 @@ fn command(input: DeriveInput) -> Result<TokenStream> {
             &enum_name,
             vec![base_path],
             &Fields::Unit,
-            format_ident!("{}Root", enum_name),
+            format_ident!("{}Root", enum_name), // this is more of placeholder
+            // (should never be used)
             false,
         ); // this will error if the base path has args
         let mut expanded_main_command = quote! {

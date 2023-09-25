@@ -4,10 +4,12 @@ use bevy_app::{App, Plugin, PreUpdate};
 use bevy_ecs::entity::Entity;
 use bevy_ecs::prelude::{
     Added, Changed, Commands, DetectChanges, Event, EventReader, EventWriter, IntoSystemConfigs,
-    Or, Query, Res,
+    Mut, Or, Query, Res,
 };
 use petgraph::graph::NodeIndex;
-use petgraph::Graph;
+use petgraph::prelude::EdgeRef;
+use petgraph::{Direction, Graph};
+use tracing::{debug, warn};
 use valence_server::client::{Client, SpawnClientsSet};
 use valence_server::event_loop::PacketEvent;
 use valence_server::protocol::packets::play::command_tree_s2c::NodeData;
@@ -103,41 +105,16 @@ fn read_incoming_packets(
 fn command_tree_update_with_client(
     command_registry: Res<CommandRegistry>,
     scope_registry: Res<CommandScopeRegistry>,
-    mut new_clients: Query<
+    mut updated_clients: Query<
         (&mut Client, &CommandScopes),
         Or<(Added<Client>, Changed<CommandScopes>)>,
     >,
 ) {
-    for (mut client, client_scopes) in new_clients.iter_mut() {
-        let mut graph = command_registry.graph.clone();
-        // trim the graph to only include commands the client has permission to execute
-        let mut nodes_to_remove = Vec::new();
-        'nodes: for node in graph.graph.node_indices() {
-            let node_scopes = &graph.graph[node].scopes;
-            if node_scopes.is_empty() {
-                continue;
-            }
-            for scope in node_scopes.iter() {
-                if !scope_registry.any_grants(
-                    &client_scopes.0.iter().map(|scope| scope.as_str()).collect(),
-                    scope,
-                ) {
-                    // this should be enough to remove the node and all of its children (when it
-                    // gets converted into a packet)
-                    nodes_to_remove.push(node);
-                    continue 'nodes;
-                }
-            }
-        }
-
-        for node in nodes_to_remove {
-            graph.graph.remove_node(node);
-        }
-
-        let packet: CommandTreeS2c = graph.into();
-
-        client.write_packet(&packet);
-    }
+    update_client_command_tree(
+        &command_registry,
+        scope_registry,
+        &mut updated_clients.iter_mut().collect(),
+    );
 }
 
 fn update_command_tree(
@@ -146,36 +123,94 @@ fn update_command_tree(
     mut clients: Query<(&mut Client, &CommandScopes)>,
 ) {
     if command_registry.is_changed() {
-        for (mut client, client_scopes) in clients.iter_mut() {
-            let mut graph = command_registry.graph.clone();
-            // trim the graph to only include commands the client has permission to execute
-            let mut nodes_to_remove = Vec::new();
-            'nodes: for node in graph.graph.node_indices() {
-                let node_scopes = &graph.graph[node].scopes;
-                if node_scopes.is_empty() {
-                    continue;
-                }
-                for scope in node_scopes.iter() {
-                    if !scope_registry.any_grants(
+        update_client_command_tree(
+            &command_registry,
+            scope_registry,
+            &mut clients.iter_mut().collect(),
+        );
+    }
+}
+
+fn update_client_command_tree(
+    command_registry: &Res<CommandRegistry>,
+    scope_registry: Res<CommandScopeRegistry>,
+    updated_clients: &mut Vec<(Mut<Client>, &CommandScopes)>,
+) {
+    for (ref mut client, client_scopes) in updated_clients {
+        let time = std::time::Instant::now();
+        debug!("updating command tree for client");
+
+        let old_graph = &command_registry.graph;
+        let mut new_graph = Graph::new();
+
+        // collect a new graph into only nodes that are allowed to be executed
+        let root = old_graph.root;
+
+        let mut to_visit = vec![(None, root)];
+        let mut already_visited = HashSet::new(); // prevent recursion
+        let mut old_to_new = HashMap::new();
+        let mut new_root = None;
+
+        while let Some((parent, node)) = to_visit.pop() {
+            if already_visited.contains(&(parent.map(|(_, edge)| edge), node)) {
+                continue;
+            }
+            already_visited.insert((parent.map(|(_, edge)| edge), node));
+            let node_scopes = &old_graph.graph[node].scopes;
+            if !node_scopes.is_empty() {
+                let mut has_scope = false;
+                for scope in node_scopes {
+                    if scope_registry.any_grants(
                         &client_scopes.0.iter().map(|scope| scope.as_str()).collect(),
                         scope,
                     ) {
-                        // this should be enough to remove the node and all of its children (when it
-                        // gets converted into a packet)
-                        nodes_to_remove.push(node);
-                        continue 'nodes;
+                        has_scope = true;
+                        break;
                     }
+                }
+                if !has_scope {
+                    continue;
                 }
             }
 
-            for node in nodes_to_remove {
-                graph.graph.remove_node(node);
+            let new_node = *old_to_new
+                .entry(node)
+                .or_insert_with(|| new_graph.add_node(old_graph.graph[node].clone()));
+
+            for neighbor in old_graph.graph.edges_directed(node, Direction::Outgoing) {
+                to_visit.push((Some((new_node, neighbor.weight())), neighbor.target()));
             }
 
-            let packet: CommandTreeS2c = graph.into();
-
-            client.write_packet(&packet);
+            if let Some(parent) = parent {
+                new_graph.add_edge(parent.0, new_node, *parent.1);
+            } else {
+                new_root = Some(new_node);
+            }
         }
+
+        match new_root {
+            Some(new_root) => {
+                let command_graph = CommandGraph {
+                    graph: new_graph,
+                    root: new_root,
+                };
+                let packet: CommandTreeS2c = command_graph.into();
+
+                client.write_packet(&packet);
+            }
+            None => {
+                warn!(
+                    "Client has no permissions to execute any commands so we sent them nothing.\
+                It is generally a bad idea to scope the root node of the command graph as it can \
+                cause undefined behavior. For example, if the player has permission to execute \
+                a command before you change the scope of the root node, the packet will not be \
+                sent to the client and so the client will still think they can execute the \
+                command."
+                )
+            }
+        }
+
+        debug!("command tree update took {:?}", time.elapsed());
     }
 }
 

@@ -139,7 +139,7 @@ impl Display for CommandNode {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum CommandEdgeType {
     Redirect,
     Child,

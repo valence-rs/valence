@@ -263,8 +263,6 @@ impl CommandScopeRegistry {
     /// ));
     /// ```
     pub fn any_grants(&self, scopes: &Vec<&str>, other: &str) -> bool {
-        let other = other;
-
         for scope in scopes {
             if self.grants(scope, other) {
                 return true;
@@ -282,9 +280,7 @@ impl CommandScopeRegistry {
     ///
     /// let mut registry = CommandScopeRegistry::new();
     ///
-    /// registry.add_scope("valence.command");
     /// registry.add_scope("valence.command.tp");
-    /// registry.add_scope("valence.admin");
     ///
     /// registry.link("valence.admin", "valence.command");
     ///
