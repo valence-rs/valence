@@ -1,3 +1,3 @@
 # valence_anvil
 
-Support for Minecraft's [anvil file format](https://minecraft.fandom.com/wiki/Anvil_file_format).
+Support for Minecraft's [anvil file format](https://minecraft.wiki/w/Anvil_file_format).

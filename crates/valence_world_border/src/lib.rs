@@ -30,7 +30,7 @@ use valence_server::protocol::packets::play::{
 use valence_server::protocol::WritePacket;
 use valence_server::{ChunkLayer, Server};
 
-// https://minecraft.fandom.com/wiki/World_border
+// https://minecraft.wiki/w/World_border
 pub const DEFAULT_PORTAL_LIMIT: i32 = 29999984;
 pub const DEFAULT_DIAMETER: f64 = (DEFAULT_PORTAL_LIMIT * 2) as f64;
 pub const DEFAULT_WARN_TIME: i32 = 15;

@@ -658,7 +658,7 @@ pub struct PlayerSampleEntry {
     /// The name of the player.
     ///
     /// This string can contain
-    /// [legacy formatting codes](https://minecraft.fandom.com/wiki/Formatting_codes).
+    /// [legacy formatting codes](https://minecraft.wiki/w/Formatting_codes).
     pub name: String,
     /// The player UUID.
     pub id: Uuid,
