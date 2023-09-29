@@ -69,17 +69,17 @@ fn init_clients(
         visible_entity_layers.0.insert(layer);
         *game_mode = GameMode::Creative;
 
-        client.send_chat_message("Welcome to the text example.".bold());
-        client.send_chat_message(
+        client.send_game_message("Welcome to the text example.".bold());
+        client.send_game_message(
             "The following examples show ways to use the different text components.",
         );
 
         // Text examples
-        client.send_chat_message("\nText");
-        client.send_chat_message(" - ".into_text() + Text::text("Plain text"));
-        client.send_chat_message(" - ".into_text() + Text::text("Styled text").italic());
-        client.send_chat_message(" - ".into_text() + Text::text("Colored text").color(Color::GOLD));
-        client.send_chat_message(
+        client.send_game_message("\nText");
+        client.send_game_message(" - ".into_text() + Text::text("Plain text"));
+        client.send_game_message(" - ".into_text() + Text::text("Styled text").italic());
+        client.send_game_message(" - ".into_text() + Text::text("Colored text").color(Color::GOLD));
+        client.send_game_message(
             " - ".into_text()
                 + Text::text("Colored and styled text")
                     .color(Color::GOLD)
@@ -88,61 +88,61 @@ fn init_clients(
         );
 
         // Translated text examples
-        client.send_chat_message("\nTranslated Text");
-        client.send_chat_message(
+        client.send_game_message("\nTranslated Text");
+        client.send_game_message(
             " - 'chat.type.advancement.task': ".into_text()
                 + Text::translate(keys::CHAT_TYPE_ADVANCEMENT_TASK, []),
         );
-        client.send_chat_message(
+        client.send_game_message(
             " - 'chat.type.advancement.task' with slots: ".into_text()
                 + Text::translate(
                     keys::CHAT_TYPE_ADVANCEMENT_TASK,
                     ["arg1".into(), "arg2".into()],
                 ),
         );
-        client.send_chat_message(
+        client.send_game_message(
             " - 'custom.translation_key': ".into_text()
                 + Text::translate("custom.translation_key", []),
         );
 
         // Scoreboard value example
-        client.send_chat_message("\nScoreboard Values");
-        client.send_chat_message(" - Score: ".into_text() + Text::score("*", "objective", None));
-        client.send_chat_message(
+        client.send_game_message("\nScoreboard Values");
+        client.send_game_message(" - Score: ".into_text() + Text::score("*", "objective", None));
+        client.send_game_message(
             " - Score with custom value: ".into_text()
                 + Text::score("*", "objective", Some("value".into())),
         );
 
         // Entity names example
-        client.send_chat_message("\nEntity Names (Selector)");
-        client.send_chat_message(" - Nearest player: ".into_text() + Text::selector("@p", None));
-        client.send_chat_message(" - Random player: ".into_text() + Text::selector("@r", None));
-        client.send_chat_message(" - All players: ".into_text() + Text::selector("@a", None));
-        client.send_chat_message(" - All entities: ".into_text() + Text::selector("@e", None));
-        client.send_chat_message(
+        client.send_game_message("\nEntity Names (Selector)");
+        client.send_game_message(" - Nearest player: ".into_text() + Text::selector("@p", None));
+        client.send_game_message(" - Random player: ".into_text() + Text::selector("@r", None));
+        client.send_game_message(" - All players: ".into_text() + Text::selector("@a", None));
+        client.send_game_message(" - All entities: ".into_text() + Text::selector("@e", None));
+        client.send_game_message(
             " - All entities with custom separator: ".into_text()
                 + Text::selector("@e", Some(", ".into_text().color(Color::GOLD))),
         );
 
         // Keybind example
-        client.send_chat_message("\nKeybind");
+        client.send_game_message("\nKeybind");
         client
-            .send_chat_message(" - 'key.inventory': ".into_text() + Text::keybind("key.inventory"));
+            .send_game_message(" - 'key.inventory': ".into_text() + Text::keybind("key.inventory"));
 
         // NBT examples
-        client.send_chat_message("\nNBT");
-        client.send_chat_message(
+        client.send_game_message("\nNBT");
+        client.send_game_message(
             " - Block NBT: ".into_text() + Text::block_nbt("{}", "0 1 0", None, None),
         );
-        client.send_chat_message(
+        client.send_game_message(
             " - Entity NBT: ".into_text() + Text::entity_nbt("{}", "@a", None, None),
         );
-        client.send_chat_message(
+        client.send_game_message(
             " - Storage NBT: ".into_text()
                 + Text::storage_nbt(ident!("storage.key"), "@a", None, None),
         );
 
-        client.send_chat_message(
+        client.send_game_message(
             "\n\n↑ ".into_text().bold().color(Color::GOLD)
                 + "Scroll up to see the full example!".into_text().not_bold(),
         );

@@ -24,6 +24,8 @@ default = [
     "world_border",
     "weather",
     "testing",
+    "chat",
+    "secure_chat",
 ]
 advancement = ["dep:valence_advancement"]
 anvil = ["dep:valence_anvil"]
@@ -35,6 +37,8 @@ player_list = ["dep:valence_player_list"]
 scoreboard = ["dep:valence_scoreboard"]
 world_border = ["dep:valence_world_border"]
 weather = ["dep:valence_weather"]
+chat = ["dep:valence_chat"]
+secure_chat = ["chat", "valence_chat?/secure"]
 testing = []
 
 [dependencies]
@@ -61,6 +65,7 @@ valence_world_border = { workspace = true, optional = true }
 valence_lang.workspace = true
 valence_text.workspace = true
 valence_ident.workspace = true
+valence_chat = { workspace = true, optional = true }
 
 [dev-dependencies]
 anyhow.workspace = true
@@ -174,6 +179,7 @@ valence_advancement = { path = "crates/valence_advancement", version = "0.2.0-al
 valence_anvil = { path = "crates/valence_anvil", version = "0.2.0-alpha.1" }
 valence_boss_bar = { path = "crates/valence_boss_bar", version = "0.2.0-alpha.1" }
 valence_build_utils = { path = "crates/valence_build_utils", version = "0.2.0-alpha.1" }
+valence_chat = { path = "crates/valence_chat", version = "0.2.0-alpha.1" }
 valence_entity = { path = "crates/valence_entity", version = "0.2.0-alpha.1" }
 valence_generated = { path = "crates/valence_generated", version = "0.2.0-alpha.1" }
 valence_ident = { path = "crates/valence_ident", version = "0.2.0-alpha.1" }

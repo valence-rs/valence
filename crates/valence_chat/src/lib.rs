@@ -17,7 +17,7 @@
     clippy::dbg_macro
 )]
 
-pub mod chat_type;
+pub mod message;
 
 #[cfg(feature = "secure")]
 use std::collections::VecDeque;
@@ -25,33 +25,33 @@ use std::time::SystemTime;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use chat_type::ChatTypePlugin;
 use tracing::warn;
-use valence_client::chat::{ChatMessage, CommandExecution};
-use valence_client::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent, RunEventLoopSet};
-use valence_client::settings::ClientSettings;
-use valence_client::{Client, SpawnClientsSet};
-use valence_core::packet::c2s::play::client_settings::ChatMode;
-use valence_core::packet::c2s::play::{ChatMessageC2s, CommandExecutionC2s};
-use valence_core::packet::encode::WritePacket;
-use valence_core::packet::message_signature::MessageSignature;
-use valence_core::packet::s2c::play::chat_message::MessageFilterType;
-use valence_core::packet::s2c::play::{ChatMessageS2c, ProfilelessChatMessageS2c};
-use valence_core::text::{Color, Text, TextFormat};
-use valence_core::translation_key::{CHAT_DISABLED_OPTIONS, DISCONNECT_GENERIC_REASON};
+
+use valence_registry::chat_type::ChatTypePlugin;
+use valence_server::event_loop::{EventLoopPreUpdate, PacketEvent};
+use valence_server::client::{Client, SpawnClientsSet};
+use valence_server::client_settings::ClientSettings;
+use valence_protocol::packets::play::client_settings_c2s::ChatMode;
+use valence_protocol::packets::play::{ChatMessageC2s, CommandExecutionC2s};
+use valence_server::protocol::WritePacket;
+use valence_server::protocol::packets::play::chat_message_s2c::{MessageFilterType, MessageSignature};
+use valence_server::protocol::packets::play::{ChatMessageS2c, ProfilelessChatMessageS2c};
+use valence_text::{Color, Text};
+use valence_lang::keys::{CHAT_DISABLED_OPTIONS, DISCONNECT_GENERIC_REASON};
 #[cfg(feature = "secure")]
 use {
     anyhow::bail,
+    rsa::pkcs1v15::Pkcs1v15Sign,
     rsa::pkcs8::DecodePublicKey,
-    rsa::{PaddingScheme, PublicKey, RsaPublicKey},
+    rsa::RsaPublicKey,
     rustc_hash::{FxHashMap, FxHashSet},
     sha1::{Digest, Sha1},
     sha2::Sha256,
     uuid::Uuid,
-    valence_client::chat::ChatMessageType,
-    valence_client::{DisconnectClient, Username},
-    valence_core::packet::c2s::play::{MessageAcknowledgmentC2s, PlayerSessionC2s},
-    valence_core::translation_key::{
+    valence_server::client::{DisconnectClient, Username},
+    valence_server::protocol::packets::play::{MessageAcknowledgmentC2s, PlayerSessionC2s},
+    valence_text::IntoText,
+    valence_lang::keys::{
         CHAT_DISABLED_CHAIN_BROKEN, CHAT_DISABLED_EXPIRED_PROFILE_KEY,
         CHAT_DISABLED_MISSING_PROFILE_KEY, MULTIPLAYER_DISCONNECT_CHAT_VALIDATION_FAILED,
         MULTIPLAYER_DISCONNECT_EXPIRED_PUBLIC_KEY,
@@ -59,9 +59,11 @@ use {
         MULTIPLAYER_DISCONNECT_OUT_OF_ORDER_CHAT, MULTIPLAYER_DISCONNECT_TOO_MANY_PENDING_CHATS,
         MULTIPLAYER_DISCONNECT_UNSIGNED_CHAT,
     },
-    valence_core::uuid::UniqueId,
+    valence_server_common::UniqueId,
     valence_player_list::{ChatSession, PlayerListEntry},
 };
+
+use crate::message::{ChatMessageEvent, ChatMessageType, CommandExecutionEvent, SendMessage};
 
 #[cfg(feature = "secure")]
 const MOJANG_KEY_DATA: &[u8] = include_bytes!("../yggdrasil_session_pubkey.der");
@@ -70,25 +72,20 @@ pub struct ChatPlugin;
 
 impl Plugin for ChatPlugin {
     fn build(&self, app: &mut bevy_app::App) {
-        app.add_plugin(ChatTypePlugin)
-            .add_event::<CommandExecution>()
-            .add_event::<ChatMessage>()
-            .add_system(
-                init_chat_states
-                    .in_base_set(CoreSet::PreUpdate)
-                    .after(SpawnClientsSet)
-                    .before(RunEventLoopSet),
+        app.add_plugins(ChatTypePlugin)
+            .add_systems(
+                PreUpdate,
+                init_chat_states.after(SpawnClientsSet),
             )
             .add_systems(
+                EventLoopPreUpdate,
                 (
                     #[cfg(feature = "secure")]
                     handle_acknowledgement_packets,
                     #[cfg(not(feature = "secure"))]
                     handle_message_packets,
                     handle_command_packets,
-                )
-                    .in_base_set(EventLoopSet::PreUpdate)
-                    .in_schedule(EventLoopSchedule),
+                ),
             );
 
         #[cfg(feature = "secure")]
@@ -98,12 +95,12 @@ impl Plugin for ChatPlugin {
 
             app.insert_resource(MojangServicesState::new(mojang_pub_key))
                 .add_systems(
-                    (handle_session_packets, handle_message_packets)
-                        .chain()
-                        .in_base_set(EventLoopSet::PreUpdate)
-                        .in_schedule(EventLoopSchedule),
+                    EventLoopPreUpdate,
+                    (handle_session_packets, handle_message_packets).chain(),
                 );
         }
+
+        message::build(app);
     }
 }
 
@@ -120,17 +117,16 @@ impl MojangServicesState {
     }
 }
 
+#[cfg(feature = "secure")]
 #[derive(Debug, Component)]
 pub struct ChatState {
     pub last_message_timestamp: u64,
-    #[cfg(feature = "secure")]
     validator: AcknowledgementValidator,
-    #[cfg(feature = "secure")]
     chain: MessageChain,
-    #[cfg(feature = "secure")]
     signature_storage: MessageSignatureStorage,
 }
 
+#[cfg(feature = "secure")]
 impl Default for ChatState {
     fn default() -> Self {
         Self {
@@ -138,31 +134,18 @@ impl Default for ChatState {
                 .duration_since(SystemTime::UNIX_EPOCH)
                 .expect("Unable to get Unix time")
                 .as_millis() as u64,
-            #[cfg(feature = "secure")]
             validator: AcknowledgementValidator::new(),
-            #[cfg(feature = "secure")]
             chain: MessageChain::new(),
-            #[cfg(feature = "secure")]
             signature_storage: MessageSignatureStorage::new(),
         }
     }
 }
 
+#[cfg(feature = "secure")]
 impl ChatState {
-    pub fn send_chat_message(
-        &mut self,
-        client: &mut Client,
-        username: &Username,
-        message: &ChatMessage,
-    ) -> anyhow::Result<()> {
+    pub fn send_chat_message(&mut self, client: &mut Client, username: &Username, message: &ChatMessageEvent) -> anyhow::Result<()> {
         match &message.message_type {
-            ChatMessageType::Signed {
-                salt,
-                signature,
-                message_index,
-                last_seen,
-                sender,
-            } => {
+            ChatMessageType::Signed { salt, signature, message_index, last_seen, sender } => {
                 // Create a list of messages that have been seen by the client.
                 let previous = last_seen
                     .iter()
@@ -176,8 +159,8 @@ impl ChatState {
                     sender: *sender,
                     index: (*message_index).into(),
                     message_signature: Some((*signature).as_ref()),
-                    message: message.message.as_ref(),
-                    time_stamp: message.timestamp,
+                    message: message.message.as_ref().into(),
+                    timestamp: message.timestamp,
                     salt: *salt,
                     previous_messages: previous,
                     unsigned_content: None,
@@ -205,7 +188,6 @@ impl ChatState {
 
     /// Updates the chat state's previously seen signatures with a new one
     /// `signature`.
-    #[cfg(feature = "secure")]
     fn add_pending(&mut self, last_seen: &Vec<[u8; 256]>, signature: &[u8; 256]) {
         self.signature_storage.add(last_seen, signature);
         self.validator.add_pending(signature);
@@ -438,6 +420,7 @@ impl MessageSignatureStorage {
     }
 }
 
+#[cfg(feature = "secure")]
 fn init_chat_states(clients: Query<Entity, Added<Client>>, mut commands: Commands) {
     for entity in clients.iter() {
         commands.entity(entity).insert(ChatState::default());
@@ -488,7 +471,7 @@ fn handle_session_packets(
         if services_state
             .public_key
             .verify(
-                PaddingScheme::new_pkcs1v15_sign::<Sha1>(),
+                Pkcs1v15Sign::new::<Sha1>(), // PaddingScheme::new_pkcs1v15_sign::<Sha1>(),
                 &hash,
                 session.0.key_signature.as_ref(),
             )
@@ -575,7 +558,7 @@ fn handle_message_packets(
     >,
     sessions: Query<&ChatSession, With<PlayerListEntry>>,
     mut packets: EventReader<PacketEvent>,
-    mut message_events: EventWriter<ChatMessage>,
+    mut message_events: EventWriter<ChatMessageEvent>,
     mut commands: Commands,
 ) {
     for packet in packets.iter() {
@@ -590,7 +573,7 @@ fn handle_message_packets(
 
         // Ensure that the client isn't sending messages while their chat is hidden.
         if settings.chat_mode == ChatMode::Hidden {
-            client.send_message(Text::translate(CHAT_DISABLED_OPTIONS, []).color(Color::RED));
+            client.send_game_message(Text::translate(CHAT_DISABLED_OPTIONS, []).color(Color::RED));
             continue;
         }
 
@@ -617,11 +600,11 @@ fn handle_message_packets(
                 client: packet.client,
                 reason: Text::translate(MULTIPLAYER_DISCONNECT_UNSIGNED_CHAT, [])
             });*/
-            message_events.send(ChatMessage {
+            message_events.send(ChatMessageEvent {
                 client: packet.client,
-                message: message.message.into(),
+                message: message.message.0.into(),
                 timestamp: message.timestamp,
-                message_type: ChatMessageType::Unsigned,
+                message_type: message::ChatMessageType::Unsigned,
             });
             continue;
         };
@@ -629,7 +612,7 @@ fn handle_message_packets(
         // Validate the message acknowledgements.
         let last_seen = match state
             .validator
-            .validate(&message.acknowledgement, message.message_index.0)
+            .validate(&message.acknowledgement.0, message.message_index.0)
         {
             Err(error) => {
                 warn!(
@@ -646,7 +629,7 @@ fn handle_message_packets(
         };
 
         let Some(link) = &state.chain.next_link() else {
-            client.send_message(Text::translate(
+            client.send_game_message(Text::translate(
                 CHAT_DISABLED_CHAIN_BROKEN,
                 [],
             ).color(Color::RED));
@@ -700,7 +683,7 @@ fn handle_message_packets(
         if chat_session
             .public_key
             .verify(
-                PaddingScheme::new_pkcs1v15_sign::<Sha256>(),
+                Pkcs1v15Sign::new::<Sha256>(), // PaddingScheme::new_pkcs1v15_sign::<Sha256>(),
                 &hashed,
                 message_signature.as_ref(),
             )
@@ -714,11 +697,11 @@ fn handle_message_packets(
             continue;
         }
 
-        message_events.send(ChatMessage {
+        message_events.send(ChatMessageEvent {
             client: packet.client,
-            message: message.message.into(),
+            message: message.message.0.into(),
             timestamp: message.timestamp,
-            message_type: ChatMessageType::Signed {
+            message_type: message::ChatMessageType::Signed {
                 salt: message.salt,
                 signature: (*message_signature).into(),
                 message_index: link.index,
@@ -731,29 +714,27 @@ fn handle_message_packets(
 
 #[cfg(not(feature = "secure"))]
 fn handle_message_packets(
-    mut clients: Query<(&mut Client, &mut ChatState, &ClientSettings)>,
+    mut clients: Query<(&mut Client, &ClientSettings)>,
     mut packets: EventReader<PacketEvent>,
-    mut message_events: EventWriter<ChatMessage>,
+    mut message_events: EventWriter<ChatMessageEvent>,
 ) {
     for packet in packets.iter() {
         let Some(message) = packet.decode::<ChatMessageC2s>() else {
             continue;
         };
 
-        let Ok((mut client, mut state, settings)) = clients.get_mut(packet.client) else {
+        let Ok((mut client, settings)) = clients.get_mut(packet.client) else {
             warn!("Unable to find client for message '{:?}'", message);
             continue;
         };
 
         // Ensure that the client isn't sending messages while their chat is hidden.
         if settings.chat_mode == ChatMode::Hidden {
-            client.send_message(Text::translate(CHAT_DISABLED_OPTIONS, []).color(Color::RED));
+            client.send_game_message(Text::translate(CHAT_DISABLED_OPTIONS, []).color(Color::RED));
             continue;
         }
 
-        state.last_message_timestamp = message.timestamp;
-
-        message_events.send(ChatMessage {
+        message_events.send(ChatMessageEvent {
             client: packet.client,
             message: message.message.into(),
             timestamp: message.timestamp,
@@ -763,13 +744,13 @@ fn handle_message_packets(
 
 fn handle_command_packets(
     mut packets: EventReader<PacketEvent>,
-    mut command_events: EventWriter<CommandExecution>,
+    mut command_events: EventWriter<CommandExecutionEvent>,
 ) {
     for packet in packets.iter() {
         if let Some(command) = packet.decode::<CommandExecutionC2s>() {
-            command_events.send(CommandExecution {
+            command_events.send(CommandExecutionEvent {
                 client: packet.client,
-                command: command.command.into(),
+                command: command.command.0.into(),
                 timestamp: command.timestamp,
             })
         }

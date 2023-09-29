@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 
 [features]
-secure = ["dep:rsa", "dep:rustc-hash", "dep:sha1", "dep:sha2", "valence_client/secure_chat"]
+secure = ["dep:rsa", "dep:rustc-hash", "dep:sha1", "dep:sha2"]
 
 [dependencies]
 anyhow.workspace = true
@@ -15,10 +15,12 @@ rustc-hash = { workspace = true, optional = true }
 sha1 = { workspace = true, features = ["oid"], optional = true }
 sha2 = { workspace = true, features = ["oid"], optional = true }
 tracing.workspace = true
-valence_core.workspace = true
-valence_client = { workspace = true, features = ["chat"], optional = true }
-valence_instance.workspace = true
+uuid.workspace = true
+valence_lang.workspace = true
 valence_nbt.workspace = true
 valence_player_list.workspace = true
+valence_protocol.workspace = true
 valence_registry.workspace = true
-uuid.workspace = true
+valence_server.workspace = true
+valence_server_common.workspace = true
+valence_text.workspace = true

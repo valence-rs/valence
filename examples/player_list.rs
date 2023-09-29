@@ -87,7 +87,7 @@ fn init_clients(
         pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
         *game_mode = GameMode::Creative;
 
-        client.send_chat_message(
+        client.send_game_message(
             "Please open your player list (tab key)."
                 .italic()
                 .color(Color::WHITE),

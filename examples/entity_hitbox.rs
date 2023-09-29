@@ -77,7 +77,7 @@ fn init_clients(
         pos.set([0.0, 65.0, 0.0]);
         *game_mode = GameMode::Creative;
 
-        client.send_chat_message("To spawn an entity, press shift. F3 + B to activate hitboxes");
+        client.send_game_message("To spawn an entity, press shift. F3 + B to activate hitboxes");
     }
 }
 

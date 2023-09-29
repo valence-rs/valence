@@ -79,7 +79,7 @@ fn init_clients(
         pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
         *game_mode = GameMode::Creative;
 
-        client.send_chat_message("Welcome to Valence! Build something cool.".italic());
+        client.send_game_message("Welcome to Valence! Build something cool.".italic());
     }
 }
 

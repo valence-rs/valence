@@ -4,7 +4,7 @@ use std::f64::consts::TAU;
 
 use valence::abilities::{PlayerStartFlyingEvent, PlayerStopFlyingEvent};
 use valence::math::{DQuat, EulerRot};
-use valence::message::SendMessage;
+use valence::chat::message::SendMessage;
 use valence::prelude::*;
 use valence_text::color::NamedColor;
 

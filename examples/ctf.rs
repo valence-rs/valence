@@ -396,7 +396,7 @@ fn init_clients(
         *game_mode = GameMode::Adventure;
         health.0 = PLAYER_MAX_HEALTH;
 
-        client.send_chat_message(
+        client.send_game_message(
             "Welcome to Valence! Select a team by jumping in the team's portal.".italic(),
         );
     }
@@ -460,7 +460,7 @@ fn digging(
                 (Team::Blue, BlockState::RED_WOOL) => {
                     if event.position == globals.red_flag {
                         commands.entity(event.client).insert(HasFlag(Team::Red));
-                        client.send_chat_message("You have the flag!".italic());
+                        client.send_game_message("You have the flag!".italic());
                         flag_manager.red = Some(ent);
                         return;
                     }
@@ -468,7 +468,7 @@ fn digging(
                 (Team::Red, BlockState::BLUE_WOOL) => {
                     if event.position == globals.blue_flag {
                         commands.entity(event.client).insert(HasFlag(Team::Blue));
-                        client.send_chat_message("You have the flag!".italic());
+                        client.send_game_message("You have the flag!".italic());
                         flag_manager.blue = Some(ent);
                         return;
                     }
@@ -621,7 +621,7 @@ fn do_team_selector_portals(
             look.pitch = 0.0;
             head_yaw.0 = yaw;
             let chat_text: Text = "You are on team ".into_text() + team.team_text() + "!";
-            client.send_chat_message(chat_text);
+            client.send_game_message(chat_text);
 
             let main_layer = main_layers.single();
             ent_layers.as_mut().0.remove(&main_layer);
@@ -776,13 +776,13 @@ fn do_flag_capturing(
         };
 
         if capture_trigger.contains_pos(position.0) {
-            client.send_chat_message("You captured the flag!".italic());
+            client.send_game_message("You captured the flag!".italic());
             score
                 .scores
                 .entry(*team)
                 .and_modify(|score| *score += 1)
                 .or_insert(1);
-            client.send_chat_message(score.render_scores());
+            client.send_game_message(score.render_scores());
             commands.entity(ent).remove::<HasFlag>();
             match has_flag.0 {
                 Team::Red => flag_manager.red = None,
