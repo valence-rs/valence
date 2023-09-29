@@ -10,8 +10,7 @@ use std::ops::{Deref, DerefMut};
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde::de;
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use tracing::error;
 use valence_ident::{ident, Ident};
 use valence_nbt::serde::CompoundSerializer;
@@ -39,7 +38,7 @@ fn load_default_chat_types(mut reg: ResMut<ChatTypeRegistry>, codec: Res<Registr
         }
 
         reg.swap_to_front(ident!("chat"));
-        
+
         Ok(())
     };
 
@@ -187,7 +186,8 @@ impl Default for ChatType {
 
 impl Serialize for ChatTypeParameters {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: Serializer
+    where
+        S: Serializer,
     {
         let mut args = vec![];
         if self.sender {
@@ -204,7 +204,7 @@ impl Serialize for ChatTypeParameters {
 }
 
 impl<'de> Deserialize<'de> for ChatTypeParameters {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> 
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {

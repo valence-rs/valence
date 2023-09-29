@@ -1,9 +1,9 @@
 #![allow(clippy::type_complexity)]
 
 use bevy_app::App;
+use valence::chat::message::{ChatMessageEvent, SendMessage};
 use valence::client::despawn_disconnected_clients;
 use valence::inventory::HeldItem;
-use valence::chat::message::{ChatMessageEvent, SendMessage};
 use valence::prelude::*;
 use valence::world_border::*;
 

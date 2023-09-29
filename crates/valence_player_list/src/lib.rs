@@ -28,10 +28,10 @@ use valence_server::client::{Client, Properties, Username};
 use valence_server::keepalive::Ping;
 use valence_server::layer::UpdateLayersPreClientSet;
 use valence_server::protocol::encode::PacketWriter;
+use valence_server::protocol::packets::play::player_session_c2s::PlayerSessionData;
 use valence_server::protocol::packets::play::{
     player_list_s2c as packet, PlayerListHeaderS2c, PlayerListS2c, PlayerRemoveS2c,
 };
-use valence_server::protocol::packets::play::player_session_c2s::PlayerSessionData;
 use valence_server::protocol::WritePacket;
 use valence_server::text::IntoText;
 use valence_server::uuid::Uuid;
@@ -228,7 +228,16 @@ fn init_player_list_for_clients(
             let entries: Vec<_> = entries
                 .iter()
                 .map(
-                    |(uuid, username, props, game_mode, ping, display_name, listed, chat_session, )| {
+                    |(
+                        uuid,
+                        username,
+                        props,
+                        game_mode,
+                        ping,
+                        display_name,
+                        listed,
+                        chat_session,
+                    )| {
                         packet::PlayerListEntry {
                             player_uuid: uuid.0,
                             username: &username.0,

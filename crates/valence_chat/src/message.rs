@@ -1,11 +1,10 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+#[cfg(feature = "secure")]
+use uuid::Uuid;
 use valence_protocol::encode::WritePacket;
 use valence_protocol::packets::play::GameMessageS2c;
 use valence_protocol::text::IntoText;
-
-#[cfg(feature = "secure")]
-use uuid::Uuid;
 
 pub(super) fn build(app: &mut App) {
     app.add_event::<CommandExecutionEvent>()

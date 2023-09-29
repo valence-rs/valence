@@ -18,8 +18,8 @@
 )]
 
 pub mod biome;
-pub mod codec;
 pub mod chat_type;
+pub mod codec;
 pub mod dimension_type;
 pub mod tags;
 

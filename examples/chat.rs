@@ -1,9 +1,9 @@
 #![allow(clippy::type_complexity)]
 
 use tracing::warn;
-use valence::prelude::*;
-use valence::chat::ChatState;
 use valence::chat::message::{ChatMessageEvent, CommandExecutionEvent, SendMessage};
+use valence::chat::ChatState;
+use valence::prelude::*;
 
 const SPAWN_Y: i32 = 64;
 
@@ -11,12 +11,15 @@ pub fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
-        .add_systems(Update, (
-            init_clients, 
-            despawn_disconnected_clients,
-            handle_command_events,
-            handle_message_events,
-        ))
+        .add_systems(
+            Update,
+            (
+                init_clients,
+                despawn_disconnected_clients,
+                handle_command_events,
+                handle_message_events,
+            ),
+        )
         .run();
 }
 
@@ -83,14 +86,17 @@ fn init_clients(
 fn handle_message_events(
     mut clients: Query<(&mut Client, &mut ChatState)>,
     names: Query<&Username>,
-    mut messages: EventReader<ChatMessageEvent>
+    mut messages: EventReader<ChatMessageEvent>,
 ) {
     for message in messages.iter() {
         let sender_name = names.get(message.client).expect("Error getting username");
-        // Need to find better way. Username is sender, while client and chat state are recievers. 
-        // Maybe try to add a chat feature to Client.
+        // Need to find better way. Username is sender, while client and chat state are
+        // recievers. Maybe try to add a chat feature to Client.
         for (mut client, mut state) in clients.iter_mut() {
-            state.as_mut().send_chat_message(client.as_mut(), sender_name, message).expect("Error sending message");
+            state
+                .as_mut()
+                .send_chat_message(client.as_mut(), sender_name, message)
+                .expect("Error sending message");
         }
     }
 }

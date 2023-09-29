@@ -26,18 +26,19 @@ use std::time::SystemTime;
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use tracing::warn;
-
-use valence_registry::chat_type::ChatTypePlugin;
-use valence_server::event_loop::{EventLoopPreUpdate, PacketEvent};
-use valence_server::client::{Client, SpawnClientsSet};
-use valence_server::client_settings::ClientSettings;
+use valence_lang::keys::{CHAT_DISABLED_OPTIONS, DISCONNECT_GENERIC_REASON};
 use valence_protocol::packets::play::client_settings_c2s::ChatMode;
 use valence_protocol::packets::play::{ChatMessageC2s, CommandExecutionC2s};
-use valence_server::protocol::WritePacket;
-use valence_server::protocol::packets::play::chat_message_s2c::{MessageFilterType, MessageSignature};
+use valence_registry::chat_type::ChatTypePlugin;
+use valence_server::client::{Client, SpawnClientsSet};
+use valence_server::client_settings::ClientSettings;
+use valence_server::event_loop::{EventLoopPreUpdate, PacketEvent};
+use valence_server::protocol::packets::play::chat_message_s2c::{
+    MessageFilterType, MessageSignature,
+};
 use valence_server::protocol::packets::play::{ChatMessageS2c, ProfilelessChatMessageS2c};
+use valence_server::protocol::WritePacket;
 use valence_text::{Color, Text};
-use valence_lang::keys::{CHAT_DISABLED_OPTIONS, DISCONNECT_GENERIC_REASON};
 #[cfg(feature = "secure")]
 use {
     anyhow::bail,
@@ -48,9 +49,6 @@ use {
     sha1::{Digest, Sha1},
     sha2::Sha256,
     uuid::Uuid,
-    valence_server::client::{DisconnectClient, Username},
-    valence_server::protocol::packets::play::{MessageAcknowledgmentC2s, PlayerSessionC2s},
-    valence_text::IntoText,
     valence_lang::keys::{
         CHAT_DISABLED_CHAIN_BROKEN, CHAT_DISABLED_EXPIRED_PROFILE_KEY,
         CHAT_DISABLED_MISSING_PROFILE_KEY, MULTIPLAYER_DISCONNECT_CHAT_VALIDATION_FAILED,
@@ -59,8 +57,11 @@ use {
         MULTIPLAYER_DISCONNECT_OUT_OF_ORDER_CHAT, MULTIPLAYER_DISCONNECT_TOO_MANY_PENDING_CHATS,
         MULTIPLAYER_DISCONNECT_UNSIGNED_CHAT,
     },
-    valence_server_common::UniqueId,
     valence_player_list::{ChatSession, PlayerListEntry},
+    valence_server::client::{DisconnectClient, Username},
+    valence_server::protocol::packets::play::{MessageAcknowledgmentC2s, PlayerSessionC2s},
+    valence_server_common::UniqueId,
+    valence_text::IntoText,
 };
 
 use crate::message::{ChatMessageEvent, ChatMessageType, CommandExecutionEvent, SendMessage};
@@ -73,10 +74,7 @@ pub struct ChatPlugin;
 impl Plugin for ChatPlugin {
     fn build(&self, app: &mut bevy_app::App) {
         app.add_plugins(ChatTypePlugin)
-            .add_systems(
-                PreUpdate,
-                init_chat_states.after(SpawnClientsSet),
-            )
+            .add_systems(PreUpdate, init_chat_states.after(SpawnClientsSet))
             .add_systems(
                 EventLoopPreUpdate,
                 (
@@ -143,9 +141,20 @@ impl Default for ChatState {
 
 #[cfg(feature = "secure")]
 impl ChatState {
-    pub fn send_chat_message(&mut self, client: &mut Client, username: &Username, message: &ChatMessageEvent) -> anyhow::Result<()> {
+    pub fn send_chat_message(
+        &mut self,
+        client: &mut Client,
+        username: &Username,
+        message: &ChatMessageEvent,
+    ) -> anyhow::Result<()> {
         match &message.message_type {
-            ChatMessageType::Signed { salt, signature, message_index, last_seen, sender } => {
+            ChatMessageType::Signed {
+                salt,
+                signature,
+                message_index,
+                last_seen,
+                sender,
+            } => {
                 // Create a list of messages that have been seen by the client.
                 let previous = last_seen
                     .iter()
@@ -629,10 +638,9 @@ fn handle_message_packets(
         };
 
         let Some(link) = &state.chain.next_link() else {
-            client.send_game_message(Text::translate(
-                CHAT_DISABLED_CHAIN_BROKEN,
-                [],
-            ).color(Color::RED));
+            client.send_game_message(
+                Text::translate(CHAT_DISABLED_CHAIN_BROKEN, []).color(Color::RED),
+            );
             continue;
         };
 
@@ -640,7 +648,7 @@ fn handle_message_packets(
             warn!("Player `{}` doesn't have a chat session", username.0);
             commands.add(DisconnectClient {
                 client: packet.client,
-                reason: Text::translate(CHAT_DISABLED_MISSING_PROFILE_KEY, [])
+                reason: Text::translate(CHAT_DISABLED_MISSING_PROFILE_KEY, []),
             });
             continue;
         };

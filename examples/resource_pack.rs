@@ -1,7 +1,7 @@
 #![allow(clippy::type_complexity)]
 
-use valence::entity::sheep::SheepEntityBundle;
 use valence::chat::message::SendMessage;
+use valence::entity::sheep::SheepEntityBundle;
 use valence::prelude::*;
 use valence::protocol::packets::play::ResourcePackStatusC2s;
 use valence::resource_pack::ResourcePackStatusEvent;
