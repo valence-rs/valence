@@ -26,7 +26,7 @@ pub use into_text::IntoText;
 ///
 /// For more information, see the relevant [Minecraft Wiki article].
 ///
-/// [Minecraft Wiki article]: https://minecraft.fandom.com/wiki/Raw_JSON_text_format
+/// [Minecraft Wiki article]: https://minecraft.wiki/w/Raw_JSON_text_format
 ///
 /// # Examples
 ///
@@ -116,11 +116,11 @@ pub enum TextContent {
     ScoreboardValue { score: ScoreboardValueContent },
     /// Displays the name of one or more entities found by a [`selector`].
     ///
-    /// [`selector`]: https://minecraft.fandom.com/wiki/Target_selectors
+    /// [`selector`]: https://minecraft.wiki/w/Target_selectors
     EntityNames {
         /// A string containing a [`selector`].
         ///
-        /// [`selector`]: https://minecraft.fandom.com/wiki/Target_selectors
+        /// [`selector`]: https://minecraft.wiki/w/Target_selectors
         selector: Cow<'static, str>,
         /// An optional custom separator used when the selector returns multiple
         /// entities. Defaults to the ", " text with gray color.
@@ -133,7 +133,7 @@ pub enum TextContent {
         /// A [`keybind identifier`], to be displayed as the name of the button
         /// that is currently bound to that action.
         ///
-        /// [`keybind identifier`]: https://minecraft.fandom.com/wiki/Controls#Configurable_controls
+        /// [`keybind identifier`]: https://minecraft.wiki/w/Controls#Configurable_controls
         keybind: Cow<'static, str>,
     },
     /// Displays NBT values from block entities.
@@ -171,7 +171,7 @@ pub struct ScoreboardValueContent {
     /// The name of the score holder whose score should be displayed. This
     /// can be a [`selector`] or an explicit name.
     ///
-    /// [`selector`]: https://minecraft.fandom.com/wiki/Target_selectors
+    /// [`selector`]: https://minecraft.wiki/w/Target_selectors
     pub name: Cow<'static, str>,
     /// The internal name of the objective to display the player's score in.
     pub objective: Cow<'static, str>,
@@ -301,7 +301,7 @@ impl Text {
     /// Creates a text component for a keybind. The keybind should be a valid
     /// [`keybind identifier`].
     ///
-    /// [`keybind identifier`]: https://minecraft.fandom.com/wiki/Controls#Configurable_controls
+    /// [`keybind identifier`]: https://minecraft.wiki/w/Controls#Configurable_controls
     pub fn keybind(keybind: impl Into<Cow<'static, str>>) -> Self {
         Self(Box::new(TextInner {
             content: TextContent::Keybind {

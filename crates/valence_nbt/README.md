@@ -3,7 +3,7 @@
 A library for encoding and decoding Minecraft's [Named Binary Tag] (NBT)
 format.
 
-[Named Binary Tag]: https://minecraft.fandom.com/wiki/NBT_format
+[Named Binary Tag]: https://minecraft.wiki/w/NBT_format
 
 # Features
 - `binary`: Adds support for serializing and deserializing in Java edition's binary format.
