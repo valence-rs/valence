@@ -6,7 +6,6 @@ use bevy_ecs::change_detection::ResMut;
 use bevy_ecs::event::{Event, EventReader, EventWriter};
 use bevy_ecs::prelude::{Entity, IntoSystemConfigs, Resource};
 use petgraph::prelude::NodeIndex;
-
 use valence_server::EventLoopPreUpdate;
 
 use crate::graph::CommandGraphBuilder;
