@@ -47,130 +47,108 @@ pub trait CommandArg: Sized {
 
 ///
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ParseInput<'a> {
-    input: &'a str,
-    traversed: usize,
-}
+pub struct ParseInput<'a>(&'a str);
 
 impl<'a> ParseInput<'a> {
-    pub fn new(input: impl Into<&'a str>) -> Self {
-        ParseInput {
-            input: input.into(),
-            traversed: 0,
-        }
-    }
-    pub fn peek(&self) -> Option<char> {
-        self.input.chars().next()
-    }
-
-    pub fn peek_n(&self, n: usize) -> Option<&str> {
-        if n == 0 {
-            error!("peek_n(0) called, don't do that.");
-            return None; // never peek 0 chars
-        }
-        if n > self.input.chars().count() {
-            return Some(self.input);
-        }
-        Some(&self.input[..=self.input.char_indices().nth(n - 1)?.0])
-    }
-
-    pub fn peek_word(&self) -> String {
-        let iter = self.input.chars();
-        let mut word = String::new();
-        for c in iter {
-            if c.is_whitespace() {
-                break;
-            } else {
-                word.push(c);
-            }
-        }
-        word
-    }
-
-    pub fn is_done(&self) -> bool {
-        self.input.is_empty()
-    }
-
-    pub fn advance(&mut self) {
+    fn advance(&mut self) {
         self.advance_n_chars(1);
     }
 
-    pub fn advance_n_chars(&mut self, n: usize) {
+    fn advance_n_chars(&mut self, n: usize) {
         if self.is_done() {
             return;
         }
-        match self.input.char_indices().nth(n) {
+        match self.0.char_indices().nth(n) {
             Some((len, _)) => {
-                self.input = &self.input[len..];
-                self.traversed += n;
+                self.0 = &self.0[len..];
             }
             None => {
-                self.traversed += self.input.chars().count();
-                self.input = "";
+                self.0 = &self.0[self.0.len()..];
             }
         }
     }
 
-    pub fn advance_n_bytes(&mut self, n: usize) {
+    fn advance_n_bytes(&mut self, n: usize) {
         if self.is_done() {
             return;
         }
-        self.advance_n_chars(self.input[..n].chars().count());
+        self.0 = &self.0[n..];
     }
-    pub fn advance_to_next(&mut self, c: char) {
-        if let Some(pos) = self.input.find(c) {
-            self.advance_n_bytes(pos - 1);
-        } else {
-            self.input = "";
-        }
+    pub fn new(input: &'a str) -> Self {
+        ParseInput(input)
     }
 
-    pub fn advance_to_next_non_whitespace(&mut self) {
-        while let Some(c) = self.peek() {
-            if c.is_whitespace() {
-                self.advance();
-            } else {
-                break;
-            }
-        }
+    /// Returns the next character without advancing the input
+    pub fn peek(&self) -> Option<char> {
+        self.0.chars().next()
     }
 
+    /// Returns the next n characters without advancing the input
+    pub fn peek_n(&self, n: usize) -> &'a str {
+        self.0
+            .char_indices()
+            .nth(n)
+            .map(|(idx, _)| &self.0[..idx])
+            .unwrap_or(self.0)
+    }
+
+    /// Returns the next word without advancing the input
+    pub fn peek_word(&self) -> &'a str {
+        self.0
+            .char_indices()
+            .find(|(_, c)| c.is_whitespace())
+            .map(|(idx, _)| &self.0[..idx])
+            .unwrap_or(self.0)
+    }
+
+    /// Checks if the input is empty
+    pub fn is_done(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Returns the next character and advances the input
     pub fn pop(&mut self) -> Option<char> {
         let c = self.peek()?;
         self.advance();
         Some(c)
     }
 
-    pub fn pop_n(&mut self, n: usize) -> Option<&str> {
-        if n == 0 {
-            return None; // never pop 0 chars
-        }
-        let s = &self.input[..self.input.char_indices().nth(n)?.0];
-        self.advance_n_chars(n);
-        Some(s)
+    /// Returns the next n characters and advances the input
+    pub fn pop_n(&mut self, n: usize) -> &str {
+        let s = self.peek_n(n);
+        self.advance_n_bytes(s.len());
+        s
     }
 
-    pub fn pop_word(&mut self) -> String {
-        let word = self.peek_word();
-        self.advance_n_bytes(word.len());
-        word
+    /// Returns the next word and advances the input
+    pub fn pop_word(&mut self) -> &str {
+        let s = self.peek_word();
+        self.advance_n_bytes(s.len());
+        s
     }
 
+    /// Returns the rest of the input and advances the input
     pub fn pop_all(&mut self) -> Option<&str> {
-        let s = self.input;
-        self.advance_n_bytes(self.input.len());
+        let s = self.0;
+        self.advance_n_bytes(self.0.len());
         Some(s)
     }
 
+    /// Returns the next word and advances the input
     pub fn pop_to_next(&mut self, c: char) -> Option<&str> {
-        let pos = self.input.find(c)?;
-        let s = &self.input[..pos];
+        let pos = self.0.find(c)?;
+        let s = &self.0[..pos];
         self.advance_n_bytes(pos);
         Some(s)
     }
 
+    /// Matches the case-insensitive string and advances the input if it matches
     pub fn match_next(&mut self, string: &str) -> bool {
-        if self.input.to_lowercase().starts_with(string) {
+        if self
+            .0
+            .to_lowercase()
+            .starts_with(string.to_lowercase().as_str())
+        {
             self.advance_n_bytes(string.len());
             true
         } else {
@@ -178,6 +156,7 @@ impl<'a> ParseInput<'a> {
         }
     }
 
+    /// Skip all whitespace at the front of the input
     pub fn skip_whitespace(&mut self) {
         while let Some(c) = self.peek() {
             if c.is_whitespace() {
@@ -188,9 +167,55 @@ impl<'a> ParseInput<'a> {
         }
     }
 
-    pub fn traversed(&self) -> usize {
-        self.traversed
+    /// Set the inner string
+    pub fn into_inner(self) -> &'a str {
+        self.0
     }
+
+    /// Get the difference between two strings from left to right
+    ///
+    /// # Safety
+    /// `other` must be a slice of the same string as `self`
+    pub unsafe fn get_diff(&self, other: &str) -> &str {
+        let mut far_ptr = self.0.as_ptr();
+        let mut near_ptr = other.as_ptr();
+
+        if near_ptr > far_ptr {
+            std::mem::swap(&mut near_ptr, &mut far_ptr);
+        }
+        let new_len = far_ptr.offset_from(near_ptr) as usize;
+
+        std::str::from_utf8_unchecked(std::slice::from_raw_parts(near_ptr, new_len))
+    }
+}
+
+#[test]
+fn test_parse_input() {
+    let mut input = ParseInput::new("The QuIck brown FOX jumps over the lazy dog");
+    let input_clone = input.clone();
+    assert_eq!(input.peek(), Some('T'));
+    assert_eq!(input.peek_n(0), "");
+    assert_eq!(input.peek_n(1), "T");
+    assert_eq!(input.peek_n(2), "Th");
+    assert_eq!(input.peek_n(3), "The");
+
+    assert_eq!(input.peek_word(), "The");
+    input.pop_word();
+    input.skip_whitespace();
+    assert_eq!(input.peek_word(), "QuIck");
+
+    assert!(input.match_next("quick"));
+    input.pop();
+    assert_eq!(input.peek_word(), "brown");
+
+    // SAFETY: input_clone and input are both slices of the same string
+    unsafe {
+        assert_eq!(input_clone.get_diff(input.0), "The QuIck ");
+        assert_eq!(input.get_diff(input_clone.0), "The QuIck ");
+    }
+
+    assert!(input.match_next("brown fox"));
+    assert_eq!(input.pop_all(), Some(" jumps over the lazy dog"));
 }
 
 #[derive(Debug, Error)]

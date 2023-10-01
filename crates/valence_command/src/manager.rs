@@ -347,17 +347,18 @@ fn parse_command_args(
                 };
                 // we want to save the input before and after parsing
                 // this is so we can save the argument to the command args
-                let pre_input = input.clone();
+                let pre_input = input.clone().into_inner();
                 let valid = parser(&mut input);
                 if valid {
-                    let arg = match input.traversed() - pre_input.traversed() {
-                        0 => String::new(),
-                        n => pre_input.peek_n(n).unwrap().to_string(),
-                    };
-                    if command_registry.modifiers.contains_key(&current_node) {
-                        modifiers_to_be_executed.push((current_node, arg.clone()));
+                    // SAFETY: we know that the sting slice is from the same string
+                    unsafe {
+                        let arg = input.get_diff(pre_input).to_string();
+
+                        if command_registry.modifiers.contains_key(&current_node) {
+                            modifiers_to_be_executed.push((current_node, arg.clone()));
+                        }
+                        command_args.push(arg);
                     }
-                    command_args.push(arg);
                 } else {
                     return false;
                 }

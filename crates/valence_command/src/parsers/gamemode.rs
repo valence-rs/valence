@@ -17,7 +17,7 @@ impl CommandArg for GameMode {
         } else {
             Err(CommandArgParseError::InvalidArgument {
                 expected: "game_mode".to_string(),
-                got: input.peek_word(),
+                got: input.peek_word().to_string(),
             })
         }
     }

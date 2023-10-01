@@ -104,7 +104,6 @@ fn command_startup_system<T>(
     registry.parsers.extend(parsers);
     registry.modifiers.extend(modifiers);
     registry.executables.extend(executables.keys());
-    debug!("command graph: {}", registry.graph);
 }
 
 /// This system reads incoming command events.
@@ -117,7 +116,7 @@ fn command_event_system<T>(
 {
     for command_event in commands_executed.iter() {
         if let Some(executable) = command.executables.get(&command_event.node) {
-            let result = executable(&mut ParseInput::new(&*command_event.command));
+            let result = executable(&mut ParseInput::new(&command_event.command));
             events.send(CommandResultEvent {
                 result,
                 executor: command_event.executor,

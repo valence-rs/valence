@@ -11,7 +11,7 @@ impl CommandArg for bool {
         } else {
             Err(CommandArgParseError::InvalidArgument {
                 expected: "bool".to_string(),
-                got: input.peek_word(),
+                got: input.peek_word().to_string(),
             })
         }
     }
