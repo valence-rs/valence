@@ -71,7 +71,7 @@ pub struct ChatTypeRegistry {
 }
 
 impl ChatTypeRegistry {
-    pub const KEY: Ident<&str> = ident!("chat_type");
+    pub const KEY: Ident<&'static str> = ident!("chat_type");
 }
 
 impl Deref for ChatTypeRegistry {
