@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::fmt::Debug;
 use std::marker::PhantomData;
 
 use bevy_app::{App, Plugin, PostStartup};
@@ -7,6 +6,7 @@ use bevy_ecs::change_detection::ResMut;
 use bevy_ecs::event::{Event, EventReader, EventWriter};
 use bevy_ecs::prelude::{Entity, IntoSystemConfigs, Resource};
 use petgraph::prelude::NodeIndex;
+use tracing::debug;
 use valence_server::EventLoopPreUpdate;
 
 use crate::graph::CommandGraphBuilder;
@@ -16,9 +16,9 @@ use crate::{
     Command, CommandProcessedEvent, CommandRegistry, CommandScopeRegistry, CommandSystemSet,
 };
 
-impl<T> Plugin for CommandHandler<T>
+impl<T> Plugin for CommandHandlerPlugin<T>
 where
-    T: Command + Send + Sync + Debug + 'static,
+    T: Command + Send + Sync + 'static,
 {
     fn build(&self, app: &mut App) {
         app.add_event::<CommandResultEvent<T>>()
@@ -31,19 +31,25 @@ where
     }
 }
 
-pub struct CommandHandler<T>
+pub struct CommandHandlerPlugin<T>
 where
     T: Command,
 {
     command: PhantomData<T>,
 }
 
-impl<T> CommandHandler<T>
+impl<T: Command> Default for CommandHandlerPlugin<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<T> CommandHandlerPlugin<T>
 where
     T: Command,
 {
-    pub fn from_command() -> Self {
-        CommandHandler {
+    pub fn new() -> Self {
+        CommandHandlerPlugin {
             command: PhantomData,
         }
     }
@@ -92,27 +98,26 @@ fn command_startup_system<T>(
         &mut modifiers,
     );
     T::assemble_graph(graph_builder);
-
     graph_builder.apply_scopes(&mut scope_registry);
+
     command.executables.extend(executables.clone());
     registry.parsers.extend(parsers);
     registry.modifiers.extend(modifiers);
     registry.executables.extend(executables.keys());
+    debug!("command graph: {}", registry.graph);
 }
 
-/// this system reads incoming command events and prints them to the console
+/// This system reads incoming command events.
 fn command_event_system<T>(
     mut commands_executed: EventReader<CommandProcessedEvent>,
     mut events: EventWriter<CommandResultEvent<T>>,
     command: ResMut<CommandResource<T>>,
 ) where
-    T: Command + Send + Sync + Debug,
+    T: Command + Send + Sync,
 {
     for command_event in commands_executed.iter() {
-        if command.executables.contains_key(&command_event.node) {
-            let result = command.executables.get(&command_event.node).unwrap()(
-                &mut ParseInput::new(&command_event.command),
-            );
+        if let Some(executable) = command.executables.get(&command_event.node) {
+            let result = executable(&mut ParseInput::new(&*command_event.command));
             events.send(CommandResultEvent {
                 result,
                 executor: command_event.executor,

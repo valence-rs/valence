@@ -6,7 +6,7 @@ Simplify the creation of Valence commands with a derive macro.
 #[derive(Command, Debug, Clone)]
 #[paths("teleport", "tp")]
 #[scopes("valence.command.teleport")]
-enum Teleport {
+enum TeleportCommand {
     #[paths = "{location}"]
     ExecutorToLocation { location: Vec3Parser },
     #[paths = "{target}"]
@@ -26,7 +26,7 @@ enum Teleport {
 #[derive(Command, Debug, Clone)]
 #[paths("gamemode", "gm")]
 #[scopes("valence.command.gamemode")]
-enum Gamemode {
+enum GamemodeCommand {
     #[paths("survival", "{/} gms")]
     Survival,
     #[paths("creative", "{/} gmc")]
@@ -41,7 +41,7 @@ enum Gamemode {
 #[paths("test", "t")]
 #[scopes("valence.command.test")]
 #[allow(dead_code)]
-enum Test {
+enum TestCommand {
     // 3 literals with an arg each
     #[paths("a {a} b {b} c {c}", "{a} {b} {c}")]
     A { a: String, b: i32, c: f32 },

@@ -10,11 +10,8 @@ pub struct Vec3 {
 
 impl CommandArg for Vec3 {
     fn parse_arg(input: &mut ParseInput) -> Result<Self, CommandArgParseError> {
-        input.skip_whitespace();
         let x = AbsoluteOrRelative::<f32>::parse_arg(input)?;
-        input.skip_whitespace();
         let y = AbsoluteOrRelative::<f32>::parse_arg(input)?;
-        input.skip_whitespace();
         let z = AbsoluteOrRelative::<f32>::parse_arg(input)?;
 
         Ok(Vec3 { x, y, z })
@@ -27,7 +24,7 @@ impl CommandArg for Vec3 {
 
 #[test]
 fn test_vec3() {
-    let mut input = ParseInput::new("~-1.5 2.5 3.5".to_string());
+    let mut input = ParseInput::new("~-1.5 2.5 3.5");
     assert_eq!(
         Vec3::parse_arg(&mut input).unwrap(),
         Vec3 {
@@ -38,7 +35,7 @@ fn test_vec3() {
     );
     assert!(input.is_done());
 
-    let mut input = ParseInput::new("-1.5 ~2.5 3.5 ".to_string());
+    let mut input = ParseInput::new("-1.5 ~2.5 3.5 ");
     assert_eq!(
         Vec3::parse_arg(&mut input).unwrap(),
         Vec3 {
@@ -49,7 +46,7 @@ fn test_vec3() {
     );
     assert!(!input.is_done());
 
-    let mut input = ParseInput::new("-1.5 2.5 ~3.5 4.5".to_string());
+    let mut input = ParseInput::new("-1.5 2.5 ~3.5 4.5");
     assert_eq!(
         Vec3::parse_arg(&mut input).unwrap(),
         Vec3 {

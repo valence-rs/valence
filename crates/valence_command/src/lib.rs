@@ -16,7 +16,7 @@ use petgraph::prelude::NodeIndex;
 pub use scopes::CommandScopeRegistry;
 
 use crate::graph::{CommandGraph, CommandGraphBuilder};
-use crate::handler::CommandHandler;
+use crate::handler::CommandHandlerPlugin;
 use crate::parsers::ParseInput;
 
 #[derive(SystemSet, Clone, PartialEq, Eq, Hash, Debug)]
@@ -37,12 +37,12 @@ pub trait Command {
         Self: Sized;
 }
 
-pub trait CommandApp {
-    fn add_command<T: Command + Send + Sync + Debug + 'static>(&mut self) -> &mut Self;
+pub trait AddCommand {
+    fn add_command<T: Command + Send + Sync + 'static>(&mut self) -> &mut Self;
 }
 
-impl CommandApp for App {
-    fn add_command<T: Command + Send + Sync + Debug + 'static>(&mut self) -> &mut Self {
-        self.add_plugins(CommandHandler::<T>::from_command())
+impl AddCommand for App {
+    fn add_command<T: Command + Send + Sync + 'static>(&mut self) -> &mut Self {
+        self.add_plugins(CommandHandlerPlugin::<T>::new())
     }
 }

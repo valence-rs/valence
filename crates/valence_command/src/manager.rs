@@ -138,7 +138,6 @@ fn update_client_command_tree(
 ) {
     for (ref mut client, client_scopes) in updated_clients {
         let time = std::time::Instant::now();
-        debug!("updating command tree for client");
 
         let old_graph = &command_registry.graph;
         let mut new_graph = Graph::new();
@@ -200,8 +199,8 @@ fn update_client_command_tree(
             }
             None => {
                 warn!(
-                    "Client has no permissions to execute any commands so we sent them nothing.It \
-                     is generally a bad idea to scope the root node of the command graph as it \
+                    "Client has no permissions to execute any commands so we sent them nothing. \
+                     It is generally a bad idea to scope the root node of the command graph as it \
                      can cause undefined behavior. For example, if the player has permission to \
                      execute a command before you change the scope of the root node, the packet \
                      will not be sent to the client and so the client will still think they can \
@@ -231,9 +230,9 @@ fn parse_incoming_commands(
             .collect::<Vec<&NodeIndex>>();
         let root = command_registry.graph.root;
 
-        let command_input = &command_event.command;
+        let command_input = &*command_event.command;
         let graph = &command_registry.graph.graph;
-        let mut input = ParseInput::new(command_input);
+        let input = ParseInput::new(command_input);
 
         let mut to_be_executed = Vec::new();
 
@@ -243,7 +242,7 @@ fn parse_incoming_commands(
         parse_command_args(
             &mut args,
             &mut modifiers_to_be_executed,
-            &mut input,
+            input,
             graph,
             &executable_leafs,
             command_registry.as_ref(),
@@ -260,7 +259,10 @@ fn parse_incoming_commands(
             command_registry.modifiers.get(&node).unwrap()(modifier, &mut modifiers);
         }
 
+        debug!("Command processed: /{}", command_event.command);
+
         for node in to_be_executed {
+            println!("executing node: {:?}", node);
             event_writer.send(CommandProcessedEvent {
                 command: args.join(" "),
                 executor,
@@ -276,7 +278,7 @@ fn parse_incoming_commands(
 fn parse_command_args(
     command_args: &mut Vec<String>,
     modifiers_to_be_executed: &mut Vec<(NodeIndex, String)>,
-    input: &mut ParseInput,
+    mut input: ParseInput,
     graph: &Graph<CommandNode, CommandEdgeType>,
     executable_leafs: &[&NodeIndex],
     command_registry: &CommandRegistry,
@@ -343,19 +345,19 @@ fn parse_command_args(
                         return false;
                     }
                 };
-                // we want to save the cursor position before and after parsing
+                // we want to save the input before and after parsing
                 // this is so we can save the argument to the command args
-                let before_cursor = input.cursor;
-                let valid = parser(input);
-                let after_cursor = input.cursor;
+                let pre_input = input.clone();
+                let valid = parser(&mut input);
                 if valid {
-                    command_args.push(input.input[before_cursor..after_cursor].to_string());
+                    let arg = match input.traversed() - pre_input.traversed() {
+                        0 => String::new(),
+                        n => pre_input.peek_n(n).unwrap().to_string(),
+                    };
                     if command_registry.modifiers.contains_key(&current_node) {
-                        modifiers_to_be_executed.push((
-                            current_node,
-                            input.input[before_cursor..after_cursor].to_string(),
-                        ));
+                        modifiers_to_be_executed.push((current_node, arg.clone()));
                     }
+                    command_args.push(arg);
                 } else {
                     return false;
                 }
@@ -365,24 +367,21 @@ fn parse_command_args(
         command_args.clear();
     }
 
-    let pre_cursor = input.cursor;
     input.skip_whitespace();
     if input.is_done() && executable_leafs.contains(&&current_node) {
         to_be_executed.push(current_node);
         return true;
-    } else {
-        input.cursor = pre_cursor;
     }
 
     let mut all_invalid = true;
     for neighbor in graph.neighbors(current_node) {
-        let pre_cursor = input.cursor;
+        let pre_input = input.clone();
         let mut args = command_args.clone();
         let mut modifiers = modifiers_to_be_executed.clone();
         let valid = parse_command_args(
             &mut args,
             &mut modifiers,
-            input,
+            input.clone(),
             graph,
             executable_leafs,
             command_registry,
@@ -400,9 +399,8 @@ fn parse_command_args(
             *command_args = args;
             *modifiers_to_be_executed = modifiers;
             all_invalid = false;
-            break;
         } else {
-            input.cursor = pre_cursor;
+            input = pre_input;
         }
     }
     if all_invalid {

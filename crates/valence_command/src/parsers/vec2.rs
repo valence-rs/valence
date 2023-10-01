@@ -24,7 +24,7 @@ impl CommandArg for Vec2 {
 
 #[test]
 fn test_vec2() {
-    let mut input = ParseInput::new("~-1.5 2.5".to_string());
+    let mut input = ParseInput::new("~-1.5 2.5");
     assert_eq!(
         Vec2::parse_arg(&mut input).unwrap(),
         Vec2 {
@@ -34,7 +34,7 @@ fn test_vec2() {
     );
     assert!(input.is_done());
 
-    let mut input = ParseInput::new("-1.5 ~2.5 ".to_string());
+    let mut input = ParseInput::new("-1.5 ~2.5 ");
     assert_eq!(
         Vec2::parse_arg(&mut input).unwrap(),
         Vec2 {
@@ -44,7 +44,7 @@ fn test_vec2() {
     );
     assert!(!input.is_done());
 
-    let mut input = ParseInput::new("-1.5 2.5 3.5".to_string());
+    let mut input = ParseInput::new("-1.5 2.5 3.5");
     assert_eq!(
         Vec2::parse_arg(&mut input).unwrap(),
         Vec2 {

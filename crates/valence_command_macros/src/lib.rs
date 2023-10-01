@@ -13,20 +13,7 @@ pub fn derive_command(input: TokenStream) -> TokenStream {
 }
 
 fn command(input: DeriveInput) -> Result<TokenStream> {
-    let enum_name = input.ident;
-
-    let mut alias_paths = match input.attrs.iter().filter_map(parse_path).next() {
-        // there should only be one base command name set
-        Some(paths) => paths,
-        None => {
-            return Err(Error::new_spanned(
-                enum_name,
-                "No paths attribute found for command enum",
-            ))
-        }
-    };
-
-    let base_path = alias_paths.remove(0);
+    let input_name = input.ident;
 
     let outer_scopes = input
         .attrs
@@ -35,117 +22,167 @@ fn command(input: DeriveInput) -> Result<TokenStream> {
         .next()
         .unwrap_or(Vec::new());
 
-    let fields = match input.data {
-        Data::Enum(ref data_enum) => &data_enum.variants,
-        Data::Struct(x) => {
-            return Err(Error::new_spanned(
-                x.struct_token,
-                "Command enum must be an enum, not a struct",
-            ))
-        }
-        Data::Union(x) => {
-            return Err(Error::new_spanned(
-                x.union_token,
-                "Command enum must be an enum, not a union",
-            ))
-        }
-    };
-
-    let mut paths = Vec::new();
-
-    for variant in fields {
-        for attr in variant.attrs.iter() {
-            if let Some(attr_paths) = parse_path(attr) {
-                paths.push((attr_paths, variant.fields.clone(), variant.ident.clone()));
-            }
-        }
-    }
-
-    let mut expanded_nodes = Vec::new();
-
-    for (paths, fields, variant_ident) in paths {
-        expanded_nodes.push({
-            let processed = process_paths(&enum_name, paths, &fields, variant_ident.clone(), true);
-            quote! { #processed; }
-        });
-    }
-
-    let base_command_expansion = {
-        let processed = process_paths(
-            &enum_name,
-            vec![base_path],
-            &Fields::Unit,
-            format_ident!("{}Root", enum_name), // this is more of placeholder
-            // (should never be used)
-            false,
-        ); // this will error if the base path has args
-        let mut expanded_main_command = quote! {
-            let command_root_node = #processed
-        };
-
-        if !outer_scopes.is_empty() {
-            expanded_main_command = quote! {
-                #expanded_main_command
-                    .with_scopes(vec![#(#outer_scopes),*])
-            }
-        }
-
-        quote! {
-            #expanded_main_command.id();
-        }
-    };
-
-    let command_alias_expansion = {
-        let mut alias_expansion = quote! {};
-        for path in alias_paths {
-            let processed = process_paths(
-                &enum_name,
-                vec![path],
-                &Fields::Unit,
-                format_ident!("{}Root", enum_name),
-                false,
-            );
-
-            alias_expansion = quote! {
-                #alias_expansion
-
-                #processed
-                    .redirect_to(command_root_node)
+    match input.data {
+        Data::Enum(ref data_enum) => {
+            let mut alias_paths = match input.attrs.iter().filter_map(parse_path).next() {
+                // there should only be one base command name set
+                Some(paths) => paths,
+                None => {
+                    return Err(Error::new_spanned(
+                        input_name,
+                        "No paths attribute found for command enum",
+                    ))
+                }
             };
 
-            if !outer_scopes.is_empty() {
-                alias_expansion = quote! {
-                    #alias_expansion
-                        .with_scopes(vec![#(#outer_scopes),*])
+            let base_path = alias_paths.remove(0);
+
+            let fields = &data_enum.variants;
+            let mut paths = Vec::new();
+
+            for variant in fields {
+                for attr in variant.attrs.iter() {
+                    if let Some(attr_paths) = parse_path(attr) {
+                        paths.push((attr_paths, variant.fields.clone(), variant.ident.clone()));
+                    }
                 }
             }
 
-            alias_expansion = quote! {
-                #alias_expansion;
+            let mut expanded_nodes = Vec::new();
+
+            for (paths, fields, variant_ident) in paths {
+                expanded_nodes.push({
+                    let processed = process_paths_enum(
+                        &input_name,
+                        paths,
+                        &fields,
+                        variant_ident.clone(),
+                        true,
+                    );
+                    quote! { #processed; }
+                });
             }
+
+            let base_command_expansion = {
+                let processed = process_paths_enum(
+                    &input_name,
+                    vec![base_path],
+                    &Fields::Unit,
+                    format_ident!("{}Root", input_name), // this is more of placeholder
+                    // (should never be used)
+                    false,
+                ); // this will error if the base path has args
+                let mut expanded_main_command = quote! {
+                    let command_root_node = #processed
+                };
+
+                if !outer_scopes.is_empty() {
+                    expanded_main_command = quote! {
+                        #expanded_main_command
+                            .with_scopes(vec![#(#outer_scopes),*])
+                    }
+                }
+
+                quote! {
+                    #expanded_main_command.id();
+                }
+            };
+
+            let command_alias_expansion = {
+                let mut alias_expansion = quote! {};
+                for path in alias_paths {
+                    let processed = process_paths_enum(
+                        &input_name,
+                        vec![path],
+                        &Fields::Unit,
+                        format_ident!("{}Root", input_name),
+                        false,
+                    );
+
+                    alias_expansion = quote! {
+                        #alias_expansion
+
+                        #processed
+                            .redirect_to(command_root_node)
+                    };
+
+                    if !outer_scopes.is_empty() {
+                        alias_expansion = quote! {
+                            #alias_expansion
+                                .with_scopes(vec![#(#outer_scopes),*])
+                        }
+                    }
+
+                    alias_expansion = quote! {
+                        #alias_expansion;
+                    }
+                }
+
+                alias_expansion
+            };
+
+            let _new_struct = format_ident!("{}Command", input_name);
+
+            Ok(TokenStream::from(quote! {
+
+                impl valence::command::Command for #input_name {
+                    fn assemble_graph(command_graph: &mut valence::command::graph::CommandGraphBuilder<Self>) {
+                        use valence::command::parsers::CommandArg;
+                        #base_command_expansion
+
+                        #command_alias_expansion
+
+                        #(#expanded_nodes)*
+                    }
+                }
+            }))
         }
+        Data::Struct(x) => {
+            let mut paths = Vec::new();
 
-        alias_expansion
-    };
-
-    let _new_struct = format_ident!("{}Command", enum_name);
-
-    Ok(TokenStream::from(quote! {
-
-        impl valence::command::Command for #enum_name {
-            fn assemble_graph(command_graph: &mut valence::command::graph::CommandGraphBuilder<Self>) {
-                use valence::command::parsers::CommandArg;
-                #base_command_expansion
-
-                #command_alias_expansion
-
-                #(#expanded_nodes)*
+            for attr in input.attrs.iter() {
+                if let Some(attr_paths) = parse_path(attr) {
+                    paths.push(attr_paths);
+                }
             }
+
+            let mut expanded_nodes = Vec::new();
+
+            for path in paths {
+                expanded_nodes.push({
+                    let mut processed =
+                        process_paths_struct(&input_name, path, &x.fields, outer_scopes.clone());
+                    // add scopes
+
+                    if !outer_scopes.is_empty() {
+                        processed = quote! {
+                            #processed
+                                .with_scopes(vec![#(#outer_scopes),*])
+                        }
+                    }
+
+                    quote! { #processed; }
+                });
+            }
+
+            Ok(TokenStream::from(quote! {
+
+                impl valence::command::Command for #input_name {
+                    fn assemble_graph(command_graph: &mut valence::command::graph::CommandGraphBuilder<Self>) {
+                        use valence::command::parsers::CommandArg;
+                        #(#expanded_nodes)*
+                    }
+                }
+            }))
         }
-    }))
+        Data::Union(x) => Err(Error::new_spanned(
+            x.union_token,
+            "Command enum must be an enum, not a union",
+        )),
+    }
 }
 
-fn process_paths(
+fn process_paths_enum(
     enum_name: &Ident,
     paths: Vec<(Vec<CommandArg>, bool)>,
     fields: &Fields,
@@ -343,6 +380,222 @@ fn process_paths(
                                     }
                                 })
                         };
+                    }
+                }
+            }
+        }
+    }
+    quote!(#inner_expansion)
+}
+
+fn process_paths_struct(
+    struct_name: &Ident,
+    paths: Vec<(Vec<CommandArg>, bool)>,
+    fields: &Fields,
+    outer_scopes: Vec<String>,
+) -> proc_macro2::TokenStream {
+    let mut inner_expansion = quote! {};
+    let mut first = true;
+
+    for path in paths {
+        if !first {
+            inner_expansion = quote! {
+                #inner_expansion;
+
+                command_graph.root()
+            };
+        } else {
+            inner_expansion = quote! {
+                command_graph.root()
+            };
+
+            first = false;
+        }
+
+        let path = path.0;
+
+        let mut final_executable = Vec::new();
+        let mut path_first = true;
+        for (i, arg) in path.iter().enumerate() {
+            match arg {
+                CommandArg::Literal(lit) => {
+                    inner_expansion = quote! {
+                        #inner_expansion.literal(#lit)
+
+                    };
+                    if i == path.len() - 1 {
+                        inner_expansion = quote! {
+                            #inner_expansion
+                                .with_executable(|s| #struct_name{#(#final_executable,)*})
+                        };
+                    }
+
+                    if path_first {
+                        inner_expansion = quote! {
+                            #inner_expansion
+                                .with_scopes(vec![#(#outer_scopes),*])
+                        };
+                        path_first = false;
+                    }
+                }
+                CommandArg::Required(ident) => {
+                    let field_type = &fields
+                        .iter()
+                        .find(|field| field.ident.as_ref().unwrap() == ident)
+                        .expect("Required arg not found")
+                        .ty;
+                    let ident_string = ident.to_string();
+
+                    inner_expansion = quote! {
+                        #inner_expansion
+                            .argument(#ident_string)
+                            .with_parser::<#field_type>()
+                    };
+
+                    final_executable.push(quote! {
+                        #ident: #field_type::parse_arg(s).unwrap()
+                    });
+
+                    if i == path.len() - 1 {
+                        inner_expansion = quote! {
+                            #inner_expansion
+                                .with_executable(|s| {
+                                    #struct_name {
+                                        #(#final_executable,)*
+                                    }
+                                })
+                        };
+                    }
+
+                    if path_first {
+                        inner_expansion = quote! {
+                            #inner_expansion
+                                .with_scopes(vec![#(#outer_scopes),*])
+                        };
+                        path_first = false;
+                    }
+                }
+                CommandArg::Optional(ident) => {
+                    let field_type = &fields
+                        .iter()
+                        .find(|field| field.ident.as_ref().unwrap() == ident)
+                        .expect("Optional arg not found")
+                        .ty;
+                    let so_far_ident = format_ident!("graph_til_{}", ident);
+
+                    // get what is inside the Option<...>
+                    let option_inner = match field_type {
+                        syn::Type::Path(ref type_path) => {
+                            let path = &type_path.path;
+                            if path.segments.len() != 1 {
+                                return Error::new_spanned(
+                                    path,
+                                    "Option type must be a single path segment",
+                                )
+                                .into_compile_error();
+                            }
+                            let segment = &path.segments.first().unwrap();
+                            if segment.ident != "Option" {
+                                return Error::new_spanned(
+                                    &segment.ident,
+                                    "Option type must be a option",
+                                )
+                                .into_compile_error();
+                            }
+                            match &segment.arguments {
+                                syn::PathArguments::AngleBracketed(ref angle_bracketed) => {
+                                    if angle_bracketed.args.len() != 1 {
+                                        return Error::new_spanned(
+                                            angle_bracketed,
+                                            "Option type must have a single generic argument",
+                                        )
+                                        .into_compile_error();
+                                    }
+                                    match angle_bracketed.args.first().unwrap() {
+                                        syn::GenericArgument::Type(ref generic_type) => {
+                                            generic_type
+                                        }
+                                        _ => {
+                                            return Error::new_spanned(
+                                                angle_bracketed,
+                                                "Option type must have a single generic argument",
+                                            )
+                                            .into_compile_error();
+                                        }
+                                    }
+                                }
+                                _ => {
+                                    return Error::new_spanned(
+                                        segment,
+                                        "Option type must have a single generic argument",
+                                    )
+                                    .into_compile_error();
+                                }
+                            }
+                        }
+                        _ => {
+                            return Error::new_spanned(
+                                field_type,
+                                "Option type must be a single path segment",
+                            )
+                            .into_compile_error();
+                        }
+                    };
+
+                    let ident_string = ident.to_string();
+
+                    // find the ident of all following optional args
+                    let mut next_optional_args = Vec::new();
+                    for next_arg in path.iter().skip(i + 1) {
+                        match next_arg {
+                            CommandArg::Optional(ident) => next_optional_args.push(ident),
+                            _ => {
+                                return Error::new_spanned(
+                                    struct_name,
+                                    "Only optional args can follow an optional arg",
+                                )
+                                .into_compile_error();
+                            }
+                        }
+                    }
+
+                    inner_expansion = quote! {
+                        let #so_far_ident = {#inner_expansion
+                            .with_executable(|s| {
+                                #struct_name {
+                                    #(#final_executable,)*
+                                    #ident: None,
+                                    #(#next_optional_args: None,)*
+                                }
+                            })
+                            .id()};
+
+                        command_graph.at(#so_far_ident)
+                            .argument(#ident_string)
+                            .with_parser::<#option_inner>()
+                    };
+
+                    final_executable.push(quote! {
+                        #ident: Some(#option_inner::parse_arg(s).unwrap())
+                    });
+
+                    if i == path.len() - 1 {
+                        inner_expansion = quote! {
+                            #inner_expansion
+                                .with_executable(|s| {
+                                    #struct_name {
+                                        #(#final_executable,)*
+                                    }
+                                })
+                        };
+                    }
+
+                    if path_first {
+                        inner_expansion = quote! {
+                            #inner_expansion
+                                .with_scopes(vec![#(#outer_scopes),*])
+                        };
+                        path_first = false;
                     }
                 }
             }

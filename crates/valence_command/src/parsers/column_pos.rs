@@ -27,7 +27,7 @@ impl CommandArg for ColumnPos {
 
 #[test]
 fn test_column_pos() {
-    let mut input = ParseInput::new("~-1 2 3".to_string());
+    let mut input = ParseInput::new("~-1 2 3");
     assert_eq!(
         ColumnPos::parse_arg(&mut input).unwrap(),
         ColumnPos {
@@ -38,7 +38,7 @@ fn test_column_pos() {
     );
     assert!(input.is_done());
 
-    let mut input = ParseInput::new("-1 ~2 3 hello".to_string());
+    let mut input = ParseInput::new("-1 ~2 3 hello");
     assert_eq!(
         ColumnPos::parse_arg(&mut input).unwrap(),
         ColumnPos {
@@ -51,7 +51,7 @@ fn test_column_pos() {
     input.skip_whitespace();
     assert!(input.match_next("hello"));
 
-    let mut input = ParseInput::new("-1 2 ~3 4".to_string());
+    let mut input = ParseInput::new("-1 2 ~3 4");
     assert_eq!(
         ColumnPos::parse_arg(&mut input).unwrap(),
         ColumnPos {

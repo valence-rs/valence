@@ -91,12 +91,6 @@ impl CommandScopes {
     pub fn add(&mut self, scope: &str) {
         self.0.insert(scope.into());
     }
-
-    /// remove a scope from this component
-    pub fn remove(&mut self, scope: &str) {
-        // let scope = scope.into();
-        self.0.retain(|p| p != scope);
-    }
 }
 
 /// Store the scope graph and provide methods for querying it.

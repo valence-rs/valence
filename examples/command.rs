@@ -7,7 +7,7 @@ use command::handler::CommandResultEvent;
 use command::parsers::entity_selector::{EntitySelector, EntitySelectors};
 use command::parsers::{CommandArg, GreedyString, QuotableString};
 use command::scopes::CommandScopes;
-use command::{parsers, Command, CommandApp, CommandScopeRegistry, ModifierValue};
+use command::{parsers, AddCommand, Command, CommandScopeRegistry, ModifierValue};
 use command_macros::Command;
 use parsers::{Vec2 as Vec2Parser, Vec3 as Vec3Parser};
 use rand::prelude::IteratorRandom;
@@ -21,7 +21,7 @@ const SPAWN_Y: i32 = 64;
 #[derive(Command, Debug, Clone)]
 #[paths("teleport", "tp")]
 #[scopes("valence.command.teleport")]
-enum Teleport {
+enum TeleportCommand {
     #[paths = "{location}"]
     ExecutorToLocation { location: Vec3Parser },
     #[paths = "{target}"]
@@ -41,7 +41,7 @@ enum Teleport {
 #[derive(Command, Debug, Clone)]
 #[paths("gamemode", "gm")]
 #[scopes("valence.command.gamemode")]
-enum Gamemode {
+enum GamemodeCommand {
     #[paths("survival {target?}", "{/} gms {target?}")]
     Survival { target: Option<EntitySelector> },
     #[paths("creative {target?}", "{/} gmc {target?}")]
@@ -53,10 +53,19 @@ enum Gamemode {
 }
 
 #[derive(Command, Debug, Clone)]
+#[paths("struct {gamemode} {target?}")]
+#[scopes("valence.command.gamemode")]
+#[allow(dead_code)]
+pub(crate) struct StructCommand {
+    gamemode: GameMode,
+    target: Option<EntitySelector>,
+}
+
+#[derive(Command, Debug, Clone)]
 #[paths("test", "t")]
 #[scopes("valence.command.test")]
 #[allow(dead_code)]
-enum Test {
+enum TestCommand {
     // 3 literals with an arg each
     #[paths("a {a} b {b} c {c}", "{a} {b} {c}")]
     A { a: String, b: i32, c: f32 },
@@ -86,7 +95,7 @@ enum Test {
 }
 
 #[derive(Debug, Clone)]
-enum ComplexRedirection {
+enum ComplexRedirectionCommand {
     A(Vec3Parser),
     B,
     C(Vec2Parser),
@@ -94,7 +103,7 @@ enum ComplexRedirection {
     E(Vec3Parser),
 }
 
-impl Command for ComplexRedirection {
+impl Command for ComplexRedirectionCommand {
     fn assemble_graph(graph: &mut CommandGraphBuilder<Self>)
     where
         Self: Sized,
@@ -111,11 +120,15 @@ impl Command for ComplexRedirection {
             .at(a)
             .argument("a")
             .with_parser::<Vec3Parser>()
-            .with_executable(|input| ComplexRedirection::A(Vec3Parser::parse_arg(input).unwrap()));
+            .with_executable(|input| {
+                ComplexRedirectionCommand::A(Vec3Parser::parse_arg(input).unwrap())
+            });
 
         let b = graph.literal("b").id();
 
-        graph.at(b).with_executable(|_| ComplexRedirection::B);
+        graph
+            .at(b)
+            .with_executable(|_| ComplexRedirectionCommand::B);
         graph.at(b).redirect_to(root);
 
         let c = graph.literal("c").id();
@@ -124,7 +137,9 @@ impl Command for ComplexRedirection {
             .at(c)
             .argument("c")
             .with_parser::<Vec2Parser>()
-            .with_executable(|input| ComplexRedirection::C(Vec2Parser::parse_arg(input).unwrap()));
+            .with_executable(|input| {
+                ComplexRedirectionCommand::C(Vec2Parser::parse_arg(input).unwrap())
+            });
 
         let d = graph
             .at(command_root)
@@ -137,7 +152,9 @@ impl Command for ComplexRedirection {
             })
             .id();
 
-        graph.at(d).with_executable(|_| ComplexRedirection::D);
+        graph
+            .at(d)
+            .with_executable(|_| ComplexRedirectionCommand::D);
         graph.at(d).redirect_to(command_root);
 
         let e = graph.literal("e").id();
@@ -146,17 +163,20 @@ impl Command for ComplexRedirection {
             .at(e)
             .argument("e")
             .with_parser::<Vec3Parser>()
-            .with_executable(|input| ComplexRedirection::E(Vec3Parser::parse_arg(input).unwrap()));
+            .with_executable(|input| {
+                ComplexRedirectionCommand::E(Vec3Parser::parse_arg(input).unwrap())
+            });
     }
 }
 
 pub fn main() {
     App::new()
-        .add_plugins((DefaultPlugins,))
-        .add_command::<Test>()
-        .add_command::<Teleport>()
-        .add_command::<Gamemode>()
-        .add_command::<ComplexRedirection>()
+        .add_plugins(DefaultPlugins)
+        .add_command::<TestCommand>()
+        .add_command::<TeleportCommand>()
+        .add_command::<GamemodeCommand>()
+        .add_command::<ComplexRedirectionCommand>()
+        .add_command::<StructCommand>()
         .add_systems(Startup, setup)
         .add_systems(
             Update,
@@ -168,6 +188,7 @@ pub fn main() {
                 handle_teleport_command,
                 handle_complex_command,
                 handle_gamemode_command,
+                handle_struct_command,
             ),
         )
         .run();
@@ -184,7 +205,7 @@ enum TeleportDestination {
 }
 
 fn handle_teleport_command(
-    mut events: EventReader<CommandResultEvent<Teleport>>,
+    mut events: EventReader<CommandResultEvent<TeleportCommand>>,
     living_entities: Query<Entity, With<LivingEntity>>,
     mut clients: Query<(Entity, &mut Client)>,
     entity_layers: Query<&EntityLayerId>,
@@ -193,11 +214,11 @@ fn handle_teleport_command(
 ) {
     for event in events.iter() {
         let compiled_command = match &event.result {
-            Teleport::ExecutorToLocation { location } => (
+            TeleportCommand::ExecutorToLocation { location } => (
                 TeleportTarget::Targets(vec![event.executor]),
                 TeleportDestination::Location(*location),
             ),
-            Teleport::ExecutorToTarget { target } => (
+            TeleportCommand::ExecutorToTarget { target } => (
                 TeleportTarget::Targets(vec![event.executor]),
                 TeleportDestination::Target(
                     find_targets(
@@ -206,14 +227,14 @@ fn handle_teleport_command(
                         &positions,
                         &entity_layers,
                         &usernames,
-                        &event,
+                        event,
                         target,
                     )
                     .first()
                     .copied(),
                 ),
             ),
-            Teleport::TargetToTarget { from, to } => (
+            TeleportCommand::TargetToTarget { from, to } => (
                 TeleportTarget::Targets(
                     find_targets(
                         &living_entities,
@@ -221,7 +242,7 @@ fn handle_teleport_command(
                         &positions,
                         &entity_layers,
                         &usernames,
-                        &event,
+                        event,
                         from,
                     )
                     .to_vec(),
@@ -233,14 +254,14 @@ fn handle_teleport_command(
                         &positions,
                         &entity_layers,
                         &usernames,
-                        &event,
+                        event,
                         to,
                     )
                     .first()
                     .copied(),
                 ),
             ),
-            Teleport::TargetToLocation { target, location } => (
+            TeleportCommand::TargetToLocation { target, location } => (
                 TeleportTarget::Targets(
                     find_targets(
                         &living_entities,
@@ -248,7 +269,7 @@ fn handle_teleport_command(
                         &positions,
                         &entity_layers,
                         &usernames,
-                        &event,
+                        event,
                         target,
                     )
                     .to_vec(),
@@ -290,7 +311,7 @@ fn find_targets(
     positions: &Query<&mut Position>,
     entity_layers: &Query<&EntityLayerId>,
     usernames: &Query<(Entity, &Username)>,
-    event: &&CommandResultEvent<Teleport>,
+    event: &CommandResultEvent<TeleportCommand>,
     target: &EntitySelector,
 ) -> Vec<Entity> {
     match target {
@@ -393,7 +414,7 @@ fn find_targets(
 }
 
 fn handle_test_command(
-    mut events: EventReader<CommandResultEvent<Test>>,
+    mut events: EventReader<CommandResultEvent<TestCommand>>,
     mut clients: Query<&mut Client>,
 ) {
     for event in events.iter() {
@@ -406,7 +427,7 @@ fn handle_test_command(
 }
 
 fn handle_complex_command(
-    mut events: EventReader<CommandResultEvent<ComplexRedirection>>,
+    mut events: EventReader<CommandResultEvent<ComplexRedirectionCommand>>,
     mut clients: Query<&mut Client>,
 ) {
     for event in events.iter() {
@@ -418,24 +439,37 @@ fn handle_complex_command(
     }
 }
 
+fn handle_struct_command(
+    mut events: EventReader<CommandResultEvent<StructCommand>>,
+    mut clients: Query<&mut Client>,
+) {
+    for event in events.iter() {
+        let client = &mut clients.get_mut(event.executor).unwrap();
+        client.send_chat_message(format!(
+            "Struct command executed with data:\n {:#?}",
+            &event.result
+        ));
+    }
+}
+
 fn handle_gamemode_command(
-    mut events: EventReader<CommandResultEvent<Gamemode>>,
+    mut events: EventReader<CommandResultEvent<GamemodeCommand>>,
     mut clients: Query<(&mut Client, &mut GameMode, &Username, Entity)>,
     positions: Query<&Position>,
 ) {
     for event in events.iter() {
         let game_mode_to_set = match &event.result {
-            Gamemode::Survival { .. } => GameMode::Survival,
-            Gamemode::Creative { .. } => GameMode::Creative,
-            Gamemode::Adventure { .. } => GameMode::Adventure,
-            Gamemode::Spectator { .. } => GameMode::Spectator,
+            GamemodeCommand::Survival { .. } => GameMode::Survival,
+            GamemodeCommand::Creative { .. } => GameMode::Creative,
+            GamemodeCommand::Adventure { .. } => GameMode::Adventure,
+            GamemodeCommand::Spectator { .. } => GameMode::Spectator,
         };
 
         let selector = match &event.result {
-            Gamemode::Survival { target } => target.clone(),
-            Gamemode::Creative { target } => target.clone(),
-            Gamemode::Adventure { target } => target.clone(),
-            Gamemode::Spectator { target } => target.clone(),
+            GamemodeCommand::Survival { target } => target.clone(),
+            GamemodeCommand::Creative { target } => target.clone(),
+            GamemodeCommand::Adventure { target } => target.clone(),
+            GamemodeCommand::Spectator { target } => target.clone(),
         };
 
         match selector {

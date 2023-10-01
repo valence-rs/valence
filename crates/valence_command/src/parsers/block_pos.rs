@@ -27,7 +27,7 @@ impl CommandArg for BlockPos {
 
 #[test]
 fn test_block_pos() {
-    let mut input = ParseInput::new("~-1 2 3".to_string());
+    let mut input = ParseInput::new("~-1 2 3");
     assert_eq!(
         BlockPos::parse_arg(&mut input).unwrap(),
         BlockPos {
@@ -38,7 +38,7 @@ fn test_block_pos() {
     );
     assert!(input.is_done());
 
-    let mut input = ParseInput::new("-1 ~2 3 ".to_string());
+    let mut input = ParseInput::new("-1 ~2 3 ");
     assert_eq!(
         BlockPos::parse_arg(&mut input).unwrap(),
         BlockPos {
@@ -49,7 +49,7 @@ fn test_block_pos() {
     );
     assert!(!input.is_done());
 
-    let mut input = ParseInput::new("-1 2 ~3 4".to_string());
+    let mut input = ParseInput::new("-1 2 ~3 4");
     assert_eq!(
         BlockPos::parse_arg(&mut input).unwrap(),
         BlockPos {

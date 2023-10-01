@@ -11,7 +11,7 @@ impl CommandArg for bool {
         } else {
             Err(CommandArgParseError::InvalidArgument {
                 expected: "bool".to_string(),
-                got: input.input.clone(),
+                got: input.peek_word(),
             })
         }
     }
@@ -23,19 +23,19 @@ impl CommandArg for bool {
 
 #[test]
 fn test_bool() {
-    let mut input = ParseInput::new("true".to_string());
+    let mut input = ParseInput::new("true");
     assert!(bool::parse_arg(&mut input).unwrap());
     assert!(input.is_done());
 
-    let mut input = ParseInput::new("false".to_string());
+    let mut input = ParseInput::new("false");
     assert!(!bool::parse_arg(&mut input).unwrap());
     assert!(input.is_done());
 
-    let mut input = ParseInput::new("false ".to_string());
+    let mut input = ParseInput::new("false ");
     assert!(!bool::parse_arg(&mut input).unwrap());
     assert!(!input.is_done());
 
-    let mut input = ParseInput::new("falSe trUe".to_string());
+    let mut input = ParseInput::new("falSe trUe");
     assert!(!bool::parse_arg(&mut input).unwrap());
     assert!(bool::parse_arg(&mut input).unwrap());
     assert!(input.is_done());

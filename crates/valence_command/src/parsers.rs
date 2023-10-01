@@ -30,12 +30,13 @@ pub use strings::{GreedyString, QuotableString};
 pub use swizzle::Swizzle;
 use thiserror::Error;
 pub use time::Time;
+use tracing::error;
 pub(crate) use valence_server::protocol::packets::play::command_tree_s2c::Parser;
 pub use vec2::Vec2;
 pub use vec3::Vec3;
 
 pub trait CommandArg: Sized {
-    fn arg_from_string(string: String) -> Result<Self, CommandArgParseError> {
+    fn arg_from_str(string: &str) -> Result<Self, CommandArgParseError> {
         Self::parse_arg(&mut ParseInput::new(string))
     }
 
@@ -44,73 +45,133 @@ pub trait CommandArg: Sized {
     fn display() -> Parser;
 }
 
+///
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ParseInput {
-    pub input: String,
-    pub cursor: usize,
+pub struct ParseInput<'a> {
+    input: &'a str,
+    traversed: usize,
 }
 
-impl ParseInput {
-    pub fn new(input: impl Into<String>) -> Self {
-        Self {
+impl<'a> ParseInput<'a> {
+    pub fn new(input: impl Into<&'a str>) -> Self {
+        ParseInput {
             input: input.into(),
-            cursor: 0,
+            traversed: 0,
         }
     }
     pub fn peek(&self) -> Option<char> {
-        self.input.chars().nth(self.cursor)
+        self.input.chars().next()
     }
 
-    pub fn peek_n(&self, n: usize) -> Option<char> {
-        self.input.chars().nth(self.cursor + n)
+    pub fn peek_n(&self, n: usize) -> Option<&str> {
+        if n == 0 {
+            error!("peek_n(0) called, don't do that.");
+            return None; // never peek 0 chars
+        }
+        if n > self.input.chars().count() {
+            return Some(self.input);
+        }
+        Some(&self.input[..=self.input.char_indices().nth(n - 1)?.0])
+    }
+
+    pub fn peek_word(&self) -> String {
+        let iter = self.input.chars();
+        let mut word = String::new();
+        for c in iter {
+            if c.is_whitespace() {
+                break;
+            } else {
+                word.push(c);
+            }
+        }
+        word
     }
 
     pub fn is_done(&self) -> bool {
-        self.cursor >= self.input.len()
+        self.input.is_empty()
     }
 
     pub fn advance(&mut self) {
-        self.cursor += 1;
+        self.advance_n_chars(1);
     }
 
-    pub fn pop(&mut self) -> Option<char> {
-        let c = self.peek();
-        if c.is_some() {
-            self.advance();
+    pub fn advance_n_chars(&mut self, n: usize) {
+        if self.is_done() {
+            return;
         }
-        c
-    }
-
-    pub fn pop_n(&mut self, n: usize) -> Option<String> {
-        let s = self.input[self.cursor..self.cursor + n].to_string();
-        self.advance_n(n);
-        Some(s)
-    }
-
-    pub fn pop_to_next(&mut self, c: char) -> Option<String> {
-        if let Some(pos) = self.input[self.cursor..].find(c) {
-            let s = self.input[self.cursor..self.cursor + pos].to_string();
-            self.advance_n(pos);
-            Some(s)
-        } else {
-            None
-        }
-    }
-
-    pub fn pop_to_next_whitespace_or_end(&mut self) -> Option<String> {
-        match self.pop_to_next(' ') {
-            Some(s) => Some(s),
+        match self.input.char_indices().nth(n) {
+            Some((len, _)) => {
+                self.input = &self.input[len..];
+                self.traversed += n;
+            }
             None => {
-                let s = self.input[self.cursor..].to_string();
-                self.advance_to(self.input.len());
-                Some(s)
+                self.traversed += self.input.chars().count();
+                self.input = "";
             }
         }
     }
 
+    pub fn advance_n_bytes(&mut self, n: usize) {
+        if self.is_done() {
+            return;
+        }
+        self.advance_n_chars(self.input[..n].chars().count());
+    }
+    pub fn advance_to_next(&mut self, c: char) {
+        if let Some(pos) = self.input.find(c) {
+            self.advance_n_bytes(pos - 1);
+        } else {
+            self.input = "";
+        }
+    }
+
+    pub fn advance_to_next_non_whitespace(&mut self) {
+        while let Some(c) = self.peek() {
+            if c.is_whitespace() {
+                self.advance();
+            } else {
+                break;
+            }
+        }
+    }
+
+    pub fn pop(&mut self) -> Option<char> {
+        let c = self.peek()?;
+        self.advance();
+        Some(c)
+    }
+
+    pub fn pop_n(&mut self, n: usize) -> Option<&str> {
+        if n == 0 {
+            return None; // never pop 0 chars
+        }
+        let s = &self.input[..self.input.char_indices().nth(n)?.0];
+        self.advance_n_chars(n);
+        Some(s)
+    }
+
+    pub fn pop_word(&mut self) -> String {
+        let word = self.peek_word();
+        self.advance_n_bytes(word.len());
+        word
+    }
+
+    pub fn pop_all(&mut self) -> Option<&str> {
+        let s = self.input;
+        self.advance_n_bytes(self.input.len());
+        Some(s)
+    }
+
+    pub fn pop_to_next(&mut self, c: char) -> Option<&str> {
+        let pos = self.input.find(c)?;
+        let s = &self.input[..pos];
+        self.advance_n_bytes(pos);
+        Some(s)
+    }
+
     pub fn match_next(&mut self, string: &str) -> bool {
-        if self.input[self.cursor..].to_lowercase().starts_with(string) {
-            self.advance_n(string.len());
+        if self.input.to_lowercase().starts_with(string) {
+            self.advance_n_bytes(string.len());
             true
         } else {
             false
@@ -127,36 +188,8 @@ impl ParseInput {
         }
     }
 
-    pub fn advance_n(&mut self, n: usize) {
-        self.cursor += n;
-    }
-
-    pub fn advance_to(&mut self, to: usize) {
-        self.cursor = to;
-    }
-
-    pub fn advance_to_next(&mut self, c: char) {
-        if let Some(pos) = self.input[self.cursor..].find(c) {
-            self.cursor += pos;
-        } else {
-            self.cursor = self.input.len();
-        }
-    }
-
-    pub fn advance_to_next_whitespace(&mut self) {
-        if let Some(pos) = self.input[self.cursor..].find(char::is_whitespace) {
-            self.cursor += pos;
-        } else {
-            self.cursor = self.input.len();
-        }
-    }
-
-    pub fn advance_to_next_non_whitespace(&mut self) {
-        if let Some(pos) = self.input[self.cursor..].find(|c: char| !c.is_whitespace()) {
-            self.cursor += pos;
-        } else {
-            self.cursor = self.input.len();
-        }
+    pub fn traversed(&self) -> usize {
+        self.traversed
     }
 }
 
@@ -194,7 +227,7 @@ where
     fn parse_arg(input: &mut ParseInput) -> Result<Self, CommandArgParseError> {
         input.skip_whitespace();
         if input.peek() == Some('~') {
-            input.pop();
+            input.advance();
             if input.peek() == Some(' ') || input.peek().is_none() {
                 Ok(AbsoluteOrRelative::Relative(T::default()))
             } else {
@@ -214,42 +247,42 @@ where
 
 #[test]
 fn test_absolute_or_relative() {
-    let mut input = ParseInput::new("~".to_string());
+    let mut input = ParseInput::new("~");
     assert_eq!(
         AbsoluteOrRelative::<i32>::parse_arg(&mut input).unwrap(),
         AbsoluteOrRelative::Relative(0)
     );
     assert!(input.is_done());
 
-    let mut input = ParseInput::new("~1".to_string());
+    let mut input = ParseInput::new("~1");
     assert_eq!(
         AbsoluteOrRelative::<i32>::parse_arg(&mut input).unwrap(),
         AbsoluteOrRelative::Relative(1)
     );
     assert!(input.is_done());
 
-    let mut input = ParseInput::new("~1.5".to_string());
+    let mut input = ParseInput::new("~1.5");
     assert_eq!(
         AbsoluteOrRelative::<f32>::parse_arg(&mut input).unwrap(),
         AbsoluteOrRelative::Relative(1.5)
     );
     assert!(input.is_done());
 
-    let mut input = ParseInput::new("1".to_string());
+    let mut input = ParseInput::new("1");
     assert_eq!(
         AbsoluteOrRelative::<i32>::parse_arg(&mut input).unwrap(),
         AbsoluteOrRelative::Absolute(1)
     );
     assert!(input.is_done());
 
-    let mut input = ParseInput::new("1.5 ".to_string());
+    let mut input = ParseInput::new("1.5 ");
     assert_eq!(
         AbsoluteOrRelative::<f32>::parse_arg(&mut input).unwrap(),
         AbsoluteOrRelative::Absolute(1.5)
     );
     assert!(!input.is_done());
 
-    let mut input = ParseInput::new("1.5 2".to_string());
+    let mut input = ParseInput::new("1.5 2");
     assert_eq!(
         AbsoluteOrRelative::<f32>::parse_arg(&mut input).unwrap(),
         AbsoluteOrRelative::Absolute(1.5)
