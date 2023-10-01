@@ -197,7 +197,7 @@ impl ChatState {
 
     /// Updates the chat state's previously seen signatures with a new one
     /// `signature`.
-    fn add_pending(&mut self, last_seen: &Vec<[u8; 256]>, signature: &[u8; 256]) {
+    fn add_pending(&mut self, last_seen: &[[u8; 256]], signature: &[u8; 256]) {
         self.signature_storage.add(last_seen, signature);
         self.validator.add_pending(signature);
     }
@@ -392,7 +392,7 @@ impl MessageSignatureStorage {
     /// `signature` to the storage.
     ///
     /// Warning: this consumes `last_seen`.
-    fn add(&mut self, last_seen: &Vec<[u8; 256]>, signature: &[u8; 256]) {
+    fn add(&mut self, last_seen: &[[u8; 256]], signature: &[u8; 256]) {
         let mut sig_set = FxHashSet::default();
 
         last_seen

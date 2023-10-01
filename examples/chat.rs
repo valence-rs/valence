@@ -91,7 +91,7 @@ fn handle_message_events(
     for message in messages.iter() {
         let sender_name = names.get(message.client).expect("Error getting username");
         // Need to find better way. Username is sender, while client and chat state are
-        // recievers. Maybe try to add a chat feature to Client.
+        // receivers. Maybe try to add a chat feature to Client.
         for (mut client, mut state) in clients.iter_mut() {
             state
                 .as_mut()

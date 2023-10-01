@@ -234,7 +234,7 @@ impl<'de> Deserialize<'de> for ChatTypeParameters {
             }
         }
 
-        const FIELDS: &'static [&'static str] = &["sender", "target", "content"];
+        const FIELDS: &[&str] = &["sender", "target", "content"];
         deserializer.deserialize_struct("ChatTypeParameters", FIELDS, ParameterVisitor)
     }
 }
