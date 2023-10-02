@@ -31,7 +31,7 @@ pub struct JavaStr {
 
 impl JavaStr {
     #[inline]
-    pub const fn from_utf8(v: &[u8]) -> Result<&JavaStr, Utf8Error> {
+    pub const fn from_full_utf8(v: &[u8]) -> Result<&JavaStr, Utf8Error> {
         match std::str::from_utf8(v) {
             Ok(str) => Ok(JavaStr::from_str(str)),
             Err(err) => Err(Utf8Error::from_std(err)),
@@ -39,7 +39,7 @@ impl JavaStr {
     }
 
     #[inline]
-    pub fn from_utf8_mut(v: &mut [u8]) -> Result<&mut JavaStr, Utf8Error> {
+    pub fn from_full_utf8_mut(v: &mut [u8]) -> Result<&mut JavaStr, Utf8Error> {
         match std::str::from_utf8_mut(v) {
             Ok(str) => Ok(JavaStr::from_mut_str(str)),
             Err(err) => Err(Utf8Error::from_std(err)),

@@ -39,7 +39,7 @@ impl JavaString {
     }
 
     #[inline]
-    pub fn from_utf8(vec: Vec<u8>) -> Result<JavaString, FromUtf8Error> {
+    pub fn from_full_utf8(vec: Vec<u8>) -> Result<JavaString, FromUtf8Error> {
         match std::str::from_utf8(&vec) {
             Ok(..) => Ok(JavaString { vec }),
             Err(e) => Err(FromUtf8Error {

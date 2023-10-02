@@ -1,5 +1,6 @@
 #![doc = include_str!("../README.md")]
 
+mod cesu8;
 mod char;
 mod error;
 mod iter;
@@ -10,6 +11,7 @@ mod serde;
 mod slice;
 pub(crate) mod validations;
 
+pub use cesu8::*;
 pub use char::*;
 pub use error::*;
 pub use iter::*;

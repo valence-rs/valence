@@ -6,7 +6,7 @@ pub(crate) const TAG_CONT: u8 = 0b1000_0000;
 pub(crate) const TAG_TWO_B: u8 = 0b1100_0000;
 pub(crate) const TAG_THREE_B: u8 = 0b1110_0000;
 pub(crate) const TAG_FOUR_B: u8 = 0b1111_0000;
-const CONT_MASK: u8 = 0b0011_1111;
+pub(crate) const CONT_MASK: u8 = 0b0011_1111;
 
 #[inline]
 const fn utf8_first_byte(byte: u8, width: u32) -> u32 {
@@ -244,7 +244,7 @@ pub(crate) const fn run_utf8_full_validation_from_semi(v: &[u8]) -> Result<(), U
 }
 
 #[inline]
-const fn utf8_char_width(first_byte: u8) -> usize {
+pub(crate) const fn utf8_char_width(first_byte: u8) -> usize {
     const UTF8_CHAR_WIDTH: [u8; 256] = [
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
