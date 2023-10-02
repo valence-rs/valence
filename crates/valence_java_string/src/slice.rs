@@ -30,6 +30,8 @@ pub struct JavaStr {
 }
 
 impl JavaStr {
+    /// Converts `v` to a `&JavaStr` if it is fully-valid UTF-8, i.e. UTF-8
+    /// without surrogate code points.
     #[inline]
     pub const fn from_full_utf8(v: &[u8]) -> Result<&JavaStr, Utf8Error> {
         match std::str::from_utf8(v) {
@@ -38,6 +40,8 @@ impl JavaStr {
         }
     }
 
+    /// Converts `v` to a `&mut JavaStr` if it is fully-valid UTF-8, i.e. UTF-8
+    /// without surrogate code points.
     #[inline]
     pub fn from_full_utf8_mut(v: &mut [u8]) -> Result<&mut JavaStr, Utf8Error> {
         match std::str::from_utf8_mut(v) {
@@ -46,6 +50,8 @@ impl JavaStr {
         }
     }
 
+    /// Converts `v` to a `&JavaStr` if it is semi-valid UTF-8, i.e. UTF-8
+    /// with surrogate code points.
     pub fn from_semi_utf8(v: &[u8]) -> Result<&JavaStr, Utf8Error> {
         match run_utf8_semi_validation(v) {
             Ok(()) => Ok(unsafe { JavaStr::from_semi_utf8_unchecked(v) }),
@@ -53,6 +59,8 @@ impl JavaStr {
         }
     }
 
+    /// Converts `v` to a `&mut JavaStr` if it is semi-valid UTF-8, i.e. UTF-8
+    /// with surrogate code points.
     pub fn from_semi_utf8_mut(v: &mut [u8]) -> Result<&mut JavaStr, Utf8Error> {
         match run_utf8_semi_validation(v) {
             Ok(()) => Ok(unsafe { JavaStr::from_semi_utf8_unchecked_mut(v) }),
@@ -146,6 +154,8 @@ impl JavaStr {
         self.inner.as_ptr()
     }
 
+    /// Tries to convert this `&JavaStr` to a `&str`, returning an error if
+    /// it is not fully valid UTF-8, i.e. has no surrogate code points.
     pub const fn as_str(&self) -> Result<&str, Utf8Error> {
         // Manual implementation of Option::map since it's not const
         match run_utf8_full_validation_from_semi(self.as_bytes()) {
@@ -167,6 +177,8 @@ impl JavaStr {
         std::str::from_utf8_unchecked(self.as_bytes())
     }
 
+    /// Converts this `&JavaStr` to a `Cow<str>`, replacing surrogate code
+    /// points with the replacement character �.
     #[must_use]
     pub fn as_str_lossy(&self) -> Cow<'_, str> {
         match run_utf8_full_validation_from_semi(self.as_bytes()) {

@@ -192,7 +192,7 @@ impl<'a> Iterator for Chars<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        // SAFETY: `JavaStr` invariant says `self.iter` is a semi-valid UTF-8 string and
+        // SAFETY: `JavaStr` invariant says `self.inner` is a semi-valid UTF-8 string and
         // the resulting `ch` is a valid Unicode Scalar Value or surrogate code point.
         unsafe { next_code_point(&mut self.inner).map(|ch| JavaCodePoint::from_u32_unchecked(ch)) }
     }
@@ -227,7 +227,7 @@ impl Debug for Chars<'_> {
 impl<'a> DoubleEndedIterator for Chars<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
-        // SAFETY: `JavaStr` invariant says `self.iter` is a semi-valid UTF-8 string and
+        // SAFETY: `JavaStr` invariant says `self.inner` is a semi-valid UTF-8 string and
         // the resulting `ch` is a valid Unicode Scalar Value or surrogate code point.
         unsafe {
             next_code_point_reverse(&mut self.inner).map(|ch| JavaCodePoint::from_u32_unchecked(ch))

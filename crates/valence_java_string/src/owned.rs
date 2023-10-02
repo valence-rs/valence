@@ -38,6 +38,8 @@ impl JavaString {
         }
     }
 
+    /// Converts `vec` to a `JavaString` if it is fully-valid UTF-8, i.e. UTF-8
+    /// without surrogate code points.
     #[inline]
     pub fn from_full_utf8(vec: Vec<u8>) -> Result<JavaString, FromUtf8Error> {
         match std::str::from_utf8(&vec) {
@@ -49,6 +51,8 @@ impl JavaString {
         }
     }
 
+    /// Converts `vec` to a `JavaString` if it is semi-valid UTF-8, i.e. UTF-8
+    /// with surrogate code points.
     pub fn from_semi_utf8(vec: Vec<u8>) -> Result<JavaString, FromUtf8Error> {
         match run_utf8_semi_validation(&vec) {
             Ok(..) => Ok(JavaString { vec }),
@@ -59,6 +63,8 @@ impl JavaString {
         }
     }
 
+    /// Converts `v` to a `Cow<JavaStr>`, replacing invalid semi-UTF-8 with the
+    /// replacement character �.
     #[must_use]
     pub fn from_semi_utf8_lossy(v: &[u8]) -> Cow<'_, JavaStr> {
         const REPLACEMENT: &str = "\u{FFFD}";
@@ -137,6 +143,8 @@ impl JavaString {
         }
     }
 
+    /// Tries to convert this `JavaString` to a `String`, returning an error if
+    /// it is not fully valid UTF-8, i.e. has no surrogate code points.
     pub fn into_string(self) -> Result<String, Utf8Error> {
         run_utf8_full_validation_from_semi(self.as_bytes()).map(|_| unsafe {
             // SAFETY: validation succeeded

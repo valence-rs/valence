@@ -122,6 +122,8 @@ impl JavaCodePoint {
         }
     }
 
+    /// Encodes this `JavaCodePoint` into semi UTF-8, that is, UTF-8 with
+    /// surrogate code points.
     #[inline]
     pub fn encode_semi_utf8(self, dst: &mut [u8]) -> &mut [u8] {
         let len = self.len_utf8();
