@@ -519,7 +519,7 @@ impl JavaString {
         }
     }
 
-    /// See [String::insert_java_str].
+    /// See [String::insert_str].
     pub fn insert_java_str(&mut self, idx: usize, string: &JavaStr) {
         assert!(self.is_char_boundary(idx));
 
