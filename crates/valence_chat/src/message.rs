@@ -7,8 +7,7 @@ use valence_protocol::packets::play::GameMessageS2c;
 use valence_protocol::text::IntoText;
 
 pub(super) fn build(app: &mut App) {
-    app.add_event::<CommandExecutionEvent>()
-        .add_event::<ChatMessageEvent>();
+    app.add_event::<ChatMessageEvent>();
 }
 
 pub trait SendMessage {
@@ -32,13 +31,6 @@ impl<T: WritePacket> SendMessage for T {
             overlay: true,
         });
     }
-}
-
-#[derive(Event, Clone, Debug)]
-pub struct CommandExecutionEvent {
-    pub client: Entity,
-    pub command: Box<str>,
-    pub timestamp: u64,
 }
 
 #[derive(Event, Clone, Debug)]

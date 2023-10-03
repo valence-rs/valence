@@ -17,6 +17,7 @@
     clippy::dbg_macro
 )]
 
+pub mod command;
 pub mod message;
 
 #[cfg(feature = "secure")]
@@ -41,6 +42,8 @@ use valence_server::protocol::WritePacket;
 use valence_text::{Color, Text};
 #[cfg(feature = "secure")]
 use {
+    crate::command::ArgumentSignature,
+    crate::message::ChatMessageType,
     anyhow::bail,
     rsa::pkcs1v15::Pkcs1v15Sign,
     rsa::pkcs8::DecodePublicKey,
@@ -64,7 +67,8 @@ use {
     valence_text::IntoText,
 };
 
-use crate::message::{ChatMessageEvent, ChatMessageType, CommandExecutionEvent, SendMessage};
+use crate::command::CommandExecutionEvent;
+use crate::message::{ChatMessageEvent, SendMessage};
 
 #[cfg(feature = "secure")]
 const MOJANG_KEY_DATA: &[u8] = include_bytes!("../yggdrasil_session_pubkey.der");
@@ -98,6 +102,7 @@ impl Plugin for ChatPlugin {
                 );
         }
 
+        command::build(app);
         message::build(app);
     }
 }
@@ -751,16 +756,83 @@ fn handle_message_packets(
 }
 
 fn handle_command_packets(
+    mut clients: Query<
+        (&mut ChatState, &mut Client, &Username, &ClientSettings),
+        With<PlayerListEntry>,
+    >,
+    _sessions: Query<&ChatSession, With<PlayerListEntry>>,
     mut packets: EventReader<PacketEvent>,
     mut command_events: EventWriter<CommandExecutionEvent>,
+    mut commands: Commands,
 ) {
     for packet in packets.iter() {
-        if let Some(command) = packet.decode::<CommandExecutionC2s>() {
-            command_events.send(CommandExecutionEvent {
-                client: packet.client,
-                command: command.command.0.into(),
-                timestamp: command.timestamp,
-            })
+        let Some(command) = packet.decode::<CommandExecutionC2s>() else {
+            continue;
+        };
+
+        let Ok((mut state, mut client, username, settings)) = clients.get_mut(packet.client) else {
+            warn!("Unable to find client for message '{:?}'", command);
+            continue;
+        };
+
+        // Ensure that the client isn't sending messages while their chat is hidden.
+        if settings.chat_mode == ChatMode::Hidden {
+            client.send_game_message(Text::translate(CHAT_DISABLED_OPTIONS, []).color(Color::RED));
+            continue;
         }
+
+        // Ensure we are receiving chat messages in order.
+        if command.timestamp < state.last_message_timestamp {
+            warn!(
+                "{:?} sent out-of-order chat: '{:?}'",
+                username.0, command.command
+            );
+            commands.add(DisconnectClient {
+                client: packet.client,
+                reason: Text::translate(MULTIPLAYER_DISCONNECT_OUT_OF_ORDER_CHAT, []),
+            });
+            continue;
+        }
+
+        state.last_message_timestamp = command.timestamp;
+
+        // Validate the message acknowledgements.
+        let _last_seen = match state
+            .validator
+            .validate(&command.acknowledgement.0, command.message_index.0)
+        {
+            Err(error) => {
+                warn!(
+                    "Failed to validate acknowledgements from `{}`: {}",
+                    username.0, error
+                );
+                commands.add(DisconnectClient {
+                    client: packet.client,
+                    reason: Text::translate(MULTIPLAYER_DISCONNECT_CHAT_VALIDATION_FAILED, []),
+                });
+                continue;
+            }
+            Ok(last_seen) => last_seen,
+        };
+
+        // TODO: Implement proper argument verification
+        // This process will invlove both `_sessions` and `_last_seen`
+
+        warn!("{:?}", command);
+        command_events.send(CommandExecutionEvent {
+            client: packet.client,
+            command: command.command.0.into(),
+            timestamp: command.timestamp,
+            salt: command.salt,
+            argument_signatures: command
+                .argument_signatures
+                .0
+                .iter()
+                .map(|sig| ArgumentSignature {
+                    name: sig.argument_name.0.into(),
+                    signature: (*sig.signature).into(),
+                })
+                .collect(),
+        })
     }
 }

@@ -1,7 +1,8 @@
 #![allow(clippy::type_complexity)]
 
 use tracing::warn;
-use valence::chat::message::{ChatMessageEvent, CommandExecutionEvent, SendMessage};
+use valence::chat::command::CommandExecutionEvent;
+use valence::chat::message::{ChatMessageEvent, SendMessage};
 use valence::chat::ChatState;
 use valence::prelude::*;
 

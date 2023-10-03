@@ -5,8 +5,8 @@ pub struct CommandExecutionC2s<'a> {
     pub command: Bounded<&'a str, 256>,
     pub timestamp: u64,
     pub salt: u64,
-    pub argument_signatures: Vec<CommandArgumentSignature<'a>>,
-    pub message_count: VarInt,
+    pub argument_signatures: Bounded<Vec<CommandArgumentSignature<'a>>, 8>,
+    pub message_index: VarInt,
     //// This is a bitset of 20; each bit represents one
     //// of the last 20 messages received and whether or not
     //// the message was acknowledged by the client
