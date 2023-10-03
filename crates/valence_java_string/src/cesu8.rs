@@ -27,7 +27,7 @@ impl JavaStr {
     #[inline]
     fn to_modified_utf8_internal(&self) -> Vec<u8> {
         let bytes = self.as_bytes();
-        let mut encoded = Vec::with_capacity(bytes.len() + bytes.len() >> 2);
+        let mut encoded = Vec::with_capacity((bytes.len() + bytes.len()) >> 2);
         let mut i = 0;
         while i < bytes.len() {
             let b = bytes[i];
