@@ -1,5 +1,5 @@
 [package]
-name = "valence_java_string"
+name = "java_string"
 description = "An implementation of Java strings, tolerant of invalid UTF-16 encoding"
 readme = "README.md"
 version = "0.1.0"
