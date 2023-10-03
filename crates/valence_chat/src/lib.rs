@@ -816,7 +816,7 @@ fn handle_command_packets(
         };
 
         // TODO: Implement proper argument verification
-        // This process will invlove both `_sessions` and `_last_seen`
+        // This process will involve both `_sessions` and `_last_seen`
 
         warn!("{:?}", command);
         command_events.send(CommandExecutionEvent {
