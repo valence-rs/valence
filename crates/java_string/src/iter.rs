@@ -586,10 +586,10 @@ where
                     unsafe { substr.chars().next_back().unwrap_unchecked().len_utf8() };
                 let popped_str = unsafe { substr.get_unchecked(..substr.len() - last_char_len) };
 
-                self.pat.find_in(popped_str)
+                self.pat.rfind_in(popped_str)
             }
         } else {
-            self.pat.find_in(substr)
+            self.pat.rfind_in(substr)
         };
 
         self.had_empty_match = result.is_some_and(|(_, len)| len == 0);

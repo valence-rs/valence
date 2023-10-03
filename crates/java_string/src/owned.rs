@@ -39,7 +39,7 @@ impl JavaString {
     }
 
     /// Converts `vec` to a `JavaString` if it is fully-valid UTF-8, i.e. UTF-8
-    /// without surrogate code points.
+    /// without surrogate code points. See [String::from_utf8].
     #[inline]
     pub fn from_full_utf8(vec: Vec<u8>) -> Result<JavaString, FromUtf8Error> {
         match std::str::from_utf8(&vec) {
@@ -53,6 +53,24 @@ impl JavaString {
 
     /// Converts `vec` to a `JavaString` if it is semi-valid UTF-8, i.e. UTF-8
     /// with surrogate code points.
+    ///
+    /// ```
+    /// # use java_string::{JavaCodePoint, JavaString};
+    ///
+    /// assert_eq!(
+    ///     JavaString::from_semi_utf8(b"Hello World!".to_vec()).unwrap(),
+    ///     "Hello World!"
+    /// );
+    /// assert_eq!(
+    ///     JavaString::from_semi_utf8(vec![0xf0, 0x9f, 0x92, 0x96]).unwrap(),
+    ///     "💖"
+    /// );
+    /// assert_eq!(
+    ///     JavaString::from_semi_utf8(vec![0xed, 0xa0, 0x80]).unwrap(),
+    ///     JavaString::from(JavaCodePoint::from_u32(0xd800).unwrap())
+    /// );
+    /// assert!(JavaString::from_semi_utf8(vec![0xed]).is_err());
+    /// ```
     pub fn from_semi_utf8(vec: Vec<u8>) -> Result<JavaString, FromUtf8Error> {
         match run_utf8_semi_validation(&vec) {
             Ok(..) => Ok(JavaString { vec }),
@@ -65,6 +83,21 @@ impl JavaString {
 
     /// Converts `v` to a `Cow<JavaStr>`, replacing invalid semi-UTF-8 with the
     /// replacement character �.
+    ///
+    /// ```
+    /// # use std::borrow::Cow;
+    /// # use java_string::{JavaStr, JavaString};
+    ///
+    /// let sparkle_heart = [0xf0, 0x9f, 0x92, 0x96];
+    /// let result = JavaString::from_semi_utf8_lossy(&sparkle_heart);
+    /// assert!(matches!(result, Cow::Borrowed(_)));
+    /// assert_eq!(result, JavaStr::from_str("💖"));
+    ///
+    /// let foobar_with_error = [b'f', b'o', b'o', 0xed, b'b', b'a', b'r'];
+    /// let result = JavaString::from_semi_utf8_lossy(&foobar_with_error);
+    /// assert!(matches!(result, Cow::Owned(_)));
+    /// assert_eq!(result, JavaStr::from_str("foo�bar"));
+    /// ```
     #[must_use]
     pub fn from_semi_utf8_lossy(v: &[u8]) -> Cow<'_, JavaStr> {
         const REPLACEMENT: &str = "\u{FFFD}";
@@ -119,12 +152,14 @@ impl JavaString {
         JavaString { vec: bytes }
     }
 
+    /// See [String::into_bytes].
     #[inline]
     #[must_use]
     pub fn into_bytes(self) -> Vec<u8> {
         self.vec
     }
 
+    /// See [String::as_str].
     #[inline]
     #[must_use]
     pub fn as_java_str(&self) -> &JavaStr {
@@ -134,6 +169,7 @@ impl JavaString {
         }
     }
 
+    /// See [String::as_mut_str].
     #[inline]
     #[must_use]
     pub fn as_mut_java_str(&mut self) -> &mut JavaStr {
@@ -145,6 +181,23 @@ impl JavaString {
 
     /// Tries to convert this `JavaString` to a `String`, returning an error if
     /// it is not fully valid UTF-8, i.e. has no surrogate code points.
+    ///
+    /// ```
+    /// # use java_string::{JavaCodePoint, JavaString};
+    ///
+    /// assert_eq!(
+    ///     JavaString::from("Hello World!").into_string().unwrap(),
+    ///     "Hello World!"
+    /// );
+    /// assert_eq!(
+    ///     JavaString::from("abc\0ℝ💣").into_string().unwrap(),
+    ///     "abc\0ℝ💣"
+    /// );
+    ///
+    /// let string_with_error = JavaString::from("abc")
+    ///     + JavaString::from(JavaCodePoint::from_u32(0xd800).unwrap()).as_java_str();
+    /// assert!(string_with_error.into_string().is_err());
+    /// ```
     pub fn into_string(self) -> Result<String, Utf8Error> {
         run_utf8_full_validation_from_semi(self.as_bytes()).map(|_| unsafe {
             // SAFETY: validation succeeded
@@ -163,52 +216,62 @@ impl JavaString {
         String::from_utf8_unchecked(self.vec)
     }
 
+    /// See [String::push_str].
     #[inline]
     pub fn push_java_str(&mut self, string: &JavaStr) {
         self.vec.extend_from_slice(string.as_bytes())
     }
 
+    /// See [String::push_str].
     #[inline]
     pub fn push_str(&mut self, string: &str) {
         self.vec.extend_from_slice(string.as_bytes())
     }
 
+    /// See [String::capacity].
     #[inline]
     #[must_use]
     pub fn capacity(&self) -> usize {
         self.vec.capacity()
     }
 
+    /// See [String::reserve].
     #[inline]
     pub fn reserve(&mut self, additional: usize) {
         self.vec.reserve(additional)
     }
 
+    /// See [String::reserve_exact].
     #[inline]
     pub fn reserve_exact(&mut self, additional: usize) {
         self.vec.reserve_exact(additional)
     }
 
+    /// See [String::try_reserve].
     #[inline]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
         self.vec.try_reserve(additional)
     }
 
+    /// See [String::try_reserve_exact].
     #[inline]
     pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
         self.vec.try_reserve_exact(additional)
     }
 
+    /// See [String::shrink_to_fit].
     #[inline]
     pub fn shrink_to_fit(&mut self) {
         self.vec.shrink_to_fit()
     }
 
+    /// See [String::shrink_to].
     #[inline]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.vec.shrink_to(min_capacity)
     }
 
+    /// See [String::push].
     #[inline]
     pub fn push(&mut self, ch: char) {
         match ch.len_utf8() {
@@ -219,6 +282,7 @@ impl JavaString {
         }
     }
 
+    /// See [String::push].
     #[inline]
     pub fn push_java(&mut self, ch: JavaCodePoint) {
         match ch.len_utf8() {
@@ -227,12 +291,14 @@ impl JavaString {
         }
     }
 
+    /// See [String::as_bytes].
     #[inline]
     #[must_use]
     pub fn as_bytes(&self) -> &[u8] {
         &self.vec
     }
 
+    /// See [String::truncate].
     #[inline]
     pub fn truncate(&mut self, new_len: usize) {
         if new_len <= self.len() {
@@ -241,6 +307,21 @@ impl JavaString {
         }
     }
 
+    /// See [String::pop].
+    ///
+    /// ```
+    /// # use java_string::JavaString;
+    ///
+    /// let mut str = JavaString::from("Hello World!");
+    /// assert_eq!(str.pop().unwrap(), '!');
+    /// assert_eq!(str, "Hello World");
+    ///
+    /// let mut str = JavaString::from("東京");
+    /// assert_eq!(str.pop().unwrap(), '京');
+    /// assert_eq!(str, "東");
+    ///
+    /// assert!(JavaString::new().pop().is_none());
+    /// ```
     #[inline]
     pub fn pop(&mut self) -> Option<JavaCodePoint> {
         let ch = self.chars().next_back()?;
@@ -251,6 +332,29 @@ impl JavaString {
         Some(ch)
     }
 
+    /// See [String::remove].
+    ///
+    /// ```
+    /// # use java_string::JavaString;
+    ///
+    /// let mut str = JavaString::from("Hello World!");
+    /// assert_eq!(str.remove(5), ' ');
+    /// assert_eq!(str, "HelloWorld!");
+    ///
+    /// let mut str = JavaString::from("Hello 🦀 World!");
+    /// assert_eq!(str.remove(6), '🦀');
+    /// assert_eq!(str, "Hello  World!");
+    /// ```
+    /// ```should_panic
+    /// # use java_string::JavaString;
+    /// // Should panic
+    /// JavaString::new().remove(0);
+    /// ```
+    /// ```should_panic
+    /// # use java_string::JavaString;
+    /// // Should panic
+    /// JavaString::from("🦀").remove(1);
+    /// ```
     #[inline]
     pub fn remove(&mut self, idx: usize) -> JavaCodePoint {
         let ch = match self[idx..].chars().next() {
@@ -271,6 +375,17 @@ impl JavaString {
         ch
     }
 
+    /// See [String::retain].
+    ///
+    /// ```
+    /// # use java_string::{JavaCodePoint, JavaString};
+    ///
+    /// let mut str = JavaString::from("Hello 🦀 World!");
+    /// str.retain(|ch| !ch.is_ascii_uppercase());
+    /// assert_eq!(str, "ello 🦀 orld!");
+    /// str.retain(JavaCodePoint::is_ascii);
+    /// assert_eq!(str, "ello  orld!");
+    /// ```
     #[inline]
     pub fn retain<F>(&mut self, mut f: F)
     where
@@ -337,6 +452,16 @@ impl JavaString {
         drop(guard);
     }
 
+    /// See [String::insert].
+    ///
+    /// ```
+    /// # use java_string::JavaString;
+    /// let mut s = JavaString::from("foo");
+    /// s.insert(3, 'a');
+    /// s.insert(4, 'r');
+    /// s.insert(3, 'b');
+    /// assert_eq!(s, "foobar");
+    /// ```
     #[inline]
     pub fn insert(&mut self, idx: usize, ch: char) {
         assert!(self.is_char_boundary(idx));
@@ -348,6 +473,7 @@ impl JavaString {
         }
     }
 
+    /// See [String::insert].
     #[inline]
     pub fn insert_java(&mut self, idx: usize, ch: JavaCodePoint) {
         assert!(self.is_char_boundary(idx));
@@ -376,6 +502,14 @@ impl JavaString {
         }
     }
 
+    /// See [String::insert_str].
+    ///
+    /// ```
+    /// # use java_string::JavaString;
+    /// let mut s = JavaString::from("bar");
+    /// s.insert_str(0, "foo");
+    /// assert_eq!(s, "foobar");
+    /// ```
     #[inline]
     pub fn insert_str(&mut self, idx: usize, string: &str) {
         assert!(self.is_char_boundary(idx));
@@ -385,6 +519,7 @@ impl JavaString {
         }
     }
 
+    /// See [String::insert_java_str].
     pub fn insert_java_str(&mut self, idx: usize, string: &JavaStr) {
         assert!(self.is_char_boundary(idx));
 
@@ -393,6 +528,8 @@ impl JavaString {
         }
     }
 
+    /// See [String::as_mut_vec].
+    ///
     /// # Safety
     ///
     /// The returned `Vec` must not have invalid UTF-8 written to it, besides
@@ -402,18 +539,35 @@ impl JavaString {
         &mut self.vec
     }
 
+    /// See [String::len].
     #[inline]
     #[must_use]
     pub fn len(&self) -> usize {
         self.vec.len()
     }
 
+    /// See [String::is_empty].
     #[inline]
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
+    /// See [String::split_off].
+    ///
+    /// ```
+    /// # use java_string::JavaString;
+    /// let mut hello = JavaString::from("Hello World!");
+    /// let world = hello.split_off(6);
+    /// assert_eq!(hello, "Hello ");
+    /// assert_eq!(world, "World!");
+    /// ```
+    /// ```should_panic
+    /// # use java_string::JavaString;
+    /// let mut s = JavaString::from("🦀");
+    /// // Should panic
+    /// let _ = s.split_off(1);
+    /// ```
     #[inline]
     #[must_use]
     pub fn split_off(&mut self, at: usize) -> JavaString {
@@ -422,11 +576,29 @@ impl JavaString {
         unsafe { JavaString::from_semi_utf8_unchecked(other) }
     }
 
+    /// See [String::clear].
     #[inline]
     pub fn clear(&mut self) {
         self.vec.clear();
     }
 
+    /// See [String::drain].
+    ///
+    /// ```
+    /// # use java_string::JavaString;
+    ///
+    /// let mut s = JavaString::from("α is alpha, β is beta");
+    /// let beta_offset = s.find('β').unwrap_or(s.len());
+    ///
+    /// // Remove the range up until the β from the string
+    /// let t: JavaString = s.drain(..beta_offset).collect();
+    /// assert_eq!(t, "α is alpha, ");
+    /// assert_eq!(s, "β is beta");
+    ///
+    /// // A full range clears the string, like `clear()` does
+    /// s.drain(..);
+    /// assert_eq!(s, "");
+    /// ```
     #[inline]
     pub fn drain<R>(&mut self, range: R) -> Drain<'_>
     where
@@ -452,6 +624,24 @@ impl JavaString {
         }
     }
 
+    /// See [String::replace_range].
+    ///
+    /// ```
+    /// # use java_string::JavaString;
+    ///
+    /// let mut s = JavaString::from("α is alpha, β is beta");
+    /// let beta_offset = s.find('β').unwrap_or(s.len());
+    ///
+    /// // Replace the range up until the β from the string
+    /// s.replace_range(..beta_offset, "Α is capital alpha; ");
+    /// assert_eq!(s, "Α is capital alpha; β is beta");
+    /// ```
+    /// ```should_panic
+    /// # use java_string::JavaString;
+    /// let mut s = JavaString::from("α is alpha, β is beta");
+    /// // Should panic
+    /// s.replace_range(..1, "Α is capital alpha; ");
+    /// ```
     pub fn replace_range<R>(&mut self, range: R, replace_with: &str)
     where
         R: RangeBounds<usize>,
@@ -459,6 +649,7 @@ impl JavaString {
         self.replace_range_java(range, JavaStr::from_str(replace_with))
     }
 
+    /// See [String::replace_range].
     pub fn replace_range_java<R>(&mut self, range: R, replace_with: &JavaStr)
     where
         R: RangeBounds<usize>,
@@ -479,6 +670,7 @@ impl JavaString {
         unsafe { self.as_mut_vec() }.splice((start, end), replace_with.bytes());
     }
 
+    /// See [String::into_boxed_str].
     #[inline]
     #[must_use]
     pub fn into_boxed_str(self) -> Box<JavaStr> {
@@ -486,6 +678,7 @@ impl JavaString {
         unsafe { JavaStr::from_boxed_semi_utf8_unchecked(slice) }
     }
 
+    /// See [String::leak].
     #[inline]
     pub fn leak<'a>(self) -> &'a mut JavaStr {
         let slice = self.vec.leak();

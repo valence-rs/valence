@@ -5,6 +5,28 @@ use crate::{JavaStr, JavaString, Utf8Error};
 
 impl JavaStr {
     /// Converts from Java's [modified UTF-8](https://docs.oracle.com/javase/8/docs/api/java/io/DataInput.html#modified-utf-8) format to a `Cow<JavaStr>`.
+    ///
+    /// ```
+    /// # use std::borrow::Cow;
+    /// # use java_string::{JavaCodePoint, JavaStr, JavaString};
+    ///
+    /// let result = JavaStr::from_modified_utf8("Hello World!".as_bytes()).unwrap();
+    /// assert!(matches!(result, Cow::Borrowed(_)));
+    /// assert_eq!(JavaStr::from_str("Hello World!"), result);
+    ///
+    /// let result = JavaStr::from_modified_utf8(&[
+    ///     0x61, 0x62, 0x63, 0xc0, 0x80, 0xe2, 0x84, 0x9d, 0xed, 0xa0, 0xbd, 0xed, 0xb2, 0xa3, 0xed,
+    ///     0xa0, 0x80,
+    /// ])
+    /// .unwrap();
+    /// assert!(matches!(result, Cow::Owned(_)));
+    /// let mut expected = JavaString::from("abc\0ℝ💣");
+    /// expected.push_java(JavaCodePoint::from_u32(0xd800).unwrap());
+    /// assert_eq!(expected, result);
+    ///
+    /// let result = JavaStr::from_modified_utf8(&[0xed]);
+    /// assert!(result.is_err());
+    /// ```
     #[inline]
     pub fn from_modified_utf8(bytes: &[u8]) -> Result<Cow<JavaStr>, Utf8Error> {
         match JavaStr::from_full_utf8(bytes) {
@@ -14,6 +36,25 @@ impl JavaStr {
     }
 
     /// Converts to Java's [modified UTF-8](https://docs.oracle.com/javase/8/docs/api/java/io/DataInput.html#modified-utf-8) format.
+    ///
+    /// ```
+    /// # use std::borrow::Cow;
+    /// # use java_string::{JavaCodePoint, JavaStr, JavaString};
+    ///
+    /// let result = JavaStr::from_str("Hello World!").to_modified_utf8();
+    /// assert!(matches!(result, Cow::Borrowed(_)));
+    /// assert_eq!(result, &b"Hello World!"[..]);
+    ///
+    /// let mut str = JavaString::from("abc\0ℝ💣");
+    /// str.push_java(JavaCodePoint::from_u32(0xd800).unwrap());
+    /// let result = str.to_modified_utf8();
+    /// let expected = [
+    ///     0x61, 0x62, 0x63, 0xc0, 0x80, 0xe2, 0x84, 0x9d, 0xed, 0xa0, 0xbd, 0xed, 0xb2, 0xa3, 0xed,
+    ///     0xa0, 0x80,
+    /// ];
+    /// assert!(matches!(result, Cow::Owned(_)));
+    /// assert_eq!(result, &expected[..]);
+    /// ```
     #[inline]
     #[must_use]
     pub fn to_modified_utf8(&self) -> Cow<[u8]> {
@@ -53,7 +94,7 @@ impl JavaStr {
                     // Encode 4-byte sequences as 6 bytes
                     let s = unsafe {
                         // SAFETY: input is valid semi UTF-8
-                        JavaStr::from_semi_utf8_unchecked(bytes)
+                        JavaStr::from_semi_utf8_unchecked(char_bytes)
                     };
                     let c = unsafe {
                         // SAFETY: s contains a single char of width 4
@@ -72,6 +113,8 @@ impl JavaStr {
 
 impl JavaString {
     /// Converts from Java's [modified UTF-8](https://docs.oracle.com/javase/8/docs/api/java/io/DataInput.html#modified-utf-8) format to a `JavaString`.
+    ///
+    /// See [JavaStr::from_modified_utf8].
     #[inline]
     pub fn from_modified_utf8(bytes: Vec<u8>) -> Result<JavaString, Utf8Error> {
         match JavaString::from_full_utf8(bytes) {
@@ -81,6 +124,8 @@ impl JavaString {
     }
 
     /// Converts from Java's [modified UTF-8](https://docs.oracle.com/javase/8/docs/api/java/io/DataInput.html#modified-utf-8) format to a `JavaString`.
+    ///
+    /// See [JavaStr::from_modified_utf8].
     pub fn from_modified_utf8_iter<I>(mut iter: I) -> Result<JavaString, Utf8Error>
     where
         I: Iterator<Item = u8>,
@@ -200,6 +245,8 @@ impl JavaString {
     }
 
     /// Converts to Java's [modified UTF-8](https://docs.oracle.com/javase/8/docs/api/java/io/DataInput.html#modified-utf-8) format.
+    ///
+    /// See [JavaStr::to_modified_utf8].
     #[inline]
     #[must_use]
     pub fn into_modified_utf8(self) -> Vec<u8> {

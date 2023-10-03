@@ -188,6 +188,7 @@ pub(crate) fn run_utf8_semi_validation(v: &[u8]) -> Result<(), Utf8Error> {
                 }
                 _ => err!(Some(1)),
             }
+            index += 1;
         } else {
             // Ascii case, try to skip forward quickly.
             // When the pointer is aligned, read 2 words of data per iteration

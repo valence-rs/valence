@@ -50,6 +50,15 @@ impl JavaCodePoint {
     pub const REPLACEMENT_CHARACTER: JavaCodePoint =
         JavaCodePoint::from_char(char::REPLACEMENT_CHARACTER);
 
+    /// See [char::from_u32]
+    ///
+    /// ```
+    /// # use java_string::JavaCodePoint;
+    /// let c = JavaCodePoint::from_u32(0x2764);
+    /// assert_eq!(Some(JavaCodePoint::from_char('❤')), c);
+    ///
+    /// assert_eq!(None, JavaCodePoint::from_u32(0x110000));
+    /// ```
     #[inline]
     #[must_use]
     pub const fn from_u32(i: u32) -> Option<JavaCodePoint> {
@@ -70,6 +79,7 @@ impl JavaCodePoint {
         std::mem::transmute(i)
     }
 
+    /// Converts a `char` to a code point.
     #[inline]
     #[must_use]
     pub const fn from_char(char: char) -> JavaCodePoint {
@@ -79,6 +89,13 @@ impl JavaCodePoint {
         }
     }
 
+    /// Converts this code point to a `u32`.
+    ///
+    /// ```
+    /// # use java_string::JavaCodePoint;
+    /// assert_eq!(65, JavaCodePoint::from_char('A').as_u32());
+    /// assert_eq!(0xd800, JavaCodePoint::from_u32(0xd800).unwrap().as_u32());
+    /// ```
     #[inline]
     #[must_use]
     pub const fn as_u32(self) -> u32 {
@@ -97,6 +114,13 @@ impl JavaCodePoint {
         }
     }
 
+    /// Converts this code point to a `char`.
+    ///
+    /// ```
+    /// # use java_string::JavaCodePoint;
+    /// assert_eq!(Some('a'), JavaCodePoint::from_char('a').as_char());
+    /// assert_eq!(None, JavaCodePoint::from_u32(0xd800).unwrap().as_char());
+    /// ```
     #[inline]
     #[must_use]
     pub const fn as_char(self) -> Option<char> {
@@ -112,6 +136,29 @@ impl JavaCodePoint {
         char::from_u32_unchecked(self.as_u32())
     }
 
+    /// See [char::encode_utf16]
+    ///
+    /// ```
+    /// # use java_string::JavaCodePoint;
+    /// assert_eq!(
+    ///     2,
+    ///     JavaCodePoint::from_char('𝕊')
+    ///         .encode_utf16(&mut [0; 2])
+    ///         .len()
+    /// );
+    /// assert_eq!(
+    ///     1,
+    ///     JavaCodePoint::from_u32(0xd800)
+    ///         .unwrap()
+    ///         .encode_utf16(&mut [0; 2])
+    ///         .len()
+    /// );
+    /// ```
+    /// ```should_panic
+    /// # use java_string::JavaCodePoint;
+    /// // Should panic
+    /// JavaCodePoint::from_char('𝕊').encode_utf16(&mut [0; 1]);
+    /// ```
     #[inline]
     pub fn encode_utf16(self, dst: &mut [u16]) -> &mut [u16] {
         if let Some(char) = self.as_char() {
@@ -123,7 +170,29 @@ impl JavaCodePoint {
     }
 
     /// Encodes this `JavaCodePoint` into semi UTF-8, that is, UTF-8 with
-    /// surrogate code points.
+    /// surrogate code points. See also [char::encode_utf8].
+    ///
+    /// ```
+    /// # use java_string::JavaCodePoint;
+    /// assert_eq!(
+    ///     2,
+    ///     JavaCodePoint::from_char('ß')
+    ///         .encode_semi_utf8(&mut [0; 4])
+    ///         .len()
+    /// );
+    /// assert_eq!(
+    ///     3,
+    ///     JavaCodePoint::from_u32(0xd800)
+    ///         .unwrap()
+    ///         .encode_semi_utf8(&mut [0; 4])
+    ///         .len()
+    /// );
+    /// ```
+    /// ```should_panic
+    /// # use java_string::JavaCodePoint;
+    /// // Should panic
+    /// JavaCodePoint::from_char('ß').encode_semi_utf8(&mut [0; 1]);
+    /// ```
     #[inline]
     pub fn encode_semi_utf8(self, dst: &mut [u8]) -> &mut [u8] {
         let len = self.len_utf8();
@@ -157,6 +226,7 @@ impl JavaCodePoint {
         &mut dst[..len]
     }
 
+    /// See [char::eq_ignore_ascii_case].
     #[inline]
     pub fn eq_ignore_ascii_case(&self, other: &JavaCodePoint) -> bool {
         match (self.as_char(), other.as_char()) {
@@ -166,6 +236,26 @@ impl JavaCodePoint {
         }
     }
 
+    /// See [char::escape_debug].
+    ///
+    /// ```
+    /// # use java_string::JavaCodePoint;
+    /// assert_eq!(
+    ///     "a",
+    ///     JavaCodePoint::from_char('a').escape_debug().to_string()
+    /// );
+    /// assert_eq!(
+    ///     "\\n",
+    ///     JavaCodePoint::from_char('\n').escape_debug().to_string()
+    /// );
+    /// assert_eq!(
+    ///     "\\u{d800}",
+    ///     JavaCodePoint::from_u32(0xd800)
+    ///         .unwrap()
+    ///         .escape_debug()
+    ///         .to_string()
+    /// );
+    /// ```
     #[inline]
     #[must_use]
     pub fn escape_debug(self) -> CharEscapeIter {
@@ -213,6 +303,26 @@ impl JavaCodePoint {
         char.escape_debug().next() != Some('\\')
     }
 
+    /// See [char::escape_default].
+    ///
+    /// ```
+    /// # use java_string::JavaCodePoint;
+    /// assert_eq!(
+    ///     "a",
+    ///     JavaCodePoint::from_char('a').escape_default().to_string()
+    /// );
+    /// assert_eq!(
+    ///     "\\n",
+    ///     JavaCodePoint::from_char('\n').escape_default().to_string()
+    /// );
+    /// assert_eq!(
+    ///     "\\u{d800}",
+    ///     JavaCodePoint::from_u32(0xd800)
+    ///         .unwrap()
+    ///         .escape_default()
+    ///         .to_string()
+    /// );
+    /// ```
     #[inline]
     #[must_use]
     pub fn escape_default(self) -> CharEscapeIter {
@@ -238,6 +348,22 @@ impl JavaCodePoint {
         }
     }
 
+    /// See [char::escape_unicode].
+    ///
+    /// ```
+    /// # use java_string::JavaCodePoint;
+    /// assert_eq!(
+    ///     "\\u{2764}",
+    ///     JavaCodePoint::from_char('❤').escape_unicode().to_string()
+    /// );
+    /// assert_eq!(
+    ///     "\\u{d800}",
+    ///     JavaCodePoint::from_u32(0xd800)
+    ///         .unwrap()
+    ///         .escape_unicode()
+    ///         .to_string()
+    /// );
+    /// ```
     #[inline]
     #[must_use]
     pub fn escape_unicode(self) -> CharEscapeIter {
@@ -266,42 +392,49 @@ impl JavaCodePoint {
         }
     }
 
+    /// See [char::is_alphabetic].
     #[inline]
     #[must_use]
     pub fn is_alphabetic(self) -> bool {
         self.as_char().is_some_and(|char| char.is_alphabetic())
     }
 
+    /// See [char::is_alphanumeric].
     #[inline]
     #[must_use]
     pub fn is_alphanumeric(self) -> bool {
         self.as_char().is_some_and(|char| char.is_alphanumeric())
     }
 
+    /// See [char::is_ascii].
     #[inline]
     #[must_use]
     pub fn is_ascii(self) -> bool {
         self.as_u32() <= 0x7f
     }
 
+    /// See [char::is_ascii_alphabetic].
     #[inline]
     #[must_use]
     pub const fn is_ascii_alphabetic(self) -> bool {
         self.is_ascii_lowercase() || self.is_ascii_uppercase()
     }
 
+    /// See [char::is_ascii_alphanumeric].
     #[inline]
     #[must_use]
     pub const fn is_ascii_alphanumeric(self) -> bool {
         self.is_ascii_alphabetic() || self.is_ascii_digit()
     }
 
+    /// See [char::is_ascii_control].
     #[inline]
     #[must_use]
     pub const fn is_ascii_control(self) -> bool {
         matches!(self.as_u32(), 0..=0x1f | 0x7f)
     }
 
+    /// See [char::is_ascii_digit].
     #[inline]
     #[must_use]
     pub const fn is_ascii_digit(self) -> bool {
@@ -310,12 +443,14 @@ impl JavaCodePoint {
         matches!(self.as_u32(), ZERO..=NINE)
     }
 
+    /// See [char::is_ascii_graphic].
     #[inline]
     #[must_use]
     pub const fn is_ascii_graphic(self) -> bool {
         matches!(self.as_u32(), 0x21..=0x7e)
     }
 
+    /// See [char::is_ascii_hexdigit].
     #[inline]
     #[must_use]
     pub const fn is_ascii_hexdigit(self) -> bool {
@@ -326,6 +461,7 @@ impl JavaCodePoint {
         self.is_ascii_digit() || matches!(self.as_u32(), (LOWER_A..=LOWER_F) | (UPPER_A..=UPPER_F))
     }
 
+    /// See [char::is_ascii_lowercase].
     #[inline]
     #[must_use]
     pub const fn is_ascii_lowercase(self) -> bool {
@@ -334,6 +470,7 @@ impl JavaCodePoint {
         matches!(self.as_u32(), A..=Z)
     }
 
+    /// See [char::is_ascii_octdigit].
     #[inline]
     #[must_use]
     pub const fn is_ascii_octdigit(self) -> bool {
@@ -342,6 +479,7 @@ impl JavaCodePoint {
         matches!(self.as_u32(), ZERO..=SEVEN)
     }
 
+    /// See [char::is_ascii_punctuation].
     #[inline]
     #[must_use]
     pub const fn is_ascii_punctuation(self) -> bool {
@@ -351,6 +489,7 @@ impl JavaCodePoint {
         )
     }
 
+    /// See [char::is_ascii_uppercase].
     #[inline]
     #[must_use]
     pub const fn is_ascii_uppercase(self) -> bool {
@@ -359,6 +498,7 @@ impl JavaCodePoint {
         matches!(self.as_u32(), A..=Z)
     }
 
+    /// See [char::is_ascii_whitespace].
     #[inline]
     #[must_use]
     pub const fn is_ascii_whitespace(self) -> bool {
@@ -373,42 +513,61 @@ impl JavaCodePoint {
         )
     }
 
+    /// See [char::is_control].
     #[inline]
     #[must_use]
     pub fn is_control(self) -> bool {
         self.as_char().is_some_and(|char| char.is_control())
     }
 
+    /// See [char::is_digit].
     #[inline]
     #[must_use]
     pub fn is_digit(self, radix: u32) -> bool {
         self.to_digit(radix).is_some()
     }
 
+    /// See [char::is_lowercase].
     #[inline]
     #[must_use]
     pub fn is_lowercase(self) -> bool {
         self.as_char().is_some_and(|char| char.is_lowercase())
     }
 
+    /// See [char::is_numeric].
     #[inline]
     #[must_use]
     pub fn is_numeric(self) -> bool {
         self.as_char().is_some_and(|char| char.is_numeric())
     }
 
+    /// See [char::is_uppercase].
     #[inline]
     #[must_use]
     pub fn is_uppercase(self) -> bool {
         self.as_char().is_some_and(|char| char.is_uppercase())
     }
 
+    /// See [char::is_whitespace].
     #[inline]
     #[must_use]
     pub fn is_whitespace(self) -> bool {
         self.as_char().is_some_and(|char| char.is_whitespace())
     }
 
+    /// See [char::len_utf16]. Surrogate code points return 1.
+    ///
+    /// ```
+    /// # use java_string::JavaCodePoint;
+    ///
+    /// let n = JavaCodePoint::from_char('ß').len_utf16();
+    /// assert_eq!(n, 1);
+    ///
+    /// let len = JavaCodePoint::from_char('💣').len_utf16();
+    /// assert_eq!(len, 2);
+    ///
+    /// assert_eq!(1, JavaCodePoint::from_u32(0xd800).unwrap().len_utf16());
+    /// ```
     #[inline]
     #[must_use]
     pub const fn len_utf16(self) -> usize {
@@ -419,6 +578,26 @@ impl JavaCodePoint {
         }
     }
 
+    /// See [char::len_utf8]. Surrogate code points return 3.
+    ///
+    /// ```
+    /// # use java_string::JavaCodePoint;
+    ///
+    /// let len = JavaCodePoint::from_char('A').len_utf8();
+    /// assert_eq!(len, 1);
+    ///
+    /// let len = JavaCodePoint::from_char('ß').len_utf8();
+    /// assert_eq!(len, 2);
+    ///
+    /// let len = JavaCodePoint::from_char('ℝ').len_utf8();
+    /// assert_eq!(len, 3);
+    ///
+    /// let len = JavaCodePoint::from_char('💣').len_utf8();
+    /// assert_eq!(len, 4);
+    ///
+    /// let len = JavaCodePoint::from_u32(0xd800).unwrap().len_utf8();
+    /// assert_eq!(len, 3);
+    /// ```
     #[inline]
     #[must_use]
     pub const fn len_utf8(self) -> usize {
@@ -429,16 +608,29 @@ impl JavaCodePoint {
         }
     }
 
+    /// See [char::make_ascii_lowercase].
     #[inline]
     pub fn make_ascii_lowercase(&mut self) {
         *self = self.to_ascii_lowercase();
     }
 
+    /// See [char::make_ascii_uppercase].
     #[inline]
     pub fn make_ascii_uppercase(&mut self) {
         *self = self.to_ascii_uppercase();
     }
 
+    /// See [char::to_ascii_lowercase].
+    ///
+    /// ```
+    /// # use java_string::JavaCodePoint;
+    ///
+    /// let ascii = JavaCodePoint::from_char('A');
+    /// let non_ascii = JavaCodePoint::from_char('❤');
+    ///
+    /// assert_eq!('a', ascii.to_ascii_lowercase());
+    /// assert_eq!('❤', non_ascii.to_ascii_lowercase());
+    /// ```
     #[inline]
     #[must_use]
     pub const fn to_ascii_lowercase(self) -> JavaCodePoint {
@@ -452,6 +644,17 @@ impl JavaCodePoint {
         }
     }
 
+    /// See [char::to_ascii_uppercase].
+    ///
+    /// ```
+    /// # use java_string::JavaCodePoint;
+    ///
+    /// let ascii = JavaCodePoint::from_char('a');
+    /// let non_ascii = JavaCodePoint::from_char('❤');
+    ///
+    /// assert_eq!('A', ascii.to_ascii_uppercase());
+    /// assert_eq!('❤', non_ascii.to_ascii_uppercase());
+    /// ```
     #[inline]
     #[must_use]
     pub const fn to_ascii_uppercase(self) -> JavaCodePoint {
@@ -465,6 +668,7 @@ impl JavaCodePoint {
         }
     }
 
+    /// See [char::to_digit].
     #[inline]
     #[must_use]
     pub const fn to_digit(self, radix: u32) -> Option<u32> {
@@ -475,6 +679,7 @@ impl JavaCodePoint {
         }
     }
 
+    /// See [char::to_lowercase].
     #[inline]
     #[must_use]
     pub fn to_lowercase(self) -> ToLowercase {
@@ -484,6 +689,7 @@ impl JavaCodePoint {
         }
     }
 
+    /// See [char::to_uppercase].
     #[inline]
     #[must_use]
     pub fn to_uppercase(self) -> ToUppercase {
@@ -616,6 +822,15 @@ enum EscapeIterInner {
     Escaped(EscapeIterEscaped),
 }
 
+impl Display for EscapeIterInner {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            EscapeIterInner::Printable(char) => char.clone().try_for_each(|ch| f.write_char(ch)),
+            EscapeIterInner::Escaped(escaped) => Display::fmt(escaped, f),
+        }
+    }
+}
+
 impl CharEscapeIter {
     #[inline]
     fn printable(char: char) -> Self {
@@ -672,6 +887,12 @@ impl ExactSizeIterator for CharEscapeIter {
 
 impl FusedIterator for CharEscapeIter {}
 
+impl Display for CharEscapeIter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        Display::fmt(&self.inner, f)
+    }
+}
+
 #[derive(Clone, Debug)]
 struct EscapeIterEscaped {
     // SAFETY: all values must be in the ASCII range
@@ -711,9 +932,9 @@ impl ExactSizeIterator for EscapeIterEscaped {
 
 impl FusedIterator for EscapeIterEscaped {}
 
-impl fmt::Display for EscapeIterEscaped {
+impl Display for EscapeIterEscaped {
     #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let str = unsafe {
             // SAFETY: all bytes are in ASCII range, and range is in bounds for length 10
             std::str::from_utf8_unchecked(self.bytes.get_unchecked(self.range.clone()))

@@ -31,7 +31,7 @@ pub struct JavaStr {
 
 impl JavaStr {
     /// Converts `v` to a `&JavaStr` if it is fully-valid UTF-8, i.e. UTF-8
-    /// without surrogate code points.
+    /// without surrogate code points. See [std::str::from_utf8].
     #[inline]
     pub const fn from_full_utf8(v: &[u8]) -> Result<&JavaStr, Utf8Error> {
         match std::str::from_utf8(v) {
@@ -41,7 +41,7 @@ impl JavaStr {
     }
 
     /// Converts `v` to a `&mut JavaStr` if it is fully-valid UTF-8, i.e. UTF-8
-    /// without surrogate code points.
+    /// without surrogate code points. See [std::str::from_utf8_mut].
     #[inline]
     pub fn from_full_utf8_mut(v: &mut [u8]) -> Result<&mut JavaStr, Utf8Error> {
         match std::str::from_utf8_mut(v) {
@@ -126,12 +126,15 @@ impl JavaStr {
         unsafe { Box::from_raw(Box::into_raw(v) as *mut JavaStr) }
     }
 
+    /// See [str::as_bytes].
     #[inline]
     #[must_use]
     pub const fn as_bytes(&self) -> &[u8] {
         &self.inner
     }
 
+    /// See [str::as_bytes_mut].
+    ///
     /// # Safety
     ///
     /// The returned slice must not have invalid UTF-8 written to it, besides
@@ -142,12 +145,14 @@ impl JavaStr {
         &mut self.inner
     }
 
+    /// See [str::as_mut_ptr].
     #[inline]
     #[must_use]
     pub fn as_mut_ptr(&mut self) -> *mut u8 {
         self.inner.as_mut_ptr()
     }
 
+    /// See [str::as_ptr].
     #[inline]
     #[must_use]
     pub const fn as_ptr(&self) -> *const u8 {
@@ -179,6 +184,22 @@ impl JavaStr {
 
     /// Converts this `&JavaStr` to a `Cow<str>`, replacing surrogate code
     /// points with the replacement character �.
+    ///
+    /// ```
+    /// # use std::borrow::Cow;
+    /// # use java_string::{JavaCodePoint, JavaStr, JavaString};
+    /// let s = JavaStr::from_str("Hello 🦀 World!");
+    /// let result = s.as_str_lossy();
+    /// assert!(matches!(result, Cow::Borrowed(_)));
+    /// assert_eq!(result, "Hello 🦀 World!");
+    ///
+    /// let s = JavaString::from("Hello ")
+    ///     + JavaString::from(JavaCodePoint::from_u32(0xd800).unwrap()).as_java_str()
+    ///     + JavaStr::from_str(" World!");
+    /// let result = s.as_str_lossy();
+    /// assert!(matches!(result, Cow::Owned(_)));
+    /// assert_eq!(result, "Hello � World!");
+    /// ```
     #[must_use]
     pub fn as_str_lossy(&self) -> Cow<'_, str> {
         match run_utf8_full_validation_from_semi(self.as_bytes()) {
@@ -198,6 +219,7 @@ impl JavaStr {
         }
     }
 
+    /// See [str::bytes].
     #[inline]
     pub fn bytes(&self) -> Bytes<'_> {
         Bytes {
@@ -205,6 +227,7 @@ impl JavaStr {
         }
     }
 
+    /// See [str::char_indices].
     #[inline]
     pub fn char_indices(&self) -> CharIndices<'_> {
         CharIndices {
@@ -213,6 +236,7 @@ impl JavaStr {
         }
     }
 
+    /// See [str::chars].
     #[inline]
     pub fn chars(&self) -> Chars<'_> {
         Chars {
@@ -220,6 +244,15 @@ impl JavaStr {
         }
     }
 
+    /// See [str::contains].
+    ///
+    /// ```
+    /// # use java_string::JavaStr;
+    /// let bananas = JavaStr::from_str("bananas");
+    ///
+    /// assert!(bananas.contains("nana"));
+    /// assert!(!bananas.contains("apples"));
+    /// ```
     #[inline]
     #[must_use]
     pub fn contains<P>(&self, mut pat: P) -> bool
@@ -229,6 +262,15 @@ impl JavaStr {
         pat.find_in(self).is_some()
     }
 
+    /// See [str::ends_with].
+    ///
+    /// ```
+    /// # use java_string::JavaStr;
+    /// let bananas = JavaStr::from_str("bananas");
+    ///
+    /// assert!(bananas.ends_with("anas"));
+    /// assert!(!bananas.ends_with("nana"));
+    /// ```
     #[inline]
     #[must_use]
     pub fn ends_with<P>(&self, mut pat: P) -> bool
@@ -238,18 +280,29 @@ impl JavaStr {
         pat.suffix_len_in(self).is_some()
     }
 
+    /// See [str::eq_ignore_ascii_case].
     #[inline]
     #[must_use]
     pub fn eq_ignore_ascii_case(&self, other: &str) -> bool {
         self.as_bytes().eq_ignore_ascii_case(other.as_bytes())
     }
 
+    /// See [str::eq_ignore_ascii_case].
     #[inline]
     #[must_use]
     pub fn eq_java_ignore_ascii_case(&self, other: &JavaStr) -> bool {
         self.as_bytes().eq_ignore_ascii_case(other.as_bytes())
     }
 
+    /// See [str::escape_debug].
+    ///
+    /// ```
+    /// # use java_string::JavaStr;
+    /// assert_eq!(
+    ///     JavaStr::from_str("❤\n!").escape_debug().to_string(),
+    ///     "❤\\n!"
+    /// );
+    /// ```
     #[inline]
     pub fn escape_debug(&self) -> EscapeDebug<'_> {
         #[inline]
@@ -275,6 +328,15 @@ impl JavaStr {
         }
     }
 
+    /// See [str::escape_default].
+    ///
+    /// ```
+    /// # use java_string::JavaStr;
+    /// assert_eq!(
+    ///     JavaStr::from_str("❤\n!").escape_default().to_string(),
+    ///     "\\u{2764}\\n!"
+    /// );
+    /// ```
     #[inline]
     pub fn escape_default(&self) -> EscapeDefault<'_> {
         EscapeDefault {
@@ -282,6 +344,15 @@ impl JavaStr {
         }
     }
 
+    /// See [str::escape_unicode].
+    ///
+    /// ```
+    /// # use java_string::JavaStr;
+    /// assert_eq!(
+    ///     JavaStr::from_str("❤\n!").escape_unicode().to_string(),
+    ///     "\\u{2764}\\u{a}\\u{21}"
+    /// );
+    /// ```
     #[inline]
     pub fn escape_unicode(&self) -> EscapeUnicode<'_> {
         EscapeUnicode {
@@ -289,6 +360,18 @@ impl JavaStr {
         }
     }
 
+    /// See [str::find].
+    ///
+    /// ```
+    /// let s = "Löwe 老虎 Léopard Gepardi";
+    ///
+    /// assert_eq!(s.find('L'), Some(0));
+    /// assert_eq!(s.find('é'), Some(14));
+    /// assert_eq!(s.find("pard"), Some(17));
+    ///
+    /// let x: &[_] = &['1', '2'];
+    /// assert_eq!(s.find(x), None);
+    /// ```
     #[inline]
     #[must_use]
     pub fn find<P>(&self, mut pat: P) -> Option<usize>
@@ -298,6 +381,21 @@ impl JavaStr {
         pat.find_in(self).map(|(index, _)| index)
     }
 
+    /// See [str::get].
+    ///
+    /// ```
+    /// # use java_string::{JavaStr, JavaString};
+    /// let v = JavaString::from("🗻∈🌏");
+    ///
+    /// assert_eq!(Some(JavaStr::from_str("🗻")), v.get(0..4));
+    ///
+    /// // indices not on UTF-8 sequence boundaries
+    /// assert!(v.get(1..).is_none());
+    /// assert!(v.get(..8).is_none());
+    ///
+    /// // out of bounds
+    /// assert!(v.get(..42).is_none());
+    /// ```
     #[inline]
     #[must_use]
     pub fn get<I>(&self, i: I) -> Option<&JavaStr>
@@ -307,6 +405,7 @@ impl JavaStr {
         i.get(self)
     }
 
+    /// See [str::get_mut].
     #[inline]
     #[must_use]
     pub fn get_mut<I>(&mut self, i: I) -> Option<&mut JavaStr>
@@ -316,6 +415,8 @@ impl JavaStr {
         i.get_mut(self)
     }
 
+    /// See [str::get_unchecked].
+    ///
     /// # Safety
     ///
     /// - The starting index must not exceed the ending index
@@ -330,6 +431,8 @@ impl JavaStr {
         unsafe { &*i.get_unchecked(self) }
     }
 
+    /// See [str::get_unchecked_mut].
+    ///
     /// # Safety
     ///
     /// - The starting index must not exceed the ending index
@@ -344,12 +447,14 @@ impl JavaStr {
         unsafe { &mut *i.get_unchecked_mut(self) }
     }
 
+    /// See [str::into_boxed_bytes].
     #[inline]
     #[must_use]
     pub fn into_boxed_bytes(self: Box<JavaStr>) -> Box<[u8]> {
         unsafe { Box::from_raw(Box::into_raw(self) as *mut [u8]) }
     }
 
+    /// See [str::into_string].
     #[inline]
     #[must_use]
     pub fn into_string(self: Box<JavaStr>) -> JavaString {
@@ -357,12 +462,14 @@ impl JavaStr {
         unsafe { JavaString::from_semi_utf8_unchecked(slice.into_vec()) }
     }
 
+    /// See [str::is_ascii].
     #[inline]
     #[must_use]
     pub fn is_ascii(&self) -> bool {
         self.as_bytes().is_ascii()
     }
 
+    /// See [str::is_char_boundary].
     #[inline]
     #[must_use]
     pub fn is_char_boundary(&self, index: usize) -> bool {
@@ -406,18 +513,21 @@ impl JavaStr {
         }
     }
 
+    /// See [str::is_empty].
     #[inline]
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
+    /// See [str::len].
     #[inline]
     #[must_use]
     pub fn len(&self) -> usize {
         self.inner.len()
     }
 
+    /// See [str::lines].
     #[inline]
     pub fn lines(&self) -> Lines<'_> {
         Lines {
@@ -433,6 +543,7 @@ impl JavaStr {
         }
     }
 
+    /// See [str::make_ascii_lowercase].
     #[inline]
     pub fn make_ascii_lowercase(&mut self) {
         // SAFETY: changing ASCII letters only does not invalidate UTF-8.
@@ -440,6 +551,7 @@ impl JavaStr {
         me.make_ascii_lowercase()
     }
 
+    /// See [str::make_ascii_uppercase].
     #[inline]
     pub fn make_ascii_uppercase(&mut self) {
         // SAFETY: changing ASCII letters only does not invalidate UTF-8.
@@ -447,6 +559,31 @@ impl JavaStr {
         me.make_ascii_uppercase()
     }
 
+    /// See [str::match_indices].
+    ///
+    /// ```
+    /// # use java_string::JavaStr;
+    /// let v: Vec<_> = JavaStr::from_str("abcXXXabcYYYabc")
+    ///     .match_indices("abc")
+    ///     .collect();
+    /// assert_eq!(
+    ///     v,
+    ///     [
+    ///         (0, JavaStr::from_str("abc")),
+    ///         (6, JavaStr::from_str("abc")),
+    ///         (12, JavaStr::from_str("abc"))
+    ///     ]
+    /// );
+    ///
+    /// let v: Vec<_> = JavaStr::from_str("1abcabc2").match_indices("abc").collect();
+    /// assert_eq!(
+    ///     v,
+    ///     [(1, JavaStr::from_str("abc")), (4, JavaStr::from_str("abc"))]
+    /// );
+    ///
+    /// let v: Vec<_> = JavaStr::from_str("ababa").match_indices("aba").collect();
+    /// assert_eq!(v, [(0, JavaStr::from_str("aba"))]); // only the first `aba`
+    /// ```
     #[inline]
     pub fn match_indices<P>(&self, pat: P) -> MatchIndices<P>
     where
@@ -459,6 +596,34 @@ impl JavaStr {
         }
     }
 
+    /// See [str::matches].
+    ///
+    /// ```
+    /// # use java_string::{JavaCodePoint, JavaStr};
+    /// let v: Vec<&JavaStr> = JavaStr::from_str("abcXXXabcYYYabc")
+    ///     .matches("abc")
+    ///     .collect();
+    /// assert_eq!(
+    ///     v,
+    ///     [
+    ///         JavaStr::from_str("abc"),
+    ///         JavaStr::from_str("abc"),
+    ///         JavaStr::from_str("abc")
+    ///     ]
+    /// );
+    ///
+    /// let v: Vec<&JavaStr> = JavaStr::from_str("1abc2abc3")
+    ///     .matches(JavaCodePoint::is_numeric)
+    ///     .collect();
+    /// assert_eq!(
+    ///     v,
+    ///     [
+    ///         JavaStr::from_str("1"),
+    ///         JavaStr::from_str("2"),
+    ///         JavaStr::from_str("3")
+    ///     ]
+    /// );
+    /// ```
     #[inline]
     pub fn matches<P>(&self, pat: P) -> Matches<P>
     where
@@ -467,6 +632,7 @@ impl JavaStr {
         Matches { str: self, pat }
     }
 
+    /// See [str::parse].
     #[inline]
     pub fn parse<F>(&self) -> Result<F, ParseError<<F as FromStr>::Err>>
     where
@@ -478,12 +644,22 @@ impl JavaStr {
         }
     }
 
+    /// See [str::repeat].
     #[inline]
     #[must_use]
     pub fn repeat(&self, n: usize) -> JavaString {
         unsafe { JavaString::from_semi_utf8_unchecked(self.as_bytes().repeat(n)) }
     }
 
+    /// See [str::replace].
+    ///
+    /// ```
+    /// # use java_string::JavaStr;
+    /// let s = JavaStr::from_str("this is old");
+    ///
+    /// assert_eq!("this is new", s.replace("old", "new"));
+    /// assert_eq!("than an old", s.replace("is", "an"));
+    /// ```
     #[inline]
     #[must_use]
     pub fn replace<P>(&self, from: P, to: &str) -> JavaString
@@ -493,6 +669,7 @@ impl JavaStr {
         self.replace_java(from, JavaStr::from_str(to))
     }
 
+    /// See [str::replace].
     #[inline]
     #[must_use]
     pub fn replace_java<P>(&self, from: P, to: &JavaStr) -> JavaString
@@ -510,6 +687,18 @@ impl JavaStr {
         result
     }
 
+    /// See [str::replacen].
+    ///
+    /// ```
+    /// # use java_string::{JavaCodePoint, JavaStr};
+    /// let s = JavaStr::from_str("foo foo 123 foo");
+    /// assert_eq!("new new 123 foo", s.replacen("foo", "new", 2));
+    /// assert_eq!("faa fao 123 foo", s.replacen('o', "a", 3));
+    /// assert_eq!(
+    ///     "foo foo new23 foo",
+    ///     s.replacen(JavaCodePoint::is_numeric, "new", 1)
+    /// );
+    /// ```
     #[inline]
     #[must_use]
     pub fn replacen<P>(&self, from: P, to: &str, count: usize) -> JavaString
@@ -519,6 +708,7 @@ impl JavaStr {
         self.replacen_java(from, JavaStr::from_str(to), count)
     }
 
+    /// See [str::replacen].
     #[inline]
     #[must_use]
     pub fn replacen_java<P>(&self, from: P, to: &JavaStr, count: usize) -> JavaString
@@ -537,6 +727,19 @@ impl JavaStr {
         result
     }
 
+    /// See [str::rfind].
+    ///
+    /// ```
+    /// # use java_string::JavaStr;
+    /// let s = JavaStr::from_str("Löwe 老虎 Léopard Gepardi");
+    ///
+    /// assert_eq!(s.rfind('L'), Some(13));
+    /// assert_eq!(s.rfind('é'), Some(14));
+    /// assert_eq!(s.rfind("pard"), Some(24));
+    ///
+    /// let x: &[_] = &['1', '2'];
+    /// assert_eq!(s.rfind(x), None);
+    /// ```
     #[inline]
     #[must_use]
     pub fn rfind<P>(&self, mut pat: P) -> Option<usize>
@@ -546,6 +749,33 @@ impl JavaStr {
         pat.rfind_in(self).map(|(index, _)| index)
     }
 
+    /// See [str::rmatch_indices].
+    ///
+    /// ```
+    /// # use java_string::JavaStr;
+    /// let v: Vec<_> = JavaStr::from_str("abcXXXabcYYYabc")
+    ///     .rmatch_indices("abc")
+    ///     .collect();
+    /// assert_eq!(
+    ///     v,
+    ///     [
+    ///         (12, JavaStr::from_str("abc")),
+    ///         (6, JavaStr::from_str("abc")),
+    ///         (0, JavaStr::from_str("abc"))
+    ///     ]
+    /// );
+    ///
+    /// let v: Vec<_> = JavaStr::from_str("1abcabc2")
+    ///     .rmatch_indices("abc")
+    ///     .collect();
+    /// assert_eq!(
+    ///     v,
+    ///     [(4, JavaStr::from_str("abc")), (1, JavaStr::from_str("abc"))]
+    /// );
+    ///
+    /// let v: Vec<_> = JavaStr::from_str("ababa").rmatch_indices("aba").collect();
+    /// assert_eq!(v, [(2, JavaStr::from_str("aba"))]); // only the last `aba`
+    /// ```
     #[inline]
     pub fn rmatch_indices<P>(&self, pat: P) -> RMatchIndices<P>
     where
@@ -556,6 +786,34 @@ impl JavaStr {
         }
     }
 
+    /// See [str::rmatches].
+    ///
+    /// ```
+    /// # use java_string::{JavaCodePoint, JavaStr};
+    /// let v: Vec<&JavaStr> = JavaStr::from_str("abcXXXabcYYYabc")
+    ///     .rmatches("abc")
+    ///     .collect();
+    /// assert_eq!(
+    ///     v,
+    ///     [
+    ///         JavaStr::from_str("abc"),
+    ///         JavaStr::from_str("abc"),
+    ///         JavaStr::from_str("abc")
+    ///     ]
+    /// );
+    ///
+    /// let v: Vec<&JavaStr> = JavaStr::from_str("1abc2abc3")
+    ///     .rmatches(JavaCodePoint::is_numeric)
+    ///     .collect();
+    /// assert_eq!(
+    ///     v,
+    ///     [
+    ///         JavaStr::from_str("3"),
+    ///         JavaStr::from_str("2"),
+    ///         JavaStr::from_str("1")
+    ///     ]
+    /// );
+    /// ```
     #[inline]
     pub fn rmatches<P>(&self, pat: P) -> RMatches<P>
     where
@@ -566,6 +824,52 @@ impl JavaStr {
         }
     }
 
+    /// See [str::rsplit].
+    ///
+    /// ```
+    /// # use java_string::JavaStr;
+    /// let v: Vec<&JavaStr> = JavaStr::from_str("Mary had a little lamb")
+    ///     .rsplit(' ')
+    ///     .collect();
+    /// assert_eq!(
+    ///     v,
+    ///     [
+    ///         JavaStr::from_str("lamb"),
+    ///         JavaStr::from_str("little"),
+    ///         JavaStr::from_str("a"),
+    ///         JavaStr::from_str("had"),
+    ///         JavaStr::from_str("Mary")
+    ///     ]
+    /// );
+    ///
+    /// let v: Vec<&JavaStr> = JavaStr::from_str("").rsplit('X').collect();
+    /// assert_eq!(v, [JavaStr::from_str("")]);
+    ///
+    /// let v: Vec<&JavaStr> = JavaStr::from_str("lionXXtigerXleopard")
+    ///     .rsplit('X')
+    ///     .collect();
+    /// assert_eq!(
+    ///     v,
+    ///     [
+    ///         JavaStr::from_str("leopard"),
+    ///         JavaStr::from_str("tiger"),
+    ///         JavaStr::from_str(""),
+    ///         JavaStr::from_str("lion")
+    ///     ]
+    /// );
+    ///
+    /// let v: Vec<&JavaStr> = JavaStr::from_str("lion::tiger::leopard")
+    ///     .rsplit("::")
+    ///     .collect();
+    /// assert_eq!(
+    ///     v,
+    ///     [
+    ///         JavaStr::from_str("leopard"),
+    ///         JavaStr::from_str("tiger"),
+    ///         JavaStr::from_str("lion")
+    ///     ]
+    /// );
+    /// ```
     #[inline]
     pub fn rsplit<P>(&self, pat: P) -> RSplit<P>
     where
@@ -574,6 +878,20 @@ impl JavaStr {
         RSplit::new(self, pat)
     }
 
+    /// See [str::rsplit_once].
+    ///
+    /// ```
+    /// # use java_string::JavaStr;
+    /// assert_eq!(JavaStr::from_str("cfg").rsplit_once('='), None);
+    /// assert_eq!(
+    ///     JavaStr::from_str("cfg=foo").rsplit_once('='),
+    ///     Some((JavaStr::from_str("cfg"), JavaStr::from_str("foo")))
+    /// );
+    /// assert_eq!(
+    ///     JavaStr::from_str("cfg=foo=bar").rsplit_once('='),
+    ///     Some((JavaStr::from_str("cfg=foo"), JavaStr::from_str("bar")))
+    /// );
+    /// ```
     #[inline]
     #[must_use]
     pub fn rsplit_once<P>(&self, mut delimiter: P) -> Option<(&JavaStr, &JavaStr)>
@@ -590,6 +908,37 @@ impl JavaStr {
         }
     }
 
+    /// See [str::rsplit_terminator].
+    ///
+    /// ```
+    /// # use java_string::JavaStr;
+    /// let v: Vec<&JavaStr> = JavaStr::from_str("A.B.").rsplit_terminator('.').collect();
+    /// assert_eq!(v, [JavaStr::from_str("B"), JavaStr::from_str("A")]);
+    ///
+    /// let v: Vec<&JavaStr> = JavaStr::from_str("A..B..").rsplit_terminator(".").collect();
+    /// assert_eq!(
+    ///     v,
+    ///     [
+    ///         JavaStr::from_str(""),
+    ///         JavaStr::from_str("B"),
+    ///         JavaStr::from_str(""),
+    ///         JavaStr::from_str("A")
+    ///     ]
+    /// );
+    ///
+    /// let v: Vec<&JavaStr> = JavaStr::from_str("A.B:C.D")
+    ///     .rsplit_terminator(&['.', ':'][..])
+    ///     .collect();
+    /// assert_eq!(
+    ///     v,
+    ///     [
+    ///         JavaStr::from_str("D"),
+    ///         JavaStr::from_str("C"),
+    ///         JavaStr::from_str("B"),
+    ///         JavaStr::from_str("A")
+    ///     ]
+    /// );
+    /// ```
     #[inline]
     pub fn rsplit_terminator<P>(&self, pat: P) -> RSplitTerminator<P>
     where
@@ -598,6 +947,45 @@ impl JavaStr {
         RSplitTerminator::new(self, pat)
     }
 
+    /// See [str::rsplitn].
+    ///
+    /// ```
+    /// # use java_string::JavaStr;
+    /// let v: Vec<&JavaStr> = JavaStr::from_str("Mary had a little lamb")
+    ///     .rsplitn(3, ' ')
+    ///     .collect();
+    /// assert_eq!(
+    ///     v,
+    ///     [
+    ///         JavaStr::from_str("lamb"),
+    ///         JavaStr::from_str("little"),
+    ///         JavaStr::from_str("Mary had a")
+    ///     ]
+    /// );
+    ///
+    /// let v: Vec<&JavaStr> = JavaStr::from_str("lionXXtigerXleopard")
+    ///     .rsplitn(3, 'X')
+    ///     .collect();
+    /// assert_eq!(
+    ///     v,
+    ///     [
+    ///         JavaStr::from_str("leopard"),
+    ///         JavaStr::from_str("tiger"),
+    ///         JavaStr::from_str("lionX")
+    ///     ]
+    /// );
+    ///
+    /// let v: Vec<&JavaStr> = JavaStr::from_str("lion::tiger::leopard")
+    ///     .rsplitn(2, "::")
+    ///     .collect();
+    /// assert_eq!(
+    ///     v,
+    ///     [
+    ///         JavaStr::from_str("leopard"),
+    ///         JavaStr::from_str("lion::tiger")
+    ///     ]
+    /// );
+    /// ```
     #[inline]
     pub fn rsplitn<P>(&self, n: usize, pat: P) -> RSplitN<P>
     where
@@ -606,6 +994,76 @@ impl JavaStr {
         RSplitN::new(self, pat, n)
     }
 
+    /// See [str::split].
+    ///
+    /// ```
+    /// # use java_string::{JavaCodePoint, JavaStr};
+    /// let v: Vec<&JavaStr> = JavaStr::from_str("Mary had a little lamb")
+    ///     .split(' ')
+    ///     .collect();
+    /// assert_eq!(
+    ///     v,
+    ///     [
+    ///         JavaStr::from_str("Mary"),
+    ///         JavaStr::from_str("had"),
+    ///         JavaStr::from_str("a"),
+    ///         JavaStr::from_str("little"),
+    ///         JavaStr::from_str("lamb")
+    ///     ]
+    /// );
+    ///
+    /// let v: Vec<&JavaStr> = JavaStr::from_str("").split('X').collect();
+    /// assert_eq!(v, [JavaStr::from_str("")]);
+    ///
+    /// let v: Vec<&JavaStr> = JavaStr::from_str("lionXXtigerXleopard")
+    ///     .split('X')
+    ///     .collect();
+    /// assert_eq!(
+    ///     v,
+    ///     [
+    ///         JavaStr::from_str("lion"),
+    ///         JavaStr::from_str(""),
+    ///         JavaStr::from_str("tiger"),
+    ///         JavaStr::from_str("leopard")
+    ///     ]
+    /// );
+    ///
+    /// let v: Vec<&JavaStr> = JavaStr::from_str("lion::tiger::leopard")
+    ///     .split("::")
+    ///     .collect();
+    /// assert_eq!(
+    ///     v,
+    ///     [
+    ///         JavaStr::from_str("lion"),
+    ///         JavaStr::from_str("tiger"),
+    ///         JavaStr::from_str("leopard")
+    ///     ]
+    /// );
+    ///
+    /// let v: Vec<&JavaStr> = JavaStr::from_str("abc1def2ghi")
+    ///     .split(JavaCodePoint::is_numeric)
+    ///     .collect();
+    /// assert_eq!(
+    ///     v,
+    ///     [
+    ///         JavaStr::from_str("abc"),
+    ///         JavaStr::from_str("def"),
+    ///         JavaStr::from_str("ghi")
+    ///     ]
+    /// );
+    ///
+    /// let v: Vec<&JavaStr> = JavaStr::from_str("lionXtigerXleopard")
+    ///     .split(JavaCodePoint::is_uppercase)
+    ///     .collect();
+    /// assert_eq!(
+    ///     v,
+    ///     [
+    ///         JavaStr::from_str("lion"),
+    ///         JavaStr::from_str("tiger"),
+    ///         JavaStr::from_str("leopard")
+    ///     ]
+    /// );
+    /// ```
     #[inline]
     pub fn split<P>(&self, pat: P) -> Split<P>
     where
@@ -614,6 +1072,19 @@ impl JavaStr {
         Split::new(self, pat)
     }
 
+    /// See [str::split_ascii_whitespace].
+    ///
+    /// ```
+    /// # use java_string::JavaStr;
+    /// let mut iter = JavaStr::from_str(" Mary   had\ta little  \n\t lamb").split_ascii_whitespace();
+    /// assert_eq!(Some(JavaStr::from_str("Mary")), iter.next());
+    /// assert_eq!(Some(JavaStr::from_str("had")), iter.next());
+    /// assert_eq!(Some(JavaStr::from_str("a")), iter.next());
+    /// assert_eq!(Some(JavaStr::from_str("little")), iter.next());
+    /// assert_eq!(Some(JavaStr::from_str("lamb")), iter.next());
+    ///
+    /// assert_eq!(None, iter.next());
+    /// ```
     #[inline]
     pub fn split_ascii_whitespace(&self) -> SplitAsciiWhitespace<'_> {
         #[inline]
@@ -630,6 +1101,23 @@ impl JavaStr {
         }
     }
 
+    /// See [str::split_at].
+    ///
+    /// ```
+    /// # use java_string::JavaStr;
+    /// let s = JavaStr::from_str("Per Martin-Löf");
+    ///
+    /// let (first, last) = s.split_at(3);
+    ///
+    /// assert_eq!("Per", first);
+    /// assert_eq!(" Martin-Löf", last);
+    /// ```
+    /// ```should_panic
+    /// # use java_string::JavaStr;
+    /// let s = JavaStr::from_str("Per Martin-Löf");
+    /// // Should panic
+    /// let _ = s.split_at(13);
+    /// ```
     #[inline]
     #[must_use]
     pub fn split_at(&self, mid: usize) -> (&JavaStr, &JavaStr) {
@@ -647,6 +1135,25 @@ impl JavaStr {
         }
     }
 
+    /// See [str::split_at_mut].
+    ///
+    /// ```
+    /// # use java_string::{JavaStr, JavaString};
+    /// let mut s = JavaString::from("Per Martin-Löf");
+    /// let s = s.as_mut_java_str();
+    ///
+    /// let (first, last) = s.split_at_mut(3);
+    ///
+    /// assert_eq!("Per", first);
+    /// assert_eq!(" Martin-Löf", last);
+    /// ```
+    /// ```should_panic
+    /// # use java_string::{JavaStr, JavaString};
+    /// let mut s = JavaString::from("Per Martin-Löf");
+    /// let s = s.as_mut_java_str();
+    /// // Should panic
+    /// let _ = s.split_at(13);
+    /// ```
     #[inline]
     #[must_use]
     pub fn split_at_mut(&mut self, mid: usize) -> (&mut JavaStr, &mut JavaStr) {
@@ -669,6 +1176,22 @@ impl JavaStr {
         }
     }
 
+    /// See [str::split_inclusive].
+    ///
+    /// ```
+    /// # use java_string::JavaStr;
+    /// let v: Vec<&JavaStr> = JavaStr::from_str("Mary had a little lamb\nlittle lamb\nlittle lamb.\n")
+    ///     .split_inclusive('\n')
+    ///     .collect();
+    /// assert_eq!(
+    ///     v,
+    ///     [
+    ///         JavaStr::from_str("Mary had a little lamb\n"),
+    ///         JavaStr::from_str("little lamb\n"),
+    ///         JavaStr::from_str("little lamb.\n")
+    ///     ]
+    /// );
+    /// ```
     #[inline]
     pub fn split_inclusive<P>(&self, pat: P) -> SplitInclusive<P>
     where
@@ -677,6 +1200,24 @@ impl JavaStr {
         SplitInclusive::new(self, pat)
     }
 
+    /// See [str::split_once].
+    ///
+    /// ```
+    /// # use java_string::JavaStr;
+    /// assert_eq!(JavaStr::from_str("cfg").split_once('='), None);
+    /// assert_eq!(
+    ///     JavaStr::from_str("cfg=").split_once('='),
+    ///     Some((JavaStr::from_str("cfg"), JavaStr::from_str("")))
+    /// );
+    /// assert_eq!(
+    ///     JavaStr::from_str("cfg=foo").split_once('='),
+    ///     Some((JavaStr::from_str("cfg"), JavaStr::from_str("foo")))
+    /// );
+    /// assert_eq!(
+    ///     JavaStr::from_str("cfg=foo=bar").split_once('='),
+    ///     Some((JavaStr::from_str("cfg"), JavaStr::from_str("foo=bar")))
+    /// );
+    /// ```
     #[inline]
     #[must_use]
     pub fn split_once<P>(&self, mut delimiter: P) -> Option<(&JavaStr, &JavaStr)>
@@ -693,6 +1234,37 @@ impl JavaStr {
         }
     }
 
+    /// See [str::split_terminator].
+    ///
+    /// ```
+    /// # use java_string::JavaStr;
+    /// let v: Vec<&JavaStr> = JavaStr::from_str("A.B.").split_terminator('.').collect();
+    /// assert_eq!(v, [JavaStr::from_str("A"), JavaStr::from_str("B")]);
+    ///
+    /// let v: Vec<&JavaStr> = JavaStr::from_str("A..B..").split_terminator(".").collect();
+    /// assert_eq!(
+    ///     v,
+    ///     [
+    ///         JavaStr::from_str("A"),
+    ///         JavaStr::from_str(""),
+    ///         JavaStr::from_str("B"),
+    ///         JavaStr::from_str("")
+    ///     ]
+    /// );
+    ///
+    /// let v: Vec<&JavaStr> = JavaStr::from_str("A.B:C.D")
+    ///     .split_terminator(&['.', ':'][..])
+    ///     .collect();
+    /// assert_eq!(
+    ///     v,
+    ///     [
+    ///         JavaStr::from_str("A"),
+    ///         JavaStr::from_str("B"),
+    ///         JavaStr::from_str("C"),
+    ///         JavaStr::from_str("D")
+    ///     ]
+    /// );
+    /// ```
     #[inline]
     pub fn split_terminator<P>(&self, pat: P) -> SplitTerminator<P>
     where
@@ -701,6 +1273,7 @@ impl JavaStr {
         SplitTerminator::new(self, pat)
     }
 
+    /// See [str::split_whitespace].
     #[inline]
     pub fn split_whitespace(&self) -> SplitWhitespace<'_> {
         SplitWhitespace {
@@ -710,6 +1283,40 @@ impl JavaStr {
         }
     }
 
+    /// See [str::splitn].
+    ///
+    /// ```
+    /// # use java_string::JavaStr;
+    /// let v: Vec<&JavaStr> = JavaStr::from_str("Mary had a little lambda")
+    ///     .splitn(3, ' ')
+    ///     .collect();
+    /// assert_eq!(
+    ///     v,
+    ///     [
+    ///         JavaStr::from_str("Mary"),
+    ///         JavaStr::from_str("had"),
+    ///         JavaStr::from_str("a little lambda")
+    ///     ]
+    /// );
+    ///
+    /// let v: Vec<&JavaStr> = JavaStr::from_str("lionXXtigerXleopard")
+    ///     .splitn(3, "X")
+    ///     .collect();
+    /// assert_eq!(
+    ///     v,
+    ///     [
+    ///         JavaStr::from_str("lion"),
+    ///         JavaStr::from_str(""),
+    ///         JavaStr::from_str("tigerXleopard")
+    ///     ]
+    /// );
+    ///
+    /// let v: Vec<&JavaStr> = JavaStr::from_str("abcXdef").splitn(1, 'X').collect();
+    /// assert_eq!(v, [JavaStr::from_str("abcXdef")]);
+    ///
+    /// let v: Vec<&JavaStr> = JavaStr::from_str("").splitn(1, 'X').collect();
+    /// assert_eq!(v, [JavaStr::from_str("")]);
+    /// ```
     #[inline]
     pub fn splitn<P>(&self, n: usize, pat: P) -> SplitN<P>
     where
@@ -718,6 +1325,15 @@ impl JavaStr {
         SplitN::new(self, pat, n)
     }
 
+    /// See [str::starts_with].
+    ///
+    /// ```
+    /// # use java_string::JavaStr;
+    /// let bananas = JavaStr::from_str("bananas");
+    ///
+    /// assert!(bananas.starts_with("bana"));
+    /// assert!(!bananas.starts_with("nana"));
+    /// ```
     #[inline]
     #[must_use]
     pub fn starts_with<P>(&self, mut pat: P) -> bool
@@ -727,6 +1343,20 @@ impl JavaStr {
         pat.prefix_len_in(self).is_some()
     }
 
+    /// See [str::strip_prefix].
+    ///
+    /// ```
+    /// # use java_string::JavaStr;
+    /// assert_eq!(
+    ///     JavaStr::from_str("foo:bar").strip_prefix("foo:"),
+    ///     Some(JavaStr::from_str("bar"))
+    /// );
+    /// assert_eq!(JavaStr::from_str("foo:bar").strip_prefix("bar"), None);
+    /// assert_eq!(
+    ///     JavaStr::from_str("foofoo").strip_prefix("foo"),
+    ///     Some(JavaStr::from_str("foo"))
+    /// );
+    /// ```
     #[inline]
     #[must_use]
     pub fn strip_prefix<P>(&self, mut prefix: P) -> Option<&JavaStr>
@@ -738,6 +1368,20 @@ impl JavaStr {
         unsafe { Some(self.get_unchecked(len..)) }
     }
 
+    /// See [str::strip_suffix].
+    ///
+    /// ```
+    /// # use java_string::JavaStr;
+    /// assert_eq!(
+    ///     JavaStr::from_str("bar:foo").strip_suffix(":foo"),
+    ///     Some(JavaStr::from_str("bar"))
+    /// );
+    /// assert_eq!(JavaStr::from_str("bar:foo").strip_suffix("bar"), None);
+    /// assert_eq!(
+    ///     JavaStr::from_str("foofoo").strip_suffix("foo"),
+    ///     Some(JavaStr::from_str("foo"))
+    /// );
+    /// ```
     #[inline]
     #[must_use]
     pub fn strip_suffix<P>(&self, mut suffix: P) -> Option<&JavaStr>
@@ -749,6 +1393,7 @@ impl JavaStr {
         unsafe { Some(self.get_unchecked(..self.len() - len)) }
     }
 
+    /// See [str::to_ascii_lowercase].
     #[inline]
     #[must_use]
     pub fn to_ascii_lowercase(&self) -> JavaString {
@@ -757,6 +1402,7 @@ impl JavaStr {
         s
     }
 
+    /// See [str::to_ascii_uppercase].
     #[inline]
     #[must_use]
     pub fn to_ascii_uppercase(&self) -> JavaString {
@@ -765,30 +1411,87 @@ impl JavaStr {
         s
     }
 
+    /// See [str::to_lowercase].
+    ///
+    /// ```
+    /// # use java_string::{JavaCodePoint, JavaStr, JavaString};
+    /// let s = JavaStr::from_str("HELLO");
+    /// assert_eq!("hello", s.to_lowercase());
+    ///
+    /// let odysseus = JavaStr::from_str("ὈΔΥΣΣΕΎΣ");
+    /// assert_eq!("ὀδυσσεύς", odysseus.to_lowercase());
+    ///
+    /// let s = JavaString::from("Hello ")
+    ///     + JavaString::from(JavaCodePoint::from_u32(0xd800).unwrap()).as_java_str()
+    ///     + JavaStr::from_str(" World!");
+    /// let expected = JavaString::from("hello ")
+    ///     + JavaString::from(JavaCodePoint::from_u32(0xd800).unwrap()).as_java_str()
+    ///     + JavaStr::from_str(" world!");
+    /// assert_eq!(expected, s.to_lowercase());
+    /// ```
     #[inline]
     #[must_use]
     pub fn to_lowercase(&self) -> JavaString {
         self.transform_string(str::to_lowercase, |ch| ch)
     }
 
+    /// See [str::to_uppercase].
+    ///
+    /// ```
+    /// # use java_string::{JavaCodePoint, JavaStr, JavaString};
+    /// let s = JavaStr::from_str("hello");
+    /// assert_eq!("HELLO", s.to_uppercase());
+    ///
+    /// let s = JavaStr::from_str("tschüß");
+    /// assert_eq!("TSCHÜSS", s.to_uppercase());
+    ///
+    /// let s = JavaString::from("Hello ")
+    ///     + JavaString::from(JavaCodePoint::from_u32(0xd800).unwrap()).as_java_str()
+    ///     + JavaStr::from_str(" World!");
+    /// let expected = JavaString::from("HELLO ")
+    ///     + JavaString::from(JavaCodePoint::from_u32(0xd800).unwrap()).as_java_str()
+    ///     + JavaStr::from_str(" WORLD!");
+    /// assert_eq!(expected, s.to_uppercase());
+    /// ```
     #[inline]
     #[must_use]
     pub fn to_uppercase(&self) -> JavaString {
         self.transform_string(str::to_uppercase, |ch| ch)
     }
 
+    /// See [str::trim].
     #[inline]
     #[must_use]
     pub fn trim(&self) -> &JavaStr {
         self.trim_matches(|c: JavaCodePoint| c.is_whitespace())
     }
 
+    /// See [str::trim_end].
     #[inline]
     #[must_use]
     pub fn trim_end(&self) -> &JavaStr {
         self.trim_end_matches(|c: JavaCodePoint| c.is_whitespace())
     }
 
+    /// See [str::trim_end_matches].
+    ///
+    /// ```
+    /// # use java_string::{JavaCodePoint, JavaStr};
+    /// assert_eq!(
+    ///     JavaStr::from_str("11foo1bar11").trim_end_matches('1'),
+    ///     "11foo1bar"
+    /// );
+    /// assert_eq!(
+    ///     JavaStr::from_str("123foo1bar123").trim_end_matches(JavaCodePoint::is_numeric),
+    ///     "123foo1bar"
+    /// );
+    ///
+    /// let x: &[_] = &['1', '2'];
+    /// assert_eq!(
+    ///     JavaStr::from_str("12foo1bar12").trim_end_matches(x),
+    ///     "12foo1bar"
+    /// );
+    /// ```
     #[inline]
     #[must_use]
     pub fn trim_end_matches<P>(&self, mut pat: P) -> &JavaStr
@@ -806,6 +1509,22 @@ impl JavaStr {
         str
     }
 
+    /// See [str::trim_matches].
+    ///
+    /// ```
+    /// # use java_string::{JavaCodePoint, JavaStr};
+    /// assert_eq!(
+    ///     JavaStr::from_str("11foo1bar11").trim_matches('1'),
+    ///     "foo1bar"
+    /// );
+    /// assert_eq!(
+    ///     JavaStr::from_str("123foo1bar123").trim_matches(JavaCodePoint::is_numeric),
+    ///     "foo1bar"
+    /// );
+    ///
+    /// let x: &[_] = &['1', '2'];
+    /// assert_eq!(JavaStr::from_str("12foo1bar12").trim_matches(x), "foo1bar");
+    /// ```
     #[inline]
     #[must_use]
     pub fn trim_matches<P>(&self, mut pat: P) -> &JavaStr
@@ -830,12 +1549,32 @@ impl JavaStr {
         str
     }
 
+    /// See [str::trim_start].
     #[inline]
     #[must_use]
     pub fn trim_start(&self) -> &JavaStr {
         self.trim_start_matches(|c: JavaCodePoint| c.is_whitespace())
     }
 
+    /// See [str::trim_start_matches].
+    ///
+    /// ```
+    /// # use java_string::{JavaCodePoint, JavaStr};
+    /// assert_eq!(
+    ///     JavaStr::from_str("11foo1bar11").trim_start_matches('1'),
+    ///     "foo1bar11"
+    /// );
+    /// assert_eq!(
+    ///     JavaStr::from_str("123foo1bar123").trim_start_matches(JavaCodePoint::is_numeric),
+    ///     "foo1bar123"
+    /// );
+    ///
+    /// let x: &[_] = &['1', '2'];
+    /// assert_eq!(
+    ///     JavaStr::from_str("12foo1bar12").trim_start_matches(x),
+    ///     "foo1bar12"
+    /// );
+    /// ```
     #[inline]
     #[must_use]
     pub fn trim_start_matches<P>(&self, mut pat: P) -> &JavaStr
