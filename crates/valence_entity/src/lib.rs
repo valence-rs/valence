@@ -382,7 +382,7 @@ impl EntityAnimations {
 #[derive(Component, Default, Debug, Deref, DerefMut)]
 pub struct ObjectData(pub i32);
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Encode, Decode)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct VillagerData {
     pub kind: VillagerKind,
     pub profession: VillagerProfession,
@@ -406,6 +406,24 @@ impl Default for VillagerData {
             profession: Default::default(),
             level: 1,
         }
+    }
+}
+
+impl Encode for VillagerData {
+    fn encode(&self, mut w: impl std::io::Write) -> anyhow::Result<()> {
+        self.kind.encode(&mut w)?;
+        self.profession.encode(&mut w)?;
+        VarInt(self.level).encode(w)
+    }
+}
+
+impl Decode<'_> for VillagerData {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
+        Ok(Self {
+            kind: VillagerKind::decode(r)?,
+            profession: VillagerProfession::decode(r)?,
+            level: VarInt::decode(r)?.0,
+        })
     }
 }
 
