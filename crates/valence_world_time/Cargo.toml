@@ -1,0 +1,17 @@
+[package]
+name = "valence_world_time"
+description = "World time support for Valence"
+readme = "README.md"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+documentation.workspace = true
+license.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bevy_app.workspace = true
+bevy_ecs.workspace = true
+valence_server.workspace = true
+derive_more.workspace = true

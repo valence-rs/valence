@@ -79,6 +79,8 @@ pub use valence_server::*;
 pub use valence_weather as weather;
 #[cfg(feature = "world_border")]
 pub use valence_world_border as world_border;
+#[cfg(feature = "world_time")]
+pub use valence_world_time as world_time;
 
 /// Contains the most frequently used items in Valence projects.
 ///
@@ -229,6 +231,11 @@ impl PluginGroup for DefaultPlugins {
         #[cfg(feature = "world_border")]
         {
             group = group.add(valence_world_border::WorldBorderPlugin);
+        }
+
+        #[cfg(feature = "world_time")]
+        {
+            group = group.add(valence_world_time::WorldTimePlugin);
         }
 
         #[cfg(feature = "boss_bar")]

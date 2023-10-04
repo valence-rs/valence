@@ -22,6 +22,7 @@ default = [
     "player_list",
     "scoreboard",
     "world_border",
+    "world_time",
     "weather",
     "testing",
 ]
@@ -34,6 +35,7 @@ network = ["dep:valence_network"]
 player_list = ["dep:valence_player_list"]
 scoreboard = ["dep:valence_scoreboard"]
 world_border = ["dep:valence_world_border"]
+world_time = ["dep:valence_world_time"]
 weather = ["dep:valence_weather"]
 testing = []
 
@@ -58,6 +60,7 @@ valence_registry.workspace = true
 valence_scoreboard = { workspace = true, optional = true }
 valence_weather = { workspace = true, optional = true }
 valence_world_border = { workspace = true, optional = true }
+valence_world_time = { workspace = true, optional = true }
 valence_lang.workspace = true
 valence_text.workspace = true
 valence_ident.workspace = true
@@ -195,4 +198,5 @@ valence_server_common = { path = "crates/valence_server_common", version = "0.2.
 valence_text = { path = "crates/valence_text", version = "0.2.0-alpha.1" }
 valence_weather = { path = "crates/valence_weather", version = "0.2.0-alpha.1" }
 valence_world_border = { path = "crates/valence_world_border", version = "0.2.0-alpha.1" }
+valence_world_time = { path = "crates/valence_world_time", version = "0.2.0-alpha.1" }
 zip = "0.6.3"
