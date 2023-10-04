@@ -73,7 +73,7 @@ impl JavaStr {
         while i < bytes.len() {
             let b = bytes[i];
             if b == 0 {
-                encoded.extend([0xc0, 0x80].into_iter());
+                encoded.extend([0xc0, 0x80]);
                 i += 1;
             } else if b < 128 {
                 // Pass ASCII through quickly.
@@ -101,8 +101,8 @@ impl JavaStr {
                         s.chars().next().unwrap_unchecked().as_u32() - 0x10000
                     };
                     let s = [((c >> 10) as u16) | 0xd800, ((c & 0x3ff) as u16) | 0xdc00];
-                    encoded.extend(enc_surrogate(s[0]).into_iter());
-                    encoded.extend(enc_surrogate(s[1]).into_iter());
+                    encoded.extend(enc_surrogate(s[0]));
+                    encoded.extend(enc_surrogate(s[1]));
                 }
                 i += w;
             }
@@ -119,17 +119,18 @@ impl JavaString {
     pub fn from_modified_utf8(bytes: Vec<u8>) -> Result<JavaString, Utf8Error> {
         match JavaString::from_full_utf8(bytes) {
             Ok(str) => Ok(str),
-            Err(err) => JavaString::from_modified_utf8_iter(err.bytes.into_iter()),
+            Err(err) => JavaString::from_modified_utf8_iter(err.bytes),
         }
     }
 
     /// Converts from Java's [modified UTF-8](https://docs.oracle.com/javase/8/docs/api/java/io/DataInput.html#modified-utf-8) format to a `JavaString`.
     ///
     /// See [JavaStr::from_modified_utf8].
-    pub fn from_modified_utf8_iter<I>(mut iter: I) -> Result<JavaString, Utf8Error>
+    pub fn from_modified_utf8_iter<I>(iter: I) -> Result<JavaString, Utf8Error>
     where
-        I: Iterator<Item = u8>,
+        I: IntoIterator<Item = u8>,
     {
+        let mut iter = iter.into_iter();
         let mut index = 0;
         let mut decoded = Vec::with_capacity(iter.size_hint().0);
         let mut surrogate_first: Option<[u8; 3]> = None;
@@ -178,7 +179,7 @@ impl JavaString {
 
             if first == 0 {
                 // modified UTF-8 should never contain \0 directly.
-                err!(None);
+                err!(Some(1));
             } else if first < 128 {
                 flush_first_surrogate_half!();
                 // Pass ASCII through directly.
@@ -197,7 +198,7 @@ impl JavaString {
                     // Two-byte sequences can be used directly.
                     2 => {
                         flush_first_surrogate_half!();
-                        decoded.extend([first, second].into_iter());
+                        decoded.extend([first, second]);
                     }
                     3 => {
                         let third = next_cont!(Some(2));
@@ -208,7 +209,7 @@ impl JavaString {
                             | (0xed, 0x80..=0x9f)
                             | (0xee..=0xef, 0x80..=0xbf) => {
                                 flush_first_surrogate_half!();
-                                decoded.extend([first, second, third].into_iter())
+                                decoded.extend([first, second, third])
                             }
                             // First half of a surrogate pair
                             (0xed, 0xa0..=0xaf) => {
@@ -222,10 +223,10 @@ impl JavaString {
                                     let (fifth, sixth) = (second, third);
                                     let (second, third) = (b, c);
                                     let s = dec_surrogates(second, third, fifth, sixth);
-                                    decoded.extend(s.into_iter());
+                                    decoded.extend(s);
                                 } else {
                                     // no first half, append the second half directly
-                                    decoded.extend([first, second, third].into_iter());
+                                    decoded.extend([first, second, third]);
                                 }
                             }
                             _ => err!(Some(1)),

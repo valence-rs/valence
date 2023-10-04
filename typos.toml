@@ -1,5 +1,5 @@
 [files]
-extend-exclude = ["*.svg", "*.json"]
+extend-exclude = ["*.svg", "*.json", "crates/java_string/src/slice.rs"]
 
 [default]
 extend-ignore-re = ['\d+ths', 'CC BY-NC-ND']

@@ -1,4 +1,4 @@
-# valence_java_string
+# java_string
 
 An implementation of Java strings, tolerant of invalid UTF-16 encoding.
 This allows for round-trip serialization of all Java strings, including those which contain invalid UTF-16, while still
