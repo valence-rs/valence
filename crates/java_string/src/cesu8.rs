@@ -235,6 +235,7 @@ impl JavaString {
                     _ => err!(Some(1)), // modified UTF-8 doesn't allow width 4
                 }
             }
+            index += 1;
         }
 
         flush_first_surrogate_half!();
