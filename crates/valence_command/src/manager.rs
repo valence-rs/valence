@@ -350,15 +350,21 @@ fn parse_command_args(
                 let pre_input = input.clone().into_inner();
                 let valid = parser(&mut input);
                 if valid {
-                    // SAFETY: we know that the sting slice is from the same string
-                    unsafe {
-                        let arg = input.get_diff(pre_input).to_string();
+                    let Some(arg) = pre_input
+                        .get(..input.len() - pre_input.len())
+                        .map(|s| s.to_string())
+                        else {
+                            panic!(
+                                "Parser replaced input with another string. This is not allowed. \
+                             Attempting to parse: {}",
+                                input.into_inner()
+                            );
+                        };
 
-                        if command_registry.modifiers.contains_key(&current_node) {
-                            modifiers_to_be_executed.push((current_node, arg.clone()));
-                        }
-                        command_args.push(arg);
+                    if command_registry.modifiers.contains_key(&current_node) {
+                        modifiers_to_be_executed.push((current_node, arg.clone()));
                     }
+                    command_args.push(arg);
                 } else {
                     return false;
                 }

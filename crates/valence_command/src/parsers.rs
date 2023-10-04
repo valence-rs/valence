@@ -172,27 +172,15 @@ impl<'a> ParseInput<'a> {
         self.0
     }
 
-    /// Get the difference between two strings from left to right
-    ///
-    /// # Safety
-    /// `other` must be a slice of the same string as `self`
-    pub unsafe fn get_diff(&self, other: &str) -> &str {
-        let mut far_ptr = self.0.as_ptr();
-        let mut near_ptr = other.as_ptr();
-
-        if near_ptr > far_ptr {
-            std::mem::swap(&mut near_ptr, &mut far_ptr);
-        }
-        let new_len = far_ptr.offset_from(near_ptr) as usize;
-
-        std::str::from_utf8_unchecked(std::slice::from_raw_parts(near_ptr, new_len))
+    #[allow(clippy::len_without_is_empty)]
+    pub fn len(&self) -> usize {
+        self.0.len()
     }
 }
 
 #[test]
 fn test_parse_input() {
     let mut input = ParseInput::new("The QuIck brown FOX jumps over the lazy dog");
-    let input_clone = input.clone();
     assert_eq!(input.peek(), Some('T'));
     assert_eq!(input.peek_n(0), "");
     assert_eq!(input.peek_n(1), "T");
@@ -207,12 +195,6 @@ fn test_parse_input() {
     assert!(input.match_next("quick"));
     input.pop();
     assert_eq!(input.peek_word(), "brown");
-
-    // SAFETY: input_clone and input are both slices of the same string
-    unsafe {
-        assert_eq!(input_clone.get_diff(input.0), "The QuIck ");
-        assert_eq!(input.get_diff(input_clone.0), "The QuIck ");
-    }
 
     assert!(input.match_next("brown fox"));
     assert_eq!(input.pop_all(), Some(" jumps over the lazy dog"));
