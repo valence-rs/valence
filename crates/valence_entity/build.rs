@@ -262,7 +262,6 @@ impl Value {
         match self {
             Value::Integer(_) => quote!(VarInt(#self_lvalue)),
             Value::OptionalInt(_) => quote!(OptionalInt(#self_lvalue)),
-            Value::ItemStack(_) => quote!(Some(&#self_lvalue)),
             _ => quote!(&#self_lvalue),
         }
     }
