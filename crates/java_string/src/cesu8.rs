@@ -31,7 +31,7 @@ impl JavaStr {
     pub fn from_modified_utf8(bytes: &[u8]) -> Result<Cow<JavaStr>, Utf8Error> {
         match JavaStr::from_full_utf8(bytes) {
             Ok(str) => Ok(Cow::Borrowed(str)),
-            Err(_) => JavaString::from_modified_utf8_iter(bytes.iter().copied()).map(Cow::Owned),
+            Err(_) => JavaString::from_modified_utf8_internal(bytes).map(Cow::Owned),
         }
     }
 
@@ -119,33 +119,17 @@ impl JavaString {
     pub fn from_modified_utf8(bytes: Vec<u8>) -> Result<JavaString, Utf8Error> {
         match JavaString::from_full_utf8(bytes) {
             Ok(str) => Ok(str),
-            Err(err) => JavaString::from_modified_utf8_iter(err.bytes),
+            Err(err) => JavaString::from_modified_utf8_internal(&err.bytes),
         }
     }
 
-    /// Converts from Java's [modified UTF-8](https://docs.oracle.com/javase/8/docs/api/java/io/DataInput.html#modified-utf-8) format to a `JavaString`.
-    ///
-    /// See [JavaStr::from_modified_utf8].
-    pub fn from_modified_utf8_iter<I>(iter: I) -> Result<JavaString, Utf8Error>
-    where
-        I: IntoIterator<Item = u8>,
-    {
-        let mut iter = iter.into_iter();
-        let mut index = 0;
-        let mut decoded = Vec::with_capacity(iter.size_hint().0);
-        let mut surrogate_first: Option<[u8; 3]> = None;
+    fn from_modified_utf8_internal(slice: &[u8]) -> Result<JavaString, Utf8Error> {
+        let mut offset = 0;
+        let mut decoded = Vec::with_capacity(slice.len() + 1);
 
-        macro_rules! flush_first_surrogate_half {
-            () => {
-                // append any preceding first half of a surrogate pair
-                if let Some(surrogate_first) = surrogate_first.take() {
-                    decoded.extend(surrogate_first.into_iter());
-                }
-            };
-        }
-
-        while let Some(first) = iter.next() {
-            let old_offset = index;
+        while let Some(&first) = slice.get(offset) {
+            let old_offset = offset;
+            offset += 1;
 
             macro_rules! err {
                 ($error_len:expr) => {
@@ -158,10 +142,11 @@ impl JavaString {
 
             macro_rules! next {
                 () => {{
-                    index += 1;
-                    match iter.next() {
-                        Some(a) => a,
-                        None => err!(None),
+                    if let Some(&b) = slice.get(offset) {
+                        offset += 1;
+                        b
+                    } else {
+                        err!(None)
                     }
                 }};
             }
@@ -181,11 +166,9 @@ impl JavaString {
                 // modified UTF-8 should never contain \0 directly.
                 err!(Some(1));
             } else if first < 128 {
-                flush_first_surrogate_half!();
                 // Pass ASCII through directly.
                 decoded.push(first);
             } else if first == 0xc0 {
-                flush_first_surrogate_half!();
                 // modified UTF-8 encoding of null character
                 match next!() {
                     0x80 => decoded.push(0),
@@ -197,7 +180,6 @@ impl JavaString {
                 match w {
                     // Two-byte sequences can be used directly.
                     2 => {
-                        flush_first_surrogate_half!();
                         decoded.extend([first, second]);
                     }
                     3 => {
@@ -207,26 +189,26 @@ impl JavaString {
                             (0xe0, 0xa0..=0xbf)
                             | (0xe1..=0xec, 0x80..=0xbf)
                             | (0xed, 0x80..=0x9f)
-                            | (0xee..=0xef, 0x80..=0xbf) => {
-                                flush_first_surrogate_half!();
-                                decoded.extend([first, second, third])
-                            }
+                            | (0xee..=0xef, 0x80..=0xbf)
+                            // Second half of a surrogate pair without a preceding first half, also pass this through.
+                            | (0xed, 0xb0..=0xbf)
+                            => decoded.extend([first, second, third]),
                             // First half of a surrogate pair
                             (0xed, 0xa0..=0xaf) => {
-                                flush_first_surrogate_half!();
-                                surrogate_first = Some([first, second, third]);
-                            }
-                            // Second half of a surrogate pair
-                            (0xed, 0xb0..=0xbf) => {
-                                // try to pair the second half with a preceding first half
-                                if let Some([_, b, c]) = surrogate_first.take() {
-                                    let (fifth, sixth) = (second, third);
-                                    let (second, third) = (b, c);
-                                    let s = dec_surrogates(second, third, fifth, sixth);
-                                    decoded.extend(s);
-                                } else {
-                                    // no first half, append the second half directly
-                                    decoded.extend([first, second, third]);
+                                // Peek ahead and try to pair the first half of surrogate pair with
+                                // second.
+                                match &slice[offset..] {
+                                    [0xed, fifth @ 0xb0..=0xbf, sixth, ..]
+                                    if *sixth & !CONT_MASK == TAG_CONT =>
+                                        {
+                                            let s = dec_surrogates(second, third, *fifth, *sixth);
+                                            decoded.extend(s);
+                                            offset += 3;
+                                        }
+                                    _ => {
+                                        // No second half, append the first half directly.
+                                        decoded.extend([first, second, third]);
+                                    }
                                 }
                             }
                             _ => err!(Some(1)),
@@ -235,10 +217,7 @@ impl JavaString {
                     _ => err!(Some(1)), // modified UTF-8 doesn't allow width 4
                 }
             }
-            index += 1;
         }
-
-        flush_first_surrogate_half!();
 
         unsafe {
             // SAFETY: we built a semi UTF-8 encoded string
