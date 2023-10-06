@@ -767,7 +767,7 @@ impl Ord for JavaCodePoint {
 impl PartialOrd for JavaCodePoint {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.as_u32().partial_cmp(&other.as_u32())
+        Some(self.cmp(other))
     }
 }
 
