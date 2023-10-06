@@ -18,7 +18,7 @@
 //!
 //! let mut buf = vec![];
 //!
-//! to_binary(&c, &mut buf, "").unwrap();
+//! to_binary(&c, &mut buf, &String::new()).unwrap();
 //! ```
 //!
 //! Decode NBT data from its binary form.
