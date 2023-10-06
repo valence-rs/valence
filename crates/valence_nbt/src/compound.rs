@@ -279,8 +279,8 @@ where
     }
 }
 
-/// Trait that can be used as a key to query a compound. Basically something that can be converted
-/// to a type `B` such that `S: Borrow<B>`.
+/// Trait that can be used as a key to query a compound. Basically something
+/// that can be converted to a type `B` such that `S: Borrow<B>`.
 pub trait AsBorrowed<S> {
     type Borrowed: ?Sized;
 
