@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::hash::Hash;
 use std::iter::FusedIterator;
 
@@ -553,9 +554,22 @@ impl From<Vec<String>> for List<String> {
     }
 }
 
+impl<'a> From<Vec<Cow<'a, str>>> for List<Cow<'a, str>> {
+    fn from(v: Vec<Cow<'a, str>>) -> Self {
+        List::String(v)
+    }
+}
+
 #[cfg(feature = "java_string")]
 impl From<Vec<java_string::JavaString>> for List<java_string::JavaString> {
     fn from(v: Vec<java_string::JavaString>) -> Self {
+        List::String(v)
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl<'a> From<Vec<Cow<'a, java_string::JavaStr>>> for List<Cow<'a, java_string::JavaStr>> {
+    fn from(v: Vec<Cow<'a, java_string::JavaStr>>) -> Self {
         List::String(v)
     }
 }

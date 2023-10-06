@@ -349,59 +349,142 @@ impl<'a> From<Cow<'a, str>> for Value<String> {
     }
 }
 
+impl From<String> for Value<Cow<'_, str>> {
+    fn from(v: String) -> Self {
+        Self::String(Cow::Owned(v))
+    }
+}
+
+impl<'a> From<&'a String> for Value<Cow<'a, str>> {
+    fn from(v: &'a String) -> Self {
+        Self::String(Cow::Borrowed(v))
+    }
+}
+
+impl<'a> From<&'a str> for Value<Cow<'a, str>> {
+    fn from(v: &'a str) -> Self {
+        Self::String(Cow::Borrowed(v))
+    }
+}
+
+impl<'a> From<Cow<'a, str>> for Value<Cow<'a, str>> {
+    fn from(v: Cow<'a, str>) -> Self {
+        Self::String(v)
+    }
+}
+
 #[cfg(feature = "java_string")]
 impl From<java_string::JavaString> for Value<java_string::JavaString> {
-    fn from(value: java_string::JavaString) -> Self {
-        Self::String(value)
+    fn from(v: java_string::JavaString) -> Self {
+        Self::String(v)
     }
 }
 
 #[cfg(feature = "java_string")]
 impl From<&java_string::JavaString> for Value<java_string::JavaString> {
-    fn from(value: &java_string::JavaString) -> Self {
-        Self::String(value.clone())
+    fn from(v: &java_string::JavaString) -> Self {
+        Self::String(v.clone())
     }
 }
 
 #[cfg(feature = "java_string")]
 impl<'a> From<&'a java_string::JavaStr> for Value<java_string::JavaString> {
-    fn from(value: &'a java_string::JavaStr) -> Self {
-        Self::String(value.to_owned())
+    fn from(v: &'a java_string::JavaStr) -> Self {
+        Self::String(v.to_owned())
     }
 }
 
 #[cfg(feature = "java_string")]
 impl<'a> From<Cow<'a, java_string::JavaStr>> for Value<java_string::JavaString> {
-    fn from(value: Cow<'a, java_string::JavaStr>) -> Self {
-        Self::String(value.into_owned())
+    fn from(v: Cow<'a, java_string::JavaStr>) -> Self {
+        Self::String(v.into_owned())
     }
 }
 
 #[cfg(feature = "java_string")]
 impl From<String> for Value<java_string::JavaString> {
-    fn from(value: String) -> Self {
-        Self::String(java_string::JavaString::from(value))
+    fn from(v: String) -> Self {
+        Self::String(java_string::JavaString::from(v))
     }
 }
 
 #[cfg(feature = "java_string")]
 impl From<&String> for Value<java_string::JavaString> {
-    fn from(value: &String) -> Self {
-        Self::String(java_string::JavaString::from(value))
+    fn from(v: &String) -> Self {
+        Self::String(java_string::JavaString::from(v))
     }
 }
 
 #[cfg(feature = "java_string")]
 impl<'a> From<&'a str> for Value<java_string::JavaString> {
-    fn from(value: &'a str) -> Self {
-        Self::String(java_string::JavaString::from(value))
+    fn from(v: &'a str) -> Self {
+        Self::String(java_string::JavaString::from(v))
     }
 }
 
 #[cfg(feature = "java_string")]
 impl<'a> From<Cow<'a, str>> for Value<java_string::JavaString> {
-    fn from(value: Cow<'a, str>) -> Self {
-        Self::String(java_string::JavaString::from(value))
+    fn from(v: Cow<'a, str>) -> Self {
+        Self::String(java_string::JavaString::from(v))
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl From<java_string::JavaString> for Value<Cow<'_, java_string::JavaStr>> {
+    fn from(v: java_string::JavaString) -> Self {
+        Self::String(Cow::Owned(v))
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl<'a> From<&'a java_string::JavaString> for Value<Cow<'a, java_string::JavaStr>> {
+    fn from(v: &'a java_string::JavaString) -> Self {
+        Self::String(Cow::Borrowed(v))
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl<'a> From<&'a java_string::JavaStr> for Value<Cow<'a, java_string::JavaStr>> {
+    fn from(v: &'a java_string::JavaStr) -> Self {
+        Self::String(Cow::Borrowed(v))
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl<'a> From<Cow<'a, java_string::JavaStr>> for Value<Cow<'a, java_string::JavaStr>> {
+    fn from(v: Cow<'a, java_string::JavaStr>) -> Self {
+        Self::String(v)
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl From<String> for Value<Cow<'_, java_string::JavaStr>> {
+    fn from(v: String) -> Self {
+        Self::String(Cow::Owned(java_string::JavaString::from(v)))
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl<'a> From<&'a String> for Value<Cow<'a, java_string::JavaStr>> {
+    fn from(v: &'a String) -> Self {
+        Self::String(Cow::Borrowed(java_string::JavaStr::from_str(v)))
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl<'a> From<&'a str> for Value<Cow<'a, java_string::JavaStr>> {
+    fn from(v: &'a str) -> Self {
+        Self::String(Cow::Borrowed(java_string::JavaStr::from_str(v)))
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl<'a> From<Cow<'a, str>> for Value<Cow<'a, java_string::JavaStr>> {
+    fn from(v: Cow<'a, str>) -> Self {
+        Self::String(match v {
+            Cow::Borrowed(str) => Cow::Borrowed(java_string::JavaStr::from_str(str)),
+            Cow::Owned(str) => Cow::Owned(java_string::JavaString::from(str)),
+        })
     }
 }
 
