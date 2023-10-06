@@ -1,4 +1,4 @@
-use std::borrow::Borrow;
+use std::borrow::{Borrow, Cow};
 use std::fmt;
 use std::hash::Hash;
 use std::iter::FusedIterator;
@@ -95,34 +95,38 @@ where
 {
     pub fn get<Q>(&self, k: &Q) -> Option<&Value<S>>
     where
-        S: Borrow<Q>,
-        Q: ?Sized + Eq + Ord + Hash,
+        Q: ?Sized + AsBorrowed<S>,
+        <Q as AsBorrowed<S>>::Borrowed: Hash + Eq + Ord,
+        S: Borrow<<Q as AsBorrowed<S>>::Borrowed>,
     {
-        self.map.get(k)
+        self.map.get(k.as_borrowed())
     }
 
     pub fn contains_key<Q>(&self, k: &Q) -> bool
     where
-        S: Borrow<Q>,
-        Q: ?Sized + Eq + Ord + Hash,
+        Q: ?Sized + AsBorrowed<S>,
+        <Q as AsBorrowed<S>>::Borrowed: Hash + Eq + Ord,
+        S: Borrow<<Q as AsBorrowed<S>>::Borrowed>,
     {
-        self.map.contains_key(k)
+        self.map.contains_key(k.as_borrowed())
     }
 
     pub fn get_mut<Q>(&mut self, k: &Q) -> Option<&mut Value<S>>
     where
-        S: Borrow<Q>,
-        Q: ?Sized + Eq + Ord + Hash,
+        Q: ?Sized + AsBorrowed<S>,
+        <Q as AsBorrowed<S>>::Borrowed: Hash + Eq + Ord,
+        S: Borrow<<Q as AsBorrowed<S>>::Borrowed>,
     {
-        self.map.get_mut(k)
+        self.map.get_mut(k.as_borrowed())
     }
 
     pub fn get_key_value<Q>(&self, k: &Q) -> Option<(&S, &Value<S>)>
     where
-        S: Borrow<Q>,
-        Q: ?Sized + Eq + Ord + Hash,
+        Q: ?Sized + AsBorrowed<S>,
+        <Q as AsBorrowed<S>>::Borrowed: Hash + Eq + Ord,
+        S: Borrow<<Q as AsBorrowed<S>>::Borrowed>,
     {
-        self.map.get_key_value(k)
+        self.map.get_key_value(k.as_borrowed())
     }
 
     pub fn insert<K, V>(&mut self, k: K, v: V) -> Option<Value<S>>
@@ -135,10 +139,11 @@ where
 
     pub fn remove<Q>(&mut self, k: &Q) -> Option<Value<S>>
     where
-        S: Borrow<Q>,
-        Q: ?Sized + Eq + Ord + Hash,
+        Q: ?Sized + AsBorrowed<S>,
+        <Q as AsBorrowed<S>>::Borrowed: Hash + Eq + Ord,
+        S: Borrow<<Q as AsBorrowed<S>>::Borrowed>,
     {
-        self.map.remove(k)
+        self.map.remove(k.as_borrowed())
     }
 
     pub fn remove_entry<Q>(&mut self, k: &Q) -> Option<(S, Value<S>)>
@@ -274,54 +279,59 @@ where
     }
 }
 
+/// Trait that can be used as a key to query a compound. Basically something that can be converted
+/// to a type `B` such that `S: Borrow<B>`.
+pub trait AsBorrowed<S> {
+    type Borrowed: ?Sized;
+
+    fn as_borrowed(&self) -> &Self::Borrowed;
+}
+
+impl<Q: ?Sized> AsBorrowed<String> for Q
+where
+    String: Borrow<Q>,
+{
+    type Borrowed = Q;
+
+    #[inline]
+    fn as_borrowed(&self) -> &Q {
+        self
+    }
+}
+
+impl<'a, Q: ?Sized> AsBorrowed<Cow<'a, str>> for Q
+where
+    Cow<'a, str>: Borrow<Q>,
+{
+    type Borrowed = Q;
+
+    #[inline]
+    fn as_borrowed(&self) -> &Q {
+        self
+    }
+}
+
 #[cfg(feature = "java_string")]
-impl Compound<java_string::JavaString> {
-    pub fn jget<'a, Q>(&self, k: Q) -> Option<&Value<java_string::JavaString>>
-    where
-        Q: Into<&'a java_string::JavaStr>,
-    {
-        self.get(k.into())
-    }
+impl<Q: ?Sized> AsBorrowed<java_string::JavaString> for Q
+where
+    for<'a> &'a Q: Into<&'a java_string::JavaStr>,
+{
+    type Borrowed = java_string::JavaStr;
 
-    pub fn jcontains_key<'a, Q>(&self, k: Q) -> bool
-    where
-        Q: Into<&'a java_string::JavaStr>,
-    {
-        self.contains_key(k.into())
+    fn as_borrowed(&self) -> &Self::Borrowed {
+        self.into()
     }
+}
 
-    pub fn jget_mut<'a, Q>(&mut self, k: Q) -> Option<&mut Value<java_string::JavaString>>
-    where
-        Q: Into<&'a java_string::JavaStr>,
-    {
-        self.get_mut(k.into())
-    }
+#[cfg(feature = "java_string")]
+impl<Q: ?Sized> AsBorrowed<Cow<'_, java_string::JavaStr>> for Q
+where
+    for<'a> &'a Q: Into<&'a java_string::JavaStr>,
+{
+    type Borrowed = java_string::JavaStr;
 
-    pub fn jget_key_value<'a, Q>(
-        &self,
-        k: Q,
-    ) -> Option<(&java_string::JavaString, &Value<java_string::JavaString>)>
-    where
-        Q: Into<&'a java_string::JavaStr>,
-    {
-        self.get_key_value(k.into())
-    }
-
-    pub fn jremove<'a, Q>(&mut self, k: Q) -> Option<Value<java_string::JavaString>>
-    where
-        Q: Into<&'a java_string::JavaStr>,
-    {
-        self.remove(k.into())
-    }
-
-    pub fn jremove_entry<'a, Q>(
-        &mut self,
-        k: Q,
-    ) -> Option<(java_string::JavaString, Value<java_string::JavaString>)>
-    where
-        Q: Into<&'a java_string::JavaStr>,
-    {
-        self.remove_entry(k.into())
+    fn as_borrowed(&self) -> &Self::Borrowed {
+        self.into()
     }
 }
 
