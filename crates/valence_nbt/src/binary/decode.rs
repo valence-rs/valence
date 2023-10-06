@@ -1,7 +1,8 @@
-use std::mem;
+use std::borrow::Cow;
+use std::hash::Hash;
+use std::{fmt, mem};
 
 use byteorder::{BigEndian, ReadBytesExt};
-use cesu8::Cesu8DecodingError;
 
 use super::{Error, Result};
 use crate::tag::Tag;
@@ -11,7 +12,10 @@ use crate::{Compound, List, Value};
 ///
 /// The string returned in the tuple is the name of the root compound
 /// (typically the empty string).
-pub fn from_binary(slice: &mut &[u8]) -> Result<(Compound, String)> {
+pub fn from_binary<'de, S>(slice: &mut &'de [u8]) -> Result<(Compound<S>, S)>
+where
+    S: FromModifiedUtf8<'de> + Hash + Eq + Ord,
+{
     let mut state = DecodeState { slice, depth: 0 };
 
     let root_tag = state.read_tag()?;
@@ -23,7 +27,7 @@ pub fn from_binary(slice: &mut &[u8]) -> Result<(Compound, String)> {
         )));
     }
 
-    let root_name = state.read_string()?;
+    let root_name = state.read_string::<S>()?;
     let root = state.read_compound()?;
 
     debug_assert_eq!(state.depth, 0);
@@ -34,13 +38,13 @@ pub fn from_binary(slice: &mut &[u8]) -> Result<(Compound, String)> {
 /// Maximum recursion depth to prevent overflowing the call stack.
 const MAX_DEPTH: usize = 512;
 
-struct DecodeState<'a, 'b> {
-    slice: &'a mut &'b [u8],
+struct DecodeState<'a, 'de> {
+    slice: &'a mut &'de [u8],
     /// Current recursion depth.
     depth: usize,
 }
 
-impl DecodeState<'_, '_> {
+impl<'de> DecodeState<'_, 'de> {
     #[inline]
     fn check_depth<T>(&mut self, f: impl FnOnce(&mut Self) -> Result<T>) -> Result<T> {
         if self.depth >= MAX_DEPTH {
@@ -72,7 +76,10 @@ impl DecodeState<'_, '_> {
         }
     }
 
-    fn read_value(&mut self, tag: Tag) -> Result<Value> {
+    fn read_value<S>(&mut self, tag: Tag) -> Result<Value<S>>
+    where
+        S: FromModifiedUtf8<'de> + Hash + Eq + Ord,
+    {
         match tag {
             Tag::End => unreachable!("illegal TAG_End argument"),
             Tag::Byte => Ok(self.read_byte()?.into()),
@@ -82,9 +89,9 @@ impl DecodeState<'_, '_> {
             Tag::Float => Ok(self.read_float()?.into()),
             Tag::Double => Ok(self.read_double()?.into()),
             Tag::ByteArray => Ok(self.read_byte_array()?.into()),
-            Tag::String => Ok(self.read_string()?.into()),
-            Tag::List => self.check_depth(|st| Ok(st.read_any_list()?.into())),
-            Tag::Compound => self.check_depth(|st| Ok(st.read_compound()?.into())),
+            Tag::String => Ok(Value::String(self.read_string::<S>()?)),
+            Tag::List => self.check_depth(|st| Ok(st.read_any_list::<S>()?.into())),
+            Tag::Compound => self.check_depth(|st| Ok(st.read_compound::<S>()?.into())),
             Tag::IntArray => Ok(self.read_int_array()?.into()),
             Tag::LongArray => Ok(self.read_long_array()?.into()),
         }
@@ -137,7 +144,10 @@ impl DecodeState<'_, '_> {
         Ok(array)
     }
 
-    fn read_string(&mut self) -> Result<String> {
+    fn read_string<S>(&mut self) -> Result<S>
+    where
+        S: FromModifiedUtf8<'de>,
+    {
         let len = self.slice.read_u16::<BigEndian>()?.into();
 
         if len > self.slice.len() {
@@ -148,18 +158,19 @@ impl DecodeState<'_, '_> {
 
         let (left, right) = self.slice.split_at(len);
 
-        match cesu8::from_java_cesu8(left) {
-            Ok(cow) => {
+        match S::decode(left) {
+            Ok(str) => {
                 *self.slice = right;
-                Ok(cow.into())
+                Ok(str)
             }
-            Err(Cesu8DecodingError) => {
-                Err(Error::new_static("could not convert CESU-8 data to UTF-8"))
-            }
+            Err(_) => Err(Error::new_static("could not decode modified UTF-8 data")),
         }
     }
 
-    fn read_any_list(&mut self) -> Result<List> {
+    fn read_any_list<S>(&mut self) -> Result<List<S>>
+    where
+        S: FromModifiedUtf8<'de> + Hash + Eq + Ord,
+    {
         match self.read_tag()? {
             Tag::End => match self.read_int()? {
                 0 => Ok(List::End),
@@ -178,14 +189,17 @@ impl DecodeState<'_, '_> {
             Tag::ByteArray => Ok(self
                 .read_list(Tag::ByteArray, 0, |st| st.read_byte_array())?
                 .into()),
-            Tag::String => Ok(self
-                .read_list(Tag::String, 0, |st| st.read_string())?
-                .into()),
-            Tag::List => self
-                .check_depth(|st| Ok(st.read_list(Tag::List, 0, |st| st.read_any_list())?.into())),
+            Tag::String => Ok(List::String(
+                self.read_list(Tag::String, 0, |st| st.read_string::<S>())?,
+            )),
+            Tag::List => self.check_depth(|st| {
+                Ok(st
+                    .read_list(Tag::List, 0, |st| st.read_any_list::<S>())?
+                    .into())
+            }),
             Tag::Compound => self.check_depth(|st| {
                 Ok(st
-                    .read_list(Tag::Compound, 0, |st| st.read_compound())?
+                    .read_list(Tag::Compound, 0, |st| st.read_compound::<S>())?
                     .into())
             }),
             Tag::IntArray => Ok(self
@@ -237,7 +251,10 @@ impl DecodeState<'_, '_> {
         Ok(list)
     }
 
-    fn read_compound(&mut self) -> Result<Compound> {
+    fn read_compound<S>(&mut self) -> Result<Compound<S>>
+    where
+        S: FromModifiedUtf8<'de> + Hash + Eq + Ord,
+    {
         let mut compound = Compound::new();
 
         loop {
@@ -246,7 +263,7 @@ impl DecodeState<'_, '_> {
                 return Ok(compound);
             }
 
-            compound.insert(self.read_string()?, self.read_value(tag)?);
+            compound.insert(self.read_string::<S>()?, self.read_value::<S>(tag)?);
         }
     }
 
@@ -294,5 +311,52 @@ impl DecodeState<'_, '_> {
         }
 
         Ok(array)
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct FromModifiedUtf8Error;
+
+impl fmt::Display for FromModifiedUtf8Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("could not decode modified UTF-8 data")
+    }
+}
+
+impl std::error::Error for FromModifiedUtf8Error {}
+
+pub trait FromModifiedUtf8<'de>: Sized {
+    fn decode(modified_utf8: &'de [u8]) -> std::result::Result<Self, FromModifiedUtf8Error>;
+}
+
+impl<'de> FromModifiedUtf8<'de> for Cow<'de, str> {
+    fn decode(modified_utf8: &'de [u8]) -> std::result::Result<Self, FromModifiedUtf8Error> {
+        cesu8::from_java_cesu8(modified_utf8).map_err(move |_| FromModifiedUtf8Error)
+    }
+}
+
+impl<'de> FromModifiedUtf8<'de> for String {
+    fn decode(modified_utf8: &'de [u8]) -> std::result::Result<Self, FromModifiedUtf8Error> {
+        match cesu8::from_java_cesu8(modified_utf8) {
+            Ok(str) => Ok(str.into_owned()),
+            Err(_) => Err(FromModifiedUtf8Error),
+        }
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl<'de> FromModifiedUtf8<'de> for Cow<'de, java_string::JavaStr> {
+    fn decode(modified_utf8: &'de [u8]) -> std::result::Result<Self, FromModifiedUtf8Error> {
+        java_string::JavaStr::from_modified_utf8(modified_utf8).map_err(|_| FromModifiedUtf8Error)
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl<'de> FromModifiedUtf8<'de> for java_string::JavaString {
+    fn decode(modified_utf8: &'de [u8]) -> std::result::Result<Self, FromModifiedUtf8Error> {
+        match java_string::JavaStr::from_modified_utf8(modified_utf8) {
+            Ok(str) => Ok(str.into_owned()),
+            Err(_) => Err(FromModifiedUtf8Error),
+        }
     }
 }

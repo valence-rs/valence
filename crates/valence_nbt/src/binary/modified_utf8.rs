@@ -76,10 +76,9 @@ fn encode_surrogate(surrogate: u16) -> [u8; 3] {
     ]
 }
 
-pub(crate) fn encoded_len(text: &str) -> usize {
+pub(crate) fn encoded_len(bytes: &[u8]) -> usize {
     let mut n = 0;
     let mut i = 0;
-    let bytes = text.as_bytes();
 
     while i < bytes.len() {
         match bytes[i] {
@@ -119,7 +118,7 @@ fn equivalence() {
         write_modified_utf8(&mut ours, s).unwrap();
 
         assert_eq!(theirs, ours);
-        assert_eq!(theirs.len(), encoded_len(s));
+        assert_eq!(theirs.len(), encoded_len(s.as_bytes()));
     }
 
     check("Mary had a little lamb\0");

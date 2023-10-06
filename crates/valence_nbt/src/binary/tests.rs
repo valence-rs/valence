@@ -10,7 +10,7 @@ fn round_trip() {
 
     let compound = example_compound();
 
-    to_binary(&compound, &mut buf, ROOT_NAME).unwrap();
+    to_binary(&compound, &mut buf, &ROOT_NAME.to_owned()).unwrap();
 
     println!("{buf:?}");
 
@@ -29,7 +29,7 @@ fn check_min_sizes() {
         let dbg = format!("{min_val:?}");
         let mut buf = vec![];
 
-        to_binary(&compound!("" => min_val), &mut buf, "").unwrap();
+        to_binary(&compound!("" => min_val), &mut buf, &String::new()).unwrap();
 
         assert_eq!(
             expected_size,
@@ -66,7 +66,7 @@ fn deeply_nested_compound_decode() {
     buf.push(Tag::End as u8); // End root compound
 
     // Should not overflow the stack
-    let _ = from_binary(&mut buf.as_slice());
+    let _ = from_binary::<String>(&mut buf.as_slice());
 }
 
 #[test]
@@ -85,7 +85,7 @@ fn deeply_nested_list_decode() {
     buf.push(Tag::End as u8); // End root compound
 
     // Should not overflow the stack
-    let _ = from_binary(&mut buf.as_slice());
+    let _ = from_binary::<String>(&mut buf.as_slice());
 }
 
 #[test]
@@ -93,9 +93,9 @@ fn correct_length() {
     let c = example_compound();
 
     let mut buf = vec![];
-    to_binary(&c, &mut buf, "abc").unwrap();
+    to_binary(&c, &mut buf, &"abc".to_owned()).unwrap();
 
-    assert_eq!(written_size(&c, "abc"), buf.len());
+    assert_eq!(written_size(&c, &"abc".to_owned()), buf.len());
 }
 
 fn example_compound() -> Compound {
