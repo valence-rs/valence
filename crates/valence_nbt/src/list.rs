@@ -553,6 +553,13 @@ impl From<Vec<String>> for List<String> {
     }
 }
 
+#[cfg(feature = "java_string")]
+impl From<Vec<java_string::JavaString>> for List<java_string::JavaString> {
+    fn from(v: Vec<java_string::JavaString>) -> Self {
+        List::String(v)
+    }
+}
+
 impl<S> From<Vec<List<S>>> for List<S> {
     fn from(v: Vec<List<S>>) -> Self {
         List::List(v)

@@ -274,6 +274,57 @@ where
     }
 }
 
+#[cfg(feature = "java_string")]
+impl Compound<java_string::JavaString> {
+    pub fn jget<'a, Q>(&self, k: Q) -> Option<&Value<java_string::JavaString>>
+    where
+        Q: Into<&'a java_string::JavaStr>,
+    {
+        self.get(k.into())
+    }
+
+    pub fn jcontains_key<'a, Q>(&self, k: Q) -> bool
+    where
+        Q: Into<&'a java_string::JavaStr>,
+    {
+        self.contains_key(k.into())
+    }
+
+    pub fn jget_mut<'a, Q>(&mut self, k: Q) -> Option<&mut Value<java_string::JavaString>>
+    where
+        Q: Into<&'a java_string::JavaStr>,
+    {
+        self.get_mut(k.into())
+    }
+
+    pub fn jget_key_value<'a, Q>(
+        &self,
+        k: Q,
+    ) -> Option<(&java_string::JavaString, &Value<java_string::JavaString>)>
+    where
+        Q: Into<&'a java_string::JavaStr>,
+    {
+        self.get_key_value(k.into())
+    }
+
+    pub fn jremove<'a, Q>(&mut self, k: Q) -> Option<Value<java_string::JavaString>>
+    where
+        Q: Into<&'a java_string::JavaStr>,
+    {
+        self.remove(k.into())
+    }
+
+    pub fn jremove_entry<'a, Q>(
+        &mut self,
+        k: Q,
+    ) -> Option<(java_string::JavaString, Value<java_string::JavaString>)>
+    where
+        Q: Into<&'a java_string::JavaStr>,
+    {
+        self.remove_entry(k.into())
+    }
+}
+
 impl<S> Extend<(S, Value<S>)> for Compound<S>
 where
     S: Eq + Ord + Hash,

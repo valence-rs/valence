@@ -349,6 +349,62 @@ impl<'a> From<Cow<'a, str>> for Value<String> {
     }
 }
 
+#[cfg(feature = "java_string")]
+impl From<java_string::JavaString> for Value<java_string::JavaString> {
+    fn from(value: java_string::JavaString) -> Self {
+        Self::String(value)
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl From<&java_string::JavaString> for Value<java_string::JavaString> {
+    fn from(value: &java_string::JavaString) -> Self {
+        Self::String(value.clone())
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl<'a> From<&'a java_string::JavaStr> for Value<java_string::JavaString> {
+    fn from(value: &'a java_string::JavaStr) -> Self {
+        Self::String(value.to_owned())
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl<'a> From<Cow<'a, java_string::JavaStr>> for Value<java_string::JavaString> {
+    fn from(value: Cow<'a, java_string::JavaStr>) -> Self {
+        Self::String(value.into_owned())
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl From<String> for Value<java_string::JavaString> {
+    fn from(value: String) -> Self {
+        Self::String(java_string::JavaString::from(value))
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl From<&String> for Value<java_string::JavaString> {
+    fn from(value: &String) -> Self {
+        Self::String(java_string::JavaString::from(value))
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl<'a> From<&'a str> for Value<java_string::JavaString> {
+    fn from(value: &'a str) -> Self {
+        Self::String(java_string::JavaString::from(value))
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl<'a> From<Cow<'a, str>> for Value<java_string::JavaString> {
+    fn from(value: Cow<'a, str>) -> Self {
+        Self::String(java_string::JavaString::from(value))
+    }
+}
+
 impl<S> From<Vec<i32>> for Value<S> {
     fn from(v: Vec<i32>) -> Self {
         Self::IntArray(v)

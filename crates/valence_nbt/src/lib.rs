@@ -67,16 +67,44 @@ pub mod value;
 ///
 /// println!("{c:?}");
 /// ```
+///
+/// It is also possible to specify a custom string type like this:
+/// ```
+/// # use std::borrow::Cow;
+///
+/// use valence_nbt::compound;
+///
+/// let c = compound! { <Cow<str>>
+///     "foo" => 123_i8,
+/// };
+///
+/// println!("{c:?}");
+/// ```
 #[macro_export]
 macro_rules! compound {
-    ($($key:expr => $value:expr),* $(,)?) => {
-        <$crate::Compound as ::std::iter::FromIterator<(::std::string::String, $crate::Value)>>::from_iter([
+    (<$string_type:ty> $($key:expr => $value:expr),* $(,)?) => {
+        <$crate::Compound<$string_type> as ::std::iter::FromIterator<($string_type, $crate::Value<$string_type>)>>::from_iter([
             $(
                 (
-                    ::std::convert::Into::<::std::string::String>::into($key),
-                    ::std::convert::Into::<$crate::Value>::into($value)
+                    ::std::convert::Into::<$string_type>::into($key),
+                    ::std::convert::Into::<$crate::Value<$string_type>>::into($value)
                 ),
             )*
         ])
+    };
+
+    ($($key:expr => $value:expr),* $(,)?) => {
+        compound!(<::std::string::String> $($key => $value),*)
+    };
+}
+
+/// A convenience macro for constructing [`Compound`]`<`[`JavaString`]`>`s
+///
+/// [`JavaString`]: java_string::JavaString
+#[cfg(feature = "java_string")]
+#[macro_export]
+macro_rules! jcompound {
+    ($($key:expr => $value:expr),*, $(,)?) => {
+        compound!(<::java_string::JavaString> $($key => $value),*)
     }
 }

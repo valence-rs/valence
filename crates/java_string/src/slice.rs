@@ -1703,6 +1703,20 @@ impl AsRef<[u8]> for JavaStr {
     }
 }
 
+impl AsRef<JavaStr> for str {
+    #[inline]
+    fn as_ref(&self) -> &JavaStr {
+        JavaStr::from_str(self)
+    }
+}
+
+impl AsRef<JavaStr> for String {
+    #[inline]
+    fn as_ref(&self) -> &JavaStr {
+        JavaStr::from_str(self)
+    }
+}
+
 impl Clone for Box<JavaStr> {
     #[inline]
     fn clone(&self) -> Self {
@@ -1818,6 +1832,13 @@ impl From<JavaString> for Box<JavaStr> {
 impl<'a> From<&'a str> for &'a JavaStr {
     #[inline]
     fn from(value: &'a str) -> Self {
+        JavaStr::from_str(value)
+    }
+}
+
+impl<'a> From<&'a String> for &'a JavaStr {
+    #[inline]
+    fn from(value: &'a String) -> Self {
         JavaStr::from_str(value)
     }
 }
