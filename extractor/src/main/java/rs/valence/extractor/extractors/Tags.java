@@ -42,7 +42,7 @@ public class Tags implements Main.Extractor {
                         .collect(Collectors.toMap(Pair::getFirst, Pair::getSecond, (l, r) -> r,
                                 () -> new TreeMap<>(new RegistryKeyComparator())));
 
-        for (var registry : new TreeMap<>(registryTags).entrySet()) {
+        for (var registry : registryTags.entrySet()) {
             var registryIdent = registry.getKey().getValue().toString();
             var tagGroupTagsJson = new JsonObject();
 
