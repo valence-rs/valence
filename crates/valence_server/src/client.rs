@@ -385,7 +385,9 @@ impl Command for DisconnectClient {
                     reason: self.reason.into(),
                 });
 
-                entity.remove::<Client>();
+                // Despawned will be removed at the end of the tick, this way, the packets have
+                // time to be sent.
+                entity.insert(Despawned);
             }
         }
     }
