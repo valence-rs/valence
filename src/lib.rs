@@ -51,6 +51,8 @@ pub use valence_network as network;
 #[cfg(feature = "player_list")]
 pub use valence_player_list as player_list;
 use valence_registry::RegistryPlugin;
+#[cfg(feature = "schem")]
+pub use valence_schem as schem;
 #[cfg(feature = "scoreboard")]
 pub use valence_scoreboard as scoreboard;
 use valence_server::abilities::AbilitiesPlugin;
