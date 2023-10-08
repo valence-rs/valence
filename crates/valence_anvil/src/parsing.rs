@@ -2,7 +2,6 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use num_integer::div_ceil;
 use thiserror::Error;
 use valence_server::block::{PropName, PropValue};
 use valence_server::layer::chunk::{Chunk, UnloadedChunk};
@@ -214,7 +213,7 @@ fn parse_chunk(
 
             let bits_per_idx = bit_width(converted_block_palette.len() - 1).max(4);
             let idxs_per_long = 64 / bits_per_idx;
-            let long_count = div_ceil(BLOCKS_PER_SECTION, idxs_per_long);
+            let long_count = BLOCKS_PER_SECTION.div_ceil(idxs_per_long);
             let mask = 2_u64.pow(bits_per_idx as u32) - 1;
 
             if long_count != data.len() {
@@ -281,7 +280,7 @@ fn parse_chunk(
 
             let bits_per_idx = bit_width(converted_biome_palette.len() - 1);
             let idxs_per_long = 64 / bits_per_idx;
-            let long_count = div_ceil(BIOMES_PER_SECTION, idxs_per_long);
+            let long_count = BIOMES_PER_SECTION.div_ceil(idxs_per_long);
             let mask = 2_u64.pow(bits_per_idx as u32) - 1;
 
             if long_count != data.len() {
