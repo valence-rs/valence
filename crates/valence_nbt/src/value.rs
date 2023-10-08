@@ -183,7 +183,7 @@ macro_rules! impl_value {
             }
         }
 
-        impl <$($lifetime,)? S> PartialEq<Self> for $name<$($lifetime,)? S> where S: Eq + Ord + Hash {
+        impl <$($lifetime,)? S> PartialEq<Self> for $name<$($lifetime,)? S> where S: Ord + Hash {
             fn eq(&self, other: &Self) -> bool {
                 match self {
                     Self::Byte(v) => matches!(other, Self::Byte(other_v) if v == other_v),

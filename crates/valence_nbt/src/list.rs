@@ -38,7 +38,7 @@ pub enum List<S = String> {
 
 impl<S> PartialEq for List<S>
 where
-    S: Eq + Ord + Hash,
+    S: Ord + Hash,
 {
     fn eq(&self, other: &Self) -> bool {
         match self {

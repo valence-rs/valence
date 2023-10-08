@@ -10,7 +10,7 @@ use crate::{Compound, List, Value};
 
 impl<Str> Serialize for Value<Str>
 where
-    Str: Serialize + Eq + Ord + Hash,
+    Str: Serialize + Ord + Hash,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -35,7 +35,7 @@ where
 
 impl<Str> Serialize for List<Str>
 where
-    Str: Serialize + Eq + Ord + Hash,
+    Str: Serialize + Ord + Hash,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

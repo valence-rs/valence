@@ -14,7 +14,7 @@ use crate::{Compound, List, Value};
 /// (typically the empty string).
 pub fn from_binary<'de, S>(slice: &mut &'de [u8]) -> Result<(Compound<S>, S)>
 where
-    S: FromModifiedUtf8<'de> + Hash + Eq + Ord,
+    S: FromModifiedUtf8<'de> + Hash + Ord,
 {
     let mut state = DecodeState { slice, depth: 0 };
 
@@ -78,7 +78,7 @@ impl<'de> DecodeState<'_, 'de> {
 
     fn read_value<S>(&mut self, tag: Tag) -> Result<Value<S>>
     where
-        S: FromModifiedUtf8<'de> + Hash + Eq + Ord,
+        S: FromModifiedUtf8<'de> + Hash + Ord,
     {
         match tag {
             Tag::End => unreachable!("illegal TAG_End argument"),
@@ -158,7 +158,7 @@ impl<'de> DecodeState<'_, 'de> {
 
         let (left, right) = self.slice.split_at(len);
 
-        match S::decode(left) {
+        match S::from_modified_utf8(left) {
             Ok(str) => {
                 *self.slice = right;
                 Ok(str)
@@ -169,7 +169,7 @@ impl<'de> DecodeState<'_, 'de> {
 
     fn read_any_list<S>(&mut self) -> Result<List<S>>
     where
-        S: FromModifiedUtf8<'de> + Hash + Eq + Ord,
+        S: FromModifiedUtf8<'de> + Hash + Ord,
     {
         match self.read_tag()? {
             Tag::End => match self.read_int()? {
@@ -253,7 +253,7 @@ impl<'de> DecodeState<'_, 'de> {
 
     fn read_compound<S>(&mut self) -> Result<Compound<S>>
     where
-        S: FromModifiedUtf8<'de> + Hash + Eq + Ord,
+        S: FromModifiedUtf8<'de> + Hash + Ord,
     {
         let mut compound = Compound::new();
 
@@ -325,18 +325,25 @@ impl fmt::Display for FromModifiedUtf8Error {
 
 impl std::error::Error for FromModifiedUtf8Error {}
 
+/// A string type which can be decoded from Java's [modified UTF-8](https://docs.oracle.com/javase/8/docs/api/java/io/DataInput.html#modified-utf-8).
 pub trait FromModifiedUtf8<'de>: Sized {
-    fn decode(modified_utf8: &'de [u8]) -> std::result::Result<Self, FromModifiedUtf8Error>;
+    fn from_modified_utf8(
+        modified_utf8: &'de [u8],
+    ) -> std::result::Result<Self, FromModifiedUtf8Error>;
 }
 
 impl<'de> FromModifiedUtf8<'de> for Cow<'de, str> {
-    fn decode(modified_utf8: &'de [u8]) -> std::result::Result<Self, FromModifiedUtf8Error> {
+    fn from_modified_utf8(
+        modified_utf8: &'de [u8],
+    ) -> std::result::Result<Self, FromModifiedUtf8Error> {
         cesu8::from_java_cesu8(modified_utf8).map_err(move |_| FromModifiedUtf8Error)
     }
 }
 
 impl<'de> FromModifiedUtf8<'de> for String {
-    fn decode(modified_utf8: &'de [u8]) -> std::result::Result<Self, FromModifiedUtf8Error> {
+    fn from_modified_utf8(
+        modified_utf8: &'de [u8],
+    ) -> std::result::Result<Self, FromModifiedUtf8Error> {
         match cesu8::from_java_cesu8(modified_utf8) {
             Ok(str) => Ok(str.into_owned()),
             Err(_) => Err(FromModifiedUtf8Error),
@@ -346,14 +353,18 @@ impl<'de> FromModifiedUtf8<'de> for String {
 
 #[cfg(feature = "java_string")]
 impl<'de> FromModifiedUtf8<'de> for Cow<'de, java_string::JavaStr> {
-    fn decode(modified_utf8: &'de [u8]) -> std::result::Result<Self, FromModifiedUtf8Error> {
+    fn from_modified_utf8(
+        modified_utf8: &'de [u8],
+    ) -> std::result::Result<Self, FromModifiedUtf8Error> {
         java_string::JavaStr::from_modified_utf8(modified_utf8).map_err(|_| FromModifiedUtf8Error)
     }
 }
 
 #[cfg(feature = "java_string")]
 impl<'de> FromModifiedUtf8<'de> for java_string::JavaString {
-    fn decode(modified_utf8: &'de [u8]) -> std::result::Result<Self, FromModifiedUtf8Error> {
+    fn from_modified_utf8(
+        modified_utf8: &'de [u8],
+    ) -> std::result::Result<Self, FromModifiedUtf8Error> {
         match java_string::JavaStr::from_modified_utf8(modified_utf8) {
             Ok(str) => Ok(str.into_owned()),
             Err(_) => Err(FromModifiedUtf8Error),

@@ -177,7 +177,7 @@ impl RegionFolder {
         pos_z: i32,
     ) -> Result<Option<RawChunk<S>>, RegionError>
     where
-        S: for<'a> FromModifiedUtf8<'a> + Hash + Eq + Ord,
+        S: for<'a> FromModifiedUtf8<'a> + Hash + Ord,
     {
         let region_x = pos_x.div_euclid(32);
         let region_z = pos_z.div_euclid(32);
@@ -210,14 +210,14 @@ impl RegionFolder {
 
     /// Sets the raw chunk at the given position, overwriting the old chunk if
     /// it exists.
-    pub fn set_chunk<S: ToModifiedUtf8>(
+    pub fn set_chunk<S>(
         &mut self,
         pos_x: i32,
         pos_z: i32,
         chunk: &Compound<S>,
     ) -> Result<(), RegionError>
     where
-        S: Hash + Eq + Ord + Default,
+        S: ToModifiedUtf8 + Hash + Ord,
     {
         let region_x = pos_x.div_euclid(32);
         let region_z = pos_z.div_euclid(32);
@@ -435,7 +435,7 @@ impl Region {
         region_root: &Path,
     ) -> Result<Option<RawChunk<S>>, RegionError>
     where
-        S: for<'a> FromModifiedUtf8<'a> + Hash + Eq + Ord,
+        S: for<'a> FromModifiedUtf8<'a> + Hash + Ord,
     {
         let chunk_idx = Self::chunk_idx(pos_x, pos_z);
 
@@ -551,7 +551,7 @@ impl Region {
         Ok(true)
     }
 
-    fn set_chunk<S: ToModifiedUtf8>(
+    fn set_chunk<S>(
         &mut self,
         pos_x: i32,
         pos_z: i32,
@@ -561,7 +561,7 @@ impl Region {
         region_root: &Path,
     ) -> Result<(), RegionError>
     where
-        S: Hash + Eq + Ord + Default,
+        S: ToModifiedUtf8 + Hash + Ord,
     {
         // erase the chunk from allocated chunks (not from disk)
         self.delete_chunk(pos_x, pos_z, false, region_root)?;
@@ -573,16 +573,14 @@ impl Region {
             Compression::Gzip => valence_nbt::to_binary(
                 chunk,
                 GzEncoder::new(&mut compress_cursor, flate2::Compression::default()),
-                &S::default(),
+                "",
             )?,
             Compression::Zlib => valence_nbt::to_binary(
                 chunk,
                 ZlibEncoder::new(&mut compress_cursor, flate2::Compression::default()),
-                &S::default(),
+                "",
             )?,
-            Compression::None => {
-                valence_nbt::to_binary(chunk, &mut compress_cursor, &S::default())?
-            }
+            Compression::None => valence_nbt::to_binary(chunk, &mut compress_cursor, "")?,
         }
         let compress_buf = compress_cursor.into_inner();
 

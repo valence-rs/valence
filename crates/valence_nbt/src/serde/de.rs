@@ -15,7 +15,7 @@ use crate::{Compound, List, Value};
 
 impl<'de, S> Deserialize<'de> for Value<S>
 where
-    S: Deserialize<'de> + Eq + Ord + Hash,
+    S: Deserialize<'de> + Ord + Hash,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -25,7 +25,7 @@ where
 
         impl<'de, S> Visitor<'de> for ValueVisitor<S>
         where
-            S: Deserialize<'de> + Eq + Ord + Hash,
+            S: Deserialize<'de> + Ord + Hash,
         {
             type Value = Value<S>;
 
@@ -159,7 +159,7 @@ where
 
 impl<'de, S> Deserialize<'de> for List<S>
 where
-    S: Deserialize<'de> + Eq + Ord + Hash,
+    S: Deserialize<'de> + Ord + Hash,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -169,7 +169,7 @@ where
 
         impl<'de, S> Visitor<'de> for ListVisitor<S>
         where
-            S: Deserialize<'de> + Eq + Ord + Hash,
+            S: Deserialize<'de> + Ord + Hash,
         {
             type Value = List<S>;
 
@@ -229,7 +229,7 @@ fn deserialize_seq_remainder<'de, T, A, S, C>(
 where
     T: Deserialize<'de>,
     A: de::SeqAccess<'de>,
-    C: Fn(Vec<T>) -> List<S>,
+    C: FnOnce(Vec<T>) -> List<S>,
 {
     let mut vec = match seq.size_hint() {
         Some(n) => Vec::with_capacity(n + 1),

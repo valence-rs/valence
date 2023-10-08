@@ -26,7 +26,7 @@ impl<S: fmt::Debug> fmt::Debug for Compound<S> {
 
 impl<S> PartialEq for Compound<S>
 where
-    S: Eq + Ord + Hash,
+    S: Ord + Hash,
 {
     fn eq(&self, other: &Self) -> bool {
         self.map == other.map
@@ -36,7 +36,7 @@ where
 #[cfg(feature = "serde")]
 impl<Str> serde::Serialize for Compound<Str>
 where
-    Str: Eq + Ord + Hash + serde::Serialize,
+    Str: Ord + Hash + serde::Serialize,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -49,7 +49,7 @@ where
 #[cfg(feature = "serde")]
 impl<'de, S> serde::Deserialize<'de> for Compound<S>
 where
-    S: Eq + Ord + Hash + serde::Deserialize<'de>,
+    S: Ord + Hash + serde::Deserialize<'de>,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -91,12 +91,12 @@ impl<S> Compound<S> {
 
 impl<S> Compound<S>
 where
-    S: Eq + Ord + Hash,
+    S: Ord + Hash,
 {
     pub fn get<Q>(&self, k: &Q) -> Option<&Value<S>>
     where
         Q: ?Sized + AsBorrowed<S>,
-        <Q as AsBorrowed<S>>::Borrowed: Hash + Eq + Ord,
+        <Q as AsBorrowed<S>>::Borrowed: Hash + Ord,
         S: Borrow<<Q as AsBorrowed<S>>::Borrowed>,
     {
         self.map.get(k.as_borrowed())
@@ -105,7 +105,7 @@ where
     pub fn contains_key<Q>(&self, k: &Q) -> bool
     where
         Q: ?Sized + AsBorrowed<S>,
-        <Q as AsBorrowed<S>>::Borrowed: Hash + Eq + Ord,
+        <Q as AsBorrowed<S>>::Borrowed: Hash + Ord,
         S: Borrow<<Q as AsBorrowed<S>>::Borrowed>,
     {
         self.map.contains_key(k.as_borrowed())
@@ -114,7 +114,7 @@ where
     pub fn get_mut<Q>(&mut self, k: &Q) -> Option<&mut Value<S>>
     where
         Q: ?Sized + AsBorrowed<S>,
-        <Q as AsBorrowed<S>>::Borrowed: Hash + Eq + Ord,
+        <Q as AsBorrowed<S>>::Borrowed: Hash + Ord,
         S: Borrow<<Q as AsBorrowed<S>>::Borrowed>,
     {
         self.map.get_mut(k.as_borrowed())
@@ -123,7 +123,7 @@ where
     pub fn get_key_value<Q>(&self, k: &Q) -> Option<(&S, &Value<S>)>
     where
         Q: ?Sized + AsBorrowed<S>,
-        <Q as AsBorrowed<S>>::Borrowed: Hash + Eq + Ord,
+        <Q as AsBorrowed<S>>::Borrowed: Hash + Ord,
         S: Borrow<<Q as AsBorrowed<S>>::Borrowed>,
     {
         self.map.get_key_value(k.as_borrowed())
@@ -140,7 +140,7 @@ where
     pub fn remove<Q>(&mut self, k: &Q) -> Option<Value<S>>
     where
         Q: ?Sized + AsBorrowed<S>,
-        <Q as AsBorrowed<S>>::Borrowed: Hash + Eq + Ord,
+        <Q as AsBorrowed<S>>::Borrowed: Hash + Ord,
         S: Borrow<<Q as AsBorrowed<S>>::Borrowed>,
     {
         self.map.remove(k.as_borrowed())
@@ -149,7 +149,7 @@ where
     pub fn remove_entry<Q>(&mut self, k: &Q) -> Option<(S, Value<S>)>
     where
         S: Borrow<Q>,
-        Q: ?Sized + Eq + Ord + Hash,
+        Q: ?Sized + Ord + Hash,
     {
         self.map.remove_entry(k)
     }
@@ -337,7 +337,7 @@ where
 
 impl<S> Extend<(S, Value<S>)> for Compound<S>
 where
-    S: Eq + Ord + Hash,
+    S: Ord + Hash,
 {
     fn extend<T>(&mut self, iter: T)
     where
@@ -349,7 +349,7 @@ where
 
 impl<S> FromIterator<(S, Value<S>)> for Compound<S>
 where
-    S: Eq + Ord + Hash,
+    S: Ord + Hash,
 {
     fn from_iter<T>(iter: T) -> Self
     where
@@ -368,7 +368,7 @@ pub enum Entry<'a, S = String> {
 
 impl<'a, S> Entry<'a, S>
 where
-    S: Eq + Hash + Ord,
+    S: Hash + Ord,
 {
     pub fn key(&self) -> &S {
         match self {
@@ -418,7 +418,7 @@ pub struct VacantEntry<'a, S = String> {
 
 impl<'a, S> VacantEntry<'a, S>
 where
-    S: Eq + Ord + Hash,
+    S: Ord + Hash,
 {
     pub fn key(&self) -> &S {
         self.ve.key()
@@ -438,7 +438,7 @@ pub struct OccupiedEntry<'a, S = String> {
 
 impl<'a, S> OccupiedEntry<'a, S>
 where
-    S: Eq + Hash + Ord,
+    S: Hash + Ord,
 {
     pub fn key(&self) -> &S {
         self.oe.key()
@@ -467,8 +467,8 @@ where
 
 impl<S, Q> Index<&'_ Q> for Compound<S>
 where
-    S: Borrow<Q> + Eq + Ord + Hash,
-    Q: ?Sized + Eq + Ord + Hash,
+    S: Borrow<Q> + Ord + Hash,
+    Q: ?Sized + Ord + Hash,
 {
     type Output = Value<S>;
 
@@ -479,8 +479,8 @@ where
 
 impl<S, Q> IndexMut<&'_ Q> for Compound<S>
 where
-    S: Borrow<Q> + Eq + Hash + Ord,
-    Q: ?Sized + Eq + Ord + Hash,
+    S: Borrow<Q> + Hash + Ord,
+    Q: ?Sized + Ord + Hash,
 {
     fn index_mut(&mut self, index: &Q) -> &mut Self::Output {
         self.map.get_mut(index).expect("no entry found for key")
