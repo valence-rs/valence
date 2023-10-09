@@ -171,7 +171,7 @@ url = { version = "2.2.2", features = ["serde"] }
 uuid = "1.3.1"
 valence = { path = ".", version = "0.2.0-alpha.1" }
 valence_advancement = { path = "crates/valence_advancement", version = "0.2.0-alpha.1" }
-valence_anvil = { path = "crates/valence_anvil", version = "0.2.0-alpha.1" }
+valence_anvil = { path = "crates/valence_anvil", version = "0.1.0" }
 valence_boss_bar = { path = "crates/valence_boss_bar", version = "0.2.0-alpha.1" }
 valence_build_utils = { path = "crates/valence_build_utils", version = "0.2.0-alpha.1" }
 valence_entity = { path = "crates/valence_entity", version = "0.2.0-alpha.1" }
