@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.registry.Registries;
 import rs.valence.extractor.Main;
+import rs.valence.extractor.ValenceUtils;
 
 public class Effects implements Main.Extractor {
     public Effects() {
@@ -13,24 +14,6 @@ public class Effects implements Main.Extractor {
     @Override
     public String fileName() {
         return "effects.json";
-    }
-
-    public static String toPascalCase(String str) {
-        StringBuilder result = new StringBuilder();
-        boolean capitalizeNext = true;
-
-        for (char c : str.toCharArray()) {
-            if (Character.isWhitespace(c) || c == '_') {
-                capitalizeNext = true;
-            } else if (capitalizeNext) {
-                result.append(Character.toUpperCase(c));
-                capitalizeNext = false;
-            } else {
-                result.append(Character.toLowerCase(c));
-            }
-        }
-
-        return result.toString();
     }
 
     @Override
@@ -45,8 +28,8 @@ public class Effects implements Main.Extractor {
             effectJson.addProperty("translation_key", effect.getTranslationKey());
             effectJson.addProperty("color", effect.getColor());
             effectJson.addProperty("instant", effect.isInstant());
-            effectJson.addProperty("category", toPascalCase(effect.getCategory().name()));
-            
+            effectJson.addProperty("category", ValenceUtils.toPascalCase(effect.getCategory().name()));
+
             effectsJson.add(effectJson);
         }
 
