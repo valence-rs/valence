@@ -5,18 +5,18 @@ use serde::Deserialize;
 use valence_build_utils::{ident, rerun_if_changed};
 
 #[derive(Deserialize, Debug)]
-pub enum EffectCategory {
+pub enum StatusEffectCategory {
     Beneficial,
     Harmful,
     Neutral,
 }
 
 #[derive(Deserialize, Debug)]
-pub struct Effect {
+pub struct StatusEffect {
     id: u16,
     name: String,
     translation_key: String,
-    category: EffectCategory,
+    category: StatusEffectCategory,
     color: u32,
     instant: bool,
 }
@@ -24,7 +24,7 @@ pub struct Effect {
 pub fn build() -> anyhow::Result<TokenStream> {
     rerun_if_changed(["extracted/effects.json"]);
 
-    let effects = serde_json::from_str::<Vec<Effect>>(include_str!("../extracted/effects.json"))?;
+    let effects = serde_json::from_str::<Vec<StatusEffect>>(include_str!("../extracted/effects.json"))?;
 
     let effect_count = effects.len();
 
@@ -92,9 +92,9 @@ pub fn build() -> anyhow::Result<TokenStream> {
         .iter()
         .map(|effect| {
             let category = match &effect.category {
-                EffectCategory::Beneficial => quote! { EffectCategory::Beneficial },
-                EffectCategory::Harmful => quote! { EffectCategory::Harmful },
-                EffectCategory::Neutral => quote! { EffectCategory::Neutral },
+                StatusEffectCategory::Beneficial => quote! { StatusEffectCategory::Beneficial },
+                StatusEffectCategory::Harmful => quote! { StatusEffectCategory::Harmful },
+                StatusEffectCategory::Neutral => quote! { StatusEffectCategory::Neutral },
             };
 
             let name = ident(effect.name.to_pascal_case());
@@ -134,21 +134,21 @@ pub fn build() -> anyhow::Result<TokenStream> {
     Ok(quote! {
         use valence_ident::{Ident, ident};
 
-        /// Represents an effect category
+        /// Represents a status effect category
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-        pub enum EffectCategory {
+        pub enum StatusEffectCategory {
             Beneficial,
             Harmful,
             Neutral,
         }
 
-        /// Represents an effect from the game
+        /// Represents a status effect from the game
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-        pub enum Effect {
+        pub enum StatusEffect {
             #(#effect_variants,)*
         }
 
-        impl Effect {
+        impl StatusEffect {
             /// Constructs a effect from a raw item ID.
             ///
             /// If the given ID is invalid, `None` is returned.
@@ -184,6 +184,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             }
 
             /// Gets the name of this effect.
+            /// Same as [`Effect::to_ident`], but doesn't take ownership.
             pub const fn name(&self) -> Ident<&'static str> {
                 match self {
                     #effect_to_ident_arms
@@ -198,7 +199,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             }
 
             /// Gets the category of this effect.
-            pub const fn category(&self) -> EffectCategory {
+            pub const fn category(&self) -> StatusEffectCategory {
                 match self {
                     #effect_to_category_arms
                 }

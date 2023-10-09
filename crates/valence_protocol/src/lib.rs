@@ -70,7 +70,7 @@ pub use decode::PacketDecoder;
 use derive_more::{From, Into};
 pub use difficulty::Difficulty;
 pub use direction::Direction;
-pub use effect::{Effect, EffectCategory};
+pub use effect::{StatusEffect, StatusEffectCategory};
 pub use encode::{PacketEncoder, WritePacket};
 pub use game_mode::GameMode;
 pub use global_pos::GlobalPos;
