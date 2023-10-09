@@ -39,7 +39,7 @@ impl JavaString {
     }
 
     /// Converts `vec` to a `JavaString` if it is fully-valid UTF-8, i.e. UTF-8
-    /// without surrogate code points. See [String::from_utf8].
+    /// without surrogate code points. See [`String::from_utf8`].
     #[inline]
     pub fn from_full_utf8(vec: Vec<u8>) -> Result<JavaString, FromUtf8Error> {
         match std::str::from_utf8(&vec) {
@@ -152,14 +152,14 @@ impl JavaString {
         JavaString { vec: bytes }
     }
 
-    /// See [String::into_bytes].
+    /// See [`String::into_bytes`].
     #[inline]
     #[must_use]
     pub fn into_bytes(self) -> Vec<u8> {
         self.vec
     }
 
-    /// See [String::as_str].
+    /// See [`String::as_str`].
     #[inline]
     #[must_use]
     pub fn as_java_str(&self) -> &JavaStr {
@@ -169,7 +169,7 @@ impl JavaString {
         }
     }
 
-    /// See [String::as_mut_str].
+    /// See [`String::as_mut_str`].
     #[inline]
     #[must_use]
     pub fn as_mut_java_str(&mut self) -> &mut JavaStr {
@@ -216,62 +216,62 @@ impl JavaString {
         String::from_utf8_unchecked(self.vec)
     }
 
-    /// See [String::push_str].
+    /// See [`String::push_str`].
     #[inline]
     pub fn push_java_str(&mut self, string: &JavaStr) {
         self.vec.extend_from_slice(string.as_bytes())
     }
 
-    /// See [String::push_str].
+    /// See [`String::push_str`].
     #[inline]
     pub fn push_str(&mut self, string: &str) {
         self.vec.extend_from_slice(string.as_bytes())
     }
 
-    /// See [String::capacity].
+    /// See [`String::capacity`].
     #[inline]
     #[must_use]
     pub fn capacity(&self) -> usize {
         self.vec.capacity()
     }
 
-    /// See [String::reserve].
+    /// See [`String::reserve`].
     #[inline]
     pub fn reserve(&mut self, additional: usize) {
         self.vec.reserve(additional)
     }
 
-    /// See [String::reserve_exact].
+    /// See [`String::reserve_exact`].
     #[inline]
     pub fn reserve_exact(&mut self, additional: usize) {
         self.vec.reserve_exact(additional)
     }
 
-    /// See [String::try_reserve].
+    /// See [`String::try_reserve`].
     #[inline]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
         self.vec.try_reserve(additional)
     }
 
-    /// See [String::try_reserve_exact].
+    /// See [`String::try_reserve_exact`].
     #[inline]
     pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
         self.vec.try_reserve_exact(additional)
     }
 
-    /// See [String::shrink_to_fit].
+    /// See [`String::shrink_to_fit`].
     #[inline]
     pub fn shrink_to_fit(&mut self) {
         self.vec.shrink_to_fit()
     }
 
-    /// See [String::shrink_to].
+    /// See [`String::shrink_to`].
     #[inline]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.vec.shrink_to(min_capacity)
     }
 
-    /// See [String::push].
+    /// See [`String::push`].
     #[inline]
     pub fn push(&mut self, ch: char) {
         match ch.len_utf8() {
@@ -282,7 +282,7 @@ impl JavaString {
         }
     }
 
-    /// See [String::push].
+    /// See [`String::push`].
     #[inline]
     pub fn push_java(&mut self, ch: JavaCodePoint) {
         match ch.len_utf8() {
@@ -291,14 +291,14 @@ impl JavaString {
         }
     }
 
-    /// See [String::as_bytes].
+    /// See [`String::as_bytes`].
     #[inline]
     #[must_use]
     pub fn as_bytes(&self) -> &[u8] {
         &self.vec
     }
 
-    /// See [String::truncate].
+    /// See [`String::truncate`].
     #[inline]
     pub fn truncate(&mut self, new_len: usize) {
         if new_len <= self.len() {
@@ -307,7 +307,7 @@ impl JavaString {
         }
     }
 
-    /// See [String::pop].
+    /// See [`String::pop`].
     ///
     /// ```
     /// # use java_string::JavaString;
@@ -332,7 +332,7 @@ impl JavaString {
         Some(ch)
     }
 
-    /// See [String::remove].
+    /// See [`String::remove`].
     ///
     /// ```
     /// # use java_string::JavaString;
@@ -375,7 +375,7 @@ impl JavaString {
         ch
     }
 
-    /// See [String::retain].
+    /// See [`String::retain`].
     ///
     /// ```
     /// # use java_string::{JavaCodePoint, JavaString};
@@ -452,7 +452,7 @@ impl JavaString {
         drop(guard);
     }
 
-    /// See [String::insert].
+    /// See [`String::insert`].
     ///
     /// ```
     /// # use java_string::JavaString;
@@ -473,7 +473,7 @@ impl JavaString {
         }
     }
 
-    /// See [String::insert].
+    /// See [`String::insert`].
     #[inline]
     pub fn insert_java(&mut self, idx: usize, ch: JavaCodePoint) {
         assert!(self.is_char_boundary(idx));
@@ -502,7 +502,7 @@ impl JavaString {
         }
     }
 
-    /// See [String::insert_str].
+    /// See [`String::insert_str`].
     ///
     /// ```
     /// # use java_string::JavaString;
@@ -519,7 +519,7 @@ impl JavaString {
         }
     }
 
-    /// See [String::insert_str].
+    /// See [`String::insert_str`].
     pub fn insert_java_str(&mut self, idx: usize, string: &JavaStr) {
         assert!(self.is_char_boundary(idx));
 
@@ -528,7 +528,7 @@ impl JavaString {
         }
     }
 
-    /// See [String::as_mut_vec].
+    /// See [`String::as_mut_vec`].
     ///
     /// # Safety
     ///
@@ -539,21 +539,21 @@ impl JavaString {
         &mut self.vec
     }
 
-    /// See [String::len].
+    /// See [`String::len`].
     #[inline]
     #[must_use]
     pub fn len(&self) -> usize {
         self.vec.len()
     }
 
-    /// See [String::is_empty].
+    /// See [`String::is_empty`].
     #[inline]
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
-    /// See [String::split_off].
+    /// See [`String::split_off`].
     ///
     /// ```
     /// # use java_string::JavaString;
@@ -576,13 +576,13 @@ impl JavaString {
         unsafe { JavaString::from_semi_utf8_unchecked(other) }
     }
 
-    /// See [String::clear].
+    /// See [`String::clear`].
     #[inline]
     pub fn clear(&mut self) {
         self.vec.clear();
     }
 
-    /// See [String::drain].
+    /// See [`String::drain`].
     ///
     /// ```
     /// # use java_string::JavaString;
@@ -624,7 +624,7 @@ impl JavaString {
         }
     }
 
-    /// See [String::replace_range].
+    /// See [`String::replace_range`].
     ///
     /// ```
     /// # use java_string::JavaString;
@@ -649,7 +649,7 @@ impl JavaString {
         self.replace_range_java(range, JavaStr::from_str(replace_with))
     }
 
-    /// See [String::replace_range].
+    /// See [`String::replace_range`].
     pub fn replace_range_java<R>(&mut self, range: R, replace_with: &JavaStr)
     where
         R: RangeBounds<usize>,
@@ -670,7 +670,7 @@ impl JavaString {
         unsafe { self.as_mut_vec() }.splice((start, end), replace_with.bytes());
     }
 
-    /// See [String::into_boxed_str].
+    /// See [`String::into_boxed_str`].
     #[inline]
     #[must_use]
     pub fn into_boxed_str(self) -> Box<JavaStr> {
@@ -678,7 +678,7 @@ impl JavaString {
         unsafe { JavaStr::from_boxed_semi_utf8_unchecked(slice) }
     }
 
-    /// See [String::leak].
+    /// See [`String::leak`].
     #[inline]
     pub fn leak<'a>(self) -> &'a mut JavaStr {
         let slice = self.vec.leak();
