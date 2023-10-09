@@ -183,29 +183,36 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
+            /// Gets the name of this effect.
+            pub const fn name(&self) -> Ident<&'static str> {
+                match self {
+                    #effect_to_ident_arms
+                }
+            }
+
             /// Gets the translation key of this effect.
-            pub const fn translation_key(self) -> &'static str {
+            pub const fn translation_key(&self) -> &'static str {
                 match self {
                     #effect_to_translation_key_arms
                 }
             }
 
             /// Gets the category of this effect.
-            pub const fn category(self) -> EffectCategory {
+            pub const fn category(&self) -> EffectCategory {
                 match self {
                     #effect_to_category_arms
                 }
             }
 
             /// Gets the color of this effect.
-            pub const fn color(self) -> u32 {
+            pub const fn color(&self) -> u32 {
                 match self {
                     #effect_to_color_arms
                 }
             }
 
             /// Gets whether this effect is instant.
-            pub const fn instant(self) -> bool {
+            pub const fn instant(&self) -> bool {
                 match self {
                     #effect_to_instant_arms
                 }
