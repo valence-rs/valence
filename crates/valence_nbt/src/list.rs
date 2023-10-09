@@ -462,7 +462,7 @@ impl<S> List<S> {
         }
     }
 
-    /// Returns an iterator over this list. This iterator yields [ValueRef]s.
+    /// Returns an iterator over this list. This iterator yields [`ValueRef`]s.
     pub fn iter(&self) -> Iter<S> {
         Iter {
             inner: match self {
@@ -484,7 +484,7 @@ impl<S> List<S> {
     }
 
     /// Returns a mutable iterator over this list. This iterator yields
-    /// [ValueMut]s.
+    /// [`ValueMut`]s.
     pub fn iter_mut(&mut self) -> IterMut<S> {
         IterMut {
             inner: match self {
@@ -661,7 +661,7 @@ impl<'a, S> IntoIterator for &'a mut List<S> {
     }
 }
 
-/// The owned iterator type for [List].
+/// The owned iterator type for [`List`].
 pub struct IntoIter<S = String> {
     inner: IntoIterInner<S>,
 }
@@ -764,7 +764,7 @@ impl<S> ExactSizeIterator for IntoIter<S> {
 
 impl<S> FusedIterator for IntoIter<S> {}
 
-/// The borrowing iterator type for [List].
+/// The borrowing iterator type for [`List`].
 pub struct Iter<'a, S = String> {
     inner: IterInner<'a, S>,
 }
@@ -871,7 +871,7 @@ impl<S> ExactSizeIterator for Iter<'_, S> {
 
 impl<S> FusedIterator for Iter<'_, S> {}
 
-/// The mutable borrowing iterator type for [List].
+/// The mutable borrowing iterator type for [`List`].
 pub struct IterMut<'a, S = String> {
     inner: IterMutInner<'a, S>,
 }
