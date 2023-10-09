@@ -18,6 +18,7 @@
 )]
 
 use std::fs::{DirEntry, File};
+use std::hash::Hash;
 use std::io::{Cursor, ErrorKind, Read, Seek, SeekFrom, Write};
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
@@ -31,6 +32,7 @@ use flate2::bufread::{GzDecoder, ZlibDecoder};
 use flate2::write::{GzEncoder, ZlibEncoder};
 use lru::LruCache;
 use thiserror::Error;
+use valence_nbt::binary::{FromModifiedUtf8, ToModifiedUtf8};
 use valence_nbt::Compound;
 
 #[cfg(feature = "bevy_plugin")]
@@ -169,7 +171,14 @@ impl RegionFolder {
     /// loading it. Returns `Ok(None)` if the chunk does not exist and no
     /// errors occurred attempting to load it. Returns `Err(_)` if an error
     /// occurred attempting to load the chunk.
-    pub fn get_chunk(&mut self, pos_x: i32, pos_z: i32) -> Result<Option<RawChunk>, RegionError> {
+    pub fn get_chunk<S>(
+        &mut self,
+        pos_x: i32,
+        pos_z: i32,
+    ) -> Result<Option<RawChunk<S>>, RegionError>
+    where
+        S: for<'a> FromModifiedUtf8<'a> + Hash + Ord,
+    {
         let region_x = pos_x.div_euclid(32);
         let region_z = pos_z.div_euclid(32);
 
@@ -201,12 +210,15 @@ impl RegionFolder {
 
     /// Sets the raw chunk at the given position, overwriting the old chunk if
     /// it exists.
-    pub fn set_chunk(
+    pub fn set_chunk<S>(
         &mut self,
         pos_x: i32,
         pos_z: i32,
-        chunk: &Compound,
-    ) -> Result<(), RegionError> {
+        chunk: &Compound<S>,
+    ) -> Result<(), RegionError>
+    where
+        S: ToModifiedUtf8 + Hash + Ord,
+    {
         let region_x = pos_x.div_euclid(32);
         let region_z = pos_z.div_euclid(32);
 
@@ -312,8 +324,8 @@ impl RegionFolder {
 }
 
 /// A chunk represented by the raw compound data.
-pub struct RawChunk {
-    pub data: Compound,
+pub struct RawChunk<S = String> {
+    pub data: Compound<S>,
     pub timestamp: u32,
 }
 
@@ -415,13 +427,16 @@ impl Region {
         })
     }
 
-    fn get_chunk(
+    fn get_chunk<S>(
         &mut self,
         pos_x: i32,
         pos_z: i32,
         decompress_buf: &mut Vec<u8>,
         region_root: &Path,
-    ) -> Result<Option<RawChunk>, RegionError> {
+    ) -> Result<Option<RawChunk<S>>, RegionError>
+    where
+        S: for<'a> FromModifiedUtf8<'a> + Hash + Ord,
+    {
         let chunk_idx = Self::chunk_idx(pos_x, pos_z);
 
         let location = self.locations[chunk_idx];
@@ -536,15 +551,18 @@ impl Region {
         Ok(true)
     }
 
-    fn set_chunk(
+    fn set_chunk<S>(
         &mut self,
         pos_x: i32,
         pos_z: i32,
-        chunk: &Compound,
+        chunk: &Compound<S>,
         options: WriteOptions,
         compress_buf: &mut Vec<u8>,
         region_root: &Path,
-    ) -> Result<(), RegionError> {
+    ) -> Result<(), RegionError>
+    where
+        S: ToModifiedUtf8 + Hash + Ord,
+    {
         // erase the chunk from allocated chunks (not from disk)
         self.delete_chunk(pos_x, pos_z, false, region_root)?;
 

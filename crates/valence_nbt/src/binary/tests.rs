@@ -66,7 +66,7 @@ fn deeply_nested_compound_decode() {
     buf.push(Tag::End as u8); // End root compound
 
     // Should not overflow the stack
-    let _ = from_binary(&mut buf.as_slice());
+    let _ = from_binary::<String>(&mut buf.as_slice());
 }
 
 #[test]
@@ -85,7 +85,7 @@ fn deeply_nested_list_decode() {
     buf.push(Tag::End as u8); // End root compound
 
     // Should not overflow the stack
-    let _ = from_binary(&mut buf.as_slice());
+    let _ = from_binary::<String>(&mut buf.as_slice());
 }
 
 #[test]

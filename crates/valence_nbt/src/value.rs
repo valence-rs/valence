@@ -1,11 +1,12 @@
 use std::borrow::Cow;
+use std::hash::Hash;
 
 use crate::tag::Tag;
 use crate::{Compound, List};
 
 /// Represents an arbitrary NBT value.
-#[derive(Clone, PartialEq, Debug)]
-pub enum Value {
+#[derive(Clone, Debug)]
+pub enum Value<S = String> {
     Byte(i8),
     Short(i16),
     Int(i32),
@@ -13,17 +14,17 @@ pub enum Value {
     Float(f32),
     Double(f64),
     ByteArray(Vec<i8>),
-    String(String),
-    List(List),
-    Compound(Compound),
+    String(S),
+    List(List<S>),
+    Compound(Compound<S>),
     IntArray(Vec<i32>),
     LongArray(Vec<i64>),
 }
 
 /// Represents a reference to an arbitrary NBT value, where the tag is not part
 /// of the reference.
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub enum ValueRef<'a> {
+#[derive(Copy, Clone, Debug)]
+pub enum ValueRef<'a, S = String> {
     Byte(&'a i8),
     Short(&'a i16),
     Int(&'a i32),
@@ -31,17 +32,17 @@ pub enum ValueRef<'a> {
     Float(&'a f32),
     Double(&'a f64),
     ByteArray(&'a [i8]),
-    String(&'a str),
-    List(&'a List),
-    Compound(&'a Compound),
+    String(&'a S),
+    List(&'a List<S>),
+    Compound(&'a Compound<S>),
     IntArray(&'a [i32]),
     LongArray(&'a [i64]),
 }
 
 /// Represents a mutable reference to an arbitrary NBT value, where the tag is
 /// not part of the reference.
-#[derive(PartialEq, Debug)]
-pub enum ValueMut<'a> {
+#[derive(Debug)]
+pub enum ValueMut<'a, S = String> {
     Byte(&'a mut i8),
     Short(&'a mut i16),
     Int(&'a mut i32),
@@ -49,9 +50,9 @@ pub enum ValueMut<'a> {
     Float(&'a mut f32),
     Double(&'a mut f64),
     ByteArray(&'a mut Vec<i8>),
-    String(&'a mut String),
-    List(&'a mut List),
-    Compound(&'a mut Compound),
+    String(&'a mut S),
+    List(&'a mut List<S>),
+    Compound(&'a mut Compound<S>),
     IntArray(&'a mut Vec<i32>),
     LongArray(&'a mut Vec<i64>),
 }
@@ -94,7 +95,7 @@ macro_rules! impl_value {
             }
         }
 
-        impl $(<$lifetime>)? $name $(<$lifetime>)? {
+        impl <$($lifetime,)? S> $name<$($lifetime,)? S> {
             /// Returns the type of this value.
             pub fn tag(&self) -> Tag {
                 match self {
@@ -134,51 +135,70 @@ macro_rules! impl_value {
             }
         }
 
-        impl $(<$lifetime>)? From<$($reference)* i8> for $name $(<$lifetime>)? {
+        impl <$($lifetime,)? S> From<$($reference)* i8> for $name<$($lifetime,)? S> {
             fn from(v: $($reference)* i8) -> Self {
                 Self::Byte(v)
             }
         }
 
-        impl $(<$lifetime>)? From<$($reference)* i16> for $name $(<$lifetime>)? {
+        impl <$($lifetime,)? S> From<$($reference)* i16> for $name<$($lifetime,)? S> {
             fn from(v: $($reference)* i16) -> Self {
                 Self::Short(v)
             }
         }
 
-        impl $(<$lifetime>)? From<$($reference)* i32> for $name $(<$lifetime>)? {
+        impl <$($lifetime,)? S> From<$($reference)* i32> for $name<$($lifetime,)? S> {
             fn from(v: $($reference)* i32) -> Self {
                 Self::Int(v)
             }
         }
 
-        impl $(<$lifetime>)? From<$($reference)* i64> for $name $(<$lifetime>)? {
+        impl <$($lifetime,)? S> From<$($reference)* i64> for $name<$($lifetime,)? S> {
             fn from(v: $($reference)* i64) -> Self {
                 Self::Long(v)
             }
         }
 
-        impl $(<$lifetime>)? From<$($reference)* f32> for $name $(<$lifetime>)? {
+        impl <$($lifetime,)? S> From<$($reference)* f32> for $name<$($lifetime,)? S> {
             fn from(v: $($reference)* f32) -> Self {
                 Self::Float(v)
             }
         }
 
-        impl $(<$lifetime>)? From<$($reference)* f64> for $name $(<$lifetime>)? {
+        impl <$($lifetime,)? S> From<$($reference)* f64> for $name<$($lifetime,)? S> {
             fn from(v: $($reference)* f64) -> Self {
                 Self::Double(v)
             }
         }
 
-        impl $(<$lifetime>)? From<$($reference)* List> for $name $(<$lifetime>)? {
-            fn from(v: $($reference)* List) -> Self {
+        impl <$($lifetime,)? S> From<$($reference)* List<S>> for $name<$($lifetime,)? S> {
+            fn from(v: $($reference)* List<S>) -> Self {
                 Self::List(v)
             }
         }
 
-        impl $(<$lifetime>)? From<$($reference)* Compound> for $name $(<$lifetime>)? {
-            fn from(v: $($reference)* Compound) -> Self {
+        impl <$($lifetime,)? S> From<$($reference)* Compound<S>> for $name<$($lifetime,)? S> {
+            fn from(v: $($reference)* Compound<S>) -> Self {
                 Self::Compound(v)
+            }
+        }
+
+        impl <$($lifetime,)? S> PartialEq<Self> for $name<$($lifetime,)? S> where S: Ord + Hash {
+            fn eq(&self, other: &Self) -> bool {
+                match self {
+                    Self::Byte(v) => matches!(other, Self::Byte(other_v) if v == other_v),
+                    Self::Short(v) => matches!(other, Self::Short(other_v) if v == other_v),
+                    Self::Int(v) => matches!(other, Self::Int(other_v) if v == other_v),
+                    Self::Long(v) => matches!(other, Self::Long(other_v) if v == other_v),
+                    Self::Float(v) => matches!(other, Self::Float(other_v) if v == other_v),
+                    Self::Double(v) => matches!(other, Self::Double(other_v) if v == other_v),
+                    Self::ByteArray(v) => matches!(other, Self::ByteArray(other_v) if v == other_v),
+                    Self::String(v) => matches!(other, Self::String(other_v) if v == other_v),
+                    Self::List(v) => matches!(other, Self::List(other_v) if v == other_v),
+                    Self::Compound(v) => matches!(other, Self::Compound(other_v) if v == other_v),
+                    Self::IntArray(v) => matches!(other, Self::IntArray(other_v) if v == other_v),
+                    Self::LongArray(v) => matches!(other, Self::LongArray(other_v) if v == other_v),
+                }
             }
         }
     }
@@ -188,9 +208,9 @@ impl_value!(Value,,(*),);
 impl_value!(ValueRef, 'a, (**), &'a);
 impl_value!(ValueMut, 'a, (**), &'a mut);
 
-impl Value {
+impl<S> Value<S> {
     /// Converts a reference to a value to a [ValueRef].
-    pub fn as_value_ref(&self) -> ValueRef {
+    pub fn as_value_ref(&self) -> ValueRef<S> {
         match self {
             Value::Byte(v) => ValueRef::Byte(v),
             Value::Short(v) => ValueRef::Short(v),
@@ -199,7 +219,7 @@ impl Value {
             Value::Float(v) => ValueRef::Float(v),
             Value::Double(v) => ValueRef::Double(v),
             Value::ByteArray(v) => ValueRef::ByteArray(&v[..]),
-            Value::String(v) => ValueRef::String(&v[..]),
+            Value::String(v) => ValueRef::String(v),
             Value::List(v) => ValueRef::List(v),
             Value::Compound(v) => ValueRef::Compound(v),
             Value::IntArray(v) => ValueRef::IntArray(&v[..]),
@@ -208,7 +228,7 @@ impl Value {
     }
 
     /// Converts a mutable reference to a value to a [ValueMut].
-    pub fn as_value_mut(&mut self) -> ValueMut {
+    pub fn as_value_mut(&mut self) -> ValueMut<S> {
         match self {
             Value::Byte(v) => ValueMut::Byte(v),
             Value::Short(v) => ValueMut::Short(v),
@@ -226,9 +246,12 @@ impl Value {
     }
 }
 
-impl ValueRef<'_> {
+impl<S> ValueRef<'_, S>
+where
+    S: Clone,
+{
     /// Clones this value reference to a new owned [Value].
-    pub fn to_value(&self) -> Value {
+    pub fn to_value(&self) -> Value<S> {
         match *self {
             ValueRef::Byte(v) => Value::Byte(*v),
             ValueRef::Short(v) => Value::Short(*v),
@@ -246,9 +269,12 @@ impl ValueRef<'_> {
     }
 }
 
-impl<'a> ValueMut<'a> {
+impl<S> ValueMut<'_, S>
+where
+    S: Clone,
+{
     /// Clones this mutable value reference to a new owned [Value].
-    pub fn to_value(&self) -> Value {
+    pub fn to_value(&self) -> Value<S> {
         match self {
             ValueMut::Byte(v) => Value::Byte(**v),
             ValueMut::Short(v) => Value::Short(**v),
@@ -264,9 +290,11 @@ impl<'a> ValueMut<'a> {
             ValueMut::LongArray(v) => Value::LongArray((*v).clone()),
         }
     }
+}
 
+impl<'a, S> ValueMut<'a, S> {
     /// Downgrades this mutable value reference into an immutable [ValueRef].
-    pub fn into_value_ref(self) -> ValueRef<'a> {
+    pub fn into_value_ref(self) -> ValueRef<'a, S> {
         match self {
             ValueMut::Byte(v) => ValueRef::Byte(v),
             ValueMut::Short(v) => ValueRef::Short(v),
@@ -275,7 +303,7 @@ impl<'a> ValueMut<'a> {
             ValueMut::Float(v) => ValueRef::Float(v),
             ValueMut::Double(v) => ValueRef::Double(v),
             ValueMut::ByteArray(v) => ValueRef::ByteArray(&v[..]),
-            ValueMut::String(v) => ValueRef::String(&v[..]),
+            ValueMut::String(v) => ValueRef::String(v),
             ValueMut::List(v) => ValueRef::List(v),
             ValueMut::Compound(v) => ValueRef::Compound(v),
             ValueMut::IntArray(v) => ValueRef::IntArray(&v[..]),
@@ -285,80 +313,231 @@ impl<'a> ValueMut<'a> {
 }
 
 /// Bools are usually represented as `0` or `1` bytes in NBT.
-impl From<bool> for Value {
+impl<S> From<bool> for Value<S> {
     fn from(b: bool) -> Self {
         Value::Byte(b as _)
     }
 }
 
-impl From<Vec<i8>> for Value {
+impl<S> From<Vec<i8>> for Value<S> {
     fn from(v: Vec<i8>) -> Self {
         Self::ByteArray(v)
     }
 }
 
-impl From<String> for Value {
+impl From<String> for Value<String> {
     fn from(v: String) -> Self {
         Self::String(v)
     }
 }
 
-impl From<&String> for Value {
+impl From<&String> for Value<String> {
     fn from(value: &String) -> Self {
         Self::String(value.clone())
     }
 }
 
-impl<'a> From<&'a str> for Value {
+impl<'a> From<&'a str> for Value<String> {
     fn from(v: &'a str) -> Self {
         Self::String(v.to_owned())
     }
 }
 
-impl<'a> From<Cow<'a, str>> for Value {
+impl<'a> From<Cow<'a, str>> for Value<String> {
     fn from(v: Cow<'a, str>) -> Self {
         Self::String(v.into_owned())
     }
 }
 
-impl From<Vec<i32>> for Value {
+impl From<String> for Value<Cow<'_, str>> {
+    fn from(v: String) -> Self {
+        Self::String(Cow::Owned(v))
+    }
+}
+
+impl<'a> From<&'a String> for Value<Cow<'a, str>> {
+    fn from(v: &'a String) -> Self {
+        Self::String(Cow::Borrowed(v))
+    }
+}
+
+impl<'a> From<&'a str> for Value<Cow<'a, str>> {
+    fn from(v: &'a str) -> Self {
+        Self::String(Cow::Borrowed(v))
+    }
+}
+
+impl<'a> From<Cow<'a, str>> for Value<Cow<'a, str>> {
+    fn from(v: Cow<'a, str>) -> Self {
+        Self::String(v)
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl From<java_string::JavaString> for Value<java_string::JavaString> {
+    fn from(v: java_string::JavaString) -> Self {
+        Self::String(v)
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl From<&java_string::JavaString> for Value<java_string::JavaString> {
+    fn from(v: &java_string::JavaString) -> Self {
+        Self::String(v.clone())
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl<'a> From<&'a java_string::JavaStr> for Value<java_string::JavaString> {
+    fn from(v: &'a java_string::JavaStr) -> Self {
+        Self::String(v.to_owned())
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl<'a> From<Cow<'a, java_string::JavaStr>> for Value<java_string::JavaString> {
+    fn from(v: Cow<'a, java_string::JavaStr>) -> Self {
+        Self::String(v.into_owned())
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl From<String> for Value<java_string::JavaString> {
+    fn from(v: String) -> Self {
+        Self::String(java_string::JavaString::from(v))
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl From<&String> for Value<java_string::JavaString> {
+    fn from(v: &String) -> Self {
+        Self::String(java_string::JavaString::from(v))
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl<'a> From<&'a str> for Value<java_string::JavaString> {
+    fn from(v: &'a str) -> Self {
+        Self::String(java_string::JavaString::from(v))
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl<'a> From<Cow<'a, str>> for Value<java_string::JavaString> {
+    fn from(v: Cow<'a, str>) -> Self {
+        Self::String(java_string::JavaString::from(v))
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl From<java_string::JavaString> for Value<Cow<'_, java_string::JavaStr>> {
+    fn from(v: java_string::JavaString) -> Self {
+        Self::String(Cow::Owned(v))
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl<'a> From<&'a java_string::JavaString> for Value<Cow<'a, java_string::JavaStr>> {
+    fn from(v: &'a java_string::JavaString) -> Self {
+        Self::String(Cow::Borrowed(v))
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl<'a> From<&'a java_string::JavaStr> for Value<Cow<'a, java_string::JavaStr>> {
+    fn from(v: &'a java_string::JavaStr) -> Self {
+        Self::String(Cow::Borrowed(v))
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl<'a> From<Cow<'a, java_string::JavaStr>> for Value<Cow<'a, java_string::JavaStr>> {
+    fn from(v: Cow<'a, java_string::JavaStr>) -> Self {
+        Self::String(v)
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl From<String> for Value<Cow<'_, java_string::JavaStr>> {
+    fn from(v: String) -> Self {
+        Self::String(Cow::Owned(java_string::JavaString::from(v)))
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl<'a> From<&'a String> for Value<Cow<'a, java_string::JavaStr>> {
+    fn from(v: &'a String) -> Self {
+        Self::String(Cow::Borrowed(java_string::JavaStr::from_str(v)))
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl<'a> From<&'a str> for Value<Cow<'a, java_string::JavaStr>> {
+    fn from(v: &'a str) -> Self {
+        Self::String(Cow::Borrowed(java_string::JavaStr::from_str(v)))
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl<'a> From<Cow<'a, str>> for Value<Cow<'a, java_string::JavaStr>> {
+    fn from(v: Cow<'a, str>) -> Self {
+        Self::String(match v {
+            Cow::Borrowed(str) => Cow::Borrowed(java_string::JavaStr::from_str(str)),
+            Cow::Owned(str) => Cow::Owned(java_string::JavaString::from(str)),
+        })
+    }
+}
+
+impl<S> From<Vec<i32>> for Value<S> {
     fn from(v: Vec<i32>) -> Self {
         Self::IntArray(v)
     }
 }
 
-impl From<Vec<i64>> for Value {
+impl<S> From<Vec<i64>> for Value<S> {
     fn from(v: Vec<i64>) -> Self {
         Self::LongArray(v)
     }
 }
 
-impl From<ValueRef<'_>> for Value {
-    fn from(v: ValueRef) -> Self {
+impl<S> From<ValueRef<'_, S>> for Value<S>
+where
+    S: Clone,
+{
+    fn from(v: ValueRef<S>) -> Self {
         v.to_value()
     }
 }
 
-impl From<&ValueRef<'_>> for Value {
-    fn from(v: &ValueRef) -> Self {
+impl<S> From<&ValueRef<'_, S>> for Value<S>
+where
+    S: Clone,
+{
+    fn from(v: &ValueRef<S>) -> Self {
         v.to_value()
     }
 }
 
-impl From<ValueMut<'_>> for Value {
-    fn from(v: ValueMut) -> Self {
+impl<S> From<ValueMut<'_, S>> for Value<S>
+where
+    S: Clone,
+{
+    fn from(v: ValueMut<S>) -> Self {
         v.to_value()
     }
 }
 
-impl From<&ValueMut<'_>> for Value {
-    fn from(v: &ValueMut) -> Self {
+impl<S> From<&ValueMut<'_, S>> for Value<S>
+where
+    S: Clone,
+{
+    fn from(v: &ValueMut<S>) -> Self {
         v.to_value()
     }
 }
 
 #[cfg(feature = "uuid")]
-impl From<uuid::Uuid> for Value {
+impl<S> From<uuid::Uuid> for Value<S> {
     fn from(value: uuid::Uuid) -> Self {
         let (most, least) = value.as_u64_pair();
 
@@ -372,11 +551,11 @@ impl From<uuid::Uuid> for Value {
 }
 
 #[cfg(feature = "valence_ident")]
-impl<S> From<valence_ident::Ident<S>> for Value
+impl<I, S> From<valence_ident::Ident<I>> for Value<S>
 where
-    S: Into<Value>,
+    I: Into<Value<S>>,
 {
-    fn from(value: valence_ident::Ident<S>) -> Self {
+    fn from(value: valence_ident::Ident<I>) -> Self {
         value.into_inner().into()
     }
 }
@@ -387,78 +566,69 @@ impl<'a> From<&'a [i8]> for ValueRef<'a> {
     }
 }
 
-impl<'a> From<&'a str> for ValueRef<'a> {
-    fn from(v: &'a str) -> ValueRef<'a> {
+impl<'a> From<&'a String> for ValueRef<'a, String> {
+    fn from(v: &'a String) -> ValueRef<'a> {
         Self::String(v)
     }
 }
 
-impl<'a> From<&'a Cow<'_, str>> for ValueRef<'a> {
-    fn from(v: &'a Cow<'_, str>) -> Self {
-        Self::String(v.as_ref())
-    }
-}
-
-impl<'a> From<&'a [i32]> for ValueRef<'a> {
+impl<'a, S> From<&'a [i32]> for ValueRef<'a, S> {
     fn from(v: &'a [i32]) -> Self {
         Self::IntArray(v)
     }
 }
 
-impl<'a> From<&'a [i64]> for ValueRef<'a> {
+impl<'a, S> From<&'a [i64]> for ValueRef<'a, S> {
     fn from(v: &'a [i64]) -> Self {
         Self::LongArray(v)
     }
 }
 
-impl<'a> From<&'a Value> for ValueRef<'a> {
-    fn from(v: &'a Value) -> Self {
+impl<'a, S> From<&'a Value<S>> for ValueRef<'a, S> {
+    fn from(v: &'a Value<S>) -> Self {
         v.as_value_ref()
     }
 }
 
-impl<'a> From<ValueMut<'a>> for ValueRef<'a> {
-    fn from(v: ValueMut<'a>) -> Self {
+impl<'a, S> From<ValueMut<'a, S>> for ValueRef<'a, S> {
+    fn from(v: ValueMut<'a, S>) -> Self {
         v.into_value_ref()
     }
 }
 
 #[cfg(feature = "valence_ident")]
-impl<'a, S> From<&'a valence_ident::Ident<S>> for ValueRef<'a>
-where
-    S: AsRef<str>,
-{
-    fn from(v: &'a valence_ident::Ident<S>) -> Self {
+impl<'a> From<&'a valence_ident::Ident<String>> for ValueRef<'a, String> {
+    fn from(v: &'a valence_ident::Ident<String>) -> Self {
         Self::String(v.as_ref())
     }
 }
 
-impl<'a> From<&'a mut Vec<i8>> for ValueMut<'a> {
+impl<'a, S> From<&'a mut Vec<i8>> for ValueMut<'a, S> {
     fn from(v: &'a mut Vec<i8>) -> Self {
         Self::ByteArray(v)
     }
 }
 
-impl<'a> From<&'a mut String> for ValueMut<'a> {
+impl<'a> From<&'a mut String> for ValueMut<'a, String> {
     fn from(v: &'a mut String) -> Self {
         Self::String(v)
     }
 }
 
-impl<'a> From<&'a mut Vec<i32>> for ValueMut<'a> {
+impl<'a, S> From<&'a mut Vec<i32>> for ValueMut<'a, S> {
     fn from(v: &'a mut Vec<i32>) -> Self {
         Self::IntArray(v)
     }
 }
 
-impl<'a> From<&'a mut Vec<i64>> for ValueMut<'a> {
+impl<'a, S> From<&'a mut Vec<i64>> for ValueMut<'a, S> {
     fn from(v: &'a mut Vec<i64>) -> Self {
         Self::LongArray(v)
     }
 }
 
-impl<'a> From<&'a mut Value> for ValueMut<'a> {
-    fn from(v: &'a mut Value) -> Self {
+impl<'a, S> From<&'a mut Value<S>> for ValueMut<'a, S> {
+    fn from(v: &'a mut Value<S>) -> Self {
         v.as_value_mut()
     }
 }
