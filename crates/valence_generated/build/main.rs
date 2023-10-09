@@ -2,10 +2,10 @@ use valence_build_utils::write_generated_file;
 
 mod block;
 mod chunk_view;
-mod status_effect;
 mod item;
 mod packet_id;
 mod sound;
+mod status_effect;
 
 pub fn main() -> anyhow::Result<()> {
     write_generated_file(block::build()?, "block.rs")?;

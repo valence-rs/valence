@@ -24,7 +24,8 @@ pub struct StatusEffect {
 pub fn build() -> anyhow::Result<TokenStream> {
     rerun_if_changed(["extracted/effects.json"]);
 
-    let effects = serde_json::from_str::<Vec<StatusEffect>>(include_str!("../extracted/effects.json"))?;
+    let effects =
+        serde_json::from_str::<Vec<StatusEffect>>(include_str!("../extracted/effects.json"))?;
 
     let effect_count = effects.len();
 
@@ -184,7 +185,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             }
 
             /// Gets the name of this effect.
-            /// Same as [`Effect::to_ident`], but doesn't take ownership.
+            /// Same as [`StatusEffect::to_ident`], but doesn't take ownership.
             pub const fn name(&self) -> Ident<&'static str> {
                 match self {
                     #effect_to_ident_arms
