@@ -1,9 +1,5 @@
 pub mod block;
 
-pub mod effect {
-    include!(concat!(env!("OUT_DIR"), "/effect.rs"));
-}
-
 pub mod item {
     include!(concat!(env!("OUT_DIR"), "/item.rs"));
 }

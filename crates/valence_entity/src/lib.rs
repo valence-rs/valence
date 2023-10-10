@@ -18,6 +18,7 @@
 )]
 #![allow(clippy::type_complexity)]
 
+pub mod active_status_effects;
 mod flags;
 pub mod hitbox;
 pub mod manager;
@@ -36,6 +37,11 @@ use valence_protocol::{Decode, Encode, VarInt};
 use valence_server_common::{Despawned, UniqueId};
 
 include!(concat!(env!("OUT_DIR"), "/entity.rs"));
+
+pub mod status_effects {
+    include!(concat!(env!("OUT_DIR"), "/status_effects.rs"));
+}
+
 pub struct EntityPlugin;
 
 /// When new Minecraft entities are initialized and added to
