@@ -164,7 +164,8 @@ fn update_active_status_effects(mut query: Query<(&mut ActiveStatusEffects, Opti
                 }
             }
 
-            /* TODO: The following things require to occasionally modify entity stuff:
+            /* TODO: The following things require to occasionally modify
+             * entity stuff:
              * - regeneration
              * - poison
              * - wither
@@ -206,7 +207,8 @@ fn add_status_effects(
                 set_entity_flags(status_effect, entity_flags, true);
             }
 
-            // TODO: More stuff such as particles, instant health, instant damage, etc.
+            // TODO: More stuff such as particles, instant health, instant
+            // damage, etc.
 
             /* TODO: These things require to modify entity attributes:
              * - speed
