@@ -1717,6 +1717,13 @@ impl AsRef<JavaStr> for String {
     }
 }
 
+impl AsRef<JavaStr> for JavaStr {
+    #[inline]
+    fn as_ref(&self) -> &JavaStr {
+        self
+    }
+}
+
 impl Clone for Box<JavaStr> {
     #[inline]
     fn clone(&self) -> Self {
