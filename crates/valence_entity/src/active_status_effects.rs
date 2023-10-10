@@ -11,6 +11,14 @@ pub struct ActiveStatusEffects {
 
 impl ActiveStatusEffects {
     /// Adds a new [`ActiveStatusEffect`] to the [`ActiveStatusEffects`].
+    ///
+    /// ## Note
+    ///
+    /// It actually adds the [`ActiveStatusEffect`] to the new effects. The
+    /// [`ActiveStatusEffect`] will be added to the active effects in the next
+    /// tick (more specifically, during the upcoming [`EventLoopPostUpdate`]).
+    /// If the [`ActiveStatusEffect`] is already in the new effects, it will be
+    /// replaced.
     pub fn add(&mut self, effect: ActiveStatusEffect) {
         // Remove the effect if it is already in the new effects.
         self.new_effects
@@ -20,6 +28,12 @@ impl ActiveStatusEffects {
     }
 
     /// Removes an [`ActiveStatusEffect`] from the [`ActiveStatusEffects`].
+    ///
+    /// ## Note
+    ///
+    /// It actually sets the duration of the [`ActiveStatusEffect`] to 0. The
+    /// [`ActiveStatusEffect`] will be properly removed in the next tick (more
+    /// specifically, during the upcoming [`EventLoopPostUpdate`]).
     pub fn remove(&mut self, effect: StatusEffect) {
         // It just sets the duration to 0, so it will be properly removed in the next
         // tick.
@@ -39,11 +53,11 @@ impl ActiveStatusEffects {
 
     /// Returns the [`ActiveStatusEffect`]s of the [`ActiveStatusEffects`]
     /// mutably.
-    /// 
+    ///
     /// # Warning
     /// This method should only be used by the server. Be careful when modifying
     /// the [`ActiveStatusEffect`]s as it may cause inconsistencies.
-    /// 
+    ///
     /// If you want to add, remove or modify [`ActiveStatusEffect`]s, use the
     /// [`add`] and [`remove`] methods instead of directly modifying the
     /// [`ActiveStatusEffect`]s.
@@ -69,8 +83,7 @@ impl ActiveStatusEffects {
 
         self.active_effects.append(&mut self.new_effects);
 
-        self.active_effects[old_len..]
-            .iter_mut()
+        self.active_effects[old_len..].iter_mut()
     }
 
     pub fn remove_expired(&mut self) {
