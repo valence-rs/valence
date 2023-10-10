@@ -28,7 +28,7 @@ impl Plugin for StatusEffectPlugin {
 
 fn update_active_status_effects(mut query: Query<(&mut ActiveStatusEffects, Option<&mut Client>)>) {
     for (mut active_status_effects, mut client) in query.iter_mut() {
-        for (_, effect) in active_status_effects.active_mut().iter_mut() {
+        for (_, effect) in active_status_effects.active_effects_mut().iter_mut() {
             effect.decrement_duration();
 
             // Like in vanilla, remind the client of the effect every 600 ticks
@@ -70,7 +70,7 @@ fn add_status_effects(
     )>,
 ) {
     for (mut active_status_effects, mut client, mut entity_flags) in query.iter_mut() {
-        for (_, new_effect) in active_status_effects.new_mut() {
+        for (_, new_effect) in active_status_effects.new_effects_mut() {
             let status_effect = new_effect.status_effect();
 
             if let Some(ref mut client) = client {
@@ -96,8 +96,8 @@ fn add_status_effects(
              */
         }
 
-        let old_map = std::mem::take(active_status_effects.new_mut());
-        active_status_effects.active_mut().extend(old_map)
+        let old_map = std::mem::take(active_status_effects.new_effects_mut());
+        active_status_effects.active_effects_mut().extend(old_map)
     }
 }
 
@@ -109,7 +109,7 @@ fn remove_expired_status_effects(
     )>,
 ) {
     for (mut active_status_effects, mut client, mut entity_flags) in query.iter_mut() {
-        for (_, effect) in active_status_effects.active_mut() {
+        for (_, effect) in active_status_effects.active_effects_mut() {
             if effect.expired() {
                 let status_effect = effect.status_effect();
 
@@ -127,7 +127,7 @@ fn remove_expired_status_effects(
         }
 
         active_status_effects
-            .active_mut()
+            .active_effects_mut()
             .retain(|_, effect| !effect.expired());
     }
 }

@@ -7,29 +7,29 @@ use crate::status_effects::StatusEffect;
 /// [`Component`] that stores the [`ActiveStatusEffect`]s of an [`Entity`].
 #[derive(Component, Default, Debug)]
 pub struct ActiveStatusEffects {
-    active: HashMap<StatusEffect, ActiveStatusEffect>,
-    new: HashMap<StatusEffect, ActiveStatusEffect>,
+    active_effects: HashMap<StatusEffect, ActiveStatusEffect>,
+    new_effects: HashMap<StatusEffect, ActiveStatusEffect>,
 }
 
 impl ActiveStatusEffects {
     pub fn add(&mut self, effect: ActiveStatusEffect) {
-        self.new.insert(effect.status_effect(), effect);
+        self.new_effects.insert(effect.status_effect(), effect);
     }
 
-    pub fn active(&self) -> &HashMap<StatusEffect, ActiveStatusEffect> {
-        &self.active
+    pub fn active_effects(&self) -> &HashMap<StatusEffect, ActiveStatusEffect> {
+        &self.active_effects
     }
 
-    pub fn active_mut(&mut self) -> &mut HashMap<StatusEffect, ActiveStatusEffect> {
-        &mut self.active
+    pub fn active_effects_mut(&mut self) -> &mut HashMap<StatusEffect, ActiveStatusEffect> {
+        &mut self.active_effects
     }
 
-    pub fn new(&self) -> &HashMap<StatusEffect, ActiveStatusEffect> {
-        &self.new
+    pub fn new_effects(&self) -> &HashMap<StatusEffect, ActiveStatusEffect> {
+        &self.new_effects
     }
 
-    pub fn new_mut(&mut self) -> &mut HashMap<StatusEffect, ActiveStatusEffect> {
-        &mut self.new
+    pub fn new_effects_mut(&mut self) -> &mut HashMap<StatusEffect, ActiveStatusEffect> {
+        &mut self.new_effects
     }
 }
 
