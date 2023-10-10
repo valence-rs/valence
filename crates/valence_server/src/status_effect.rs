@@ -1,12 +1,11 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use valence_entity::EntityId;
-use valence_protocol::{
-    packets::play::{entity_status_effect_s2c, EntityStatusEffectS2c},
-    StatusEffect, VarInt, WritePacket,
-};
+use valence_protocol::packets::play::{entity_status_effect_s2c, EntityStatusEffectS2c};
+use valence_protocol::{StatusEffect, VarInt, WritePacket};
 
-use crate::{client::Client, EventLoopPostUpdate};
+use crate::client::Client;
+use crate::EventLoopPostUpdate;
 
 /// [`Component`] that stores the [`ActiveStatusEffect`]s of an [`Entity`].
 #[derive(Component, Default)]
