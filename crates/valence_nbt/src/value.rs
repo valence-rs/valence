@@ -209,7 +209,7 @@ impl_value!(ValueRef, 'a, (**), &'a);
 impl_value!(ValueMut, 'a, (**), &'a mut);
 
 impl<S> Value<S> {
-    /// Converts a reference to a value to a [ValueRef].
+    /// Converts a reference to a value to a [`ValueRef`].
     pub fn as_value_ref(&self) -> ValueRef<S> {
         match self {
             Value::Byte(v) => ValueRef::Byte(v),
@@ -227,7 +227,7 @@ impl<S> Value<S> {
         }
     }
 
-    /// Converts a mutable reference to a value to a [ValueMut].
+    /// Converts a mutable reference to a value to a [`ValueMut`].
     pub fn as_value_mut(&mut self) -> ValueMut<S> {
         match self {
             Value::Byte(v) => ValueMut::Byte(v),
@@ -250,7 +250,7 @@ impl<S> ValueRef<'_, S>
 where
     S: Clone,
 {
-    /// Clones this value reference to a new owned [Value].
+    /// Clones this value reference to a new owned [`Value`].
     pub fn to_value(&self) -> Value<S> {
         match *self {
             ValueRef::Byte(v) => Value::Byte(*v),
@@ -273,7 +273,7 @@ impl<S> ValueMut<'_, S>
 where
     S: Clone,
 {
-    /// Clones this mutable value reference to a new owned [Value].
+    /// Clones this mutable value reference to a new owned [`Value`].
     pub fn to_value(&self) -> Value<S> {
         match self {
             ValueMut::Byte(v) => Value::Byte(**v),
@@ -293,7 +293,7 @@ where
 }
 
 impl<'a, S> ValueMut<'a, S> {
-    /// Downgrades this mutable value reference into an immutable [ValueRef].
+    /// Downgrades this mutable value reference into an immutable [`ValueRef`].
     pub fn into_value_ref(self) -> ValueRef<'a, S> {
         match self {
             ValueMut::Byte(v) => ValueRef::Byte(v),

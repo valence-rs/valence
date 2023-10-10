@@ -299,14 +299,15 @@ impl LoadedChunk {
     /// through the void and there will be no rain particles.
     ///
     /// A value of 1 means that rain particles will appear at the lowest
-    /// possible height given by
-    /// [valence_registry::dimension_type::DimensionType::min_y]. Note that
+    /// possible height given by [`DimensionType::min_y`]. Note that
     /// blocks cannot be placed at `min_y - 1`.
     ///
     /// We take these two special cases into account by adding a value of 2 to
     /// our heightmap if we find a motion-blocking block, since
     /// `self.block_state(x, 0, z)` corresponds to the block at (x, min_y, z)
     /// ingame.
+    ///
+    /// [`DimensionType::min_y`]: valence_registry::dimension_type::DimensionType::min_y
     #[allow(clippy::needless_range_loop)]
     fn motion_blocking(&self) -> Vec<Vec<u32>> {
         let mut heightmap: Vec<Vec<u32>> = vec![vec![0; 16]; 16];

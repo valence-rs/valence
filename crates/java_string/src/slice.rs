@@ -31,7 +31,7 @@ pub struct JavaStr {
 
 impl JavaStr {
     /// Converts `v` to a `&JavaStr` if it is fully-valid UTF-8, i.e. UTF-8
-    /// without surrogate code points. See [std::str::from_utf8].
+    /// without surrogate code points. See [`std::str::from_utf8`].
     #[inline]
     pub const fn from_full_utf8(v: &[u8]) -> Result<&JavaStr, Utf8Error> {
         match std::str::from_utf8(v) {
@@ -41,7 +41,7 @@ impl JavaStr {
     }
 
     /// Converts `v` to a `&mut JavaStr` if it is fully-valid UTF-8, i.e. UTF-8
-    /// without surrogate code points. See [std::str::from_utf8_mut].
+    /// without surrogate code points. See [`std::str::from_utf8_mut`].
     #[inline]
     pub fn from_full_utf8_mut(v: &mut [u8]) -> Result<&mut JavaStr, Utf8Error> {
         match std::str::from_utf8_mut(v) {
@@ -126,14 +126,14 @@ impl JavaStr {
         unsafe { Box::from_raw(Box::into_raw(v) as *mut JavaStr) }
     }
 
-    /// See [str::as_bytes].
+    /// See [`str::as_bytes`].
     #[inline]
     #[must_use]
     pub const fn as_bytes(&self) -> &[u8] {
         &self.inner
     }
 
-    /// See [str::as_bytes_mut].
+    /// See [`str::as_bytes_mut`].
     ///
     /// # Safety
     ///
@@ -145,14 +145,14 @@ impl JavaStr {
         &mut self.inner
     }
 
-    /// See [str::as_mut_ptr].
+    /// See [`str::as_mut_ptr`].
     #[inline]
     #[must_use]
     pub fn as_mut_ptr(&mut self) -> *mut u8 {
         self.inner.as_mut_ptr()
     }
 
-    /// See [str::as_ptr].
+    /// See [`str::as_ptr`].
     #[inline]
     #[must_use]
     pub const fn as_ptr(&self) -> *const u8 {
@@ -219,7 +219,7 @@ impl JavaStr {
         }
     }
 
-    /// See [str::bytes].
+    /// See [`str::bytes`].
     #[inline]
     pub fn bytes(&self) -> Bytes<'_> {
         Bytes {
@@ -227,7 +227,7 @@ impl JavaStr {
         }
     }
 
-    /// See [str::char_indices].
+    /// See [`str::char_indices`].
     #[inline]
     pub fn char_indices(&self) -> CharIndices<'_> {
         CharIndices {
@@ -236,7 +236,7 @@ impl JavaStr {
         }
     }
 
-    /// See [str::chars].
+    /// See [`str::chars`].
     #[inline]
     pub fn chars(&self) -> Chars<'_> {
         Chars {
@@ -244,7 +244,7 @@ impl JavaStr {
         }
     }
 
-    /// See [str::contains].
+    /// See [`str::contains`].
     ///
     /// ```
     /// # use java_string::JavaStr;
@@ -262,7 +262,7 @@ impl JavaStr {
         pat.find_in(self).is_some()
     }
 
-    /// See [str::ends_with].
+    /// See [`str::ends_with`].
     ///
     /// ```
     /// # use java_string::JavaStr;
@@ -280,21 +280,21 @@ impl JavaStr {
         pat.suffix_len_in(self).is_some()
     }
 
-    /// See [str::eq_ignore_ascii_case].
+    /// See [`str::eq_ignore_ascii_case`].
     #[inline]
     #[must_use]
     pub fn eq_ignore_ascii_case(&self, other: &str) -> bool {
         self.as_bytes().eq_ignore_ascii_case(other.as_bytes())
     }
 
-    /// See [str::eq_ignore_ascii_case].
+    /// See [`str::eq_ignore_ascii_case`].
     #[inline]
     #[must_use]
     pub fn eq_java_ignore_ascii_case(&self, other: &JavaStr) -> bool {
         self.as_bytes().eq_ignore_ascii_case(other.as_bytes())
     }
 
-    /// See [str::escape_debug].
+    /// See [`str::escape_debug`].
     ///
     /// ```
     /// # use java_string::JavaStr;
@@ -328,7 +328,7 @@ impl JavaStr {
         }
     }
 
-    /// See [str::escape_default].
+    /// See [`str::escape_default`].
     ///
     /// ```
     /// # use java_string::JavaStr;
@@ -344,7 +344,7 @@ impl JavaStr {
         }
     }
 
-    /// See [str::escape_unicode].
+    /// See [`str::escape_unicode`].
     ///
     /// ```
     /// # use java_string::JavaStr;
@@ -360,7 +360,7 @@ impl JavaStr {
         }
     }
 
-    /// See [str::find].
+    /// See [`str::find`].
     ///
     /// ```
     /// let s = "Löwe 老虎 Léopard Gepardi";
@@ -381,7 +381,7 @@ impl JavaStr {
         pat.find_in(self).map(|(index, _)| index)
     }
 
-    /// See [str::get].
+    /// See [`str::get`].
     ///
     /// ```
     /// # use java_string::{JavaStr, JavaString};
@@ -405,7 +405,7 @@ impl JavaStr {
         i.get(self)
     }
 
-    /// See [str::get_mut].
+    /// See [`str::get_mut`].
     #[inline]
     #[must_use]
     pub fn get_mut<I>(&mut self, i: I) -> Option<&mut JavaStr>
@@ -415,7 +415,7 @@ impl JavaStr {
         i.get_mut(self)
     }
 
-    /// See [str::get_unchecked].
+    /// See [`str::get_unchecked`].
     ///
     /// # Safety
     ///
@@ -431,7 +431,7 @@ impl JavaStr {
         unsafe { &*i.get_unchecked(self) }
     }
 
-    /// See [str::get_unchecked_mut].
+    /// See [`str::get_unchecked_mut`].
     ///
     /// # Safety
     ///
@@ -447,14 +447,14 @@ impl JavaStr {
         unsafe { &mut *i.get_unchecked_mut(self) }
     }
 
-    /// See [str::into_boxed_bytes].
+    /// See [`str::into_boxed_bytes`].
     #[inline]
     #[must_use]
     pub fn into_boxed_bytes(self: Box<JavaStr>) -> Box<[u8]> {
         unsafe { Box::from_raw(Box::into_raw(self) as *mut [u8]) }
     }
 
-    /// See [str::into_string].
+    /// See [`str::into_string`].
     #[inline]
     #[must_use]
     pub fn into_string(self: Box<JavaStr>) -> JavaString {
@@ -462,14 +462,14 @@ impl JavaStr {
         unsafe { JavaString::from_semi_utf8_unchecked(slice.into_vec()) }
     }
 
-    /// See [str::is_ascii].
+    /// See [`str::is_ascii`].
     #[inline]
     #[must_use]
     pub fn is_ascii(&self) -> bool {
         self.as_bytes().is_ascii()
     }
 
-    /// See [str::is_char_boundary].
+    /// See [`str::is_char_boundary`].
     #[inline]
     #[must_use]
     pub fn is_char_boundary(&self, index: usize) -> bool {
@@ -513,21 +513,21 @@ impl JavaStr {
         }
     }
 
-    /// See [str::is_empty].
+    /// See [`str::is_empty`].
     #[inline]
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
-    /// See [str::len].
+    /// See [`str::len`].
     #[inline]
     #[must_use]
     pub fn len(&self) -> usize {
         self.inner.len()
     }
 
-    /// See [str::lines].
+    /// See [`str::lines`].
     #[inline]
     pub fn lines(&self) -> Lines<'_> {
         Lines {
@@ -543,7 +543,7 @@ impl JavaStr {
         }
     }
 
-    /// See [str::make_ascii_lowercase].
+    /// See [`str::make_ascii_lowercase`].
     #[inline]
     pub fn make_ascii_lowercase(&mut self) {
         // SAFETY: changing ASCII letters only does not invalidate UTF-8.
@@ -551,7 +551,7 @@ impl JavaStr {
         me.make_ascii_lowercase()
     }
 
-    /// See [str::make_ascii_uppercase].
+    /// See [`str::make_ascii_uppercase`].
     #[inline]
     pub fn make_ascii_uppercase(&mut self) {
         // SAFETY: changing ASCII letters only does not invalidate UTF-8.
@@ -559,7 +559,7 @@ impl JavaStr {
         me.make_ascii_uppercase()
     }
 
-    /// See [str::match_indices].
+    /// See [`str::match_indices`].
     ///
     /// ```
     /// # use java_string::JavaStr;
@@ -596,7 +596,7 @@ impl JavaStr {
         }
     }
 
-    /// See [str::matches].
+    /// See [`str::matches`].
     ///
     /// ```
     /// # use java_string::{JavaCodePoint, JavaStr};
@@ -632,7 +632,7 @@ impl JavaStr {
         Matches { str: self, pat }
     }
 
-    /// See [str::parse].
+    /// See [`str::parse`].
     #[inline]
     pub fn parse<F>(&self) -> Result<F, ParseError<<F as FromStr>::Err>>
     where
@@ -644,14 +644,14 @@ impl JavaStr {
         }
     }
 
-    /// See [str::repeat].
+    /// See [`str::repeat`].
     #[inline]
     #[must_use]
     pub fn repeat(&self, n: usize) -> JavaString {
         unsafe { JavaString::from_semi_utf8_unchecked(self.as_bytes().repeat(n)) }
     }
 
-    /// See [str::replace].
+    /// See [`str::replace`].
     ///
     /// ```
     /// # use java_string::JavaStr;
@@ -669,7 +669,7 @@ impl JavaStr {
         self.replace_java(from, JavaStr::from_str(to))
     }
 
-    /// See [str::replace].
+    /// See [`str::replace`].
     #[inline]
     #[must_use]
     pub fn replace_java<P>(&self, from: P, to: &JavaStr) -> JavaString
@@ -687,7 +687,7 @@ impl JavaStr {
         result
     }
 
-    /// See [str::replacen].
+    /// See [`str::replacen`].
     ///
     /// ```
     /// # use java_string::{JavaCodePoint, JavaStr};
@@ -708,7 +708,7 @@ impl JavaStr {
         self.replacen_java(from, JavaStr::from_str(to), count)
     }
 
-    /// See [str::replacen].
+    /// See [`str::replacen`].
     #[inline]
     #[must_use]
     pub fn replacen_java<P>(&self, from: P, to: &JavaStr, count: usize) -> JavaString
@@ -727,7 +727,7 @@ impl JavaStr {
         result
     }
 
-    /// See [str::rfind].
+    /// See [`str::rfind`].
     ///
     /// ```
     /// # use java_string::JavaStr;
@@ -749,7 +749,7 @@ impl JavaStr {
         pat.rfind_in(self).map(|(index, _)| index)
     }
 
-    /// See [str::rmatch_indices].
+    /// See [`str::rmatch_indices`].
     ///
     /// ```
     /// # use java_string::JavaStr;
@@ -786,7 +786,7 @@ impl JavaStr {
         }
     }
 
-    /// See [str::rmatches].
+    /// See [`str::rmatches`].
     ///
     /// ```
     /// # use java_string::{JavaCodePoint, JavaStr};
@@ -824,7 +824,7 @@ impl JavaStr {
         }
     }
 
-    /// See [str::rsplit].
+    /// See [`str::rsplit`].
     ///
     /// ```
     /// # use java_string::JavaStr;
@@ -878,7 +878,7 @@ impl JavaStr {
         RSplit::new(self, pat)
     }
 
-    /// See [str::rsplit_once].
+    /// See [`str::rsplit_once`].
     ///
     /// ```
     /// # use java_string::JavaStr;
@@ -908,7 +908,7 @@ impl JavaStr {
         }
     }
 
-    /// See [str::rsplit_terminator].
+    /// See [`str::rsplit_terminator`].
     ///
     /// ```
     /// # use java_string::JavaStr;
@@ -947,7 +947,7 @@ impl JavaStr {
         RSplitTerminator::new(self, pat)
     }
 
-    /// See [str::rsplitn].
+    /// See [`str::rsplitn`].
     ///
     /// ```
     /// # use java_string::JavaStr;
@@ -994,7 +994,7 @@ impl JavaStr {
         RSplitN::new(self, pat, n)
     }
 
-    /// See [str::split].
+    /// See [`str::split`].
     ///
     /// ```
     /// # use java_string::{JavaCodePoint, JavaStr};
@@ -1072,7 +1072,7 @@ impl JavaStr {
         Split::new(self, pat)
     }
 
-    /// See [str::split_ascii_whitespace].
+    /// See [`str::split_ascii_whitespace`].
     ///
     /// ```
     /// # use java_string::JavaStr;
@@ -1101,7 +1101,7 @@ impl JavaStr {
         }
     }
 
-    /// See [str::split_at].
+    /// See [`str::split_at`].
     ///
     /// ```
     /// # use java_string::JavaStr;
@@ -1135,7 +1135,7 @@ impl JavaStr {
         }
     }
 
-    /// See [str::split_at_mut].
+    /// See [`str::split_at_mut`].
     ///
     /// ```
     /// # use java_string::{JavaStr, JavaString};
@@ -1176,7 +1176,7 @@ impl JavaStr {
         }
     }
 
-    /// See [str::split_inclusive].
+    /// See [`str::split_inclusive`].
     ///
     /// ```
     /// # use java_string::JavaStr;
@@ -1200,7 +1200,7 @@ impl JavaStr {
         SplitInclusive::new(self, pat)
     }
 
-    /// See [str::split_once].
+    /// See [`str::split_once`].
     ///
     /// ```
     /// # use java_string::JavaStr;
@@ -1234,7 +1234,7 @@ impl JavaStr {
         }
     }
 
-    /// See [str::split_terminator].
+    /// See [`str::split_terminator`].
     ///
     /// ```
     /// # use java_string::JavaStr;
@@ -1273,7 +1273,7 @@ impl JavaStr {
         SplitTerminator::new(self, pat)
     }
 
-    /// See [str::split_whitespace].
+    /// See [`str::split_whitespace`].
     #[inline]
     pub fn split_whitespace(&self) -> SplitWhitespace<'_> {
         SplitWhitespace {
@@ -1283,7 +1283,7 @@ impl JavaStr {
         }
     }
 
-    /// See [str::splitn].
+    /// See [`str::splitn`].
     ///
     /// ```
     /// # use java_string::JavaStr;
@@ -1325,7 +1325,7 @@ impl JavaStr {
         SplitN::new(self, pat, n)
     }
 
-    /// See [str::starts_with].
+    /// See [`str::starts_with`].
     ///
     /// ```
     /// # use java_string::JavaStr;
@@ -1343,7 +1343,7 @@ impl JavaStr {
         pat.prefix_len_in(self).is_some()
     }
 
-    /// See [str::strip_prefix].
+    /// See [`str::strip_prefix`].
     ///
     /// ```
     /// # use java_string::JavaStr;
@@ -1368,7 +1368,7 @@ impl JavaStr {
         unsafe { Some(self.get_unchecked(len..)) }
     }
 
-    /// See [str::strip_suffix].
+    /// See [`str::strip_suffix`].
     ///
     /// ```
     /// # use java_string::JavaStr;
@@ -1393,7 +1393,7 @@ impl JavaStr {
         unsafe { Some(self.get_unchecked(..self.len() - len)) }
     }
 
-    /// See [str::to_ascii_lowercase].
+    /// See [`str::to_ascii_lowercase`].
     #[inline]
     #[must_use]
     pub fn to_ascii_lowercase(&self) -> JavaString {
@@ -1402,7 +1402,7 @@ impl JavaStr {
         s
     }
 
-    /// See [str::to_ascii_uppercase].
+    /// See [`str::to_ascii_uppercase`].
     #[inline]
     #[must_use]
     pub fn to_ascii_uppercase(&self) -> JavaString {
@@ -1411,7 +1411,7 @@ impl JavaStr {
         s
     }
 
-    /// See [str::to_lowercase].
+    /// See [`str::to_lowercase`].
     ///
     /// ```
     /// # use java_string::{JavaCodePoint, JavaStr, JavaString};
@@ -1714,6 +1714,13 @@ impl AsRef<JavaStr> for String {
     #[inline]
     fn as_ref(&self) -> &JavaStr {
         JavaStr::from_str(self)
+    }
+}
+
+impl AsRef<JavaStr> for JavaStr {
+    #[inline]
+    fn as_ref(&self) -> &JavaStr {
+        self
     }
 }
 
