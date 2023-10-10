@@ -177,7 +177,9 @@ fn add_status_effects(
                 });
             }
         }
-        // idk if this is the best way to do this, I just asked an AI about it and it gave me this
+
+        // idk if this is the best way to do this, I just asked an AI about it and it
+        // gave me this
         let mut old_vec = std::mem::replace(&mut active_status_effects.new, Vec::new());
         active_status_effects.active.append(&mut old_vec);
     }
@@ -213,7 +215,8 @@ fn remove_expired_status_effects(
             .active
             .retain(|effect| !effect.expired());
 
-        // idk if this is the best way to do this, I just asked an AI about it and it gave me this
+        // idk if this is the best way to do this, I just asked an AI about it and it
+        // gave me this
         let mut old_vec = std::mem::replace(&mut active_status_effects.new, Vec::new());
         active_status_effects.active.append(&mut old_vec);
     }
