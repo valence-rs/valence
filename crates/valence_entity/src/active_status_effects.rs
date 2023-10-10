@@ -39,6 +39,14 @@ impl ActiveStatusEffects {
 
     /// Returns the [`ActiveStatusEffect`]s of the [`ActiveStatusEffects`]
     /// mutably.
+    /// 
+    /// # Warning
+    /// This method should only be used by the server. Be careful when modifying
+    /// the [`ActiveStatusEffect`]s as it may cause inconsistencies.
+    /// 
+    /// If you want to add, remove or modify [`ActiveStatusEffect`]s, use the
+    /// [`add`] and [`remove`] methods instead of directly modifying the
+    /// [`ActiveStatusEffect`]s.
     pub fn active_effects_mut(&mut self) -> &mut Vec<ActiveStatusEffect> {
         &mut self.active_effects
     }
