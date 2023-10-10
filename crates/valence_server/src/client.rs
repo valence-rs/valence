@@ -134,6 +134,8 @@ pub struct ClientBundle {
     pub flying_speed: crate::abilities::FlyingSpeed,
     pub fov_modifier: crate::abilities::FovModifier,
     pub player_abilities_flags: crate::abilities::PlayerAbilitiesFlags,
+    // TODO: Add to every entity somehow
+    pub active_status_effects: crate::status_effect::ActiveStatusEffects,
     pub player: PlayerEntityBundle,
 }
 
@@ -175,6 +177,7 @@ impl ClientBundle {
             flying_speed: Default::default(),
             fov_modifier: Default::default(),
             player_abilities_flags: Default::default(),
+            active_status_effects: Default::default(),
             player: PlayerEntityBundle {
                 uuid: UniqueId(args.uuid),
                 ..Default::default()

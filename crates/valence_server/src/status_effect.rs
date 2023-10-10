@@ -157,14 +157,15 @@ fn update_active_status_effects(mut query: Query<&mut ActiveStatusEffects>) {
 
 fn add_status_effects(
     mut query: Query<(&EntityId, &mut ActiveStatusEffects)>,
-    mut clients: Query<&mut Client>,
+    mut clients: Query<(&EntityId, &mut Client)>,
 ) {
     for (entity_id, mut active_status_effects) in query.iter_mut() {
         let entity_id = entity_id.get();
         for new_effect in &active_status_effects.new {
-            for mut client in clients.iter_mut() {
+            for (client_id, mut client) in clients.iter_mut() {
+                let client_id = client_id.get();
                 client.write_packet(&EntityStatusEffectS2c {
-                    entity_id: VarInt(entity_id),
+                    entity_id: VarInt(if client_id == entity_id { 0 } else { entity_id }),
                     effect_id: VarInt(new_effect.status_effect().to_raw() as i32),
                     amplifier: new_effect.amplifier(),
                     duration: VarInt(new_effect.duration()),
@@ -184,19 +185,20 @@ fn add_status_effects(
 
 fn remove_expired_status_effects(
     mut query: Query<(&EntityId, &mut ActiveStatusEffects)>,
-    mut clients: Query<&mut Client>,
+    mut clients: Query<(&EntityId, &mut Client)>,
 ) {
     for (entity_id, mut active_status_effects) in query.iter_mut() {
         let entity_id = entity_id.get();
 
         for effect in &active_status_effects.active {
             if effect.expired() {
-                for mut client in clients.iter_mut() {
+                for (client_id, mut client) in clients.iter_mut() {
+                    let client_id = client_id.get();
                     client.write_packet(&EntityStatusEffectS2c {
-                        entity_id: VarInt(entity_id),
+                        entity_id: VarInt(if client_id == entity_id { 0 } else { entity_id }),
                         effect_id: VarInt(effect.status_effect().to_raw() as i32),
                         amplifier: effect.amplifier(),
-                        duration: VarInt(effect.duration()),
+                        duration: VarInt(-1),
                         flags: entity_status_effect_s2c::Flags::new()
                             .with_is_ambient(effect.ambient())
                             .with_show_particles(effect.show_particles())
