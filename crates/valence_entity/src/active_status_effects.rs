@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use bevy_ecs::prelude::*;
 
 use crate::status_effects::StatusEffect;
@@ -7,41 +5,89 @@ use crate::status_effects::StatusEffect;
 /// [`Component`] that stores the [`ActiveStatusEffect`]s of an [`Entity`].
 #[derive(Component, Default, Debug)]
 pub struct ActiveStatusEffects {
-    active_effects: HashMap<StatusEffect, ActiveStatusEffect>,
-    new_effects: HashMap<StatusEffect, ActiveStatusEffect>,
+    active_effects: Vec<ActiveStatusEffect>,
+    new_effects: Vec<ActiveStatusEffect>,
 }
 
 impl ActiveStatusEffects {
+    /// Adds a new [`ActiveStatusEffect`] to the [`ActiveStatusEffects`].
     pub fn add(&mut self, effect: ActiveStatusEffect) {
-        self.new_effects.insert(effect.status_effect(), effect);
+        // Remove the effect if it is already in the new effects.
+        self.new_effects
+            .retain(|new_effect| new_effect.status_effect() != effect.status_effect());
+
+        self.new_effects.push(effect);
     }
 
-    pub fn active_effects(&self) -> &HashMap<StatusEffect, ActiveStatusEffect> {
+    /// Removes an [`ActiveStatusEffect`] from the [`ActiveStatusEffects`].
+    pub fn remove(&mut self, effect: StatusEffect) {
+        // It just sets the duration to 0, so it will be properly removed in the next
+        // tick.
+        if let Some(active_effect) = self
+            .active_effects
+            .iter_mut()
+            .find(|active_effect| active_effect.status_effect() == effect)
+        {
+            active_effect.duration = Some(0);
+        }
+    }
+
+    /// Returns the [`ActiveStatusEffect`]s of the [`ActiveStatusEffects`].
+    pub fn active_effects(&self) -> &Vec<ActiveStatusEffect> {
         &self.active_effects
     }
 
-    pub fn active_effects_mut(&mut self) -> &mut HashMap<StatusEffect, ActiveStatusEffect> {
+    /// Returns the [`ActiveStatusEffect`]s of the [`ActiveStatusEffects`]
+    /// mutably.
+    pub fn active_effects_mut(&mut self) -> &mut Vec<ActiveStatusEffect> {
         &mut self.active_effects
     }
 
-    pub fn new_effects(&self) -> &HashMap<StatusEffect, ActiveStatusEffect> {
-        &self.new_effects
+    fn remove_new_from_active(&mut self) {
+        self.active_effects.retain(|active_effect| {
+            !self
+                .new_effects
+                .iter()
+                .any(|new_effect| new_effect.status_effect() == active_effect.status_effect())
+        });
     }
 
-    pub fn new_effects_mut(&mut self) -> &mut HashMap<StatusEffect, ActiveStatusEffect> {
-        &mut self.new_effects
+    /// For internal use only. Moves the new effects to the active effects
+    /// and returns an iterator over the new effects.
+    pub fn move_new_to_active(&mut self) -> impl Iterator<Item = &mut ActiveStatusEffect> {
+        self.remove_new_from_active();
+
+        let old_len = self.active_effects.len();
+
+        self.active_effects.append(&mut self.new_effects);
+
+        self.active_effects[old_len..]
+            .iter_mut()
+    }
+
+    pub fn remove_expired(&mut self) {
+        self.active_effects.retain(|effect| !effect.expired());
     }
 }
 
 /// Represents an active status effect.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct ActiveStatusEffect {
     effect: StatusEffect,
-    amplifier: i8,
-    /// The total duration of the status effect in ticks.
-    duration: i32,
+    /// # Default Value
+    /// 0
+    amplifier: u8,
+    /// # Default Value
+    /// 600 ticks (30 seconds)
+    duration: Option<i32>,
+    /// # Default Value
+    /// false
     ambient: bool,
+    /// # Default Value
+    /// true
     show_particles: bool,
+    /// # Default Value
+    /// true
     show_icon: bool,
 }
 
@@ -51,7 +97,7 @@ impl ActiveStatusEffect {
         Self {
             effect,
             amplifier: 0,
-            duration: 600,
+            duration: Some(600),
             ambient: false,
             show_particles: true,
             show_icon: true,
@@ -59,26 +105,26 @@ impl ActiveStatusEffect {
     }
 
     /// Sets the amplifier of the [`ActiveStatusEffect`].
-    pub fn with_amplifier(mut self, amplifier: i8) -> Self {
+    pub fn with_amplifier(mut self, amplifier: u8) -> Self {
         self.amplifier = amplifier;
         self
     }
 
     /// Sets the duration of the [`ActiveStatusEffect`] in ticks.
     pub fn with_duration(mut self, duration: i32) -> Self {
-        self.duration = duration;
+        self.duration = Some(duration);
         self
     }
 
     /// Sets the duration of the [`ActiveStatusEffect`] in seconds.
     pub fn with_duration_seconds(mut self, duration: f32) -> Self {
-        self.duration = (duration * 20.0) as i32;
+        self.duration = Some((duration * 20.0).round() as i32);
         self
     }
 
     /// Sets the duration of the [`ActiveStatusEffect`] to infinite.
-    pub fn with_infinite_duration(mut self) -> Self {
-        self.duration = -1; // -1 is infinite in vanilla
+    pub fn with_infinite(mut self) -> Self {
+        self.duration = None;
         self
     }
 
@@ -102,12 +148,12 @@ impl ActiveStatusEffect {
 
     /// Decrements the duration of the [`ActiveStatusEffect`] by a tick.
     pub fn decrement_duration(&mut self) {
-        if self.duration < 0 {
-            return;
-        }
-        self.duration -= 1;
-        if self.duration < 0 {
-            self.duration = 0;
+        if let Some(duration) = self.duration.as_mut() {
+            *duration -= 1;
+
+            if *duration <= 0 {
+                *duration = 0;
+            }
         }
     }
 
@@ -117,32 +163,34 @@ impl ActiveStatusEffect {
     }
 
     /// Returns the amplifier of the [`ActiveStatusEffect`].
-    pub fn amplifier(&self) -> i8 {
+    pub fn amplifier(&self) -> u8 {
         self.amplifier
     }
 
     /// Returns the remaining duration of the [`ActiveStatusEffect`] in ticks.
-    pub fn duration(&self) -> i32 {
+    /// Returns `None` if the [`ActiveStatusEffect`] is infinite.
+    pub fn duration(&self) -> Option<i32> {
         self.duration
     }
 
-    /// Returns whether the [`ActiveStatusEffect`] is ambient.
+    /// Returns true if the [`ActiveStatusEffect`] is ambient.
     pub fn ambient(&self) -> bool {
         self.ambient
     }
 
-    /// Returns whether the [`ActiveStatusEffect`] shows particles.
+    /// Returns true if the [`ActiveStatusEffect`] shows particles.
     pub fn show_particles(&self) -> bool {
         self.show_particles
     }
 
-    /// Returns whether the [`ActiveStatusEffect`] shows an icon.
+    /// Returns true if the [`ActiveStatusEffect`] shows an icon.
     pub fn show_icon(&self) -> bool {
         self.show_icon
     }
 
-    /// Returns true if the [`ActiveStatusEffect`] has expired.
+    /// Returns true if the [`ActiveStatusEffect`] has expired or if it is
+    /// instant.
     pub fn expired(&self) -> bool {
-        self.status_effect().instant() || self.duration == 0
+        self.status_effect().instant() || self.duration().map_or(false, |duration| duration == 0)
     }
 }

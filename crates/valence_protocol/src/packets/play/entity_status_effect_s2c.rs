@@ -7,7 +7,7 @@ use crate::{Decode, Encode, Packet, VarInt};
 pub struct EntityStatusEffectS2c {
     pub entity_id: VarInt,
     pub effect_id: VarInt, // TODO: effect ID registry.
-    pub amplifier: i8,
+    pub amplifier: u8,
     pub duration: VarInt,
     pub flags: Flags,
     pub factor_codec: Option<Compound>,
