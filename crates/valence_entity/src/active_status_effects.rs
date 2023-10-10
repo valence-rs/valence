@@ -19,6 +19,8 @@ impl ActiveStatusEffects {
     /// tick (more specifically, during the upcoming [`EventLoopPostUpdate`]).
     /// If the [`ActiveStatusEffect`] is already in the new effects, it will be
     /// replaced.
+    ///
+    /// [`EventLoopPostUpdate`]: https://docs.rs/valence_server/0.2.0-alpha.1+mc.1.20.1/valence_server/event_loop/struct.EventLoopPostUpdate.html
     pub fn add(&mut self, effect: ActiveStatusEffect) {
         // Remove the effect if it is already in the new effects.
         self.new_effects
@@ -34,6 +36,8 @@ impl ActiveStatusEffects {
     /// It actually sets the duration of the [`ActiveStatusEffect`] to 0. The
     /// [`ActiveStatusEffect`] will be properly removed in the next tick (more
     /// specifically, during the upcoming [`EventLoopPostUpdate`]).
+    ///
+    /// [`EventLoopPostUpdate`]: https://docs.rs/valence_server/0.2.0-alpha.1+mc.1.20.1/valence_server/event_loop/struct.EventLoopPostUpdate.html
     pub fn remove(&mut self, effect: StatusEffect) {
         // It just sets the duration to 0, so it will be properly removed in the next
         // tick.
@@ -59,8 +63,9 @@ impl ActiveStatusEffects {
     /// the [`ActiveStatusEffect`]s as it may cause inconsistencies.
     ///
     /// If you want to add, remove or modify [`ActiveStatusEffect`]s, use the
-    /// [`add`] and [`remove`] methods instead of directly modifying the
-    /// [`ActiveStatusEffect`]s.
+    /// [`add`](ActiveStatusEffects::add) and
+    /// [`remove`](ActiveStatusEffects::remove) methods instead of directly
+    /// modifying the [`ActiveStatusEffect`]s.
     pub fn active_effects_mut(&mut self) -> &mut Vec<ActiveStatusEffect> {
         &mut self.active_effects
     }
