@@ -200,7 +200,7 @@ fn add_status_effects(
             let status_effect = new_effect.status_effect();
 
             if let Some(ref mut client) = client {
-                client.write_packet(&create_packet(&new_effect));
+                client.write_packet(&create_packet(new_effect));
             }
 
             if let Some(ref mut entity_flags) = entity_flags {
