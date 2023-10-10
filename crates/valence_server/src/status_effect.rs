@@ -1,7 +1,9 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use valence_entity::EntityId;
-use valence_protocol::packets::play::{entity_status_effect_s2c, EntityStatusEffectS2c};
+use valence_protocol::packets::play::{
+    entity_status_effect_s2c, EntityStatusEffectS2c, RemoveEntityStatusEffectS2c,
+};
 use valence_protocol::{StatusEffect, VarInt, WritePacket};
 
 use crate::client::Client;
@@ -65,7 +67,7 @@ impl ActiveStatusEffect {
 
     /// Sets the duration of the [`ActiveStatusEffect`] to infinite.
     pub fn with_infinite_duration(mut self) -> Self {
-        self.duration = i32::MAX;
+        self.duration = -1; // -1 is infinite in vanilla
         self
     }
 
@@ -89,7 +91,13 @@ impl ActiveStatusEffect {
 
     /// Decrements the duration of the [`ActiveStatusEffect`] by a tick.
     pub fn decrement_duration(&mut self) {
+        if self.duration < 0 {
+            return;
+        }
         self.duration -= 1;
+        if self.duration < 0 {
+            self.duration = 0;
+        }
     }
 
     /// Returns the [`StatusEffect`] of the [`ActiveStatusEffect`].
@@ -124,7 +132,7 @@ impl ActiveStatusEffect {
 
     /// Returns true if the [`ActiveStatusEffect`] has expired.
     pub fn expired(&self) -> bool {
-        self.duration <= 0
+        self.duration == 0
     }
 }
 
@@ -135,9 +143,9 @@ impl Plugin for StatusEffectPlugin {
         app.add_systems(
             EventLoopPostUpdate,
             (
+                remove_expired_status_effects,
                 update_active_status_effects,
                 add_status_effects,
-                remove_expired_status_effects,
             ),
         );
     }
@@ -146,9 +154,6 @@ impl Plugin for StatusEffectPlugin {
 fn update_active_status_effects(mut query: Query<&mut ActiveStatusEffects>) {
     for mut active_status_effects in query.iter_mut() {
         for effect in active_status_effects.active.iter_mut() {
-            if effect.duration() == i32::MAX {
-                continue;
-            }
             effect.decrement_duration();
         }
     }
@@ -163,23 +168,25 @@ fn add_status_effects(
         for new_effect in &active_status_effects.new {
             for (client_id, mut client) in clients.iter_mut() {
                 let client_id = client_id.get();
-                client.write_packet(&EntityStatusEffectS2c {
-                    entity_id: VarInt(if client_id == entity_id { 0 } else { entity_id }),
-                    effect_id: VarInt(new_effect.status_effect().to_raw() as i32),
-                    amplifier: new_effect.amplifier(),
-                    duration: VarInt(new_effect.duration()),
-                    flags: entity_status_effect_s2c::Flags::new()
-                        .with_is_ambient(new_effect.ambient())
-                        .with_show_particles(new_effect.show_particles())
-                        .with_show_icon(new_effect.show_icon()),
-                    factor_codec: None,
-                });
+                if client_id == entity_id {
+                    client.write_packet(&EntityStatusEffectS2c {
+                        entity_id: VarInt(0),
+                        effect_id: VarInt(new_effect.status_effect().to_raw() as i32),
+                        amplifier: new_effect.amplifier(),
+                        duration: VarInt(new_effect.duration()),
+                        flags: entity_status_effect_s2c::Flags::new()
+                            .with_is_ambient(new_effect.ambient())
+                            .with_show_particles(new_effect.show_particles())
+                            .with_show_icon(new_effect.show_icon()),
+                        factor_codec: None,
+                    });
+                } else {
+                    // TODO: Something with EntityTrackerUpdateS2c
+                }
             }
         }
 
-        // idk if this is the best way to do this, I just asked an AI about it and it
-        // gave me this
-        let mut old_vec = std::mem::replace(&mut active_status_effects.new, Vec::new());
+        let mut old_vec = std::mem::take(&mut active_status_effects.new);
         active_status_effects.active.append(&mut old_vec);
     }
 }
@@ -195,16 +202,9 @@ fn remove_expired_status_effects(
             if effect.expired() {
                 for (client_id, mut client) in clients.iter_mut() {
                     let client_id = client_id.get();
-                    client.write_packet(&EntityStatusEffectS2c {
+                    client.write_packet(&RemoveEntityStatusEffectS2c {
                         entity_id: VarInt(if client_id == entity_id { 0 } else { entity_id }),
                         effect_id: VarInt(effect.status_effect().to_raw() as i32),
-                        amplifier: effect.amplifier(),
-                        duration: VarInt(-1),
-                        flags: entity_status_effect_s2c::Flags::new()
-                            .with_is_ambient(effect.ambient())
-                            .with_show_particles(effect.show_particles())
-                            .with_show_icon(effect.show_icon()),
-                        factor_codec: None,
                     });
                 }
             }
@@ -213,10 +213,5 @@ fn remove_expired_status_effects(
         active_status_effects
             .active
             .retain(|effect| !effect.expired());
-
-        // idk if this is the best way to do this, I just asked an AI about it and it
-        // gave me this
-        let mut old_vec = std::mem::replace(&mut active_status_effects.new, Vec::new());
-        active_status_effects.active.append(&mut old_vec);
     }
 }
