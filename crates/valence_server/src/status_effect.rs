@@ -2,7 +2,6 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_utils::HashMap;
 use valence_entity::entity::Flags;
-use valence_entity::EntityId;
 use valence_protocol::packets::play::{
     entity_status_effect_s2c, EntityStatusEffectS2c, RemoveEntityStatusEffectS2c,
 };
@@ -134,7 +133,7 @@ impl ActiveStatusEffect {
 
     /// Returns true if the [`ActiveStatusEffect`] has expired.
     pub fn expired(&self) -> bool {
-        self.duration == 0
+        self.status_effect().instant() || self.duration == 0
     }
 }
 
@@ -153,42 +152,74 @@ impl Plugin for StatusEffectPlugin {
     }
 }
 
-fn update_active_status_effects(mut query: Query<&mut ActiveStatusEffects>) {
-    for mut active_status_effects in query.iter_mut() {
+fn update_active_status_effects(mut query: Query<(&mut ActiveStatusEffects, Option<&mut Client>)>) {
+    for (mut active_status_effects, mut client) in query.iter_mut() {
         for (_, effect) in active_status_effects.active.iter_mut() {
-            effect.decrement_duration(); // TODO: Update client every 600 ticks (vanilla)
+            effect.decrement_duration();
+
+            // Like in vanilla, remind the client of the effect every 600 ticks
+            if effect.duration() > 0 && effect.duration() % 600 == 0 {
+                if let Some(ref mut client) = client {
+                    client.write_packet(&create_packet(effect));
+                }
+            }
+
+            /*
+             * The following things require to occasionally modify entity stuff:
+             * - regeneration
+             * - poison
+             * - wither
+             */
         }
     }
 }
 
+fn create_packet(effect: &ActiveStatusEffect) -> EntityStatusEffectS2c {
+    EntityStatusEffectS2c {
+        entity_id: VarInt(0),
+        effect_id: VarInt(effect.status_effect().to_raw() as i32),
+        amplifier: effect.amplifier(),
+        duration: VarInt(effect.duration()),
+        flags: entity_status_effect_s2c::Flags::new()
+            .with_is_ambient(effect.ambient())
+            .with_show_particles(effect.show_particles())
+            .with_show_icon(effect.show_icon()),
+        factor_codec: None,
+    }
+}
+
 fn add_status_effects(
-    mut query: Query<(&EntityId, &mut ActiveStatusEffects, &mut Flags)>,
-    mut clients: Query<(&EntityId, &mut Client)>,
+    mut query: Query<(
+        &mut ActiveStatusEffects,
+        Option<&mut Client>,
+        Option<&mut Flags>,
+    )>,
 ) {
-    for (entity_id, mut active_status_effects, mut entity_flags) in query.iter_mut() {
-        let entity_id = entity_id.get();
+    for (mut active_status_effects, mut client, mut entity_flags) in query.iter_mut() {
         for (_, new_effect) in &active_status_effects.new {
-            for (client_id, mut client) in clients.iter_mut() {
-                let status_effect = new_effect.status_effect();
+            let status_effect = new_effect.status_effect();
 
-                let client_id = client_id.get();
-                if client_id == entity_id {
-                    client.write_packet(&EntityStatusEffectS2c {
-                        entity_id: VarInt(0),
-                        effect_id: VarInt(status_effect.to_raw() as i32),
-                        amplifier: new_effect.amplifier(),
-                        duration: VarInt(new_effect.duration()),
-                        flags: entity_status_effect_s2c::Flags::new()
-                            .with_is_ambient(new_effect.ambient())
-                            .with_show_particles(new_effect.show_particles())
-                            .with_show_icon(new_effect.show_icon()),
-                        factor_codec: None,
-                    });
-                }
-
-                set_entity_flags(status_effect, &mut entity_flags, true);
-                // TODO: More stuff such as speed, particles
+            if let Some(ref mut client) = client {
+                client.write_packet(&create_packet(&new_effect));
             }
+
+            if let Some(ref mut entity_flags) = entity_flags {
+                set_entity_flags(status_effect, entity_flags, true);
+            }
+
+            // TODO: More stuff such as particles, instant health, instant damage, etc.
+
+            /*
+             * TODO: These things require to modify entity attributes:
+             * - speed
+             * - slowness
+             * - haste
+             * - mining fatigue
+             * - strength
+             * - weakness
+             * - luck
+             * - unluck
+             */
         }
 
         let old_map = std::mem::take(&mut active_status_effects.new);
@@ -197,26 +228,26 @@ fn add_status_effects(
 }
 
 fn remove_expired_status_effects(
-    mut query: Query<(&EntityId, &mut ActiveStatusEffects, &mut Flags)>,
-    mut clients: Query<(&EntityId, &mut Client)>,
+    mut query: Query<(
+        &mut ActiveStatusEffects,
+        Option<&mut Client>,
+        Option<&mut Flags>,
+    )>,
 ) {
-    for (entity_id, mut active_status_effects, mut entity_flags) in query.iter_mut() {
-        let entity_id = entity_id.get();
-
+    for (mut active_status_effects, mut client, mut entity_flags) in query.iter_mut() {
         for (_, effect) in &active_status_effects.active {
             if effect.expired() {
-                for (client_id, mut client) in clients.iter_mut() {
-                    let status_effect = effect.status_effect();
+                let status_effect = effect.status_effect();
 
-                    let client_id = client_id.get();
-                    if client_id == entity_id {
-                        client.write_packet(&RemoveEntityStatusEffectS2c {
-                            entity_id: VarInt(0),
-                            effect_id: VarInt(status_effect.to_raw() as i32),
-                        });
-                    }
+                if let Some(ref mut client) = client {
+                    client.write_packet(&RemoveEntityStatusEffectS2c {
+                        entity_id: VarInt(0),
+                        effect_id: VarInt(status_effect.to_raw() as i32),
+                    });
+                }
 
-                    set_entity_flags(status_effect, &mut entity_flags, false);
+                if let Some(ref mut entity_flags) = entity_flags {
+                    set_entity_flags(status_effect, entity_flags, false);
                 }
             }
         }
