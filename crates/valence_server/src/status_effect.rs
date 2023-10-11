@@ -64,13 +64,8 @@ fn add_status_effects(
         Option<&mut PotionSwirlsAmbient>,
     )>,
 ) {
-    for (
-        mut active_status_effects,
-        mut client,
-        mut entity_flags,
-        swirl_color,
-        swirl_ambient,
-    ) in query.iter_mut()
+    for (mut active_status_effects, mut client, mut entity_flags, swirl_color, swirl_ambient) in
+        query.iter_mut()
     {
         let mut move_new_to_active = active_status_effects.move_new_to_active().peekable();
 
