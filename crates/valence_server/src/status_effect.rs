@@ -68,11 +68,17 @@ fn add_status_effects(
         mut active_status_effects,
         mut client,
         mut entity_flags,
-        mut swirl_color,
-        mut swirl_ambient,
+        swirl_color,
+        swirl_ambient,
     ) in query.iter_mut()
     {
-        for new_effect in active_status_effects.move_new_to_active() {
+        let mut move_new_to_active = active_status_effects.move_new_to_active().peekable();
+
+        if move_new_to_active.peek().is_none() {
+            continue;
+        }
+
+        for new_effect in move_new_to_active {
             let status_effect = new_effect.status_effect();
 
             if let Some(ref mut client) = client {
@@ -81,17 +87,6 @@ fn add_status_effects(
 
             if let Some(ref mut entity_flags) = entity_flags {
                 set_entity_flags(status_effect, entity_flags, true);
-            }
-
-            if let Some(ref mut swirl_color) = swirl_color {
-                // TODO: Mix colors.
-                // See net.minecraft.potion.PotionUtil#getColor lines 90-115
-                swirl_color.0 = status_effect.color() as i32; // TODO: `as i32`?
-                                                              // ???
-            }
-
-            if let Some(ref mut swirl_ambient) = swirl_ambient {
-                swirl_ambient.0 = new_effect.ambient();
             }
 
             // TODO: More stuff such as instant health, instant damage, etc.
@@ -105,8 +100,13 @@ fn add_status_effects(
              * - weakness
              * - luck
              * - unluck
+             *
+             * Entity attributes are not implemented in Valence yet. See
+             * <insert issue here>.
              */
         }
+
+        set_swirl(active_status_effects, swirl_color, swirl_ambient);
     }
 }
 
@@ -116,9 +116,12 @@ fn remove_expired_status_effects(
         Option<&mut Client>,
         Option<&mut Flags>,
         Option<&mut PotionSwirlsColor>,
+        Option<&mut PotionSwirlsAmbient>,
     )>,
 ) {
-    for (mut active_status_effects, mut client, mut entity_flags, mut swirl_color) in query.iter_mut() {
+    for (mut active_status_effects, mut client, mut entity_flags, swirl_color, swirl_ambient) in
+        query.iter_mut()
+    {
         for effect in active_status_effects.active_effects_mut() {
             if effect.expired() {
                 let status_effect = effect.status_effect();
@@ -133,14 +136,12 @@ fn remove_expired_status_effects(
                 if let Some(ref mut entity_flags) = entity_flags {
                     set_entity_flags(status_effect, entity_flags, false);
                 }
-
-                if let Some(ref mut swirl_color) = swirl_color {
-                    swirl_color.0 = 0;
-                }
             }
         }
 
         active_status_effects.remove_expired();
+
+        set_swirl(active_status_effects, swirl_color, swirl_ambient);
     }
 }
 
@@ -154,4 +155,59 @@ fn set_entity_flags(status_effect: StatusEffect, entity_flags: &mut Flags, state
         }
         _ => {}
     }
+}
+
+fn set_swirl(
+    active_status_effects: Mut<'_, ActiveStatusEffects>,
+    mut swirl_color: Option<Mut<'_, PotionSwirlsColor>>,
+    mut swirl_ambient: Option<Mut<'_, PotionSwirlsAmbient>>,
+) {
+    if let Some(ref mut swirl_ambient) = swirl_ambient {
+        swirl_ambient.0 = active_status_effects
+            .active_effects()
+            .any(|effect| effect.ambient());
+    }
+
+    if let Some(ref mut swirl_color) = swirl_color {
+        swirl_color.0 = get_color(&active_status_effects);
+    }
+}
+
+/// Ctrl+C Ctrl+V from net.minecraft.potion.PotionUtil#getColor
+fn get_color(effects: &ActiveStatusEffects) -> i32 {
+    if effects.is_empty() {
+        // vanilla mc seems to return 0x385dc6 if there are no effects
+        // dunno why
+        // imma just say to return 0 to remove the swirls
+        return 0;
+    }
+
+    let effects = effects.active_effects();
+    let mut f = 0.0;
+    let mut g = 0.0;
+    let mut h = 0.0;
+    let mut j = 0.0;
+
+    for status_effect_instance in effects {
+        if !status_effect_instance.show_particles() {
+            continue;
+        }
+
+        let k = status_effect_instance.status_effect().color();
+        let l = (status_effect_instance.amplifier() + 1) as f32;
+        f += (l * ((k >> 16) & 0xff) as f32) / 255.0;
+        g += (l * ((k >> 8) & 0xff) as f32) / 255.0;
+        h += (l * ((k) & 0xff) as f32) / 255.0;
+        j += l;
+    }
+
+    if j == 0.0 {
+        return 0;
+    }
+
+    f = f / j * 255.0;
+    g = g / j * 255.0;
+    h = h / j * 255.0;
+
+    ((f as i32) << 16) | ((g as i32) << 8) | (h as i32)
 }
