@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use bevy_ecs::prelude::*;
 use indexmap::IndexMap;
 
@@ -167,47 +169,55 @@ impl ActiveStatusEffects {
             .entry(effect.status_effect())
             .or_default();
 
-        if let Some(index) = effects
-            .iter()
-            .position(|e| e.amplifier() < effect.amplifier())
-        {
-            // Found an effect with a lower amplifier.
+        let duration = effect.duration();
+        let amplifier = effect.amplifier();
 
-            if effects[index].duration() < effect.duration() {
+        if let Some(index) = effects.iter().position(|e| e.amplifier() <= amplifier) {
+            // Found an effect with the same or a lower amplifier.
+
+            let active_status_effect = &effects[index];
+
+            if active_status_effect.duration() < duration {
                 // if its duration is shorter, override it.
                 effects[index] = effect;
+
+                // Remove effects after the current one that have a lower
+                // duration.
+                let mut remaining_effects = effects.split_off(index + 1);
+                remaining_effects.retain(|e| e.duration() >= duration);
+                effects.append(&mut remaining_effects);
                 true
-            } else {
-                // if its duration is longer, insert it before the effect.
+            } else if active_status_effect.duration() > duration
+                && active_status_effect.amplifier() < amplifier
+            {
+                // if its duration is longer and its amplifier is lower, insert
+                // the new effect before it.
                 effects.insert(index, effect);
                 true
+            } else {
+                // if its duration is longer and its amplifier is higher, do
+                // nothing.
+                false
             }
         } else {
-            // Didn't find an effect with a lower amplifier.
-            // This means that the effect has or is tied for lowest amplifier
-            // or that there are no existing effects.
+            println!("AAAA");
+            // Found no effect with an equal or lower amplifier.
+            // This means all effects have a higher amplifier or the vec is
+            // empty.
 
-            // Get the last effect.
-            if let Some(last_effect) = effects.last() {
-                let last_index = effects.len() - 1;
-                if last_effect.duration() < effect.duration() {
-                    // if its duration is longer...
-                    if last_effect.amplifier() == effect.amplifier() {
-                        // and if it has the same amplifier, override it.
-                        effects[last_index] = effect;
-                        true
-                    } else {
-                        // and if it has a different amplifier, insert it after
-                        effects.push(effect);
-                        true
-                    }
+            if let Some(last) = effects.last() {
+                println!("BBBB");
+                // There is at least one effect with a higher amplifier.
+                if last.duration() < effect.duration() {
+                    // if its duration is shorter, we can insert it at the end.
+                    effects.push(effect);
+                    true
                 } else {
-                    // if its duration is shorter, do nothing. It'll vanish
-                    // before it does anything anyway.
+                    // if its duration is longer, do nothing.
                     false
                 }
             } else {
-                // There are no existing effects.
+                // The vec is empty.
                 effects.push(effect);
                 true
             }
@@ -257,25 +267,25 @@ impl ActiveStatusEffects {
     ///
     /// Applies all the changes.
     ///
-    /// Returns a [`Vec`] of [`StatusEffect`]s that were updated or removed.
-    pub fn apply_changes(&mut self) -> Vec<StatusEffect> {
-        let mut updated_effects = Vec::new();
+    /// Returns a [`HashSet`] of [`StatusEffect`]s that were updated or removed.
+    pub fn apply_changes(&mut self) -> HashSet<StatusEffect> {
+        let mut updated_effects = HashSet::new();
 
         for change in std::mem::take(&mut self.changes) {
             match change {
                 StatusEffectChange::Apply(effect) => {
                     let value = effect.status_effect();
                     if self.apply_effect(effect) {
-                        updated_effects.push(value);
+                        updated_effects.insert(value);
                     }
                 }
                 StatusEffectChange::Replace(effect) => {
-                    updated_effects.push(effect.status_effect());
+                    updated_effects.insert(effect.status_effect());
                     self.replace_effect(effect);
                 }
                 StatusEffectChange::Remove(effect) => {
                     self.remove_effect(effect);
-                    updated_effects.push(effect);
+                    updated_effects.insert(effect);
                 }
                 StatusEffectChange::RemoveAll => {
                     self.remove_all_effects();
@@ -283,7 +293,7 @@ impl ActiveStatusEffects {
                 }
                 StatusEffectChange::Expire(effect) => {
                     self.remove_strongest_effect(effect);
-                    updated_effects.push(effect);
+                    updated_effects.insert(effect);
                 }
             }
         }
