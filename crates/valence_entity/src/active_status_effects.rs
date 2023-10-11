@@ -20,7 +20,7 @@ impl ActiveStatusEffects {
     /// If the [`ActiveStatusEffect`] is already in the new effects, it will be
     /// replaced.
     ///
-    /// [`EventLoopPostUpdate`]: https://docs.rs/valence_server/0.2.0-alpha.1+mc.1.20.1/valence_server/event_loop/struct.EventLoopPostUpdate.html
+    /// [`EventLoopPostUpdate`]: https://valence.rs/rustdoc/valence/struct.EventLoopPostUpdate.html
     pub fn add(&mut self, effect: ActiveStatusEffect) {
         // Remove the effect if it is already in the new effects.
         self.new_effects
@@ -37,7 +37,7 @@ impl ActiveStatusEffects {
     /// [`ActiveStatusEffect`] will be properly removed in the next tick (more
     /// specifically, during the upcoming [`EventLoopPostUpdate`]).
     ///
-    /// [`EventLoopPostUpdate`]: https://docs.rs/valence_server/0.2.0-alpha.1+mc.1.20.1/valence_server/event_loop/struct.EventLoopPostUpdate.html
+    /// [`EventLoopPostUpdate`]: https://valence.rs/rustdoc/valence/struct.EventLoopPostUpdate.html
     pub fn remove(&mut self, effect: StatusEffect) {
         // It just sets the duration to 0, so it will be properly removed in the next
         // tick.
