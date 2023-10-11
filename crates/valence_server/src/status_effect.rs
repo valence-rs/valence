@@ -117,7 +117,13 @@ fn remove_expired_status_effects(
     for (mut active_status_effects, mut client, mut entity_flags, swirl_color, swirl_ambient) in
         query.iter_mut()
     {
-        for effect in active_status_effects.active_effects_mut() {
+        let expired = active_status_effects.remove_expired();
+
+        if expired.len() == 0 {
+            continue;
+        }
+
+        for effect in &expired {
             if effect.expired() {
                 let status_effect = effect.status_effect();
 
@@ -133,8 +139,6 @@ fn remove_expired_status_effects(
                 }
             }
         }
-
-        active_status_effects.remove_expired();
 
         set_swirl(active_status_effects, swirl_color, swirl_ambient);
     }

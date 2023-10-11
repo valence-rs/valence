@@ -103,7 +103,9 @@ impl ActiveStatusEffects {
             .retain(|active_effect| !self.new_effects.contains(active_effect));
     }
 
-    /// For internal use only. Moves the new effects to the active effects
+    /// For internal use only.
+    /// 
+    /// Moves the new effects to the active effects
     /// and returns an iterator over the new effects.
     pub fn move_new_to_active(&mut self) -> impl Iterator<Item = &ActiveStatusEffect> {
         self.remove_new_from_active();
@@ -115,8 +117,30 @@ impl ActiveStatusEffects {
         self.active_effects[old_len..].iter()
     }
 
-    pub fn remove_expired(&mut self) {
-        self.active_effects.retain(|effect| !effect.expired());
+    /// For internal use only.
+    ///
+    /// Removes all the expired [`ActiveStatusEffect`]s from the active effects.
+    /// Returns the removed [`ActiveStatusEffect`]s.
+    ///
+    /// n.b.: drain_filter is unstable, so we can't use it.
+    ///
+    /// See RFC: <https://github.com/rust-lang/rfcs/issues/2140>
+    ///
+    /// See tracking issue: <https://github.com/rust-lang/rust/issues/43244>
+    pub fn remove_expired(&mut self) -> Vec<ActiveStatusEffect> {
+        let mut removed = Vec::new();
+
+        self.active_effects.retain(|active_effect| {
+            if active_effect.expired() {
+                // Safety: We don't use the active effect after this.
+                removed.push(unsafe { std::ptr::read(active_effect) });
+                false
+            } else {
+                true
+            }
+        });
+
+        removed
     }
 }
 
