@@ -104,7 +104,7 @@ macro_rules! compound {
 #[cfg(feature = "java_string")]
 #[macro_export]
 macro_rules! jcompound {
-    ($($key:expr => $value:expr),*, $(,)?) => {
+    ($($key:expr => $value:expr),* $(,)?) => {
         compound!(<::java_string::JavaString> $($key => $value),*)
     }
 }
