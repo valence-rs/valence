@@ -17,11 +17,15 @@ impl ActiveStatusEffects {
     /// It actually adds the [`ActiveStatusEffect`] to the new effects. The
     /// [`ActiveStatusEffect`] will be added to the active effects in the next
     /// tick (more specifically, during the upcoming [`EventLoopPostUpdate`]).
-    /// If the [`ActiveStatusEffect`] is already in the new effects, it will be
-    /// replaced.
+    /// If the [`ActiveStatusEffect`] is already in the active or new effects,
+    /// it will be removed.
     ///
     /// [`EventLoopPostUpdate`]: https://valence.rs/rustdoc/valence/struct.EventLoopPostUpdate.html
     pub fn add(&mut self, effect: ActiveStatusEffect) {
+        // Remove the effect if it is already in the active effects.
+        self.active_effects
+            .retain(|active_effect| active_effect.status_effect() != effect.status_effect());
+
         // Remove the effect if it is already in the new effects.
         self.new_effects
             .retain(|new_effect| new_effect.status_effect() != effect.status_effect());
@@ -33,9 +37,11 @@ impl ActiveStatusEffects {
     ///
     /// ## Note
     ///
-    /// It actually sets the duration of the [`ActiveStatusEffect`] to 0. The
-    /// [`ActiveStatusEffect`] will be properly removed in the next tick (more
-    /// specifically, during the upcoming [`EventLoopPostUpdate`]).
+    /// If the effect is already active, it actually sets the duration of the
+    /// [`ActiveStatusEffect`] to 0. The [`ActiveStatusEffect`] will be
+    /// properly removed in the next tick (more specifically, during the
+    /// upcoming [`EventLoopPostUpdate`]). Otherwise, it removes it from the
+    /// `new_effects`.
     ///
     /// [`EventLoopPostUpdate`]: https://valence.rs/rustdoc/valence/struct.EventLoopPostUpdate.html
     pub fn remove(&mut self, effect: StatusEffect) {
@@ -48,17 +54,26 @@ impl ActiveStatusEffects {
         {
             active_effect.duration = Some(0);
         }
+
+        // Remove the effect if it is already in the new effects.
+        self.new_effects
+            .retain(|new_effect| new_effect.status_effect() != effect);
     }
 
     /// Returns the [`ActiveStatusEffect`]s of the [`ActiveStatusEffects`].
-    pub fn active_effects(&self) -> &Vec<ActiveStatusEffect> {
-        &self.active_effects
+    ///
+    /// ## Note
+    ///
+    /// Returns an iterator over the active effects and the new effects.
+    pub fn active_effects(&self) -> impl Iterator<Item = &ActiveStatusEffect> {
+        self.active_effects.iter().chain(self.new_effects.iter())
     }
 
     /// Returns the [`ActiveStatusEffect`]s of the [`ActiveStatusEffects`]
     /// mutably.
     ///
     /// # Warning
+    ///
     /// This method should only be used by the server. Be careful when modifying
     /// the [`ActiveStatusEffect`]s as it may cause inconsistencies.
     ///
@@ -70,20 +85,9 @@ impl ActiveStatusEffects {
         &mut self.active_effects
     }
 
-    fn remove_new_from_active(&mut self) {
-        self.active_effects.retain(|active_effect| {
-            !self
-                .new_effects
-                .iter()
-                .any(|new_effect| new_effect.status_effect() == active_effect.status_effect())
-        });
-    }
-
     /// For internal use only. Moves the new effects to the active effects
     /// and returns an iterator over the new effects.
     pub fn move_new_to_active(&mut self) -> impl Iterator<Item = &mut ActiveStatusEffect> {
-        self.remove_new_from_active();
-
         let old_len = self.active_effects.len();
 
         self.active_effects.append(&mut self.new_effects);

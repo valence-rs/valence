@@ -86,7 +86,8 @@ fn add_status_effects(
             if let Some(ref mut swirl_color) = swirl_color {
                 // TODO: Mix colors.
                 // See net.minecraft.potion.PotionUtil#getColor lines 90-115
-                swirl_color.0 = status_effect.color() as i32; // TODO: `as i32`????
+                swirl_color.0 = status_effect.color() as i32; // TODO: `as i32`?
+                                                              // ???
             }
 
             if let Some(ref mut swirl_ambient) = swirl_ambient {
