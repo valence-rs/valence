@@ -115,9 +115,10 @@ fn remove_expired_status_effects(
         &mut ActiveStatusEffects,
         Option<&mut Client>,
         Option<&mut Flags>,
+        Option<&mut PotionSwirlsColor>,
     )>,
 ) {
-    for (mut active_status_effects, mut client, mut entity_flags) in query.iter_mut() {
+    for (mut active_status_effects, mut client, mut entity_flags, mut swirl_color) in query.iter_mut() {
         for effect in active_status_effects.active_effects_mut() {
             if effect.expired() {
                 let status_effect = effect.status_effect();
@@ -131,6 +132,10 @@ fn remove_expired_status_effects(
 
                 if let Some(ref mut entity_flags) = entity_flags {
                     set_entity_flags(status_effect, entity_flags, false);
+                }
+
+                if let Some(ref mut swirl_color) = swirl_color {
+                    swirl_color.0 = 0;
                 }
             }
         }
