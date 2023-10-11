@@ -19,9 +19,9 @@ impl Plugin for StatusEffectPlugin {
         app.add_systems(
             EventLoopPostUpdate,
             (
-                remove_expired_status_effects,
-                update_active_status_effects,
                 add_status_effects,
+                update_active_status_effects,
+                add_status_effects, // only expired effects should be here
             ),
         );
     }
@@ -29,15 +29,14 @@ impl Plugin for StatusEffectPlugin {
 
 fn update_active_status_effects(mut query: Query<&mut ActiveStatusEffects>) {
     for mut active_status_effects in query.iter_mut() {
-        for effect in active_status_effects.active_effects_mut().iter_mut() {
-            effect.decrement_duration();
-            /* TODO: The following things require to occasionally modify
-             * entity stuff:
-             * - regeneration
-             * - poison
-             * - wither
-             */
-        }
+        active_status_effects.decrement_duration();
+
+        /* TODO: The following things require to occasionally modify
+         * entity stuff:
+         * - regeneration
+         * - poison
+         * - wither
+         */
     }
 }
 
@@ -67,66 +66,40 @@ fn add_status_effects(
     for (mut active_status_effects, mut client, mut entity_flags, swirl_color, swirl_ambient) in
         query.iter_mut()
     {
-        let mut move_new_to_active = active_status_effects.move_new_to_active().peekable();
+        let updated = active_status_effects.apply_changes();
 
-        if move_new_to_active.peek().is_none() {
+        if updated.is_empty() {
             continue;
         }
 
-        for new_effect in move_new_to_active {
-            let status_effect = new_effect.status_effect();
+        set_swirl(&active_status_effects, swirl_color, swirl_ambient);
 
-            if let Some(ref mut client) = client {
-                client.write_packet(&create_packet(new_effect));
-            }
+        for status_effect in updated {
+            if let Some(updated_effect) = active_status_effects.get_current_effect(status_effect) {
+                if let Some(ref mut client) = client {
+                    client.write_packet(&create_packet(updated_effect));
+                }
 
-            if let Some(ref mut entity_flags) = entity_flags {
-                set_entity_flags(status_effect, entity_flags, true);
-            }
+                if let Some(ref mut entity_flags) = entity_flags {
+                    set_entity_flags(status_effect, entity_flags, true);
+                }
 
-            // TODO: More stuff such as instant health, instant damage, etc.
+                // TODO: More stuff such as instant health, instant damage, etc.
 
-            /* TODO: These things require to modify entity attributes:
-             * - speed
-             * - slowness
-             * - haste
-             * - mining fatigue
-             * - strength
-             * - weakness
-             * - luck
-             * - unluck
-             *
-             * Entity attributes are not implemented in Valence yet. See
-             * <insert issue here>.
-             */
-        }
-
-        set_swirl(active_status_effects, swirl_color, swirl_ambient);
-    }
-}
-
-fn remove_expired_status_effects(
-    mut query: Query<(
-        &mut ActiveStatusEffects,
-        Option<&mut Client>,
-        Option<&mut Flags>,
-        Option<&mut PotionSwirlsColor>,
-        Option<&mut PotionSwirlsAmbient>,
-    )>,
-) {
-    for (mut active_status_effects, mut client, mut entity_flags, swirl_color, swirl_ambient) in
-        query.iter_mut()
-    {
-        let expired = active_status_effects.remove_expired();
-
-        if expired.is_empty() {
-            continue;
-        }
-
-        for effect in &expired {
-            if effect.expired() {
-                let status_effect = effect.status_effect();
-
+                /* TODO: These things require to modify entity attributes:
+                 * - speed
+                 * - slowness
+                 * - haste
+                 * - mining fatigue
+                 * - strength
+                 * - weakness
+                 * - luck
+                 * - unluck
+                 *
+                 * Entity attributes are not implemented in Valence yet. See
+                 * <insert issue here>.
+                 */
+            } else {
                 if let Some(ref mut client) = client {
                     client.write_packet(&RemoveEntityStatusEffectS2c {
                         entity_id: VarInt(0),
@@ -139,8 +112,6 @@ fn remove_expired_status_effects(
                 }
             }
         }
-
-        set_swirl(active_status_effects, swirl_color, swirl_ambient);
     }
 }
 
@@ -157,31 +128,32 @@ fn set_entity_flags(status_effect: StatusEffect, entity_flags: &mut Flags, state
 }
 
 fn set_swirl(
-    active_status_effects: Mut<'_, ActiveStatusEffects>,
+    active_status_effects: &ActiveStatusEffects,
     mut swirl_color: Option<Mut<'_, PotionSwirlsColor>>,
     mut swirl_ambient: Option<Mut<'_, PotionSwirlsAmbient>>,
 ) {
     if let Some(ref mut swirl_ambient) = swirl_ambient {
         swirl_ambient.0 = active_status_effects
-            .active_effects()
+            .get_current_effects()
+            .iter()
             .any(|effect| effect.ambient());
     }
 
     if let Some(ref mut swirl_color) = swirl_color {
-        swirl_color.0 = get_color(&active_status_effects);
+        swirl_color.0 = get_color(active_status_effects);
     }
 }
 
 /// Ctrl+C Ctrl+V from net.minecraft.potion.PotionUtil#getColor
 fn get_color(effects: &ActiveStatusEffects) -> i32 {
-    if effects.is_empty() {
+    if effects.no_effects() {
         // vanilla mc seems to return 0x385dc6 if there are no effects
         // dunno why
         // imma just say to return 0 to remove the swirls
         return 0;
     }
 
-    let effects = effects.active_effects();
+    let effects = effects.get_current_effects();
     let mut f = 0.0;
     let mut g = 0.0;
     let mut h = 0.0;

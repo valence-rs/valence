@@ -1,146 +1,294 @@
 use bevy_ecs::prelude::*;
+use indexmap::IndexMap;
 
 use crate::status_effects::StatusEffect;
+
+/// Represents a change in the [`ActiveStatusEffects`] of an [`Entity`].
+#[derive(Debug)]
+enum StatusEffectChange {
+    Apply(ActiveStatusEffect),
+    Replace(ActiveStatusEffect),
+    Remove(StatusEffect),
+    RemoveAll,
+    /// **For internal use only.**
+    Expire(StatusEffect),
+}
+
+/// The result of a duration calculation for a status effect.
+pub enum DurationResult {
+    /// There are no effects of the given type.
+    NoEffects,
+    /// The effect has an infinite duration.
+    Infinite,
+    /// The effect has a finite duration, represented as an integer number of
+    /// turns.
+    Finite(i32),
+}
 
 /// [`Component`] that stores the [`ActiveStatusEffect`]s of an [`Entity`].
 #[derive(Component, Default, Debug)]
 pub struct ActiveStatusEffects {
-    active_effects: Vec<ActiveStatusEffect>,
-    new_effects: Vec<ActiveStatusEffect>,
+    /// vec is always sorted in descending order of amplifier and ascending
+    /// order of duration.
+    current_effects: IndexMap<StatusEffect, Vec<ActiveStatusEffect>>,
+    changes: Vec<StatusEffectChange>,
+}
+
+/* Public API I imagine:
+ * - apply(status_effect: ActiveStatusEffect) // Applies a new effect. Does
+ *   it in the same way that the Vanilla server does it. i.e., if the effect
+ *   is already active:
+ *   1. if the new effect is the same as the old one and its duration is
+ *      longer, it replaces the old effect. Otherwise, it does nothing.
+ *   2. if the new effect is stronger than the old one:
+ *     a. if the new effect's duration is longer, it replaces the old effect.
+ *     b. if the new effect's duration is shorter, it overrides the old
+ *        effect until the new effect's duration is over.
+ *   3. if the new effect is weaker than the old one and if the new effect's
+ *      duration is longer, it will be overridden by the old effect until the
+ *      old effect's duration is over.
+ * - replace(status_effect: ActiveStatusEffect) // Replaces an existing
+ *   effect.
+ * - remove(status_effect: StatusEffect) // Removes an effect.
+ * - remove_all() // Removes all the effects.
+ * - get_current_effect(status_effect: StatusEffect) ->
+ *   Option<ActiveStatusEffect> // Returns the current active effect. If
+ *   there are multiple effects, it // returns the strongest one.
+ * - get_all_effect(status_effect: StatusEffect) -> Vec<ActiveStatusEffect>
+ *   // Returns all the active effects.
+ * - get_current_effects() -> Vec<ActiveStatusEffect> // Returns all the
+ *   active effects. If there are multiple effects of the // same type, it
+ *   returns the strongest one.
+ * - get_all_effects() -> IndexMap<StatusEffect, Vec<ActiveStatusEffect>> //
+ *   Returns all the active effects. (is IndexMap really necessary?)
+ */
+impl ActiveStatusEffects {
+    // public API goes here
+
+    /// Applies a new [`ActiveStatusEffect`].
+    ///
+    /// If the [`ActiveStatusEffect`] is already active:
+    /// 1. if the new effect is the same as the old one and its duration is
+    ///    longer, it replaces the old effect. Otherwise, it does nothing.
+    /// 2. if the new effect is stronger than the old one:
+    ///   a. if the new effect's duration is longer, it replaces the old effect.
+    ///   b. if the new effect's duration is shorter, it overrides the old
+    /// 3. if the new effect is weaker than the old one and if the new effect's
+    ///    duration is longer, it will be overridden by the old effect until the
+    ///    old effect's duration is over.
+    pub fn apply(&mut self, effect: ActiveStatusEffect) {
+        self.changes.push(StatusEffectChange::Apply(effect));
+    }
+
+    /// Replace an existing [`ActiveStatusEffect`].
+    pub fn replace(&mut self, effect: ActiveStatusEffect) {
+        self.changes.push(StatusEffectChange::Replace(effect));
+    }
+
+    /// Removes an [`ActiveStatusEffect`].
+    pub fn remove(&mut self, effect: StatusEffect) {
+        self.changes.push(StatusEffectChange::Remove(effect));
+    }
+
+    /// Removes all [`ActiveStatusEffect`]s.
+    pub fn remove_all(&mut self) {
+        self.changes.push(StatusEffectChange::RemoveAll);
+    }
+
+    /// Returns true if there are no effects of the given type.
+    pub fn no_effect(&self, effect: StatusEffect) -> bool {
+        self.current_effects
+            .get(&effect)
+            .map_or(true, |effects| effects.is_empty())
+    }
+
+    /// Returns true if there are no effects.
+    pub fn no_effects(&self) -> bool {
+        self.current_effects.is_empty()
+    }
+
+    /// Returns the maximum duration of the given effect.
+    pub fn max_duration(&self, effect: StatusEffect) -> DurationResult {
+        let effects = self.current_effects.get(&effect);
+
+        match effects {
+            None => DurationResult::NoEffects,
+            Some(effects) => {
+                if let Some(effect) = effects.last() {
+                    match effect.duration() {
+                        None => DurationResult::Infinite,
+                        Some(duration) => DurationResult::Finite(duration),
+                    }
+                } else {
+                    DurationResult::NoEffects
+                }
+            }
+        }
+    }
+
+    /// Gets the current effect of the given type.
+    pub fn get_current_effect(&self, effect: StatusEffect) -> Option<&ActiveStatusEffect> {
+        self.current_effects
+            .get(&effect)
+            .and_then(|effects| effects.first())
+    }
+
+    /// Gets all the effects of the given type.
+    pub fn get_all_effect(&self, effect: StatusEffect) -> Option<&Vec<ActiveStatusEffect>> {
+        self.current_effects.get(&effect)
+    }
+
+    /// Gets all the current effects.
+    pub fn get_current_effects(&self) -> Vec<&ActiveStatusEffect> {
+        self.current_effects
+            .values()
+            .filter_map(|effects| effects.first())
+            .collect()
+    }
+
+    /// Gets all the effects.
+    pub fn get_all_effects(&self) -> &IndexMap<StatusEffect, Vec<ActiveStatusEffect>> {
+        &self.current_effects
+    }
 }
 
 impl ActiveStatusEffects {
-    /// Adds a new [`ActiveStatusEffect`] to the [`ActiveStatusEffects`].
-    ///
-    /// ## Note
-    ///
-    /// It actually adds the [`ActiveStatusEffect`] to the new effects. The
-    /// [`ActiveStatusEffect`] will be added to the active effects in the next
-    /// tick (more specifically, during the upcoming [`EventLoopPostUpdate`]).
-    /// If the [`ActiveStatusEffect`] is already in the new effects, it will be
-    /// replaced.
-    ///
-    /// [`EventLoopPostUpdate`]: https://valence.rs/rustdoc/valence/struct.EventLoopPostUpdate.html
-    pub fn add(&mut self, effect: ActiveStatusEffect) {
-        /*
-         * Note: We don't remove the effect if it is already active because it
-         * would cause inconsistencies. For example, if the effect is already
-         * active and we remove it, it's gone under the assumption that it will
-         * be replaced by the new effect. However, if the new effect is then
-         * removed, the effect is gone forever and the server didn't get the
-         * chance to send the remove packet.
-         */
+    // internal API goes here
 
-        // Remove the effect if it is already in the new effects.
-        self.new_effects
-            .retain(|new_effect| new_effect.status_effect() != effect.status_effect());
+    /// Applies an effect.
+    ///
+    /// The vec must always be sorted in descending order of amplifier and
+    /// ascending order of duration.
+    ///
+    /// Returns true if the effect was applied.
+    fn apply_effect(&mut self, effect: ActiveStatusEffect) -> bool {
+        let effects = self
+            .current_effects
+            .entry(effect.status_effect())
+            .or_default();
 
-        self.new_effects.push(effect);
-    }
-
-    /// Removes an [`ActiveStatusEffect`] from the [`ActiveStatusEffects`].
-    ///
-    /// ## Note
-    ///
-    /// If the effect is already active, it actually sets the duration of the
-    /// [`ActiveStatusEffect`] to 0. The [`ActiveStatusEffect`] will be
-    /// properly removed in the next tick (more specifically, during the
-    /// upcoming [`EventLoopPostUpdate`]). Otherwise, it removes it from the
-    /// `new_effects`.
-    ///
-    /// [`EventLoopPostUpdate`]: https://valence.rs/rustdoc/valence/struct.EventLoopPostUpdate.html
-    pub fn remove(&mut self, effect: StatusEffect) {
-        // It just sets the duration to 0, so it will be properly removed in the next
-        // tick.
-        if let Some(active_effect) = self
-            .active_effects
-            .iter_mut()
-            .find(|active_effect| active_effect.status_effect() == effect)
+        if let Some(index) = effects
+            .iter()
+            .position(|e| e.amplifier() < effect.amplifier())
         {
-            active_effect.duration = Some(0);
-        }
+            // Found an effect with a lower amplifier.
 
-        // Remove the effect if it is already in the new effects.
-        self.new_effects
-            .retain(|new_effect| new_effect.status_effect() != effect);
-    }
-
-    /// Returns the [`ActiveStatusEffect`]s of the [`ActiveStatusEffects`].
-    ///
-    /// ## Note
-    ///
-    /// Returns an iterator over the active effects and the new effects.
-    pub fn active_effects(&self) -> impl Iterator<Item = &ActiveStatusEffect> {
-        self.active_effects.iter().chain(self.new_effects.iter())
-    }
-
-    /// Returns true if the [`ActiveStatusEffects`] has no active or new
-    /// effects.
-    pub fn is_empty(&self) -> bool {
-        self.active_effects.is_empty() && self.new_effects.is_empty()
-    }
-
-    /// Returns the [`ActiveStatusEffect`]s of the [`ActiveStatusEffects`]
-    /// mutably.
-    ///
-    /// # Warning
-    ///
-    /// This method should only be used by the server. Be careful when modifying
-    /// the [`ActiveStatusEffect`]s as it may cause inconsistencies.
-    ///
-    /// If you want to add, remove or modify [`ActiveStatusEffect`]s, use the
-    /// [`add`](ActiveStatusEffects::add) and
-    /// [`remove`](ActiveStatusEffects::remove) methods instead of directly
-    /// modifying the [`ActiveStatusEffect`]s.
-    pub fn active_effects_mut(&mut self) -> &mut Vec<ActiveStatusEffect> {
-        &mut self.active_effects
-    }
-
-    /// Removes all the [`ActiveStatusEffect`]s from the active effects that are
-    /// in the new effects.
-    fn remove_new_from_active(&mut self) {
-        self.active_effects
-            .retain(|active_effect| !self.new_effects.contains(active_effect));
-    }
-
-    /// For internal use only.
-    ///
-    /// Moves the new effects to the active effects
-    /// and returns an iterator over the new effects.
-    pub fn move_new_to_active(&mut self) -> impl Iterator<Item = &ActiveStatusEffect> {
-        self.remove_new_from_active();
-
-        let old_len = self.active_effects.len();
-
-        self.active_effects.append(&mut self.new_effects);
-
-        self.active_effects[old_len..].iter()
-    }
-
-    /// For internal use only.
-    ///
-    /// Removes all the expired [`ActiveStatusEffect`]s from the active effects.
-    /// Returns the removed [`ActiveStatusEffect`]s.
-    ///
-    /// n.b.: drain_filter is unstable, so we can't use it.
-    ///
-    /// See RFC: <https://github.com/rust-lang/rfcs/issues/2140>
-    ///
-    /// See tracking issue: <https://github.com/rust-lang/rust/issues/43244>
-    pub fn remove_expired(&mut self) -> Vec<ActiveStatusEffect> {
-        let mut removed = Vec::new();
-
-        self.active_effects.retain(|active_effect| {
-            if active_effect.expired() {
-                // Safety: We don't use the active effect after this.
-                removed.push(unsafe { std::ptr::read(active_effect) });
-                false
+            if effects[index].duration() < effect.duration() {
+                // if its duration is shorter, override it.
+                effects[index] = effect;
+                true
             } else {
+                // if its duration is longer, insert it before the effect.
+                effects.insert(index, effect);
                 true
             }
-        });
+        } else {
+            // Didn't find an effect with a lower amplifier.
+            // This means that the effect has or is tied for lowest amplifier
+            // or that there are no existing effects.
 
-        removed
+            // Get the last effect.
+            if let Some(last_effect) = effects.last() {
+                let last_index = effects.len() - 1;
+                if last_effect.duration() < effect.duration() {
+                    // if its duration is longer...
+                    if last_effect.amplifier() == effect.amplifier() {
+                        // and if it has the same amplifier, override it.
+                        effects[last_index] = effect;
+                        true
+                    } else {
+                        // and if it has a different amplifier, insert it after
+                        effects.push(effect);
+                        true
+                    }
+                } else {
+                    // if its duration is shorter, do nothing. It'll vanish
+                    // before it does anything anyway.
+                    false
+                }
+            } else {
+                // There are no existing effects.
+                effects.push(effect);
+                true
+            }
+        }
+    }
+
+    /// Replaces an effect.
+    fn replace_effect(&mut self, effect: ActiveStatusEffect) {
+        self.current_effects
+            .insert(effect.status_effect(), vec![effect]);
+    }
+
+    /// Removes an effect.
+    fn remove_effect(&mut self, effect: StatusEffect) {
+        self.current_effects.remove(&effect);
+    }
+
+    /// Removes all effects.
+    fn remove_all_effects(&mut self) {
+        self.current_effects.clear();
+    }
+
+    /// Removes the strongest effect of the given type, i.e., the first effect
+    fn remove_strongest_effect(&mut self, effect: StatusEffect) {
+        if let Some(effects) = self.current_effects.get_mut(&effect) {
+            effects.remove(0);
+        }
+    }
+
+    /// **For internal use only.**
+    ///
+    /// Decrements the duration of all effects by a tick.
+    pub fn decrement_duration(&mut self) {
+        for effects in self.current_effects.values_mut() {
+            for effect in effects.iter_mut() {
+                effect.decrement_duration();
+
+                if effect.expired() {
+                    self.changes
+                        .push(StatusEffectChange::Expire(effect.status_effect()));
+                }
+            }
+        }
+    }
+
+    /// **For internal use only.**
+    ///
+    /// Applies all the changes.
+    ///
+    /// Returns a [`Vec`] of [`StatusEffect`]s that were updated or removed.
+    pub fn apply_changes(&mut self) -> Vec<StatusEffect> {
+        let mut updated_effects = Vec::new();
+
+        for change in std::mem::take(&mut self.changes) {
+            match change {
+                StatusEffectChange::Apply(effect) => {
+                    let value = effect.status_effect();
+                    if self.apply_effect(effect) {
+                        updated_effects.push(value);
+                    }
+                }
+                StatusEffectChange::Replace(effect) => {
+                    updated_effects.push(effect.status_effect());
+                    self.replace_effect(effect);
+                }
+                StatusEffectChange::Remove(effect) => {
+                    self.remove_effect(effect);
+                    updated_effects.push(effect);
+                }
+                StatusEffectChange::RemoveAll => {
+                    self.remove_all_effects();
+                    updated_effects.extend(self.current_effects.keys());
+                }
+                StatusEffectChange::Expire(effect) => {
+                    self.remove_strongest_effect(effect);
+                    updated_effects.push(effect);
+                }
+            }
+        }
+
+        updated_effects
     }
 }
 
