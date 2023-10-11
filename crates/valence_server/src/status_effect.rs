@@ -119,7 +119,7 @@ fn remove_expired_status_effects(
     {
         let expired = active_status_effects.remove_expired();
 
-        if expired.len() == 0 {
+        if expired.is_empty() {
             continue;
         }
 

@@ -104,7 +104,7 @@ impl ActiveStatusEffects {
     }
 
     /// For internal use only.
-    /// 
+    ///
     /// Moves the new effects to the active effects
     /// and returns an iterator over the new effects.
     pub fn move_new_to_active(&mut self) -> impl Iterator<Item = &ActiveStatusEffect> {
