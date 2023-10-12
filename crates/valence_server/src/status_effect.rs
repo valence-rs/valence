@@ -3,10 +3,10 @@ use bevy_ecs::prelude::*;
 use valence_entity::active_status_effects::{ActiveStatusEffect, ActiveStatusEffects};
 use valence_entity::entity::Flags;
 use valence_entity::living::{PotionSwirlsAmbient, PotionSwirlsColor};
-use valence_entity::status_effects::StatusEffect;
 use valence_protocol::packets::play::{
     entity_status_effect_s2c, EntityStatusEffectS2c, RemoveEntityStatusEffectS2c,
 };
+use valence_protocol::status_effects::StatusEffect;
 use valence_protocol::{VarInt, WritePacket};
 
 use crate::client::Client;

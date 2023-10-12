@@ -16,3 +16,7 @@ pub mod packet_id {
 pub mod chunk_view {
     include!(concat!(env!("OUT_DIR"), "/chunk_view.rs"));
 }
+
+pub mod status_effects {
+    include!(concat!(env!("OUT_DIR"), "/status_effects.rs"));
+}

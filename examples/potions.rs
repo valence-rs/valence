@@ -2,10 +2,10 @@ use rand::seq::SliceRandom;
 use rand::Rng;
 use valence::client::despawn_disconnected_clients;
 use valence::entity::active_status_effects::{ActiveStatusEffect, ActiveStatusEffects};
-use valence::entity::status_effects::StatusEffect;
 use valence::log::LogPlugin;
 use valence::network::ConnectionMode;
 use valence::prelude::*;
+use valence::status_effects::StatusEffect;
 
 const SPAWN_Y: i32 = 64;
 

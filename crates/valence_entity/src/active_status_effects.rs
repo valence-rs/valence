@@ -2,8 +2,7 @@ use std::collections::HashSet;
 
 use bevy_ecs::prelude::*;
 use indexmap::IndexMap;
-
-use crate::status_effects::StatusEffect;
+use valence_protocol::status_effects::StatusEffect;
 
 /// Represents a change in the [`ActiveStatusEffects`] of an [`Entity`].
 #[derive(Debug)]
@@ -279,7 +278,7 @@ pub struct ActiveStatusEffect {
     amplifier: u8,
     /// The initial duration of the effect in ticks.
     /// If `None`, the effect is infinite.
-    /// 
+    ///
     /// # Default Value
     /// Some(600) (30 seconds)
     initial_duration: Option<i32>,
