@@ -205,7 +205,6 @@ impl ActiveStatusEffects {
             // empty.
 
             if let Some(last) = effects.last() {
-                println!("BBBB");
                 // There is at least one effect with a higher amplifier.
                 if last.remaining_duration() < effect.remaining_duration() {
                     // if its duration is shorter, we can insert it at the end.
