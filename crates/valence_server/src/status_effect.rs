@@ -29,7 +29,7 @@ impl Plugin for StatusEffectPlugin {
 
 fn update_active_status_effects(mut query: Query<&mut ActiveStatusEffects>) {
     for mut active_status_effects in query.iter_mut() {
-        active_status_effects.decrement_duration();
+        active_status_effects.increment_active_ticks();
 
         /* TODO: The following things require to occasionally modify
          * entity stuff:
@@ -45,7 +45,7 @@ fn create_packet(effect: &ActiveStatusEffect) -> EntityStatusEffectS2c {
         entity_id: VarInt(0),
         effect_id: VarInt(effect.status_effect().to_raw() as i32),
         amplifier: effect.amplifier(),
-        duration: VarInt(effect.duration().unwrap_or(-1)),
+        duration: VarInt(effect.remaining_duration().unwrap_or(-1)),
         flags: entity_status_effect_s2c::Flags::new()
             .with_is_ambient(effect.ambient())
             .with_show_particles(effect.show_particles())
@@ -97,7 +97,7 @@ fn add_status_effects(
                  * - unluck
                  *
                  * Entity attributes are not implemented in Valence yet. See
-                 * <insert issue here>.
+                 * #555.
                  */
             } else {
                 if let Some(ref mut client) = client {

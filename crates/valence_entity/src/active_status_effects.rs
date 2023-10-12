@@ -117,7 +117,7 @@ impl ActiveStatusEffects {
             None => DurationResult::NoEffects,
             Some(effects) => {
                 if let Some(effect) = effects.last() {
-                    match effect.duration() {
+                    match effect.remaining_duration() {
                         None => DurationResult::Infinite,
                         Some(duration) => DurationResult::Finite(duration),
                     }
@@ -169,7 +169,7 @@ impl ActiveStatusEffects {
             .entry(effect.status_effect())
             .or_default();
 
-        let duration = effect.duration();
+        let duration = effect.remaining_duration();
         let amplifier = effect.amplifier();
 
         if let Some(index) = effects.iter().position(|e| e.amplifier() <= amplifier) {
@@ -177,17 +177,17 @@ impl ActiveStatusEffects {
 
             let active_status_effect = &effects[index];
 
-            if active_status_effect.duration() < duration {
+            if active_status_effect.remaining_duration() < duration {
                 // if its duration is shorter, override it.
                 effects[index] = effect;
 
                 // Remove effects after the current one that have a lower
                 // duration.
                 let mut remaining_effects = effects.split_off(index + 1);
-                remaining_effects.retain(|e| e.duration() >= duration);
+                remaining_effects.retain(|e| e.remaining_duration() >= duration);
                 effects.append(&mut remaining_effects);
                 true
-            } else if active_status_effect.duration() > duration
+            } else if active_status_effect.remaining_duration() > duration
                 && active_status_effect.amplifier() < amplifier
             {
                 // if its duration is longer and its amplifier is lower, insert
@@ -207,7 +207,7 @@ impl ActiveStatusEffects {
             if let Some(last) = effects.last() {
                 println!("BBBB");
                 // There is at least one effect with a higher amplifier.
-                if last.duration() < effect.duration() {
+                if last.remaining_duration() < effect.remaining_duration() {
                     // if its duration is shorter, we can insert it at the end.
                     effects.push(effect);
                     true
@@ -248,11 +248,11 @@ impl ActiveStatusEffects {
 
     /// **For internal use only.**
     ///
-    /// Decrements the duration of all effects by a tick.
-    pub fn decrement_duration(&mut self) {
+    /// Increments the active tick of all effects by a tick.
+    pub fn increment_active_ticks(&mut self) {
         for effects in self.current_effects.values_mut() {
             for effect in effects.iter_mut() {
-                effect.decrement_duration();
+                effect.increment_active_ticks();
 
                 if effect.expired() {
                     self.changes
@@ -310,7 +310,12 @@ pub struct ActiveStatusEffect {
     amplifier: u8,
     /// # Default Value
     /// 600 ticks (30 seconds)
-    duration: Option<i32>,
+    initial_duration: Option<i32>,
+    /// The amount of ticks the effect has been active.
+    ///
+    /// # Default Value
+    /// 0
+    active_ticks: i32,
     /// # Default Value
     /// false
     ambient: bool,
@@ -328,7 +333,8 @@ impl ActiveStatusEffect {
         Self {
             effect,
             amplifier: 0,
-            duration: Some(600),
+            initial_duration: Some(600),
+            active_ticks: 0,
             ambient: false,
             show_particles: true,
             show_icon: true,
@@ -343,19 +349,19 @@ impl ActiveStatusEffect {
 
     /// Sets the duration of the [`ActiveStatusEffect`] in ticks.
     pub fn with_duration(mut self, duration: i32) -> Self {
-        self.duration = Some(duration);
+        self.initial_duration = Some(duration);
         self
     }
 
     /// Sets the duration of the [`ActiveStatusEffect`] in seconds.
     pub fn with_duration_seconds(mut self, duration: f32) -> Self {
-        self.duration = Some((duration * 20.0).round() as i32);
+        self.initial_duration = Some((duration * 20.0) as i32);
         self
     }
 
     /// Sets the duration of the [`ActiveStatusEffect`] to infinite.
     pub fn with_infinite(mut self) -> Self {
-        self.duration = None;
+        self.initial_duration = None;
         self
     }
 
@@ -377,15 +383,9 @@ impl ActiveStatusEffect {
         self
     }
 
-    /// Decrements the duration of the [`ActiveStatusEffect`] by a tick.
-    pub fn decrement_duration(&mut self) {
-        if let Some(duration) = self.duration.as_mut() {
-            *duration -= 1;
-
-            if *duration <= 0 {
-                *duration = 0;
-            }
-        }
+    /// Increments the active ticks of the [`ActiveStatusEffect`] by one.
+    pub fn increment_active_ticks(&mut self) {
+        self.active_ticks += 1;
     }
 
     /// Returns the [`StatusEffect`] of the [`ActiveStatusEffect`].
@@ -398,10 +398,22 @@ impl ActiveStatusEffect {
         self.amplifier
     }
 
+    /// Returns the initial duration of the [`ActiveStatusEffect`] in ticks.
+    /// Returns `None` if the [`ActiveStatusEffect`] is infinite.
+    pub fn initial_duration(&self) -> Option<i32> {
+        self.initial_duration
+    }
+
     /// Returns the remaining duration of the [`ActiveStatusEffect`] in ticks.
     /// Returns `None` if the [`ActiveStatusEffect`] is infinite.
-    pub fn duration(&self) -> Option<i32> {
-        self.duration
+    pub fn remaining_duration(&self) -> Option<i32> {
+        self.initial_duration
+            .map(|duration| duration - self.active_ticks)
+    }
+
+    /// Returns the active ticks of the [`ActiveStatusEffect`].
+    pub fn active_ticks(&self) -> i32 {
+        self.active_ticks
     }
 
     /// Returns true if the [`ActiveStatusEffect`] is ambient.
@@ -422,6 +434,41 @@ impl ActiveStatusEffect {
     /// Returns true if the [`ActiveStatusEffect`] has expired or if it is
     /// instant.
     pub fn expired(&self) -> bool {
-        self.status_effect().instant() || self.duration().map_or(false, |duration| duration == 0)
+        self.status_effect().instant()
+            || self
+                .remaining_duration()
+                .map_or(false, |duration| duration <= 0)
     }
+
+    /// Returns true if the [`ActiveStatusEffect`] can be applied to an
+    /// [`Entity`]. Yoinked from the Vanilla server.
+    pub fn can_apply_update_effect(&self) -> bool {
+        match self.status_effect() {
+            StatusEffect::Regeneration => {
+                let i = 50 >> self.amplifier;
+                if i > 0 {
+                    return self.active_ticks % i == 0;
+                }
+                true
+            }
+            StatusEffect::Poison => {
+                let i = 25 >> self.amplifier;
+                if i > 0 {
+                    return self.active_ticks % i == 0;
+                }
+                true
+            }
+            StatusEffect::Wither => {
+                let i = 40 >> self.amplifier;
+                if i > 0 {
+                    return self.active_ticks % i == 0;
+                }
+                true
+            }
+            StatusEffect::Hunger => true,
+            _ => false,
+        }
+    }
+
+    // TODO: Implement health changes and hunger changes.
 }
