@@ -22,7 +22,6 @@ uuid.workspace = true
 valence_server_common.workspace = true
 valence_nbt.workspace = true
 valence_protocol.workspace = true
-valence_ident.workspace = true
 indexmap.workspace = true
 
 [build-dependencies]
