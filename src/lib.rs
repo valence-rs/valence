@@ -71,6 +71,7 @@ use valence_server::layer::LayerPlugin;
 use valence_server::message::MessagePlugin;
 use valence_server::movement::MovementPlugin;
 use valence_server::op_level::OpLevelPlugin;
+pub use valence_server::protocol::status_effects;
 use valence_server::resource_pack::ResourcePackPlugin;
 use valence_server::status::StatusPlugin;
 use valence_server::teleport::TeleportPlugin;
