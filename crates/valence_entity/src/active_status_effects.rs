@@ -200,7 +200,6 @@ impl ActiveStatusEffects {
                 false
             }
         } else {
-            println!("AAAA");
             // Found no effect with an equal or lower amplifier.
             // This means all effects have a higher amplifier or the vec is
             // empty.
