@@ -42,6 +42,8 @@ fn update_active_status_effects(mut query: Query<&mut ActiveStatusEffects>) {
 
 fn create_packet(effect: &ActiveStatusEffect) -> EntityStatusEffectS2c {
     EntityStatusEffectS2c {
+        // everywhere else in the codebase, this is the player's entity id
+        // will probably need to change this later
         entity_id: VarInt(0),
         effect_id: VarInt(effect.status_effect().to_raw() as i32),
         amplifier: effect.amplifier(),

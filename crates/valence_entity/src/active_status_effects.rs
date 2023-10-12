@@ -23,7 +23,7 @@ pub enum DurationResult {
     /// The effect has an infinite duration.
     Infinite,
     /// The effect has a finite duration, represented as an integer number of
-    /// turns.
+    /// ticks.
     Finite(i32),
 }
 
@@ -36,37 +36,8 @@ pub struct ActiveStatusEffects {
     changes: Vec<StatusEffectChange>,
 }
 
-/* Public API I imagine:
- * - apply(status_effect: ActiveStatusEffect) // Applies a new effect. Does
- *   it in the same way that the Vanilla server does it. i.e., if the effect
- *   is already active:
- *   1. if the new effect is the same as the old one and its duration is
- *      longer, it replaces the old effect. Otherwise, it does nothing.
- *   2. if the new effect is stronger than the old one:
- *     a. if the new effect's duration is longer, it replaces the old effect.
- *     b. if the new effect's duration is shorter, it overrides the old
- *        effect until the new effect's duration is over.
- *   3. if the new effect is weaker than the old one and if the new effect's
- *      duration is longer, it will be overridden by the old effect until the
- *      old effect's duration is over.
- * - replace(status_effect: ActiveStatusEffect) // Replaces an existing
- *   effect.
- * - remove(status_effect: StatusEffect) // Removes an effect.
- * - remove_all() // Removes all the effects.
- * - get_current_effect(status_effect: StatusEffect) ->
- *   Option<ActiveStatusEffect> // Returns the current active effect. If
- *   there are multiple effects, it // returns the strongest one.
- * - get_all_effect(status_effect: StatusEffect) -> Vec<ActiveStatusEffect>
- *   // Returns all the active effects.
- * - get_current_effects() -> Vec<ActiveStatusEffect> // Returns all the
- *   active effects. If there are multiple effects of the // same type, it
- *   returns the strongest one.
- * - get_all_effects() -> IndexMap<StatusEffect, Vec<ActiveStatusEffect>> //
- *   Returns all the active effects. (is IndexMap really necessary?)
- */
+// public API
 impl ActiveStatusEffects {
-    // public API goes here
-
     /// Applies a new [`ActiveStatusEffect`].
     ///
     /// If the [`ActiveStatusEffect`] is already active:
@@ -154,9 +125,8 @@ impl ActiveStatusEffects {
     }
 }
 
+// internal methods
 impl ActiveStatusEffects {
-    // internal API goes here
-
     /// Applies an effect.
     ///
     /// The vec must always be sorted in descending order of amplifier and
@@ -307,8 +277,11 @@ pub struct ActiveStatusEffect {
     /// # Default Value
     /// 0
     amplifier: u8,
+    /// The initial duration of the effect in ticks.
+    /// If `None`, the effect is infinite.
+    /// 
     /// # Default Value
-    /// 600 ticks (30 seconds)
+    /// Some(600) (30 seconds)
     initial_duration: Option<i32>,
     /// The amount of ticks the effect has been active.
     ///
@@ -354,7 +327,7 @@ impl ActiveStatusEffect {
 
     /// Sets the duration of the [`ActiveStatusEffect`] in seconds.
     pub fn with_duration_seconds(mut self, duration: f32) -> Self {
-        self.initial_duration = Some((duration * 20.0) as i32);
+        self.initial_duration = Some((duration * 20.0).round() as i32);
         self
     }
 
