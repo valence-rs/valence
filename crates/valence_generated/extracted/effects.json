@@ -1,0 +1,266 @@
+[
+  {
+    "id": 1,
+    "name": "speed",
+    "translation_key": "effect.minecraft.speed",
+    "color": 3402751,
+    "instant": false,
+    "category": "Beneficial"
+  },
+  {
+    "id": 2,
+    "name": "slowness",
+    "translation_key": "effect.minecraft.slowness",
+    "color": 9154528,
+    "instant": false,
+    "category": "Harmful"
+  },
+  {
+    "id": 3,
+    "name": "haste",
+    "translation_key": "effect.minecraft.haste",
+    "color": 14270531,
+    "instant": false,
+    "category": "Beneficial"
+  },
+  {
+    "id": 4,
+    "name": "mining_fatigue",
+    "translation_key": "effect.minecraft.mining_fatigue",
+    "color": 4866583,
+    "instant": false,
+    "category": "Harmful"
+  },
+  {
+    "id": 5,
+    "name": "strength",
+    "translation_key": "effect.minecraft.strength",
+    "color": 16762624,
+    "instant": false,
+    "category": "Beneficial"
+  },
+  {
+    "id": 6,
+    "name": "instant_health",
+    "translation_key": "effect.minecraft.instant_health",
+    "color": 16262179,
+    "instant": true,
+    "category": "Beneficial"
+  },
+  {
+    "id": 7,
+    "name": "instant_damage",
+    "translation_key": "effect.minecraft.instant_damage",
+    "color": 11101546,
+    "instant": true,
+    "category": "Harmful"
+  },
+  {
+    "id": 8,
+    "name": "jump_boost",
+    "translation_key": "effect.minecraft.jump_boost",
+    "color": 16646020,
+    "instant": false,
+    "category": "Beneficial"
+  },
+  {
+    "id": 9,
+    "name": "nausea",
+    "translation_key": "effect.minecraft.nausea",
+    "color": 5578058,
+    "instant": false,
+    "category": "Harmful"
+  },
+  {
+    "id": 10,
+    "name": "regeneration",
+    "translation_key": "effect.minecraft.regeneration",
+    "color": 13458603,
+    "instant": false,
+    "category": "Beneficial"
+  },
+  {
+    "id": 11,
+    "name": "resistance",
+    "translation_key": "effect.minecraft.resistance",
+    "color": 9520880,
+    "instant": false,
+    "category": "Beneficial"
+  },
+  {
+    "id": 12,
+    "name": "fire_resistance",
+    "translation_key": "effect.minecraft.fire_resistance",
+    "color": 16750848,
+    "instant": false,
+    "category": "Beneficial"
+  },
+  {
+    "id": 13,
+    "name": "water_breathing",
+    "translation_key": "effect.minecraft.water_breathing",
+    "color": 10017472,
+    "instant": false,
+    "category": "Beneficial"
+  },
+  {
+    "id": 14,
+    "name": "invisibility",
+    "translation_key": "effect.minecraft.invisibility",
+    "color": 16185078,
+    "instant": false,
+    "category": "Beneficial"
+  },
+  {
+    "id": 15,
+    "name": "blindness",
+    "translation_key": "effect.minecraft.blindness",
+    "color": 2039587,
+    "instant": false,
+    "category": "Harmful"
+  },
+  {
+    "id": 16,
+    "name": "night_vision",
+    "translation_key": "effect.minecraft.night_vision",
+    "color": 12779366,
+    "instant": false,
+    "category": "Beneficial"
+  },
+  {
+    "id": 17,
+    "name": "hunger",
+    "translation_key": "effect.minecraft.hunger",
+    "color": 5797459,
+    "instant": false,
+    "category": "Harmful"
+  },
+  {
+    "id": 18,
+    "name": "weakness",
+    "translation_key": "effect.minecraft.weakness",
+    "color": 4738376,
+    "instant": false,
+    "category": "Harmful"
+  },
+  {
+    "id": 19,
+    "name": "poison",
+    "translation_key": "effect.minecraft.poison",
+    "color": 8889187,
+    "instant": false,
+    "category": "Harmful"
+  },
+  {
+    "id": 20,
+    "name": "wither",
+    "translation_key": "effect.minecraft.wither",
+    "color": 7561558,
+    "instant": false,
+    "category": "Harmful"
+  },
+  {
+    "id": 21,
+    "name": "health_boost",
+    "translation_key": "effect.minecraft.health_boost",
+    "color": 16284963,
+    "instant": false,
+    "category": "Beneficial"
+  },
+  {
+    "id": 22,
+    "name": "absorption",
+    "translation_key": "effect.minecraft.absorption",
+    "color": 2445989,
+    "instant": false,
+    "category": "Beneficial"
+  },
+  {
+    "id": 23,
+    "name": "saturation",
+    "translation_key": "effect.minecraft.saturation",
+    "color": 16262179,
+    "instant": true,
+    "category": "Beneficial"
+  },
+  {
+    "id": 24,
+    "name": "glowing",
+    "translation_key": "effect.minecraft.glowing",
+    "color": 9740385,
+    "instant": false,
+    "category": "Neutral"
+  },
+  {
+    "id": 25,
+    "name": "levitation",
+    "translation_key": "effect.minecraft.levitation",
+    "color": 13565951,
+    "instant": false,
+    "category": "Harmful"
+  },
+  {
+    "id": 26,
+    "name": "luck",
+    "translation_key": "effect.minecraft.luck",
+    "color": 5882118,
+    "instant": false,
+    "category": "Beneficial"
+  },
+  {
+    "id": 27,
+    "name": "unluck",
+    "translation_key": "effect.minecraft.unluck",
+    "color": 12624973,
+    "instant": false,
+    "category": "Harmful"
+  },
+  {
+    "id": 28,
+    "name": "slow_falling",
+    "translation_key": "effect.minecraft.slow_falling",
+    "color": 15978425,
+    "instant": false,
+    "category": "Beneficial"
+  },
+  {
+    "id": 29,
+    "name": "conduit_power",
+    "translation_key": "effect.minecraft.conduit_power",
+    "color": 1950417,
+    "instant": false,
+    "category": "Beneficial"
+  },
+  {
+    "id": 30,
+    "name": "dolphins_grace",
+    "translation_key": "effect.minecraft.dolphins_grace",
+    "color": 8954814,
+    "instant": false,
+    "category": "Beneficial"
+  },
+  {
+    "id": 31,
+    "name": "bad_omen",
+    "translation_key": "effect.minecraft.bad_omen",
+    "color": 745784,
+    "instant": false,
+    "category": "Neutral"
+  },
+  {
+    "id": 32,
+    "name": "hero_of_the_village",
+    "translation_key": "effect.minecraft.hero_of_the_village",
+    "color": 4521796,
+    "instant": false,
+    "category": "Beneficial"
+  },
+  {
+    "id": 33,
+    "name": "darkness",
+    "translation_key": "effect.minecraft.darkness",
+    "color": 2696993,
+    "instant": false,
+    "category": "Harmful"
+  }
+]
