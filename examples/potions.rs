@@ -47,6 +47,7 @@ fn setup(
     commands.spawn(layer);
 }
 
+#[allow(clippy::type_complexity)]
 fn init_clients(
     mut clients: Query<
         (
