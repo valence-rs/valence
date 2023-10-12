@@ -56,7 +56,6 @@ pub fn build() -> anyhow::Result<TokenStream> {
     let effect_from_ident_arms = effects
         .iter()
         .map(|effect| {
-            // TODO: put the full resource identifier in the extracted JSON.
             let path_name = &effect.name;
             let ident_name = format!("minecraft:{}", &effect.name);
 
