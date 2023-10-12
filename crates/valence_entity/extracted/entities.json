@@ -1528,7 +1528,7 @@
         "name": "health",
         "index": 9,
         "type": "float",
-        "default_value": 6.0
+        "default_value": 20.0
       },
       {
         "name": "potion_swirls_color",
@@ -2863,7 +2863,7 @@
         "type": "villager_data",
         "default_value": {
           "type": "plains",
-          "profession": "weaponsmith",
+          "profession": "none",
           "level": 1
         }
       }
