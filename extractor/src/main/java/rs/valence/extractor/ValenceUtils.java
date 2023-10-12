@@ -10,6 +10,9 @@ public class ValenceUtils {
 
     /**
      * Converts a string to PascalCase.
+     * 
+     * @param str The string to convert.
+     * @return The converted string.
      */
     public static String toPascalCase(String str) {
         StringBuilder result = new StringBuilder();
