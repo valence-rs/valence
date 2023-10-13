@@ -363,6 +363,14 @@ fn build_entities() -> anyhow::Result<TokenStream> {
 
                         if entity_name == "LivingEntity" {
                             bundle_fields.extend([quote! {
+                                pub living_absorption: super::living::Absorption,
+                            }]);
+
+                            bundle_init_fields.extend([quote! {
+                                living_absorption: Default::default(),
+                            }]);
+
+                            bundle_fields.extend([quote! {
                                 pub living_active_status_effects: super::active_status_effects::ActiveStatusEffects,
                             }]);
 
@@ -510,6 +518,14 @@ fn build_entities() -> anyhow::Result<TokenStream> {
             pub struct #entity_name_ident;
         }]);
 
+        if entity_name == "LivingEntity" {
+            module_body.extend([quote! {
+                #[doc = "Special untracked component for `LivingEntity` entities."]
+                #[derive(bevy_ecs::component::Component, Copy, Clone, Default, Debug)]
+                pub struct Absorption(pub f32);
+            }]);
+        }
+
         modules.extend([quote! {
             #[allow(clippy::module_inception)]
             pub mod #stripped_snake_entity_name_ident {
@@ -517,6 +533,20 @@ fn build_entities() -> anyhow::Result<TokenStream> {
             }
         }]);
     }
+
+    systems.extend([quote! {
+        /// Special case for `living::Absorption`.
+        /// Updates the `AbsorptionAmount` component of the player entity.
+        fn update_living_and_player_absorption(
+            mut query: Query<(&living::Absorption, &mut player::AbsorptionAmount), Changed<living::Absorption>>
+        ) {
+            for (living_absorption, mut player_absorption) in query.iter_mut() {
+                player_absorption.0 = living_absorption.0;
+            }
+        }
+    }]);
+
+    system_names.push(quote!(update_living_and_player_absorption));
 
     #[derive(Deserialize, Debug)]
     struct MiscEntityData {
