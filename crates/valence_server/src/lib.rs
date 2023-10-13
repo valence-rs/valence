@@ -40,6 +40,7 @@ pub mod spawn;
 pub mod status;
 pub mod teleport;
 pub mod title;
+pub mod brand;
 
 pub use chunk_view::ChunkView;
 pub use event_loop::{EventLoopPostUpdate, EventLoopPreUpdate, EventLoopUpdate};
