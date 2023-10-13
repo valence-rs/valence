@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use bevy_ecs::prelude::*;
 use indexmap::IndexMap;
 use valence_protocol::status_effects::StatusEffect;
@@ -234,33 +232,50 @@ impl ActiveStatusEffects {
     ///
     /// Applies all the changes.
     ///
-    /// Returns a [`HashSet`] of [`StatusEffect`]s that were updated or removed.
-    pub fn apply_changes(&mut self) -> HashSet<StatusEffect> {
-        let mut updated_effects = HashSet::new();
+    /// Returns a [`IndexMap`] of [`StatusEffect`]s that were updated or removed
+    /// and their previous values.
+    pub fn apply_changes(&mut self) -> IndexMap<StatusEffect, Option<ActiveStatusEffect>> {
+        let current = self.current_effects.clone();
+        let find_current = |effect: StatusEffect| {
+            current
+                .iter()
+                .find(|e| *e.0 == effect)
+                .map(|e| e.1.first().cloned())?
+        };
+        let mut updated_effects = IndexMap::new();
 
         for change in std::mem::take(&mut self.changes) {
             match change {
                 StatusEffectChange::Apply(effect) => {
                     let value = effect.status_effect();
                     if self.apply_effect(effect) {
-                        updated_effects.insert(value);
+                        updated_effects
+                            .entry(value)
+                            .or_insert_with(|| find_current(value));
                     }
                 }
                 StatusEffectChange::Replace(effect) => {
-                    updated_effects.insert(effect.status_effect());
+                    let value = effect.status_effect();
+                    updated_effects
+                        .entry(value)
+                        .or_insert_with(|| find_current(value));
                     self.replace_effect(effect);
                 }
                 StatusEffectChange::Remove(effect) => {
                     self.remove_effect(effect);
-                    updated_effects.insert(effect);
+                    updated_effects.insert(effect, find_current(effect));
                 }
                 StatusEffectChange::RemoveAll => {
                     self.remove_all_effects();
-                    updated_effects.extend(self.current_effects.keys());
+                    for (status, effects) in current.iter() {
+                        if let Some(effect) = effects.first() {
+                            updated_effects.insert(*status, Some(effect.clone()));
+                        }
+                    }
                 }
                 StatusEffectChange::Expire(effect) => {
                     self.remove_strongest_effect(effect);
-                    updated_effects.insert(effect);
+                    updated_effects.insert(effect, find_current(effect));
                 }
             }
         }

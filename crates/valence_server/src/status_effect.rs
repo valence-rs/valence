@@ -1,8 +1,9 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+use bevy_ecs::query::WorldQuery;
 use valence_entity::active_status_effects::{ActiveStatusEffect, ActiveStatusEffects};
 use valence_entity::entity::Flags;
-use valence_entity::living::{PotionSwirlsAmbient, PotionSwirlsColor};
+use valence_entity::living::{Absorption, PotionSwirlsAmbient, PotionSwirlsColor};
 use valence_protocol::packets::play::{
     entity_status_effect_s2c, EntityStatusEffectS2c, RemoveEntityStatusEffectS2c,
 };
@@ -56,65 +57,90 @@ fn create_packet(effect: &ActiveStatusEffect) -> EntityStatusEffectS2c {
     }
 }
 
-fn add_status_effects(
-    mut query: Query<(
-        &mut ActiveStatusEffects,
-        Option<&mut Client>,
-        Option<&mut Flags>,
-        Option<&mut PotionSwirlsColor>,
-        Option<&mut PotionSwirlsAmbient>,
-    )>,
-) {
-    for (mut active_status_effects, mut client, mut entity_flags, swirl_color, swirl_ambient) in
-        query.iter_mut()
-    {
-        let updated = active_status_effects.apply_changes();
+#[derive(WorldQuery)]
+#[world_query(mutable)]
+struct StatusEffectQuery {
+    active_effects: &'static mut ActiveStatusEffects,
+    client: Option<&'static mut Client>,
+    entity_flags: Option<&'static mut Flags>,
+    swirl_color: Option<&'static mut PotionSwirlsColor>,
+    swirl_ambient: Option<&'static mut PotionSwirlsAmbient>,
+    absorption: Option<&'static mut Absorption>,
+}
+
+fn add_status_effects(mut query: Query<StatusEffectQuery>) {
+    for mut query in query.iter_mut() {
+        let updated = query.active_effects.apply_changes();
 
         if updated.is_empty() {
             continue;
         }
 
-        set_swirl(&active_status_effects, swirl_color, swirl_ambient);
+        set_swirl(
+            &query.active_effects,
+            &mut query.swirl_color,
+            &mut query.swirl_ambient,
+        );
 
-        for status_effect in updated {
-            if let Some(updated_effect) = active_status_effects.get_current_effect(status_effect) {
-                if let Some(ref mut client) = client {
-                    client.write_packet(&create_packet(updated_effect));
-                }
+        for (status_effect, previous_effect) in updated {
+            update_status_effect(&mut query, status_effect, previous_effect);
+        }
+    }
+}
 
-                if let Some(ref mut entity_flags) = entity_flags {
-                    set_entity_flags(status_effect, entity_flags, true);
-                }
+fn update_status_effect(
+    query: &mut StatusEffectQueryItem,
+    status_effect: StatusEffect,
+    previous_effect: Option<ActiveStatusEffect>,
+) {
+    let current_effect = query.active_effects.get_current_effect(status_effect);
 
-                // TODO: More stuff such as instant health, instant damage, etc.
+    if let Some(ref mut client) = query.client {
+        if let Some(updated_effect) = current_effect {
+            client.write_packet(&create_packet(updated_effect));
+        } else {
+            client.write_packet(&RemoveEntityStatusEffectS2c {
+                entity_id: VarInt(0),
+                effect_id: VarInt(status_effect.to_raw() as i32),
+            });
+        }
+    }
 
-                /* TODO: These things require to modify entity attributes:
-                 * - speed
-                 * - slowness
-                 * - haste
-                 * - mining fatigue
-                 * - strength
-                 * - weakness
-                 * - luck
-                 * - unluck
-                 *
-                 * Entity attributes are not implemented in Valence yet. See
-                 * #555.
-                 */
-            } else {
-                if let Some(ref mut client) = client {
-                    client.write_packet(&RemoveEntityStatusEffectS2c {
-                        entity_id: VarInt(0),
-                        effect_id: VarInt(status_effect.to_raw() as i32),
-                    });
-                }
+    if let Some(ref mut entity_flags) = query.entity_flags {
+        set_entity_flags(status_effect, entity_flags, current_effect.is_some());
+    }
 
-                if let Some(ref mut entity_flags) = entity_flags {
-                    set_entity_flags(status_effect, entity_flags, false);
-                }
+    if status_effect == StatusEffect::Absorption {
+        if let Some(ref mut absorption) = query.absorption {
+            if let Some(prev) = previous_effect {
+                absorption.0 -= (prev.amplifier() + 1) as f32 * 4.0;
+            }
+
+            if let Some(updated_effect) = current_effect {
+                absorption.0 += (updated_effect.amplifier() + 1) as f32 * 4.0;
+            }
+
+            if absorption.0 < 0.0 {
+                absorption.0 = 0.0;
             }
         }
     }
+
+    // TODO: More stuff such as instant health, instant damage, etc.
+
+    /* TODO: These things require to modify entity attributes:
+     * - speed
+     * - slowness
+     * - haste
+     * - mining fatigue
+     * - strength
+     * - weakness
+     * - luck
+     * - unluck
+     *
+     * Entity attributes are not implemented in Valence yet. See
+     * #555.
+     */
 }
 
 fn set_entity_flags(status_effect: StatusEffect, entity_flags: &mut Flags, state: bool) {
@@ -131,8 +157,8 @@ fn set_entity_flags(status_effect: StatusEffect, entity_flags: &mut Flags, state
 
 fn set_swirl(
     active_status_effects: &ActiveStatusEffects,
-    mut swirl_color: Option<Mut<'_, PotionSwirlsColor>>,
-    mut swirl_ambient: Option<Mut<'_, PotionSwirlsAmbient>>,
+    swirl_color: &mut Option<Mut<'_, PotionSwirlsColor>>,
+    swirl_ambient: &mut Option<Mut<'_, PotionSwirlsAmbient>>,
 ) {
     if let Some(ref mut swirl_ambient) = swirl_ambient {
         swirl_ambient.0 = active_status_effects
