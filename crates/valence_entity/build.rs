@@ -532,7 +532,7 @@ fn build() -> anyhow::Result<TokenStream> {
         fn update_living_and_player_absorption(
             mut query: Query<(&living::Absorption, &mut player::AbsorptionAmount), Changed<living::Absorption>>
         ) {
-            for (living_absorption, mut player_absorption) in &mut query {
+            for (living_absorption, mut player_absorption) in query.iter_mut() {
                 player_absorption.0 = living_absorption.0;
             }
         }
