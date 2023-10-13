@@ -525,8 +525,6 @@ fn build() -> anyhow::Result<TokenStream> {
     }
 
     systems.extend([quote! {
-        #[allow(clippy::needless_borrow)]
-        #[allow(clippy::suspicious_else_formatting)]
         /// Special case for `living::Absorption`.
         /// Updates the `AbsorptionAmount` component of the player entity.
         fn update_living_and_player_absorption(
