@@ -1,7 +1,5 @@
 use std::io::Read;
 
-use egui::Color32;
-
 use super::{SharedState, Tab, View};
 
 pub struct HexView {}
@@ -47,7 +45,7 @@ impl View for HexView {
 
                     ui.label(format!("{:08X}", count));
                     for b in buf.iter().take(bytes_read) {
-                        ui.colored_label(Color32::from_rgb(255, 255, 255), format!("{:02X}", b));
+                        ui.label(format!("{:02X}", b));
                     }
                     for _ in 0..16 - bytes_read {
                         ui.label(" ");
