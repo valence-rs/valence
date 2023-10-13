@@ -20,6 +20,7 @@
 
 pub mod abilities;
 pub mod action;
+pub mod brand;
 mod chunk_view;
 pub mod client;
 pub mod client_command;
@@ -40,7 +41,6 @@ pub mod spawn;
 pub mod status;
 pub mod teleport;
 pub mod title;
-pub mod brand;
 
 pub use chunk_view::ChunkView;
 pub use event_loop::{EventLoopPostUpdate, EventLoopPreUpdate, EventLoopUpdate};
