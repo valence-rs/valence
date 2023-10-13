@@ -136,7 +136,7 @@ fn draw_packet_widget(ui: &mut Ui, packet: &Packet, selected: bool) -> Response 
     ); // this should give me a new rect inside the scroll area... no?
 
     let fill = match selected /*packet.selected*/ {
-        true => Rgba::from_rgba_premultiplied(0.3, 0.3, 0.3, 0.4),
+        true => Rgba::from_rgba_premultiplied(0.1, 0.1, 0.1, 0.5),
         false => Rgba::from_rgba_premultiplied(0.0, 0.0, 0.0, 0.0),
     };
 
@@ -168,13 +168,19 @@ fn draw_packet_widget(ui: &mut Ui, packet: &Packet, selected: bool) -> Response 
         let timestamp =
             timestamp.into_galley(ui, Some(false), rect.width() - 60.0, TextStyle::Button);
 
+        let id_and_timestamp_color = if selected {
+            text_color
+        } else {
+            ui.visuals().weak_text_color()
+        };
+
         identifier.paint_with_fallback_color(
             ui.painter(),
             Pos2 {
                 x: rect.left() + 21.0,
                 y: rect.top() + 6.0,
             },
-            ui.visuals().weak_text_color(),
+            id_and_timestamp_color,
         );
 
         rect.set_width(rect.width() - 5.0);
@@ -196,7 +202,7 @@ fn draw_packet_widget(ui: &mut Ui, packet: &Packet, selected: bool) -> Response 
                 x: rect.left() + label_width + 8.0,
                 y: rect.top() + 6.0,
             },
-            ui.visuals().weak_text_color(),
+            id_and_timestamp_color,
         );
     }
 
