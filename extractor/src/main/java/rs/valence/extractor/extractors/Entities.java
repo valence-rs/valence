@@ -6,6 +6,10 @@ import net.minecraft.block.BlockState;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EntityType;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.attribute.DefaultAttributeRegistry;
+import net.minecraft.entity.attribute.EntityAttribute;
+import net.minecraft.entity.attribute.EntityAttributeInstance;
 import net.minecraft.entity.data.DataTracker;
 import net.minecraft.entity.data.TrackedData;
 import net.minecraft.entity.data.TrackedDataHandlerRegistry;
@@ -145,7 +149,8 @@ public class Entities implements Main.Extractor {
             var variant = ((RegistryEntry<?>) val).getKey().map(k -> k.getValue().getPath()).orElse("");
             return new Pair<>("painting_variant", new JsonPrimitive(variant));
         } else if (handler == TrackedDataHandlerRegistry.SNIFFER_STATE) {
-            return new Pair<>("sniffer_state", new JsonPrimitive(((SnifferEntity.State) val).name().toLowerCase(Locale.ROOT)));
+            return new Pair<>("sniffer_state",
+                    new JsonPrimitive(((SnifferEntity.State) val).name().toLowerCase(Locale.ROOT)));
         } else if (handler == TrackedDataHandlerRegistry.VECTOR3F) {
             var vec = (Vector3f) val;
             var json = new JsonObject();
@@ -246,6 +251,31 @@ public class Entities implements Main.Extractor {
                     }
                 }
                 entityJson.add("fields", fieldsJson);
+
+                if (entityInstance instanceof LivingEntity livingEntity) {
+                    var type = (EntityType<? extends LivingEntity>) livingEntity.getType();
+                    var defaultAttributes = DefaultAttributeRegistry.get(type);
+                    var attributesJson = new JsonArray();
+                    if (defaultAttributes != null) {
+                        var instancesField = defaultAttributes.getClass().getDeclaredField("instances");
+                        instancesField.setAccessible(true);
+                        var instances = (Map<EntityAttribute, EntityAttributeInstance>) instancesField
+                                .get(defaultAttributes);
+
+                        for (var instance : instances.values()) {
+                            var attribute = instance.getAttribute();
+
+                            var attributeJson = new JsonObject();
+
+                            attributeJson.addProperty("id", Registries.ATTRIBUTE.getRawId(attribute));
+                            attributeJson.addProperty("name", Registries.ATTRIBUTE.getId(attribute).getPath());
+                            attributeJson.addProperty("base_value", instance.getBaseValue());
+
+                            attributesJson.add(attributeJson);
+                        }
+                    }
+                    entityJson.add("attributes", attributesJson);
+                }
 
                 var bb = entityInstance.getBoundingBox();
                 if (bb != null && entityType != null) {
