@@ -539,9 +539,20 @@ fn build() -> anyhow::Result<TokenStream> {
     system_names.push(quote!(update_living_and_player_absorption));
 
     #[derive(Deserialize, Debug)]
+    struct EntityAttribute {
+        id: u8,
+        default_value: f32,
+        translation_key: String,
+        tracked: bool,
+        min_value: f32,
+        max_value: f32,
+    }
+
+    #[derive(Deserialize, Debug)]
     struct MiscEntityData {
         entity_status: BTreeMap<String, u8>,
         entity_animation: BTreeMap<String, u8>,
+        entity_attributes: BTreeMap<String, EntityAttribute>,
     }
 
     let misc_entity_data: MiscEntityData =
@@ -571,6 +582,72 @@ fn build() -> anyhow::Result<TokenStream> {
                     #name = #code,
                 }
             });
+    
+    let (entity_attribute_enum, entity_attribute_get_id, entity_attribute_name, entity_attribute_default_value, entity_attribute_translation_key, entity_attribute_tracked, entity_attribute_min_value, entity_attribute_max_value) = {
+        let mut entity_attribute_enum = TokenStream::new();
+        let mut entity_attribute_get_id = TokenStream::new();
+        let mut entity_attribute_name = TokenStream::new();
+        let mut entity_attribute_default_value = TokenStream::new();
+        let mut entity_attribute_translation_key = TokenStream::new();
+        let mut entity_attribute_tracked = TokenStream::new();
+        let mut entity_attribute_min_value = TokenStream::new();
+        let mut entity_attribute_max_value = TokenStream::new();
+
+        for (name, attribute) in misc_entity_data.entity_attributes {
+            let key = ident(name.to_pascal_case());
+            let id = attribute.id;
+            let default_value = attribute.default_value;
+            let translation_key = attribute.translation_key;
+            let tracked = attribute.tracked;
+            let min_value = attribute.min_value;
+            let max_value = attribute.max_value;
+
+            entity_attribute_get_id.extend([quote! {
+                EntityAttribute::#key => #id,
+            }]);
+
+            let id = id as isize;
+
+            entity_attribute_enum.extend([quote! {
+                #key = #id,
+            }]);
+
+            entity_attribute_name.extend([quote! {
+                EntityAttribute::#key => #name,
+            }]);
+
+            entity_attribute_default_value.extend([quote! {
+                EntityAttribute::#key => #default_value,
+            }]);
+
+            entity_attribute_translation_key.extend([quote! {
+                EntityAttribute::#key => #translation_key,
+            }]);
+
+            entity_attribute_tracked.extend([quote! {
+                EntityAttribute::#key => #tracked,
+            }]);
+
+            entity_attribute_min_value.extend([quote! {
+                EntityAttribute::#key => #min_value,
+            }]);
+
+            entity_attribute_max_value.extend([quote! {
+                EntityAttribute::#key => #max_value,
+            }]);
+        }
+
+        (
+            entity_attribute_enum,
+            entity_attribute_get_id,
+            entity_attribute_name,
+            entity_attribute_default_value,
+            entity_attribute_translation_key,
+            entity_attribute_tracked,
+            entity_attribute_min_value,
+            entity_attribute_max_value,
+        )
+    };
 
     Ok(quote! {
         #modules
@@ -617,6 +694,55 @@ fn build() -> anyhow::Result<TokenStream> {
         #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
         pub enum EntityAnimation {
             #(#entity_animation_variants)*
+        }
+
+        #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+        pub enum EntityAttribute {
+            #entity_attribute_enum
+        }
+
+        impl EntityAttribute {
+            pub fn get_id(self) -> u8 {
+                match self {
+                    #entity_attribute_get_id
+                }
+            }
+
+            pub fn name(self) -> &'static str {
+                match self {
+                    #entity_attribute_name
+                }
+            }
+
+            pub fn default_value(self) -> f32 {
+                match self {
+                    #entity_attribute_default_value
+                }
+            }
+
+            pub fn translation_key(self) -> &'static str {
+                match self {
+                    #entity_attribute_translation_key
+                }
+            }
+
+            pub fn tracked(self) -> bool {
+                match self {
+                    #entity_attribute_tracked
+                }
+            }
+
+            pub fn min_value(self) -> f32 {
+                match self {
+                    #entity_attribute_min_value
+                }
+            }
+
+            pub fn max_value(self) -> f32 {
+                match self {
+                    #entity_attribute_max_value
+                }
+            }
         }
 
         fn add_tracked_data_systems(app: &mut App) {

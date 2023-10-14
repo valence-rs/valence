@@ -548,7 +548,7 @@
     "vector3f": 26,
     "quaternionf": 27
   },
-  "attribute": {
+  "entity_attributes": {
     "generic.max_health": {
       "id": 0,
       "name": "generic.max_health",

@@ -147,7 +147,7 @@ public class Misc implements Main.Extractor {
 
             attributesJson.add(Registries.ATTRIBUTE.getId(attribute).getPath(), attributeJson);
         }
-        miscJson.add("attribute", attributesJson);
+        miscJson.add("entity_attributes", attributesJson);
 
         return miscJson;
     }
