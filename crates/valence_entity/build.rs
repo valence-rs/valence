@@ -614,85 +614,61 @@ fn build() -> anyhow::Result<TokenStream> {
                 }
             });
 
-    let (
-        entity_attribute_enum,
-        entity_attribute_get_id,
-        entity_attribute_from_id,
-        entity_attribute_name,
-        entity_attribute_default_value,
-        entity_attribute_translation_key,
-        entity_attribute_tracked,
-        entity_attribute_min_value,
-        entity_attribute_max_value,
-    ) = {
-        let mut entity_attribute_enum = TokenStream::new();
-        let mut entity_attribute_get_id = TokenStream::new();
-        let mut entity_attribute_from_id = TokenStream::new();
-        let mut entity_attribute_name = TokenStream::new();
-        let mut entity_attribute_default_value = TokenStream::new();
-        let mut entity_attribute_translation_key = TokenStream::new();
-        let mut entity_attribute_tracked = TokenStream::new();
-        let mut entity_attribute_min_value = TokenStream::new();
-        let mut entity_attribute_max_value = TokenStream::new();
+    let mut entity_attribute_enum = TokenStream::new();
+    let mut entity_attribute_get_id = TokenStream::new();
+    let mut entity_attribute_from_id = TokenStream::new();
+    let mut entity_attribute_name = TokenStream::new();
+    let mut entity_attribute_default_value = TokenStream::new();
+    let mut entity_attribute_translation_key = TokenStream::new();
+    let mut entity_attribute_tracked = TokenStream::new();
+    let mut entity_attribute_min_value = TokenStream::new();
+    let mut entity_attribute_max_value = TokenStream::new();
 
-        for (name, attribute) in misc_entity_data.entity_attributes {
-            let key = ident(name.to_pascal_case());
-            let id = attribute.id;
-            let default_value = attribute.default_value;
-            let translation_key = attribute.translation_key;
-            let tracked = attribute.tracked;
-            let min_value = attribute.min_value;
-            let max_value = attribute.max_value;
+    for (name, attribute) in misc_entity_data.entity_attributes {
+        let key = ident(name.to_pascal_case());
+        let id = attribute.id;
+        let default_value = attribute.default_value;
+        let translation_key = attribute.translation_key;
+        let tracked = attribute.tracked;
+        let min_value = attribute.min_value;
+        let max_value = attribute.max_value;
 
-            entity_attribute_enum.extend([quote! {
-                #key,
-            }]);
+        entity_attribute_enum.extend([quote! {
+            #key,
+        }]);
 
-            entity_attribute_get_id.extend([quote! {
-                EntityAttribute::#key => #id,
-            }]);
+        entity_attribute_get_id.extend([quote! {
+            EntityAttribute::#key => #id,
+        }]);
 
-            entity_attribute_from_id.extend([quote! {
-                #id => EntityAttribute::#key,
-            }]);
+        entity_attribute_from_id.extend([quote! {
+            #id => EntityAttribute::#key,
+        }]);
 
-            entity_attribute_name.extend([quote! {
-                EntityAttribute::#key => #name,
-            }]);
+        entity_attribute_name.extend([quote! {
+            EntityAttribute::#key => #name,
+        }]);
 
-            entity_attribute_default_value.extend([quote! {
-                EntityAttribute::#key => #default_value,
-            }]);
+        entity_attribute_default_value.extend([quote! {
+            EntityAttribute::#key => #default_value,
+        }]);
 
-            entity_attribute_translation_key.extend([quote! {
-                EntityAttribute::#key => #translation_key,
-            }]);
+        entity_attribute_translation_key.extend([quote! {
+            EntityAttribute::#key => #translation_key,
+        }]);
 
-            entity_attribute_tracked.extend([quote! {
-                EntityAttribute::#key => #tracked,
-            }]);
+        entity_attribute_tracked.extend([quote! {
+            EntityAttribute::#key => #tracked,
+        }]);
 
-            entity_attribute_min_value.extend([quote! {
-                EntityAttribute::#key => #min_value,
-            }]);
+        entity_attribute_min_value.extend([quote! {
+            EntityAttribute::#key => #min_value,
+        }]);
 
-            entity_attribute_max_value.extend([quote! {
-                EntityAttribute::#key => #max_value,
-            }]);
-        }
-
-        (
-            entity_attribute_enum,
-            entity_attribute_get_id,
-            entity_attribute_from_id,
-            entity_attribute_name,
-            entity_attribute_default_value,
-            entity_attribute_translation_key,
-            entity_attribute_tracked,
-            entity_attribute_min_value,
-            entity_attribute_max_value,
-        )
-    };
+        entity_attribute_max_value.extend([quote! {
+            EntityAttribute::#key => #max_value,
+        }]);
+    }
 
     Ok(quote! {
         #modules
