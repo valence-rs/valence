@@ -8,6 +8,8 @@ use crate::EntityAttribute;
 /// An instance of an Entity Attribute.
 #[derive(Component, Clone, PartialEq, Debug)]
 pub struct EntityAttributeInstance {
+    /// The name of the attribute.
+    pub name: String,
     /// The base value of the attribute.
     pub base_value: f32,
     /// The add modifiers of the attribute.
@@ -20,8 +22,9 @@ pub struct EntityAttributeInstance {
 
 impl EntityAttributeInstance {
     /// Creates a new instance of an Entity Attribute.
-    pub fn new(base_value: f32) -> Self {
+    pub fn new(name: String, base_value: f32) -> Self {
         Self {
+            name,
             base_value,
             add_modifiers: IndexMap::new(),
             multiply_base_modifiers: IndexMap::new(),
@@ -124,7 +127,7 @@ impl EntityAttributes {
     pub fn create_attribute(&mut self, attribute: EntityAttribute) {
         self.0
             .entry(attribute)
-            .or_insert_with(|| EntityAttributeInstance::new(0.0));
+            .or_insert_with(|| EntityAttributeInstance::new(attribute.name().to_string(), 0.0));
     }
 
     /// Creates an attribute if it does not exist and sets its base value.
@@ -133,7 +136,9 @@ impl EntityAttributes {
     pub fn with_attribute_and_value(mut self, attribute: EntityAttribute, base_value: f32) -> Self {
         self.0
             .entry(attribute)
-            .or_insert_with(|| EntityAttributeInstance::new(base_value))
+            .or_insert_with(|| {
+                EntityAttributeInstance::new(attribute.name().to_string(), base_value)
+            })
             .base_value = base_value;
         self
     }
@@ -142,7 +147,7 @@ impl EntityAttributes {
     pub fn set_base_value(&mut self, attribute: EntityAttribute, value: f32) {
         self.0
             .entry(attribute)
-            .or_insert_with(|| EntityAttributeInstance::new(value))
+            .or_insert_with(|| EntityAttributeInstance::new(attribute.name().to_string(), value))
             .base_value = value;
     }
 
@@ -150,7 +155,7 @@ impl EntityAttributes {
     pub fn set_add_modifier(&mut self, attribute: EntityAttribute, name: String, modifier: f32) {
         self.0
             .entry(attribute)
-            .or_insert_with(|| EntityAttributeInstance::new(0.0))
+            .or_insert_with(|| EntityAttributeInstance::new(attribute.name().to_string(), 0.0))
             .with_add_modifier(name, modifier);
     }
 
@@ -163,7 +168,7 @@ impl EntityAttributes {
     ) {
         self.0
             .entry(attribute)
-            .or_insert_with(|| EntityAttributeInstance::new(0.0))
+            .or_insert_with(|| EntityAttributeInstance::new(attribute.name().to_string(), 0.0))
             .with_multiply_base_modifier(name, modifier);
     }
 
@@ -176,7 +181,7 @@ impl EntityAttributes {
     ) {
         self.0
             .entry(attribute)
-            .or_insert_with(|| EntityAttributeInstance::new(0.0))
+            .or_insert_with(|| EntityAttributeInstance::new(attribute.name().to_string(), 0.0))
             .with_multiply_total_modifier(name, modifier);
     }
 
