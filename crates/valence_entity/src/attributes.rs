@@ -25,7 +25,18 @@ pub struct EntityAttributeInstance {
 
 impl EntityAttributeInstance {
     /// Creates a new instance of an Entity Attribute.
-    pub fn new(attribute: EntityAttribute, base_value: f64) -> Self {
+    pub fn new(attribute: EntityAttribute) -> Self {
+        Self {
+            attribute,
+            base_value: attribute.default_value(),
+            add_modifiers: IndexMap::new(),
+            multiply_base_modifiers: IndexMap::new(),
+            multiply_total_modifiers: IndexMap::new(),
+        }
+    }
+
+    /// Creates a new instance of an Entity Attribute with a value.
+    pub fn new_with_value(attribute: EntityAttribute, base_value: f64) -> Self {
         Self {
             attribute,
             base_value,
@@ -205,7 +216,7 @@ impl EntityAttributes {
         self.mark_recently_changed(attribute);
         self.attributes
             .entry(attribute)
-            .or_insert_with(|| EntityAttributeInstance::new(attribute, 0.0));
+            .or_insert_with(|| EntityAttributeInstance::new(attribute));
     }
 
     /// Creates an attribute if it does not exist and sets its base value.
@@ -222,7 +233,7 @@ impl EntityAttributes {
     ) -> Self {
         self.attributes
             .entry(attribute)
-            .or_insert_with(|| EntityAttributeInstance::new(attribute, base_value))
+            .or_insert_with(|| EntityAttributeInstance::new_with_value(attribute, base_value))
             .base_value = base_value;
         self
     }
@@ -232,7 +243,7 @@ impl EntityAttributes {
         self.mark_recently_changed(attribute);
         self.attributes
             .entry(attribute)
-            .or_insert_with(|| EntityAttributeInstance::new(attribute, value))
+            .or_insert_with(|| EntityAttributeInstance::new(attribute))
             .base_value = value;
     }
 
@@ -241,7 +252,7 @@ impl EntityAttributes {
         self.mark_recently_changed(attribute);
         self.attributes
             .entry(attribute)
-            .or_insert_with(|| EntityAttributeInstance::new(attribute, 0.0))
+            .or_insert_with(|| EntityAttributeInstance::new(attribute))
             .with_add_modifier(name, modifier);
     }
 
@@ -255,7 +266,7 @@ impl EntityAttributes {
         self.mark_recently_changed(attribute);
         self.attributes
             .entry(attribute)
-            .or_insert_with(|| EntityAttributeInstance::new(attribute, 0.0))
+            .or_insert_with(|| EntityAttributeInstance::new(attribute))
             .with_multiply_base_modifier(name, modifier);
     }
 
@@ -269,7 +280,7 @@ impl EntityAttributes {
         self.mark_recently_changed(attribute);
         self.attributes
             .entry(attribute)
-            .or_insert_with(|| EntityAttributeInstance::new(attribute, 0.0))
+            .or_insert_with(|| EntityAttributeInstance::new(attribute))
             .with_multiply_total_modifier(name, modifier);
     }
 
