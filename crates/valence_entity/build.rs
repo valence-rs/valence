@@ -583,9 +583,10 @@ fn build() -> anyhow::Result<TokenStream> {
                 }
             });
     
-    let (entity_attribute_enum, entity_attribute_get_id, entity_attribute_name, entity_attribute_default_value, entity_attribute_translation_key, entity_attribute_tracked, entity_attribute_min_value, entity_attribute_max_value) = {
+    let (entity_attribute_enum, entity_attribute_get_id, entity_attribute_from_id, entity_attribute_name, entity_attribute_default_value, entity_attribute_translation_key, entity_attribute_tracked, entity_attribute_min_value, entity_attribute_max_value) = {
         let mut entity_attribute_enum = TokenStream::new();
         let mut entity_attribute_get_id = TokenStream::new();
+        let mut entity_attribute_from_id = TokenStream::new();
         let mut entity_attribute_name = TokenStream::new();
         let mut entity_attribute_default_value = TokenStream::new();
         let mut entity_attribute_translation_key = TokenStream::new();
@@ -602,14 +603,16 @@ fn build() -> anyhow::Result<TokenStream> {
             let min_value = attribute.min_value;
             let max_value = attribute.max_value;
 
+            entity_attribute_enum.extend([quote! {
+                #key,
+            }]);
+
             entity_attribute_get_id.extend([quote! {
                 EntityAttribute::#key => #id,
             }]);
 
-            let id = id as isize;
-
-            entity_attribute_enum.extend([quote! {
-                #key = #id,
+            entity_attribute_from_id.extend([quote! {
+                #id => EntityAttribute::#key,
             }]);
 
             entity_attribute_name.extend([quote! {
@@ -640,6 +643,7 @@ fn build() -> anyhow::Result<TokenStream> {
         (
             entity_attribute_enum,
             entity_attribute_get_id,
+            entity_attribute_from_id,
             entity_attribute_name,
             entity_attribute_default_value,
             entity_attribute_translation_key,
@@ -705,6 +709,13 @@ fn build() -> anyhow::Result<TokenStream> {
             pub fn get_id(self) -> u8 {
                 match self {
                     #entity_attribute_get_id
+                }
+            }
+
+            pub fn from_id(id: u8) -> Self {
+                match id {
+                    #entity_attribute_from_id
+                    _ => panic!("invalid entity attribute id: {}", id),
                 }
             }
 

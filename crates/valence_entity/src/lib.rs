@@ -18,6 +18,7 @@
 )]
 #![allow(clippy::type_complexity)]
 
+pub mod attributes;
 mod flags;
 pub mod hitbox;
 pub mod manager;
