@@ -1,30 +1,32 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, borrow::Cow};
 
 use bevy_ecs::prelude::*;
 use indexmap::IndexMap;
+use uuid::Uuid;
+use valence_protocol::{packets::play::entity_attributes_s2c::*, Ident};
 
 use crate::EntityAttribute;
 
 /// An instance of an Entity Attribute.
 #[derive(Component, Clone, PartialEq, Debug)]
 pub struct EntityAttributeInstance {
-    /// The name of the attribute.
-    pub name: String,
+    /// The attribute.
+    pub attribute: EntityAttribute,
     /// The base value of the attribute.
-    pub base_value: f32,
+    pub base_value: f64,
     /// The add modifiers of the attribute.
-    pub add_modifiers: IndexMap<String, f32>,
+    pub add_modifiers: IndexMap<String, f64>,
     /// The multiply base modifiers of the attribute.
-    pub multiply_base_modifiers: IndexMap<String, f32>,
+    pub multiply_base_modifiers: IndexMap<String, f64>,
     /// The multiply total modifiers of the attribute.
-    pub multiply_total_modifiers: IndexMap<String, f32>,
+    pub multiply_total_modifiers: IndexMap<String, f64>,
 }
 
 impl EntityAttributeInstance {
     /// Creates a new instance of an Entity Attribute.
-    pub fn new(name: String, base_value: f32) -> Self {
+    pub fn new(attribute: EntityAttribute, base_value: f64) -> Self {
         Self {
-            name,
+            attribute,
             base_value,
             add_modifiers: IndexMap::new(),
             multiply_base_modifiers: IndexMap::new(),
@@ -33,7 +35,7 @@ impl EntityAttributeInstance {
     }
 
     /// Gets the value of the attribute.
-    pub fn value(&self) -> f32 {
+    pub fn value(&self) -> f64 {
         let mut value = self.base_value;
 
         // Increment value by modifier
@@ -61,7 +63,7 @@ impl EntityAttributeInstance {
     /// If the modifier already exists, it will be overwritten.
     ///
     /// Returns a mutable reference to self.
-    pub fn with_add_modifier(&mut self, name: String, modifier: f32) -> &mut Self {
+    pub fn with_add_modifier(&mut self, name: String, modifier: f64) -> &mut Self {
         self.add_modifiers.insert(name, modifier);
         self
     }
@@ -71,7 +73,7 @@ impl EntityAttributeInstance {
     /// If the modifier already exists, it will be overwritten.
     ///
     /// Returns a mutable reference to self.
-    pub fn with_multiply_base_modifier(&mut self, name: String, modifier: f32) -> &mut Self {
+    pub fn with_multiply_base_modifier(&mut self, name: String, modifier: f64) -> &mut Self {
         self.multiply_base_modifiers.insert(name, modifier);
         self
     }
@@ -81,7 +83,7 @@ impl EntityAttributeInstance {
     /// If the modifier already exists, it will be overwritten.
     ///
     /// Returns a mutable reference to self.
-    pub fn with_multiply_total_modifier(&mut self, name: String, modifier: f32) -> &mut Self {
+    pub fn with_multiply_total_modifier(&mut self, name: String, modifier: f64) -> &mut Self {
         self.multiply_total_modifiers.insert(name, modifier);
         self
     }
@@ -99,6 +101,41 @@ impl EntityAttributeInstance {
         self.multiply_base_modifiers.clear();
         self.multiply_total_modifiers.clear();
     }
+
+    /// Converts to a `AttributeProperty` for use in the `EntityAttributesS2c` packet.
+    pub fn to_property(&self) -> AttributeProperty {
+        AttributeProperty {
+            key: Ident::new(Cow::from(self.attribute.name())).expect("Invalid attribute name"),
+            value: self.value(),
+            modifiers: self
+                .add_modifiers
+                .iter()
+                .map(|(_, modifier)| AttributeModifier {
+                    uuid: Uuid::new_v4(),
+                    amount: *modifier,
+                    operation: 0,
+                })
+                .chain(
+                    self.multiply_base_modifiers
+                        .iter()
+                        .map(|(_, modifier)| AttributeModifier {
+                            uuid: Uuid::new_v4(),
+                            amount: *modifier,
+                            operation: 1,
+                        }),
+                )
+                .chain(
+                    self.multiply_total_modifiers
+                        .iter()
+                        .map(|(_, modifier)| AttributeModifier {
+                            uuid: Uuid::new_v4(),
+                            amount: *modifier,
+                            operation: 2,
+                        }),
+                )
+                .collect(),
+        }
+    }
 }
 
 /// The attributes of a Living Entity.
@@ -114,7 +151,7 @@ impl EntityAttributes {
     /// Gets the value of an attribute.
     ///
     /// Returns [`None`] if the attribute does not exist.
-    pub fn get_value(&self, attribute: EntityAttribute) -> Option<f32> {
+    pub fn get_value(&self, attribute: EntityAttribute) -> Option<f64> {
         self.0.get(&attribute).map(|instance| instance.value())
     }
 
@@ -127,35 +164,35 @@ impl EntityAttributes {
     pub fn create_attribute(&mut self, attribute: EntityAttribute) {
         self.0
             .entry(attribute)
-            .or_insert_with(|| EntityAttributeInstance::new(attribute.name().to_string(), 0.0));
+            .or_insert_with(|| EntityAttributeInstance::new(attribute, 0.0));
     }
 
     /// Creates an attribute if it does not exist and sets its base value.
     ///
     /// Returns self.
-    pub fn with_attribute_and_value(mut self, attribute: EntityAttribute, base_value: f32) -> Self {
+    pub fn with_attribute_and_value(mut self, attribute: EntityAttribute, base_value: f64) -> Self {
         self.0
             .entry(attribute)
             .or_insert_with(|| {
-                EntityAttributeInstance::new(attribute.name().to_string(), base_value)
+                EntityAttributeInstance::new(attribute, base_value)
             })
             .base_value = base_value;
         self
     }
 
     /// Sets the base value of an attribute.
-    pub fn set_base_value(&mut self, attribute: EntityAttribute, value: f32) {
+    pub fn set_base_value(&mut self, attribute: EntityAttribute, value: f64) {
         self.0
             .entry(attribute)
-            .or_insert_with(|| EntityAttributeInstance::new(attribute.name().to_string(), value))
+            .or_insert_with(|| EntityAttributeInstance::new(attribute, value))
             .base_value = value;
     }
 
     /// Sets an add modifier of an attribute.
-    pub fn set_add_modifier(&mut self, attribute: EntityAttribute, name: String, modifier: f32) {
+    pub fn set_add_modifier(&mut self, attribute: EntityAttribute, name: String, modifier: f64) {
         self.0
             .entry(attribute)
-            .or_insert_with(|| EntityAttributeInstance::new(attribute.name().to_string(), 0.0))
+            .or_insert_with(|| EntityAttributeInstance::new(attribute, 0.0))
             .with_add_modifier(name, modifier);
     }
 
@@ -164,11 +201,11 @@ impl EntityAttributes {
         &mut self,
         attribute: EntityAttribute,
         name: String,
-        modifier: f32,
+        modifier: f64,
     ) {
         self.0
             .entry(attribute)
-            .or_insert_with(|| EntityAttributeInstance::new(attribute.name().to_string(), 0.0))
+            .or_insert_with(|| EntityAttributeInstance::new(attribute, 0.0))
             .with_multiply_base_modifier(name, modifier);
     }
 
@@ -177,11 +214,11 @@ impl EntityAttributes {
         &mut self,
         attribute: EntityAttribute,
         name: String,
-        modifier: f32,
+        modifier: f64,
     ) {
         self.0
             .entry(attribute)
-            .or_insert_with(|| EntityAttributeInstance::new(attribute.name().to_string(), 0.0))
+            .or_insert_with(|| EntityAttributeInstance::new(attribute, 0.0))
             .with_multiply_total_modifier(name, modifier);
     }
 

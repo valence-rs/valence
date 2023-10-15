@@ -33,7 +33,7 @@ struct Field {
 #[derive(Deserialize, Clone, Debug)]
 struct Attribute {
     name: String,
-    base_value: f32,
+    base_value: f64,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -572,11 +572,11 @@ fn build() -> anyhow::Result<TokenStream> {
     #[derive(Deserialize, Debug)]
     struct EntityAttribute {
         id: u8,
-        default_value: f32,
+        default_value: f64,
         translation_key: String,
         tracked: bool,
-        min_value: f32,
-        max_value: f32,
+        min_value: f64,
+        max_value: f64,
     }
 
     #[derive(Deserialize, Debug)]
@@ -742,7 +742,7 @@ fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            pub fn default_value(self) -> f32 {
+            pub fn default_value(self) -> f64 {
                 match self {
                     #entity_attribute_default_value
                 }
@@ -760,13 +760,13 @@ fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            pub fn min_value(self) -> f32 {
+            pub fn min_value(self) -> f64 {
                 match self {
                     #entity_attribute_min_value
                 }
             }
 
-            pub fn max_value(self) -> f32 {
+            pub fn max_value(self) -> f64 {
                 match self {
                     #entity_attribute_max_value
                 }
