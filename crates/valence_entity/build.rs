@@ -13,6 +13,7 @@ struct Entity {
     typ: Option<String>,
     translation_key: Option<String>,
     fields: Vec<Field>,
+    attributes: Option<Vec<Attribute>>,
     parent: Option<String>,
 }
 
@@ -27,6 +28,12 @@ struct Field {
     index: u8,
     #[serde(flatten)]
     default_value: Value,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+struct Attribute {
+    name: String,
+    base_value: f32,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -366,6 +373,30 @@ fn build() -> anyhow::Result<TokenStream> {
 
                             bundle_init_fields.extend([quote! {
                                 living_absorption: Default::default(),
+                            }]);
+
+                            bundle_fields.extend([quote! {
+                                pub living_attributes: super::attributes::EntityAttributes,
+                            }]);
+
+                            // Get the default values of the attributes.
+                            let mut attribute_default_values = TokenStream::new();
+
+                            if let Some(attributes) = &entity.attributes {
+                                for attribute in attributes {
+                                    let name = ident(attribute.name.to_pascal_case());
+                                    let base_value = attribute.base_value;
+                                    attribute_default_values.extend([quote! {
+                                        .with_attribute_and_value(
+                                            super::EntityAttribute::#name,
+                                            #base_value,
+                                        )
+                                    }]);
+                                }
+                            }
+
+                            bundle_init_fields.extend([quote! {
+                                living_attributes: super::attributes::EntityAttributes::new() #attribute_default_values,
                             }]);
                         }
                     }
