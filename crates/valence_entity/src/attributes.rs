@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use bevy_ecs::prelude::*;
 use indexmap::IndexMap;
 use uuid::Uuid;
-use valence_protocol::{packets::play::entity_attributes_s2c::*, Ident};
+use valence_protocol::packets::play::entity_attributes_s2c::*;
+use valence_protocol::Ident;
 
 use crate::EntityAttribute;
 
@@ -119,7 +120,8 @@ impl EntityAttributeInstance {
             || self.multiply_total_modifiers.contains_key(name)
     }
 
-    /// Converts to a `TrackedEntityProperty` for use in the `EntityAttributesS2c` packet.
+    /// Converts to a `TrackedEntityProperty` for use in the
+    /// `EntityAttributesS2c` packet.
     pub(crate) fn to_property(&self) -> TrackedEntityProperty {
         TrackedEntityProperty {
             key: self.attribute.name().into(),

@@ -25,7 +25,6 @@ pub mod manager;
 pub mod query;
 pub mod tracked_data;
 
-use crate::attributes::TrackedEntityAttributes;
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use derive_more::{Deref, DerefMut};
@@ -36,6 +35,8 @@ use tracked_data::TrackedData;
 use valence_math::{DVec3, Vec3};
 use valence_protocol::{Decode, Encode, VarInt};
 use valence_server_common::{Despawned, UniqueId};
+
+use crate::attributes::TrackedEntityAttributes;
 
 include!(concat!(env!("OUT_DIR"), "/entity.rs"));
 pub struct EntityPlugin;
