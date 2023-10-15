@@ -130,11 +130,7 @@ impl EntityAttributes {
     /// Creates an attribute if it does not exist and sets its base value.
     ///
     /// Returns self.
-    pub fn with_attribute_and_value(
-        mut self,
-        attribute: EntityAttribute,
-        base_value: f32,
-    ) -> Self {
+    pub fn with_attribute_and_value(mut self, attribute: EntityAttribute, base_value: f32) -> Self {
         self.0
             .entry(attribute)
             .or_insert_with(|| EntityAttributeInstance::new(base_value))

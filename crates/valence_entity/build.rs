@@ -613,8 +613,18 @@ fn build() -> anyhow::Result<TokenStream> {
                     #name = #code,
                 }
             });
-    
-    let (entity_attribute_enum, entity_attribute_get_id, entity_attribute_from_id, entity_attribute_name, entity_attribute_default_value, entity_attribute_translation_key, entity_attribute_tracked, entity_attribute_min_value, entity_attribute_max_value) = {
+
+    let (
+        entity_attribute_enum,
+        entity_attribute_get_id,
+        entity_attribute_from_id,
+        entity_attribute_name,
+        entity_attribute_default_value,
+        entity_attribute_translation_key,
+        entity_attribute_tracked,
+        entity_attribute_min_value,
+        entity_attribute_max_value,
+    ) = {
         let mut entity_attribute_enum = TokenStream::new();
         let mut entity_attribute_get_id = TokenStream::new();
         let mut entity_attribute_from_id = TokenStream::new();
