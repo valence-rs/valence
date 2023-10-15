@@ -398,6 +398,13 @@ fn build() -> anyhow::Result<TokenStream> {
                             bundle_init_fields.extend([quote! {
                                 living_attributes: super::attributes::EntityAttributes::new() #attribute_default_values,
                             }]);
+                            bundle_fields.extend([quote! {
+                                pub living_attributes_tracker: super::attributes::TrackedEntityAttributes,
+                            }]);
+
+                            bundle_init_fields.extend([quote! {
+                                living_attributes_tracker: Default::default(),
+                            }]);
                         }
                     }
                     MarkerOrField::Field { entity_name, field } => {
@@ -565,9 +572,25 @@ fn build() -> anyhow::Result<TokenStream> {
                 player_absorption.0 = living_absorption.0;
             }
         }
+
+        /// Special case for `living::Attributes`.
+        fn update_living_attributes(
+            mut query: Query<(
+                &mut attributes::TrackedEntityAttributes,
+                &mut attributes::EntityAttributes,
+            ),
+            Changed<attributes::EntityAttributes>>
+        ) {
+            for (mut tracked, mut attributes) in query.iter_mut() {
+                for attribute in attributes.take_recently_changed() {
+                    tracked.mark_modified(&attributes, attribute);
+                }
+            }
+        }
     }]);
 
     system_names.push(quote!(update_living_and_player_absorption));
+    system_names.push(quote!(update_living_attributes));
 
     #[derive(Deserialize, Debug)]
     struct EntityAttribute {

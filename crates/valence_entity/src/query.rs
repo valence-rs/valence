@@ -6,14 +6,15 @@ use bevy_ecs::world::Ref;
 use valence_math::DVec3;
 use valence_protocol::encode::WritePacket;
 use valence_protocol::packets::play::{
-    EntityAnimationS2c, EntityPositionS2c, EntitySetHeadYawS2c, EntitySpawnS2c, EntityStatusS2c,
-    EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, ExperienceOrbSpawnS2c, MoveRelativeS2c,
-    PlayerSpawnS2c, RotateAndMoveRelativeS2c, RotateS2c,
+    EntityAnimationS2c, EntityAttributesS2c, EntityPositionS2c, EntitySetHeadYawS2c,
+    EntitySpawnS2c, EntityStatusS2c, EntityTrackerUpdateS2c, EntityVelocityUpdateS2c,
+    ExperienceOrbSpawnS2c, MoveRelativeS2c, PlayerSpawnS2c, RotateAndMoveRelativeS2c, RotateS2c,
 };
 use valence_protocol::var_int::VarInt;
 use valence_protocol::ByteAngle;
 use valence_server_common::UniqueId;
 
+use crate::attributes::TrackedEntityAttributes;
 use crate::tracked_data::TrackedData;
 use crate::{
     EntityAnimations, EntityId, EntityKind, EntityLayerId, EntityStatuses, HeadYaw, Look,
@@ -98,6 +99,7 @@ pub struct UpdateEntityQuery {
     pub tracked_data: &'static TrackedData,
     pub statuses: &'static EntityStatuses,
     pub animations: &'static EntityAnimations,
+    pub tracked_attributes: Option<&'static TrackedEntityAttributes>,
 }
 
 impl UpdateEntityQueryItem<'_> {
@@ -187,6 +189,18 @@ impl UpdateEntityQueryItem<'_> {
                         animation: i as u8,
                     });
                 }
+            }
+        }
+
+        if let Some(attributes) = self.tracked_attributes {
+            let properties = attributes.get_properties();
+
+            if !properties.is_empty() {
+                println!("attributes: {:?}", properties);
+                writer.write_packet(&EntityAttributesS2c {
+                    entity_id,
+                    properties,
+                });
             }
         }
     }

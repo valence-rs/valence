@@ -25,6 +25,7 @@ pub mod manager;
 pub mod query;
 pub mod tracked_data;
 
+use crate::attributes::TrackedEntityAttributes;
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use derive_more::{Deref, DerefMut};
@@ -90,6 +91,7 @@ impl Plugin for EntityPlugin {
                     clear_status_changes,
                     clear_animation_changes,
                     clear_tracked_data_changes,
+                    clear_tracked_attributes_changes,
                     update_old_position,
                     update_old_layer_id,
                 )
@@ -161,6 +163,14 @@ fn clear_animation_changes(
 fn clear_tracked_data_changes(mut tracked_data: Query<&mut TrackedData, Changed<TrackedData>>) {
     for mut tracked_data in &mut tracked_data {
         tracked_data.clear_update_values();
+    }
+}
+
+fn clear_tracked_attributes_changes(
+    mut attributes: Query<&mut TrackedEntityAttributes, Changed<TrackedEntityAttributes>>,
+) {
+    for mut attributes in &mut attributes {
+        attributes.clear();
     }
 }
 
