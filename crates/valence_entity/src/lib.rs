@@ -18,6 +18,7 @@
 )]
 #![allow(clippy::type_complexity)]
 
+pub mod attributes;
 mod flags;
 pub mod hitbox;
 pub mod manager;
@@ -34,6 +35,8 @@ use tracked_data::TrackedData;
 use valence_math::{DVec3, Vec3};
 use valence_protocol::{Decode, Encode, VarInt};
 use valence_server_common::{Despawned, UniqueId};
+
+use crate::attributes::TrackedEntityAttributes;
 
 include!(concat!(env!("OUT_DIR"), "/entity.rs"));
 pub struct EntityPlugin;
@@ -89,6 +92,7 @@ impl Plugin for EntityPlugin {
                     clear_status_changes,
                     clear_animation_changes,
                     clear_tracked_data_changes,
+                    clear_tracked_attributes_changes,
                     update_old_position,
                     update_old_layer_id,
                 )
@@ -160,6 +164,14 @@ fn clear_animation_changes(
 fn clear_tracked_data_changes(mut tracked_data: Query<&mut TrackedData, Changed<TrackedData>>) {
     for mut tracked_data in &mut tracked_data {
         tracked_data.clear_update_values();
+    }
+}
+
+fn clear_tracked_attributes_changes(
+    mut attributes: Query<&mut TrackedEntityAttributes, Changed<TrackedEntityAttributes>>,
+) {
+    for mut attributes in &mut attributes {
+        attributes.clear();
     }
 }
 

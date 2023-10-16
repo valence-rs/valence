@@ -13,6 +13,7 @@ struct Entity {
     typ: Option<String>,
     translation_key: Option<String>,
     fields: Vec<Field>,
+    attributes: Option<Vec<Attribute>>,
     parent: Option<String>,
 }
 
@@ -27,6 +28,12 @@ struct Field {
     index: u8,
     #[serde(flatten)]
     default_value: Value,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+struct Attribute {
+    name: String,
+    base_value: f64,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -367,6 +374,37 @@ fn build() -> anyhow::Result<TokenStream> {
                             bundle_init_fields.extend([quote! {
                                 living_absorption: Default::default(),
                             }]);
+
+                            bundle_fields.extend([quote! {
+                                pub living_attributes: super::attributes::EntityAttributes,
+                            }]);
+
+                            // Get the default values of the attributes.
+                            let mut attribute_default_values = TokenStream::new();
+
+                            if let Some(attributes) = &entity.attributes {
+                                for attribute in attributes {
+                                    let name = ident(attribute.name.to_pascal_case());
+                                    let base_value = attribute.base_value;
+                                    attribute_default_values.extend([quote! {
+                                        .with_attribute_and_value(
+                                            super::EntityAttribute::#name,
+                                            #base_value,
+                                        )
+                                    }]);
+                                }
+                            }
+
+                            bundle_init_fields.extend([quote! {
+                                living_attributes: super::attributes::EntityAttributes::new() #attribute_default_values,
+                            }]);
+                            bundle_fields.extend([quote! {
+                                pub living_attributes_tracker: super::attributes::TrackedEntityAttributes,
+                            }]);
+
+                            bundle_init_fields.extend([quote! {
+                                living_attributes_tracker: Default::default(),
+                            }]);
                         }
                     }
                     MarkerOrField::Field { entity_name, field } => {
@@ -534,14 +572,41 @@ fn build() -> anyhow::Result<TokenStream> {
                 player_absorption.0 = living_absorption.0;
             }
         }
+
+        /// Special case for `living::Attributes`.
+        fn update_living_attributes(
+            mut query: Query<(
+                &mut attributes::TrackedEntityAttributes,
+                &mut attributes::EntityAttributes,
+            ),
+            Changed<attributes::EntityAttributes>>
+        ) {
+            for (mut tracked, mut attributes) in query.iter_mut() {
+                for attribute in attributes.take_recently_changed() {
+                    tracked.mark_modified(&attributes, attribute);
+                }
+            }
+        }
     }]);
 
     system_names.push(quote!(update_living_and_player_absorption));
+    system_names.push(quote!(update_living_attributes));
+
+    #[derive(Deserialize, Debug)]
+    struct EntityAttribute {
+        id: u8,
+        default_value: f64,
+        translation_key: String,
+        tracked: bool,
+        min_value: f64,
+        max_value: f64,
+    }
 
     #[derive(Deserialize, Debug)]
     struct MiscEntityData {
         entity_status: BTreeMap<String, u8>,
         entity_animation: BTreeMap<String, u8>,
+        entity_attributes: BTreeMap<String, EntityAttribute>,
     }
 
     let misc_entity_data: MiscEntityData =
@@ -571,6 +636,62 @@ fn build() -> anyhow::Result<TokenStream> {
                     #name = #code,
                 }
             });
+
+    let mut entity_attribute_enum = TokenStream::new();
+    let mut entity_attribute_get_id = TokenStream::new();
+    let mut entity_attribute_from_id = TokenStream::new();
+    let mut entity_attribute_name = TokenStream::new();
+    let mut entity_attribute_default_value = TokenStream::new();
+    let mut entity_attribute_translation_key = TokenStream::new();
+    let mut entity_attribute_tracked = TokenStream::new();
+    let mut entity_attribute_min_value = TokenStream::new();
+    let mut entity_attribute_max_value = TokenStream::new();
+
+    for (name, attribute) in misc_entity_data.entity_attributes {
+        let key = ident(name.to_pascal_case());
+        let id = attribute.id;
+        let default_value = attribute.default_value;
+        let translation_key = attribute.translation_key;
+        let tracked = attribute.tracked;
+        let min_value = attribute.min_value;
+        let max_value = attribute.max_value;
+
+        entity_attribute_enum.extend([quote! {
+            #key,
+        }]);
+
+        entity_attribute_get_id.extend([quote! {
+            EntityAttribute::#key => #id,
+        }]);
+
+        entity_attribute_from_id.extend([quote! {
+            #id => EntityAttribute::#key,
+        }]);
+
+        entity_attribute_name.extend([quote! {
+            EntityAttribute::#key => #name,
+        }]);
+
+        entity_attribute_default_value.extend([quote! {
+            EntityAttribute::#key => #default_value,
+        }]);
+
+        entity_attribute_translation_key.extend([quote! {
+            EntityAttribute::#key => #translation_key,
+        }]);
+
+        entity_attribute_tracked.extend([quote! {
+            EntityAttribute::#key => #tracked,
+        }]);
+
+        entity_attribute_min_value.extend([quote! {
+            EntityAttribute::#key => #min_value,
+        }]);
+
+        entity_attribute_max_value.extend([quote! {
+            EntityAttribute::#key => #max_value,
+        }]);
+    }
 
     Ok(quote! {
         #modules
@@ -617,6 +738,62 @@ fn build() -> anyhow::Result<TokenStream> {
         #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
         pub enum EntityAnimation {
             #(#entity_animation_variants)*
+        }
+
+        #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+        pub enum EntityAttribute {
+            #entity_attribute_enum
+        }
+
+        impl EntityAttribute {
+            pub fn get_id(self) -> u8 {
+                match self {
+                    #entity_attribute_get_id
+                }
+            }
+
+            pub fn from_id(id: u8) -> Self {
+                match id {
+                    #entity_attribute_from_id
+                    _ => panic!("invalid entity attribute id: {}", id),
+                }
+            }
+
+            pub fn name(self) -> &'static str {
+                match self {
+                    #entity_attribute_name
+                }
+            }
+
+            pub fn default_value(self) -> f64 {
+                match self {
+                    #entity_attribute_default_value
+                }
+            }
+
+            pub fn translation_key(self) -> &'static str {
+                match self {
+                    #entity_attribute_translation_key
+                }
+            }
+
+            pub fn tracked(self) -> bool {
+                match self {
+                    #entity_attribute_tracked
+                }
+            }
+
+            pub fn min_value(self) -> f64 {
+                match self {
+                    #entity_attribute_min_value
+                }
+            }
+
+            pub fn max_value(self) -> f64 {
+                match self {
+                    #entity_attribute_max_value
+                }
+            }
         }
 
         fn add_tracked_data_systems(app: &mut App) {
