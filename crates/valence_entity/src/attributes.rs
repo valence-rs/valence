@@ -56,8 +56,8 @@ impl EntityAttributeInstance {
         self.base_value
     }
 
-    /// Gets the value of the attribute.
-    pub fn value(&self) -> f64 {
+    /// Gets the computed value of the attribute.
+    pub fn compute_value(&self) -> f64 {
         let mut value = self.base_value;
 
         // Increment value by modifier
@@ -141,7 +141,7 @@ impl EntityAttributeInstance {
     pub(crate) fn to_property(&self) -> TrackedEntityProperty {
         TrackedEntityProperty {
             key: self.attribute.name().into(),
-            value: self.value(),
+            value: self.base_value(),
             modifiers: self
                 .add_modifiers
                 .iter()
@@ -204,11 +204,18 @@ impl EntityAttributes {
         self.attributes.get(&attribute)
     }
 
-    /// Gets the value of an attribute.
+    /// Gets the base value of an attribute.
     ///
     /// Returns [`None`] if the attribute does not exist.
-    pub fn get_value(&self, attribute: EntityAttribute) -> Option<f64> {
-        self.get(attribute).map(|instance| instance.value())
+    pub fn get_base_value(&self, attribute: EntityAttribute) -> Option<f64> {
+        self.get(attribute).map(|instance| instance.base_value())
+    }
+
+    /// Gets the computed value of an attribute.
+    ///
+    /// Returns [`None`] if the attribute does not exist.
+    pub fn get_compute_value(&self, attribute: EntityAttribute) -> Option<f64> {
+        self.get(attribute).map(|instance| instance.compute_value())
     }
 
     /// Checks if an attribute exists.
