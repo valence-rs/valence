@@ -133,6 +133,11 @@ impl EntityAttributeInstance {
 
     /// Converts to a `TrackedEntityProperty` for use in the
     /// `EntityAttributesS2c` packet.
+    ///
+    /// Right now, uses a random UUID for the modifier UUIDs.
+    ///
+    /// Minecraft actually uses constant UUIDs. Uncertain if
+    /// I should do the same.
     pub(crate) fn to_property(&self) -> TrackedEntityProperty {
         TrackedEntityProperty {
             key: self.attribute.name().into(),
@@ -179,7 +184,7 @@ impl EntityAttributes {
 
     /// Marks an attribute as recently changed.
     pub(crate) fn mark_recently_changed(&mut self, attribute: EntityAttribute) {
-        if !self.recently_changed.contains(&attribute) {
+        if attribute.tracked() && !self.recently_changed.contains(&attribute) {
             self.recently_changed.push(attribute);
         }
     }
@@ -307,6 +312,17 @@ impl EntityAttributes {
             .map(|instance| instance.has_modifier(name))
             .unwrap_or(false)
     }
+
+    /// **For internal use only.**
+    ///
+    /// Converts to a [`Vec`] of [`AttributeProperty`]s.
+    pub fn to_properties(&self) -> Vec<AttributeProperty> {
+        self.attributes
+            .iter()
+            .filter(|(_, instance)| instance.attribute().tracked())
+            .map(|(_, instance)| instance.to_property().to_property())
+            .collect()
+    }
 }
 
 /// Tracks the attributes of a Living Entity.
@@ -330,6 +346,25 @@ pub(crate) struct TrackedAttributeModifier {
     operation: u8,
 }
 
+impl TrackedEntityProperty {
+    /// Converts to an [`AttributeProperty`]s.
+    fn to_property(&self) -> AttributeProperty<'static> {
+        AttributeProperty {
+            key: Ident::new(self.key.clone()).unwrap(),
+            value: self.value,
+            modifiers: self
+                .modifiers
+                .iter()
+                .map(|modifier| AttributeModifier {
+                    uuid: modifier.uuid,
+                    amount: modifier.amount,
+                    operation: modifier.operation,
+                })
+                .collect(),
+        }
+    }
+}
+
 impl TrackedEntityAttributes {
     /// Creates a new instance of TrackedEntityAttributes.
     pub fn new() -> Self {
@@ -349,19 +384,7 @@ impl TrackedEntityAttributes {
     pub fn get_properties(&self) -> Vec<AttributeProperty<'static>> {
         self.modified
             .iter()
-            .map(|(_, property)| AttributeProperty {
-                key: Ident::new(property.key.clone()).unwrap(),
-                value: property.value,
-                modifiers: property
-                    .modifiers
-                    .iter()
-                    .map(|modifier| AttributeModifier {
-                        uuid: modifier.uuid,
-                        amount: modifier.amount,
-                        operation: modifier.operation,
-                    })
-                    .collect(),
-            })
+            .map(|(_, property)| property.to_property())
             .collect()
     }
 
