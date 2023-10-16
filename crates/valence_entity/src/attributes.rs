@@ -77,7 +77,7 @@ impl EntityAttributeInstance {
             value += value * modifier;
         }
 
-        value
+        value.clamp(self.attribute.min_value(), self.attribute.max_value())
     }
 
     /// Sets an add modifier.
