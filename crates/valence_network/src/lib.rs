@@ -23,7 +23,7 @@ mod legacy_ping;
 mod packet_io;
 
 use std::borrow::Cow;
-use std::net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV4};
+use std::net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
