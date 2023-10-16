@@ -400,3 +400,46 @@ impl TrackedEntityAttributes {
         self.modified.clear();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_compute_value() {
+        let mut attributes = EntityAttributes::new();
+        attributes.set_base_value(EntityAttribute::GenericMaxHealth, 20.0);
+        attributes.set_add_modifier(
+            EntityAttribute::GenericMaxHealth,
+            "health_add".to_string(),
+            10.0,
+        );
+        attributes.set_multiply_base_modifier(
+            EntityAttribute::GenericMaxHealth,
+            "health_mul_base_1".to_string(),
+            0.2,
+        );
+        attributes.set_multiply_base_modifier(
+            EntityAttribute::GenericMaxHealth,
+            "health_mul_base_2".to_string(),
+            0.2,
+        );
+        attributes.set_multiply_total_modifier(
+            EntityAttribute::GenericMaxHealth,
+            "health_multiply".to_string(),
+            0.5,
+        );
+
+        assert_eq!(
+            attributes.get_compute_value(EntityAttribute::GenericMaxHealth),
+            Some(63.0) // ((20 + 10) * (1 + 0.2 + 0.2)) * (1 + 0.5)
+        );
+
+        attributes.remove_modifier(EntityAttribute::GenericMaxHealth, "health_add");
+
+        assert_eq!(
+            attributes.get_compute_value(EntityAttribute::GenericMaxHealth),
+            Some(42.0) // ((20) * (1 + 0.2 + 0.2)) * (1 + 0.5)
+        );
+    }
+}
