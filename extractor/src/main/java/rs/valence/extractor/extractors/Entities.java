@@ -253,7 +253,7 @@ public class Entities implements Main.Extractor {
                 entityJson.add("fields", fieldsJson);
 
                 if (entityInstance instanceof LivingEntity livingEntity) {
-                    var type = (EntityType<? extends LivingEntity>) livingEntity.getType();
+                    var type = (EntityType<? extends LivingEntity>) entityType;
                     var defaultAttributes = DefaultAttributeRegistry.get(type);
                     var attributesJson = new JsonArray();
                     if (defaultAttributes != null) {
