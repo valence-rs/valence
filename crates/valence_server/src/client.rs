@@ -13,6 +13,7 @@ use bytes::{Bytes, BytesMut};
 use derive_more::{Deref, DerefMut, From, Into};
 use tracing::warn;
 use uuid::Uuid;
+use valence_entity::attributes::{EntityAttributes, TrackedEntityAttributes};
 use valence_entity::player::PlayerEntityBundle;
 use valence_entity::query::EntityInitQuery;
 use valence_entity::tracked_data::TrackedData;
@@ -26,8 +27,9 @@ use valence_protocol::packets::play::game_state_change_s2c::GameEventKind;
 use valence_protocol::packets::play::particle_s2c::Particle;
 use valence_protocol::packets::play::{
     ChunkBiomeDataS2c, ChunkLoadDistanceS2c, ChunkRenderDistanceCenterS2c, DeathMessageS2c,
-    DisconnectS2c, EntitiesDestroyS2c, EntityStatusS2c, EntityTrackerUpdateS2c,
-    EntityVelocityUpdateS2c, GameStateChangeS2c, ParticleS2c, PlaySoundS2c, UnloadChunkS2c,
+    DisconnectS2c, EntitiesDestroyS2c, EntityAttributesS2c, EntityStatusS2c,
+    EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, GameStateChangeS2c, ParticleS2c, PlaySoundS2c,
+    UnloadChunkS2c,
 };
 use valence_protocol::profile::Property;
 use valence_protocol::sound::{Sound, SoundCategory, SoundId};
@@ -78,6 +80,8 @@ impl Plugin for ClientPlugin {
                     update_game_mode,
                     update_tracked_data,
                     init_tracked_data,
+                    update_tracked_attributes,
+                    init_tracked_attributes,
                 )
                     .in_set(UpdateClientsSet),
                 flush_packets.in_set(FlushPacketsSet),
@@ -1142,6 +1146,29 @@ fn update_tracked_data(mut clients: Query<(&mut Client, &TrackedData)>) {
             client.write_packet(&EntityTrackerUpdateS2c {
                 entity_id: VarInt(0),
                 tracked_values: update_data.into(),
+            });
+        }
+    }
+}
+
+fn init_tracked_attributes(
+    mut clients: Query<(&mut Client, &EntityAttributes), Added<EntityAttributes>>,
+) {
+    for (mut client, attributes) in &mut clients {
+        client.write_packet(&EntityAttributesS2c {
+            entity_id: VarInt(0),
+            properties: attributes.to_properties(),
+        });
+    }
+}
+
+fn update_tracked_attributes(mut clients: Query<(&mut Client, &TrackedEntityAttributes)>) {
+    for (mut client, attributes) in &mut clients {
+        let properties = attributes.get_properties();
+        if !properties.is_empty() {
+            client.write_packet(&EntityAttributesS2c {
+                entity_id: VarInt(0),
+                properties,
             });
         }
     }

@@ -1,4 +1,4 @@
-use egui::{RichText, Ui, Widget};
+use egui::{RichText, TextEdit, Ui, Widget};
 use itertools::Itertools;
 use valence_protocol::PacketState;
 
@@ -24,7 +24,9 @@ impl View for Filter {
             if ui.button("x").clicked() {
                 state.packet_search.clear();
             }
-            ui.text_edit_singleline(&mut state.packet_search);
+            TextEdit::singleline(&mut state.packet_search)
+                .hint_text("Filter shown packets, e.g \"0x00\" or \"S2c\"")
+                .ui(ui);
         });
 
         egui::ScrollArea::vertical()
