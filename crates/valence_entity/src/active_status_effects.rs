@@ -144,8 +144,10 @@ impl ActiveStatusEffects {
 
             let active_status_effect = &effects[index];
 
-            if active_status_effect.remaining_duration() < duration {
-                // if its duration is shorter, override it.
+            if active_status_effect.remaining_duration() < duration
+                || active_status_effect.amplifier() < amplifier
+            {
+                // if its duration is shorter or its amplifier is lower, override it.
                 effects[index] = effect;
 
                 // Remove effects after the current one that have a lower
@@ -425,36 +427,4 @@ impl ActiveStatusEffect {
                 .remaining_duration()
                 .map_or(false, |duration| duration <= 0)
     }
-
-    /// Returns true if the [`ActiveStatusEffect`] can be applied to an
-    /// [`Entity`]. Yoinked from the Vanilla server.
-    pub fn can_apply_update_effect(&self) -> bool {
-        match self.status_effect() {
-            StatusEffect::Regeneration => {
-                let i = 50 >> self.amplifier;
-                if i > 0 {
-                    return self.active_ticks % i == 0;
-                }
-                true
-            }
-            StatusEffect::Poison => {
-                let i = 25 >> self.amplifier;
-                if i > 0 {
-                    return self.active_ticks % i == 0;
-                }
-                true
-            }
-            StatusEffect::Wither => {
-                let i = 40 >> self.amplifier;
-                if i > 0 {
-                    return self.active_ticks % i == 0;
-                }
-                true
-            }
-            StatusEffect::Hunger => true,
-            _ => false,
-        }
-    }
-
-    // TODO: Implement health changes and hunger changes.
 }
