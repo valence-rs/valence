@@ -428,3 +428,83 @@ impl ActiveStatusEffect {
                 .map_or(false, |duration| duration <= 0)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_apply_effect() {
+        let mut effects = ActiveStatusEffects::default();
+
+        let effect = ActiveStatusEffect::from_effect(StatusEffect::Speed).with_amplifier(1);
+        let effect2 = ActiveStatusEffect::from_effect(StatusEffect::Speed).with_amplifier(2);
+
+        let effect3 = ActiveStatusEffect::from_effect(StatusEffect::Strength).with_amplifier(1);
+        let effect4 = ActiveStatusEffect::from_effect(StatusEffect::Strength).with_amplifier(2);
+
+        effects.apply(effect.clone());
+        effects.apply_changes();
+        assert_eq!(
+            effects.get_all_effect(StatusEffect::Speed),
+            Some(&vec![effect.clone()])
+        );
+
+        effects.apply(effect2.clone());
+        effects.apply_changes();
+        assert_eq!(
+            effects.get_all_effect(StatusEffect::Speed),
+            Some(&vec![effect2.clone()])
+        );
+
+        effects.apply(effect3.clone());
+        effects.apply_changes();
+        assert_eq!(
+            effects.get_all_effect(StatusEffect::Strength),
+            Some(&vec![effect3.clone()])
+        );
+
+        effects.apply(effect4.clone());
+        effects.apply_changes();
+        assert_eq!(
+            effects.get_all_effect(StatusEffect::Strength),
+            Some(&vec![effect4.clone()])
+        );
+    }
+
+    #[test]
+    fn test_apply_effect_duration() {
+        let mut effects = ActiveStatusEffects::default();
+
+        let effect = ActiveStatusEffect::from_effect(StatusEffect::Speed)
+            .with_amplifier(1)
+            .with_duration(100);
+        let effect2 = ActiveStatusEffect::from_effect(StatusEffect::Speed)
+            .with_amplifier(1)
+            .with_duration(200);
+        let effect3 = ActiveStatusEffect::from_effect(StatusEffect::Speed)
+            .with_amplifier(0)
+            .with_duration(300);
+
+        effects.apply(effect.clone());
+        effects.apply_changes();
+        assert_eq!(
+            effects.get_all_effect(StatusEffect::Speed),
+            Some(&vec![effect.clone()])
+        );
+
+        effects.apply(effect2.clone());
+        effects.apply_changes();
+        assert_eq!(
+            effects.get_all_effect(StatusEffect::Speed),
+            Some(&vec![effect2.clone()])
+        );
+
+        effects.apply(effect3.clone());
+        effects.apply_changes();
+        assert_eq!(
+            effects.get_all_effect(StatusEffect::Speed),
+            Some(&vec![effect2.clone(), effect3.clone()])
+        );
+    }
+}
