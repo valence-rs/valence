@@ -20,8 +20,8 @@ fn test_hunger() {
     let og_saturation = app.world.get::<Saturation>(client).unwrap().0;
     let og_health = app.world.get::<Health>(client).unwrap().0;
 
-    // set food level to 69420
-    app.world.get_mut::<Food>(client).unwrap().0 = 69420;
+    // set food level to 5
+    app.world.get_mut::<Food>(client).unwrap().0 = 5;
 
     app.update();
 
@@ -33,6 +33,6 @@ fn test_hunger() {
     let packet = sent_packets.first::<HealthUpdateS2c>();
 
     assert_eq!(packet.health, og_health);
-    assert_eq!(packet.food, VarInt(69420));
+    assert_eq!(packet.food, VarInt(5));
     assert_eq!(packet.food_saturation, og_saturation);
 }
