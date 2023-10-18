@@ -1,11 +1,7 @@
-use valence_server::{
-    entity::active_status_effects::{ActiveStatusEffect, ActiveStatusEffects},
-    protocol::{
-        packets::play::{EntityStatusEffectS2c, RemoveEntityStatusEffectS2c},
-        status_effects::StatusEffect,
-        VarInt,
-    },
-};
+use valence_server::entity::active_status_effects::{ActiveStatusEffect, ActiveStatusEffects};
+use valence_server::protocol::packets::play::{EntityStatusEffectS2c, RemoveEntityStatusEffectS2c};
+use valence_server::protocol::status_effects::StatusEffect;
+use valence_server::protocol::VarInt;
 
 use crate::testing::ScenarioSingleClient;
 
