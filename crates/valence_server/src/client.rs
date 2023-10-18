@@ -14,7 +14,8 @@ use derive_more::{Deref, DerefMut, From, Into};
 use tracing::warn;
 use uuid::Uuid;
 use valence_entity::attributes::{EntityAttributes, TrackedEntityAttributes};
-use valence_entity::player::PlayerEntityBundle;
+use valence_entity::living::Health;
+use valence_entity::player::{Food, PlayerEntityBundle, Saturation};
 use valence_entity::query::EntityInitQuery;
 use valence_entity::tracked_data::TrackedData;
 use valence_entity::{
@@ -28,8 +29,8 @@ use valence_protocol::packets::play::particle_s2c::Particle;
 use valence_protocol::packets::play::{
     ChunkBiomeDataS2c, ChunkLoadDistanceS2c, ChunkRenderDistanceCenterS2c, DeathMessageS2c,
     DisconnectS2c, EntitiesDestroyS2c, EntityAttributesS2c, EntityStatusS2c,
-    EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, GameStateChangeS2c, ParticleS2c, PlaySoundS2c,
-    UnloadChunkS2c,
+    EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, GameStateChangeS2c, HealthUpdateS2c,
+    ParticleS2c, PlaySoundS2c, UnloadChunkS2c,
 };
 use valence_protocol::profile::Property;
 use valence_protocol::sound::{Sound, SoundCategory, SoundId};
@@ -78,6 +79,7 @@ impl Plugin for ClientPlugin {
                     crate::spawn::respawn.after(crate::spawn::update_respawn_position),
                     update_old_view_dist.after(update_view_and_layers),
                     update_game_mode,
+                    update_food_saturation_health,
                     update_tracked_data,
                     init_tracked_data,
                     update_tracked_attributes,
@@ -1106,6 +1108,21 @@ pub(crate) fn update_game_mode(mut clients: Query<(&mut Client, &GameMode), Chan
             kind: GameEventKind::ChangeGameMode,
             value: *game_mode as i32 as f32,
         })
+    }
+}
+
+fn update_food_saturation_health(
+    mut clients: Query<
+        (&mut Client, &Food, &Saturation, &Health),
+        Or<(Changed<Food>, Changed<Saturation>, Changed<Health>)>,
+    >,
+) {
+    for (mut client, food, saturation, health) in &mut clients {
+        client.write_packet(&HealthUpdateS2c {
+            health: health.0,
+            food: VarInt(food.0),
+            food_saturation: saturation.0,
+        });
     }
 }
 
