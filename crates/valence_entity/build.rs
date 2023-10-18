@@ -408,6 +408,7 @@ fn build() -> anyhow::Result<TokenStream> {
                                 }]);
                             }
                             "PlayerEntity" => {
+                                //
                                 bundle_fields.extend([quote! {
                                     pub player_food: super::player::Food,
                                     pub player_saturation: super::player::Saturation,
