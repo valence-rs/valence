@@ -573,7 +573,7 @@ fn build() -> anyhow::Result<TokenStream> {
                     #[doc = "Special untracked component for `PlayerEntity` entities."]
                     #[derive(bevy_ecs::component::Component, Copy, Clone, Debug)]
                     pub struct Food(pub i32);
-                    
+
                     impl Default for Food {
                         fn default() -> Self {
                             Self(20)

@@ -29,8 +29,8 @@ use valence_protocol::packets::play::particle_s2c::Particle;
 use valence_protocol::packets::play::{
     ChunkBiomeDataS2c, ChunkLoadDistanceS2c, ChunkRenderDistanceCenterS2c, DeathMessageS2c,
     DisconnectS2c, EntitiesDestroyS2c, EntityAttributesS2c, EntityStatusS2c,
-    EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, GameStateChangeS2c, ParticleS2c, PlaySoundS2c,
-    UnloadChunkS2c, HealthUpdateS2c,
+    EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, GameStateChangeS2c, HealthUpdateS2c,
+    ParticleS2c, PlaySoundS2c, UnloadChunkS2c,
 };
 use valence_protocol::profile::Property;
 use valence_protocol::sound::{Sound, SoundCategory, SoundId};
@@ -1111,7 +1111,12 @@ pub(crate) fn update_game_mode(mut clients: Query<(&mut Client, &GameMode), Chan
     }
 }
 
-fn update_food_saturation_health(mut clients: Query<(&mut Client, &Food, &Saturation, &Health), Or<(Changed<Food>, Changed<Saturation>, Changed<Health>)>>) {
+fn update_food_saturation_health(
+    mut clients: Query<
+        (&mut Client, &Food, &Saturation, &Health),
+        Or<(Changed<Food>, Changed<Saturation>, Changed<Health>)>,
+    >,
+) {
     for (mut client, food, saturation, health) in &mut clients {
         client.write_packet(&HealthUpdateS2c {
             health: health.0,
