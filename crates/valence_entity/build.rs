@@ -436,9 +436,28 @@ fn build() -> anyhow::Result<TokenStream> {
                             pub #field_name_ident: super::#stripped_snake_entity_name_ident::#pascal_field_name_ident,
                         }]);
 
-                        bundle_init_fields.extend([quote! {
-                            #field_name_ident: Default::default(),
-                        }]);
+                        if snake_field_name == "health" && entity.attributes.is_some() {
+                            if let Some(max_health) = entity
+                                .attributes
+                                .as_ref()
+                                .unwrap()
+                                .iter()
+                                .find(|attribute| attribute.name == "generic.max_health")
+                                .map(|attribute| attribute.base_value as f32)
+                            {
+                                bundle_init_fields.extend([quote! {
+                                    living_health: super::living::Health(#max_health),
+                                }]);
+                            } else {
+                                bundle_init_fields.extend([quote! {
+                                    #field_name_ident: Default::default(),
+                                }]);
+                            }
+                        } else {
+                            bundle_init_fields.extend([quote! {
+                                #field_name_ident: Default::default(),
+                            }]);
+                        }
                     }
                 }
             }
