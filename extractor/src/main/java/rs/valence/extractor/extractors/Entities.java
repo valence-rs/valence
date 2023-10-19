@@ -249,6 +249,7 @@ public class Entities implements Main.Extractor {
 
                         var data = Entities.trackedDataToJson(trackedData, dataTracker);
                         fieldJson.addProperty("type", data.left());
+                        fieldJson.add("default_value", data.right());
 
                         fieldsJson.add(fieldJson);
                     }
@@ -264,6 +265,7 @@ public class Entities implements Main.Extractor {
                     var data = Entities.trackedDataToJson(trackedData, dataTracker);
                     fieldJson.addProperty("index", trackedData.getId());
                     fieldJson.add("default_value", data.right());
+                    fieldJson.addProperty("type", data.left());
                     defaultsJson.add(fieldJson);
                 }
 

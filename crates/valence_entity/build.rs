@@ -13,6 +13,7 @@ struct Entity {
     typ: Option<String>,
     translation_key: Option<String>,
     fields: Vec<Field>,
+    defaults: Vec<DefaultValue>,
     attributes: Option<Vec<Attribute>>,
     parent: Option<String>,
 }
@@ -25,6 +26,13 @@ struct EntityTypes {
 #[derive(Deserialize, Clone, Debug)]
 struct Field {
     name: String,
+    index: u8,
+    #[serde(flatten)]
+    default_value: Value,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+struct DefaultValue {
     index: u8,
     #[serde(flatten)]
     default_value: Value,
@@ -161,7 +169,7 @@ impl Value {
         }
     }
 
-    pub fn default_expr(&self) -> TokenStream {
+    pub fn value_expr(&self) -> TokenStream {
         match self {
             Value::Byte(b) => quote!(#b),
             Value::Integer(i) => quote!(#i),
@@ -344,6 +352,22 @@ fn build() -> anyhow::Result<TokenStream> {
                 EntityKind::#stripped_shouty_entity_name_ident => #translation_key_expr,
             }]);
 
+            // Get the default values for the entity.
+            let default_values = entity
+                .defaults
+                .iter()
+                .map(|default_value| {
+                    let index = default_value.index;
+                    let value_expr = default_value.default_value.value_expr();
+                    (
+                        index,
+                        quote! {
+                            #value_expr
+                        },
+                    )
+                })
+                .collect::<BTreeMap<_, _>>();
+
             // Create bundle type.
             let mut bundle_fields = TokenStream::new();
             let mut bundle_init_fields = TokenStream::new();
@@ -432,13 +456,23 @@ fn build() -> anyhow::Result<TokenStream> {
                         let field_name_ident =
                             ident(format!("{stripped_snake_entity_name}_{snake_field_name}"));
 
+                        let value_expr = default_values.get(&field.index);
+
                         bundle_fields.extend([quote! {
                             pub #field_name_ident: super::#stripped_snake_entity_name_ident::#pascal_field_name_ident,
                         }]);
 
-                        bundle_init_fields.extend([quote! {
-                            #field_name_ident: Default::default(),
-                        }]);
+                        match value_expr {
+                            Some(expr) => 
+                                bundle_init_fields.extend([quote! {
+                                    #field_name_ident: super::#stripped_snake_entity_name_ident::#pascal_field_name_ident(#expr),
+                                }]),
+                            None => {
+                                bundle_init_fields.extend([quote! {
+                                    #field_name_ident: Default::default(),
+                                }]);
+                            }
+                        }
                     }
                 }
             }
@@ -505,7 +539,7 @@ fn build() -> anyhow::Result<TokenStream> {
             let pascal_field_name_ident = ident(field.name.to_pascal_case());
             let snake_field_name = field.name.to_snake_case();
             let inner_type = field.default_value.field_type();
-            let default_expr = field.default_value.default_expr();
+            let default_expr = field.default_value.value_expr();
 
             module_body.extend([quote! {
                 #[derive(bevy_ecs::component::Component, PartialEq, Clone, Debug, ::derive_more::Deref, ::derive_more::DerefMut)]
@@ -581,8 +615,14 @@ fn build() -> anyhow::Result<TokenStream> {
                     }
 
                     #[doc = "Special untracked component for `PlayerEntity` entities."]
-                    #[derive(bevy_ecs::component::Component, Copy, Clone, Default, Debug)]
+                    #[derive(bevy_ecs::component::Component, Copy, Clone, Debug)]
                     pub struct Saturation(pub f32);
+
+                    impl Default for Saturation {
+                        fn default() -> Self {
+                            Self(5.0)
+                        }
+                    }
                 }]);
             }
             _ => {}
