@@ -436,6 +436,8 @@ fn build() -> anyhow::Result<TokenStream> {
                             pub #field_name_ident: super::#stripped_snake_entity_name_ident::#pascal_field_name_ident,
                         }]);
 
+                        //
+
                         if snake_field_name == "health" && entity.attributes.is_some() {
                             if let Some(max_health) = entity
                                 .attributes
