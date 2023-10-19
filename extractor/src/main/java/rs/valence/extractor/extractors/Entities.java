@@ -2,6 +2,7 @@ package rs.valence.extractor.extractors;
 
 import com.google.gson.*;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityPose;
@@ -215,6 +216,9 @@ public class Entities implements Main.Extractor {
 
             final var dataTracker = (DataTracker) dataTrackerField.get(entityInstance);
 
+            final var dataTrackerEntriesField = DataTracker.class.getDeclaredField("entries");
+            dataTrackerEntriesField.setAccessible(true);
+
             while (entitiesMap.get(entityClass) == null) {
                 var entityJson = new JsonObject();
 
@@ -245,12 +249,25 @@ public class Entities implements Main.Extractor {
 
                         var data = Entities.trackedDataToJson(trackedData, dataTracker);
                         fieldJson.addProperty("type", data.left());
-                        fieldJson.add("default_value", data.right());
 
                         fieldsJson.add(fieldJson);
                     }
                 }
                 entityJson.add("fields", fieldsJson);
+
+                var defaultsJson = new JsonArray();
+                var defaults = (Int2ObjectMap<DataTracker.Entry<?>>) dataTrackerEntriesField.get(dataTracker);
+
+                for (var entry2 : defaults.int2ObjectEntrySet()) {
+                    var fieldJson = new JsonObject();
+                    var trackedData = entry2.getValue().getData();
+                    var data = Entities.trackedDataToJson(trackedData, dataTracker);
+                    fieldJson.addProperty("index", trackedData.getId());
+                    fieldJson.add("default_value", data.right());
+                    defaultsJson.add(fieldJson);
+                }
+
+                entityJson.add("defaults", defaultsJson);
 
                 if (entityInstance instanceof LivingEntity livingEntity) {
                     var type = (EntityType<? extends LivingEntity>) entityType;
