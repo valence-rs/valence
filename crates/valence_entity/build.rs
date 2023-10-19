@@ -463,10 +463,11 @@ fn build() -> anyhow::Result<TokenStream> {
                         }]);
 
                         match value_expr {
-                            Some(expr) => 
+                            Some(expr) => {
                                 bundle_init_fields.extend([quote! {
                                     #field_name_ident: super::#stripped_snake_entity_name_ident::#pascal_field_name_ident(#expr),
-                                }]),
+                                }]);
+                            }
                             None => {
                                 bundle_init_fields.extend([quote! {
                                     #field_name_ident: Default::default(),
