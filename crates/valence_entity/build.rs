@@ -140,7 +140,7 @@ impl ValueType {
             ValueType::OptionalTextComponent => 6,
             ValueType::ItemStack => 7,
             ValueType::Boolean => 8,
-            ValueType::Rotation  => 9,
+            ValueType::Rotation => 9,
             ValueType::BlockPos => 10,
             ValueType::OptionalBlockPos => 11,
             ValueType::Facing => 12,
@@ -149,7 +149,7 @@ impl ValueType {
             ValueType::OptionalBlockState => 15,
             ValueType::NbtCompound => 16,
             ValueType::Particle => 17,
-            ValueType::VillagerData  => 18,
+            ValueType::VillagerData => 18,
             ValueType::OptionalInt => 19,
             ValueType::EntityPose => 20,
             ValueType::CatVariant => 21,
@@ -157,8 +157,8 @@ impl ValueType {
             ValueType::OptionalGlobalPos => 23,
             ValueType::PaintingVariant => 24,
             ValueType::SnifferState => 25,
-            ValueType::Vector3f  => 26,
-            ValueType::Quaternionf  => 27,
+            ValueType::Vector3f => 26,
+            ValueType::Quaternionf => 27,
         }
     }
 
@@ -173,7 +173,7 @@ impl ValueType {
             ValueType::OptionalTextComponent => quote!(Option<valence_protocol::Text>),
             ValueType::ItemStack => quote!(valence_protocol::ItemStack),
             ValueType::Boolean => quote!(bool),
-            ValueType::Rotation  => quote!(crate::EulerAngle),
+            ValueType::Rotation => quote!(crate::EulerAngle),
             ValueType::BlockPos => quote!(valence_protocol::BlockPos),
             ValueType::OptionalBlockPos => quote!(Option<valence_protocol::BlockPos>),
             ValueType::Facing => quote!(valence_protocol::Direction),
@@ -182,7 +182,7 @@ impl ValueType {
             ValueType::OptionalBlockState => quote!(valence_protocol::BlockState),
             ValueType::NbtCompound => quote!(valence_nbt::Compound),
             ValueType::Particle => quote!(valence_protocol::packets::play::particle_s2c::Particle),
-            ValueType::VillagerData  => quote!(crate::VillagerData),
+            ValueType::VillagerData => quote!(crate::VillagerData),
             ValueType::OptionalInt => quote!(Option<i32>),
             ValueType::EntityPose => quote!(crate::Pose),
             ValueType::CatVariant => quote!(crate::CatKind),
@@ -190,8 +190,8 @@ impl ValueType {
             ValueType::OptionalGlobalPos => quote!(()), // TODO
             ValueType::PaintingVariant => quote!(crate::PaintingKind),
             ValueType::SnifferState => quote!(crate::SnifferState),
-            ValueType::Vector3f  => quote!(valence_math::Vec3),
-            ValueType::Quaternionf  => quote!(valence_math::Quat),
+            ValueType::Vector3f => quote!(valence_math::Vec3),
+            ValueType::Quaternionf => quote!(valence_math::Quat),
         }
     }
 }
@@ -508,30 +508,45 @@ fn build() -> anyhow::Result<TokenStream> {
                         let field_name_ident =
                             ident(format!("{stripped_snake_entity_name}_{snake_field_name}"));
 
-                        let value_expr = entity.defaults.iter().find_map(|default| {
-                            if default.index == field.index {
-                                Some(default.default_value.value_expr())
-                            } else {
-                                None
-                            }
-                        })
-                        .or_else(|| {
-                            // For some reason, some entities don't have defaults for all fields.
-                            // In this case, we can use the default value of the parent entity.
-                            entities.get(entity.parent.as_ref().expect("no parent for entity").as_str())
-                                .and_then(|parent| {
-                                    parent.defaults.iter().find_map(|default| {
-                                        if default.index == field.index {
-                                            Some(default.default_value.value_expr())
-                                        } else {
-                                            None
-                                        }
+                        let value_expr = entity
+                            .defaults
+                            .iter()
+                            .find_map(|default| {
+                                if default.index == field.index {
+                                    Some(default.default_value.value_expr())
+                                } else {
+                                    None
+                                }
+                            })
+                            .or_else(|| {
+                                // For some reason, some entities don't have defaults for all
+                                // fields. In this case, we can use
+                                // the default value of the parent entity.
+                                entities
+                                    .get(
+                                        entity
+                                            .parent
+                                            .as_ref()
+                                            .expect("no parent for entity")
+                                            .as_str(),
+                                    )
+                                    .and_then(|parent| {
+                                        parent.defaults.iter().find_map(|default| {
+                                            if default.index == field.index {
+                                                Some(default.default_value.value_expr())
+                                            } else {
+                                                None
+                                            }
+                                        })
                                     })
-                                })
-                        })
-                        .expect(
-                            format!("no default value for field `{}`. Entity: {:?}", field.name, entity_name).as_str(),
-                        );
+                            })
+                            .expect(
+                                format!(
+                                    "no default value for field `{}`. Entity: {:?}",
+                                    field.name, entity_name
+                                )
+                                .as_str(),
+                            );
 
                         bundle_fields.extend([quote! {
                             pub #field_name_ident: super::#stripped_snake_entity_name_ident::#pascal_field_name_ident,
