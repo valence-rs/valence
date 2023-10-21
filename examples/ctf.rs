@@ -139,7 +139,7 @@ fn setup(
     let ctf_team_layers = CtfLayers::init(&mut commands, &server);
 
     // add some debug entities to the ctf entity layers
-    let mut flags = Flags::default();
+    let mut flags = Flags(0);
     flags.set_glowing(true);
     let mut pig = commands.spawn(PigEntityBundle {
         layer: EntityLayerId(ctf_team_layers.friendly_layers[&Team::Red]),
@@ -637,7 +637,7 @@ fn do_team_selector_portals(
             ent_layers.as_mut().0.insert(friendly_layer);
 
             // Copy the player entity to the friendly layer, and make them glow.
-            let mut flags = Flags::default();
+            let mut flags = Flags(0);
             flags.set_glowing(true);
             let mut player_glowing = commands.spawn(PlayerEntityBundle {
                 layer: EntityLayerId(friendly_layer),

@@ -27,8 +27,8 @@ struct EntityTypes {
 struct Field {
     name: String,
     index: u8,
-    #[serde(flatten)]
-    default_value: Value,
+    #[serde(rename = "type")]
+    typ: ValueType,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -194,6 +194,14 @@ impl ValueType {
             ValueType::Quaternionf => quote!(valence_math::Quat),
         }
     }
+
+    pub fn encodable_expr(&self, self_lvalue: TokenStream) -> TokenStream {
+        match self {
+            ValueType::Integer => quote!(VarInt(#self_lvalue)),
+            ValueType::OptionalInt => quote!(OptionalInt(#self_lvalue)),
+            _ => quote!(&#self_lvalue),
+        }
+    }
 }
 
 #[derive(Deserialize, Debug, Clone, Copy)]
@@ -204,39 +212,6 @@ struct BlockPos {
 }
 
 impl Value {
-    pub fn get_type(&self) -> ValueType {
-        match self {
-            Value::Byte(_) => ValueType::Byte,
-            Value::Integer(_) => ValueType::Integer,
-            Value::Long(_) => ValueType::Long,
-            Value::Float(_) => ValueType::Float,
-            Value::String(_) => ValueType::String,
-            Value::TextComponent(_) => ValueType::TextComponent,
-            Value::OptionalTextComponent(_) => ValueType::OptionalTextComponent,
-            Value::ItemStack(_) => ValueType::ItemStack,
-            Value::Boolean(_) => ValueType::Boolean,
-            Value::Rotation { .. } => ValueType::Rotation,
-            Value::BlockPos(_) => ValueType::BlockPos,
-            Value::OptionalBlockPos(_) => ValueType::OptionalBlockPos,
-            Value::Facing(_) => ValueType::Facing,
-            Value::OptionalUuid(_) => ValueType::OptionalUuid,
-            Value::BlockState(_) => ValueType::BlockState,
-            Value::OptionalBlockState(_) => ValueType::OptionalBlockState,
-            Value::NbtCompound(_) => ValueType::NbtCompound,
-            Value::Particle(_) => ValueType::Particle,
-            Value::VillagerData { .. } => ValueType::VillagerData,
-            Value::OptionalInt(_) => ValueType::OptionalInt,
-            Value::EntityPose(_) => ValueType::EntityPose,
-            Value::CatVariant(_) => ValueType::CatVariant,
-            Value::FrogVariant(_) => ValueType::FrogVariant,
-            Value::OptionalGlobalPos(_) => ValueType::OptionalGlobalPos,
-            Value::PaintingVariant(_) => ValueType::PaintingVariant,
-            Value::SnifferState(_) => ValueType::SnifferState,
-            Value::Vector3f { .. } => ValueType::Vector3f,
-            Value::Quaternionf { .. } => ValueType::Quaternionf,
-        }
-    }
-
     pub fn value_expr(&self) -> TokenStream {
         match self {
             Value::Byte(b) => quote!(#b),
@@ -340,14 +315,6 @@ impl Value {
             },
         }
     }
-
-    pub fn encodable_expr(&self, self_lvalue: TokenStream) -> TokenStream {
-        match self {
-            Value::Integer(_) => quote!(VarInt(#self_lvalue)),
-            Value::OptionalInt(_) => quote!(OptionalInt(#self_lvalue)),
-            _ => quote!(&#self_lvalue),
-        }
-    }
 }
 
 type Entities = BTreeMap<String, Entity>;
@@ -386,7 +353,7 @@ fn build() -> anyhow::Result<TokenStream> {
         let mut module_body = TokenStream::new();
 
         if let Some(parent_name) = entity.parent.as_ref() {
-            let stripped_snake_parent_name = strip_entity_suffix(&parent_name).to_snake_case();
+            let stripped_snake_parent_name = strip_entity_suffix(parent_name).to_snake_case();
 
             let module_doc = format!(
                 "Parent class: \
@@ -497,16 +464,20 @@ fn build() -> anyhow::Result<TokenStream> {
                             _ => {}
                         }
                     }
-                    MarkerOrField::Field { entity_name, field } => {
+                    MarkerOrField::Field {
+                        entity_name: entity_name_2,
+                        field,
+                    } => {
                         let snake_field_name = field.name.to_snake_case();
                         let pascal_field_name = field.name.to_pascal_case();
                         let pascal_field_name_ident = ident(&pascal_field_name);
-                        let stripped_entity_name = strip_entity_suffix(entity_name);
-                        let stripped_snake_entity_name = stripped_entity_name.to_snake_case();
-                        let stripped_snake_entity_name_ident = ident(&stripped_snake_entity_name);
+                        let stripped_entity_name = strip_entity_suffix(entity_name_2);
+                        let stripped_snake_entity_name_1 = stripped_entity_name.to_snake_case();
+                        let stripped_snake_entity_name_1_ident =
+                            ident(&stripped_snake_entity_name_1);
 
                         let field_name_ident =
-                            ident(format!("{stripped_snake_entity_name}_{snake_field_name}"));
+                            ident(format!("{stripped_snake_entity_name_1}_{snake_field_name}"));
 
                         let value_expr = entity
                             .defaults
@@ -540,20 +511,51 @@ fn build() -> anyhow::Result<TokenStream> {
                                         })
                                     })
                             })
-                            .expect(
-                                format!(
+                            .unwrap_or_else(|| {
+                                panic!(
                                     "no default value for field `{}`. Entity: {:?}",
                                     field.name, entity_name
                                 )
-                                .as_str(),
-                            );
+                            });
 
                         bundle_fields.extend([quote! {
-                            pub #field_name_ident: super::#stripped_snake_entity_name_ident::#pascal_field_name_ident,
+                            pub #field_name_ident: super::#stripped_snake_entity_name_1_ident::#pascal_field_name_ident,
                         }]);
 
                         bundle_init_fields.extend([quote! {
-                            #field_name_ident: super::#stripped_snake_entity_name_ident::#pascal_field_name_ident(#value_expr),
+                            #field_name_ident: super::#stripped_snake_entity_name_1_ident::#pascal_field_name_ident(#value_expr),
+                        }]);
+
+                        let system_name_ident = ident(format!(
+                            "update_{stripped_snake_entity_name}_{snake_field_name}_{stripped_snake_entity_name}",
+                        ));
+                        let component_path =
+                            quote!(#stripped_snake_entity_name_1_ident::#pascal_field_name_ident);
+
+                        system_names.push(quote!(#system_name_ident));
+
+                        let data_index = field.index;
+                        let data_type = field.typ.type_id();
+                        let encodable_expr = field.typ.encodable_expr(quote!(value.0));
+
+                        systems.extend([quote! {
+                            #[allow(clippy::needless_borrow)]
+                            #[allow(clippy::suspicious_else_formatting)]
+                            fn #system_name_ident(
+                                mut query: Query<(&#component_path, &mut tracked_data::TrackedData), (Changed<#component_path>, With<#stripped_snake_entity_name_1_ident::#pascal_field_name_ident>)>,
+                            ) {
+                                for (value, mut tracked_data) in &mut query {
+                                    if *value == #stripped_snake_entity_name_1_ident::#pascal_field_name_ident(#value_expr) {
+                                        tracked_data.remove_init_value(#data_index);
+                                    } else {
+                                        tracked_data.insert_init_value(#data_index, #data_type, #encodable_expr);
+                                    }
+
+                                    if !tracked_data.is_added() {
+                                        tracked_data.append_update_value(#data_index, #data_type, #encodable_expr);
+                                    }
+                                }
+                            }
                         }]);
                     }
                 }
@@ -619,44 +621,11 @@ fn build() -> anyhow::Result<TokenStream> {
 
         for field in &entity.fields {
             let pascal_field_name_ident = ident(field.name.to_pascal_case());
-            let snake_field_name = field.name.to_snake_case();
-            let inner_type = field.default_value.get_type().field_type();
+            let inner_type = field.typ.field_type();
 
             module_body.extend([quote! {
                 #[derive(bevy_ecs::component::Component, PartialEq, Clone, Debug, ::derive_more::Deref, ::derive_more::DerefMut)]
                 pub struct #pascal_field_name_ident(pub #inner_type);
-            }]);
-
-            let system_name_ident = ident(format!(
-                "update_{stripped_snake_entity_name}_{snake_field_name}"
-            ));
-            let component_path =
-                quote!(#stripped_snake_entity_name_ident::#pascal_field_name_ident);
-
-            system_names.push(quote!(#system_name_ident));
-
-            let data_index = field.index;
-            let data_type = field.default_value.get_type().type_id();
-            let encodable_expr = field.default_value.encodable_expr(quote!(value.0));
-
-            systems.extend([quote! {
-                #[allow(clippy::needless_borrow)]
-                #[allow(clippy::suspicious_else_formatting)]
-                fn #system_name_ident(
-                    mut query: Query<(&#component_path, &mut tracked_data::TrackedData), Changed<#component_path>>
-                ) {
-                    for (value, mut tracked_data) in &mut query {
-                        // if *value == Default::default() {
-                        //     tracked_data.remove_init_value(#data_index);
-                        // } else {
-                            tracked_data.insert_init_value(#data_index, #data_type, #encodable_expr);
-                        // }
-
-                        if !tracked_data.is_added() {
-                            tracked_data.append_update_value(#data_index, #data_type, #encodable_expr);
-                        }
-                    }
-                }
             }]);
         }
 

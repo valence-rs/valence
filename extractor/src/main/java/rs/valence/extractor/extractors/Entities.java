@@ -35,6 +35,8 @@ import rs.valence.extractor.DummyPlayerEntity;
 import rs.valence.extractor.DummyWorld;
 import rs.valence.extractor.Main;
 import rs.valence.extractor.Main.Pair;
+import rs.valence.extractor.ValenceUtils;
+
 import java.lang.reflect.ParameterizedType;
 import java.util.*;
 
@@ -235,7 +237,7 @@ public class Entities implements Main.Extractor {
                     entityJson.add("translation_key", new JsonPrimitive(entityType.getTranslationKey()));
                 }
 
-                var fieldsJson = new JsonArray();
+                var fieldsMap = new TreeMap<Integer, JsonObject>();
                 for (var entityField : entityClass.getDeclaredFields()) {
                     if (entityField.getType().equals(TrackedData.class)) {
                         entityField.setAccessible(true);
@@ -244,37 +246,38 @@ public class Entities implements Main.Extractor {
 
                         var fieldJson = new JsonObject();
                         var fieldName = entityField.getName().toLowerCase(Locale.ROOT);
+                        int id = trackedData.getId();
                         fieldJson.addProperty("name", fieldName);
-                        fieldJson.addProperty("index", trackedData.getId());
+                        fieldJson.addProperty("index", id);
 
                         var data = Entities.trackedDataToJson(trackedData, dataTracker);
                         fieldJson.addProperty("type", data.left());
-                        fieldJson.add("default_value", data.right());
 
-                        fieldsJson.add(fieldJson);
+                        fieldsMap.put(id, fieldJson);
                     }
                 }
-                entityJson.add("fields", fieldsJson);
+                entityJson.add("fields", ValenceUtils.treeMapToJsonArray(fieldsMap));
 
-                var defaultsJson = new JsonArray();
+                var defaultsMap = new TreeMap<Integer, JsonObject>();
                 var defaults = (Int2ObjectMap<DataTracker.Entry<?>>) dataTrackerEntriesField.get(dataTracker);
 
                 for (var entry2 : defaults.int2ObjectEntrySet()) {
                     var fieldJson = new JsonObject();
                     var trackedData = entry2.getValue().getData();
                     var data = Entities.trackedDataToJson(trackedData, dataTracker);
-                    fieldJson.addProperty("index", trackedData.getId());
+                    int id = trackedData.getId();
+                    fieldJson.addProperty("index", id);
                     fieldJson.add("default_value", data.right());
                     fieldJson.addProperty("type", data.left());
-                    defaultsJson.add(fieldJson);
+                    defaultsMap.put(id, fieldJson);
                 }
 
-                entityJson.add("defaults", defaultsJson);
+                entityJson.add("defaults", ValenceUtils.treeMapToJsonArray(defaultsMap));
 
                 if (entityInstance instanceof LivingEntity livingEntity) {
                     var type = (EntityType<? extends LivingEntity>) entityType;
                     var defaultAttributes = DefaultAttributeRegistry.get(type);
-                    var attributesJson = new JsonArray();
+                    var attributesMap = new TreeMap<Integer, JsonObject>();
                     if (defaultAttributes != null) {
                         var instancesField = defaultAttributes.getClass().getDeclaredField("instances");
                         instancesField.setAccessible(true);
@@ -286,14 +289,15 @@ public class Entities implements Main.Extractor {
 
                             var attributeJson = new JsonObject();
 
-                            attributeJson.addProperty("id", Registries.ATTRIBUTE.getRawId(attribute));
+                            int id = Registries.ATTRIBUTE.getRawId(attribute);
+                            attributeJson.addProperty("id", id);
                             attributeJson.addProperty("name", Registries.ATTRIBUTE.getId(attribute).getPath());
                             attributeJson.addProperty("base_value", instance.getBaseValue());
 
-                            attributesJson.add(attributeJson);
+                            attributesMap.put(id, attributeJson);
                         }
                     }
-                    entityJson.add("attributes", attributesJson);
+                    entityJson.add("attributes", ValenceUtils.treeMapToJsonArray(attributesMap));
                 }
 
                 var bb = entityInstance.getBoundingBox();
