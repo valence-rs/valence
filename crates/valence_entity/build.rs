@@ -308,7 +308,7 @@ fn build() -> anyhow::Result<TokenStream> {
     let mut systems = TokenStream::new();
     let mut system_names = vec![];
 
-    for (entity_name, entity) in entities.clone() {
+    for (entity_name, ref entity) in entities.clone() {
         let entity_name_ident = ident(&entity_name);
         let stripped_shouty_entity_name = strip_entity_suffix(&entity_name).to_shouty_snake_case();
         let stripped_shouty_entity_name_ident = ident(&stripped_shouty_entity_name);
@@ -317,7 +317,7 @@ fn build() -> anyhow::Result<TokenStream> {
 
         let mut module_body = TokenStream::new();
 
-        if let Some(parent_name) = entity.parent {
+        if let Some(parent_name) = entity.parent.as_ref() {
             let stripped_snake_parent_name = strip_entity_suffix(&parent_name).to_snake_case();
 
             let module_doc = format!(
@@ -331,8 +331,8 @@ fn build() -> anyhow::Result<TokenStream> {
         }
 
         // Is this a concrete entity type?
-        if let Some(entity_type) = entity.typ {
-            let entity_type_id = entity_types[&entity_type];
+        if let Some(entity_type) = entity.typ.as_ref() {
+            let entity_type_id = entity_types[entity_type];
 
             entity_kind_consts.extend([quote! {
                 pub const #stripped_shouty_entity_name_ident: EntityKind = EntityKind(#entity_type_id);
@@ -342,7 +342,7 @@ fn build() -> anyhow::Result<TokenStream> {
                 EntityKind::#stripped_shouty_entity_name_ident => write!(f, "{} ({})", #entity_type_id, #stripped_shouty_entity_name),
             }]);
 
-            let translation_key_expr = if let Some(key) = entity.translation_key {
+            let translation_key_expr = if let Some(key) = entity.translation_key.as_ref() {
                 quote!(Some(#key))
             } else {
                 quote!(None)
@@ -351,22 +351,6 @@ fn build() -> anyhow::Result<TokenStream> {
             translation_key_arms.extend([quote! {
                 EntityKind::#stripped_shouty_entity_name_ident => #translation_key_expr,
             }]);
-
-            // Get the default values for the entity.
-            let default_values = entity
-                .defaults
-                .iter()
-                .map(|default_value| {
-                    let index = default_value.index;
-                    let value_expr = default_value.default_value.value_expr();
-                    (
-                        index,
-                        quote! {
-                            #value_expr
-                        },
-                    )
-                })
-                .collect::<BTreeMap<_, _>>();
 
             // Create bundle type.
             let mut bundle_fields = TokenStream::new();
@@ -456,24 +440,38 @@ fn build() -> anyhow::Result<TokenStream> {
                         let field_name_ident =
                             ident(format!("{stripped_snake_entity_name}_{snake_field_name}"));
 
-                        let value_expr = default_values.get(&field.index);
+                        let value_expr = entity.defaults.iter().find_map(|default| {
+                            if default.index == field.index {
+                                Some(default.default_value.value_expr())
+                            } else {
+                                None
+                            }
+                        })
+                        .or_else(|| {
+                            // For some reason, some entities don't have defaults for all fields.
+                            // In this case, we can use the default value of the parent entity.
+                            entities.get(entity.parent.as_ref().expect("no parent for entity").as_str())
+                                .and_then(|parent| {
+                                    parent.defaults.iter().find_map(|default| {
+                                        if default.index == field.index {
+                                            Some(default.default_value.value_expr())
+                                        } else {
+                                            None
+                                        }
+                                    })
+                                })
+                        })
+                        .expect(
+                            format!("no default value for field `{}`. Entity: {:?}", field.name, entity_name).as_str(),
+                        );
 
                         bundle_fields.extend([quote! {
                             pub #field_name_ident: super::#stripped_snake_entity_name_ident::#pascal_field_name_ident,
                         }]);
 
-                        match value_expr {
-                            Some(expr) => {
-                                bundle_init_fields.extend([quote! {
-                                    #field_name_ident: super::#stripped_snake_entity_name_ident::#pascal_field_name_ident(#expr),
-                                }]);
-                            }
-                            None => {
-                                bundle_init_fields.extend([quote! {
-                                    #field_name_ident: Default::default(),
-                                }]);
-                            }
-                        }
+                        bundle_init_fields.extend([quote! {
+                            #field_name_ident: super::#stripped_snake_entity_name_ident::#pascal_field_name_ident(#value_expr),
+                        }]);
                     }
                 }
             }
@@ -540,18 +538,10 @@ fn build() -> anyhow::Result<TokenStream> {
             let pascal_field_name_ident = ident(field.name.to_pascal_case());
             let snake_field_name = field.name.to_snake_case();
             let inner_type = field.default_value.field_type();
-            let default_expr = field.default_value.value_expr();
 
             module_body.extend([quote! {
                 #[derive(bevy_ecs::component::Component, PartialEq, Clone, Debug, ::derive_more::Deref, ::derive_more::DerefMut)]
                 pub struct #pascal_field_name_ident(pub #inner_type);
-
-                #[allow(clippy::derivable_impls)]
-                impl Default for #pascal_field_name_ident {
-                    fn default() -> Self {
-                        Self(#default_expr)
-                    }
-                }
             }]);
 
             let system_name_ident = ident(format!(
@@ -573,11 +563,11 @@ fn build() -> anyhow::Result<TokenStream> {
                     mut query: Query<(&#component_path, &mut tracked_data::TrackedData), Changed<#component_path>>
                 ) {
                     for (value, mut tracked_data) in &mut query {
-                        if *value == Default::default() {
-                            tracked_data.remove_init_value(#data_index);
-                        } else {
+                        // if *value == Default::default() {
+                        //     tracked_data.remove_init_value(#data_index);
+                        // } else {
                             tracked_data.insert_init_value(#data_index, #data_type, #encodable_expr);
-                        }
+                        // }
 
                         if !tracked_data.is_added() {
                             tracked_data.append_update_value(#data_index, #data_type, #encodable_expr);
