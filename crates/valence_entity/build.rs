@@ -95,6 +95,107 @@ enum Value {
     },
 }
 
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "snake_case")]
+enum ValueType {
+    Byte,
+    Integer,
+    Long,
+    Float,
+    String,
+    TextComponent,
+    OptionalTextComponent,
+    ItemStack,
+    Boolean,
+    Rotation,
+    BlockPos,
+    OptionalBlockPos,
+    Facing,
+    OptionalUuid,
+    BlockState,
+    OptionalBlockState,
+    NbtCompound,
+    Particle,
+    VillagerData,
+    OptionalInt,
+    EntityPose,
+    CatVariant,
+    FrogVariant,
+    OptionalGlobalPos,
+    PaintingVariant,
+    SnifferState,
+    Vector3f,
+    Quaternionf,
+}
+
+impl ValueType {
+    pub fn type_id(&self) -> u8 {
+        match self {
+            ValueType::Byte => 0,
+            ValueType::Integer => 1,
+            ValueType::Long => 2,
+            ValueType::Float => 3,
+            ValueType::String => 4,
+            ValueType::TextComponent => 5,
+            ValueType::OptionalTextComponent => 6,
+            ValueType::ItemStack => 7,
+            ValueType::Boolean => 8,
+            ValueType::Rotation  => 9,
+            ValueType::BlockPos => 10,
+            ValueType::OptionalBlockPos => 11,
+            ValueType::Facing => 12,
+            ValueType::OptionalUuid => 13,
+            ValueType::BlockState => 14,
+            ValueType::OptionalBlockState => 15,
+            ValueType::NbtCompound => 16,
+            ValueType::Particle => 17,
+            ValueType::VillagerData  => 18,
+            ValueType::OptionalInt => 19,
+            ValueType::EntityPose => 20,
+            ValueType::CatVariant => 21,
+            ValueType::FrogVariant => 22,
+            ValueType::OptionalGlobalPos => 23,
+            ValueType::PaintingVariant => 24,
+            ValueType::SnifferState => 25,
+            ValueType::Vector3f  => 26,
+            ValueType::Quaternionf  => 27,
+        }
+    }
+
+    pub fn field_type(&self) -> TokenStream {
+        match self {
+            ValueType::Byte => quote!(i8),
+            ValueType::Integer => quote!(i32),
+            ValueType::Long => quote!(i64),
+            ValueType::Float => quote!(f32),
+            ValueType::String => quote!(String),
+            ValueType::TextComponent => quote!(valence_protocol::Text),
+            ValueType::OptionalTextComponent => quote!(Option<valence_protocol::Text>),
+            ValueType::ItemStack => quote!(valence_protocol::ItemStack),
+            ValueType::Boolean => quote!(bool),
+            ValueType::Rotation  => quote!(crate::EulerAngle),
+            ValueType::BlockPos => quote!(valence_protocol::BlockPos),
+            ValueType::OptionalBlockPos => quote!(Option<valence_protocol::BlockPos>),
+            ValueType::Facing => quote!(valence_protocol::Direction),
+            ValueType::OptionalUuid => quote!(Option<::uuid::Uuid>),
+            ValueType::BlockState => quote!(valence_protocol::BlockState),
+            ValueType::OptionalBlockState => quote!(valence_protocol::BlockState),
+            ValueType::NbtCompound => quote!(valence_nbt::Compound),
+            ValueType::Particle => quote!(valence_protocol::packets::play::particle_s2c::Particle),
+            ValueType::VillagerData  => quote!(crate::VillagerData),
+            ValueType::OptionalInt => quote!(Option<i32>),
+            ValueType::EntityPose => quote!(crate::Pose),
+            ValueType::CatVariant => quote!(crate::CatKind),
+            ValueType::FrogVariant => quote!(crate::FrogKind),
+            ValueType::OptionalGlobalPos => quote!(()), // TODO
+            ValueType::PaintingVariant => quote!(crate::PaintingKind),
+            ValueType::SnifferState => quote!(crate::SnifferState),
+            ValueType::Vector3f  => quote!(valence_math::Vec3),
+            ValueType::Quaternionf  => quote!(valence_math::Quat),
+        }
+    }
+}
+
 #[derive(Deserialize, Debug, Clone, Copy)]
 struct BlockPos {
     x: i32,
@@ -103,69 +204,36 @@ struct BlockPos {
 }
 
 impl Value {
-    pub fn type_id(&self) -> u8 {
+    pub fn get_type(&self) -> ValueType {
         match self {
-            Value::Byte(_) => 0,
-            Value::Integer(_) => 1,
-            Value::Long(_) => 2,
-            Value::Float(_) => 3,
-            Value::String(_) => 4,
-            Value::TextComponent(_) => 5,
-            Value::OptionalTextComponent(_) => 6,
-            Value::ItemStack(_) => 7,
-            Value::Boolean(_) => 8,
-            Value::Rotation { .. } => 9,
-            Value::BlockPos(_) => 10,
-            Value::OptionalBlockPos(_) => 11,
-            Value::Facing(_) => 12,
-            Value::OptionalUuid(_) => 13,
-            Value::BlockState(_) => 14,
-            Value::OptionalBlockState(_) => 15,
-            Value::NbtCompound(_) => 16,
-            Value::Particle(_) => 17,
-            Value::VillagerData { .. } => 18,
-            Value::OptionalInt(_) => 19,
-            Value::EntityPose(_) => 20,
-            Value::CatVariant(_) => 21,
-            Value::FrogVariant(_) => 22,
-            Value::OptionalGlobalPos(_) => 23,
-            Value::PaintingVariant(_) => 24,
-            Value::SnifferState(_) => 25,
-            Value::Vector3f { .. } => 26,
-            Value::Quaternionf { .. } => 27,
-        }
-    }
-
-    pub fn field_type(&self) -> TokenStream {
-        match self {
-            Value::Byte(_) => quote!(i8),
-            Value::Integer(_) => quote!(i32),
-            Value::Long(_) => quote!(i64),
-            Value::Float(_) => quote!(f32),
-            Value::String(_) => quote!(String),
-            Value::TextComponent(_) => quote!(valence_protocol::Text),
-            Value::OptionalTextComponent(_) => quote!(Option<valence_protocol::Text>),
-            Value::ItemStack(_) => quote!(valence_protocol::ItemStack),
-            Value::Boolean(_) => quote!(bool),
-            Value::Rotation { .. } => quote!(crate::EulerAngle),
-            Value::BlockPos(_) => quote!(valence_protocol::BlockPos),
-            Value::OptionalBlockPos(_) => quote!(Option<valence_protocol::BlockPos>),
-            Value::Facing(_) => quote!(valence_protocol::Direction),
-            Value::OptionalUuid(_) => quote!(Option<::uuid::Uuid>),
-            Value::BlockState(_) => quote!(valence_protocol::BlockState),
-            Value::OptionalBlockState(_) => quote!(valence_protocol::BlockState),
-            Value::NbtCompound(_) => quote!(valence_nbt::Compound),
-            Value::Particle(_) => quote!(valence_protocol::packets::play::particle_s2c::Particle),
-            Value::VillagerData { .. } => quote!(crate::VillagerData),
-            Value::OptionalInt(_) => quote!(Option<i32>),
-            Value::EntityPose(_) => quote!(crate::Pose),
-            Value::CatVariant(_) => quote!(crate::CatKind),
-            Value::FrogVariant(_) => quote!(crate::FrogKind),
-            Value::OptionalGlobalPos(_) => quote!(()), // TODO
-            Value::PaintingVariant(_) => quote!(crate::PaintingKind),
-            Value::SnifferState(_) => quote!(crate::SnifferState),
-            Value::Vector3f { .. } => quote!(valence_math::Vec3),
-            Value::Quaternionf { .. } => quote!(valence_math::Quat),
+            Value::Byte(_) => ValueType::Byte,
+            Value::Integer(_) => ValueType::Integer,
+            Value::Long(_) => ValueType::Long,
+            Value::Float(_) => ValueType::Float,
+            Value::String(_) => ValueType::String,
+            Value::TextComponent(_) => ValueType::TextComponent,
+            Value::OptionalTextComponent(_) => ValueType::OptionalTextComponent,
+            Value::ItemStack(_) => ValueType::ItemStack,
+            Value::Boolean(_) => ValueType::Boolean,
+            Value::Rotation { .. } => ValueType::Rotation,
+            Value::BlockPos(_) => ValueType::BlockPos,
+            Value::OptionalBlockPos(_) => ValueType::OptionalBlockPos,
+            Value::Facing(_) => ValueType::Facing,
+            Value::OptionalUuid(_) => ValueType::OptionalUuid,
+            Value::BlockState(_) => ValueType::BlockState,
+            Value::OptionalBlockState(_) => ValueType::OptionalBlockState,
+            Value::NbtCompound(_) => ValueType::NbtCompound,
+            Value::Particle(_) => ValueType::Particle,
+            Value::VillagerData { .. } => ValueType::VillagerData,
+            Value::OptionalInt(_) => ValueType::OptionalInt,
+            Value::EntityPose(_) => ValueType::EntityPose,
+            Value::CatVariant(_) => ValueType::CatVariant,
+            Value::FrogVariant(_) => ValueType::FrogVariant,
+            Value::OptionalGlobalPos(_) => ValueType::OptionalGlobalPos,
+            Value::PaintingVariant(_) => ValueType::PaintingVariant,
+            Value::SnifferState(_) => ValueType::SnifferState,
+            Value::Vector3f { .. } => ValueType::Vector3f,
+            Value::Quaternionf { .. } => ValueType::Quaternionf,
         }
     }
 
@@ -537,7 +605,7 @@ fn build() -> anyhow::Result<TokenStream> {
         for field in &entity.fields {
             let pascal_field_name_ident = ident(field.name.to_pascal_case());
             let snake_field_name = field.name.to_snake_case();
-            let inner_type = field.default_value.field_type();
+            let inner_type = field.default_value.get_type().field_type();
 
             module_body.extend([quote! {
                 #[derive(bevy_ecs::component::Component, PartialEq, Clone, Debug, ::derive_more::Deref, ::derive_more::DerefMut)]
@@ -553,7 +621,7 @@ fn build() -> anyhow::Result<TokenStream> {
             system_names.push(quote!(#system_name_ident));
 
             let data_index = field.index;
-            let data_type = field.default_value.type_id();
+            let data_type = field.default_value.get_type().type_id();
             let encodable_expr = field.default_value.encodable_expr(quote!(value.0));
 
             systems.extend([quote! {
