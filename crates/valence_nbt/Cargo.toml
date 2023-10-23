@@ -5,12 +5,13 @@ readme = "README.md"
 documentation = "https://docs.rs/valence_nbt/"
 license.workspace = true
 keywords = ["nbt", "minecraft", "serialization"]
-version = "0.7.0"
+version = "0.8.0"
 edition.workspace = true
 repository.workspace = true
 
 [features]
 binary = ["dep:byteorder", "dep:cesu8"]
+java_string = ["dep:java_string"]
 snbt = []
 # When enabled, the order of fields in compounds are preserved.
 preserve_order = ["dep:indexmap"]
@@ -20,6 +21,7 @@ serde = ["dep:serde", "dep:thiserror", "indexmap?/serde"]
 byteorder = { workspace = true, optional = true }
 cesu8 = { workspace = true, optional = true }
 indexmap = { workspace = true, optional = true }
+java_string = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"], optional = true }
 thiserror = { workspace = true, optional = true }
 uuid = { workspace = true, optional = true }

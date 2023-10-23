@@ -29,5 +29,4 @@ valence_protocol.workspace = true
 valence_generated.workspace = true
 rustc-hash.workspace = true
 parking_lot.workspace = true
-num-integer.workspace = true
 arrayvec.workspace = true

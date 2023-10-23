@@ -1,6 +1,11 @@
 use std::fmt;
+use std::hash::Hash;
+use std::marker::PhantomData;
 
-use serde::de::value::{MapAccessDeserializer, MapDeserializer, SeqAccessDeserializer};
+use serde::de::value::{
+    MapAccessDeserializer, MapDeserializer, SeqAccessDeserializer, StrDeserializer,
+    StringDeserializer,
+};
 use serde::de::{self, IntoDeserializer, SeqAccess, Visitor};
 use serde::{forward_to_deserialize_any, Deserialize, Deserializer};
 
@@ -8,15 +13,21 @@ use super::Error;
 use crate::conv::{i8_vec_into_u8_vec, u8_slice_as_i8_slice, u8_vec_into_i8_vec};
 use crate::{Compound, List, Value};
 
-impl<'de> Deserialize<'de> for Value {
+impl<'de, S> Deserialize<'de> for Value<S>
+where
+    S: Deserialize<'de> + Ord + Hash,
+{
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        struct ValueVisitor;
+        struct ValueVisitor<S>(PhantomData<S>);
 
-        impl<'de> Visitor<'de> for ValueVisitor {
-            type Value = Value;
+        impl<'de, S> Visitor<'de> for ValueVisitor<S>
+        where
+            S: Deserialize<'de> + Ord + Hash,
+        {
+            type Value = Value<S>;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 write!(formatter, "a valid NBT type")
@@ -103,14 +114,14 @@ impl<'de> Deserialize<'de> for Value {
             where
                 E: de::Error,
             {
-                Ok(Value::String(v.into()))
+                S::deserialize(StrDeserializer::new(v)).map(Value::String)
             }
 
             fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
             where
                 E: de::Error,
             {
-                Ok(Value::String(v))
+                S::deserialize(StringDeserializer::new(v)).map(Value::String)
             }
 
             fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
@@ -142,19 +153,25 @@ impl<'de> Deserialize<'de> for Value {
             }
         }
 
-        deserializer.deserialize_any(ValueVisitor)
+        deserializer.deserialize_any(ValueVisitor::<S>(PhantomData))
     }
 }
 
-impl<'de> Deserialize<'de> for List {
+impl<'de, S> Deserialize<'de> for List<S>
+where
+    S: Deserialize<'de> + Ord + Hash,
+{
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        struct ListVisitor;
+        struct ListVisitor<S>(PhantomData<S>);
 
-        impl<'de> Visitor<'de> for ListVisitor {
-            type Value = List;
+        impl<'de, S> Visitor<'de> for ListVisitor<S>
+        where
+            S: Deserialize<'de> + Ord + Hash,
+        {
+            type Value = List<S>;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 write!(formatter, "a sequence or bytes")
@@ -164,20 +181,20 @@ impl<'de> Deserialize<'de> for List {
             where
                 A: de::SeqAccess<'de>,
             {
-                match seq.next_element::<Value>()? {
+                match seq.next_element::<Value<S>>()? {
                     Some(v) => match v {
-                        Value::Byte(v) => deserialize_seq_remainder(v, seq),
-                        Value::Short(v) => deserialize_seq_remainder(v, seq),
-                        Value::Int(v) => deserialize_seq_remainder(v, seq),
-                        Value::Long(v) => deserialize_seq_remainder(v, seq),
-                        Value::Float(v) => deserialize_seq_remainder(v, seq),
-                        Value::Double(v) => deserialize_seq_remainder(v, seq),
-                        Value::ByteArray(v) => deserialize_seq_remainder(v, seq),
-                        Value::String(v) => deserialize_seq_remainder(v, seq),
-                        Value::List(v) => deserialize_seq_remainder(v, seq),
-                        Value::Compound(v) => deserialize_seq_remainder(v, seq),
-                        Value::IntArray(v) => deserialize_seq_remainder(v, seq),
-                        Value::LongArray(v) => deserialize_seq_remainder(v, seq),
+                        Value::Byte(v) => deserialize_seq_remainder(v, seq, From::from),
+                        Value::Short(v) => deserialize_seq_remainder(v, seq, From::from),
+                        Value::Int(v) => deserialize_seq_remainder(v, seq, From::from),
+                        Value::Long(v) => deserialize_seq_remainder(v, seq, From::from),
+                        Value::Float(v) => deserialize_seq_remainder(v, seq, From::from),
+                        Value::Double(v) => deserialize_seq_remainder(v, seq, From::from),
+                        Value::ByteArray(v) => deserialize_seq_remainder(v, seq, From::from),
+                        Value::String(v) => deserialize_seq_remainder(v, seq, List::String),
+                        Value::List(v) => deserialize_seq_remainder(v, seq, From::from),
+                        Value::Compound(v) => deserialize_seq_remainder(v, seq, From::from),
+                        Value::IntArray(v) => deserialize_seq_remainder(v, seq, From::from),
+                        Value::LongArray(v) => deserialize_seq_remainder(v, seq, From::from),
                     },
                     None => Ok(List::End),
                 }
@@ -198,17 +215,21 @@ impl<'de> Deserialize<'de> for List {
             }
         }
 
-        deserializer.deserialize_seq(ListVisitor)
+        deserializer.deserialize_seq(ListVisitor::<S>(PhantomData))
     }
 }
 
 /// Deserializes the remainder of a sequence after having
 /// determined the type of the first element.
-fn deserialize_seq_remainder<'de, T, A, R>(first: T, mut seq: A) -> Result<R, A::Error>
+fn deserialize_seq_remainder<'de, T, A, S, C>(
+    first: T,
+    mut seq: A,
+    conv: C,
+) -> Result<List<S>, A::Error>
 where
     T: Deserialize<'de>,
-    Vec<T>: Into<R>,
     A: de::SeqAccess<'de>,
+    C: FnOnce(Vec<T>) -> List<S>,
 {
     let mut vec = match seq.size_hint() {
         Some(n) => Vec::with_capacity(n + 1),
@@ -221,7 +242,7 @@ where
         vec.push(v);
     }
 
-    Ok(vec.into())
+    Ok(conv(vec))
 }
 
 impl<'de> Deserializer<'de> for Compound {

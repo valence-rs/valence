@@ -408,8 +408,8 @@ pub trait NetworkCallbacks: Send + Sync + 'static {
     ///
     /// # Default Implementation
     ///
-    /// The default implementation returns [BroadcastToLan::Disabled], disabling
-    /// LAN discovery.
+    /// The default implementation returns [`BroadcastToLan::Disabled`],
+    /// disabling LAN discovery.
     async fn broadcast_to_lan(&self, shared: &SharedNetworkState) -> BroadcastToLan {
         #![allow(unused_variables)]
 

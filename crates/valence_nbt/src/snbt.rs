@@ -429,7 +429,7 @@ impl<'a> SnbtReader<'a> {
 /// Parse a string in SNBT format into a `Value`.
 /// Assert that the string has no trailing data.
 /// SNBT is quite similar to JSON, but with some differences.
-/// See [the wiki](https://minecraft.gamepedia.com/NBT_format#SNBT_format) for more information.
+/// See [the wiki](https://minecraft.wiki/w/NBT_format#SNBT_format) for more information.
 ///
 /// # Example
 ///
