@@ -620,7 +620,7 @@ fn build() -> anyhow::Result<TokenStream> {
                     for (value, mut tracked_data) in &mut query {
                         // TODO: Help idk what I'm doing. :c
                         tracked_data.insert_init_value(#data_index, #data_type, #encodable_expr);
-                        
+
                         if !tracked_data.is_added() {
                             tracked_data.append_update_value(#data_index, #data_type, #encodable_expr);
                         }
