@@ -141,11 +141,11 @@ hmac = "0.12.1"
 image = "0.24.6"
 indexmap = "2.0.0"
 itertools = "0.11.0"
-lru = "0.11.0"
+java_string = { path = "crates/java_string", version = "0.1.1" }
+lru = "0.12.0"
 noise = "0.8.2"
 num = "0.4.0"
 num-bigint = "0.4.3"
-num-integer = "0.1.45"
 owo-colors = "3.5.0"
 ordered-float = "3.7.0"
 parking_lot = "0.12.1"
@@ -180,7 +180,7 @@ url = { version = "2.2.2", features = ["serde"] }
 uuid = "1.3.1"
 valence = { path = ".", version = "0.2.0-alpha.1" }
 valence_advancement = { path = "crates/valence_advancement", version = "0.2.0-alpha.1" }
-valence_anvil = { path = "crates/valence_anvil", version = "0.2.0-alpha.1" }
+valence_anvil = { path = "crates/valence_anvil", version = "0.1.0" }
 valence_boss_bar = { path = "crates/valence_boss_bar", version = "0.2.0-alpha.1" }
 valence_build_utils = { path = "crates/valence_build_utils", version = "0.2.0-alpha.1" }
 valence_command = { path = "crates/valence_command", version = "0.2.0-alpha.1" }
@@ -194,7 +194,7 @@ valence_lang = { path = "crates/valence_lang", version = "0.2.0-alpha.1" }
 valence_math = { path = "crates/valence_math", version = "0.2.0-alpha.1" }
 valence_nbt = { path = "crates/valence_nbt", features = [
     "uuid",
-], version = "0.7.0" }
+], version = "0.8.0" }
 valence_network = { path = "crates/valence_network", version = "0.2.0-alpha.1" }
 valence_player_list = { path = "crates/valence_player_list", version = "0.2.0-alpha.1" }
 valence_protocol = { path = "crates/valence_protocol", version = "0.2.0-alpha.1" }

@@ -408,8 +408,8 @@ pub trait NetworkCallbacks: Send + Sync + 'static {
     ///
     /// # Default Implementation
     ///
-    /// The default implementation returns [BroadcastToLan::Disabled], disabling
-    /// LAN discovery.
+    /// The default implementation returns [`BroadcastToLan::Disabled`],
+    /// disabling LAN discovery.
     async fn broadcast_to_lan(&self, shared: &SharedNetworkState) -> BroadcastToLan {
         #![allow(unused_variables)]
 
@@ -658,7 +658,7 @@ pub struct PlayerSampleEntry {
     /// The name of the player.
     ///
     /// This string can contain
-    /// [legacy formatting codes](https://minecraft.fandom.com/wiki/Formatting_codes).
+    /// [legacy formatting codes](https://minecraft.wiki/w/Formatting_codes).
     pub name: String,
     /// The player UUID.
     pub id: Uuid,

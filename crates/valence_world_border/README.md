@@ -1,6 +1,6 @@
 # valence_world_border
 
-Contains the plugin for working with Minecraft's [world border](https://minecraft.fandom.com/wiki/World_border).
+Contains the plugin for working with Minecraft's [world border](https://minecraft.wiki/w/World_border).
 
 To enable world border functionality for a layer, insert the [`WorldBorderBundle`] component on the layer entity.
 Note that the layer entity must have the [`ChunkLayer`] component for this to work.

@@ -42,6 +42,7 @@ public class Main implements ModInitializer {
 
         var extractors = new Extractor[]{
                new Blocks(),
+               new Effects(),
                new Enchants(),
                new Entities(),
                new Misc(),

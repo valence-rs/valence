@@ -12,7 +12,8 @@
         "type": "boolean",
         "default_value": false
       }
-    ]
+    ],
+    "attributes": []
   },
   "AbstractFireballEntity": {
     "parent": "ExplosiveProjectileEntity",
@@ -34,7 +35,8 @@
         "type": "byte",
         "default_value": 0
       }
-    ]
+    ],
+    "attributes": []
   },
   "AbstractMinecartEntity": {
     "parent": "Entity",
@@ -86,11 +88,13 @@
         "type": "boolean",
         "default_value": false
       }
-    ]
+    ],
+    "attributes": []
   },
   "AbstractSkeletonEntity": {
     "parent": "HostileEntity",
-    "fields": []
+    "fields": [],
+    "attributes": []
   },
   "AllayEntity": {
     "parent": "PathAwareEntity",
@@ -110,6 +114,53 @@
         "default_value": true
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 4,
+        "name": "generic.flying_speed",
+        "base_value": 0.10000000149011612
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 2.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 48.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.10000000149011612
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 20.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.3499999940395355,
       "size_y": 0.6000000238418579,
@@ -118,11 +169,13 @@
   },
   "AmbientEntity": {
     "parent": "MobEntity",
-    "fields": []
+    "fields": [],
+    "attributes": []
   },
   "AnimalEntity": {
     "parent": "PassiveEntity",
-    "fields": []
+    "fields": [],
+    "attributes": []
   },
   "AreaEffectCloudEntity": {
     "parent": "Entity",
@@ -232,6 +285,33 @@
         }
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.699999988079071
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 20.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.5,
       "size_y": 1.975000023841858,
@@ -280,6 +360,48 @@
         "default_value": false
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 2.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 1.0
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 14.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.75,
       "size_y": 0.41999998688697815,
@@ -296,6 +418,43 @@
         "index": 16,
         "type": "byte",
         "default_value": 1
+      }
+    ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.699999988079071
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 6.0
       }
     ],
     "default_bounding_box": {
@@ -322,6 +481,53 @@
         "default_value": 0
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 4,
+        "name": "generic.flying_speed",
+        "base_value": 0.6000000238418579
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 2.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 48.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.30000001192092896
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 10.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.699999988079071,
       "size_y": 0.6000000238418579,
@@ -338,6 +544,48 @@
         "index": 16,
         "type": "byte",
         "default_value": 0
+      }
+    ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 6.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 48.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.23000000417232513
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 20.0
       }
     ],
     "default_bounding_box": {
@@ -436,6 +684,48 @@
         "default_value": 0
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 12,
+        "name": "horse.jump_strength",
+        "base_value": 0.41999998688697815
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.09000000357627869
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 32.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 1.7000000476837158,
       "size_y": 2.375,
@@ -472,6 +762,48 @@
         "default_value": 14
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 3.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.30000001192092896
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 10.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.6000000238418579,
       "size_y": 0.699999988079071,
@@ -483,6 +815,48 @@
     "type": "cave_spider",
     "translation_key": "entity.minecraft.cave_spider",
     "fields": [],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 2.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.30000001192092896
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 12.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.699999988079071,
       "size_y": 0.5,
@@ -516,6 +890,43 @@
     "type": "chicken",
     "translation_key": "entity.minecraft.chicken",
     "fields": [],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.25
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 4.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.4000000059604645,
       "size_y": 0.699999988079071,
@@ -527,6 +938,43 @@
     "type": "cod",
     "translation_key": "entity.minecraft.cod",
     "fields": [],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.699999988079071
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 3.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.5,
       "size_y": 0.30000001192092896,
@@ -562,6 +1010,43 @@
     "type": "cow",
     "translation_key": "entity.minecraft.cow",
     "fields": [],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.20000000298023224
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 10.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.8999999761581421,
       "size_y": 1.399999976158142,
@@ -590,6 +1075,48 @@
         "index": 18,
         "type": "boolean",
         "default_value": false
+      }
+    ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 2.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.25
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 20.0
       }
     ],
     "default_bounding_box": {
@@ -733,6 +1260,48 @@
         "default_value": 2400
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 3.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 1.2000000476837158
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 10.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.8999999761581421,
       "size_y": 0.6000000238418579,
@@ -744,6 +1313,48 @@
     "type": "donkey",
     "translation_key": "entity.minecraft.donkey",
     "fields": [],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 12,
+        "name": "horse.jump_strength",
+        "base_value": 0.5
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.17499999701976776
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 53.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 1.396484375,
       "size_y": 1.5,
@@ -766,6 +1377,53 @@
     "type": "drowned",
     "translation_key": "entity.minecraft.drowned",
     "fields": [],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 11,
+        "name": "zombie.spawn_reinforcements",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 2.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 3.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 35.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.23000000417232513
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 20.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.6000000238418579,
       "size_y": 1.9500000476837158,
@@ -788,6 +1446,48 @@
     "type": "elder_guardian",
     "translation_key": "entity.minecraft.elder_guardian",
     "fields": [],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 8.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.30000001192092896
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 80.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 1.997499942779541,
       "size_y": 1.997499942779541,
@@ -828,6 +1528,43 @@
         "index": 16,
         "type": "integer",
         "default_value": 10
+      }
+    ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.699999988079071
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 200.0
       }
     ],
     "default_bounding_box": {
@@ -871,6 +1608,48 @@
         "default_value": false
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 7.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 64.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.30000001192092896
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 40.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.6000000238418579,
       "size_y": 2.9000000953674316,
@@ -882,6 +1661,48 @@
     "type": "endermite",
     "translation_key": "entity.minecraft.endermite",
     "fields": [],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 2.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.25
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 8.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.4000000059604645,
       "size_y": 0.30000001192092896,
@@ -938,13 +1759,56 @@
         "type": "integer",
         "default_value": 0
       }
-    ]
+    ],
+    "attributes": []
   },
   "EvokerEntity": {
     "parent": "SpellcastingIllagerEntity",
     "type": "evoker",
     "translation_key": "entity.minecraft.evoker",
     "fields": [],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 2.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 12.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.5
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 24.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.6000000238418579,
       "size_y": 1.9500000476837158,
@@ -1078,7 +1942,8 @@
         "type": "boolean",
         "default_value": false
       }
-    ]
+    ],
+    "attributes": []
   },
   "FishingBobberEntity": {
     "parent": "ProjectileEntity",
@@ -1106,7 +1971,8 @@
   },
   "FlyingEntity": {
     "parent": "MobEntity",
-    "fields": []
+    "fields": [],
+    "attributes": []
   },
   "FoxEntity": {
     "parent": "AnimalEntity",
@@ -1138,6 +2004,48 @@
         "default_value": null
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 2.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 32.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.30000001192092896
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 10.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.6000000238418579,
       "size_y": 0.699999988079071,
@@ -1160,6 +2068,48 @@
         "index": 18,
         "type": "optional_int",
         "default_value": null
+      }
+    ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 10.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 1.0
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 10.0
       }
     ],
     "default_bounding_box": {
@@ -1198,6 +2148,43 @@
         "default_value": false
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 100.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.699999988079071
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 10.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 4.0,
       "size_y": 4.0,
@@ -1209,6 +2196,48 @@
     "type": "giant",
     "translation_key": "entity.minecraft.giant",
     "fields": [],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 50.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.5
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 100.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 3.5999999046325684,
       "size_y": 12.0,
@@ -1236,6 +2265,43 @@
         "index": 16,
         "type": "integer",
         "default_value": 0
+      }
+    ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.699999988079071
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 10.0
       }
     ],
     "default_bounding_box": {
@@ -1268,6 +2334,48 @@
         "default_value": true
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 2.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.20000000298023224
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 10.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.8999999761581421,
       "size_y": 1.2999999523162842,
@@ -1276,7 +2384,8 @@
   },
   "GolemEntity": {
     "parent": "PathAwareEntity",
-    "fields": []
+    "fields": [],
+    "attributes": []
   },
   "GuardianEntity": {
     "parent": "HostileEntity",
@@ -1296,10 +2405,52 @@
         "default_value": 0
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 6.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.5
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 30.0
+      }
+    ],
     "default_bounding_box": {
-      "size_x": 1.997499942779541,
-      "size_y": 1.997499942779541,
-      "size_z": 1.997499942779541
+      "size_x": 0.8500000238418579,
+      "size_y": 0.8500000238418579,
+      "size_z": 0.8500000238418579
     }
   },
   "HoglinEntity": {
@@ -1312,6 +2463,48 @@
         "index": 17,
         "type": "boolean",
         "default_value": false
+      }
+    ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 1.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.6000000238418579
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 6.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.30000001192092896
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 40.0
       }
     ],
     "default_bounding_box": {
@@ -1343,6 +2536,48 @@
         "default_value": 0
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 12,
+        "name": "horse.jump_strength",
+        "base_value": 0.7
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.22499999403953552
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 53.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 1.396484375,
       "size_y": 1.600000023841858,
@@ -1351,13 +2586,61 @@
   },
   "HostileEntity": {
     "parent": "PathAwareEntity",
-    "fields": []
+    "fields": [],
+    "attributes": []
   },
   "HuskEntity": {
     "parent": "ZombieEntity",
     "type": "husk",
     "translation_key": "entity.minecraft.husk",
     "fields": [],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 11,
+        "name": "zombie.spawn_reinforcements",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 2.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 3.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 35.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.23000000417232513
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 20.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.6000000238418579,
       "size_y": 1.9500000476837158,
@@ -1366,13 +2649,56 @@
   },
   "IllagerEntity": {
     "parent": "RaiderEntity",
-    "fields": []
+    "fields": [],
+    "attributes": []
   },
   "IllusionerEntity": {
     "parent": "SpellcastingIllagerEntity",
     "type": "illusioner",
     "translation_key": "entity.minecraft.illusioner",
     "fields": [],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 2.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 18.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.5
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 32.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.6000000238418579,
       "size_y": 1.9500000476837158,
@@ -1419,6 +2745,48 @@
         "index": 16,
         "type": "byte",
         "default_value": 0
+      }
+    ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 1.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 15.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.25
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 100.0
       }
     ],
     "default_bounding_box": {
@@ -1528,7 +2896,7 @@
         "name": "health",
         "index": 9,
         "type": "float",
-        "default_value": 6.0
+        "default_value": 14.0
       },
       {
         "name": "potion_swirls_color",
@@ -1560,7 +2928,8 @@
         "type": "optional_block_pos",
         "default_value": null
       }
-    ]
+    ],
+    "attributes": []
   },
   "LlamaEntity": {
     "parent": "AbstractDonkeyEntity",
@@ -1586,6 +2955,48 @@
         "default_value": 0
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 40.0
+      },
+      {
+        "id": 12,
+        "name": "horse.jump_strength",
+        "base_value": 0.5
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.17499999701976776
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 53.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.8999999761581421,
       "size_y": 1.8700000047683716,
@@ -1608,6 +3019,48 @@
     "type": "magma_cube",
     "translation_key": "entity.minecraft.magma_cube",
     "fields": [],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 2.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.20000000298023224
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 20.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 2.0399999618530273,
       "size_y": 2.0399999618530273,
@@ -1634,7 +3087,8 @@
         "type": "integer",
         "default_value": 0
       }
-    ]
+    ],
+    "attributes": []
   },
   "MinecartEntity": {
     "parent": "AbstractMinecartEntity",
@@ -1656,7 +3110,8 @@
         "type": "byte",
         "default_value": 0
       }
-    ]
+    ],
+    "attributes": []
   },
   "MooshroomEntity": {
     "parent": "CowEntity",
@@ -1670,6 +3125,43 @@
         "default_value": "red"
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.20000000298023224
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 10.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.8999999761581421,
       "size_y": 1.399999976158142,
@@ -1681,6 +3173,48 @@
     "type": "mule",
     "translation_key": "entity.minecraft.mule",
     "fields": [],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 12,
+        "name": "horse.jump_strength",
+        "base_value": 0.5
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.17499999701976776
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 53.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 1.396484375,
       "size_y": 1.600000023841858,
@@ -1697,6 +3231,48 @@
         "index": 17,
         "type": "boolean",
         "default_value": false
+      }
+    ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 3.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.30000001192092896
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 10.0
       }
     ],
     "default_bounding_box": {
@@ -1765,6 +3341,48 @@
         "default_value": 0
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 6.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.15000000596046448
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 20.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 1.2999999523162842,
       "size_y": 1.25,
@@ -1783,6 +3401,48 @@
         "default_value": 0
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 4,
+        "name": "generic.flying_speed",
+        "base_value": 0.4000000059604645
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.20000000298023224
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 6.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.5,
       "size_y": 0.8999999761581421,
@@ -1798,15 +3458,18 @@
         "type": "boolean",
         "default_value": false
       }
-    ]
+    ],
+    "attributes": []
   },
   "PathAwareEntity": {
     "parent": "MobEntity",
-    "fields": []
+    "fields": [],
+    "attributes": []
   },
   "PatrolEntity": {
     "parent": "HostileEntity",
-    "fields": []
+    "fields": [],
+    "attributes": []
   },
   "PersistentProjectileEntity": {
     "parent": "ProjectileEntity",
@@ -1837,6 +3500,48 @@
         "default_value": 0
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 2.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.699999988079071
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 20.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.8999999761581421,
       "size_y": 0.5,
@@ -1861,6 +3566,43 @@
         "default_value": 0
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.25
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 10.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.8999999761581421,
       "size_y": 0.8999999761581421,
@@ -1872,6 +3614,48 @@
     "type": "piglin_brute",
     "translation_key": "entity.minecraft.piglin_brute",
     "fields": [],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 7.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.3499999940395355
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 50.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.6000000238418579,
       "size_y": 1.9500000476837158,
@@ -1902,6 +3686,48 @@
         "default_value": false
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 5.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.3499999940395355
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 16.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.6000000238418579,
       "size_y": 1.9500000476837158,
@@ -1918,6 +3744,48 @@
         "index": 17,
         "type": "boolean",
         "default_value": false
+      }
+    ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 5.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 32.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.3499999940395355
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 24.0
       }
     ],
     "default_bounding_box": {
@@ -1967,6 +3835,48 @@
         "type": "nbt_compound",
         "default_value": "{}"
       }
+    ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 1.0
+      },
+      {
+        "id": 7,
+        "name": "generic.attack_speed",
+        "base_value": 4.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.10000000149011612
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 20.0
+      },
+      {
+        "id": 10,
+        "name": "generic.luck",
+        "base_value": 0.0
+      }
     ]
   },
   "PolarBearEntity": {
@@ -1979,6 +3889,48 @@
         "index": 17,
         "type": "boolean",
         "default_value": false
+      }
+    ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 6.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 20.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.25
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 30.0
       }
     ],
     "default_bounding_box": {
@@ -2014,6 +3966,43 @@
         "default_value": 0
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.699999988079071
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 3.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.3499999940395355,
       "size_y": 0.3499999940395355,
@@ -2032,6 +4021,43 @@
         "default_value": 0
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.30000001192092896
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 3.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.4000000059604645,
       "size_y": 0.5,
@@ -2047,13 +4073,56 @@
         "type": "boolean",
         "default_value": false
       }
-    ]
+    ],
+    "attributes": []
   },
   "RavagerEntity": {
     "parent": "RaiderEntity",
     "type": "ravager",
     "translation_key": "entity.minecraft.ravager",
     "fields": [],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 1.5
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.75
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 12.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 32.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.3
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 100.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 1.9500000476837158,
       "size_y": 2.200000047683716,
@@ -2065,6 +4134,43 @@
     "type": "salmon",
     "translation_key": "entity.minecraft.salmon",
     "fields": [],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.699999988079071
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 3.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.699999988079071,
       "size_y": 0.4000000059604645,
@@ -2073,7 +4179,8 @@
   },
   "SchoolingFishEntity": {
     "parent": "FishEntity",
-    "fields": []
+    "fields": [],
+    "attributes": []
   },
   "SheepEntity": {
     "parent": "AnimalEntity",
@@ -2085,6 +4192,43 @@
         "index": 17,
         "type": "byte",
         "default_value": 0
+      }
+    ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.23000000417232513
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 8.0
       }
     ],
     "default_bounding_box": {
@@ -2128,6 +4272,43 @@
         "default_value": 16
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.699999988079071
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 30.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 1.0,
       "size_y": 1.0,
@@ -2139,6 +4320,48 @@
     "type": "silverfish",
     "translation_key": "entity.minecraft.silverfish",
     "fields": [],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 1.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.25
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 8.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.4000000059604645,
       "size_y": 0.30000001192092896,
@@ -2157,6 +4380,48 @@
         "default_value": false
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 2.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.25
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 20.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.6000000238418579,
       "size_y": 1.9900000095367432,
@@ -2168,6 +4433,48 @@
     "type": "skeleton_horse",
     "translation_key": "entity.minecraft.skeleton_horse",
     "fields": [],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 12,
+        "name": "horse.jump_strength",
+        "base_value": 0.7
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.20000000298023224
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 15.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 1.396484375,
       "size_y": 1.600000023841858,
@@ -2184,6 +4491,48 @@
         "index": 16,
         "type": "integer",
         "default_value": 1
+      }
+    ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 2.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.699999988079071
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 20.0
       }
     ],
     "default_bounding_box": {
@@ -2221,6 +4570,43 @@
         "default_value": 0
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.10000000149011612
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 14.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 1.899999976158142,
       "size_y": 1.75,
@@ -2237,6 +4623,43 @@
         "index": 16,
         "type": "byte",
         "default_value": 16
+      }
+    ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.20000000298023224
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 4.0
       }
     ],
     "default_bounding_box": {
@@ -2287,7 +4710,8 @@
         "type": "byte",
         "default_value": 0
       }
-    ]
+    ],
+    "attributes": []
   },
   "SpiderEntity": {
     "parent": "HostileEntity",
@@ -2301,6 +4725,48 @@
         "default_value": 0
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 2.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.30000001192092896
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 16.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.699999988079071,
       "size_y": 0.5,
@@ -2312,6 +4778,43 @@
     "type": "squid",
     "translation_key": "entity.minecraft.squid",
     "fields": [],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.699999988079071
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 10.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.800000011920929,
       "size_y": 0.800000011920929,
@@ -2327,6 +4830,48 @@
     "type": "stray",
     "translation_key": "entity.minecraft.stray",
     "fields": [],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 2.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.25
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 20.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.6000000238418579,
       "size_y": 1.9900000095367432,
@@ -2357,6 +4902,43 @@
         "default_value": false
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.17499999701976776
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 20.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.8999999761581421,
       "size_y": 1.7000000476837158,
@@ -2368,6 +4950,43 @@
     "type": "tadpole",
     "translation_key": "entity.minecraft.tadpole",
     "fields": [],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 1.0
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 6.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.4000000059604645,
       "size_y": 0.30000001192092896,
@@ -2389,11 +5008,13 @@
         "type": "optional_uuid",
         "default_value": null
       }
-    ]
+    ],
+    "attributes": []
   },
   "TameableShoulderEntity": {
     "parent": "TameableEntity",
-    "fields": []
+    "fields": [],
+    "attributes": []
   },
   "TextDisplayEntity": {
     "parent": "DisplayEntity",
@@ -2486,6 +5107,48 @@
     "type": "trader_llama",
     "translation_key": "entity.minecraft.trader_llama",
     "fields": [],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 40.0
+      },
+      {
+        "id": 12,
+        "name": "horse.jump_strength",
+        "base_value": 0.5
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.17499999701976776
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 53.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.8999999761581421,
       "size_y": 1.8700000047683716,
@@ -2526,6 +5189,43 @@
         "index": 17,
         "type": "integer",
         "default_value": 0
+      }
+    ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.699999988079071
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 3.0
       }
     ],
     "default_bounding_box": {
@@ -2584,6 +5284,43 @@
         "default_value": false
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.25
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 30.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 1.2000000476837158,
       "size_y": 0.4000000059604645,
@@ -2600,6 +5337,48 @@
         "index": 16,
         "type": "byte",
         "default_value": 0
+      }
+    ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 4.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.699999988079071
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 14.0
       }
     ],
     "default_bounding_box": {
@@ -2624,6 +5403,43 @@
         }
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 48.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.5
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 20.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.6000000238418579,
       "size_y": 1.9500000476837158,
@@ -2635,6 +5451,48 @@
     "type": "vindicator",
     "translation_key": "entity.minecraft.vindicator",
     "fields": [],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 5.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 12.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.3499999940395355
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 24.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.6000000238418579,
       "size_y": 1.9500000476837158,
@@ -2646,6 +5504,43 @@
     "type": "wandering_trader",
     "translation_key": "entity.minecraft.wandering_trader",
     "fields": [],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.699999988079071
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 20.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.6000000238418579,
       "size_y": 1.9500000476837158,
@@ -2664,6 +5559,48 @@
         "default_value": 0
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 1.5
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 1.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 30.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.30000001192092896
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 500.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.8999999761581421,
       "size_y": 2.9000000953674316,
@@ -2672,7 +5609,8 @@
   },
   "WaterCreatureEntity": {
     "parent": "PathAwareEntity",
-    "fields": []
+    "fields": [],
+    "attributes": []
   },
   "WitchEntity": {
     "parent": "RaiderEntity",
@@ -2684,6 +5622,48 @@
         "index": 17,
         "type": "boolean",
         "default_value": false
+      }
+    ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 2.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.25
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 26.0
       }
     ],
     "default_bounding_box": {
@@ -2722,6 +5702,53 @@
         "default_value": 0
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 4,
+        "name": "generic.flying_speed",
+        "base_value": 0.6000000238418579
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 4.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 2.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 40.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.6000000238418579
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 300.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.8999999761581421,
       "size_y": 3.5,
@@ -2733,6 +5760,48 @@
     "type": "wither_skeleton",
     "translation_key": "entity.minecraft.wither_skeleton",
     "fields": [],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 2.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.25
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 20.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.699999988079071,
       "size_y": 2.4000000953674316,
@@ -2781,6 +5850,48 @@
         "default_value": 0
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 2.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.30000001192092896
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 8.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.6000000238418579,
       "size_y": 0.8500000238418579,
@@ -2797,6 +5908,48 @@
         "index": 16,
         "type": "boolean",
         "default_value": false
+      }
+    ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 1.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.6000000238418579
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 6.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.30000001192092896
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 40.0
       }
     ],
     "default_bounding_box": {
@@ -2829,6 +5982,53 @@
         "default_value": false
       }
     ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 11,
+        "name": "zombie.spawn_reinforcements",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 2.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 3.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 35.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.23000000417232513
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 20.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.6000000238418579,
       "size_y": 1.9500000476837158,
@@ -2840,6 +6040,48 @@
     "type": "zombie_horse",
     "translation_key": "entity.minecraft.zombie_horse",
     "fields": [],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 0.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 16.0
+      },
+      {
+        "id": 12,
+        "name": "horse.jump_strength",
+        "base_value": 0.7
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.20000000298023224
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 15.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 1.396484375,
       "size_y": 1.600000023841858,
@@ -2863,9 +6105,56 @@
         "type": "villager_data",
         "default_value": {
           "type": "plains",
-          "profession": "weaponsmith",
+          "profession": "nitwit",
           "level": 1
         }
+      }
+    ],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 11,
+        "name": "zombie.spawn_reinforcements",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 2.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 3.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 35.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.23000000417232513
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 20.0
       }
     ],
     "default_bounding_box": {
@@ -2879,6 +6168,53 @@
     "type": "zombified_piglin",
     "translation_key": "entity.minecraft.zombified_piglin",
     "fields": [],
+    "attributes": [
+      {
+        "id": 9,
+        "name": "generic.armor_toughness",
+        "base_value": 0.0
+      },
+      {
+        "id": 6,
+        "name": "generic.attack_knockback",
+        "base_value": 0.0
+      },
+      {
+        "id": 2,
+        "name": "generic.knockback_resistance",
+        "base_value": 0.0
+      },
+      {
+        "id": 11,
+        "name": "zombie.spawn_reinforcements",
+        "base_value": 0.0
+      },
+      {
+        "id": 8,
+        "name": "generic.armor",
+        "base_value": 2.0
+      },
+      {
+        "id": 5,
+        "name": "generic.attack_damage",
+        "base_value": 5.0
+      },
+      {
+        "id": 1,
+        "name": "generic.follow_range",
+        "base_value": 35.0
+      },
+      {
+        "id": 3,
+        "name": "generic.movement_speed",
+        "base_value": 0.23000000417232513
+      },
+      {
+        "id": 0,
+        "name": "generic.max_health",
+        "base_value": 20.0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.6000000238418579,
       "size_y": 1.9500000476837158,

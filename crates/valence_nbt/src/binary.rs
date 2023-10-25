@@ -45,8 +45,8 @@ mod modified_utf8;
 #[cfg(test)]
 mod tests;
 
-pub use decode::from_binary;
-pub use encode::{to_binary, written_size};
+pub use decode::{from_binary, FromModifiedUtf8, FromModifiedUtf8Error};
+pub use encode::{to_binary, written_size, ToModifiedUtf8};
 pub use error::*;
 
 use crate::Tag;

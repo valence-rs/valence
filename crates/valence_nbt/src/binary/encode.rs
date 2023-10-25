@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+use std::hash::Hash;
 use std::io::Write;
 
 use byteorder::{BigEndian, WriteBytesExt};
@@ -14,7 +16,12 @@ use crate::{Compound, List, Value};
 ///
 /// Additionally, the root compound can be given a name. Typically the empty
 /// string `""` is used.
-pub fn to_binary<W: Write>(comp: &Compound, writer: W, root_name: &str) -> Result<()> {
+pub fn to_binary<W, S, R>(comp: &Compound<S>, writer: W, root_name: &R) -> Result<()>
+where
+    W: Write,
+    S: ToModifiedUtf8 + Hash + Ord,
+    R: ToModifiedUtf8 + ?Sized,
+{
     let mut state = EncodeState { writer };
 
     state.write_tag(Tag::Compound)?;
@@ -31,8 +38,15 @@ pub fn to_binary<W: Write>(comp: &Compound, writer: W, root_name: &str) -> Resul
 /// reported by this function will have been written. If the result is
 /// `Err`, then the reported count will be greater than or equal to the
 /// number of bytes that have actually been written.
-pub fn written_size(comp: &Compound, root_name: &str) -> usize {
-    fn value_size(val: &Value) -> usize {
+pub fn written_size<S, R>(comp: &Compound<S>, root_name: &R) -> usize
+where
+    S: ToModifiedUtf8 + Hash + Ord,
+    R: ToModifiedUtf8 + ?Sized,
+{
+    fn value_size<S>(val: &Value<S>) -> usize
+    where
+        S: ToModifiedUtf8 + Hash + Ord,
+    {
         match val {
             Value::Byte(_) => 1,
             Value::Short(_) => 2,
@@ -49,7 +63,10 @@ pub fn written_size(comp: &Compound, root_name: &str) -> usize {
         }
     }
 
-    fn list_size(l: &List) -> usize {
+    fn list_size<S>(l: &List<S>) -> usize
+    where
+        S: ToModifiedUtf8 + Hash + Ord,
+    {
         let elems_size = match l {
             List::End => 0,
             List::Byte(v) => v.len(),
@@ -69,11 +86,14 @@ pub fn written_size(comp: &Compound, root_name: &str) -> usize {
         1 + 4 + elems_size
     }
 
-    fn string_size(s: &str) -> usize {
-        2 + modified_utf8::encoded_len(s)
+    fn string_size<S: ToModifiedUtf8 + ?Sized>(s: &S) -> usize {
+        2 + s.modified_uf8_len()
     }
 
-    fn compound_size(c: &Compound) -> usize {
+    fn compound_size<S>(c: &Compound<S>) -> usize
+    where
+        S: ToModifiedUtf8 + Hash + Ord,
+    {
         c.iter()
             .map(|(k, v)| 1 + string_size(k) + value_size(v))
             .sum::<usize>()
@@ -92,7 +112,10 @@ impl<W: Write> EncodeState<W> {
         Ok(self.writer.write_u8(tag as u8)?)
     }
 
-    fn write_value(&mut self, v: &Value) -> Result<()> {
+    fn write_value<S>(&mut self, v: &Value<S>) -> Result<()>
+    where
+        S: ToModifiedUtf8 + Hash + Ord,
+    {
         match v {
             Value::Byte(v) => self.write_byte(*v),
             Value::Short(v) => self.write_short(*v),
@@ -147,8 +170,8 @@ impl<W: Write> EncodeState<W> {
         Ok(self.writer.write_all(i8_slice_as_u8_slice(bytes))?)
     }
 
-    fn write_string(&mut self, s: &str) -> Result<()> {
-        let len = modified_utf8::encoded_len(s);
+    fn write_string<S: ToModifiedUtf8 + ?Sized>(&mut self, s: &S) -> Result<()> {
+        let len = s.modified_uf8_len();
 
         match len.try_into() {
             Ok(n) => self.writer.write_u16::<BigEndian>(n)?,
@@ -159,19 +182,15 @@ impl<W: Write> EncodeState<W> {
             }
         }
 
-        // Conversion to modified UTF-8 always increases the size of the string.
-        // If the new len is equal to the original len, we know it doesn't need
-        // to be re-encoded.
-        if len == s.len() {
-            self.writer.write_all(s.as_bytes())?;
-        } else {
-            modified_utf8::write_modified_utf8(&mut self.writer, s)?;
-        }
+        s.to_modified_utf8(len, &mut self.writer)?;
 
         Ok(())
     }
 
-    fn write_any_list(&mut self, list: &List) -> Result<()> {
+    fn write_any_list<S>(&mut self, list: &List<S>) -> Result<()>
+    where
+        S: ToModifiedUtf8 + Hash + Ord,
+    {
         match list {
             List::End => {
                 self.write_tag(Tag::End)?;
@@ -236,7 +255,10 @@ impl<W: Write> EncodeState<W> {
         Ok(())
     }
 
-    fn write_compound(&mut self, c: &Compound) -> Result<()> {
+    fn write_compound<S>(&mut self, c: &Compound<S>) -> Result<()>
+    where
+        S: ToModifiedUtf8 + Hash + Ord,
+    {
         for (k, v) in c.iter() {
             self.write_tag(v.tag())?;
             self.write_string(k)?;
@@ -281,5 +303,89 @@ impl<W: Write> EncodeState<W> {
         }
 
         Ok(())
+    }
+}
+
+/// A string type which can be encoded into Java's [modified UTF-8](https://docs.oracle.com/javase/8/docs/api/java/io/DataInput.html#modified-utf-8).
+pub trait ToModifiedUtf8 {
+    fn modified_uf8_len(&self) -> usize;
+    fn to_modified_utf8<W: Write>(&self, encoded_len: usize, writer: W) -> std::io::Result<()>;
+}
+
+impl ToModifiedUtf8 for str {
+    fn modified_uf8_len(&self) -> usize {
+        modified_utf8::encoded_len(self.as_bytes())
+    }
+
+    fn to_modified_utf8<W: Write>(&self, encoded_len: usize, mut writer: W) -> std::io::Result<()> {
+        // Conversion to modified UTF-8 always increases the size of the string.
+        // If the new len is equal to the original len, we know it doesn't need
+        // to be re-encoded.
+        if self.len() == encoded_len {
+            writer.write_all(self.as_bytes())
+        } else {
+            modified_utf8::write_modified_utf8(writer, self)
+        }
+    }
+}
+
+impl ToModifiedUtf8 for Cow<'_, str> {
+    #[inline]
+    fn modified_uf8_len(&self) -> usize {
+        str::modified_uf8_len(self)
+    }
+
+    fn to_modified_utf8<W: Write>(&self, encoded_len: usize, writer: W) -> std::io::Result<()> {
+        str::to_modified_utf8(self, encoded_len, writer)
+    }
+}
+
+impl ToModifiedUtf8 for String {
+    #[inline]
+    fn modified_uf8_len(&self) -> usize {
+        str::modified_uf8_len(self)
+    }
+
+    fn to_modified_utf8<W: Write>(&self, encoded_len: usize, writer: W) -> std::io::Result<()> {
+        str::to_modified_utf8(self, encoded_len, writer)
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl ToModifiedUtf8 for java_string::JavaStr {
+    fn modified_uf8_len(&self) -> usize {
+        modified_utf8::encoded_len(self.as_bytes())
+    }
+
+    fn to_modified_utf8<W: Write>(
+        &self,
+        _encoded_len: usize,
+        mut writer: W,
+    ) -> std::io::Result<()> {
+        writer.write_all(&self.to_modified_utf8())
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl ToModifiedUtf8 for Cow<'_, java_string::JavaStr> {
+    #[inline]
+    fn modified_uf8_len(&self) -> usize {
+        java_string::JavaStr::modified_uf8_len(self)
+    }
+
+    fn to_modified_utf8<W: Write>(&self, encoded_len: usize, writer: W) -> std::io::Result<()> {
+        <java_string::JavaStr as ToModifiedUtf8>::to_modified_utf8(self, encoded_len, writer)
+    }
+}
+
+#[cfg(feature = "java_string")]
+impl ToModifiedUtf8 for java_string::JavaString {
+    #[inline]
+    fn modified_uf8_len(&self) -> usize {
+        java_string::JavaStr::modified_uf8_len(self)
+    }
+
+    fn to_modified_utf8<W: Write>(&self, encoded_len: usize, writer: W) -> std::io::Result<()> {
+        <java_string::JavaStr as ToModifiedUtf8>::to_modified_utf8(self, encoded_len, writer)
     }
 }
