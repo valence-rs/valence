@@ -1,4 +1,5 @@
 #![doc = include_str!("../README.md")]
+#![allow(unused_imports)]
 
 mod cesu8;
 mod char;
