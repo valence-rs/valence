@@ -11,7 +11,6 @@ mod serde;
 mod slice;
 pub(crate) mod validations;
 
-pub use cesu8::*;
 pub use char::*;
 pub use error::*;
 pub use iter::*;
