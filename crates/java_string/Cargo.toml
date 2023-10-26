@@ -2,7 +2,7 @@
 name = "java_string"
 description = "An implementation of Java strings, tolerant of invalid UTF-16 encoding"
 readme = "README.md"
-version = "0.1.1"
+version = "0.1.2"
 keywords = ["java", "string", "utf16"]
 edition.workspace = true
 repository.workspace = true

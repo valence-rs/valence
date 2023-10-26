@@ -8,28 +8,28 @@ use valence_ident::Ident;
 use crate::{Decode, Encode, Packet, VarInt};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-pub struct CommandTreeS2c<'a> {
-    pub commands: Vec<Node<'a>>,
+pub struct CommandTreeS2c {
+    pub commands: Vec<Node>,
     pub root_index: VarInt,
 }
 
 #[derive(Clone, Debug)]
-pub struct Node<'a> {
-    pub children: Vec<VarInt>,
-    pub data: NodeData<'a>,
+pub struct Node {
+    pub data: NodeData,
     pub executable: bool,
+    pub children: Vec<VarInt>,
     pub redirect_node: Option<VarInt>,
 }
 
-#[derive(Clone, Debug)]
-pub enum NodeData<'a> {
+#[derive(Clone, Debug, PartialEq)]
+pub enum NodeData {
     Root,
     Literal {
-        name: &'a str,
+        name: String,
     },
     Argument {
-        name: &'a str,
-        parser: Parser<'a>,
+        name: String,
+        parser: Parser,
         suggestion: Option<Suggestion>,
     },
 }
@@ -43,8 +43,8 @@ pub enum Suggestion {
     SummonableEntities,
 }
 
-#[derive(Clone, Debug)]
-pub enum Parser<'a> {
+#[derive(Clone, Debug, PartialEq)]
+pub enum Parser {
     Bool,
     Float { min: Option<f32>, max: Option<f32> },
     Double { min: Option<f64>, max: Option<f64> },
@@ -86,10 +86,10 @@ pub enum Parser<'a> {
     Dimension,
     GameMode,
     Time,
-    ResourceOrTag { registry: Ident<Cow<'a, str>> },
-    ResourceOrTagKey { registry: Ident<Cow<'a, str>> },
-    Resource { registry: Ident<Cow<'a, str>> },
-    ResourceKey { registry: Ident<Cow<'a, str>> },
+    ResourceOrTag { registry: Ident<String> },
+    ResourceOrTagKey { registry: Ident<String> },
+    Resource { registry: Ident<String> },
+    ResourceKey { registry: Ident<String> },
     TemplateMirror,
     TemplateRotation,
     Uuid,
@@ -102,7 +102,7 @@ pub enum StringArg {
     GreedyPhrase,
 }
 
-impl Encode for Node<'_> {
+impl Encode for Node {
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         let node_type = match &self.data {
             NodeData::Root => 0,
@@ -161,7 +161,7 @@ impl Encode for Node<'_> {
     }
 }
 
-impl<'a> Decode<'a> for Node<'a> {
+impl<'a> Decode<'a> for Node {
     fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
         let flags = u8::decode(r)?;
 
@@ -176,10 +176,10 @@ impl<'a> Decode<'a> for Node<'a> {
         let node_data = match flags & 0x3 {
             0 => NodeData::Root,
             1 => NodeData::Literal {
-                name: <&str>::decode(r)?,
+                name: <String>::decode(r)?,
             },
             2 => NodeData::Argument {
-                name: <&str>::decode(r)?,
+                name: <String>::decode(r)?,
                 parser: Parser::decode(r)?,
                 suggestion: if flags & 0x10 != 0 {
                     Some(match Ident::<Cow<str>>::decode(r)?.as_str() {
@@ -206,7 +206,7 @@ impl<'a> Decode<'a> for Node<'a> {
     }
 }
 
-impl Encode for Parser<'_> {
+impl Encode for Parser {
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         match self {
             Parser::Bool => 0u8.encode(&mut w)?,
@@ -335,7 +335,7 @@ impl Encode for Parser<'_> {
     }
 }
 
-impl<'a> Decode<'a> for Parser<'a> {
+impl<'a> Decode<'a> for Parser {
     fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
         fn decode_min_max<'a, T: Decode<'a>>(
             r: &mut &'a [u8],

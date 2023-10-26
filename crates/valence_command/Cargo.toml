@@ -1,0 +1,23 @@
+[package]
+name = "valence_command"
+description = "Command management for Valence"
+readme = "README.md"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+documentation.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+bevy_app.workspace = true
+bevy_derive.workspace = true
+bevy_ecs.workspace = true
+byteorder.workspace = true
+ordered-float.workspace = true
+petgraph.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+valence_server.workspace = true
+valence_text.workspace = true
