@@ -26,6 +26,7 @@ use std::ops::Range;
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use derive_more::{Deref, DerefMut};
+use player_inventory::PlayerInventory;
 use tracing::{debug, warn};
 use valence_server::client::{Client, FlushPacketsSet, SpawnClientsSet};
 use valence_server::event_loop::{EventLoopPreUpdate, PacketEvent};
@@ -41,6 +42,8 @@ use valence_server::protocol::{VarInt, WritePacket};
 use valence_server::text::IntoText;
 use valence_server::{GameMode, ItemKind, ItemStack, Text};
 
+pub mod into_inventory;
+pub mod player_inventory;
 mod validate;
 
 pub struct InventoryPlugin;
@@ -425,14 +428,22 @@ impl HeldItem {
         self.held_item_slot
     }
 
+    pub fn hotbar_idx(&self) -> u8 {
+        PlayerInventory::slot_to_hotbar(self.held_item_slot)
+    }
+
     pub fn set_slot(&mut self, slot: u16) {
         // temp
         assert!(
-            (36..=44).contains(&slot),
+            PlayerInventory::SLOTS_HOTBAR.contains(&slot),
             "slot index of {slot} out of bounds"
         );
 
         self.held_item_slot = slot;
+    }
+
+    pub fn set_hotbar_idx(&mut self, hotbar_idx: u8) {
+        self.set_slot(PlayerInventory::hotbar_to_slot(hotbar_idx))
     }
 }
 
@@ -505,9 +516,11 @@ impl<'a> InventoryWindow<'a> {
 
     #[track_caller]
     pub fn slot_count(&self) -> u16 {
-        match self.open_inventory.as_ref() {
-            Some(inv) => inv.slot_count() + PLAYER_INVENTORY_MAIN_SLOTS_COUNT,
-            None => self.player_inventory.slot_count(),
+        let player_inv_count = self.player_inventory.slot_count();
+        if let Some(open_inv) = &self.open_inventory {
+            player_inv_count + open_inv.slot_count()
+        } else {
+            player_inv_count
         }
     }
 }
@@ -585,9 +598,11 @@ impl<'a> InventoryWindowMut<'a> {
     }
 
     pub fn slot_count(&self) -> u16 {
-        match self.open_inventory.as_ref() {
-            Some(inv) => inv.slot_count() + PLAYER_INVENTORY_MAIN_SLOTS_COUNT,
-            None => self.player_inventory.slot_count(),
+        let player_inv_count = self.player_inventory.slot_count();
+        if let Some(open_inv) = &self.open_inventory {
+            player_inv_count + open_inv.slot_count()
+        } else {
+            player_inv_count
         }
     }
 }
@@ -1250,7 +1265,7 @@ pub struct UpdateSelectedSlotEvent {
 fn update_player_selected_slot(mut clients: Query<(&mut Client, &HeldItem), Changed<HeldItem>>) {
     for (mut client, held_item) in &mut clients {
         client.write_packet(&UpdateSelectedSlotS2c {
-            slot: (held_item.held_item_slot - PLAYER_INVENTORY_MAIN_SLOTS_COUNT) as u8,
+            slot: held_item.hotbar_idx(),
         });
     }
 }
@@ -1270,7 +1285,7 @@ fn handle_update_selected_slot(
                     continue;
                 }
 
-                held.held_item_slot = convert_hotbar_slot_id(pkt.slot);
+                held.set_hotbar_idx(pkt.slot as u8);
 
                 events.send(UpdateSelectedSlotEvent {
                     client: packet.client,
@@ -1288,10 +1303,6 @@ pub fn convert_to_player_slot_id(target_kind: InventoryKind, slot_id: u16) -> u1
     // the first slot in the player's general inventory
     let offset = target_kind.slot_count() as u16;
     slot_id - offset + 9
-}
-
-fn convert_hotbar_slot_id(slot_id: u16) -> u16 {
-    slot_id + PLAYER_INVENTORY_MAIN_SLOTS_COUNT
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -1449,8 +1460,8 @@ mod tests {
 
     #[test]
     fn test_convert_hotbar_slot_id() {
-        assert_eq!(convert_hotbar_slot_id(0), 36);
-        assert_eq!(convert_hotbar_slot_id(4), 40);
-        assert_eq!(convert_hotbar_slot_id(8), 44);
+        assert_eq!(PlayerInventory::hotbar_to_slot(0), 36);
+        assert_eq!(PlayerInventory::hotbar_to_slot(4), 40);
+        assert_eq!(PlayerInventory::hotbar_to_slot(8), 44);
     }
 }
