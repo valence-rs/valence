@@ -42,7 +42,6 @@ use valence_server::protocol::{VarInt, WritePacket};
 use valence_server::text::IntoText;
 use valence_server::{GameMode, ItemKind, ItemStack, Text};
 
-pub mod into_inventory;
 pub mod player_inventory;
 mod validate;
 
@@ -516,11 +515,11 @@ impl<'a> InventoryWindow<'a> {
 
     #[track_caller]
     pub fn slot_count(&self) -> u16 {
-        let player_inv_count = self.player_inventory.slot_count();
         if let Some(open_inv) = &self.open_inventory {
-            player_inv_count + open_inv.slot_count()
+            // when the window is split, we can only access the main slots of player's inventory
+            PlayerInventory::MAIN_SIZE + open_inv.slot_count()
         } else {
-            player_inv_count
+            self.player_inventory.slot_count()
         }
     }
 }
@@ -598,11 +597,11 @@ impl<'a> InventoryWindowMut<'a> {
     }
 
     pub fn slot_count(&self) -> u16 {
-        let player_inv_count = self.player_inventory.slot_count();
         if let Some(open_inv) = &self.open_inventory {
-            player_inv_count + open_inv.slot_count()
+            // when the window is split, we can only access the main slots of player's inventory
+            PlayerInventory::MAIN_SIZE + open_inv.slot_count()
         } else {
-            player_inv_count
+            self.player_inventory.slot_count()
         }
     }
 }
