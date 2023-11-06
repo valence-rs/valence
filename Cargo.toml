@@ -110,7 +110,7 @@ arrayvec = "0.7.2"
 async-trait = "0.1.60"
 atty = "0.2.14"
 base64 = "0.21.0"
-bevy_app = { version = "0.11", default-features = false }
+bevy_app = { version = "0.12", default-features = false }
 bevy_derive = "0.11.2"
 bevy_ecs = { version = "0.11", default-features = false, features = [
     "multi-threaded",
