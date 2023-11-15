@@ -45,6 +45,10 @@ pub use valence_anvil as anvil;
 pub use valence_boss_bar as boss_bar;
 #[cfg(feature = "chat")]
 pub use valence_chat as chat;
+#[cfg(feature = "command")]
+pub use valence_command as command;
+#[cfg(feature = "command")]
+pub use valence_command_macros as command_macros;
 #[cfg(feature = "inventory")]
 pub use valence_inventory as inventory;
 pub use valence_lang as lang;
@@ -236,6 +240,11 @@ impl PluginGroup for DefaultPlugins {
         #[cfg(feature = "boss_bar")]
         {
             group = group.add(valence_boss_bar::BossBarPlugin);
+        }
+
+        #[cfg(feature = "command")]
+        {
+            group = group.add(valence_command::manager::CommandPlugin);
         }
 
         #[cfg(feature = "scoreboard")]
