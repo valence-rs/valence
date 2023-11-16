@@ -350,8 +350,9 @@ fn parse_command_args(
                 let pre_input = input.clone().into_inner();
                 let valid = parser(&mut input);
                 if valid {
+                    // If input.len() > pre_input.len() the parser replaced the input
                     let Some(arg) = pre_input
-                        .get(..input.len() - pre_input.len())
+                        .get(..pre_input.len().wrapping_sub(input.len()))
                         .map(|s| s.to_string())
                     else {
                         panic!(
