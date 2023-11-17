@@ -43,6 +43,8 @@ pub use valence_advancement as advancement;
 pub use valence_anvil as anvil;
 #[cfg(feature = "boss_bar")]
 pub use valence_boss_bar as boss_bar;
+#[cfg(feature = "chat")]
+pub use valence_chat as chat;
 #[cfg(feature = "command")]
 pub use valence_command as command;
 #[cfg(feature = "command")]
@@ -72,7 +74,6 @@ use valence_server::interact_entity::InteractEntityPlugin;
 use valence_server::interact_item::InteractItemPlugin;
 use valence_server::keepalive::KeepalivePlugin;
 use valence_server::layer::LayerPlugin;
-use valence_server::message::MessagePlugin;
 use valence_server::movement::MovementPlugin;
 use valence_server::op_level::OpLevelPlugin;
 pub use valence_server::protocol::status_effects;
@@ -106,6 +107,8 @@ pub mod prelude {
         event::AdvancementTabChangeEvent, Advancement, AdvancementBundle, AdvancementClientUpdate,
         AdvancementCriteria, AdvancementDisplay, AdvancementFrameType, AdvancementRequirements,
     };
+    #[cfg(feature = "chat")]
+    pub use valence_chat::message::SendMessage as _;
     #[cfg(feature = "inventory")]
     pub use valence_inventory::{
         CursorItem, Inventory, InventoryKind, InventoryWindow, InventoryWindowMut, OpenInventory,
@@ -144,7 +147,6 @@ pub mod prelude {
     };
     pub use valence_server::layer::{EntityLayer, LayerBundle};
     pub use valence_server::math::{DVec2, DVec3, Vec2, Vec3};
-    pub use valence_server::message::SendMessage as _;
     pub use valence_server::nbt::Compound;
     pub use valence_server::protocol::packets::play::particle_s2c::Particle;
     pub use valence_server::protocol::text::{Color, IntoText, Text};
@@ -186,7 +188,6 @@ impl PluginGroup for DefaultPlugins {
             .add(ClientSettingsPlugin)
             .add(ActionPlugin)
             .add(TeleportPlugin)
-            .add(MessagePlugin)
             .add(CustomPayloadPlugin)
             .add(HandSwingPlugin)
             .add(InteractBlockPlugin)
@@ -249,6 +250,11 @@ impl PluginGroup for DefaultPlugins {
         #[cfg(feature = "scoreboard")]
         {
             group = group.add(valence_scoreboard::ScoreboardPlugin);
+        }
+
+        #[cfg(feature = "chat")]
+        {
+            group = group.add(valence_chat::ChatPlugin);
         }
 
         group

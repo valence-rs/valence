@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use valence::abilities::{FlyingSpeed, FovModifier, PlayerAbilitiesFlags};
-use valence::message::SendMessage;
+use valence::chat::message::SendMessage;
 use valence::prelude::*;
 use valence_anvil::{AnvilLevel, ChunkLoadEvent, ChunkLoadStatus};
 
@@ -137,7 +137,7 @@ fn handle_chunk_loads(
                 );
 
                 eprintln!("{errmsg}");
-                layer.send_chat_message(errmsg.color(Color::RED));
+                layer.send_game_message(errmsg.color(Color::RED));
 
                 layer.insert_chunk(event.pos, UnloadedChunk::new());
             }

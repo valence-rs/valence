@@ -33,7 +33,6 @@ pub mod interact_entity;
 pub mod interact_item;
 pub mod keepalive;
 pub mod layer;
-pub mod message;
 pub mod movement;
 pub mod op_level;
 pub mod resource_pack;

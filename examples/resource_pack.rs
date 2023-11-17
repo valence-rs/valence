@@ -1,7 +1,7 @@
 #![allow(clippy::type_complexity)]
 
+use valence::chat::message::SendMessage;
 use valence::entity::sheep::SheepEntityBundle;
-use valence::message::SendMessage;
 use valence::prelude::*;
 use valence::protocol::packets::play::ResourcePackStatusC2s;
 use valence::resource_pack::ResourcePackStatusEvent;
@@ -86,7 +86,7 @@ fn init_clients(
         pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
         *game_mode = GameMode::Creative;
 
-        client.send_chat_message("Hit the sheep to prompt for the resource pack.".italic());
+        client.send_game_message("Hit the sheep to prompt for the resource pack.".italic());
     }
 }
 
@@ -113,16 +113,16 @@ fn on_resource_pack_status(
         if let Ok(mut client) = clients.get_mut(event.client) {
             match event.status {
                 ResourcePackStatusC2s::Accepted => {
-                    client.send_chat_message("Resource pack accepted.".color(Color::GREEN));
+                    client.send_game_message("Resource pack accepted.".color(Color::GREEN));
                 }
                 ResourcePackStatusC2s::Declined => {
-                    client.send_chat_message("Resource pack declined.".color(Color::RED));
+                    client.send_game_message("Resource pack declined.".color(Color::RED));
                 }
                 ResourcePackStatusC2s::FailedDownload => {
-                    client.send_chat_message("Resource pack failed to download.".color(Color::RED));
+                    client.send_game_message("Resource pack failed to download.".color(Color::RED));
                 }
                 ResourcePackStatusC2s::SuccessfullyLoaded => {
-                    client.send_chat_message(
+                    client.send_game_message(
                         "Resource pack successfully downloaded.".color(Color::BLUE),
                     );
                 }

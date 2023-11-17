@@ -101,8 +101,8 @@ fn init_clients(
         pos.set([0.0, 65.0, 0.0]);
         *game_mode = GameMode::Survival;
 
-        client.send_chat_message("Welcome to Conway's game of life in Minecraft!".italic());
-        client.send_chat_message(
+        client.send_game_message("Welcome to Conway's game of life in Minecraft!".italic());
+        client.send_game_message(
             "Sneak to toggle running the simulation and the left mouse button to bring blocks to \
              life."
                 .italic(),

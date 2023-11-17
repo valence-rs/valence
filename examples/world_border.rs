@@ -1,9 +1,9 @@
 #![allow(clippy::type_complexity)]
 
 use bevy_app::App;
+use valence::chat::message::{ChatMessageEvent, SendMessage};
 use valence::client::despawn_disconnected_clients;
 use valence::inventory::HeldItem;
-use valence::message::{ChatMessageEvent, SendMessage};
 use valence::prelude::*;
 use valence::world_border::*;
 
@@ -93,14 +93,14 @@ fn init_clients(
         let pickaxe = ItemStack::new(ItemKind::WoodenPickaxe, 1, None);
         inv.set_slot(main_slot.slot(), pickaxe);
         client
-            .send_chat_message("Use `add` and `center` chat messages to change the world border.");
+            .send_game_message("Use `add` and `center` chat messages to change the world border.");
     }
 }
 
 fn display_diameter(mut layers: Query<(&mut ChunkLayer, &WorldBorderLerp)>) {
     for (mut layer, lerp) in &mut layers {
         if lerp.remaining_ticks > 0 {
-            layer.send_chat_message(format!("diameter = {}", lerp.current_diameter));
+            layer.send_game_message(format!("diameter = {}", lerp.current_diameter));
         }
     }
 }

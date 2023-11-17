@@ -13,4 +13,5 @@ bevy_app.workspace = true
 bevy_ecs.workspace = true
 bitfield-struct.workspace = true
 derive_more.workspace = true
+rsa.workspace = true
 valence_server.workspace = true

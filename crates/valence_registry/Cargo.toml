@@ -20,3 +20,4 @@ anyhow.workspace = true
 valence_ident.workspace = true
 valence_nbt = { workspace = true, features = ["serde"] }
 valence_server_common.workspace = true
+valence_text.workspace = true

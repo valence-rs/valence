@@ -1,13 +1,13 @@
 #![allow(clippy::type_complexity)]
 
 use rand::seq::SliceRandom;
+use valence::chat::message::{ChatMessageEvent, SendMessage};
 use valence::prelude::*;
 use valence_boss_bar::{
     BossBarBundle, BossBarColor, BossBarDivision, BossBarFlags, BossBarHealth, BossBarStyle,
     BossBarTitle,
 };
 use valence_server::entity::cow::CowEntityBundle;
-use valence_server::message::ChatMessageEvent;
 use valence_text::color::NamedColor;
 
 const SPAWN_Y: i32 = 64;
@@ -107,30 +107,30 @@ fn init_clients(
         pos.set([0.5, SPAWN_Y as f64 + 1.0, 0.5]);
         *game_mode = GameMode::Creative;
 
-        client.send_chat_message(
+        client.send_game_message(
             "Type 'view' to toggle bar display"
                 .on_click_suggest_command("view")
                 .on_hover_show_text("Type 'view'"),
         );
-        client.send_chat_message(
+        client.send_game_message(
             "Type 'color' to set a random color"
                 .on_click_suggest_command("color")
                 .on_hover_show_text("Type 'color'"),
         );
-        client.send_chat_message(
+        client.send_game_message(
             "Type 'division' to set a random division"
                 .on_click_suggest_command("division")
                 .on_hover_show_text("Type 'division'"),
         );
-        client.send_chat_message(
+        client.send_game_message(
             "Type 'flags' to set random flags"
                 .on_click_suggest_command("flags")
                 .on_hover_show_text("Type 'flags'"),
         );
-        client.send_chat_message(
+        client.send_game_message(
             "Type any string to set the title".on_click_suggest_command("title"),
         );
-        client.send_chat_message(
+        client.send_game_message(
             "Type any number between 0 and 1 to set the health".on_click_suggest_command("health"),
         );
     }

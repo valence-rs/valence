@@ -70,7 +70,7 @@ fn init_clients(
         is_flat.0 = true;
         *game_mode = GameMode::Adventure;
 
-        client.send_chat_message("Welcome to epic infinite parkour game!".italic());
+        client.send_game_message("Welcome to epic infinite parkour game!".italic());
 
         let state = GameState {
             blocks: VecDeque::new(),
@@ -100,7 +100,7 @@ fn reset_clients(
 
         if out_of_bounds || state.is_added() {
             if out_of_bounds && !state.is_added() {
-                client.send_chat_message(
+                client.send_game_message(
                     "Your score was ".italic()
                         + state
                             .score
