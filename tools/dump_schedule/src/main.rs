@@ -61,8 +61,6 @@ fn main() -> io::Result<()> {
         std::process::exit(1)
     };
 
-    // let label = label.dyn_clone();
-
     let dot_graph = bevy_mod_debugdump::schedule_graph::schedule_graph_dot(
         schedule,
         &app.world,
