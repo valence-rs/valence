@@ -114,7 +114,7 @@ fn event_handler(
 
     for ChatMessageEvent {
         client, message, ..
-    } in messages.iter()
+    } in messages.read()
     {
         let Ok((username, _, _)) = clients.get(*client) else {
             continue;
@@ -138,7 +138,7 @@ fn event_handler(
         position,
         hand,
         ..
-    } in block_interacts.iter()
+    } in block_interacts.read()
     {
         if *hand == Hand::Main && *position == SKULL_POS {
             let Ok((_, properties, uuid)) = clients.get(*client) else {

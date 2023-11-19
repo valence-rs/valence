@@ -156,13 +156,13 @@ fn display_is_flying(
     mut player_stop_flying_events: EventReader<PlayerStopFlyingEvent>,
     mut clients: Query<&mut Client>,
 ) {
-    for event in player_start_flying_events.iter() {
+    for event in player_start_flying_events.read() {
         if let Ok(mut client) = clients.get_mut(event.client) {
             client.send_action_bar_message("You are flying!".color(NamedColor::Green));
         }
     }
 
-    for event in player_stop_flying_events.iter() {
+    for event in player_stop_flying_events.read() {
         if let Ok(mut client) = clients.get_mut(event.client) {
             client.send_action_bar_message("You are no longer flying!".color(NamedColor::Red));
         }

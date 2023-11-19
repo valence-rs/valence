@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use bevy_ecs::world::EntityMut;
+use bevy_ecs::world::EntityWorldMut;
 
 use crate::client::{ViewDistance, VisibleEntityLayers};
 use crate::entity::cow::CowEntityBundle;
@@ -66,7 +66,7 @@ fn block_create_destroy() {
 
 #[test]
 fn layer_chunk_view_change() {
-    fn view(client: &EntityMut) -> ChunkView {
+    fn view(client: &EntityWorldMut) -> ChunkView {
         let chunk_pos = client.get::<Position>().unwrap().0.into();
         let view_dist = client.get::<ViewDistance>().unwrap().get();
 

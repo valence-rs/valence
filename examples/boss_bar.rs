@@ -160,7 +160,7 @@ fn listen_messages(
 
     for ChatMessageEvent {
         client, message, ..
-    } in message_events.iter()
+    } in message_events.read()
     {
         match message.as_ref() {
             "view" => {

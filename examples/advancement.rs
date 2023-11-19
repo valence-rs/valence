@@ -253,7 +253,7 @@ fn sneak(
     mut client_save: ResMut<ClientSave>,
 ) {
     let root_criteria = root_criteria.single();
-    for sneaking in sneaking.iter() {
+    for sneaking in sneaking.read() {
         if sneaking.state == SneakState::Stop {
             continue;
         }
@@ -285,7 +285,7 @@ fn tab_change(
 ) {
     let root2_criteria = root2_criteria.single();
     let root = root.single();
-    for tab_change in tab_change.iter() {
+    for tab_change in tab_change.read() {
         let Ok((mut advancement_client_update, mut tab_change_count)) =
             client.get_mut(tab_change.client)
         else {

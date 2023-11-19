@@ -87,7 +87,7 @@ fn toggle_gamemode_on_sneak(
     mut clients: Query<&mut GameMode>,
     mut events: EventReader<SneakEvent>,
 ) {
-    for event in events.iter() {
+    for event in events.read() {
         let Ok(mut mode) = clients.get_mut(event.client) else {
             continue;
         };
@@ -108,7 +108,7 @@ fn digging(
 ) {
     let mut layer = layers.single_mut();
 
-    for event in events.iter() {
+    for event in events.read() {
         let Ok(game_mode) = clients.get(event.client) else {
             continue;
         };
@@ -128,7 +128,7 @@ fn place_blocks(
 ) {
     let mut layer = layers.single_mut();
 
-    for event in events.iter() {
+    for event in events.read() {
         let Ok((mut inventory, game_mode, held)) = clients.get_mut(event.client) else {
             continue;
         };

@@ -91,7 +91,7 @@ fn toggle_gamemode_on_sneak(
     mut clients: Query<&mut GameMode>,
     mut events: EventReader<SneakEvent>,
 ) {
-    for event in events.iter() {
+    for event in events.read() {
         let Ok(mut mode) = clients.get_mut(event.client) else {
             continue;
         };
@@ -111,7 +111,7 @@ fn open_chest(
     inventories: Query<Entity, (With<Inventory>, Without<Client>)>,
     mut events: EventReader<InteractBlockEvent>,
 ) {
-    for event in events.iter() {
+    for event in events.read() {
         if event.position != CHEST_POS.into() {
             continue;
         }

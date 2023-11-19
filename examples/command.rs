@@ -212,7 +212,7 @@ fn handle_teleport_command(
     mut positions: Query<&mut Position>,
     usernames: Query<(Entity, &Username)>,
 ) {
-    for event in events.iter() {
+    for event in events.read() {
         let compiled_command = match &event.result {
             TeleportCommand::ExecutorToLocation { location } => (
                 TeleportTarget::Targets(vec![event.executor]),
@@ -417,7 +417,7 @@ fn handle_test_command(
     mut events: EventReader<CommandResultEvent<TestCommand>>,
     mut clients: Query<&mut Client>,
 ) {
-    for event in events.iter() {
+    for event in events.read() {
         let client = &mut clients.get_mut(event.executor).unwrap();
         client.send_chat_message(format!(
             "Test command executed with data:\n {:#?}",
@@ -430,7 +430,7 @@ fn handle_complex_command(
     mut events: EventReader<CommandResultEvent<ComplexRedirectionCommand>>,
     mut clients: Query<&mut Client>,
 ) {
-    for event in events.iter() {
+    for event in events.read() {
         let client = &mut clients.get_mut(event.executor).unwrap();
         client.send_chat_message(format!(
             "complex command executed with data:\n {:#?}\n and with the modifiers:\n {:#?}",
@@ -443,7 +443,7 @@ fn handle_struct_command(
     mut events: EventReader<CommandResultEvent<StructCommand>>,
     mut clients: Query<&mut Client>,
 ) {
-    for event in events.iter() {
+    for event in events.read() {
         let client = &mut clients.get_mut(event.executor).unwrap();
         client.send_chat_message(format!(
             "Struct command executed with data:\n {:#?}",
@@ -457,7 +457,7 @@ fn handle_gamemode_command(
     mut clients: Query<(&mut Client, &mut GameMode, &Username, Entity)>,
     positions: Query<&Position>,
 ) {
-    for event in events.iter() {
+    for event in events.read() {
         let game_mode_to_set = match &event.result {
             GamemodeCommand::Survival { .. } => GameMode::Survival,
             GamemodeCommand::Creative { .. } => GameMode::Creative,
