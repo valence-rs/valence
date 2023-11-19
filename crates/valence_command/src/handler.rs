@@ -113,7 +113,7 @@ fn command_event_system<T>(
 ) where
     T: Command + Send + Sync,
 {
-    for command_event in commands_executed.iter() {
+    for command_event in commands_executed.read() {
         if let Some(executable) = command.executables.get(&command_event.node) {
             let result = executable(&mut ParseInput::new(&command_event.command));
             events.send(CommandResultEvent {

@@ -43,7 +43,7 @@ struct PlayerListSet;
 impl Plugin for PlayerListPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(PlayerList::new())
-            .configure_set(
+            .configure_sets(
                 PostUpdate,
                 // Needs to happen before player entities are initialized. Otherwise, they will
                 // appear invisible.

@@ -43,7 +43,7 @@ pub struct UpdateWorldBorderSet;
 
 impl Plugin for WorldBorderPlugin {
     fn build(&self, app: &mut App) {
-        app.configure_set(PostUpdate, UpdateWorldBorderSet.before(UpdateClientsSet))
+        app.configure_sets(PostUpdate, UpdateWorldBorderSet.before(UpdateClientsSet))
             .add_systems(
                 PostUpdate,
                 (

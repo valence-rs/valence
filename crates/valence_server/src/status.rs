@@ -29,7 +29,7 @@ fn handle_status(
     mut respawn_events: EventWriter<RequestRespawnEvent>,
     mut request_stats_events: EventWriter<RequestStatsEvent>,
 ) {
-    for packet in packets.iter() {
+    for packet in packets.read() {
         if let Some(pkt) = packet.decode::<ClientStatusC2s>() {
             match pkt {
                 ClientStatusC2s::PerformRespawn => respawn_events.send(RequestRespawnEvent {

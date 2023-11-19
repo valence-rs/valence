@@ -27,7 +27,7 @@ fn handle_player_interact_item(
     mut clients: Query<&mut ActionSequence>,
     mut events: EventWriter<InteractItemEvent>,
 ) {
-    for packet in packets.iter() {
+    for packet in packets.read() {
         if let Some(pkt) = packet.decode::<PlayerInteractItemC2s>() {
             if let Ok(mut action_seq) = clients.get_mut(packet.client) {
                 action_seq.update(pkt.sequence.0);

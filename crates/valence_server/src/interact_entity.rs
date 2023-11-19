@@ -31,7 +31,7 @@ fn handle_interact_entity(
     entities: Res<EntityManager>,
     mut events: EventWriter<InteractEntityEvent>,
 ) {
-    for packet in packets.iter() {
+    for packet in packets.read() {
         if let Some(pkt) = packet.decode::<PlayerInteractEntityC2s>() {
             // TODO: check that the entity is in the same instance as the player.
             // TODO: check that the distance between the player and the interacted entity is

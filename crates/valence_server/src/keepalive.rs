@@ -96,7 +96,7 @@ fn handle_keepalive_response(
     mut clients: Query<(Entity, &mut KeepaliveState, &mut Ping)>,
     mut commands: Commands,
 ) {
-    for packet in packets.iter() {
+    for packet in packets.read() {
         if let Some(pkt) = packet.decode::<KeepAliveC2s>() {
             if let Ok((entity, mut state, mut ping)) = clients.get_mut(packet.client) {
                 if state.got_keepalive {

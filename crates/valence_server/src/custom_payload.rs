@@ -35,7 +35,7 @@ fn handle_custom_payload(
     mut packets: EventReader<PacketEvent>,
     mut events: EventWriter<CustomPayloadEvent>,
 ) {
-    for packet in packets.iter() {
+    for packet in packets.read() {
         if let Some(pkt) = packet.decode::<CustomPayloadC2s>() {
             events.send(CustomPayloadEvent {
                 client: packet.client,

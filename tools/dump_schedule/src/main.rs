@@ -52,21 +52,20 @@ fn main() -> io::Result<()> {
         return Ok(());
     };
 
-    let Some(label) = schedules
+    let Some((_, schedule)) = schedules
         .iter()
-        .map(|(label, _)| label)
-        .find(|label| format!("{label:?}") == sched_name)
+        .find(|(label, _)| format!("{label:?}") == sched_name)
     else {
         eprintln!("Unknown schedule \"{sched_name}\"");
         print_available_schedules(schedules);
         std::process::exit(1)
     };
 
-    let label = label.dyn_clone();
+    // let label = label.dyn_clone();
 
-    let dot_graph = bevy_mod_debugdump::schedule_graph_dot(
-        &mut app,
-        label,
+    let dot_graph = bevy_mod_debugdump::schedule_graph::schedule_graph_dot(
+        schedule,
+        &app.world,
         &bevy_mod_debugdump::schedule_graph::Settings {
             ambiguity_enable: false,
             ..Default::default()
