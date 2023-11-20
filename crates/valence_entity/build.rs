@@ -534,6 +534,7 @@ fn build() -> anyhow::Result<TokenStream> {
             systems.extend([quote! {
                 #[allow(clippy::needless_borrow)]
                 #[allow(clippy::suspicious_else_formatting)]
+                #[allow(clippy::needless_borrows_for_generic_args)]
                 fn #system_name_ident(
                     mut query: Query<(&#component_path, &mut tracked_data::TrackedData), Changed<#component_path>>
                 ) {

@@ -88,7 +88,7 @@ fn init_clients(
 }
 
 fn squat_and_die(mut clients: Query<&mut Client>, mut events: EventReader<SneakEvent>) {
-    for event in events.iter() {
+    for event in events.read() {
         if event.state == SneakState::Start {
             if let Ok(mut client) = clients.get_mut(event.client) {
                 client.kill("Squatted too hard.");
@@ -107,7 +107,7 @@ fn necromancy(
     mut events: EventReader<RequestRespawnEvent>,
     layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
 ) {
-    for event in events.iter() {
+    for event in events.read() {
         if let Ok((
             mut layer_id,
             mut visible_chunk_layer,

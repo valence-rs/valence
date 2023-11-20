@@ -765,7 +765,7 @@ fn update_open_inventories(
 
 /// Handles clients telling the server that they are closing an inventory.
 fn handle_close_handled_screen(mut packets: EventReader<PacketEvent>, mut commands: Commands) {
-    for packet in packets.iter() {
+    for packet in packets.read() {
         if packet.decode::<CloseHandledScreenC2s>().is_some() {
             if let Some(mut entity) = commands.get_entity(packet.client) {
                 entity.remove::<OpenInventory>();
@@ -780,7 +780,7 @@ fn update_client_on_close_inventory(
     mut removals: RemovedComponents<OpenInventory>,
     mut clients: Query<(&mut Client, &ClientInventoryState)>,
 ) {
-    for entity in &mut removals {
+    for entity in &mut removals.read() {
         if let Ok((mut client, inv_state)) = clients.get_mut(entity) {
             client.write_packet(&CloseScreenS2c {
                 window_id: inv_state.window_id,
@@ -822,7 +822,7 @@ fn handle_click_slot(
     mut drop_item_stack_events: EventWriter<DropItemStackEvent>,
     mut click_slot_events: EventWriter<ClickSlotEvent>,
 ) {
-    for packet in packets.iter() {
+    for packet in packets.read() {
         let Some(pkt) = packet.decode::<ClickSlotC2s>() else {
             // Not the packet we're looking for.
             continue;
@@ -1096,7 +1096,7 @@ fn handle_player_actions(
     mut clients: Query<(&mut Inventory, &mut ClientInventoryState, &HeldItem)>,
     mut drop_item_stack_events: EventWriter<DropItemStackEvent>,
 ) {
-    for packet in packets.iter() {
+    for packet in packets.read() {
         if let Some(pkt) = packet.decode::<PlayerActionC2s>() {
             match pkt.action {
                 PlayerAction::DropAllItems => {
@@ -1166,7 +1166,7 @@ fn handle_creative_inventory_action(
     mut inv_action_events: EventWriter<CreativeInventoryActionEvent>,
     mut drop_item_stack_events: EventWriter<DropItemStackEvent>,
 ) {
-    for packet in packets.iter() {
+    for packet in packets.read() {
         if let Some(pkt) = packet.decode::<CreativeInventoryActionC2s>() {
             let Ok((mut client, mut inventory, mut inv_state, game_mode)) =
                 clients.get_mut(packet.client)
@@ -1244,7 +1244,7 @@ fn handle_update_selected_slot(
     mut clients: Query<&mut HeldItem>,
     mut events: EventWriter<UpdateSelectedSlotEvent>,
 ) {
-    for packet in packets.iter() {
+    for packet in packets.read() {
         if let Some(pkt) = packet.decode::<UpdateSelectedSlotC2s>() {
             if let Ok(mut mut_held) = clients.get_mut(packet.client) {
                 let held = mut_held.bypass_change_detection();

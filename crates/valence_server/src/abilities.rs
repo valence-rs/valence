@@ -151,7 +151,7 @@ fn update_server_player_abilities(
     mut player_stop_flying_event_writer: EventWriter<PlayerStopFlyingEvent>,
     mut client_query: Query<&mut PlayerAbilitiesFlags>,
 ) {
-    for packets in packet_events.iter() {
+    for packets in packet_events.read() {
         if let Some(pkt) = packets.decode::<UpdatePlayerAbilitiesC2s>() {
             if let Ok(mut mut_flags) = client_query.get_mut(packets.client) {
                 let flags = mut_flags.bypass_change_detection();

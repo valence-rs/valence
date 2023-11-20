@@ -38,7 +38,7 @@ fn handle_interact_block(
     mut clients: Query<&mut ActionSequence>,
     mut events: EventWriter<InteractBlockEvent>,
 ) {
-    for packet in packets.iter() {
+    for packet in packets.read() {
         if let Some(pkt) = packet.decode::<PlayerInteractBlockC2s>() {
             if let Ok(mut action_seq) = clients.get_mut(packet.client) {
                 action_seq.update(pkt.sequence.0);

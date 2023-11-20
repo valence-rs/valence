@@ -119,7 +119,7 @@ fn handle_chunk_loads(
 ) {
     let mut layer = layers.single_mut();
 
-    for event in events.iter() {
+    for event in events.read() {
         match &event.status {
             ChunkLoadStatus::Success { .. } => {
                 // The chunk was inserted into the world. Nothing for us to do.

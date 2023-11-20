@@ -51,7 +51,7 @@ pub fn handle_chat_message(
     mut packets: EventReader<PacketEvent>,
     mut events: EventWriter<ChatMessageEvent>,
 ) {
-    for packet in packets.iter() {
+    for packet in packets.read() {
         if let Some(pkt) = packet.decode::<ChatMessageC2s>() {
             events.send(ChatMessageEvent {
                 client: packet.client,

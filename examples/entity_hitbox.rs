@@ -86,7 +86,7 @@ fn spawn_entity(
     mut sneaking: EventReader<SneakEvent>,
     client_query: Query<(&Position, &EntityLayerId)>,
 ) {
-    for sneaking in sneaking.iter() {
+    for sneaking in sneaking.read() {
         if sneaking.state == SneakState::Start {
             continue;
         }
