@@ -108,74 +108,38 @@ fn run_event_loop(
         EventWriter<PacketEvent>,
         Commands,
     )>,
-    mut check_again: Local<Vec<(Entity, usize)>>,
 ) {
-    debug_assert!(check_again.is_empty());
-
     let (mut clients, mut event_writer, mut commands) = state.get_mut(world);
 
     for (entity, mut client) in &mut clients {
-        match client.connection_mut().try_recv() {
-            Ok(Some(pkt)) => {
-                event_writer.send(PacketEvent {
-                    client: entity,
-                    timestamp: pkt.timestamp,
-                    id: pkt.id,
-                    data: pkt.body,
-                });
+        let mut pending_packets = client.connection().len();
 
-                let remaining = client.connection().len();
+        'pkt: while pending_packets > 0 {
+            pending_packets -= 1;
 
-                if remaining > 0 {
-                    check_again.push((entity, remaining));
+            match client.connection_mut().try_recv() {
+                Ok(Some(pkt)) => {
+                    event_writer.send(PacketEvent {
+                        client: entity,
+                        timestamp: pkt.timestamp,
+                        id: pkt.id,
+                        data: pkt.body,
+                    });
                 }
-            }
-            Ok(None) => {}
-            Err(e) => {
-                // Client is disconnected.
-                debug!("disconnecting client: {e:#}");
-                commands.entity(entity).remove::<Client>();
+                Ok(None) => {
+                    break 'pkt;
+                }
+                Err(e) => {
+                    // Client is disconnected.
+                    debug!("disconnecting client: {e:#}");
+                    commands.entity(entity).remove::<Client>();
+                    break 'pkt;
+                }
             }
         }
     }
 
     state.apply(world);
+
     run_event_loop_schedules(world);
-
-    while !check_again.is_empty() {
-        let (mut clients, mut event_writer, mut commands) = state.get_mut(world);
-
-        check_again.retain_mut(|(entity, remaining)| {
-            debug_assert!(*remaining > 0);
-
-            if let Ok((_, mut client)) = clients.get_mut(*entity) {
-                match client.connection_mut().try_recv() {
-                    Ok(Some(pkt)) => {
-                        event_writer.send(PacketEvent {
-                            client: *entity,
-                            timestamp: pkt.timestamp,
-                            id: pkt.id,
-                            data: pkt.body,
-                        });
-                        *remaining -= 1;
-                        // Keep looping as long as there are packets to process this tick.
-                        *remaining > 0
-                    }
-                    Ok(None) => false,
-                    Err(e) => {
-                        // Client is disconnected.
-                        debug!("disconnecting client: {e:#}");
-                        commands.entity(*entity).remove::<Client>();
-                        false
-                    }
-                }
-            } else {
-                // Client must have been deleted in the last run of the schedule.
-                false
-            }
-        });
-
-        state.apply(world);
-        run_event_loop_schedules(world);
-    }
 }
