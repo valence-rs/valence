@@ -83,7 +83,7 @@ impl Plugin for InventoryPlugin {
 /// plus the hotbar.
 pub const PLAYER_INVENTORY_MAIN_SLOTS_COUNT: u16 = 36;
 
-pub mod slots {
+pub mod player_slots {
     pub const CRAFTING_RESULT: u16 = 0;
     pub const CRAFTING_TOP_LEFT: u16 = 1;
     pub const CRAFTING_TOP_RIGHT: u16 = 2;
