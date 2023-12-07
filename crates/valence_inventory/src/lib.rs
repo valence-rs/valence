@@ -83,6 +83,23 @@ impl Plugin for InventoryPlugin {
 /// plus the hotbar.
 pub const PLAYER_INVENTORY_MAIN_SLOTS_COUNT: u16 = 36;
 
+pub mod player_slots {
+    pub const CRAFTING_RESULT: u16 = 0;
+    pub const CRAFTING_TOP_LEFT: u16 = 1;
+    pub const CRAFTING_TOP_RIGHT: u16 = 2;
+    pub const CRAFTING_BOTTOM_LEFT: u16 = 3;
+    pub const CRAFTING_BOTTOM_RIGHT: u16 = 4;
+    pub const HELMET: u16 = 5;
+    pub const CHESTPLATE: u16 = 6;
+    pub const LEGGINGS: u16 = 7;
+    pub const BOOTS: u16 = 8;
+    pub const FIRST_ROW_START: u16 = 9;
+    pub const SECOND_ROW_START: u16 = 18;
+    pub const THIRD_ROW_START: u16 = 27;
+    pub const HOTBAR_START: u16 = 36;
+    pub const OFFHAND: u16 = 45;
+}
+
 #[derive(Debug, Clone, Component)]
 pub struct Inventory {
     title: Text,
