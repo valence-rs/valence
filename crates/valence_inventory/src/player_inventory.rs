@@ -12,7 +12,7 @@ impl PlayerInventory {
     pub const SLOT_CRAFT_RESULT: u16 = 0;
     pub const SLOTS_HOTBAR: RangeInclusive<u16> = 36..=44;
     pub const SLOTS_MAIN: RangeInclusive<u16> = 9..=44;
-    pub const MAIN_SIZE: u16 = 36;
+    pub const MAIN_SIZE: u16 = *Self::SLOTS_MAIN.end() - *Self::SLOTS_MAIN.start() + 1;
 
     pub const fn hotbar_to_slot(hotbar: u8) -> u16 {
         *Self::SLOTS_HOTBAR.start() + (hotbar as u16)
