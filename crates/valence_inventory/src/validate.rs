@@ -2,9 +2,8 @@ use valence_server::protocol::anyhow::{self, bail, ensure};
 use valence_server::protocol::packets::play::click_slot_c2s::ClickMode;
 use valence_server::protocol::packets::play::ClickSlotC2s;
 
-use crate::player_inventory::PlayerInventory;
-
 use super::{CursorItem, Inventory, InventoryWindow};
+use crate::player_inventory::PlayerInventory;
 
 /// Validates a click slot packet enforcing that all fields are valid.
 pub(super) fn validate_click_slot_packet(
@@ -21,7 +20,8 @@ pub(super) fn validate_click_slot_packet(
     );
 
     let max_slot = if let Some(open_inv) = open_inventory {
-        // when the window is split, we can only access the main slots of player's inventory
+        // when the window is split, we can only access the main slots of player's
+        // inventory
         PlayerInventory::MAIN_SIZE + open_inv.slot_count()
     } else {
         player_inventory.slot_count()

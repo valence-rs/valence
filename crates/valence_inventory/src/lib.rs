@@ -516,7 +516,8 @@ impl<'a> InventoryWindow<'a> {
     #[track_caller]
     pub fn slot_count(&self) -> u16 {
         if let Some(open_inv) = &self.open_inventory {
-            // when the window is split, we can only access the main slots of player's inventory
+            // when the window is split, we can only access the main slots of player's
+            // inventory
             PlayerInventory::MAIN_SIZE + open_inv.slot_count()
         } else {
             self.player_inventory.slot_count()
@@ -598,7 +599,8 @@ impl<'a> InventoryWindowMut<'a> {
 
     pub fn slot_count(&self) -> u16 {
         if let Some(open_inv) = &self.open_inventory {
-            // when the window is split, we can only access the main slots of player's inventory
+            // when the window is split, we can only access the main slots of player's
+            // inventory
             PlayerInventory::MAIN_SIZE + open_inv.slot_count()
         } else {
             self.player_inventory.slot_count()
