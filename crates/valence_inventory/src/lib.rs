@@ -81,10 +81,6 @@ impl Plugin for InventoryPlugin {
     }
 }
 
-/// The number of slots in the "main" part of the player inventory. 3 rows of 9,
-/// plus the hotbar.
-pub const PLAYER_INVENTORY_MAIN_SLOTS_COUNT: u16 = 36;
-
 #[derive(Debug, Clone, Component)]
 pub struct Inventory {
     title: Text,
