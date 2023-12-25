@@ -48,8 +48,8 @@ pub struct RegistryPlugin;
 pub struct RegistrySet;
 
 impl Plugin for RegistryPlugin {
-    fn build(&self, app: &mut bevy_app::App) {
-        app.configure_set(PostUpdate, RegistrySet);
+    fn build(&self, app: &mut App) {
+        app.configure_sets(PostUpdate, RegistrySet);
 
         codec::build(app);
         tags::build(app);

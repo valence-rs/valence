@@ -368,53 +368,66 @@ fn build_entities() -> anyhow::Result<TokenStream> {
                             #snake_entity_name_ident: Default::default(),
                         }]);
 
-                        if entity_name == "LivingEntity" {
-                            bundle_fields.extend([quote! {
-                                pub living_absorption: super::living::Absorption,
-                            }]);
+                        match entity_name {
+                            "LivingEntity" => {
+                                bundle_fields.extend([quote! {
+                                    pub living_absorption: super::living::Absorption,
+                                }]);
 
-                            bundle_init_fields.extend([quote! {
-                                living_absorption: Default::default(),
-                            }]);
+                                bundle_init_fields.extend([quote! {
+                                    living_absorption: Default::default(),
+                                }]);
 
-                            bundle_fields.extend([quote! {
-                                pub living_attributes: super::attributes::EntityAttributes,
-                            }]);
+                                bundle_fields.extend([quote! {
+                                    pub living_attributes: super::attributes::EntityAttributes,
+                                }]);
 
-                            // Get the default values of the attributes.
-                            let mut attribute_default_values = TokenStream::new();
+                                // Get the default values of the attributes.
+                                let mut attribute_default_values = TokenStream::new();
 
-                            if let Some(attributes) = &entity.attributes {
-                                for attribute in attributes {
-                                    let name = ident(attribute.name.to_pascal_case());
-                                    let base_value = attribute.base_value;
-                                    attribute_default_values.extend([quote! {
-                                        .with_attribute_and_value(
-                                            super::EntityAttribute::#name,
-                                            #base_value,
-                                        )
-                                    }]);
+                                if let Some(attributes) = &entity.attributes {
+                                    for attribute in attributes {
+                                        let name = ident(attribute.name.to_pascal_case());
+                                        let base_value = attribute.base_value;
+                                        attribute_default_values.extend([quote! {
+                                            .with_attribute_and_value(
+                                                super::EntityAttribute::#name,
+                                                #base_value,
+                                            )
+                                        }]);
+                                    }
                                 }
+
+                                bundle_init_fields.extend([quote! {
+                                    living_attributes: super::attributes::EntityAttributes::new() #attribute_default_values,
+                                }]);
+
+                                bundle_fields.extend([quote! {
+                                    pub living_attributes_tracker: super::attributes::TrackedEntityAttributes,
+                                }]);
+                                bundle_init_fields.extend([quote! {
+                                    living_attributes_tracker: Default::default(),
+                                }]);
+
+                                bundle_fields.extend([quote! {
+                                    pub living_active_status_effects: super::active_status_effects::ActiveStatusEffects,
+                                }]);
+                                bundle_init_fields.extend([quote! {
+                                    living_active_status_effects: Default::default(),
+                                }]);
                             }
+                            "PlayerEntity" => {
+                                bundle_fields.extend([quote! {
+                                    pub player_food: super::player::Food,
+                                    pub player_saturation: super::player::Saturation,
+                                }]);
 
-                            bundle_init_fields.extend([quote! {
-                                living_attributes: super::attributes::EntityAttributes::new() #attribute_default_values,
-                            }]);
-                            bundle_fields.extend([quote! {
-                                pub living_attributes_tracker: super::attributes::TrackedEntityAttributes,
-                            }]);
-
-                            bundle_init_fields.extend([quote! {
-                                living_attributes_tracker: Default::default(),
-                            }]);
-
-                            bundle_fields.extend([quote! {
-                                pub living_active_status_effects: super::active_status_effects::ActiveStatusEffects,
-                            }]);
-
-                            bundle_init_fields.extend([quote! {
-                                living_active_status_effects: Default::default(),
-                            }]);
+                                bundle_init_fields.extend([quote! {
+                                    player_food: Default::default(),
+                                    player_saturation: Default::default(),
+                                }]);
+                            }
+                            _ => {}
                         }
                     }
                     MarkerOrField::Field { entity_name, field } => {
@@ -530,6 +543,7 @@ fn build_entities() -> anyhow::Result<TokenStream> {
             systems.extend([quote! {
                 #[allow(clippy::needless_borrow)]
                 #[allow(clippy::suspicious_else_formatting)]
+                #[allow(clippy::needless_borrows_for_generic_args)]
                 fn #system_name_ident(
                     mut query: Query<(&#component_path, &mut tracked_data::TrackedData), Changed<#component_path>>
                 ) {
@@ -556,12 +570,32 @@ fn build_entities() -> anyhow::Result<TokenStream> {
             pub struct #entity_name_ident;
         }]);
 
-        if entity_name == "LivingEntity" {
-            module_body.extend([quote! {
-                #[doc = "Special untracked component for `LivingEntity` entities."]
-                #[derive(bevy_ecs::component::Component, Copy, Clone, Default, Debug)]
-                pub struct Absorption(pub f32);
-            }]);
+        match entity_name.as_str() {
+            "LivingEntity" => {
+                module_body.extend([quote! {
+                    #[doc = "Special untracked component for `LivingEntity` entities."]
+                    #[derive(bevy_ecs::component::Component, Copy, Clone, Default, Debug)]
+                    pub struct Absorption(pub f32);
+                }]);
+            }
+            "PlayerEntity" => {
+                module_body.extend([quote! {
+                    #[doc = "Special untracked component for `PlayerEntity` entities."]
+                    #[derive(bevy_ecs::component::Component, Copy, Clone, Debug)]
+                    pub struct Food(pub i32);
+
+                    impl Default for Food {
+                        fn default() -> Self {
+                            Self(20)
+                        }
+                    }
+
+                    #[doc = "Special untracked component for `PlayerEntity` entities."]
+                    #[derive(bevy_ecs::component::Component, Copy, Clone, Default, Debug)]
+                    pub struct Saturation(pub f32);
+                }]);
+            }
+            _ => {}
         }
 
         modules.extend([quote! {

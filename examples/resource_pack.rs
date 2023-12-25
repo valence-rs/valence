@@ -91,7 +91,7 @@ fn init_clients(
 }
 
 fn prompt_on_punch(mut clients: Query<&mut Client>, mut events: EventReader<InteractEntityEvent>) {
-    for event in events.iter() {
+    for event in events.read() {
         if let Ok(mut client) = clients.get_mut(event.client) {
             if event.interact == EntityInteraction::Attack {
                 client.set_resource_pack(
@@ -109,7 +109,7 @@ fn on_resource_pack_status(
     mut clients: Query<&mut Client>,
     mut events: EventReader<ResourcePackStatusEvent>,
 ) {
-    for event in events.iter() {
+    for event in events.read() {
         if let Ok(mut client) = clients.get_mut(event.client) {
             match event.status {
                 ResourcePackStatusC2s::Accepted => {

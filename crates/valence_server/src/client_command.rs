@@ -71,7 +71,7 @@ fn handle_client_command(
     mut jump_with_horse_events: EventWriter<JumpWithHorseEvent>,
     mut leave_bed_events: EventWriter<LeaveBedEvent>,
 ) {
-    for packet in packets.iter() {
+    for packet in packets.read() {
         if let Some(pkt) = packet.decode::<ClientCommandC2s>() {
             match pkt.action {
                 ClientCommand::StartSneaking => {

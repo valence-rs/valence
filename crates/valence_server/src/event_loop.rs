@@ -16,10 +16,10 @@ pub struct EventLoopPlugin;
 impl Plugin for EventLoopPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<PacketEvent>()
-            .add_schedule(RunEventLoop, Schedule::new())
-            .add_schedule(EventLoopPreUpdate, Schedule::new())
-            .add_schedule(EventLoopUpdate, Schedule::new())
-            .add_schedule(EventLoopPostUpdate, Schedule::new())
+            .add_schedule(Schedule::new(RunEventLoop))
+            .add_schedule(Schedule::new(EventLoopPreUpdate))
+            .add_schedule(Schedule::new(EventLoopUpdate))
+            .add_schedule(Schedule::new(EventLoopPostUpdate))
             .add_systems(RunEventLoop, run_event_loop);
 
         app.world

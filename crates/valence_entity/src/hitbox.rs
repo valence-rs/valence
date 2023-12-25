@@ -39,7 +39,7 @@ impl Default for EntityHitboxSettings {
 impl Plugin for HitboxPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<EntityHitboxSettings>()
-            .configure_set(PreUpdate, HitboxShapeUpdateSet)
+            .configure_sets(PreUpdate, HitboxShapeUpdateSet)
             .add_systems(
                 PreUpdate,
                 (
@@ -58,12 +58,12 @@ impl Plugin for HitboxPlugin {
                     update_shulker_hitbox,
                 ),
             )
-            .configure_set(PostUpdate, HitboxComponentsAddSet)
+            .configure_sets(PostUpdate, HitboxComponentsAddSet)
             .add_systems(
                 PostUpdate,
                 add_hitbox_component.in_set(HitboxComponentsAddSet),
             )
-            .configure_set(PreUpdate, HitboxUpdateSet.after(HitboxShapeUpdateSet))
+            .configure_sets(PreUpdate, HitboxUpdateSet.after(HitboxShapeUpdateSet))
             .add_systems(PreUpdate, update_hitbox.in_set(HitboxUpdateSet));
     }
 }

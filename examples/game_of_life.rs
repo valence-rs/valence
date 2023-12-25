@@ -173,7 +173,7 @@ impl LifeBoard {
 }
 
 fn toggle_cell_on_dig(mut events: EventReader<DiggingEvent>, mut board: ResMut<LifeBoard>) {
-    for event in events.iter() {
+    for event in events.read() {
         if event.state == DiggingState::Start {
             let (x, z) = (event.position.x, event.position.z);
 
@@ -212,7 +212,7 @@ fn pause_on_crouch(
     mut board: ResMut<LifeBoard>,
     mut layers: Query<&mut EntityLayer>,
 ) {
-    for event in events.iter() {
+    for event in events.read() {
         if event.state == SneakState::Start {
             let mut layer = layers.single_mut();
 

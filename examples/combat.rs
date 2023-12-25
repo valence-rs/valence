@@ -119,7 +119,7 @@ fn handle_combat_events(
     mut sprinting: EventReader<SprintEvent>,
     mut interact_entity: EventReader<InteractEntityEvent>,
 ) {
-    for &SprintEvent { client, state } in sprinting.iter() {
+    for &SprintEvent { client, state } in sprinting.read() {
         if let Ok(mut client) = clients.get_mut(client) {
             client.state.has_bonus_knockback = state == SprintState::Start;
         }
@@ -129,7 +129,7 @@ fn handle_combat_events(
         client: attacker_client,
         entity: victim_client,
         ..
-    } in interact_entity.iter()
+    } in interact_entity.read()
     {
         let Ok([mut attacker, mut victim]) = clients.get_many_mut([attacker_client, victim_client])
         else {

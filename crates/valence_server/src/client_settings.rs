@@ -34,7 +34,7 @@ fn handle_client_settings(
         &mut player::MainArm,
     )>,
 ) {
-    for packet in packets.iter() {
+    for packet in packets.read() {
         if let Some(pkt) = packet.decode::<ClientSettingsC2s>() {
             if let Ok((mut view_dist, mut settings, mut model_parts, mut main_arm)) =
                 clients.get_mut(packet.client)

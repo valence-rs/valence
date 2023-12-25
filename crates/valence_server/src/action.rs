@@ -54,7 +54,7 @@ fn handle_player_action(
     mut packets: EventReader<PacketEvent>,
     mut digging_events: EventWriter<DiggingEvent>,
 ) {
-    for packet in packets.iter() {
+    for packet in packets.read() {
         if let Some(pkt) = packet.decode::<PlayerActionC2s>() {
             if let Ok(mut seq) = clients.get_mut(packet.client) {
                 seq.update(pkt.sequence.0);

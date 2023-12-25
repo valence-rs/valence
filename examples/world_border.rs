@@ -109,7 +109,7 @@ fn border_controls(
     mut events: EventReader<ChatMessageEvent>,
     mut layers: Query<(&mut WorldBorderCenter, &mut WorldBorderLerp), With<ChunkLayer>>,
 ) {
-    for x in events.iter() {
+    for x in events.read() {
         let parts: Vec<&str> = x.message.split(' ').collect();
         match parts[0] {
             "add" => {

@@ -10,7 +10,7 @@ pub fn toggle_gamemode_on_sneak(
     mut clients: Query<&mut GameMode>,
     mut events: EventReader<SneakEvent>,
 ) {
-    for event in events.iter() {
+    for event in events.read() {
         if event.state == SneakState::Start {
             if let Ok(mut mode) = clients.get_mut(event.client) {
                 *mode = match *mode {
