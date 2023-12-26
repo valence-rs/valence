@@ -14,9 +14,9 @@ use valence_server::status_effect::{StatusEffectAdded, StatusEffectRemoved};
 
 const SPAWN_Y: i32 = 64;
 
-// Notes: Some potion effects are implemented by the client (i.e. we don't need to send any more packets
-// than just telling the client about them) and some are implemented by the server.
-// The ones implemented by the client are:
+// Notes: Some potion effects are implemented by the client (i.e. we don't need
+// to send any more packets than just telling the client about them) and some
+// are implemented by the server. The ones implemented by the client are:
 // - Jump Boost
 // - Night Vision
 // - Nausea
@@ -28,17 +28,18 @@ const SPAWN_Y: i32 = 64;
 // - Dolphin's Grace
 // - Conduit Power
 //
-// There are also a few different potion effects that are implemented by the server.
-// Some can be implemented right now, for example:
+// There are also a few different potion effects that are implemented by the
+// server. Some can be implemented right now, for example:
 // - Speed
 // - Instant Health
 // - Regeneration
 // - Absorption
 // - Glowing
-// - etc. (i.e. the ones with AttributeModifiers, direct health changes or other trivial effects)
+// - etc. (i.e. the ones with AttributeModifiers, direct health changes or other
+//   trivial effects)
 //
-// Some can't be implemented right now because they require features that aren't implemented yet
-// or must be implemented yourself, for example:
+// Some can't be implemented right now because they require features that aren't
+// implemented yet or must be implemented yourself, for example:
 // - Water Breathing (requires the ability to breathe underwater)
 // - Fire Resistance (requires the ability to not take damage from fire)
 // - Hunger (requires the ability to get hungry)

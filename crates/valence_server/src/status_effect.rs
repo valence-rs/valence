@@ -107,16 +107,14 @@ fn add_status_effects(
                     entity: query.entity,
                     status_effect,
                 });
+            } else if let Some(prev) = prev {
+                remove_events.send(StatusEffectRemoved {
+                    entity: query.entity,
+                    status_effect: prev,
+                });
             } else {
-                if let Some(prev) = prev {
-                    remove_events.send(StatusEffectRemoved {
-                        entity: query.entity,
-                        status_effect: prev,
-                    });
-                } else {
-                    // this should never happen
-                    panic!("status effect was removed but was never added");
-                }
+                // this should never happen
+                panic!("status effect was removed but was never added");
             }
 
             update_status_effect(&mut query, status_effect);
