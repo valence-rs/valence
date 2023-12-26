@@ -297,6 +297,7 @@ fn remove_potion_attribute(
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub fn handle_status_effect_added(
     mut clients: Query<(
         &ActiveStatusEffects,
