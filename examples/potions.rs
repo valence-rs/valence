@@ -90,7 +90,7 @@ pub fn add_potion_effect(
     mut events: EventReader<SneakEvent>,
 ) {
     let mut rng = rand::thread_rng();
-    for event in events.iter() {
+    for event in events.read() {
         if event.state == SneakState::Start {
             if let Ok(mut status) = clients.get_mut(event.client) {
                 status.apply(
