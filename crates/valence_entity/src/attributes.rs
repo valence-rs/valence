@@ -16,11 +16,11 @@ pub struct EntityAttributeInstance {
     /// The base value of the attribute.
     base_value: f64,
     /// The add modifiers of the attribute.
-    add_modifiers: IndexMap<String, f64>,
+    add_modifiers: IndexMap<Uuid, f64>,
     /// The multiply base modifiers of the attribute.
-    multiply_base_modifiers: IndexMap<String, f64>,
+    multiply_base_modifiers: IndexMap<Uuid, f64>,
     /// The multiply total modifiers of the attribute.
-    multiply_total_modifiers: IndexMap<String, f64>,
+    multiply_total_modifiers: IndexMap<Uuid, f64>,
 }
 
 impl EntityAttributeInstance {
@@ -85,8 +85,8 @@ impl EntityAttributeInstance {
     /// If the modifier already exists, it will be overwritten.
     ///
     /// Returns a mutable reference to self.
-    pub fn with_add_modifier(&mut self, name: String, modifier: f64) -> &mut Self {
-        self.add_modifiers.insert(name, modifier);
+    pub fn with_add_modifier(&mut self, uuid: Uuid, modifier: f64) -> &mut Self {
+        self.add_modifiers.insert(uuid, modifier);
         self
     }
 
@@ -95,8 +95,8 @@ impl EntityAttributeInstance {
     /// If the modifier already exists, it will be overwritten.
     ///
     /// Returns a mutable reference to self.
-    pub fn with_multiply_base_modifier(&mut self, name: String, modifier: f64) -> &mut Self {
-        self.multiply_base_modifiers.insert(name, modifier);
+    pub fn with_multiply_base_modifier(&mut self, uuid: Uuid, modifier: f64) -> &mut Self {
+        self.multiply_base_modifiers.insert(uuid, modifier);
         self
     }
 
@@ -105,16 +105,16 @@ impl EntityAttributeInstance {
     /// If the modifier already exists, it will be overwritten.
     ///
     /// Returns a mutable reference to self.
-    pub fn with_multiply_total_modifier(&mut self, name: String, modifier: f64) -> &mut Self {
-        self.multiply_total_modifiers.insert(name, modifier);
+    pub fn with_multiply_total_modifier(&mut self, uuid: Uuid, modifier: f64) -> &mut Self {
+        self.multiply_total_modifiers.insert(uuid, modifier);
         self
     }
 
     /// Removes a modifier.
-    pub fn remove_modifier(&mut self, name: &str) {
-        self.add_modifiers.remove(name);
-        self.multiply_base_modifiers.remove(name);
-        self.multiply_total_modifiers.remove(name);
+    pub fn remove_modifier(&mut self, uuid: Uuid) {
+        self.add_modifiers.remove(&uuid);
+        self.multiply_base_modifiers.remove(&uuid);
+        self.multiply_total_modifiers.remove(&uuid);
     }
 
     /// Clears all modifiers.
@@ -125,19 +125,14 @@ impl EntityAttributeInstance {
     }
 
     /// Checks if a modifier exists.
-    pub fn has_modifier(&self, name: &str) -> bool {
-        self.add_modifiers.contains_key(name)
-            || self.multiply_base_modifiers.contains_key(name)
-            || self.multiply_total_modifiers.contains_key(name)
+    pub fn has_modifier(&self, uuid: Uuid) -> bool {
+        self.add_modifiers.contains_key(&uuid)
+            || self.multiply_base_modifiers.contains_key(&uuid)
+            || self.multiply_total_modifiers.contains_key(&uuid)
     }
 
     /// Converts to a `TrackedEntityProperty` for use in the
     /// `EntityAttributesS2c` packet.
-    ///
-    /// Right now, uses a random UUID for the modifier UUIDs.
-    ///
-    /// Minecraft actually uses constant UUIDs. Uncertain if
-    /// I should do the same.
     pub(crate) fn to_property(&self) -> TrackedEntityProperty {
         TrackedEntityProperty {
             key: self.attribute.name().into(),
@@ -260,47 +255,47 @@ impl EntityAttributes {
     }
 
     /// Sets an add modifier of an attribute.
-    pub fn set_add_modifier(&mut self, attribute: EntityAttribute, name: String, modifier: f64) {
+    pub fn set_add_modifier(&mut self, attribute: EntityAttribute, uuid: Uuid, modifier: f64) {
         self.mark_recently_changed(attribute);
         self.attributes
             .entry(attribute)
             .or_insert_with(|| EntityAttributeInstance::new(attribute))
-            .with_add_modifier(name, modifier);
+            .with_add_modifier(uuid, modifier);
     }
 
     /// Sets a multiply base modifier of an attribute.
     pub fn set_multiply_base_modifier(
         &mut self,
         attribute: EntityAttribute,
-        name: String,
+        uuid: Uuid,
         modifier: f64,
     ) {
         self.mark_recently_changed(attribute);
         self.attributes
             .entry(attribute)
             .or_insert_with(|| EntityAttributeInstance::new(attribute))
-            .with_multiply_base_modifier(name, modifier);
+            .with_multiply_base_modifier(uuid, modifier);
     }
 
     /// Sets a multiply total modifier of an attribute.
     pub fn set_multiply_total_modifier(
         &mut self,
         attribute: EntityAttribute,
-        name: String,
+        uuid: Uuid,
         modifier: f64,
     ) {
         self.mark_recently_changed(attribute);
         self.attributes
             .entry(attribute)
             .or_insert_with(|| EntityAttributeInstance::new(attribute))
-            .with_multiply_total_modifier(name, modifier);
+            .with_multiply_total_modifier(uuid, modifier);
     }
 
     /// Removes a modifier of an attribute.
-    pub fn remove_modifier(&mut self, attribute: EntityAttribute, name: &str) {
+    pub fn remove_modifier(&mut self, attribute: EntityAttribute, uuid: Uuid) {
         self.mark_recently_changed(attribute);
         if let Some(instance) = self.attributes.get_mut(&attribute) {
-            instance.remove_modifier(name);
+            instance.remove_modifier(uuid);
         }
     }
 
@@ -313,10 +308,10 @@ impl EntityAttributes {
     }
 
     /// Checks if a modifier exists on an attribute.
-    pub fn has_modifier(&self, attribute: EntityAttribute, name: &str) -> bool {
+    pub fn has_modifier(&self, attribute: EntityAttribute, uuid: Uuid) -> bool {
         self.attributes
             .get(&attribute)
-            .map(|instance| instance.has_modifier(name))
+            .map(|instance| instance.has_modifier(uuid))
             .unwrap_or(false)
     }
 
@@ -407,26 +402,23 @@ mod tests {
 
     #[test]
     fn test_compute_value() {
+        let add_uuid = Uuid::new_v4();
         let mut attributes = EntityAttributes::new();
         attributes.set_base_value(EntityAttribute::GenericMaxHealth, 20.0);
-        attributes.set_add_modifier(
-            EntityAttribute::GenericMaxHealth,
-            "health_add".to_string(),
-            10.0,
-        );
+        attributes.set_add_modifier(EntityAttribute::GenericMaxHealth, add_uuid, 10.0);
         attributes.set_multiply_base_modifier(
             EntityAttribute::GenericMaxHealth,
-            "health_mul_base_1".to_string(),
+            Uuid::new_v4(),
             0.2,
         );
         attributes.set_multiply_base_modifier(
             EntityAttribute::GenericMaxHealth,
-            "health_mul_base_2".to_string(),
+            Uuid::new_v4(),
             0.2,
         );
         attributes.set_multiply_total_modifier(
             EntityAttribute::GenericMaxHealth,
-            "health_multiply".to_string(),
+            Uuid::new_v4(),
             0.5,
         );
 
@@ -435,7 +427,7 @@ mod tests {
             Some(63.0) // ((20 + 10) * (1 + 0.2 + 0.2)) * (1 + 0.5)
         );
 
-        attributes.remove_modifier(EntityAttribute::GenericMaxHealth, "health_add");
+        attributes.remove_modifier(EntityAttribute::GenericMaxHealth, add_uuid);
 
         assert_eq!(
             attributes.get_compute_value(EntityAttribute::GenericMaxHealth),
