@@ -20,7 +20,14 @@ fn main() {
         })
         .add_plugins(DefaultPlugins.build().disable::<LogPlugin>())
         .add_systems(Startup, setup)
-        .add_systems(EventLoopUpdate, (add_potion_effect, handle_status_effect_added, handle_status_effect_removed))
+        .add_systems(
+            EventLoopUpdate,
+            (
+                add_potion_effect,
+                handle_status_effect_added,
+                handle_status_effect_removed,
+            ),
+        )
         .add_systems(Update, (init_clients, despawn_disconnected_clients))
         .run();
 }
