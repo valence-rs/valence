@@ -72,9 +72,21 @@ impl ActiveStatusEffects {
             .map_or(true, |effects| effects.is_empty())
     }
 
+    /// Returns true if there is an effect of the given type.
+    pub fn has_effect(&self, effect: StatusEffect) -> bool {
+        self.current_effects
+            .get(&effect)
+            .map_or(false, |effects| !effects.is_empty())
+    }
+
     /// Returns true if there are no effects.
     pub fn no_effects(&self) -> bool {
         self.current_effects.is_empty()
+    }
+
+    /// Returns true if there are any effects.
+    pub fn has_effects(&self) -> bool {
+        !self.current_effects.is_empty()
     }
 
     /// Returns the maximum duration of the given effect.

@@ -23,10 +23,10 @@ pub struct StatusEffectAdded {
 }
 
 /// Event for when a status effect is removed from an entity.
-#[derive(Event, Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Event, Clone, PartialEq, Eq, Debug)]
 pub struct StatusEffectRemoved {
     pub entity: Entity,
-    pub status_effect: StatusEffect,
+    pub status_effect: ActiveStatusEffect,
 }
 
 pub struct StatusEffectPlugin;
@@ -101,17 +101,22 @@ fn add_status_effects(
             &mut query.swirl_ambient,
         );
 
-        for (status_effect, active) in updated {
-            if active.is_some() {
+        for (status_effect, prev) in updated {
+            if query.active_effects.has_effect(status_effect) {
                 add_events.send(StatusEffectAdded {
                     entity: query.entity,
                     status_effect,
                 });
             } else {
-                remove_events.send(StatusEffectRemoved {
-                    entity: query.entity,
-                    status_effect,
-                });
+                if let Some(prev) = prev {
+                    remove_events.send(StatusEffectRemoved {
+                        entity: query.entity,
+                        status_effect: prev,
+                    });
+                } else {
+                    // this should never happen
+                    panic!("status effect was removed but was never added");
+                }
             }
 
             update_status_effect(&mut query, status_effect);
