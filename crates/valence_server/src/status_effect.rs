@@ -1,6 +1,7 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_ecs::query::WorldQuery;
+use bevy_ecs::system::SystemState;
 use valence_entity::active_status_effects::{ActiveStatusEffect, ActiveStatusEffects};
 use valence_entity::entity::Flags;
 use valence_entity::living::{PotionSwirlsAmbient, PotionSwirlsColor};
@@ -13,22 +14,43 @@ use valence_protocol::{VarInt, WritePacket};
 use crate::client::Client;
 use crate::EventLoopPostUpdate;
 
+/// Event for when a status effect is added to an entity or the amplifier or
+/// duration of an existing status effect is changed.
+#[derive(Event, Clone, PartialEq, Eq, Debug)]
+pub struct StatusEffectAdded {
+    pub entity: Entity,
+    pub status_effect: StatusEffect,
+}
+
+/// Event for when a status effect is removed from an entity.
+#[derive(Event, Copy, Clone, PartialEq, Eq, Debug)]
+pub struct StatusEffectRemoved {
+    pub entity: Entity,
+    pub status_effect: StatusEffect,
+}
+
 pub struct StatusEffectPlugin;
 
 impl Plugin for StatusEffectPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            EventLoopPostUpdate,
-            (
-                add_status_effects,
-                update_active_status_effects,
-                add_status_effects, // only expired effects should be here
-            ),
-        );
+        app.add_event::<StatusEffectAdded>()
+            .add_event::<StatusEffectRemoved>()
+            .add_systems(
+                EventLoopPostUpdate,
+                (
+                    add_status_effects,
+                    update_active_status_effects,
+                    add_status_effects,
+                ),
+            );
     }
 }
 
-fn update_active_status_effects(mut query: Query<&mut ActiveStatusEffects>) {
+fn update_active_status_effects(
+    world: &mut World,
+    state: &mut SystemState<Query<&mut ActiveStatusEffects>>,
+) {
+    let mut query = state.get_mut(world);
     for mut active_status_effects in query.iter_mut() {
         active_status_effects.increment_active_ticks();
     }
@@ -53,6 +75,7 @@ fn create_packet(effect: &ActiveStatusEffect) -> EntityStatusEffectS2c {
 #[derive(WorldQuery)]
 #[world_query(mutable)]
 struct StatusEffectQuery {
+    entity: Entity,
     active_effects: &'static mut ActiveStatusEffects,
     client: Option<&'static mut Client>,
     entity_flags: Option<&'static mut Flags>,
@@ -60,7 +83,11 @@ struct StatusEffectQuery {
     swirl_ambient: Option<&'static mut PotionSwirlsAmbient>,
 }
 
-fn add_status_effects(mut query: Query<StatusEffectQuery>) {
+fn add_status_effects(
+    mut query: Query<StatusEffectQuery>,
+    mut add_events: EventWriter<StatusEffectAdded>,
+    mut remove_events: EventWriter<StatusEffectRemoved>,
+) {
     for mut query in query.iter_mut() {
         let updated = query.active_effects.apply_changes();
 
@@ -74,7 +101,19 @@ fn add_status_effects(mut query: Query<StatusEffectQuery>) {
             &mut query.swirl_ambient,
         );
 
-        for (status_effect, _) in updated {
+        for (status_effect, active) in updated {
+            if active.is_some() {
+                add_events.send(StatusEffectAdded {
+                    entity: query.entity,
+                    status_effect,
+                });
+            } else {
+                remove_events.send(StatusEffectRemoved {
+                    entity: query.entity,
+                    status_effect,
+                });
+            }
+
             update_status_effect(&mut query, status_effect);
         }
     }

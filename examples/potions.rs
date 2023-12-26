@@ -6,6 +6,9 @@ use valence::log::LogPlugin;
 use valence::network::ConnectionMode;
 use valence::prelude::*;
 use valence::status_effects::StatusEffect;
+use valence_server::entity::attributes::EntityAttributes;
+use valence_server::entity::living::{Absorption, Health};
+use valence_server::status_effect::{StatusEffectAdded, StatusEffectRemoved};
 
 const SPAWN_Y: i32 = 64;
 
@@ -17,7 +20,7 @@ fn main() {
         })
         .add_plugins(DefaultPlugins.build().disable::<LogPlugin>())
         .add_systems(Startup, setup)
-        .add_systems(EventLoopUpdate, add_potion_effect)
+        .add_systems(EventLoopUpdate, (add_potion_effect, handle_status_effect_added, handle_status_effect_removed))
         .add_systems(Update, (init_clients, despawn_disconnected_clients))
         .run();
 }
@@ -98,6 +101,65 @@ pub fn add_potion_effect(
                         .with_duration(rng.gen_range(10..1000))
                         .with_amplifier(rng.gen_range(0..5)),
                 );
+            }
+        }
+    }
+}
+
+pub fn handle_status_effect_added(
+    mut clients: Query<(
+        &ActiveStatusEffects,
+        &mut EntityAttributes,
+        Option<&mut Health>,
+        Option<&mut Absorption>,
+    )>,
+    mut events: EventReader<StatusEffectAdded>,
+) {
+    for event in events.read() {
+        if let Ok((status, mut _attributes, health, absorption)) = clients.get_mut(event.entity) {
+            let effect = status.get_current_effect(event.status_effect).unwrap();
+
+            match event.status_effect {
+                StatusEffect::Absorption => {
+                    if let Some(mut absorption) = absorption {
+                        absorption.0 += (effect.amplifier() + 1) as f32 * 4.0;
+                    }
+                }
+                StatusEffect::InstantHealth => {
+                    if let Some(mut health) = health {
+                        health.0 += (4 << effect.amplifier()).max(0) as f32;
+                    }
+                }
+                StatusEffect::InstantDamage => {
+                    if let Some(mut health) = health {
+                        health.0 -= (6 << effect.amplifier()).max(0) as f32;
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
+pub fn handle_status_effect_removed(
+    mut clients: Query<(
+        &ActiveStatusEffects,
+        &mut EntityAttributes,
+        Option<&mut Absorption>,
+    )>,
+    mut events: EventReader<StatusEffectRemoved>,
+) {
+    for event in events.read() {
+        if let Ok((status, mut _attributes, absorption)) = clients.get_mut(event.entity) {
+            let effect = status.get_current_effect(event.status_effect).unwrap();
+
+            match event.status_effect {
+                StatusEffect::Absorption => {
+                    if let Some(mut absorption) = absorption {
+                        absorption.0 -= (effect.amplifier() + 1) as f32 * 4.0;
+                    }
+                }
+                _ => {}
             }
         }
     }
