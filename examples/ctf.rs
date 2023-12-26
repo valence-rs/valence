@@ -443,7 +443,7 @@ fn digging(
 ) {
     let mut layer = layers.single_mut();
 
-    for event in events.iter() {
+    for event in events.read() {
         let Ok((game_mode, team, ent, mut client, mut inv)) = clients.get_mut(event.client) else {
             continue;
         };
@@ -510,7 +510,7 @@ fn place_blocks(
 ) {
     let mut layer = layers.single_mut();
 
-    for event in events.iter() {
+    for event in events.read() {
         let Ok((mut inventory, game_mode, held)) = clients.get_mut(event.client) else {
             continue;
         };
@@ -928,7 +928,7 @@ fn handle_combat_events(
     mut interact_entity: EventReader<InteractEntityEvent>,
     clones: Query<&ClonedEntity>,
 ) {
-    for &SprintEvent { client, state } in sprinting.iter() {
+    for &SprintEvent { client, state } in sprinting.read() {
         if let Ok(mut client) = clients.get_mut(client) {
             client.state.has_bonus_knockback = state == SprintState::Start;
         }
@@ -938,7 +938,7 @@ fn handle_combat_events(
         client: attacker_client,
         entity: victim_client,
         ..
-    } in interact_entity.iter()
+    } in interact_entity.read()
     {
         let true_victim_ent = clones
             .get(victim_client)
@@ -1022,7 +1022,7 @@ fn necromancy(
     mut events: EventReader<RequestRespawnEvent>,
     layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
 ) {
-    for event in events.iter() {
+    for event in events.read() {
         if let Ok((mut visible_chunk_layer, mut respawn_pos, team, mut health)) =
             clients.get_mut(event.client)
         {

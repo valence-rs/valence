@@ -53,7 +53,7 @@ fn handle_resource_pack_status(
     mut packets: EventReader<PacketEvent>,
     mut events: EventWriter<ResourcePackStatusEvent>,
 ) {
-    for packet in packets.iter() {
+    for packet in packets.read() {
         if let Some(pkt) = packet.decode::<ResourcePackStatusC2s>() {
             events.send(ResourcePackStatusEvent {
                 client: packet.client,

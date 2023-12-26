@@ -46,7 +46,7 @@ pub struct ScoreboardPlugin;
 
 impl Plugin for ScoreboardPlugin {
     fn build(&self, app: &mut App) {
-        app.configure_set(PostUpdate, ScoreboardSet.before(UpdateLayersPreClientSet));
+        app.configure_sets(PostUpdate, ScoreboardSet.before(UpdateLayersPreClientSet));
 
         app.add_systems(
             PostUpdate,

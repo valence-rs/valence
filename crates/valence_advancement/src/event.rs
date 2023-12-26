@@ -15,7 +15,7 @@ pub(crate) fn handle_advancement_tab_change(
     mut packets: EventReader<PacketEvent>,
     mut advancement_tab_change_events: EventWriter<AdvancementTabChangeEvent>,
 ) {
-    for packet in packets.iter() {
+    for packet in packets.read() {
         if let Some(pkt) = packet.decode::<AdvancementTabC2s>() {
             advancement_tab_change_events.send(AdvancementTabChangeEvent {
                 client: packet.client,

@@ -26,7 +26,7 @@ fn handle_hand_swing(
     mut clients: Query<&mut EntityAnimations>,
     mut events: EventWriter<HandSwingEvent>,
 ) {
-    for packet in packets.iter() {
+    for packet in packets.read() {
         if let Some(pkt) = packet.decode::<HandSwingC2s>() {
             if let Ok(mut anim) = clients.get_mut(packet.client) {
                 anim.trigger(match pkt.hand {

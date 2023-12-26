@@ -89,7 +89,7 @@ impl Plugin for ClientPlugin {
                 flush_packets.in_set(FlushPacketsSet),
             ),
         )
-        .configure_set(PreUpdate, SpawnClientsSet)
+        .configure_sets(PreUpdate, SpawnClientsSet)
         .configure_sets(
             PostUpdate,
             (
@@ -600,7 +600,7 @@ pub fn despawn_disconnected_clients(
     mut commands: Commands,
     mut disconnected_clients: RemovedComponents<Client>,
 ) {
-    for entity in disconnected_clients.iter() {
+    for entity in disconnected_clients.read() {
         if let Some(mut entity) = commands.get_entity(entity) {
             entity.insert(Despawned);
         }
@@ -640,7 +640,7 @@ fn handle_layer_messages(
     entity_layers: Query<&EntityLayer>,
     entities: Query<(EntityInitQuery, &OldPosition)>,
 ) {
-    clients.par_iter_mut().for_each_mut(
+    clients.par_iter_mut().for_each(
         |(
             self_entity,
             self_entity_id,
@@ -903,7 +903,7 @@ pub(crate) fn update_view_and_layers(
     entity_ids: Query<&EntityId>,
     entity_init: Query<(EntityInitQuery, &Position)>,
 ) {
-    clients.par_iter_mut().for_each_mut(
+    clients.par_iter_mut().for_each(
         |(
             self_entity,
             mut client,

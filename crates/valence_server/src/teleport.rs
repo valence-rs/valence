@@ -108,7 +108,7 @@ fn handle_teleport_confirmations(
     mut clients: Query<&mut TeleportState>,
     mut commands: Commands,
 ) {
-    for packet in packets.iter() {
+    for packet in packets.read() {
         if let Some(pkt) = packet.decode::<TeleportConfirmC2s>() {
             if let Ok(mut state) = clients.get_mut(packet.client) {
                 if state.pending_teleports == 0 {

@@ -90,7 +90,7 @@ fn read_incoming_packets(
     mut packets: EventReader<PacketEvent>,
     mut event_writer: EventWriter<CommandExecutionEvent>,
 ) {
-    for packet in packets.iter() {
+    for packet in packets.read() {
         let client = packet.client;
         if let Some(packet) = packet.decode::<CommandExecutionC2s>() {
             event_writer.send(CommandExecutionEvent {
@@ -220,7 +220,7 @@ fn parse_incoming_commands(
     scope_registry: Res<CommandScopeRegistry>,
     entity_scopes: Query<&CommandScopes>,
 ) {
-    for command_event in event_reader.iter() {
+    for command_event in event_reader.read() {
         let executor = command_event.executor;
         // these are the leafs of the graph that are executable under this command
         // group
@@ -350,8 +350,9 @@ fn parse_command_args(
                 let pre_input = input.clone().into_inner();
                 let valid = parser(&mut input);
                 if valid {
+                    // If input.len() > pre_input.len() the parser replaced the input
                     let Some(arg) = pre_input
-                        .get(..input.len() - pre_input.len())
+                        .get(..pre_input.len().wrapping_sub(input.len()))
                         .map(|s| s.to_string())
                     else {
                         panic!(
