@@ -140,22 +140,22 @@ impl EntityAttributeInstance {
             modifiers: self
                 .add_modifiers
                 .iter()
-                .map(|(_, modifier)| TrackedAttributeModifier {
-                    uuid: Uuid::new_v4(),
-                    amount: *modifier,
+                .map(|(&uuid, &amount)| TrackedAttributeModifier {
+                    uuid,
+                    amount,
                     operation: 0,
                 })
-                .chain(self.multiply_base_modifiers.iter().map(|(_, modifier)| {
+                .chain(self.multiply_base_modifiers.iter().map(|(&uuid, &amount)| {
                     TrackedAttributeModifier {
-                        uuid: Uuid::new_v4(),
-                        amount: *modifier,
+                        uuid,
+                        amount,
                         operation: 1,
                     }
                 }))
-                .chain(self.multiply_total_modifiers.iter().map(|(_, modifier)| {
+                .chain(self.multiply_total_modifiers.iter().map(|(&uuid, &amount)| {
                     TrackedAttributeModifier {
-                        uuid: Uuid::new_v4(),
-                        amount: *modifier,
+                        uuid,
+                        amount,
                         operation: 2,
                     }
                 }))
