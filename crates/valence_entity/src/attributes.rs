@@ -152,13 +152,15 @@ impl EntityAttributeInstance {
                         operation: 1,
                     }
                 }))
-                .chain(self.multiply_total_modifiers.iter().map(|(&uuid, &amount)| {
-                    TrackedAttributeModifier {
-                        uuid,
-                        amount,
-                        operation: 2,
-                    }
-                }))
+                .chain(
+                    self.multiply_total_modifiers
+                        .iter()
+                        .map(|(&uuid, &amount)| TrackedAttributeModifier {
+                            uuid,
+                            amount,
+                            operation: 2,
+                        }),
+                )
                 .collect(),
         }
     }
