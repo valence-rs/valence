@@ -6,9 +6,7 @@ use valence::log::LogPlugin;
 use valence::network::ConnectionMode;
 use valence::prelude::*;
 use valence::status_effects::{AttributeModifier, StatusEffect};
-use valence_server::entity::attributes::{
-    EntityAttribute, EntityAttributeOperation, EntityAttributes,
-};
+use valence_server::entity::attributes::{EntityAttribute, EntityAttributes};
 use valence_server::entity::entity::Flags;
 use valence_server::entity::living::{Absorption, Health};
 use valence_server::status_effect::{StatusEffectAdded, StatusEffectRemoved};
@@ -167,17 +165,7 @@ fn apply_potion_attribute(
 
     let amount = adjust_modifier_amount(amplifier, attr.value);
 
-    match attr.operation {
-        EntityAttributeOperation::Add => {
-            attributes.set_add_modifier(attr.attribute, attr.uuid, amount);
-        }
-        EntityAttributeOperation::MultiplyTotal => {
-            attributes.set_multiply_total_modifier(attr.attribute, attr.uuid, amount);
-        }
-        EntityAttributeOperation::MultiplyBase => {
-            panic!("MultiplyBase is never used by potions");
-        }
-    }
+    attributes.set_modifier(attr.attribute, attr.uuid, amount, attr.operation);
 
     // not quite how vanilla does it, but it's close enough
     if attr.attribute == EntityAttribute::GenericMaxHealth {
