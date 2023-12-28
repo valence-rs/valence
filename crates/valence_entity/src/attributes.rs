@@ -110,6 +110,19 @@ impl EntityAttributeInstance {
         self
     }
 
+    /// Sets a value modifier based on the operation.
+    ///
+    /// If the modifier already exists, it will be overwritten.
+    /// 
+    /// Returns a mutable reference to self.
+    pub fn with_modifier(&mut self, uuid: Uuid, modifier: f64, operation: AttributeOperation) -> &mut Self {
+        match operation {
+            AttributeOperation::Add => self.with_add_modifier(uuid, modifier),
+            AttributeOperation::MultiplyBase => self.with_multiply_base_modifier(uuid, modifier),
+            AttributeOperation::MultiplyTotal => self.with_multiply_total_modifier(uuid, modifier),
+        }
+    }
+
     /// Removes a modifier.
     pub fn remove_modifier(&mut self, uuid: Uuid) {
         self.add_modifiers.remove(&uuid);
@@ -291,6 +304,21 @@ impl EntityAttributes {
             .entry(attribute)
             .or_insert_with(|| EntityAttributeInstance::new(attribute))
             .with_multiply_total_modifier(uuid, modifier);
+    }
+
+    /// Sets a value modifier of an attribute based on the operation.
+    pub fn set_modifier(
+        &mut self,
+        attribute: EntityAttribute,
+        uuid: Uuid,
+        modifier: f64,
+        operation: AttributeOperation,
+    ) {
+        self.mark_recently_changed(attribute);
+        self.attributes
+            .entry(attribute)
+            .or_insert_with(|| EntityAttributeInstance::new(attribute))
+            .with_modifier(uuid, modifier, operation);
     }
 
     /// Removes a modifier of an attribute.

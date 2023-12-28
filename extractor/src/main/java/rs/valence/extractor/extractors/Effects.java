@@ -35,7 +35,7 @@ public class Effects implements Main.Extractor {
             for (var entry : effect.getAttributeModifiers().entrySet()) {
                 var attributeModifierJson = new JsonObject();
 
-                attributeModifierJson.addProperty("attribute", Registries.ATTRIBUTE.getId(entry.getKey()).getPath());
+                attributeModifierJson.addProperty("attribute", Registries.ATTRIBUTE.getRawId(entry.getKey()));
                 attributeModifierJson.addProperty("operation", entry.getValue().getOperation().getId());
                 attributeModifierJson.addProperty("value", entry.getValue().getValue());
                 attributeModifierJson.addProperty("uuid", entry.getValue().getId().toString());
@@ -43,7 +43,9 @@ public class Effects implements Main.Extractor {
                 attributeModifiersJson.add(attributeModifierJson);
             }
 
-            effectJson.add("attribute_modifiers", attributeModifiersJson);
+            if (attributeModifiersJson.size() > 0) {
+                effectJson.add("attribute_modifiers", attributeModifiersJson);
+            }
 
             effectsJson.add(effectJson);
         }
