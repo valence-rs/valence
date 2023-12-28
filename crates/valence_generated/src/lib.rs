@@ -1,37 +1,7 @@
 pub mod block;
 
 pub mod attributes {
-    /// An attribute modifier operation.
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-    pub enum EntityAttributeOperation {
-        /// Adds the modifier to the base value.
-        Add,
-        /// Multiplies the modifier with the base value.
-        MultiplyBase,
-        /// Multiplies the modifier with the total value.
-        MultiplyTotal,
-    }
-
-    impl EntityAttributeOperation {
-        /// Converts from a raw [`u8`].
-        pub fn from_raw(raw: u8) -> Option<Self> {
-            match raw {
-                0 => Some(Self::Add),
-                1 => Some(Self::MultiplyBase),
-                2 => Some(Self::MultiplyTotal),
-                _ => None,
-            }
-        }
-
-        /// Converts to a raw [`u8`].
-        pub fn to_raw(self) -> u8 {
-            match self {
-                Self::Add => 0,
-                Self::MultiplyBase => 1,
-                Self::MultiplyTotal => 2,
-            }
-        }
-    }
+    include!(concat!(env!("OUT_DIR"), "/attributes.rs"));
 }
 
 pub mod item {

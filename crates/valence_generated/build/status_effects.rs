@@ -157,7 +157,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 });
 
                 quote! {
-                    Self::#name => &[#(#modifiers,)*],
+                    Self::#name => vec![#(#modifiers,)*],
                 }
             })
         })
@@ -169,10 +169,12 @@ pub fn build() -> anyhow::Result<TokenStream> {
         .collect::<Vec<_>>();
 
     Ok(quote! {
+        use uuid::Uuid;
         use valence_ident::{Ident, ident};
+        use super::attributes::{EntityAttribute, EntityAttributeOperation};
 
         /// Represents an attribute modifier.
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+        #[derive(Debug, Clone, Copy, PartialEq)]
         pub struct AttributeModifier {
             /// The attribute that this modifier modifies.
             pub attribute: EntityAttribute,
@@ -270,10 +272,10 @@ pub fn build() -> anyhow::Result<TokenStream> {
             }
 
             /// Gets the attribute modifiers of this effect.
-            pub const fn attribute_modifiers(&self) -> &'static [AttributeModifier] {
+            pub fn attribute_modifiers(&self) -> Vec<AttributeModifier> {
                 match self {
                     #effect_to_attribute_modifiers_arms
-                    _ => &[],
+                    _ => vec![],
                 }
             }
 

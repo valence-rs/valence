@@ -130,25 +130,6 @@ public class Misc implements Main.Extractor {
         }
         miscJson.add("tracked_data_handler", trackedDataHandlerJson);
 
-        var attributesJson = new JsonObject();
-        for (EntityAttribute attribute : Registries.ATTRIBUTE) {
-            var attributeJson = new JsonObject();
-
-            attributeJson.addProperty("id", Registries.ATTRIBUTE.getRawId(attribute));
-            attributeJson.addProperty("name", Registries.ATTRIBUTE.getId(attribute).getPath());
-            attributeJson.addProperty("default_value", attribute.getDefaultValue());
-            attributeJson.addProperty("translation_key", attribute.getTranslationKey());
-            attributeJson.addProperty("tracked", attribute.isTracked());
-
-            if (attribute instanceof ClampedEntityAttribute a) {
-                attributeJson.addProperty("min_value", a.getMinValue());
-                attributeJson.addProperty("max_value", a.getMaxValue());
-            }
-
-            attributesJson.add(Registries.ATTRIBUTE.getId(attribute).getPath(), attributeJson);
-        }
-        miscJson.add("entity_attributes", attributesJson);
-
         return miscJson;
     }
 }
