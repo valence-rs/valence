@@ -5,11 +5,12 @@ use valence::entity::active_status_effects::{ActiveStatusEffect, ActiveStatusEff
 use valence::log::LogPlugin;
 use valence::network::ConnectionMode;
 use valence::prelude::*;
-use valence::status_effects::StatusEffect;
-use valence_server::entity::attributes::EntityAttributes;
+use valence::status_effects::{AttributeModifier, StatusEffect};
+use valence_server::entity::attributes::{
+    EntityAttribute, EntityAttributeOperation, EntityAttributes,
+};
 use valence_server::entity::entity::Flags;
 use valence_server::entity::living::{Absorption, Health};
-use valence_server::entity::EntityAttribute;
 use valence_server::status_effect::{StatusEffectAdded, StatusEffectRemoved};
 
 const SPAWN_Y: i32 = 64;
@@ -152,118 +153,29 @@ pub fn add_potion_effect(
     }
 }
 
-const fn parse_uuid_const(uuid: &[u8]) -> Uuid {
-    // unwrap_or can't be used here because it's not a const fn
-    match Uuid::try_parse_ascii(uuid) {
-        Ok(uuid) => uuid,
-        Err(_) => Uuid::nil(),
-    }
-}
-
-const SPEED_UUID: Uuid = parse_uuid_const(b"91AEAA56-376B-4498-935B-2F7F68070635");
-const SLOW_UUID: Uuid = parse_uuid_const(b"7107DE5E-7CE8-4030-940E-514C1F160890");
-const HASTE_UUID: Uuid = parse_uuid_const(b"AF8B6E3F-3328-4C0A-AA36-5BA2BB9DBEF3");
-const MINING_FATIGUE_UUID: Uuid = parse_uuid_const(b"55FCED67-E92A-486E-9800-B47F202C4386");
-const STRENGTH_UUID: Uuid = parse_uuid_const(b"648D7064-6A60-4F59-8ABE-C2C23A6DD7A9");
-const WEAKNESS_UUID: Uuid = parse_uuid_const(b"22653B89-116E-49DC-9B6B-9971489B5BE5");
-const HEALTH_BOOST_UUID: Uuid = parse_uuid_const(b"5D6F0BA2-1186-46AC-B896-C61C5CEE99CC");
-const LUCK_UUID: Uuid = parse_uuid_const(b"03C3C89D-7037-4B42-869F-B146BCB64D2E");
-const UNLUCK_UUID: Uuid = parse_uuid_const(b"CC5AF142-2BD2-4215-B636-2605AED11727");
-
 fn adjust_modifier_amount(amplifier: u8, amount: f64) -> f64 {
     amount * (amplifier + 1) as f64
-}
-
-#[derive(Debug, Clone, Copy)]
-enum PotionAttributeType {
-    Add,
-    Mult,
-}
-
-#[derive(Debug, Clone, Copy)]
-struct PotionAttribute {
-    attribute: EntityAttribute,
-    uuid: Uuid,
-    ty: PotionAttributeType,
-    amount: f64,
-}
-
-fn get_potion_attribute(status: StatusEffect) -> Vec<PotionAttribute> {
-    match status {
-        StatusEffect::Speed => vec![PotionAttribute {
-            attribute: EntityAttribute::GenericMovementSpeed,
-            uuid: SPEED_UUID,
-            ty: PotionAttributeType::Mult,
-            amount: 0.2,
-        }],
-        StatusEffect::Slowness => vec![PotionAttribute {
-            attribute: EntityAttribute::GenericMovementSpeed,
-            uuid: SLOW_UUID,
-            ty: PotionAttributeType::Mult,
-            amount: -0.15,
-        }],
-        StatusEffect::Haste => vec![PotionAttribute {
-            attribute: EntityAttribute::GenericAttackSpeed,
-            uuid: HASTE_UUID,
-            ty: PotionAttributeType::Mult,
-            amount: 0.2,
-        }],
-        StatusEffect::MiningFatigue => vec![PotionAttribute {
-            attribute: EntityAttribute::GenericAttackSpeed,
-            uuid: MINING_FATIGUE_UUID,
-            ty: PotionAttributeType::Mult,
-            amount: -0.15,
-        }],
-        StatusEffect::Strength => vec![PotionAttribute {
-            attribute: EntityAttribute::GenericAttackDamage,
-            uuid: STRENGTH_UUID,
-            ty: PotionAttributeType::Add,
-            amount: 3.0,
-        }],
-        StatusEffect::Weakness => vec![PotionAttribute {
-            attribute: EntityAttribute::GenericAttackDamage,
-            uuid: WEAKNESS_UUID,
-            ty: PotionAttributeType::Add,
-            amount: -4.0,
-        }],
-        StatusEffect::HealthBoost => vec![PotionAttribute {
-            attribute: EntityAttribute::GenericMaxHealth,
-            uuid: HEALTH_BOOST_UUID,
-            ty: PotionAttributeType::Add,
-            amount: 4.0,
-        }],
-        StatusEffect::Luck => vec![PotionAttribute {
-            attribute: EntityAttribute::GenericLuck,
-            uuid: LUCK_UUID,
-            ty: PotionAttributeType::Add,
-            amount: 1.0,
-        }],
-        StatusEffect::Unluck => vec![PotionAttribute {
-            attribute: EntityAttribute::GenericLuck,
-            uuid: UNLUCK_UUID,
-            ty: PotionAttributeType::Add,
-            amount: -1.0,
-        }],
-        _ => vec![],
-    }
 }
 
 fn apply_potion_attribute(
     attributes: &mut Mut<EntityAttributes>,
     health: &mut Option<Mut<Health>>,
     amplifier: u8,
-    attr: PotionAttribute,
+    attr: AttributeModifier,
 ) {
     attributes.remove_modifier(attr.attribute, attr.uuid);
 
-    let amount = adjust_modifier_amount(amplifier, attr.amount);
+    let amount = adjust_modifier_amount(amplifier, attr.value);
 
-    match attr.ty {
-        PotionAttributeType::Add => {
+    match attr.operation {
+        EntityAttributeOperation::Add => {
             attributes.set_add_modifier(attr.attribute, attr.uuid, amount);
         }
-        PotionAttributeType::Mult => {
+        EntityAttributeOperation::MultiplyTotal => {
             attributes.set_multiply_total_modifier(attr.attribute, attr.uuid, amount);
+        }
+        EntityAttributeOperation::MultiplyBase => {
+            panic!("MultiplyBase is never used by potions");
         }
     }
 
@@ -282,7 +194,7 @@ fn apply_potion_attribute(
 fn remove_potion_attribute(
     attributes: &mut Mut<EntityAttributes>,
     health: &mut Option<Mut<Health>>,
-    attr: PotionAttribute,
+    attr: AttributeModifier,
 ) {
     attributes.remove_modifier(attr.attribute, attr.uuid);
 
@@ -337,7 +249,7 @@ pub fn handle_status_effect_added(
                     flags.set_glowing(true);
                 }
                 status => {
-                    for attr in get_potion_attribute(status) {
+                    for attr in status.attribute_modifiers() {
                         apply_potion_attribute(
                             &mut attributes,
                             &mut health,
@@ -375,7 +287,7 @@ pub fn handle_status_effect_removed(
                     flags.set_glowing(false);
                 }
                 status => {
-                    for attr in get_potion_attribute(status) {
+                    for attr in status.attribute_modifiers() {
                         remove_potion_attribute(&mut attributes, &mut health, attr);
                     }
                 }
