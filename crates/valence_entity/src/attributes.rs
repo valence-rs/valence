@@ -3,10 +3,9 @@ use std::collections::HashMap;
 use bevy_ecs::prelude::*;
 use indexmap::IndexMap;
 use uuid::Uuid;
+use valence_generated::attributes::{EntityAttribute, EntityAttributeOperation};
 use valence_protocol::packets::play::entity_attributes_s2c::*;
 use valence_protocol::Ident;
-
-use crate::EntityAttribute;
 
 /// An instance of an Entity Attribute.
 #[derive(Component, Clone, PartialEq, Debug)]
@@ -110,6 +109,19 @@ impl EntityAttributeInstance {
         self
     }
 
+    /// Sets a value modifier based on the operation.
+    ///
+    /// If the modifier already exists, it will be overwritten.
+    /// 
+    /// Returns a mutable reference to self.
+    pub fn with_modifier(&mut self, uuid: Uuid, modifier: f64, operation: EntityAttributeOperation) -> &mut Self {
+        match operation {
+            EntityAttributeOperation::Add => self.with_add_modifier(uuid, modifier),
+            EntityAttributeOperation::MultiplyBase => self.with_multiply_base_modifier(uuid, modifier),
+            EntityAttributeOperation::MultiplyTotal => self.with_multiply_total_modifier(uuid, modifier),
+        }
+    }
+
     /// Removes a modifier.
     pub fn remove_modifier(&mut self, uuid: Uuid) {
         self.add_modifiers.remove(&uuid);
@@ -140,25 +152,27 @@ impl EntityAttributeInstance {
             modifiers: self
                 .add_modifiers
                 .iter()
-                .map(|(_, modifier)| TrackedAttributeModifier {
-                    uuid: Uuid::new_v4(),
-                    amount: *modifier,
+                .map(|(&uuid, &amount)| TrackedAttributeModifier {
+                    uuid,
+                    amount,
                     operation: 0,
                 })
-                .chain(self.multiply_base_modifiers.iter().map(|(_, modifier)| {
+                .chain(self.multiply_base_modifiers.iter().map(|(&uuid, &amount)| {
                     TrackedAttributeModifier {
-                        uuid: Uuid::new_v4(),
-                        amount: *modifier,
+                        uuid,
+                        amount,
                         operation: 1,
                     }
                 }))
-                .chain(self.multiply_total_modifiers.iter().map(|(_, modifier)| {
-                    TrackedAttributeModifier {
-                        uuid: Uuid::new_v4(),
-                        amount: *modifier,
-                        operation: 2,
-                    }
-                }))
+                .chain(
+                    self.multiply_total_modifiers
+                        .iter()
+                        .map(|(&uuid, &amount)| TrackedAttributeModifier {
+                            uuid,
+                            amount,
+                            operation: 2,
+                        }),
+                )
                 .collect(),
         }
     }
@@ -289,6 +303,21 @@ impl EntityAttributes {
             .entry(attribute)
             .or_insert_with(|| EntityAttributeInstance::new(attribute))
             .with_multiply_total_modifier(uuid, modifier);
+    }
+
+    /// Sets a value modifier of an attribute based on the operation.
+    pub fn set_modifier(
+        &mut self,
+        attribute: EntityAttribute,
+        uuid: Uuid,
+        modifier: f64,
+        operation: EntityAttributeOperation,
+    ) {
+        self.mark_recently_changed(attribute);
+        self.attributes
+            .entry(attribute)
+            .or_insert_with(|| EntityAttributeInstance::new(attribute))
+            .with_modifier(uuid, modifier, operation);
     }
 
     /// Removes a modifier of an attribute.

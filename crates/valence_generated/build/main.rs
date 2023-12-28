@@ -1,5 +1,6 @@
 use valence_build_utils::write_generated_file;
 
+mod attributes;
 mod block;
 mod chunk_view;
 mod item;
@@ -8,6 +9,7 @@ mod sound;
 mod status_effects;
 
 pub fn main() -> anyhow::Result<()> {
+    write_generated_file(attributes::build()?, "attributes.rs")?;
     write_generated_file(block::build()?, "block.rs")?;
     write_generated_file(item::build()?, "item.rs")?;
     write_generated_file(sound::build()?, "sound.rs")?;
