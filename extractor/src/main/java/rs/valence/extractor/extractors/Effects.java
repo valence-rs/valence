@@ -30,6 +30,23 @@ public class Effects implements Main.Extractor {
             effectJson.addProperty("instant", effect.isInstant());
             effectJson.addProperty("category", ValenceUtils.toPascalCase(effect.getCategory().name()));
 
+            var attributeModifiersJson = new JsonArray();
+
+            for (var entry : effect.getAttributeModifiers().entrySet()) {
+                var attributeModifierJson = new JsonObject();
+
+                attributeModifierJson.addProperty("attribute", Registries.ATTRIBUTE.getRawId(entry.getKey()));
+                attributeModifierJson.addProperty("operation", entry.getValue().getOperation().getId());
+                attributeModifierJson.addProperty("value", entry.getValue().getValue());
+                attributeModifierJson.addProperty("uuid", entry.getValue().getId().toString());
+
+                attributeModifiersJson.add(attributeModifierJson);
+            }
+
+            if (attributeModifiersJson.size() > 0) {
+                effectJson.add("attribute_modifiers", attributeModifiersJson);
+            }
+
             effectsJson.add(effectJson);
         }
 

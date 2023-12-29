@@ -1,5 +1,9 @@
 pub mod block;
 
+pub mod attributes {
+    include!(concat!(env!("OUT_DIR"), "/attributes.rs"));
+}
+
 pub mod item {
     include!(concat!(env!("OUT_DIR"), "/item.rs"));
 }

@@ -12,6 +12,14 @@ pub enum StatusEffectCategory {
 }
 
 #[derive(Deserialize, Debug)]
+pub struct AttributeModifiers {
+    attribute: u8,
+    operation: u8,
+    value: f64,
+    uuid: String,
+}
+
+#[derive(Deserialize, Debug)]
 pub struct StatusEffect {
     id: u16,
     name: String,
@@ -19,6 +27,7 @@ pub struct StatusEffect {
     category: StatusEffectCategory,
     color: u32,
     instant: bool,
+    attribute_modifiers: Option<Vec<AttributeModifiers>>,
 }
 
 pub fn build() -> anyhow::Result<TokenStream> {
@@ -126,13 +135,56 @@ pub fn build() -> anyhow::Result<TokenStream> {
         })
         .collect::<TokenStream>();
 
+    let effect_to_attribute_modifiers_arms = effects
+        .iter()
+        .filter_map(|effect| {
+            effect.attribute_modifiers.as_ref().map(|modifiers| {
+                let name = ident(effect.name.to_pascal_case());
+                let modifiers = modifiers.iter().map(|modifier| {
+                    let attribute = &modifier.attribute;
+                    let operation = &modifier.operation;
+                    let value = &modifier.value;
+                    let uuid = &modifier.uuid;
+
+                    quote! {
+                        AttributeModifier {
+                            attribute: EntityAttribute::from_id(#attribute).unwrap(),
+                            operation: EntityAttributeOperation::from_raw(#operation).unwrap(),
+                            value: #value,
+                            uuid: Uuid::parse_str(#uuid).unwrap(),
+                        }
+                    }
+                });
+
+                quote! {
+                    Self::#name => vec![#(#modifiers,)*],
+                }
+            })
+        })
+        .collect::<TokenStream>();
+
     let effect_variants = effects
         .iter()
         .map(|effect| ident(effect.name.to_pascal_case()))
         .collect::<Vec<_>>();
 
     Ok(quote! {
+        use uuid::Uuid;
         use valence_ident::{Ident, ident};
+        use super::attributes::{EntityAttribute, EntityAttributeOperation};
+
+        /// Represents an attribute modifier.
+        #[derive(Debug, Clone, Copy, PartialEq)]
+        pub struct AttributeModifier {
+            /// The attribute that this modifier modifies.
+            pub attribute: EntityAttribute,
+            /// The operation that this modifier applies.
+            pub operation: EntityAttributeOperation,
+            /// The value of this modifier.
+            pub value: f64,
+            /// The UUID of this modifier.
+            pub uuid: Uuid,
+        }
 
         /// Represents a status effect category
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -216,6 +268,14 @@ pub fn build() -> anyhow::Result<TokenStream> {
             pub const fn instant(&self) -> bool {
                 match self {
                     #effect_to_instant_arms
+                }
+            }
+
+            /// Gets the attribute modifiers of this effect.
+            pub fn attribute_modifiers(&self) -> Vec<AttributeModifier> {
+                match self {
+                    #effect_to_attribute_modifiers_arms
+                    _ => vec![],
                 }
             }
 
