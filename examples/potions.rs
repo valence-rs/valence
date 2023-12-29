@@ -236,6 +236,9 @@ pub fn handle_status_effect_added(
                 StatusEffect::Glowing => {
                     flags.set_glowing(true);
                 }
+                StatusEffect::Invisibility => {
+                    flags.set_invisible(true);
+                }
                 status => {
                     for attr in status.attribute_modifiers() {
                         apply_potion_attribute(
@@ -273,6 +276,9 @@ pub fn handle_status_effect_removed(
                 }
                 StatusEffect::Glowing => {
                     flags.set_glowing(false);
+                }
+                StatusEffect::Invisibility => {
+                    flags.set_invisible(false);
                 }
                 status => {
                     for attr in status.attribute_modifiers() {
