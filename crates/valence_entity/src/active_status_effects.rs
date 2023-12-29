@@ -10,6 +10,7 @@ enum StatusEffectChange {
     Remove(StatusEffect),
     RemoveAll,
     /// **For internal use only.**
+    #[doc(hidden)]
     Expire(StatusEffect),
 }
 
@@ -229,6 +230,7 @@ impl ActiveStatusEffects {
     /// **For internal use only.**
     ///
     /// Increments the active tick of all effects by a tick.
+    #[doc(hidden)]
     pub fn increment_active_ticks(&mut self) {
         for effects in self.current_effects.values_mut() {
             for effect in effects.iter_mut() {
@@ -248,6 +250,7 @@ impl ActiveStatusEffects {
     ///
     /// Returns a [`IndexMap`] of [`StatusEffect`]s that were updated or removed
     /// and their previous values.
+    #[doc(hidden)]
     pub fn apply_changes(&mut self) -> IndexMap<StatusEffect, Option<ActiveStatusEffect>> {
         let current = self.current_effects.clone();
         let find_current = |effect: StatusEffect| {
