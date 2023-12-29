@@ -279,10 +279,12 @@ type Entities = BTreeMap<String, Entity>;
 pub fn main() -> anyhow::Result<()> {
     rerun_if_changed(["extracted/misc.json", "extracted/entities.json"]);
 
-    write_generated_file(build()?, "entity.rs")
+    write_generated_file(build_entities()?, "entity.rs")?;
+
+    Ok(())
 }
 
-fn build() -> anyhow::Result<TokenStream> {
+fn build_entities() -> anyhow::Result<TokenStream> {
     let entity_types = serde_json::from_str::<EntityTypes>(include_str!("extracted/misc.json"))
         .context("failed to deserialize misc.json")?
         .entity_type;
@@ -399,12 +401,19 @@ fn build() -> anyhow::Result<TokenStream> {
                                 bundle_init_fields.extend([quote! {
                                     living_attributes: super::attributes::EntityAttributes::new() #attribute_default_values,
                                 }]);
+
                                 bundle_fields.extend([quote! {
                                     pub living_attributes_tracker: super::attributes::TrackedEntityAttributes,
                                 }]);
-
                                 bundle_init_fields.extend([quote! {
                                     living_attributes_tracker: Default::default(),
+                                }]);
+
+                                bundle_fields.extend([quote! {
+                                    pub living_active_status_effects: super::active_status_effects::ActiveStatusEffects,
+                                }]);
+                                bundle_init_fields.extend([quote! {
+                                    living_active_status_effects: Default::default(),
                                 }]);
                             }
                             "PlayerEntity" => {

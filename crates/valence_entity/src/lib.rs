@@ -18,6 +18,7 @@
 )]
 #![allow(clippy::type_complexity)]
 
+pub mod active_status_effects;
 pub mod attributes;
 mod flags;
 pub mod hitbox;
@@ -39,6 +40,7 @@ use valence_server_common::{Despawned, UniqueId};
 use crate::attributes::TrackedEntityAttributes;
 
 include!(concat!(env!("OUT_DIR"), "/entity.rs"));
+
 pub struct EntityPlugin;
 
 /// When new Minecraft entities are initialized and added to

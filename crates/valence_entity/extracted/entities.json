@@ -4768,9 +4768,9 @@
       }
     ],
     "default_bounding_box": {
-      "size_x": 0.699999988079071,
-      "size_y": 0.5,
-      "size_z": 0.699999988079071
+      "size_x": 1.399999976158142,
+      "size_y": 0.8999999761581421,
+      "size_z": 1.399999976158142
     }
   },
   "SquidEntity": {
@@ -6105,7 +6105,7 @@
         "type": "villager_data",
         "default_value": {
           "type": "plains",
-          "profession": "nitwit",
+          "profession": "none",
           "level": 1
         }
       }

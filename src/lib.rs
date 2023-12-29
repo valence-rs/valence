@@ -78,6 +78,7 @@ use valence_server::op_level::OpLevelPlugin;
 pub use valence_server::protocol::status_effects;
 use valence_server::resource_pack::ResourcePackPlugin;
 use valence_server::status::StatusPlugin;
+use valence_server::status_effect::StatusEffectPlugin;
 use valence_server::teleport::TeleportPlugin;
 pub use valence_server::*;
 #[cfg(feature = "weather")]
@@ -194,6 +195,7 @@ impl PluginGroup for DefaultPlugins {
             .add(OpLevelPlugin)
             .add(ResourcePackPlugin)
             .add(StatusPlugin)
+            .add(StatusEffectPlugin)
             .add(AbilitiesPlugin);
 
         #[cfg(feature = "log")]
