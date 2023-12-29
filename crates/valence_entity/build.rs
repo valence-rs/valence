@@ -13,6 +13,7 @@ struct Entity {
     typ: Option<String>,
     translation_key: Option<String>,
     fields: Vec<Field>,
+    defaults: Vec<DefaultValue>,
     attributes: Option<Vec<Attribute>>,
     parent: Option<String>,
 }
@@ -25,6 +26,13 @@ struct EntityTypes {
 #[derive(Deserialize, Clone, Debug)]
 struct Field {
     name: String,
+    index: u8,
+    #[serde(rename = "type")]
+    typ: ValueType,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+struct DefaultValue {
     index: u8,
     #[serde(flatten)]
     default_value: Value,
@@ -87,6 +95,115 @@ enum Value {
     },
 }
 
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "snake_case")]
+enum ValueType {
+    Byte,
+    Integer,
+    Long,
+    Float,
+    String,
+    TextComponent,
+    OptionalTextComponent,
+    ItemStack,
+    Boolean,
+    Rotation,
+    BlockPos,
+    OptionalBlockPos,
+    Facing,
+    OptionalUuid,
+    BlockState,
+    OptionalBlockState,
+    NbtCompound,
+    Particle,
+    VillagerData,
+    OptionalInt,
+    EntityPose,
+    CatVariant,
+    FrogVariant,
+    OptionalGlobalPos,
+    PaintingVariant,
+    SnifferState,
+    Vector3f,
+    Quaternionf,
+}
+
+impl ValueType {
+    pub fn type_id(&self) -> u8 {
+        match self {
+            ValueType::Byte => 0,
+            ValueType::Integer => 1,
+            ValueType::Long => 2,
+            ValueType::Float => 3,
+            ValueType::String => 4,
+            ValueType::TextComponent => 5,
+            ValueType::OptionalTextComponent => 6,
+            ValueType::ItemStack => 7,
+            ValueType::Boolean => 8,
+            ValueType::Rotation => 9,
+            ValueType::BlockPos => 10,
+            ValueType::OptionalBlockPos => 11,
+            ValueType::Facing => 12,
+            ValueType::OptionalUuid => 13,
+            ValueType::BlockState => 14,
+            ValueType::OptionalBlockState => 15,
+            ValueType::NbtCompound => 16,
+            ValueType::Particle => 17,
+            ValueType::VillagerData => 18,
+            ValueType::OptionalInt => 19,
+            ValueType::EntityPose => 20,
+            ValueType::CatVariant => 21,
+            ValueType::FrogVariant => 22,
+            ValueType::OptionalGlobalPos => 23,
+            ValueType::PaintingVariant => 24,
+            ValueType::SnifferState => 25,
+            ValueType::Vector3f => 26,
+            ValueType::Quaternionf => 27,
+        }
+    }
+
+    pub fn field_type(&self) -> TokenStream {
+        match self {
+            ValueType::Byte => quote!(i8),
+            ValueType::Integer => quote!(i32),
+            ValueType::Long => quote!(i64),
+            ValueType::Float => quote!(f32),
+            ValueType::String => quote!(String),
+            ValueType::TextComponent => quote!(valence_protocol::Text),
+            ValueType::OptionalTextComponent => quote!(Option<valence_protocol::Text>),
+            ValueType::ItemStack => quote!(valence_protocol::ItemStack),
+            ValueType::Boolean => quote!(bool),
+            ValueType::Rotation => quote!(crate::EulerAngle),
+            ValueType::BlockPos => quote!(valence_protocol::BlockPos),
+            ValueType::OptionalBlockPos => quote!(Option<valence_protocol::BlockPos>),
+            ValueType::Facing => quote!(valence_protocol::Direction),
+            ValueType::OptionalUuid => quote!(Option<::uuid::Uuid>),
+            ValueType::BlockState => quote!(valence_protocol::BlockState),
+            ValueType::OptionalBlockState => quote!(valence_protocol::BlockState),
+            ValueType::NbtCompound => quote!(valence_nbt::Compound),
+            ValueType::Particle => quote!(valence_protocol::packets::play::particle_s2c::Particle),
+            ValueType::VillagerData => quote!(crate::VillagerData),
+            ValueType::OptionalInt => quote!(Option<i32>),
+            ValueType::EntityPose => quote!(crate::Pose),
+            ValueType::CatVariant => quote!(crate::CatKind),
+            ValueType::FrogVariant => quote!(crate::FrogKind),
+            ValueType::OptionalGlobalPos => quote!(()), // TODO
+            ValueType::PaintingVariant => quote!(crate::PaintingKind),
+            ValueType::SnifferState => quote!(crate::SnifferState),
+            ValueType::Vector3f => quote!(valence_math::Vec3),
+            ValueType::Quaternionf => quote!(valence_math::Quat),
+        }
+    }
+
+    pub fn encodable_expr(&self, self_lvalue: TokenStream) -> TokenStream {
+        match self {
+            ValueType::Integer => quote!(VarInt(#self_lvalue)),
+            ValueType::OptionalInt => quote!(OptionalInt(#self_lvalue)),
+            _ => quote!(&#self_lvalue),
+        }
+    }
+}
+
 #[derive(Deserialize, Debug, Clone, Copy)]
 struct BlockPos {
     x: i32,
@@ -95,73 +212,7 @@ struct BlockPos {
 }
 
 impl Value {
-    pub fn type_id(&self) -> u8 {
-        match self {
-            Value::Byte(_) => 0,
-            Value::Integer(_) => 1,
-            Value::Long(_) => 2,
-            Value::Float(_) => 3,
-            Value::String(_) => 4,
-            Value::TextComponent(_) => 5,
-            Value::OptionalTextComponent(_) => 6,
-            Value::ItemStack(_) => 7,
-            Value::Boolean(_) => 8,
-            Value::Rotation { .. } => 9,
-            Value::BlockPos(_) => 10,
-            Value::OptionalBlockPos(_) => 11,
-            Value::Facing(_) => 12,
-            Value::OptionalUuid(_) => 13,
-            Value::BlockState(_) => 14,
-            Value::OptionalBlockState(_) => 15,
-            Value::NbtCompound(_) => 16,
-            Value::Particle(_) => 17,
-            Value::VillagerData { .. } => 18,
-            Value::OptionalInt(_) => 19,
-            Value::EntityPose(_) => 20,
-            Value::CatVariant(_) => 21,
-            Value::FrogVariant(_) => 22,
-            Value::OptionalGlobalPos(_) => 23,
-            Value::PaintingVariant(_) => 24,
-            Value::SnifferState(_) => 25,
-            Value::Vector3f { .. } => 26,
-            Value::Quaternionf { .. } => 27,
-        }
-    }
-
-    pub fn field_type(&self) -> TokenStream {
-        match self {
-            Value::Byte(_) => quote!(i8),
-            Value::Integer(_) => quote!(i32),
-            Value::Long(_) => quote!(i64),
-            Value::Float(_) => quote!(f32),
-            Value::String(_) => quote!(String),
-            Value::TextComponent(_) => quote!(valence_protocol::Text),
-            Value::OptionalTextComponent(_) => quote!(Option<valence_protocol::Text>),
-            Value::ItemStack(_) => quote!(valence_protocol::ItemStack),
-            Value::Boolean(_) => quote!(bool),
-            Value::Rotation { .. } => quote!(crate::EulerAngle),
-            Value::BlockPos(_) => quote!(valence_protocol::BlockPos),
-            Value::OptionalBlockPos(_) => quote!(Option<valence_protocol::BlockPos>),
-            Value::Facing(_) => quote!(valence_protocol::Direction),
-            Value::OptionalUuid(_) => quote!(Option<::uuid::Uuid>),
-            Value::BlockState(_) => quote!(valence_protocol::BlockState),
-            Value::OptionalBlockState(_) => quote!(valence_protocol::BlockState),
-            Value::NbtCompound(_) => quote!(valence_nbt::Compound),
-            Value::Particle(_) => quote!(valence_protocol::packets::play::particle_s2c::Particle),
-            Value::VillagerData { .. } => quote!(crate::VillagerData),
-            Value::OptionalInt(_) => quote!(Option<i32>),
-            Value::EntityPose(_) => quote!(crate::Pose),
-            Value::CatVariant(_) => quote!(crate::CatKind),
-            Value::FrogVariant(_) => quote!(crate::FrogKind),
-            Value::OptionalGlobalPos(_) => quote!(()), // TODO
-            Value::PaintingVariant(_) => quote!(crate::PaintingKind),
-            Value::SnifferState(_) => quote!(crate::SnifferState),
-            Value::Vector3f { .. } => quote!(valence_math::Vec3),
-            Value::Quaternionf { .. } => quote!(valence_math::Quat),
-        }
-    }
-
-    pub fn default_expr(&self) -> TokenStream {
+    pub fn value_expr(&self) -> TokenStream {
         match self {
             Value::Byte(b) => quote!(#b),
             Value::Integer(i) => quote!(#i),
@@ -264,14 +315,6 @@ impl Value {
             },
         }
     }
-
-    pub fn encodable_expr(&self, self_lvalue: TokenStream) -> TokenStream {
-        match self {
-            Value::Integer(_) => quote!(VarInt(#self_lvalue)),
-            Value::OptionalInt(_) => quote!(OptionalInt(#self_lvalue)),
-            _ => quote!(&#self_lvalue),
-        }
-    }
 }
 
 type Entities = BTreeMap<String, Entity>;
@@ -300,7 +343,7 @@ fn build() -> anyhow::Result<TokenStream> {
     let mut systems = TokenStream::new();
     let mut system_names = vec![];
 
-    for (entity_name, entity) in entities.clone() {
+    for (entity_name, ref entity) in entities.clone() {
         let entity_name_ident = ident(&entity_name);
         let stripped_shouty_entity_name = strip_entity_suffix(&entity_name).to_shouty_snake_case();
         let stripped_shouty_entity_name_ident = ident(&stripped_shouty_entity_name);
@@ -309,8 +352,8 @@ fn build() -> anyhow::Result<TokenStream> {
 
         let mut module_body = TokenStream::new();
 
-        if let Some(parent_name) = entity.parent {
-            let stripped_snake_parent_name = strip_entity_suffix(&parent_name).to_snake_case();
+        if let Some(parent_name) = entity.parent.as_ref() {
+            let stripped_snake_parent_name = strip_entity_suffix(parent_name).to_snake_case();
 
             let module_doc = format!(
                 "Parent class: \
@@ -323,8 +366,8 @@ fn build() -> anyhow::Result<TokenStream> {
         }
 
         // Is this a concrete entity type?
-        if let Some(entity_type) = entity.typ {
-            let entity_type_id = entity_types[&entity_type];
+        if let Some(entity_type) = entity.typ.as_ref() {
+            let entity_type_id = entity_types[entity_type];
 
             entity_kind_consts.extend([quote! {
                 pub const #stripped_shouty_entity_name_ident: EntityKind = EntityKind(#entity_type_id);
@@ -334,7 +377,7 @@ fn build() -> anyhow::Result<TokenStream> {
                 EntityKind::#stripped_shouty_entity_name_ident => write!(f, "{} ({})", #entity_type_id, #stripped_shouty_entity_name),
             }]);
 
-            let translation_key_expr = if let Some(key) = entity.translation_key {
+            let translation_key_expr = if let Some(key) = entity.translation_key.as_ref() {
                 quote!(Some(#key))
             } else {
                 quote!(None)
@@ -421,23 +464,68 @@ fn build() -> anyhow::Result<TokenStream> {
                             _ => {}
                         }
                     }
-                    MarkerOrField::Field { entity_name, field } => {
+                    MarkerOrField::Field {
+                        entity_name: field_entity_name,
+                        field,
+                    } => {
                         let snake_field_name = field.name.to_snake_case();
                         let pascal_field_name = field.name.to_pascal_case();
                         let pascal_field_name_ident = ident(&pascal_field_name);
-                        let stripped_entity_name = strip_entity_suffix(entity_name);
-                        let stripped_snake_entity_name = stripped_entity_name.to_snake_case();
-                        let stripped_snake_entity_name_ident = ident(&stripped_snake_entity_name);
+                        let stripped_field_entity_name = strip_entity_suffix(field_entity_name);
+                        let stripped_snake_field_entity_name =
+                            stripped_field_entity_name.to_snake_case();
+                        let stripped_snake_field_entity_name_ident =
+                            ident(&stripped_snake_field_entity_name);
 
-                        let field_name_ident =
-                            ident(format!("{stripped_snake_entity_name}_{snake_field_name}"));
+                        let field_name_ident = ident(format!(
+                            "{stripped_snake_field_entity_name}_{snake_field_name}"
+                        ));
+
+                        let value_expr = entity
+                            .defaults
+                            .iter()
+                            .find_map(|default| {
+                                if default.index == field.index {
+                                    Some(default.default_value.value_expr())
+                                } else {
+                                    None
+                                }
+                            })
+                            .or_else(|| {
+                                // For some reason, some entities don't have defaults for all
+                                // fields. In this case, we can use
+                                // the default value of the parent entity.
+                                entities
+                                    .get(
+                                        entity
+                                            .parent
+                                            .as_ref()
+                                            .expect("no parent for entity")
+                                            .as_str(),
+                                    )
+                                    .and_then(|parent| {
+                                        parent.defaults.iter().find_map(|default| {
+                                            if default.index == field.index {
+                                                Some(default.default_value.value_expr())
+                                            } else {
+                                                None
+                                            }
+                                        })
+                                    })
+                            })
+                            .unwrap_or_else(|| {
+                                panic!(
+                                    "no default value for field `{}`. Entity: {:?}",
+                                    field.name, entity_name
+                                )
+                            });
 
                         bundle_fields.extend([quote! {
-                            pub #field_name_ident: super::#stripped_snake_entity_name_ident::#pascal_field_name_ident,
+                            pub #field_name_ident: super::#stripped_snake_field_entity_name_ident::#pascal_field_name_ident,
                         }]);
 
                         bundle_init_fields.extend([quote! {
-                            #field_name_ident: Default::default(),
+                            #field_name_ident: super::#stripped_snake_field_entity_name_ident::#pascal_field_name_ident(#value_expr),
                         }]);
                     }
                 }
@@ -504,19 +592,11 @@ fn build() -> anyhow::Result<TokenStream> {
         for field in &entity.fields {
             let pascal_field_name_ident = ident(field.name.to_pascal_case());
             let snake_field_name = field.name.to_snake_case();
-            let inner_type = field.default_value.field_type();
-            let default_expr = field.default_value.default_expr();
+            let inner_type = field.typ.field_type();
 
             module_body.extend([quote! {
                 #[derive(bevy_ecs::component::Component, PartialEq, Clone, Debug, ::derive_more::Deref, ::derive_more::DerefMut)]
                 pub struct #pascal_field_name_ident(pub #inner_type);
-
-                #[allow(clippy::derivable_impls)]
-                impl Default for #pascal_field_name_ident {
-                    fn default() -> Self {
-                        Self(#default_expr)
-                    }
-                }
             }]);
 
             let system_name_ident = ident(format!(
@@ -528,8 +608,8 @@ fn build() -> anyhow::Result<TokenStream> {
             system_names.push(quote!(#system_name_ident));
 
             let data_index = field.index;
-            let data_type = field.default_value.type_id();
-            let encodable_expr = field.default_value.encodable_expr(quote!(value.0));
+            let data_type = field.typ.type_id();
+            let encodable_expr = field.typ.encodable_expr(quote!(value.0));
 
             systems.extend([quote! {
                 #[allow(clippy::needless_borrow)]
@@ -539,11 +619,7 @@ fn build() -> anyhow::Result<TokenStream> {
                     mut query: Query<(&#component_path, &mut tracked_data::TrackedData), Changed<#component_path>>
                 ) {
                     for (value, mut tracked_data) in &mut query {
-                        if *value == Default::default() {
-                            tracked_data.remove_init_value(#data_index);
-                        } else {
-                            tracked_data.insert_init_value(#data_index, #data_type, #encodable_expr);
-                        }
+                        tracked_data.insert_init_value(#data_index, #data_type, #encodable_expr);
 
                         if !tracked_data.is_added() {
                             tracked_data.append_update_value(#data_index, #data_type, #encodable_expr);
@@ -582,8 +658,14 @@ fn build() -> anyhow::Result<TokenStream> {
                     }
 
                     #[doc = "Special untracked component for `PlayerEntity` entities."]
-                    #[derive(bevy_ecs::component::Component, Copy, Clone, Default, Debug)]
+                    #[derive(bevy_ecs::component::Component, Copy, Clone, Debug)]
                     pub struct Saturation(pub f32);
+
+                    impl Default for Saturation {
+                        fn default() -> Self {
+                            Self(5.0)
+                        }
+                    }
                 }]);
             }
             _ => {}

@@ -1,5 +1,9 @@
 package rs.valence.extractor;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import java.util.TreeMap;
+
 /**
  * Utility class for various methods.
  */
@@ -30,5 +34,16 @@ public class ValenceUtils {
         }
 
         return result.toString();
+    }
+
+    /**
+     * Converts a TreeMap to a JsonArray, ignoring the keys.
+     */
+    public static <A, B extends JsonElement> JsonArray treeMapToJsonArray(TreeMap<A, B> map) {
+        JsonArray array = new JsonArray();
+        for (var entry : map.entrySet()) {
+            array.add(entry.getValue());
+        }
+        return array;
     }
 }
