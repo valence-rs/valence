@@ -311,6 +311,7 @@ pub enum PacketState {
     Status,
     Login,
     Play,
+    Configuration,
 }
 
 #[allow(dead_code)]

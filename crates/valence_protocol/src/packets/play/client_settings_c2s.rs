@@ -3,6 +3,7 @@ use bitfield_struct::bitfield;
 use crate::{Decode, Encode, Packet};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(name = "CLIENT_OPTIONS_C2S")]
 pub struct ClientSettingsC2s<'a> {
     pub locale: &'a str,
     pub view_distance: u8,

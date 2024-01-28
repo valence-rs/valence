@@ -1,9 +1,9 @@
 use valence_math::DVec3;
 
-use crate::{packet_id, Decode, Encode, Packet};
+use crate::{PacketSide, Decode, Encode, Packet};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::FULL)]
+#[packet(name = "FULL", side = PacketSide::Serverbound)]
 pub struct FullC2s {
     pub position: DVec3,
     pub yaw: f32,

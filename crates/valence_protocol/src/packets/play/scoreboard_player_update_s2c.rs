@@ -1,6 +1,7 @@
 use crate::{Decode, Encode, Packet, VarInt};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(name = "SCOREBOARD_SCORE_UPDATE_S2C")]
 pub struct ScoreboardPlayerUpdateS2c<'a> {
     pub entity_name: &'a str,
     pub action: ScoreboardPlayerUpdateAction<'a>,

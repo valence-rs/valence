@@ -6,13 +6,13 @@ use std::io::Write;
 use valence_ident::Ident;
 use valence_text::Text;
 
-use crate::{packet_id, Decode, Encode, ItemStack, Packet, VarInt};
+use crate::{Decode, Encode, ItemStack, Packet, VarInt};
 
 pub type AdvancementUpdateS2c<'a> =
     GenericAdvancementUpdateS2c<'a, (Ident<Cow<'a, str>>, Advancement<'a, ItemStack>)>;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::ADVANCEMENT_UPDATE_S2C)]
+#[packet(name = "ADVANCEMENT_UPDATE_S2C")]
 pub struct GenericAdvancementUpdateS2c<'a, AM: 'a> {
     pub reset: bool,
     pub advancement_mapping: Vec<AM>,

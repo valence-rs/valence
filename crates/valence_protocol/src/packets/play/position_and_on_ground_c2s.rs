@@ -1,9 +1,9 @@
 use valence_math::DVec3;
 
-use crate::{packet_id, Decode, Encode, Packet};
+use crate::{PacketSide, Decode, Encode, Packet};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::POSITION_AND_ON_GROUND)]
+#[packet(name = "POSITION_AND_ON_GROUND", side = PacketSide::Serverbound)]
 pub struct PositionAndOnGroundC2s {
     pub position: DVec3,
     pub on_ground: bool,

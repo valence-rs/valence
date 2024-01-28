@@ -27,6 +27,11 @@ pub mod login {
     pub use login_success_s2c::LoginSuccessS2c;
 }
 
+pub mod configuration {
+    pub mod features_s2c;
+    pub use features_s2c::FeaturesS2c;
+}
+
 pub mod play {
     pub mod advancement_tab_c2s;
     pub use advancement_tab_c2s::AdvancementTabC2s;
@@ -144,8 +149,6 @@ pub mod play {
     pub use experience_orb_spawn_s2c::ExperienceOrbSpawnS2c;
     pub mod explosion_s2c;
     pub use explosion_s2c::ExplosionS2c;
-    pub mod features_s2c;
-    pub use features_s2c::FeaturesS2c;
     pub mod full_c2s;
     pub use full_c2s::FullC2s;
     pub mod game_join_s2c;
@@ -232,8 +235,8 @@ pub mod play {
     pub use player_session_c2s::PlayerSessionC2s;
     pub mod player_spawn_position_s2c;
     pub use player_spawn_position_s2c::PlayerSpawnPositionS2c;
-    pub mod player_spawn_s2c;
-    pub use player_spawn_s2c::PlayerSpawnS2c;
+    // pub mod player_spawn_s2c;
+    // pub use player_spawn_s2c::PlayerSpawnS2c;
     pub mod position_and_on_ground_c2s;
     pub use position_and_on_ground_c2s::PositionAndOnGroundC2s;
     pub mod profileless_chat_message_s2c;
@@ -357,8 +360,8 @@ pub mod play {
 pub mod status {
     pub mod query_ping_c2s;
     pub use query_ping_c2s::QueryPingC2s;
-    pub mod query_pong_s2c;
-    pub use query_pong_s2c::QueryPongS2c;
+    // pub mod query_pong_s2c;
+    // pub use query_pong_s2c::QueryPongS2c;
     pub mod query_request_c2s;
     pub use query_request_c2s::QueryRequestC2s;
     pub mod query_response_s2c;
