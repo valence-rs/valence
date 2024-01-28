@@ -161,6 +161,30 @@ macro_rules! impl_value {
             as_number_float!(as_f32, f32, $($deref)*);
             as_number_float!(as_f64, f64, $($deref)*);
 
+            /// Returns the `[i8]` representation of this value if it exists.
+            pub fn as_i8_array(&self) -> Option<&[i8]> {
+                match self {
+                    Self::ByteArray(v) => Some(v),
+                    _ => None,
+                }
+            }
+
+            /// Returns the `[i32]` representation of this value if it exists.
+            pub fn as_i32_array(&self) -> Option<&[i32]> {
+                match self {
+                    Self::IntArray(v) => Some(v),
+                    _ => None,
+                }
+            }
+
+            /// Returns the `[i64]` representation of this value if it exists.
+            pub fn as_i64_array(&self) -> Option<&[i64]> {
+                match self {
+                    Self::LongArray(v) => Some(v),
+                    _ => None,
+                }
+            }
+
             /// Returns the `String` representation of this value if it exists.
             pub fn as_string(&$($lifetime)* self) -> Option<&$($lifetime)* S> {
                 match self {
@@ -265,24 +289,26 @@ impl_value!(ValueRef, 'a, (**), &'a);
 impl_value!(ValueMut, 'a, (**), &'a mut);
 
 impl<S> Value<S> {
-    /// Returns the `[i8]` representation of this value if it exists.
-    pub fn as_i8_array(&self) -> Option<&[i8]> {
+    /// Returns the mutable `Vec<i8>` representation of this value if it exists.
+    pub fn as_i8_array_mut(&mut self) -> Option<&mut Vec<i8>> {
         match self {
             Self::ByteArray(v) => Some(v),
             _ => None,
         }
     }
 
-    /// Returns the `[i32]` representation of this value if it exists.
-    pub fn as_i32_array(&self) -> Option<&[i32]> {
+    /// Returns the mutable `Vec<i32>` representation of this value if it
+    /// exists.
+    pub fn as_i32_array_mut(&mut self) -> Option<&mut Vec<i32>> {
         match self {
             Self::IntArray(v) => Some(v),
             _ => None,
         }
     }
 
-    /// Returns the `[i64]` representation of this value if it exists.
-    pub fn as_i64_array(&self) -> Option<&[i64]> {
+    /// Returns the mutable `Vec<i64>` representation of this value if it
+    /// exists.
+    pub fn as_i64_array_mut(&mut self) -> Option<&mut Vec<i64>> {
         match self {
             Self::LongArray(v) => Some(v),
             _ => None,
@@ -330,30 +356,6 @@ impl<S> ValueRef<'_, S>
 where
     S: Clone,
 {
-    /// Returns the `[i8]` representation of this value if it exists.
-    pub fn as_i8_array(&self) -> Option<&[i8]> {
-        match self {
-            Self::ByteArray(v) => Some(v),
-            _ => None,
-        }
-    }
-
-    /// Returns the `[i32]` representation of this value if it exists.
-    pub fn as_i32_array(&self) -> Option<&[i32]> {
-        match self {
-            Self::IntArray(v) => Some(v),
-            _ => None,
-        }
-    }
-
-    /// Returns the `[i64]` representation of this value if it exists.
-    pub fn as_i64_array(&self) -> Option<&[i64]> {
-        match self {
-            Self::LongArray(v) => Some(v),
-            _ => None,
-        }
-    }
-
     /// Clones this value reference to a new owned [`Value`].
     pub fn to_value(&self) -> Value<S> {
         match *self {
@@ -377,24 +379,26 @@ impl<S> ValueMut<'_, S>
 where
     S: Clone,
 {
-    /// Returns the `[i8]` representation of this value if it exists.
-    pub fn as_i8_array(&mut self) -> Option<&mut Vec<i8>> {
+    /// Returns the mutable `Vec<i8>` representation of this value if it exists.
+    pub fn as_i8_array_mut(&mut self) -> Option<&mut Vec<i8>> {
         match self {
             Self::ByteArray(v) => Some(v),
             _ => None,
         }
     }
 
-    /// Returns the `[i32]` representation of this value if it exists.
-    pub fn as_i32_array(&mut self) -> Option<&mut Vec<i32>> {
+    /// Returns the mutable `Vec<i32>` representation of this value if it
+    /// exists.
+    pub fn as_i32_array_mut(&mut self) -> Option<&mut Vec<i32>> {
         match self {
             Self::IntArray(v) => Some(v),
             _ => None,
         }
     }
 
-    /// Returns the `[i64]` representation of this value if it exists.
-    pub fn as_i64_array(&mut self) -> Option<&mut Vec<i64>> {
+    /// Returns the mutable `Vec<i64>` representation of this value if it
+    /// exists.
+    pub fn as_i64_array_mut(&mut self) -> Option<&mut Vec<i64>> {
         match self {
             Self::LongArray(v) => Some(v),
             _ => None,
