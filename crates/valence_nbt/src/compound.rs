@@ -172,6 +172,7 @@ where
         self.map.shift_remove(k.as_borrowed())
     }
 
+    #[inline]
     pub fn remove_entry<Q>(&mut self, k: &Q) -> Option<(S, Value<S>)>
     where
         S: Borrow<Q>,
@@ -184,6 +185,7 @@ where
     }
 
     #[cfg(feature = "preserve_order")]
+    #[inline]
     pub fn swap_remove_entry<Q>(&mut self, k: &Q) -> Option<(S, Value<S>)>
     where
         S: Borrow<Q>,
@@ -193,6 +195,7 @@ where
     }
 
     #[cfg(feature = "preserve_order")]
+    #[inline]
     pub fn shift_remove_entry<Q>(&mut self, k: &Q) -> Option<(S, Value<S>)>
     where
         S: Borrow<Q>,
@@ -507,6 +510,7 @@ where
         self.oe.insert(v.into())
     }
 
+    #[inline]
     pub fn remove(self) -> Value<S> {
         #[cfg(feature = "preserve_order")]
         return self.swap_remove();
@@ -515,11 +519,13 @@ where
     }
 
     #[cfg(feature = "preserve_order")]
+    #[inline]
     pub fn swap_remove(self) -> Value<S> {
         self.oe.swap_remove()
     }
 
     #[cfg(feature = "preserve_order")]
+    #[inline]
     pub fn shift_remove(self) -> Value<S> {
         self.oe.shift_remove()
     }
