@@ -212,7 +212,7 @@ impl ActiveStatusEffects {
 
     /// Removes an effect.
     fn remove_effect(&mut self, effect: StatusEffect) {
-        self.current_effects.remove(&effect);
+        self.current_effects.swap_remove(&effect);
     }
 
     /// Removes all effects.

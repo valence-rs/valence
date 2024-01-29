@@ -133,9 +133,9 @@ impl EntityAttributeInstance {
 
     /// Removes a modifier.
     pub fn remove_modifier(&mut self, uuid: Uuid) {
-        self.add_modifiers.remove(&uuid);
-        self.multiply_base_modifiers.remove(&uuid);
-        self.multiply_total_modifiers.remove(&uuid);
+        self.add_modifiers.swap_remove(&uuid);
+        self.multiply_base_modifiers.swap_remove(&uuid);
+        self.multiply_total_modifiers.swap_remove(&uuid);
     }
 
     /// Clears all modifiers.
