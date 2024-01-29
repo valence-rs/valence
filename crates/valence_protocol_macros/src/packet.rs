@@ -30,9 +30,6 @@ pub(super) fn derive_packet(item: TokenStream) -> Result<TokenStream> {
 
     let name_state_str = format!("{}{}", state_str ,name_str);
 
-    // debug name_str
-    println!("name_str: {}", name_state_str);
-
     let packet_id: Expr = match packet_attr.id {
         Some(expr) => expr,
         None => match syn::parse_str::<Ident>(&name_state_str.to_shouty_snake_case()) {

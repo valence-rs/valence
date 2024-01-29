@@ -30,6 +30,18 @@ pub mod login {
 pub mod configuration {
     pub mod features_s2c;
     pub use features_s2c::FeaturesS2c;
+    pub mod disconnect_s2c;
+    pub use disconnect_s2c::DisconnectS2c;
+    pub mod custom_payload_s2c;
+    pub use custom_payload_s2c::CustomPayloadS2c;
+    pub mod ready_s2c;
+    pub use ready_s2c::ReadyS2c;
+    pub mod keep_alive_s2c;
+    pub use keep_alive_s2c::KeepAliveS2c;
+    pub mod common_ping_s2c;
+    pub use common_ping_s2c::CommonPingS2c;
+    pub mod dynamic_registries_s2c;
+    pub use dynamic_registries_s2c::DynamicRegistriesS2c;
 }
 
 pub mod play {
