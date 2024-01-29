@@ -28,8 +28,6 @@ pub mod login {
 }
 
 pub mod configuration {
-    pub mod features_s2c;
-    pub use features_s2c::FeaturesS2c;
     pub mod disconnect_s2c;
     pub use disconnect_s2c::DisconnectS2c;
     pub mod custom_payload_s2c;
@@ -42,6 +40,26 @@ pub mod configuration {
     pub use common_ping_s2c::CommonPingS2c;
     pub mod dynamic_registries_s2c;
     pub use dynamic_registries_s2c::DynamicRegistriesS2c;
+    pub mod resource_pack_remove_s2c;
+    pub use resource_pack_remove_s2c::ResourcePackRemoveS2c;
+    pub mod resource_pack_send_s2c;
+    pub use resource_pack_send_s2c::ResourcePackSendS2c;
+    pub mod features_s2c;
+    pub use features_s2c::FeaturesS2c;
+    pub mod synchronize_tags_s2c;
+    pub use synchronize_tags_s2c::SynchronizeTagsS2c;
+    pub mod client_options_c2s;
+    pub use client_options_c2s::ClientOptionsC2s;
+    pub mod custom_payload_c2s;
+    pub use custom_payload_c2s::CustomPayloadC2s;
+    pub mod ready_c2s;
+    pub use ready_c2s::ReadyC2s;
+    pub mod keep_alive_c2s;
+    pub use keep_alive_c2s::KeepAliveC2s;
+    pub mod common_pong_c2s;
+    pub use common_pong_c2s::CommonPongC2s;
+    pub mod resource_pack_status_c2s;
+    pub use resource_pack_status_c2s::ResourcePackStatusC2s;
 }
 
 pub mod play {
@@ -372,8 +390,8 @@ pub mod play {
 pub mod status {
     pub mod query_ping_c2s;
     pub use query_ping_c2s::QueryPingC2s;
-    // pub mod query_pong_s2c;
-    // pub use query_pong_s2c::QueryPongS2c;
+    pub mod query_pong_s2c;
+    pub use query_pong_s2c::QueryPongS2c;
     pub mod query_request_c2s;
     pub use query_request_c2s::QueryRequestC2s;
     pub mod query_response_s2c;

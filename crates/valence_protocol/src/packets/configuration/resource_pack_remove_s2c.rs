@@ -1,4 +1,4 @@
-use valence_nbt::Compound;
+use uuid::Uuid;
 
 use crate::{Decode, Encode, Packet, PacketState};
 

@@ -3,11 +3,11 @@ use std::collections::BTreeMap;
 
 use valence_ident::Ident;
 
-use crate::{Decode, Encode, Packet, PacketState};
+use crate::{Decode, Encode, Packet, PacketState, VarInt};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 #[packet(state = PacketState::Configuration)]
-pub struct SynchronizeTagsS2c {
+pub struct SynchronizeTagsS2c<'a> {
     pub groups: Cow<'a, RegistryMap>,
 }
 

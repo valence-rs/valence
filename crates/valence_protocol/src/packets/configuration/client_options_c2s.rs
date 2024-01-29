@@ -1,13 +1,10 @@
-use std::borrow::Cow;
-use std::collections::BTreeMap;
+use bitfield_struct::bitfield;
 
-use valence_ident::Ident;
-
-use crate::{Decode, Encode, Packet, PacketState};
+use crate::{Bounded, Decode, Encode, Packet, PacketState};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 #[packet(state = PacketState::Configuration)]
-pub struct ClientOptionsC2s {
+pub struct ClientOptionsC2s<'a> {
     pub locale: Bounded<&'a str, 16>,
     pub view_distance: u8,
     pub chat_mode: ChatMode,

@@ -1,5 +1,5 @@
 use crate::layer::chunk::UnloadedChunk;
-use crate::protocol::packets::play::{PlayerListS2c, PlayerSpawnS2c};
+use crate::protocol::packets::play::{PlayerListS2c, EntitySpawnS2c};
 use crate::testing::{create_mock_client, ScenarioSingleClient};
 use crate::ChunkLayer;
 
@@ -25,8 +25,8 @@ fn player_list_arrives_before_player_spawn() {
     {
         let recvd = client_helper_1.collect_received();
         recvd.assert_count::<PlayerListS2c>(1);
-        recvd.assert_count::<PlayerSpawnS2c>(0);
-        recvd.assert_order::<(PlayerListS2c, PlayerSpawnS2c)>();
+        recvd.assert_count::<EntitySpawnS2c>(0);
+        recvd.assert_order::<(PlayerListS2c, EntitySpawnS2c)>();
 
         let pkt = recvd.first::<PlayerListS2c>();
         assert!(pkt.actions.add_player());
@@ -45,8 +45,8 @@ fn player_list_arrives_before_player_spawn() {
     {
         let recvd = client_helper_1.collect_received();
         recvd.assert_count::<PlayerListS2c>(1);
-        recvd.assert_count::<PlayerSpawnS2c>(1);
-        recvd.assert_order::<(PlayerListS2c, PlayerSpawnS2c)>();
+        recvd.assert_count::<EntitySpawnS2c>(1);
+        recvd.assert_order::<(PlayerListS2c, EntitySpawnS2c)>();
 
         let pkt = recvd.first::<PlayerListS2c>();
         assert!(pkt.actions.add_player());
@@ -56,8 +56,8 @@ fn player_list_arrives_before_player_spawn() {
     {
         let recvd = client_helper_2.collect_received();
         recvd.assert_count::<PlayerListS2c>(1);
-        recvd.assert_count::<PlayerSpawnS2c>(1);
-        recvd.assert_order::<(PlayerListS2c, PlayerSpawnS2c)>();
+        recvd.assert_count::<EntitySpawnS2c>(1);
+        recvd.assert_order::<(PlayerListS2c, EntitySpawnS2c)>();
 
         let pkt = recvd.first::<PlayerListS2c>();
         assert!(pkt.actions.add_player());
