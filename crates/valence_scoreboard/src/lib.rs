@@ -33,9 +33,9 @@ use valence_server::protocol::packets::play::scoreboard_display_s2c::ScoreboardP
 use valence_server::protocol::packets::play::scoreboard_objective_update_s2c::{
     ObjectiveMode, ObjectiveRenderType,
 };
-use valence_server::protocol::packets::play::scoreboard_player_update_s2c::ScoreboardPlayerUpdateAction;
+use valence_server::protocol::packets::play::scoreboard_score_update_s2c::ScoreboardScoreUpdateAction;
 use valence_server::protocol::packets::play::{
-    ScoreboardDisplayS2c, ScoreboardObjectiveUpdateS2c, ScoreboardPlayerUpdateS2c,
+    ScoreboardDisplayS2c, ScoreboardObjectiveUpdateS2c, ScoreboardScoreUpdateS2c,
 };
 use valence_server::protocol::{VarInt, WritePacket};
 use valence_server::text::IntoText;
@@ -234,9 +234,9 @@ fn handle_new_clients(
             });
 
             for (key, score) in &scores.0 {
-                let packet = ScoreboardPlayerUpdateS2c {
+                let packet = ScoreboardScoreUpdateS2c {
                     entity_name: key,
-                    action: ScoreboardPlayerUpdateAction::Update {
+                    action: ScoreboardScoreUpdateAction::Update {
                         objective_name: &objective.0,
                         objective_score: VarInt(*score),
                     },
@@ -271,16 +271,16 @@ fn update_scores(
 
         for changed_key in old_scores.diff(scores) {
             let action = match scores.0.get(changed_key) {
-                Some(score) => ScoreboardPlayerUpdateAction::Update {
+                Some(score) => ScoreboardScoreUpdateAction::Update {
                     objective_name: &objective.0,
                     objective_score: VarInt(*score),
                 },
-                None => ScoreboardPlayerUpdateAction::Remove {
+                None => ScoreboardScoreUpdateAction::Remove {
                     objective_name: &objective.0,
                 },
             };
 
-            let packet = ScoreboardPlayerUpdateS2c {
+            let packet = ScoreboardScoreUpdateS2c {
                 entity_name: changed_key,
                 action,
             };

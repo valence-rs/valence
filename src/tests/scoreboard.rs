@@ -4,7 +4,7 @@ use crate::client::VisibleEntityLayers;
 use crate::entity::EntityLayerId;
 use crate::layer::EntityLayer;
 use crate::protocol::packets::play::{
-    ScoreboardDisplayS2c, ScoreboardObjectiveUpdateS2c, ScoreboardPlayerUpdateS2c,
+    ScoreboardDisplayS2c, ScoreboardObjectiveUpdateS2c, ScoreboardScoreUpdateS2c,
 };
 use crate::testing::ScenarioSingleClient;
 use crate::text::IntoText;
@@ -139,7 +139,7 @@ fn should_update_score() {
     {
         let recvd = helper.collect_received();
 
-        recvd.assert_count::<ScoreboardPlayerUpdateS2c>(1);
+        recvd.assert_count::<ScoreboardScoreUpdateS2c>(1);
     }
 }
 
@@ -187,6 +187,6 @@ fn should_only_update_score_diff() {
     {
         let recvd = helper.collect_received();
 
-        recvd.assert_count::<ScoreboardPlayerUpdateS2c>(1);
+        recvd.assert_count::<ScoreboardScoreUpdateS2c>(1);
     }
 }

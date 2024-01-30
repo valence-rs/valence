@@ -76,6 +76,7 @@ fn draw_packet_list(ui: &mut Ui, state: &mut SharedState, packet_state: PacketSt
         PacketState::Status => "Status",
         PacketState::Login => "Login",
         PacketState::Play => "Play",
+        PacketState::Configuration => "Configuration",
     };
 
     let search = state.packet_search.to_lowercase();

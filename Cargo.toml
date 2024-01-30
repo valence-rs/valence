@@ -91,8 +91,8 @@ opt-level = 3
 opt-level = 1
 
 [workspace]
-# members = ["crates/*", "tools/*"]
-members = ["crates/*"]
+members = ["crates/*", "tools/*"]
+# members = ["crates/*", "tools/playground"]
 exclude = []
 resolver = "2"
 

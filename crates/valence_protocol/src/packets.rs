@@ -25,6 +25,8 @@ pub mod login {
     pub use login_query_response_c2s::LoginQueryResponseC2s;
     pub mod login_success_s2c;
     pub use login_success_s2c::LoginSuccessS2c;
+    pub mod enter_configuration_c2s;
+    pub use enter_configuration_c2s::EnterConfigurationC2s;
 }
 
 pub mod configuration {
@@ -107,8 +109,8 @@ pub mod play {
     pub use click_slot_c2s::ClickSlotC2s;
     pub mod client_command_c2s;
     pub use client_command_c2s::ClientCommandC2s;
-    pub mod client_settings_c2s;
-    pub use client_settings_c2s::ClientSettingsC2s;
+    pub mod client_options_c2s;
+    pub use client_options_c2s::ClientOptionsC2s;
     pub mod client_status_c2s;
     pub use client_status_c2s::ClientStatusC2s;
     pub mod close_handled_screen_c2s;
@@ -229,10 +231,12 @@ pub mod play {
     pub use particle_s2c::ParticleS2c;
     pub mod pick_from_inventory_c2s;
     pub use pick_from_inventory_c2s::PickFromInventoryC2s;
-    pub mod play_ping_s2c;
-    pub use play_ping_s2c::PlayPingS2c;
-    pub mod play_pong_c2s;
-    pub use play_pong_c2s::PlayPongC2s;
+    pub mod common_ping_s2c;
+    pub use common_ping_s2c::CommonPingS2c;
+    pub mod ping_result_s2c;
+    pub use ping_result_s2c::PingResultS2c;
+    pub mod common_pong_c2s;
+    pub use common_pong_c2s::CommonPongC2s;
     pub mod play_sound_from_entity_s2c;
     pub use play_sound_from_entity_s2c::PlaySoundFromEntityS2c;
     pub mod play_sound_s2c;
@@ -265,8 +269,6 @@ pub mod play {
     pub use player_session_c2s::PlayerSessionC2s;
     pub mod player_spawn_position_s2c;
     pub use player_spawn_position_s2c::PlayerSpawnPositionS2c;
-    // pub mod player_spawn_s2c;
-    // pub use player_spawn_s2c::PlayerSpawnS2c;
     pub mod position_and_on_ground_c2s;
     pub use position_and_on_ground_c2s::PositionAndOnGroundC2s;
     pub mod profileless_chat_message_s2c;
@@ -299,8 +301,8 @@ pub mod play {
     pub use scoreboard_display_s2c::ScoreboardDisplayS2c;
     pub mod scoreboard_objective_update_s2c;
     pub use scoreboard_objective_update_s2c::ScoreboardObjectiveUpdateS2c;
-    pub mod scoreboard_player_update_s2c;
-    pub use scoreboard_player_update_s2c::ScoreboardPlayerUpdateS2c;
+    pub mod scoreboard_score_update_s2c;
+    pub use scoreboard_score_update_s2c::ScoreboardScoreUpdateS2c;
     pub mod screen_handler_property_update_s2c;
     pub use screen_handler_property_update_s2c::ScreenHandlerPropertyUpdateS2c;
     pub mod screen_handler_slot_update_s2c;
@@ -385,13 +387,35 @@ pub mod play {
     pub use world_event_s2c::WorldEventS2c;
     pub mod world_time_update_s2c;
     pub use world_time_update_s2c::WorldTimeUpdateS2c;
+    pub mod chunk_sent_s2c;
+    pub use chunk_sent_s2c::ChunkSentS2c;
+    pub mod start_chunk_send_s2c;
+    pub use start_chunk_send_s2c::StartChunkSendS2c;
+    pub mod scoreboard_score_reset_s2c;
+    pub use scoreboard_score_reset_s2c::ScoreboardScoreResetS2c;
+    pub mod resource_pack_remove_s2c;
+    pub use resource_pack_remove_s2c::ResourcePackRemoveS2c;
+    pub mod enter_reconfiguration_s2c;
+    pub use enter_reconfiguration_s2c::EnterReconfigurationS2c;
+    pub mod update_tick_rate_s2c;
+    pub use update_tick_rate_s2c::UpdateTickRateS2c;
+    pub mod tick_step_s2c;
+    pub use tick_step_s2c::TickStepS2c;
+    pub mod acknowledge_chunks_c2s;
+    pub use acknowledge_chunks_c2s::AcknowledgeChunksC2s;
+    pub mod acknowledge_reconfiguration_c2s;
+    pub use acknowledge_reconfiguration_c2s::AcknowledgeReconfigurationC2s;
+    pub mod slot_changed_state_c2s;
+    pub use slot_changed_state_c2s::SlotChangedStateC2s;
+    pub mod query_ping_c2s;
+    pub use query_ping_c2s::QueryPingC2s;
 }
 
 pub mod status {
     pub mod query_ping_c2s;
     pub use query_ping_c2s::QueryPingC2s;
-    pub mod query_pong_s2c;
-    pub use query_pong_s2c::QueryPongS2c;
+    pub mod ping_result_s2c;
+    pub use ping_result_s2c::PingResultS2c;
     pub mod query_request_c2s;
     pub use query_request_c2s::QueryRequestC2s;
     pub mod query_response_s2c;

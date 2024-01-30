@@ -1,14 +1,13 @@
 use crate::{Decode, Encode, Packet, VarInt};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(name = "SCOREBOARD_SCORE_UPDATE_S2C")]
-pub struct ScoreboardPlayerUpdateS2c<'a> {
+pub struct ScoreboardScoreUpdateS2c<'a> {
     pub entity_name: &'a str,
-    pub action: ScoreboardPlayerUpdateAction<'a>,
+    pub action: ScoreboardScoreUpdateAction<'a>,
 }
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
-pub enum ScoreboardPlayerUpdateAction<'a> {
+pub enum ScoreboardScoreUpdateAction<'a> {
     Update {
         objective_name: &'a str,
         objective_score: VarInt,
