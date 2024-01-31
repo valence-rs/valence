@@ -38,6 +38,7 @@ struct Attribute {
 
 #[derive(Deserialize, Clone, Debug)]
 #[serde(tag = "type", content = "default_value", rename_all = "snake_case")]
+#[allow(dead_code)]
 enum Value {
     Byte(i8),
     Integer(i32),
