@@ -1,0 +1,157 @@
+[package]
+name = "valence"
+version.workspace = true
+edition.workspace = true
+description = "A framework for building Minecraft servers in Rust."
+documentation.workspace = true
+repository.workspace = true
+readme = "README.md"
+license.workspace = true
+keywords = ["minecraft", "gamedev", "server", "ecs"]
+categories = ["game-engines"]
+
+[lints]
+workspace = true
+
+#### WORKSPACE ####
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.dev]
+opt-level = 1
+
+[workspace]
+members = ["crates/*"]
+resolver = "2"
+
+[workspace.package]
+version = "0.2.0-alpha.1+mc.1.20.1"
+edition = "2021"
+repository = "https://github.com/valence-rs/valence"
+documentation = "https://docs.rs/valence/"
+license = "MIT"
+
+[workspace.dependencies]
+byteorder = "1.5.0"
+cesu8 = "1.1.0"
+indexmap = "2.2.2"
+java_string = { path = "crates/java_string", version = "0.1.2" }
+proc-macro2 = "1.0.78"
+quote = "1.0.35"
+serde = "1.0.196"
+syn = { version = "2.0.48", features = ["full"] }
+thiserror = "1.0.56"
+uuid = "1.7.0"
+valence_ident = { path = "crates/valence_ident", version = "0.2.0-alpha.1" }
+valence_ident_macros = { path = "crates/valence_ident_macros", version = "0.2.0-alpha.1" }
+pretty_assertions = "1.4.0"
+serde_json = "1.0.113"
+valence_nbt = { path = "crates/valence_nbt", version = "0.8.0" }
+
+[workspace.lints.rust]
+elided_lifetimes_in_paths = "allow" # Warned by `future_incompatible`.
+future_incompatible = "warn"
+missing_debug_implementations = "warn"
+# missing_docs = "warn"
+nonstandard_style = "warn"
+rust_2018_idioms = "warn"
+trivial_numeric_casts = "warn"
+unreachable_pub = "warn"
+unused_import_braces = "warn"
+unused_lifetimes = "warn"
+
+[workspace.lints.clippy]
+alloc_instead_of_core = "warn"
+as_ptr_cast_mut = "warn"
+as_underscore = "warn"
+bool_to_int_with_if = "warn"
+case_sensitive_file_extension_comparisons = "warn"
+cast_lossless = "warn"
+checked_conversions = "warn"
+cloned_instead_of_copied = "warn"
+copy_iterator = "warn"
+dbg_macro = "warn"
+doc_link_with_quotes = "warn"
+doc_markdown = "warn"
+empty_enum_variants_with_brackets = "warn"
+empty_structs_with_brackets = "warn"
+explicit_deref_methods = "warn"
+explicit_into_iter_loop = "warn"
+explicit_iter_loop = "warn"
+filter_map_next = "warn"
+flat_map_option = "warn"
+format_push_string = "warn"
+from_iter_instead_of_collect = "warn"
+get_unwrap = "warn"
+if_then_some_else_none = "warn"
+ignored_unit_patterns = "warn"
+implicit_clone = "warn"
+inconsistent_struct_constructor = "warn"
+inefficient_to_string = "warn"
+infinite_loop = "warn"
+into_iter_without_iter = "warn"
+invalid_upcast_comparisons = "warn"
+iter_filter_is_ok = "warn"
+iter_filter_is_some = "warn"
+iter_not_returning_iterator = "warn"
+iter_over_hash_type = "warn" # Requires justification
+iter_without_into_iter = "warn"
+large_stack_arrays = "warn"
+large_types_passed_by_value = "warn"
+macro_use_imports = "warn"
+manual_assert = "warn"
+manual_instant_elapsed = "warn"
+manual_is_variant_and = "warn"
+manual_let_else = "warn"
+manual_ok_or = "warn"
+manual_string_new = "warn"
+map_unwrap_or = "warn"
+match_bool = "warn"
+match_wildcard_for_single_variants = "warn"
+mismatching_type_param_order = "warn"
+missing_fields_in_debug = "warn"
+mixed_read_write_in_expression = "warn"
+mod_module_files = "warn"
+# multiple_inherent_impl = "warn"
+mut_mut = "warn"
+mutex_atomic = "warn"
+needless_bitwise_bool = "warn"
+needless_continue = "warn"
+needless_for_each = "warn"
+needless_raw_string_hashes = "warn"
+needless_raw_strings = "warn"
+negative_feature_names = "warn"
+no_mangle_with_rust_abi = "warn"
+option_as_ref_cloned = "warn"
+pub_underscore_fields = "warn"
+rc_buffer = "warn"
+rc_mutex = "warn"
+redundant_else = "warn"
+redundant_feature_names = "warn"
+ref_patterns = "warn"
+rest_pat_in_fully_bound_structs = "warn"
+semicolon_outside_block = "warn"
+str_to_string = "warn"
+string_lit_chars_any = "warn"
+string_to_string = "warn"
+struct_field_names = "warn"
+tests_outside_test_module = "warn"
+todo = "warn"
+trivially_copy_pass_by_ref = "warn"
+try_err = "warn"
+# undocumented_unsafe_blocks = "warn"
+uninlined_format_args = "warn"
+unnecessary_join = "warn"
+# unnecessary_safety_doc = "warn"
+unnecessary_self_imports = "warn"
+unneeded_field_pattern = "warn"
+unnested_or_patterns = "warn"
+unseparated_literal_suffix = "warn"
+unused_self = "warn"
+used_underscore_binding = "warn"
+wildcard_dependencies = "warn"
+zero_sized_map_values = "warn"
+
+[workspace.lints.rustdoc]
+unescaped_backticks = "warn"
