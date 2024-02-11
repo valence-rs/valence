@@ -1,18 +1,19 @@
 package rs.valence.extractor.extractors;
 
-import com.google.gson.JsonElement;
+import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EntityStatuses;
-import net.minecraft.entity.attribute.ClampedEntityAttribute;
-import net.minecraft.entity.attribute.EntityAttribute;
 import net.minecraft.entity.data.TrackedDataHandler;
 import net.minecraft.entity.data.TrackedDataHandlerRegistry;
 import net.minecraft.entity.passive.SnifferEntity;
 import net.minecraft.network.packet.s2c.play.EntityAnimationS2CPacket;
 import net.minecraft.registry.Registries;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.math.Direction;
 import rs.valence.extractor.Main;
+
+import java.io.DataOutput;
 import java.lang.reflect.Modifier;
 import java.util.Locale;
 
@@ -23,7 +24,7 @@ public class Misc implements Main.Extractor {
     }
 
     @Override
-    public JsonElement extract() throws Exception {
+    public void extract(MinecraftServer server, DataOutput output, Gson gson) throws Exception {
         var miscJson = new JsonObject();
 
         var entityTypeJson = new JsonObject();
@@ -130,6 +131,6 @@ public class Misc implements Main.Extractor {
         }
         miscJson.add("tracked_data_handler", trackedDataHandlerJson);
 
-        return miscJson;
+        Main.writeJson(output, gson, miscJson);
     }
 }

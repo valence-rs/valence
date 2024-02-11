@@ -1,10 +1,15 @@
 package rs.valence.extractor.extractors;
 
+import java.io.DataOutput;
+import java.io.IOException;
+
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.entity.effect.StatusEffect;
 import net.minecraft.registry.Registries;
+import net.minecraft.server.MinecraftServer;
 import rs.valence.extractor.Main;
 import rs.valence.extractor.ValenceUtils;
 
@@ -18,7 +23,7 @@ public class Effects implements Main.Extractor {
     }
 
     @Override
-    public JsonElement extract() {
+    public void extract(MinecraftServer server, DataOutput output, Gson gson) throws IOException {
         var effectsJson = new JsonArray();
 
         for (var effect : Registries.STATUS_EFFECT) {
@@ -52,6 +57,6 @@ public class Effects implements Main.Extractor {
             effectsJson.add(effectJson);
         }
 
-        return effectsJson;
+        Main.writeJson(output, gson, effectsJson);
     }
 }

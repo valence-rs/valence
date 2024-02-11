@@ -1,9 +1,12 @@
 package rs.valence.extractor.extractors;
 
+import java.io.DataOutput;
+
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.registry.Registries;
+import net.minecraft.server.MinecraftServer;
 import rs.valence.extractor.Main;
 
 public class Items implements Main.Extractor {
@@ -16,7 +19,7 @@ public class Items implements Main.Extractor {
     }
 
     @Override
-    public JsonElement extract() throws Exception {
+    public void extract(MinecraftServer server, DataOutput output, Gson gson) throws Exception {
         var itemsJson = new JsonArray();
 
         for (var item : Registries.ITEM) {
@@ -61,6 +64,6 @@ public class Items implements Main.Extractor {
             itemsJson.add(itemJson);
         }
 
-        return itemsJson;
+        Main.writeJson(output, gson, itemsJson);
     }
 }

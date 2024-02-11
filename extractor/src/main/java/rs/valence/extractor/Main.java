@@ -1,22 +1,26 @@
 package rs.valence.extractor;
 
+import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
-import io.netty.handler.codec.EncoderException;
+
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.minecraft.nbt.NbtIo;
+import net.minecraft.server.MinecraftServer;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rs.valence.extractor.extractors.*;
 import sun.reflect.ReflectionFactory;
 
-import java.io.FileWriter;
+import java.io.DataOutput;
+import java.io.DataOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.charset.StandardCharsets;
 
 public class Main implements ModInitializer {
     public static final String MOD_ID = "valence_extractor";
@@ -38,89 +42,66 @@ public class Main implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        LOGGER.info("Starting extractors...");
-
-        var extractors = new Extractor[]{
-               new Attributes(),
-               new Blocks(),
-               new Effects(),
-               new Enchants(),
-               new Entities(),
-               new Misc(),
-               new Items(),
-               new Packets(),
-               new Sounds(),
-               new TranslationKeys(),
-        };
-
-        Path outputDirectory;
-        try {
-            outputDirectory = Files.createDirectories(Paths.get("valence_extractor_output"));
-        } catch (IOException e) {
-            LOGGER.info("Failed to create output directory.", e);
-            return;
-        }
-
-        var gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().serializeNulls().create();
-
-        for (var ext : extractors) {
-            try {
-                var out = outputDirectory.resolve(ext.fileName());
-                var fileWriter = new FileWriter(out.toFile(), StandardCharsets.UTF_8);
-                gson.toJson(ext.extract(), fileWriter);
-                fileWriter.close();
-                LOGGER.info("Wrote " + out.toAbsolutePath());
-            } catch (Exception e) {
-                LOGGER.error("Extractor for \"" + ext.fileName() + "\" failed.", e);
-            }
-        }
-
         ServerLifecycleEvents.SERVER_STARTING.register(server -> {
-            LOGGER.info("Server starting, Running startup extractors...");
-            // TODO: make `Codec` implement `Extractor`
-            var codecExtractor = new Codec(server);
-            try {
-                var out = outputDirectory.resolve(codecExtractor.fileName());
-                var compound = codecExtractor.extract();
-                // read the compound byte-wise and write it to the file
-                try {
-                    NbtIo.write(compound, out);
-                } catch (IOException var3) {
-                    throw new EncoderException(var3);
-                }
+            LOGGER.info("Starting extractors...");
 
-                LOGGER.info("Wrote " + out.toAbsolutePath());
-            } catch (Exception e) {
-                LOGGER.error("Extractor for \"" + codecExtractor.fileName() + "\" failed.", e);
-            }
-
-            var startupExtractors = new Extractor[]{
-                new Tags(server),
+            var extractors = new Extractor[]{
+                new Attributes(),
+                new Blocks(),
+                new Effects(),
+                new Enchants(),
+                new Entities(),
+                new Misc(),
+                new Items(),
+                new Packets(),
+                new Sounds(),
+                new TranslationKeys(),
+                new Tags(),
             };
 
-            for (var ext : startupExtractors) {
+            Path outputDirectory;
+            try {
+                outputDirectory = Files.createDirectories(Paths.get("valence_extractor_output"));
+            } catch (IOException e) {
+                LOGGER.info("Failed to create output directory.", e);
+                return;
+            }
+
+            var gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().serializeNulls().create();
+
+            for (var extractor : extractors) {
+                var fileName = extractor.fileName();
+
                 try {
-                    var out = outputDirectory.resolve(ext.fileName());
-                    var fileWriter = new FileWriter(out.toFile(), StandardCharsets.UTF_8);
-                    gson.toJson(ext.extract(), fileWriter);
-                    fileWriter.close();
+                    var out = outputDirectory.resolve(fileName);
+                    var stream = new DataOutputStream(new FileOutputStream(out.toFile()));
+
+                    extractor.extract(server, stream, gson);
+
+                    stream.close();
                     LOGGER.info("Wrote " + out.toAbsolutePath());
                 } catch (Exception e) {
-                    LOGGER.error("Extractor for \"" + ext.fileName() + "\" failed.", e);
+                    LOGGER.error("Extractor for \"" + fileName + "\" failed.", e);
                 }
             }
 
-            LOGGER.info("Done.");
+            LOGGER.info("Done!");
+            
             server.shutdown();
         });
     }
 
     public interface Extractor {
+        /** The name of the file generated by this extractor. */
         String fileName();
-
-        JsonElement extract() throws Exception;
+        /** Extracts the data to the provided data output. */
+        void extract(MinecraftServer server, DataOutput output, Gson gson) throws Exception;
     }
 
     public record Pair<T, U>(T left, U right) {
+    }
+
+    public static void writeJson(DataOutput output, Gson gson, JsonElement element) throws IOException {
+        output.write(gson.toJson(element).getBytes(StandardCharsets.UTF_8));
     }
 }

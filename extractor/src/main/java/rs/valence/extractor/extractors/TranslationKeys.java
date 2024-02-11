@@ -1,11 +1,16 @@
 package rs.valence.extractor.extractors;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.Language;
 import rs.valence.extractor.Main;
 
+import java.io.DataOutput;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.Map;
 
@@ -17,7 +22,7 @@ public class TranslationKeys implements Main.Extractor {
     }
 
     @Override
-    public JsonElement extract() {
+    public void extract(MinecraftServer server, DataOutput output, Gson gson) throws IOException {
         JsonArray translationsJson = new JsonArray();
 
         Map<String, String> translations = extractTranslations();
@@ -32,7 +37,7 @@ public class TranslationKeys implements Main.Extractor {
             translationsJson.add(translationJson);
         }
 
-        return translationsJson;
+        Main.writeJson(output, gson, translationsJson);
     }
 
     @SuppressWarnings("unchecked")

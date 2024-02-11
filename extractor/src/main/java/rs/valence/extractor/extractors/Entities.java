@@ -20,6 +20,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.particle.ParticleEffect;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.entry.RegistryEntry;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.EulerAngle;
@@ -34,6 +35,9 @@ import rs.valence.extractor.DummyPlayerEntity;
 import rs.valence.extractor.DummyWorld;
 import rs.valence.extractor.Main;
 import rs.valence.extractor.Main.Pair;
+
+import java.io.DataOutput;
+import java.io.IOException;
 import java.lang.reflect.ParameterizedType;
 import java.util.*;
 
@@ -179,7 +183,8 @@ public class Entities implements Main.Extractor {
 
     @Override
     @SuppressWarnings("unchecked")
-    public JsonElement extract() throws IllegalAccessException, NoSuchFieldException {
+    public void extract(MinecraftServer server, DataOutput output, Gson gson)
+            throws IllegalAccessException, NoSuchFieldException, IOException {
 
         final var entityClassToType = new HashMap<Class<? extends Entity>, EntityType<?>>();
         for (var f : EntityType.class.getFields()) {
@@ -305,6 +310,6 @@ public class Entities implements Main.Extractor {
             entitiesJson.add(entry.getKey().getSimpleName(), entry.getValue());
         }
 
-        return entitiesJson;
+        Main.writeJson(output, gson, entitiesJson);
     }
 }
