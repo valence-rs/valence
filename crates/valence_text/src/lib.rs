@@ -617,7 +617,7 @@ impl<'de> Deserialize<'de> for Text {
             }
 
             fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
-                Ok(Text::text(v.to_string()))
+                Ok(Text::text(v.to_owned()))
             }
 
             fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {

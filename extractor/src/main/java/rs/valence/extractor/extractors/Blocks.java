@@ -1,9 +1,10 @@
 package rs.valence.extractor.extractors;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.registry.Registries;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.item.VerticallyAttachableBlockItem;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.EmptyBlockView;
@@ -11,6 +12,8 @@ import net.minecraft.world.EmptyBlockView;
 import rs.valence.extractor.Main;
 import rs.valence.extractor.mixin.ExposeWallBlock;
 
+import java.io.DataOutput;
+import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Objects;
@@ -25,7 +28,7 @@ public class Blocks implements Main.Extractor {
     }
 
     @Override
-    public JsonElement extract() {
+    public void extract(MinecraftServer server, DataOutput output, Gson gson) throws IOException {
         var topLevelJson = new JsonObject();
 
         var blocksJson = new JsonArray();
@@ -127,7 +130,7 @@ public class Blocks implements Main.Extractor {
         topLevelJson.add("shapes", shapesJson);
         topLevelJson.add("blocks", blocksJson);
 
-        return topLevelJson;
+        Main.writeJson(output, gson, topLevelJson);
     }
 
     private record Shape(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {

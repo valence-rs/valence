@@ -14,3 +14,6 @@ serde = ["dep:serde"]
 
 [dependencies]
 serde = { workspace = true, optional = true }
+
+[lints]
+workspace = true

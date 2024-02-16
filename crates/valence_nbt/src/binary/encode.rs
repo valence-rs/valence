@@ -259,7 +259,7 @@ impl<W: Write> EncodeState<W> {
     where
         S: ToModifiedUtf8 + Hash + Ord,
     {
-        for (k, v) in c.iter() {
+        for (k, v) in c {
             self.write_tag(v.tag())?;
             self.write_string(k)?;
             self.write_value(v)?;

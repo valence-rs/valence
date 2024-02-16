@@ -1,11 +1,16 @@
 package rs.valence.extractor.extractors;
 
+import java.io.DataOutput;
+import java.io.IOException;
+
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import net.minecraft.entity.effect.StatusEffect;
 import net.minecraft.registry.Registries;
+import net.minecraft.server.MinecraftServer;
 import rs.valence.extractor.Main;
-import rs.valence.extractor.ValenceUtils;
 
 public class Effects implements Main.Extractor {
     public Effects() {
@@ -17,7 +22,7 @@ public class Effects implements Main.Extractor {
     }
 
     @Override
-    public JsonElement extract() {
+    public void extract(MinecraftServer server, DataOutput output, Gson gson) throws IOException {
         var effectsJson = new JsonArray();
 
         for (var effect : Registries.STATUS_EFFECT) {
@@ -28,17 +33,18 @@ public class Effects implements Main.Extractor {
             effectJson.addProperty("translation_key", effect.getTranslationKey());
             effectJson.addProperty("color", effect.getColor());
             effectJson.addProperty("instant", effect.isInstant());
-            effectJson.addProperty("category", ValenceUtils.toPascalCase(effect.getCategory().name()));
+            effectJson.addProperty("category", Main.toPascalCase(effect.getCategory().name()));
 
             var attributeModifiersJson = new JsonArray();
 
             for (var entry : effect.getAttributeModifiers().entrySet()) {
                 var attributeModifierJson = new JsonObject();
 
+                var attributeModidier = entry.getValue().createAttributeModifier(0);
                 attributeModifierJson.addProperty("attribute", Registries.ATTRIBUTE.getRawId(entry.getKey()));
-                attributeModifierJson.addProperty("operation", entry.getValue().getOperation().getId());
-                attributeModifierJson.addProperty("value", entry.getValue().getValue());
-                attributeModifierJson.addProperty("uuid", entry.getValue().getId().toString());
+                attributeModifierJson.addProperty("operation", attributeModidier.getOperation().getId());
+                attributeModifierJson.addProperty("base_value", attributeModidier.getValue());
+                attributeModifierJson.addProperty("uuid", entry.getValue().getUuid().toString());
 
                 attributeModifiersJson.add(attributeModifierJson);
             }
@@ -50,6 +56,6 @@ public class Effects implements Main.Extractor {
             effectsJson.add(effectJson);
         }
 
-        return effectsJson;
+        Main.writeJson(output, gson, effectsJson);
     }
 }

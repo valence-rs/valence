@@ -649,17 +649,17 @@ where
         }
 
         match self.next_match_back() {
-            Some((index, len)) => unsafe {
+            Some((index, len)) => {
                 // SAFETY: pattern guarantees valid indices
-                let elt = self.haystack.get_unchecked(index + len..self.end);
+                let elt = unsafe { self.haystack.get_unchecked(index + len..self.end) };
                 self.end = index + len;
                 Some(elt)
-            },
-            None => unsafe {
-                // SAFETY: `self.start` and `self.end` always lie on unicode boundaries.
+            }
+            None => {
                 self.finished = true;
-                Some(self.haystack.get_unchecked(self.start..self.end))
-            },
+                // SAFETY: `self.start` and `self.end` always lie on unicode boundaries.
+                Some(unsafe { self.haystack.get_unchecked(self.start..self.end) })
+            }
         }
     }
 }

@@ -13,7 +13,6 @@ repository.workspace = true
 binary = ["dep:byteorder", "dep:cesu8"]
 java_string = ["dep:java_string"]
 snbt = []
-# When enabled, the order of fields in compounds are preserved.
 preserve_order = ["dep:indexmap"]
 serde = ["dep:serde", "dep:thiserror", "indexmap?/serde"]
 
@@ -30,3 +29,6 @@ valence_ident = { workspace = true, optional = true }
 [dev-dependencies]
 pretty_assertions.workspace = true
 serde_json.workspace = true
+
+[lints]
+workspace = true

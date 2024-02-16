@@ -62,13 +62,13 @@ const fn utf8_char_width(first_byte: u8) -> usize {
         4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     ];
 
-    UTF8_CHAR_WIDTH[first_byte as usize] as _
+    UTF8_CHAR_WIDTH[first_byte as usize] as usize
 }
 
 fn encode_surrogate(surrogate: u16) -> [u8; 3] {
     debug_assert!((0xd800..=0xdfff).contains(&surrogate));
 
-    const TAG_CONT_U8: u8 = 0b1000_0000u8;
+    const TAG_CONT_U8: u8 = 0b1000_0000_u8;
     [
         0b11100000 | ((surrogate & 0b11110000_00000000) >> 12) as u8,
         TAG_CONT_U8 | ((surrogate & 0b00001111_11000000) >> 6) as u8,

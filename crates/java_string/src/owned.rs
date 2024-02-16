@@ -199,7 +199,7 @@ impl JavaString {
     /// assert!(string_with_error.into_string().is_err());
     /// ```
     pub fn into_string(self) -> Result<String, Utf8Error> {
-        run_utf8_full_validation_from_semi(self.as_bytes()).map(|_| unsafe {
+        run_utf8_full_validation_from_semi(self.as_bytes()).map(|()| unsafe {
             // SAFETY: validation succeeded
             self.into_string_unchecked()
         })
@@ -357,9 +357,8 @@ impl JavaString {
     /// ```
     #[inline]
     pub fn remove(&mut self, idx: usize) -> JavaCodePoint {
-        let ch = match self[idx..].chars().next() {
-            Some(ch) => ch,
-            None => panic!("cannot remove a char from the end of a string"),
+        let Some(ch) = self[idx..].chars().next() else {
+            panic!("cannot remove a char from the end of a string")
         };
 
         let next = idx + ch.len_utf8();
@@ -829,13 +828,13 @@ impl Extend<JavaString> for JavaString {
 
 impl<'a> Extend<&'a char> for JavaString {
     fn extend<T: IntoIterator<Item = &'a char>>(&mut self, iter: T) {
-        self.extend(iter.into_iter().cloned())
+        self.extend(iter.into_iter().copied())
     }
 }
 
 impl<'a> Extend<&'a JavaCodePoint> for JavaString {
     fn extend<T: IntoIterator<Item = &'a JavaCodePoint>>(&mut self, iter: T) {
-        self.extend(iter.into_iter().cloned())
+        self.extend(iter.into_iter().copied())
     }
 }
 

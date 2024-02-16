@@ -1,14 +1,15 @@
 package rs.valence.extractor.extractors;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
+import java.io.DataOutput;
+
+import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
 import net.minecraft.entity.attribute.ClampedEntityAttribute;
 import net.minecraft.entity.attribute.EntityAttribute;
 import net.minecraft.registry.Registries;
+import net.minecraft.server.MinecraftServer;
 import rs.valence.extractor.Main;
-import rs.valence.extractor.ValenceUtils;
 
 public class Attributes implements Main.Extractor {
     public Attributes() {
@@ -20,7 +21,7 @@ public class Attributes implements Main.Extractor {
     }
 
     @Override
-    public JsonElement extract() {
+    public void extract(MinecraftServer server, DataOutput output, Gson gson) throws Exception {
         var attributesJson = new JsonObject();
 
         for (EntityAttribute attribute : Registries.ATTRIBUTE) {
@@ -40,6 +41,6 @@ public class Attributes implements Main.Extractor {
             attributesJson.add(Registries.ATTRIBUTE.getId(attribute).getPath(), attributeJson);
         }
 
-        return attributesJson;
+        Main.writeJson(output, gson, attributesJson);
     }
 }

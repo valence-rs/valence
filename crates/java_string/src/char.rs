@@ -170,7 +170,7 @@ impl JavaCodePoint {
     }
 
     /// Encodes this `JavaCodePoint` into semi UTF-8, that is, UTF-8 with
-    /// surrogate code points. See also [char::encode_utf8].
+    /// surrogate code points. See also [`char::encode_utf8`].
     ///
     /// ```
     /// # use java_string::JavaCodePoint;

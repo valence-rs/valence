@@ -1,12 +1,15 @@
 package rs.valence.extractor.extractors;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.network.NetworkSide;
 import net.minecraft.network.NetworkState;
+import net.minecraft.server.MinecraftServer;
 import rs.valence.extractor.Main;
 
+import java.io.DataOutput;
+import java.io.IOException;
 import java.util.Locale;
 import java.util.TreeSet;
 
@@ -17,7 +20,7 @@ public class Packets implements Main.Extractor {
     }
 
     @Override
-    public JsonElement extract() {
+    public void extract(MinecraftServer server, DataOutput output, Gson gson) throws IOException {
         var packetsJson = new JsonArray();
 
         for (var side : NetworkSide.values()) {
@@ -37,6 +40,6 @@ public class Packets implements Main.Extractor {
             }
         }
 
-        return packetsJson;
+        Main.writeJson(output, gson, packetsJson);
     }
 }

@@ -12,3 +12,6 @@ license.workspace = true
 thiserror.workspace = true
 serde.workspace = true
 valence_ident_macros.workspace = true
+
+[lints]
+workspace = true

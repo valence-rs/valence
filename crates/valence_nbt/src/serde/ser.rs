@@ -66,6 +66,7 @@ macro_rules! unsupported {
 }
 
 /// [`Serializer`] whose output is [`Compound`].
+#[derive(Debug)]
 pub struct CompoundSerializer;
 
 impl Serializer for CompoundSerializer {
@@ -267,7 +268,7 @@ impl Serializer for ValueSerializer {
     type SerializeStructVariant = Impossible<Self::Ok, Self::Error>;
 
     fn serialize_bool(self, v: bool) -> Result<Self::Ok, Self::Error> {
-        Ok(Value::Byte(v as _))
+        Ok(Value::Byte(v.into()))
     }
 
     fn serialize_i8(self, v: i8) -> Result<Self::Ok, Self::Error> {
@@ -287,19 +288,19 @@ impl Serializer for ValueSerializer {
     }
 
     fn serialize_u8(self, v: u8) -> Result<Self::Ok, Self::Error> {
-        Ok(Value::Byte(v as _))
+        Ok(Value::Byte(v as i8))
     }
 
     fn serialize_u16(self, v: u16) -> Result<Self::Ok, Self::Error> {
-        Ok(Value::Short(v as _))
+        Ok(Value::Short(v as i16))
     }
 
     fn serialize_u32(self, v: u32) -> Result<Self::Ok, Self::Error> {
-        Ok(Value::Int(v as _))
+        Ok(Value::Int(v as i32))
     }
 
     fn serialize_u64(self, v: u64) -> Result<Self::Ok, Self::Error> {
-        Ok(Value::Long(v as _))
+        Ok(Value::Long(v as i64))
     }
 
     fn serialize_f32(self, v: f32) -> Result<Self::Ok, Self::Error> {
@@ -526,6 +527,7 @@ impl SerializeSeq for ValueSerializeSeq {
 }
 
 #[doc(hidden)]
+#[derive(Debug)]
 pub struct GenericSerializeMap<Ok> {
     /// Temp storage for `serialize_key`.
     key: Option<String>,
@@ -587,6 +589,7 @@ where
 }
 
 #[doc(hidden)]
+#[derive(Debug)]
 pub struct GenericSerializeStruct<Ok> {
     c: Compound,
     _marker: PhantomData<Ok>,

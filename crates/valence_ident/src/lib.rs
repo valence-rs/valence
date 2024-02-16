@@ -57,7 +57,7 @@ pub struct Ident<S> {
 pub struct IdentError(pub String);
 
 impl<'a> Ident<Cow<'a, str>> {
-    pub fn new(string: impl Into<Cow<'a, str>>) -> Result<Self, IdentError> {
+    pub fn new<S: Into<Cow<'a, str>>>(string: S) -> Result<Self, IdentError> {
         parse(string.into())
     }
 }

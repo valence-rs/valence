@@ -315,7 +315,7 @@ impl<'a, S> ValueMut<'a, S> {
 /// Bools are usually represented as `0` or `1` bytes in NBT.
 impl<S> From<bool> for Value<S> {
     fn from(b: bool) -> Self {
-        Value::Byte(b as _)
+        Value::Byte(b.into())
     }
 }
 

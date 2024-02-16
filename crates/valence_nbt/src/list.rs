@@ -161,7 +161,7 @@ impl<S> List<S> {
     /// multiple types inside it). Returns `true` if the value was added,
     /// `false` otherwise.
     #[must_use]
-    pub fn try_push(&mut self, value: impl Into<Value<S>>) -> bool {
+    pub fn try_push<V: Into<Value<S>>>(&mut self, value: V) -> bool {
         let value = value.into();
         match self {
             List::End => {
@@ -276,7 +276,7 @@ impl<S> List<S> {
     ///
     /// Panics if the index is greater than the length of the list.
     #[must_use]
-    pub fn try_insert(&mut self, index: usize, value: impl Into<Value<S>>) -> bool {
+    pub fn try_insert<V: Into<Value<S>>>(&mut self, index: usize, value: V) -> bool {
         let value = value.into();
 
         #[cold]
@@ -662,10 +662,12 @@ impl<'a, S> IntoIterator for &'a mut List<S> {
 }
 
 /// The owned iterator type for [`List`].
+#[derive(Clone, Debug)]
 pub struct IntoIter<S = String> {
     inner: IntoIterInner<S>,
 }
 
+#[derive(Clone, Debug)]
 enum IntoIterInner<S> {
     End,
     Byte(std::vec::IntoIter<i8>),
@@ -686,78 +688,78 @@ impl<S> Iterator for IntoIter<S> {
     type Item = Value<S>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.inner {
+        match &mut self.inner {
             IntoIterInner::End => None,
-            IntoIterInner::Byte(ref mut i) => i.next().map(Value::Byte),
-            IntoIterInner::Short(ref mut i) => i.next().map(Value::Short),
-            IntoIterInner::Int(ref mut i) => i.next().map(Value::Int),
-            IntoIterInner::Long(ref mut i) => i.next().map(Value::Long),
-            IntoIterInner::Float(ref mut i) => i.next().map(Value::Float),
-            IntoIterInner::Double(ref mut i) => i.next().map(Value::Double),
-            IntoIterInner::ByteArray(ref mut i) => i.next().map(Value::ByteArray),
-            IntoIterInner::String(ref mut i) => i.next().map(Value::String),
-            IntoIterInner::List(ref mut i) => i.next().map(Value::List),
-            IntoIterInner::Compound(ref mut i) => i.next().map(Value::Compound),
-            IntoIterInner::IntArray(ref mut i) => i.next().map(Value::IntArray),
-            IntoIterInner::LongArray(ref mut i) => i.next().map(Value::LongArray),
+            IntoIterInner::Byte(i) => i.next().map(Value::Byte),
+            IntoIterInner::Short(i) => i.next().map(Value::Short),
+            IntoIterInner::Int(i) => i.next().map(Value::Int),
+            IntoIterInner::Long(i) => i.next().map(Value::Long),
+            IntoIterInner::Float(i) => i.next().map(Value::Float),
+            IntoIterInner::Double(i) => i.next().map(Value::Double),
+            IntoIterInner::ByteArray(i) => i.next().map(Value::ByteArray),
+            IntoIterInner::String(i) => i.next().map(Value::String),
+            IntoIterInner::List(i) => i.next().map(Value::List),
+            IntoIterInner::Compound(i) => i.next().map(Value::Compound),
+            IntoIterInner::IntArray(i) => i.next().map(Value::IntArray),
+            IntoIterInner::LongArray(i) => i.next().map(Value::LongArray),
         }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        match self.inner {
+        match &self.inner {
             IntoIterInner::End => (0, Some(0)),
-            IntoIterInner::Byte(ref i) => i.size_hint(),
-            IntoIterInner::Short(ref i) => i.size_hint(),
-            IntoIterInner::Int(ref i) => i.size_hint(),
-            IntoIterInner::Long(ref i) => i.size_hint(),
-            IntoIterInner::Float(ref i) => i.size_hint(),
-            IntoIterInner::Double(ref i) => i.size_hint(),
-            IntoIterInner::ByteArray(ref i) => i.size_hint(),
-            IntoIterInner::String(ref i) => i.size_hint(),
-            IntoIterInner::List(ref i) => i.size_hint(),
-            IntoIterInner::Compound(ref i) => i.size_hint(),
-            IntoIterInner::IntArray(ref i) => i.size_hint(),
-            IntoIterInner::LongArray(ref i) => i.size_hint(),
+            IntoIterInner::Byte(i) => i.size_hint(),
+            IntoIterInner::Short(i) => i.size_hint(),
+            IntoIterInner::Int(i) => i.size_hint(),
+            IntoIterInner::Long(i) => i.size_hint(),
+            IntoIterInner::Float(i) => i.size_hint(),
+            IntoIterInner::Double(i) => i.size_hint(),
+            IntoIterInner::ByteArray(i) => i.size_hint(),
+            IntoIterInner::String(i) => i.size_hint(),
+            IntoIterInner::List(i) => i.size_hint(),
+            IntoIterInner::Compound(i) => i.size_hint(),
+            IntoIterInner::IntArray(i) => i.size_hint(),
+            IntoIterInner::LongArray(i) => i.size_hint(),
         }
     }
 }
 
 impl<S> DoubleEndedIterator for IntoIter<S> {
     fn next_back(&mut self) -> Option<Self::Item> {
-        match self.inner {
+        match &mut self.inner {
             IntoIterInner::End => None,
-            IntoIterInner::Byte(ref mut i) => i.next_back().map(Value::Byte),
-            IntoIterInner::Short(ref mut i) => i.next_back().map(Value::Short),
-            IntoIterInner::Int(ref mut i) => i.next_back().map(Value::Int),
-            IntoIterInner::Long(ref mut i) => i.next_back().map(Value::Long),
-            IntoIterInner::Float(ref mut i) => i.next_back().map(Value::Float),
-            IntoIterInner::Double(ref mut i) => i.next_back().map(Value::Double),
-            IntoIterInner::ByteArray(ref mut i) => i.next_back().map(Value::ByteArray),
-            IntoIterInner::String(ref mut i) => i.next_back().map(Value::String),
-            IntoIterInner::List(ref mut i) => i.next_back().map(Value::List),
-            IntoIterInner::Compound(ref mut i) => i.next_back().map(Value::Compound),
-            IntoIterInner::IntArray(ref mut i) => i.next_back().map(Value::IntArray),
-            IntoIterInner::LongArray(ref mut i) => i.next_back().map(Value::LongArray),
+            IntoIterInner::Byte(i) => i.next_back().map(Value::Byte),
+            IntoIterInner::Short(i) => i.next_back().map(Value::Short),
+            IntoIterInner::Int(i) => i.next_back().map(Value::Int),
+            IntoIterInner::Long(i) => i.next_back().map(Value::Long),
+            IntoIterInner::Float(i) => i.next_back().map(Value::Float),
+            IntoIterInner::Double(i) => i.next_back().map(Value::Double),
+            IntoIterInner::ByteArray(i) => i.next_back().map(Value::ByteArray),
+            IntoIterInner::String(i) => i.next_back().map(Value::String),
+            IntoIterInner::List(i) => i.next_back().map(Value::List),
+            IntoIterInner::Compound(i) => i.next_back().map(Value::Compound),
+            IntoIterInner::IntArray(i) => i.next_back().map(Value::IntArray),
+            IntoIterInner::LongArray(i) => i.next_back().map(Value::LongArray),
         }
     }
 }
 
 impl<S> ExactSizeIterator for IntoIter<S> {
     fn len(&self) -> usize {
-        match self.inner {
+        match &self.inner {
             IntoIterInner::End => 0,
-            IntoIterInner::Byte(ref i) => i.len(),
-            IntoIterInner::Short(ref i) => i.len(),
-            IntoIterInner::Int(ref i) => i.len(),
-            IntoIterInner::Long(ref i) => i.len(),
-            IntoIterInner::Float(ref i) => i.len(),
-            IntoIterInner::Double(ref i) => i.len(),
-            IntoIterInner::ByteArray(ref i) => i.len(),
-            IntoIterInner::String(ref i) => i.len(),
-            IntoIterInner::List(ref i) => i.len(),
-            IntoIterInner::Compound(ref i) => i.len(),
-            IntoIterInner::IntArray(ref i) => i.len(),
-            IntoIterInner::LongArray(ref i) => i.len(),
+            IntoIterInner::Byte(i) => i.len(),
+            IntoIterInner::Short(i) => i.len(),
+            IntoIterInner::Int(i) => i.len(),
+            IntoIterInner::Long(i) => i.len(),
+            IntoIterInner::Float(i) => i.len(),
+            IntoIterInner::Double(i) => i.len(),
+            IntoIterInner::ByteArray(i) => i.len(),
+            IntoIterInner::String(i) => i.len(),
+            IntoIterInner::List(i) => i.len(),
+            IntoIterInner::Compound(i) => i.len(),
+            IntoIterInner::IntArray(i) => i.len(),
+            IntoIterInner::LongArray(i) => i.len(),
         }
     }
 }
@@ -765,10 +767,12 @@ impl<S> ExactSizeIterator for IntoIter<S> {
 impl<S> FusedIterator for IntoIter<S> {}
 
 /// The borrowing iterator type for [`List`].
+#[derive(Clone, Debug)]
 pub struct Iter<'a, S = String> {
     inner: IterInner<'a, S>,
 }
 
+#[derive(Clone, Debug)]
 enum IterInner<'a, S> {
     End,
     Byte(std::slice::Iter<'a, i8>),
@@ -789,82 +793,78 @@ impl<'a, S> Iterator for Iter<'a, S> {
     type Item = ValueRef<'a, S>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.inner {
+        match &mut self.inner {
             IterInner::End => None,
-            IterInner::Byte(ref mut i) => i.next().map(ValueRef::Byte),
-            IterInner::Short(ref mut i) => i.next().map(ValueRef::Short),
-            IterInner::Int(ref mut i) => i.next().map(ValueRef::Int),
-            IterInner::Long(ref mut i) => i.next().map(ValueRef::Long),
-            IterInner::Float(ref mut i) => i.next().map(ValueRef::Float),
-            IterInner::Double(ref mut i) => i.next().map(ValueRef::Double),
-            IterInner::ByteArray(ref mut i) => i.next().map(|arr| ValueRef::ByteArray(&arr[..])),
-            IterInner::String(ref mut i) => i.next().map(ValueRef::String),
-            IterInner::List(ref mut i) => i.next().map(ValueRef::List),
-            IterInner::Compound(ref mut i) => i.next().map(ValueRef::Compound),
-            IterInner::IntArray(ref mut i) => i.next().map(|arr| ValueRef::IntArray(&arr[..])),
-            IterInner::LongArray(ref mut i) => i.next().map(|arr| ValueRef::LongArray(&arr[..])),
+            IterInner::Byte(i) => i.next().map(ValueRef::Byte),
+            IterInner::Short(i) => i.next().map(ValueRef::Short),
+            IterInner::Int(i) => i.next().map(ValueRef::Int),
+            IterInner::Long(i) => i.next().map(ValueRef::Long),
+            IterInner::Float(i) => i.next().map(ValueRef::Float),
+            IterInner::Double(i) => i.next().map(ValueRef::Double),
+            IterInner::ByteArray(i) => i.next().map(|arr| ValueRef::ByteArray(&arr[..])),
+            IterInner::String(i) => i.next().map(ValueRef::String),
+            IterInner::List(i) => i.next().map(ValueRef::List),
+            IterInner::Compound(i) => i.next().map(ValueRef::Compound),
+            IterInner::IntArray(i) => i.next().map(|arr| ValueRef::IntArray(&arr[..])),
+            IterInner::LongArray(i) => i.next().map(|arr| ValueRef::LongArray(&arr[..])),
         }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        match self.inner {
+        match &self.inner {
             IterInner::End => (0, Some(0)),
-            IterInner::Byte(ref i) => i.size_hint(),
-            IterInner::Short(ref i) => i.size_hint(),
-            IterInner::Int(ref i) => i.size_hint(),
-            IterInner::Long(ref i) => i.size_hint(),
-            IterInner::Float(ref i) => i.size_hint(),
-            IterInner::Double(ref i) => i.size_hint(),
-            IterInner::ByteArray(ref i) => i.size_hint(),
-            IterInner::String(ref i) => i.size_hint(),
-            IterInner::List(ref i) => i.size_hint(),
-            IterInner::Compound(ref i) => i.size_hint(),
-            IterInner::IntArray(ref i) => i.size_hint(),
-            IterInner::LongArray(ref i) => i.size_hint(),
+            IterInner::Byte(i) => i.size_hint(),
+            IterInner::Short(i) => i.size_hint(),
+            IterInner::Int(i) => i.size_hint(),
+            IterInner::Long(i) => i.size_hint(),
+            IterInner::Float(i) => i.size_hint(),
+            IterInner::Double(i) => i.size_hint(),
+            IterInner::ByteArray(i) => i.size_hint(),
+            IterInner::String(i) => i.size_hint(),
+            IterInner::List(i) => i.size_hint(),
+            IterInner::Compound(i) => i.size_hint(),
+            IterInner::IntArray(i) => i.size_hint(),
+            IterInner::LongArray(i) => i.size_hint(),
         }
     }
 }
 
 impl<S> DoubleEndedIterator for Iter<'_, S> {
     fn next_back(&mut self) -> Option<Self::Item> {
-        match self.inner {
+        match &mut self.inner {
             IterInner::End => None,
-            IterInner::Byte(ref mut i) => i.next_back().map(ValueRef::Byte),
-            IterInner::Short(ref mut i) => i.next_back().map(ValueRef::Short),
-            IterInner::Int(ref mut i) => i.next_back().map(ValueRef::Int),
-            IterInner::Long(ref mut i) => i.next_back().map(ValueRef::Long),
-            IterInner::Float(ref mut i) => i.next_back().map(ValueRef::Float),
-            IterInner::Double(ref mut i) => i.next_back().map(ValueRef::Double),
-            IterInner::ByteArray(ref mut i) => {
-                i.next_back().map(|arr| ValueRef::ByteArray(&arr[..]))
-            }
-            IterInner::String(ref mut i) => i.next_back().map(ValueRef::String),
-            IterInner::List(ref mut i) => i.next_back().map(ValueRef::List),
-            IterInner::Compound(ref mut i) => i.next_back().map(ValueRef::Compound),
-            IterInner::IntArray(ref mut i) => i.next_back().map(|arr| ValueRef::IntArray(&arr[..])),
-            IterInner::LongArray(ref mut i) => {
-                i.next_back().map(|arr| ValueRef::LongArray(&arr[..]))
-            }
+            IterInner::Byte(i) => i.next_back().map(ValueRef::Byte),
+            IterInner::Short(i) => i.next_back().map(ValueRef::Short),
+            IterInner::Int(i) => i.next_back().map(ValueRef::Int),
+            IterInner::Long(i) => i.next_back().map(ValueRef::Long),
+            IterInner::Float(i) => i.next_back().map(ValueRef::Float),
+            IterInner::Double(i) => i.next_back().map(ValueRef::Double),
+            IterInner::ByteArray(i) => i.next_back().map(|arr| ValueRef::ByteArray(&arr[..])),
+            IterInner::String(i) => i.next_back().map(ValueRef::String),
+            IterInner::List(i) => i.next_back().map(ValueRef::List),
+            IterInner::Compound(i) => i.next_back().map(ValueRef::Compound),
+            IterInner::IntArray(i) => i.next_back().map(|arr| ValueRef::IntArray(&arr[..])),
+            IterInner::LongArray(i) => i.next_back().map(|arr| ValueRef::LongArray(&arr[..])),
         }
     }
 }
 
 impl<S> ExactSizeIterator for Iter<'_, S> {
     fn len(&self) -> usize {
-        match self.inner {
+        match &self.inner {
             IterInner::End => 0,
-            IterInner::Byte(ref i) => i.len(),
-            IterInner::Short(ref i) => i.len(),
-            IterInner::Int(ref i) => i.len(),
-            IterInner::Long(ref i) => i.len(),
-            IterInner::Float(ref i) => i.len(),
-            IterInner::Double(ref i) => i.len(),
-            IterInner::ByteArray(ref i) => i.len(),
-            IterInner::String(ref i) => i.len(),
-            IterInner::List(ref i) => i.len(),
-            IterInner::Compound(ref i) => i.len(),
-            IterInner::IntArray(ref i) => i.len(),
-            IterInner::LongArray(ref i) => i.len(),
+            IterInner::Byte(i) => i.len(),
+            IterInner::Short(i) => i.len(),
+            IterInner::Int(i) => i.len(),
+            IterInner::Long(i) => i.len(),
+            IterInner::Float(i) => i.len(),
+            IterInner::Double(i) => i.len(),
+            IterInner::ByteArray(i) => i.len(),
+            IterInner::String(i) => i.len(),
+            IterInner::List(i) => i.len(),
+            IterInner::Compound(i) => i.len(),
+            IterInner::IntArray(i) => i.len(),
+            IterInner::LongArray(i) => i.len(),
         }
     }
 }
@@ -872,10 +872,12 @@ impl<S> ExactSizeIterator for Iter<'_, S> {
 impl<S> FusedIterator for Iter<'_, S> {}
 
 /// The mutable borrowing iterator type for [`List`].
+#[derive(Debug)]
 pub struct IterMut<'a, S = String> {
     inner: IterMutInner<'a, S>,
 }
 
+#[derive(Debug)]
 enum IterMutInner<'a, S> {
     End,
     Byte(std::slice::IterMut<'a, i8>),
@@ -896,78 +898,78 @@ impl<'a, S> Iterator for IterMut<'a, S> {
     type Item = ValueMut<'a, S>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.inner {
+        match &mut self.inner {
             IterMutInner::End => None,
-            IterMutInner::Byte(ref mut i) => i.next().map(ValueMut::Byte),
-            IterMutInner::Short(ref mut i) => i.next().map(ValueMut::Short),
-            IterMutInner::Int(ref mut i) => i.next().map(ValueMut::Int),
-            IterMutInner::Long(ref mut i) => i.next().map(ValueMut::Long),
-            IterMutInner::Float(ref mut i) => i.next().map(ValueMut::Float),
-            IterMutInner::Double(ref mut i) => i.next().map(ValueMut::Double),
-            IterMutInner::ByteArray(ref mut i) => i.next().map(ValueMut::ByteArray),
-            IterMutInner::String(ref mut i) => i.next().map(ValueMut::String),
-            IterMutInner::List(ref mut i) => i.next().map(ValueMut::List),
-            IterMutInner::Compound(ref mut i) => i.next().map(ValueMut::Compound),
-            IterMutInner::IntArray(ref mut i) => i.next().map(ValueMut::IntArray),
-            IterMutInner::LongArray(ref mut i) => i.next().map(ValueMut::LongArray),
+            IterMutInner::Byte(i) => i.next().map(ValueMut::Byte),
+            IterMutInner::Short(i) => i.next().map(ValueMut::Short),
+            IterMutInner::Int(i) => i.next().map(ValueMut::Int),
+            IterMutInner::Long(i) => i.next().map(ValueMut::Long),
+            IterMutInner::Float(i) => i.next().map(ValueMut::Float),
+            IterMutInner::Double(i) => i.next().map(ValueMut::Double),
+            IterMutInner::ByteArray(i) => i.next().map(ValueMut::ByteArray),
+            IterMutInner::String(i) => i.next().map(ValueMut::String),
+            IterMutInner::List(i) => i.next().map(ValueMut::List),
+            IterMutInner::Compound(i) => i.next().map(ValueMut::Compound),
+            IterMutInner::IntArray(i) => i.next().map(ValueMut::IntArray),
+            IterMutInner::LongArray(i) => i.next().map(ValueMut::LongArray),
         }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        match self.inner {
+        match &self.inner {
             IterMutInner::End => (0, Some(0)),
-            IterMutInner::Byte(ref i) => i.size_hint(),
-            IterMutInner::Short(ref i) => i.size_hint(),
-            IterMutInner::Int(ref i) => i.size_hint(),
-            IterMutInner::Long(ref i) => i.size_hint(),
-            IterMutInner::Float(ref i) => i.size_hint(),
-            IterMutInner::Double(ref i) => i.size_hint(),
-            IterMutInner::ByteArray(ref i) => i.size_hint(),
-            IterMutInner::String(ref i) => i.size_hint(),
-            IterMutInner::List(ref i) => i.size_hint(),
-            IterMutInner::Compound(ref i) => i.size_hint(),
-            IterMutInner::IntArray(ref i) => i.size_hint(),
-            IterMutInner::LongArray(ref i) => i.size_hint(),
+            IterMutInner::Byte(i) => i.size_hint(),
+            IterMutInner::Short(i) => i.size_hint(),
+            IterMutInner::Int(i) => i.size_hint(),
+            IterMutInner::Long(i) => i.size_hint(),
+            IterMutInner::Float(i) => i.size_hint(),
+            IterMutInner::Double(i) => i.size_hint(),
+            IterMutInner::ByteArray(i) => i.size_hint(),
+            IterMutInner::String(i) => i.size_hint(),
+            IterMutInner::List(i) => i.size_hint(),
+            IterMutInner::Compound(i) => i.size_hint(),
+            IterMutInner::IntArray(i) => i.size_hint(),
+            IterMutInner::LongArray(i) => i.size_hint(),
         }
     }
 }
 
 impl<S> DoubleEndedIterator for IterMut<'_, S> {
     fn next_back(&mut self) -> Option<Self::Item> {
-        match self.inner {
+        match &mut self.inner {
             IterMutInner::End => None,
-            IterMutInner::Byte(ref mut i) => i.next_back().map(ValueMut::Byte),
-            IterMutInner::Short(ref mut i) => i.next_back().map(ValueMut::Short),
-            IterMutInner::Int(ref mut i) => i.next_back().map(ValueMut::Int),
-            IterMutInner::Long(ref mut i) => i.next_back().map(ValueMut::Long),
-            IterMutInner::Float(ref mut i) => i.next_back().map(ValueMut::Float),
-            IterMutInner::Double(ref mut i) => i.next_back().map(ValueMut::Double),
-            IterMutInner::ByteArray(ref mut i) => i.next_back().map(ValueMut::ByteArray),
-            IterMutInner::String(ref mut i) => i.next_back().map(ValueMut::String),
-            IterMutInner::List(ref mut i) => i.next_back().map(ValueMut::List),
-            IterMutInner::Compound(ref mut i) => i.next_back().map(ValueMut::Compound),
-            IterMutInner::IntArray(ref mut i) => i.next_back().map(ValueMut::IntArray),
-            IterMutInner::LongArray(ref mut i) => i.next_back().map(ValueMut::LongArray),
+            IterMutInner::Byte(i) => i.next_back().map(ValueMut::Byte),
+            IterMutInner::Short(i) => i.next_back().map(ValueMut::Short),
+            IterMutInner::Int(i) => i.next_back().map(ValueMut::Int),
+            IterMutInner::Long(i) => i.next_back().map(ValueMut::Long),
+            IterMutInner::Float(i) => i.next_back().map(ValueMut::Float),
+            IterMutInner::Double(i) => i.next_back().map(ValueMut::Double),
+            IterMutInner::ByteArray(i) => i.next_back().map(ValueMut::ByteArray),
+            IterMutInner::String(i) => i.next_back().map(ValueMut::String),
+            IterMutInner::List(i) => i.next_back().map(ValueMut::List),
+            IterMutInner::Compound(i) => i.next_back().map(ValueMut::Compound),
+            IterMutInner::IntArray(i) => i.next_back().map(ValueMut::IntArray),
+            IterMutInner::LongArray(i) => i.next_back().map(ValueMut::LongArray),
         }
     }
 }
 
 impl<S> ExactSizeIterator for IterMut<'_, S> {
     fn len(&self) -> usize {
-        match self.inner {
+        match &self.inner {
             IterMutInner::End => 0,
-            IterMutInner::Byte(ref i) => i.len(),
-            IterMutInner::Short(ref i) => i.len(),
-            IterMutInner::Int(ref i) => i.len(),
-            IterMutInner::Long(ref i) => i.len(),
-            IterMutInner::Float(ref i) => i.len(),
-            IterMutInner::Double(ref i) => i.len(),
-            IterMutInner::ByteArray(ref i) => i.len(),
-            IterMutInner::String(ref i) => i.len(),
-            IterMutInner::List(ref i) => i.len(),
-            IterMutInner::Compound(ref i) => i.len(),
-            IterMutInner::IntArray(ref i) => i.len(),
-            IterMutInner::LongArray(ref i) => i.len(),
+            IterMutInner::Byte(i) => i.len(),
+            IterMutInner::Short(i) => i.len(),
+            IterMutInner::Int(i) => i.len(),
+            IterMutInner::Long(i) => i.len(),
+            IterMutInner::Float(i) => i.len(),
+            IterMutInner::Double(i) => i.len(),
+            IterMutInner::ByteArray(i) => i.len(),
+            IterMutInner::String(i) => i.len(),
+            IterMutInner::List(i) => i.len(),
+            IterMutInner::Compound(i) => i.len(),
+            IterMutInner::IntArray(i) => i.len(),
+            IterMutInner::LongArray(i) => i.len(),
         }
     }
 }

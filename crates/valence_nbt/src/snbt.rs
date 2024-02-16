@@ -70,6 +70,7 @@ impl Error for SnbtError {}
 
 type Result<T> = std::result::Result<T, SnbtError>;
 
+#[derive(Debug)]
 pub struct SnbtReader<'a> {
     line: usize,
     column: usize,
@@ -444,6 +445,7 @@ pub fn from_snbt_str(snbt: &str) -> Result<Value> {
     SnbtReader::new(snbt).read()
 }
 
+#[derive(Debug)]
 pub struct SnbtWriter<'a> {
     output: &'a mut String,
 }
@@ -549,7 +551,7 @@ impl<'a> SnbtWriter<'a> {
         self.output.push('{');
 
         let mut first = true;
-        for (k, v) in compound.iter() {
+        for (k, v) in compound {
             if !first {
                 self.output.push(',');
             }

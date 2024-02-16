@@ -1,13 +1,11 @@
 package rs.valence.extractor.extractors;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.datafixers.util.Pair;
-import net.minecraft.registry.CombinedDynamicRegistries;
 import net.minecraft.registry.Registry;
 import net.minecraft.registry.SerializableRegistries;
-import net.minecraft.registry.ServerDynamicRegistryType;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.registry.entry.RegistryEntryList;
 import net.minecraft.server.MinecraftServer;
@@ -15,15 +13,13 @@ import net.minecraft.util.Identifier;
 import rs.valence.extractor.Main;
 import rs.valence.extractor.RegistryKeyComparator;
 
+import java.io.DataOutput;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 public class Tags implements Main.Extractor {
-    private final CombinedDynamicRegistries<ServerDynamicRegistryType> dynamicRegistryManager;
-
-    public Tags(MinecraftServer server) {
-        this.dynamicRegistryManager = server.getCombinedDynamicRegistries();
+    public Tags() {
     }
 
     @Override
@@ -32,15 +28,16 @@ public class Tags implements Main.Extractor {
     }
 
     @Override
-    public JsonElement extract() {
+    public void extract(MinecraftServer server, DataOutput output, Gson gson) throws Exception {
+        var dynamicRegistryManager = server.getCombinedDynamicRegistries();
+
         var tagsJson = new JsonObject();
 
-        final var registryTags =
-                SerializableRegistries.streamRegistryManagerEntries(this.dynamicRegistryManager)
-                        .map(registry -> Pair.of(registry.key(), serializeTags(registry.value())))
-                        .filter(pair -> !(pair.getSecond()).isEmpty())
-                        .collect(Collectors.toMap(Pair::getFirst, Pair::getSecond, (l, r) -> r,
-                                () -> new TreeMap<>(new RegistryKeyComparator())));
+        final var registryTags = SerializableRegistries.streamRegistryManagerEntries(dynamicRegistryManager)
+                .map(registry -> Pair.of(registry.key(), serializeTags(registry.value())))
+                .filter(pair -> !(pair.getSecond()).isEmpty())
+                .collect(Collectors.toMap(Pair::getFirst, Pair::getSecond, (l, r) -> r,
+                        () -> new TreeMap<>(new RegistryKeyComparator())));
 
         for (var registry : registryTags.entrySet()) {
             var registryIdent = registry.getKey().getValue().toString();
@@ -55,7 +52,7 @@ public class Tags implements Main.Extractor {
             tagsJson.add(registryIdent, tagGroupTagsJson);
         }
 
-        return tagsJson;
+        Main.writeJson(output, gson, tagsJson);
     }
 
     private static <T> Map<Identifier, JsonArray> serializeTags(Registry<T> registry) {

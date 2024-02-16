@@ -9,80 +9,11 @@ readme = "README.md"
 license.workspace = true
 keywords = ["minecraft", "gamedev", "server", "ecs"]
 categories = ["game-engines"]
-include = ["/src", "/benches", "/examples", "/README.md", "/LICENSE.txt"]
 
-[features]
-default = [
-    "advancement",
-    "anvil",
-    "boss_bar",
-    "inventory",
-    "log",
-    "network",
-    "player_list",
-    "scoreboard",
-    "world_border",
-    "command",
-    "weather",
-    "testing",
-]
-advancement = ["dep:valence_advancement"]
-anvil = ["dep:valence_anvil"]
-boss_bar = ["dep:valence_boss_bar"]
-inventory = ["dep:valence_inventory"]
-log = ["dep:bevy_log"]
-network = ["dep:valence_network"]
-player_list = ["dep:valence_player_list"]
-scoreboard = ["dep:valence_scoreboard"]
-world_border = ["dep:valence_world_border"]
-command = ["dep:valence_command", "dep:valence_command_macros"]
-weather = ["dep:valence_weather"]
-testing = []
-
-[dependencies]
-anyhow.workspace = true
-bevy_app.workspace = true
-bevy_ecs.workspace = true
-bevy_log = { workspace = true, optional = true }
-bytes.workspace = true
-rand.workspace = true
-uuid.workspace = true
-valence_advancement = { workspace = true, optional = true }
-valence_anvil = { workspace = true, optional = true, features = [
-    "bevy_plugin",
-] }
-valence_boss_bar = { workspace = true, optional = true }
-valence_command = { workspace = true, optional = true }
-valence_command_macros = { workspace = true, optional = true }
-valence_ident_macros.workspace = true
-valence_ident.workspace = true
-valence_inventory = { workspace = true, optional = true }
-valence_lang.workspace = true
-valence_network = { workspace = true, optional = true }
-valence_player_list = { workspace = true, optional = true }
-valence_registry.workspace = true
-valence_scoreboard = { workspace = true, optional = true }
-valence_server.workspace = true
-valence_text.workspace = true
-valence_weather = { workspace = true, optional = true }
-valence_world_border = { workspace = true, optional = true }
-
-[dev-dependencies]
-anyhow.workspace = true
-clap.workspace = true
-criterion.workspace = true
-flume.workspace = true
-noise.workspace = true     # For the terrain example.
-tracing.workspace = true
-
-[dev-dependencies.reqwest]
+[lints]
 workspace = true
-default-features = false
-features = ["rustls-tls", "blocking", "stream"]
 
-[[bench]]
-name = "main"
-harness = false
+#### WORKSPACE ####
 
 [profile.dev.package."*"]
 opt-level = 3
@@ -91,8 +22,7 @@ opt-level = 3
 opt-level = 1
 
 [workspace]
-members = ["crates/*", "tools/*"]
-exclude = []
+members = ["crates/*"]
 resolver = "2"
 
 [workspace.package]
@@ -103,107 +33,125 @@ documentation = "https://docs.rs/valence/"
 license = "MIT"
 
 [workspace.dependencies]
-aes = "0.8.2"
-anyhow = { version = "1.0.70", features = ["backtrace"] }
-approx = "0.5.1"
-arrayvec = "0.7.2"
-async-trait = "0.1.60"
-atty = "0.2.14"
-base64 = "0.21.0"
-bevy_app = { version = "0.12", default-features = false }
-bevy_derive = "0.12"
-bevy_ecs = { version = "0.12", default-features = false, features = [
-    "multi-threaded",
-] }
-bevy_hierarchy = { version = "0.12", default-features = false }
-bevy_log = { version = "0.12" }
-bevy_mod_debugdump = { version = "0.9.0", default-features = false }
-bevy_utils = { version = "0.12" }
-bitfield-struct = "0.5.3"
-bitvec = "1.0.1"
-byteorder = "1.4.3"
-bytes = "1.2.1"
+byteorder = "1.5.0"
 cesu8 = "1.1.0"
-cfb8 = "0.8.1"
-clap = { version = "4.0.30", features = ["derive"] }
-criterion = "0.5.1"
-derive_more = "1.0.0-beta.3"
-directories = "5.0.0"
-eframe = { version = "0.22.0", default-features = false }
-egui = "0.22.0"
-egui_dock = "0.6"
-flate2 = "1.0.24"
-flume = "0.11.0"
-fs_extra = "1.2.0"
-glam = "0.25.0"
-heck = "0.5.0-rc.1"
-hmac = "0.12.1"
-image = "0.24.6"
-indexmap = "2.2.1"
-itertools = "0.12.0"
+indexmap = "2.2.2"
 java_string = { path = "crates/java_string", version = "0.1.2" }
-lru = "0.12.0"
-noise = "0.8.2"
-num = "0.4.0"
-num-bigint = "0.4.3"
-owo-colors = "3.5.0"
-ordered-float = "4.1.1"
-parking_lot = "0.12.1"
-paste = "1.0.11"
-petgraph = "0.6.3"
-pretty_assertions = "1.3.0"
-proc-macro2 = "1.0.56"
-quote = "1.0.26"
-rand = "0.8.5"
-rayon = "1.7.0"
-regex = "1.6.0"
-reqwest = { version = "0.11.12", default-features = false }
-rfd = "0.11.3"
-rsa = "0.9.2"
-rsa-der = "0.3.0"
-rustc-hash = "1.1.0"
-serde = "1.0.160"
-serde-value = "0.7.0"
-serde_json = "1.0.96"
-sha1 = "0.10.5"
-sha2 = "0.10.6"
-syn = "2.0.15"
-syntect = { version = "5.0.0", default-features = false }
-tempfile = "3.3.0"
-thiserror = "1.0.40"
-time = "0.3.17"
-tokio = { version = "1.27.0", features = ["full"] }
-toml = "0.7.2"
-tracing = "0.1.37"
-tracing-subscriber = "0.3.16"
-url = { version = "2.2.2", features = ["serde"] }
-uuid = "1.3.1"
-valence = { path = ".", version = "0.2.0-alpha.1" }
-valence_advancement = { path = "crates/valence_advancement", version = "0.2.0-alpha.1" }
-valence_anvil = { path = "crates/valence_anvil", version = "0.1.0" }
-valence_boss_bar = { path = "crates/valence_boss_bar", version = "0.2.0-alpha.1" }
-valence_build_utils = { path = "crates/valence_build_utils", version = "0.2.0-alpha.1" }
-valence_command = { path = "crates/valence_command", version = "0.2.0-alpha.1" }
-valence_command_macros = { path = "crates/valence_command_macros", version = "0.2.0-alpha.1" }
-valence_entity = { path = "crates/valence_entity", version = "0.2.0-alpha.1" }
-valence_generated = { path = "crates/valence_generated", version = "0.2.0-alpha.1" }
+proc-macro2 = "1.0.78"
+quote = "1.0.35"
+serde = "1.0.196"
+syn = { version = "2.0.48", features = ["full"] }
+thiserror = "1.0.56"
+uuid = "1.7.0"
 valence_ident = { path = "crates/valence_ident", version = "0.2.0-alpha.1" }
 valence_ident_macros = { path = "crates/valence_ident_macros", version = "0.2.0-alpha.1" }
-valence_inventory = { path = "crates/valence_inventory", version = "0.2.0-alpha.1" }
-valence_lang = { path = "crates/valence_lang", version = "0.2.0-alpha.1" }
-valence_math = { path = "crates/valence_math", version = "0.2.0-alpha.1" }
-valence_nbt = { path = "crates/valence_nbt", features = [
-    "uuid",
-], version = "0.8.0" }
-valence_network = { path = "crates/valence_network", version = "0.2.0-alpha.1" }
-valence_player_list = { path = "crates/valence_player_list", version = "0.2.0-alpha.1" }
-valence_protocol = { path = "crates/valence_protocol", version = "0.2.0-alpha.1" }
-valence_protocol_macros = { path = "crates/valence_protocol_macros", version = "0.2.0-alpha.1" }
-valence_registry = { path = "crates/valence_registry", version = "0.2.0-alpha.1" }
-valence_scoreboard = { path = "crates/valence_scoreboard", version = "0.2.0-alpha.1" }
-valence_server = { path = "crates/valence_server", version = "0.2.0-alpha.1" }
-valence_server_common = { path = "crates/valence_server_common", version = "0.2.0-alpha.1" }
-valence_text = { path = "crates/valence_text", version = "0.2.0-alpha.1" }
-valence_weather = { path = "crates/valence_weather", version = "0.2.0-alpha.1" }
-valence_world_border = { path = "crates/valence_world_border", version = "0.2.0-alpha.1" }
-zip = "0.6.3"
+pretty_assertions = "1.4.0"
+serde_json = "1.0.113"
+valence_nbt = { path = "crates/valence_nbt", version = "0.8.0" }
+
+[workspace.lints.rust]
+elided_lifetimes_in_paths = "allow" # Warned by `future_incompatible`.
+future_incompatible = "warn"
+missing_debug_implementations = "warn"
+# missing_docs = "warn"
+nonstandard_style = "warn"
+rust_2018_idioms = "warn"
+trivial_numeric_casts = "warn"
+unreachable_pub = "warn"
+unused_import_braces = "warn"
+unused_lifetimes = "warn"
+
+[workspace.lints.clippy]
+alloc_instead_of_core = "warn"
+as_ptr_cast_mut = "warn"
+as_underscore = "warn"
+bool_to_int_with_if = "warn"
+case_sensitive_file_extension_comparisons = "warn"
+cast_lossless = "warn"
+checked_conversions = "warn"
+cloned_instead_of_copied = "warn"
+copy_iterator = "warn"
+dbg_macro = "warn"
+doc_link_with_quotes = "warn"
+doc_markdown = "warn"
+empty_enum_variants_with_brackets = "warn"
+empty_structs_with_brackets = "warn"
+explicit_deref_methods = "warn"
+explicit_into_iter_loop = "warn"
+explicit_iter_loop = "warn"
+filter_map_next = "warn"
+flat_map_option = "warn"
+format_push_string = "warn"
+from_iter_instead_of_collect = "warn"
+get_unwrap = "warn"
+if_then_some_else_none = "warn"
+ignored_unit_patterns = "warn"
+implicit_clone = "warn"
+inconsistent_struct_constructor = "warn"
+inefficient_to_string = "warn"
+infinite_loop = "warn"
+into_iter_without_iter = "warn"
+invalid_upcast_comparisons = "warn"
+iter_filter_is_ok = "warn"
+iter_filter_is_some = "warn"
+iter_not_returning_iterator = "warn"
+iter_over_hash_type = "warn" # Requires justification
+iter_without_into_iter = "warn"
+large_stack_arrays = "warn"
+large_types_passed_by_value = "warn"
+macro_use_imports = "warn"
+manual_assert = "warn"
+manual_instant_elapsed = "warn"
+manual_is_variant_and = "warn"
+manual_let_else = "warn"
+manual_ok_or = "warn"
+manual_string_new = "warn"
+map_unwrap_or = "warn"
+match_bool = "warn"
+match_wildcard_for_single_variants = "warn"
+mismatching_type_param_order = "warn"
+missing_fields_in_debug = "warn"
+mixed_read_write_in_expression = "warn"
+mod_module_files = "warn"
+# multiple_inherent_impl = "warn"
+mut_mut = "warn"
+mutex_atomic = "warn"
+needless_bitwise_bool = "warn"
+needless_continue = "warn"
+needless_for_each = "warn"
+needless_raw_string_hashes = "warn"
+needless_raw_strings = "warn"
+negative_feature_names = "warn"
+no_mangle_with_rust_abi = "warn"
+option_as_ref_cloned = "warn"
+pub_underscore_fields = "warn"
+rc_buffer = "warn"
+rc_mutex = "warn"
+redundant_else = "warn"
+redundant_feature_names = "warn"
+ref_patterns = "warn"
+rest_pat_in_fully_bound_structs = "warn"
+semicolon_outside_block = "warn"
+str_to_string = "warn"
+string_lit_chars_any = "warn"
+string_to_string = "warn"
+struct_field_names = "warn"
+tests_outside_test_module = "warn"
+todo = "warn"
+trivially_copy_pass_by_ref = "warn"
+try_err = "warn"
+# undocumented_unsafe_blocks = "warn"
+uninlined_format_args = "warn"
+unnecessary_join = "warn"
+# unnecessary_safety_doc = "warn"
+unnecessary_self_imports = "warn"
+unneeded_field_pattern = "warn"
+unnested_or_patterns = "warn"
+unseparated_literal_suffix = "warn"
+unused_self = "warn"
+used_underscore_binding = "warn"
+wildcard_dependencies = "warn"
+zero_sized_map_values = "warn"
+
+[workspace.lints.rustdoc]
+unescaped_backticks = "warn"
