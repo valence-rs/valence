@@ -11,7 +11,6 @@ import net.minecraft.entity.effect.StatusEffect;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.MinecraftServer;
 import rs.valence.extractor.Main;
-import rs.valence.extractor.ValenceUtils;
 
 public class Effects implements Main.Extractor {
     public Effects() {
@@ -34,7 +33,7 @@ public class Effects implements Main.Extractor {
             effectJson.addProperty("translation_key", effect.getTranslationKey());
             effectJson.addProperty("color", effect.getColor());
             effectJson.addProperty("instant", effect.isInstant());
-            effectJson.addProperty("category", ValenceUtils.toPascalCase(effect.getCategory().name()));
+            effectJson.addProperty("category", Main.toPascalCase(effect.getCategory().name()));
 
             var attributeModifiersJson = new JsonArray();
 

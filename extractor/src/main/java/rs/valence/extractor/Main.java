@@ -2,6 +2,7 @@ package rs.valence.extractor;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 
 import net.fabricmc.api.ModInitializer;
@@ -20,25 +21,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.TreeMap;
 import java.nio.charset.StandardCharsets;
 
 public class Main implements ModInitializer {
     public static final String MOD_ID = "valence_extractor";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
-
-    /**
-     * Magically creates an instance of a <i>concrete</i> class without calling its constructor.
-     */
-    public static <T> T magicallyInstantiate(Class<T> clazz) {
-        var rf = ReflectionFactory.getReflectionFactory();
-        try {
-            var objCon = Object.class.getDeclaredConstructor();
-            var con = rf.newConstructorForSerialization(clazz, objCon);
-            return clazz.cast(con.newInstance());
-        } catch (Throwable e) {
-            throw new IllegalArgumentException("Failed to magically instantiate " + clazz.getName(), e);
-        }
-    }
 
     @Override
     public void onInitialize() {
@@ -85,7 +73,7 @@ public class Main implements ModInitializer {
                 }
             }
 
-            LOGGER.info("Done!");
+            LOGGER.info("Done! Errors below this line can be ignored.");
             
             server.shutdown();
         });
@@ -101,7 +89,56 @@ public class Main implements ModInitializer {
     public record Pair<T, U>(T left, U right) {
     }
 
+    /**
+     * Magically creates an instance of a <i>concrete</i> class without calling its constructor.
+     */
+    public static <T> T magicallyInstantiate(Class<T> clazz) {
+        var rf = ReflectionFactory.getReflectionFactory();
+        try {
+            var objCon = Object.class.getDeclaredConstructor();
+            var con = rf.newConstructorForSerialization(clazz, objCon);
+            return clazz.cast(con.newInstance());
+        } catch (Throwable e) {
+            throw new IllegalArgumentException("Failed to magically instantiate " + clazz.getName(), e);
+        }
+    }
+
     public static void writeJson(DataOutput output, Gson gson, JsonElement element) throws IOException {
         output.write(gson.toJson(element).getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * Converts a string to PascalCase.
+     * 
+     * @param str The string to convert.
+     * @return The converted string.
+     */
+    public static String toPascalCase(String str) {
+        StringBuilder result = new StringBuilder();
+        boolean capitalizeNext = true;
+
+        for (char c : str.toCharArray()) {
+            if (Character.isWhitespace(c) || c == '_') {
+                capitalizeNext = true;
+            } else if (capitalizeNext) {
+                result.append(Character.toUpperCase(c));
+                capitalizeNext = false;
+            } else {
+                result.append(Character.toLowerCase(c));
+            }
+        }
+
+        return result.toString();
+    }
+
+    /**
+     * Converts a TreeMap to a JsonArray, ignoring the keys.
+     */
+    public static <A, B extends JsonElement> JsonArray treeMapToJsonArray(TreeMap<A, B> map) {
+        var array = new JsonArray();
+        for (var value : map.values()) {
+            array.add(value);
+        }
+        return array;
     }
 }

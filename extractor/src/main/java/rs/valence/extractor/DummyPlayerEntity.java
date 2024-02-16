@@ -7,13 +7,18 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.network.encryption.PlayerPublicKey;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
+
+import java.util.UUID;
+
 import org.jetbrains.annotations.Nullable;
 
 public class DummyPlayerEntity extends PlayerEntity {
     public static final DummyPlayerEntity INSTANCE;
 
     static {
-        INSTANCE = Main.magicallyInstantiate(DummyPlayerEntity.class);
+        INSTANCE = new DummyPlayerEntity(DummyWorld.INSTANCE, new BlockPos(0, 0, 0), 0,
+                new GameProfile(new UUID(0xDEADBEEF, 0xDEADBEEF), "dummy"),
+                null);
 
         try {
             var dataTrackerField = Entity.class.getDeclaredField("dataTracker");
@@ -21,12 +26,14 @@ public class DummyPlayerEntity extends PlayerEntity {
             dataTrackerField.set(INSTANCE, new DataTracker(INSTANCE));
 
             INSTANCE.initDataTracker();
+            INSTANCE.setHealth(20); // idk why player health is set to 1 by default
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private DummyPlayerEntity(World world, BlockPos pos, float yaw, GameProfile gameProfile, @Nullable PlayerPublicKey publicKey) {
+    private DummyPlayerEntity(World world, BlockPos pos, float yaw, GameProfile gameProfile,
+            @Nullable PlayerPublicKey publicKey) {
         super(world, pos, yaw, gameProfile);
     }
 
