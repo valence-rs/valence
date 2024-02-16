@@ -58,11 +58,8 @@ public class Entities implements Main.Extractor {
             throws IOException, IllegalAccessException, NoSuchFieldException {
         var entitiesJson = new JsonObject();
 
-        // Set of entity classes that have been handled.
-        var entitySet = new HashSet<Class<? extends Entity>>();
-
         for (var entityClass : Entities.ENTITY_CLASS_TO_TYPE_MAP.keySet()) {
-            Entities.handleEntity(entityClass, entitySet, entitiesJson);
+            Entities.handleEntity(entityClass, entitiesJson);
         }
 
         Main.writeJson(output, gson, entitiesJson);
@@ -71,11 +68,9 @@ public class Entities implements Main.Extractor {
     @SuppressWarnings("unchecked")
     private static void handleEntity(
             Class<? extends Entity> entityClass,
-            HashSet<Class<? extends Entity>> entitySet,
             JsonObject entitiesJson) throws IllegalAccessException, NoSuchFieldException {
-        if (entitySet.contains(entityClass)) {
+        if (entitiesJson.get(entityClass.getSimpleName()) != null) {
             // Skip if we already handled this entity.
-            return;
         }
 
         var entityJson = new JsonObject();
@@ -83,7 +78,7 @@ public class Entities implements Main.Extractor {
         var parentClass = entityClass.getSuperclass();
         if (parentClass != null && Entity.class.isAssignableFrom(parentClass)) {
             // If the entity has a parent class, handle that too.
-            handleEntity((Class<? extends Entity>) parentClass, entitySet, entitiesJson);
+            handleEntity((Class<? extends Entity>) parentClass, entitiesJson);
 
             entityJson.addProperty("parent", parentClass.getSimpleName());
         }
@@ -118,7 +113,7 @@ public class Entities implements Main.Extractor {
                 var data = Entities.trackedDataToJson(trackedData, dataTracker);
                 int id = trackedData.getId();
                 fieldJson.addProperty("index", id);
-                fieldJson.add("default_value", data.right());
+                fieldJson.add("value", data.right());
                 fieldJson.addProperty("type", data.left());
                 defaultsMap.put(id, fieldJson);
             }
@@ -182,7 +177,6 @@ public class Entities implements Main.Extractor {
         }
         entityJson.add("fields", fieldsJson);
 
-        entitySet.add(entityClass);
         entitiesJson.add(entityClass.getSimpleName(), entityJson);
     }
 
