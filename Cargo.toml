@@ -119,7 +119,7 @@ bevy_hierarchy = { version = "0.12", default-features = false }
 bevy_log = { version = "0.12" }
 bevy_mod_debugdump = { version = "0.9.0", default-features = false }
 bevy_utils = { version = "0.12" }
-bitfield-struct = "0.5.3"
+bitfield-struct = "0.6.0"
 bitvec = "1.0.1"
 byteorder = "1.4.3"
 bytes = "1.2.1"
