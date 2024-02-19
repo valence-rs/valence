@@ -116,7 +116,7 @@ bevy_ecs = { version = "0.12", default-features = false, features = [
     "multi-threaded",
 ] }
 bevy_hierarchy = { version = "0.12", default-features = false }
-bevy_log = { version = "0.12" }
+bevy_log = { version = "0.13" }
 bevy_mod_debugdump = { version = "0.9.0", default-features = false }
 bevy_utils = { version = "0.12" }
 bitfield-struct = "0.5.3"
