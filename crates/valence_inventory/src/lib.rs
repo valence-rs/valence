@@ -1151,7 +1151,12 @@ fn handle_player_actions(
                     }
                 }
                 PlayerAction::SwapItemWithOffhand => {
-                    // TODO
+                    if let Ok((mut inv, _, held)) = clients.get_mut(packet.client) {
+                        let stack1 = inv.replace_slot(held.slot(), ItemStack::EMPTY);
+                        let stack2 = inv.replace_slot(PlayerInventory::SLOT_OFFHAND, stack1);
+
+                        inv.set_slot(held.slot(), stack2);
+                    }
                 }
                 _ => {}
             }
