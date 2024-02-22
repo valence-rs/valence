@@ -1,7 +1,6 @@
 //! Put stuff in here if you find that you have to write the same code for
 //! multiple playgrounds.
 
-use valence::client_command::{SneakEvent, SneakState};
 use valence::prelude::*;
 
 /// Toggles client's game mode between survival and creative when they start

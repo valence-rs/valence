@@ -3,7 +3,7 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use derive_more::Deref;
-use valence_math::{Aabb, DVec3, UVec3, Vec3Swizzles};
+use valence_math::{Aabb, UVec3, Vec3Swizzles};
 use valence_protocol::Direction;
 
 use crate::*;

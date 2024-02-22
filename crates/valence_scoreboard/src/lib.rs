@@ -22,7 +22,6 @@ mod components;
 use std::collections::BTreeSet;
 
 use bevy_app::prelude::*;
-use bevy_ecs::change_detection::DetectChanges;
 use bevy_ecs::prelude::*;
 pub use components::*;
 use tracing::{debug, warn};
