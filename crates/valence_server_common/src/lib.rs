@@ -30,7 +30,6 @@ use bevy_ecs::prelude::*;
 pub use despawn::*;
 use valence_protocol::CompressionThreshold;
 
-use crate::despawn::despawn_marked_entities;
 pub use crate::uuid::*;
 
 /// Minecraft's standard ticks per second (TPS).
