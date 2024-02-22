@@ -16,6 +16,10 @@
             alt="GitHub sponsors"></a>
 </p>
 
+**Note: Valence is currently undergoing a major rewrite. See [#596](https://github.com/valence-rs/valence/issues/596) for details.**
+
+---
+
 A Rust framework for building Minecraft: Java Edition servers.
 
 Built on top of [Bevy ECS](https://bevyengine.org/learn/book/getting-started/ecs/), Valence is an effort to create a
