@@ -1,6 +1,4 @@
-use valence::client::despawn_disconnected_clients;
 use valence::log::LogPlugin;
-use valence::network::ConnectionMode;
 use valence::prelude::*;
 
 #[allow(unused_imports)]
