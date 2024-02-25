@@ -35,21 +35,25 @@ fn handle_client_settings(
     )>,
 ) {
     for packet in packets.read() {
-        if let Some(pkt) = packet.decode::<ClientSettingsC2s>() {
-            if let Ok((mut view_dist, mut settings, mut model_parts, mut main_arm)) =
-                clients.get_mut(packet.client)
-            {
-                view_dist.set_if_neq(ViewDistance::new(pkt.view_distance));
+        let Some(pkt) = packet.decode::<ClientSettingsC2s>() else {
+            continue;
+        };
 
-                settings.locale = pkt.locale.into();
-                settings.chat_mode = pkt.chat_mode;
-                settings.chat_colors = pkt.chat_colors;
-                settings.enable_text_filtering = pkt.enable_text_filtering;
-                settings.allow_server_listings = pkt.allow_server_listings;
+        let Ok((mut view_dist, mut settings, mut model_parts, mut main_arm)) =
+            clients.get_mut(packet.client)
+        else {
+            continue;
+        };
 
-                model_parts.set_if_neq(PlayerModelParts(u8::from(pkt.displayed_skin_parts) as i8));
-                main_arm.set_if_neq(player::MainArm(pkt.main_arm as i8));
-            }
-        }
+        view_dist.set_if_neq(ViewDistance::new(pkt.view_distance));
+
+        settings.locale = pkt.locale.into();
+        settings.chat_mode = pkt.chat_mode;
+        settings.chat_colors = pkt.chat_colors;
+        settings.enable_text_filtering = pkt.enable_text_filtering;
+        settings.allow_server_listings = pkt.allow_server_listings;
+
+        model_parts.set_if_neq(PlayerModelParts(u8::from(pkt.displayed_skin_parts) as i8));
+        main_arm.set_if_neq(player::MainArm(pkt.main_arm as i8));
     }
 }

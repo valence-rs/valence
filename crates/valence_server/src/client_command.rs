@@ -66,81 +66,79 @@ pub struct LeaveBedEvent {
 fn handle_client_command(
     mut packets: EventReader<PacketEvent>,
     mut clients: Query<(&mut entity::Pose, &mut Flags)>,
-    mut sprinting_events: EventWriter<SprintEvent>,
-    mut sneaking_events: EventWriter<SneakEvent>,
+    mut sprint_events: EventWriter<SprintEvent>,
+    mut sneak_events: EventWriter<SneakEvent>,
     mut jump_with_horse_events: EventWriter<JumpWithHorseEvent>,
     mut leave_bed_events: EventWriter<LeaveBedEvent>,
 ) {
     for packet in packets.read() {
-        if let Some(pkt) = packet.decode::<ClientCommandC2s>() {
-            match pkt.action {
-                ClientCommand::StartSneaking => {
-                    if let Ok((mut pose, mut flags)) = clients.get_mut(packet.client) {
-                        pose.0 = Pose::Sneaking;
-                        flags.set_sneaking(true);
-                    }
+        let Some(pkt) = packet.decode::<ClientCommandC2s>() else {
+            continue;
+        };
 
-                    sneaking_events.send(SneakEvent {
-                        client: packet.client,
-                        state: SneakState::Start,
-                    })
+        match pkt.action {
+            ClientCommand::StartSneaking => {
+                if let Ok((mut pose, mut flags)) = clients.get_mut(packet.client) {
+                    pose.0 = Pose::Sneaking;
+                    flags.set_sneaking(true);
                 }
-                ClientCommand::StopSneaking => {
-                    if let Ok((mut pose, mut flags)) = clients.get_mut(packet.client) {
-                        pose.0 = Pose::Standing;
-                        flags.set_sneaking(false);
-                    }
 
-                    sneaking_events.send(SneakEvent {
-                        client: packet.client,
-                        state: SneakState::Stop,
-                    })
-                }
-                ClientCommand::LeaveBed => leave_bed_events.send(LeaveBedEvent {
+                sneak_events.send(SneakEvent {
                     client: packet.client,
-                }),
-                ClientCommand::StartSprinting => {
-                    if let Ok((_, mut flags)) = clients.get_mut(packet.client) {
-                        flags.set_sprinting(true);
-                    }
+                    state: SneakState::Start,
+                })
+            }
+            ClientCommand::StopSneaking => {
+                if let Ok((mut pose, mut flags)) = clients.get_mut(packet.client) {
+                    pose.0 = Pose::Standing;
+                    flags.set_sneaking(false);
+                }
 
-                    sprinting_events.send(SprintEvent {
-                        client: packet.client,
-                        state: SprintState::Start,
-                    });
+                sneak_events.send(SneakEvent {
+                    client: packet.client,
+                    state: SneakState::Stop,
+                })
+            }
+            ClientCommand::LeaveBed => leave_bed_events.send(LeaveBedEvent {
+                client: packet.client,
+            }),
+            ClientCommand::StartSprinting => {
+                if let Ok((_, mut flags)) = clients.get_mut(packet.client) {
+                    flags.set_sprinting(true);
                 }
-                ClientCommand::StopSprinting => {
-                    if let Ok((_, mut flags)) = clients.get_mut(packet.client) {
-                        flags.set_sprinting(false);
-                    }
 
-                    sprinting_events.send(SprintEvent {
-                        client: packet.client,
-                        state: SprintState::Stop,
-                    })
+                sprint_events.send(SprintEvent {
+                    client: packet.client,
+                    state: SprintState::Start,
+                });
+            }
+            ClientCommand::StopSprinting => {
+                if let Ok((_, mut flags)) = clients.get_mut(packet.client) {
+                    flags.set_sprinting(false);
                 }
-                ClientCommand::StartJumpWithHorse => {
-                    jump_with_horse_events.send(JumpWithHorseEvent {
-                        client: packet.client,
-                        state: JumpWithHorseState::Start {
-                            power: pkt.jump_boost.0 as u8,
-                        },
-                    })
-                }
-                ClientCommand::StopJumpWithHorse => {
-                    jump_with_horse_events.send(JumpWithHorseEvent {
-                        client: packet.client,
-                        state: JumpWithHorseState::Stop,
-                    })
-                }
-                ClientCommand::OpenHorseInventory => {} // TODO
-                ClientCommand::StartFlyingWithElytra => {
-                    if let Ok((mut pose, _)) = clients.get_mut(packet.client) {
-                        pose.0 = Pose::FallFlying;
-                    }
 
-                    // TODO.
+                sprint_events.send(SprintEvent {
+                    client: packet.client,
+                    state: SprintState::Stop,
+                })
+            }
+            ClientCommand::StartJumpWithHorse => jump_with_horse_events.send(JumpWithHorseEvent {
+                client: packet.client,
+                state: JumpWithHorseState::Start {
+                    power: pkt.jump_boost.0 as u8,
+                },
+            }),
+            ClientCommand::StopJumpWithHorse => jump_with_horse_events.send(JumpWithHorseEvent {
+                client: packet.client,
+                state: JumpWithHorseState::Stop,
+            }),
+            ClientCommand::OpenHorseInventory => {} // TODO
+            ClientCommand::StartFlyingWithElytra => {
+                if let Ok((mut pose, _)) = clients.get_mut(packet.client) {
+                    pose.0 = Pose::FallFlying;
                 }
+
+                // TODO.
             }
         }
     }

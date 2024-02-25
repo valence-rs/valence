@@ -88,16 +88,22 @@ fn insert_scope_component(mut clients: Query<Entity, Added<Client>>, mut command
 
 fn read_incoming_packets(
     mut packets: EventReader<PacketEvent>,
-    mut event_writer: EventWriter<CommandExecutionEvent>,
+    clients: Query<&Client>,
+    mut command_execution_events: EventWriter<CommandExecutionEvent>,
 ) {
     for packet in packets.read() {
-        let client = packet.client;
-        if let Some(packet) = packet.decode::<CommandExecutionC2s>() {
-            event_writer.send(CommandExecutionEvent {
-                command: packet.command.to_string(),
-                executor: client,
-            });
+        let Some(pkt) = packet.decode::<CommandExecutionC2s>() else {
+            continue;
+        };
+
+        if !clients.contains(packet.client) {
+            continue;
         }
+
+        command_execution_events.send(CommandExecutionEvent {
+            command: pkt.command.to_string(),
+            executor: packet.client,
+        });
     }
 }
 

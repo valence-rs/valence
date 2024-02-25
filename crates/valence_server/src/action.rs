@@ -50,43 +50,45 @@ impl ActionSequence {
 }
 
 fn handle_player_action(
-    mut clients: Query<&mut ActionSequence>,
     mut packets: EventReader<PacketEvent>,
+    mut clients: Query<&mut ActionSequence>,
     mut digging_events: EventWriter<DiggingEvent>,
 ) {
     for packet in packets.read() {
-        if let Some(pkt) = packet.decode::<PlayerActionC2s>() {
-            if let Ok(mut seq) = clients.get_mut(packet.client) {
-                seq.update(pkt.sequence.0);
-            }
+        let Some(pkt) = packet.decode::<PlayerActionC2s>() else {
+            continue;
+        };
 
-            // TODO: check that digging is happening within configurable distance to client.
-            // TODO: check that blocks are being broken at the appropriate speeds.
+        if let Ok(mut seq) = clients.get_mut(packet.client) {
+            seq.update(pkt.sequence.0);
+        }
 
-            match pkt.action {
-                PlayerAction::StartDestroyBlock => digging_events.send(DiggingEvent {
-                    client: packet.client,
-                    position: pkt.position,
-                    direction: pkt.direction,
-                    state: DiggingState::Start,
-                }),
-                PlayerAction::AbortDestroyBlock => digging_events.send(DiggingEvent {
-                    client: packet.client,
-                    position: pkt.position,
-                    direction: pkt.direction,
-                    state: DiggingState::Abort,
-                }),
-                PlayerAction::StopDestroyBlock => digging_events.send(DiggingEvent {
-                    client: packet.client,
-                    position: pkt.position,
-                    direction: pkt.direction,
-                    state: DiggingState::Stop,
-                }),
-                PlayerAction::DropAllItems => {}
-                PlayerAction::DropItem => {}
-                PlayerAction::ReleaseUseItem => {}
-                PlayerAction::SwapItemWithOffhand => {}
-            }
+        // TODO: check that digging is happening within configurable distance to client.
+        // TODO: check that blocks are being broken at the appropriate speeds.
+
+        match pkt.action {
+            PlayerAction::StartDestroyBlock => digging_events.send(DiggingEvent {
+                client: packet.client,
+                position: pkt.position,
+                direction: pkt.direction,
+                state: DiggingState::Start,
+            }),
+            PlayerAction::AbortDestroyBlock => digging_events.send(DiggingEvent {
+                client: packet.client,
+                position: pkt.position,
+                direction: pkt.direction,
+                state: DiggingState::Abort,
+            }),
+            PlayerAction::StopDestroyBlock => digging_events.send(DiggingEvent {
+                client: packet.client,
+                position: pkt.position,
+                direction: pkt.direction,
+                state: DiggingState::Stop,
+            }),
+            PlayerAction::DropAllItems => {}
+            PlayerAction::DropItem => {}
+            PlayerAction::ReleaseUseItem => {}
+            PlayerAction::SwapItemWithOffhand => {}
         }
     }
 }

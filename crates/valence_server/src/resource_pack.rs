@@ -51,14 +51,21 @@ impl Client {
 
 fn handle_resource_pack_status(
     mut packets: EventReader<PacketEvent>,
-    mut events: EventWriter<ResourcePackStatusEvent>,
+    clients: Query<&Client>,
+    mut resource_pack_status_events: EventWriter<ResourcePackStatusEvent>,
 ) {
     for packet in packets.read() {
-        if let Some(pkt) = packet.decode::<ResourcePackStatusC2s>() {
-            events.send(ResourcePackStatusEvent {
-                client: packet.client,
-                status: pkt,
-            })
+        let Some(pkt) = packet.decode::<ResourcePackStatusC2s>() else {
+            continue;
+        };
+
+        if !clients.contains(packet.client) {
+            continue;
         }
+
+        resource_pack_status_events.send(ResourcePackStatusEvent {
+            client: packet.client,
+            status: pkt,
+        })
     }
 }

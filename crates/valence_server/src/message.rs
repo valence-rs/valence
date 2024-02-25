@@ -49,15 +49,22 @@ pub struct ChatMessageEvent {
 
 pub fn handle_chat_message(
     mut packets: EventReader<PacketEvent>,
-    mut events: EventWriter<ChatMessageEvent>,
+    clients: Query<&Client>,
+    mut chat_message_events: EventWriter<ChatMessageEvent>,
 ) {
     for packet in packets.read() {
-        if let Some(pkt) = packet.decode::<ChatMessageC2s>() {
-            events.send(ChatMessageEvent {
-                client: packet.client,
-                message: pkt.message.0.into(),
-                timestamp: pkt.timestamp,
-            });
+        let Some(pkt) = packet.decode::<ChatMessageC2s>() else {
+            continue;
+        };
+
+        if !clients.contains(packet.client) {
+            continue;
         }
+
+        chat_message_events.send(ChatMessageEvent {
+            client: packet.client,
+            message: pkt.message.0.into(),
+            timestamp: pkt.timestamp,
+        });
     }
 }

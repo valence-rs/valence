@@ -109,31 +109,35 @@ fn handle_teleport_confirmations(
     mut commands: Commands,
 ) {
     for packet in packets.read() {
-        if let Some(pkt) = packet.decode::<TeleportConfirmC2s>() {
-            if let Ok(mut state) = clients.get_mut(packet.client) {
-                if state.pending_teleports == 0 {
-                    warn!(
-                        "unexpected teleport confirmation from client {:?}",
-                        packet.client
-                    );
-                    commands.entity(packet.client).remove::<Client>();
-                }
+        let Some(pkt) = packet.decode::<TeleportConfirmC2s>() else {
+            continue;
+        };
 
-                let got = pkt.teleport_id.0 as u32;
-                let expected = state
-                    .teleport_id_counter
-                    .wrapping_sub(state.pending_teleports);
+        let Ok(mut state) = clients.get_mut(packet.client) else {
+            continue;
+        };
 
-                if got == expected {
-                    state.pending_teleports -= 1;
-                } else {
-                    warn!(
-                        "unexpected teleport ID for client {:?} (expected {expected}, got {got}",
-                        packet.client
-                    );
-                    commands.entity(packet.client).remove::<Client>();
-                }
-            }
+        if state.pending_teleports == 0 {
+            warn!(
+                "unexpected teleport confirmation from client {:?}",
+                packet.client
+            );
+            commands.entity(packet.client).remove::<Client>();
+        }
+
+        let got = pkt.teleport_id.0 as u32;
+        let expected = state
+            .teleport_id_counter
+            .wrapping_sub(state.pending_teleports);
+
+        if got == expected {
+            state.pending_teleports -= 1;
+        } else {
+            warn!(
+                "unexpected teleport ID for client {:?} (expected {expected}, got {got}",
+                packet.client
+            );
+            commands.entity(packet.client).remove::<Client>();
         }
     }
 }

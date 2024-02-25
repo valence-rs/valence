@@ -1,4 +1,5 @@
 use bevy_ecs::prelude::*;
+use valence_server::client::Client;
 use valence_server::event_loop::PacketEvent;
 use valence_server::protocol::packets::play::AdvancementTabC2s;
 use valence_server::Ident;
@@ -13,17 +14,24 @@ pub struct AdvancementTabChangeEvent {
 
 pub(crate) fn handle_advancement_tab_change(
     mut packets: EventReader<PacketEvent>,
+    clients: Query<&Client>,
     mut advancement_tab_change_events: EventWriter<AdvancementTabChangeEvent>,
 ) {
     for packet in packets.read() {
-        if let Some(pkt) = packet.decode::<AdvancementTabC2s>() {
-            advancement_tab_change_events.send(AdvancementTabChangeEvent {
-                client: packet.client,
-                opened_tab: match pkt {
-                    AdvancementTabC2s::ClosedScreen => None,
-                    AdvancementTabC2s::OpenedTab { tab_id } => Some(tab_id.into()),
-                },
-            })
+        let Some(pkt) = packet.decode::<AdvancementTabC2s>() else {
+            continue;
+        };
+
+        if !clients.contains(packet.client) {
+            continue;
         }
+
+        advancement_tab_change_events.send(AdvancementTabChangeEvent {
+            client: packet.client,
+            opened_tab: match pkt {
+                AdvancementTabC2s::ClosedScreen => None,
+                AdvancementTabC2s::OpenedTab { tab_id } => Some(tab_id.into()),
+            },
+        })
     }
 }

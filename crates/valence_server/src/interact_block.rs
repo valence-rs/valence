@@ -36,25 +36,27 @@ pub struct InteractBlockEvent {
 fn handle_interact_block(
     mut packets: EventReader<PacketEvent>,
     mut clients: Query<&mut ActionSequence>,
-    mut events: EventWriter<InteractBlockEvent>,
+    mut interact_block_events: EventWriter<InteractBlockEvent>,
 ) {
     for packet in packets.read() {
-        if let Some(pkt) = packet.decode::<PlayerInteractBlockC2s>() {
-            if let Ok(mut action_seq) = clients.get_mut(packet.client) {
-                action_seq.update(pkt.sequence.0);
-            }
+        let Some(pkt) = packet.decode::<PlayerInteractBlockC2s>() else {
+            continue;
+        };
 
-            // TODO: check that the block interaction is valid.
-
-            events.send(InteractBlockEvent {
-                client: packet.client,
-                hand: pkt.hand,
-                position: pkt.position,
-                face: pkt.face,
-                cursor_pos: pkt.cursor_pos,
-                head_inside_block: pkt.head_inside_block,
-                sequence: pkt.sequence.0,
-            });
+        if let Ok(mut action_seq) = clients.get_mut(packet.client) {
+            action_seq.update(pkt.sequence.0);
         }
+
+        // TODO: check that the block interaction is valid.
+
+        interact_block_events.send(InteractBlockEvent {
+            client: packet.client,
+            hand: pkt.hand,
+            position: pkt.position,
+            face: pkt.face,
+            cursor_pos: pkt.cursor_pos,
+            head_inside_block: pkt.head_inside_block,
+            sequence: pkt.sequence.0,
+        });
     }
 }

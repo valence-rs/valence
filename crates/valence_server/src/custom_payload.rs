@@ -33,15 +33,22 @@ impl Client {
 
 fn handle_custom_payload(
     mut packets: EventReader<PacketEvent>,
-    mut events: EventWriter<CustomPayloadEvent>,
+    clients: Query<&Client>,
+    mut custom_payload_events: EventWriter<CustomPayloadEvent>,
 ) {
     for packet in packets.read() {
-        if let Some(pkt) = packet.decode::<CustomPayloadC2s>() {
-            events.send(CustomPayloadEvent {
-                client: packet.client,
-                channel: pkt.channel.into(),
-                data: pkt.data.0 .0.into(),
-            })
+        let Some(pkt) = packet.decode::<CustomPayloadC2s>() else {
+            continue;
+        };
+
+        if !clients.contains(packet.client) {
+            continue;
         }
+
+        custom_payload_events.send(CustomPayloadEvent {
+            client: packet.client,
+            channel: pkt.channel.into(),
+            data: pkt.data.0 .0.into(),
+        });
     }
 }

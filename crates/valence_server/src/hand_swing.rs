@@ -24,21 +24,23 @@ pub struct HandSwingEvent {
 fn handle_hand_swing(
     mut packets: EventReader<PacketEvent>,
     mut clients: Query<&mut EntityAnimations>,
-    mut events: EventWriter<HandSwingEvent>,
+    mut hand_swing_events: EventWriter<HandSwingEvent>,
 ) {
     for packet in packets.read() {
-        if let Some(pkt) = packet.decode::<HandSwingC2s>() {
-            if let Ok(mut anim) = clients.get_mut(packet.client) {
-                anim.trigger(match pkt.hand {
-                    Hand::Main => EntityAnimation::SwingMainHand,
-                    Hand::Off => EntityAnimation::SwingOffHand,
-                });
-            }
+        let Some(pkt) = packet.decode::<HandSwingC2s>() else {
+            continue;
+        };
 
-            events.send(HandSwingEvent {
-                client: packet.client,
-                hand: pkt.hand,
+        if let Ok(mut animation) = clients.get_mut(packet.client) {
+            animation.trigger(match pkt.hand {
+                Hand::Main => EntityAnimation::SwingMainHand,
+                Hand::Off => EntityAnimation::SwingOffHand,
             });
         }
+
+        hand_swing_events.send(HandSwingEvent {
+            client: packet.client,
+            hand: pkt.hand,
+        });
     }
 }

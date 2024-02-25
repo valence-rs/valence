@@ -26,19 +26,26 @@ pub struct RequestStatsEvent {
 
 fn handle_status(
     mut packets: EventReader<PacketEvent>,
-    mut respawn_events: EventWriter<RequestRespawnEvent>,
+    clients: Query<&Client>,
+    mut request_respawn_events: EventWriter<RequestRespawnEvent>,
     mut request_stats_events: EventWriter<RequestStatsEvent>,
 ) {
     for packet in packets.read() {
-        if let Some(pkt) = packet.decode::<ClientStatusC2s>() {
-            match pkt {
-                ClientStatusC2s::PerformRespawn => respawn_events.send(RequestRespawnEvent {
-                    client: packet.client,
-                }),
-                ClientStatusC2s::RequestStats => request_stats_events.send(RequestStatsEvent {
-                    client: packet.client,
-                }),
-            }
+        let Some(pkt) = packet.decode::<ClientStatusC2s>() else {
+            continue;
+        };
+
+        if !clients.contains(packet.client) {
+            continue;
+        }
+
+        match pkt {
+            ClientStatusC2s::PerformRespawn => request_respawn_events.send(RequestRespawnEvent {
+                client: packet.client,
+            }),
+            ClientStatusC2s::RequestStats => request_stats_events.send(RequestStatsEvent {
+                client: packet.client,
+            }),
         }
     }
 }

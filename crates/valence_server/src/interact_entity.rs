@@ -28,23 +28,30 @@ pub struct InteractEntityEvent {
 
 fn handle_interact_entity(
     mut packets: EventReader<PacketEvent>,
+    clients: Query<&Client>,
     entities: Res<EntityManager>,
-    mut events: EventWriter<InteractEntityEvent>,
+    mut interact_entity_events: EventWriter<InteractEntityEvent>,
 ) {
     for packet in packets.read() {
-        if let Some(pkt) = packet.decode::<PlayerInteractEntityC2s>() {
-            // TODO: check that the entity is in the same instance as the player.
-            // TODO: check that the distance between the player and the interacted entity is
-            // within some configurable tolerance level.
+        let Some(pkt) = packet.decode::<PlayerInteractEntityC2s>() else {
+            continue;
+        };
 
-            if let Some(entity) = entities.get_by_id(pkt.entity_id.0) {
-                events.send(InteractEntityEvent {
-                    client: packet.client,
-                    entity,
-                    sneaking: pkt.sneaking,
-                    interact: pkt.interact,
-                })
-            }
+        if !clients.contains(packet.client) {
+            continue;
+        }
+
+        // TODO: check that the entity is in the same instance as the player.
+        // TODO: check that the distance between the player and the interacted entity is
+        // within some configurable tolerance level.
+
+        if let Some(entity) = entities.get_by_id(pkt.entity_id.0) {
+            interact_entity_events.send(InteractEntityEvent {
+                client: packet.client,
+                entity,
+                sneaking: pkt.sneaking,
+                interact: pkt.interact,
+            });
         }
     }
 }

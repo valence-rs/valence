@@ -776,12 +776,22 @@ fn update_open_inventories(
 }
 
 /// Handles clients telling the server that they are closing an inventory.
-fn handle_close_handled_screen(mut packets: EventReader<PacketEvent>, mut commands: Commands) {
+fn handle_close_handled_screen(
+    mut packets: EventReader<PacketEvent>,
+    clients: Query<&Client>,
+    mut commands: Commands,
+) {
     for packet in packets.read() {
-        if packet.decode::<CloseHandledScreenC2s>().is_some() {
-            if let Some(mut entity) = commands.get_entity(packet.client) {
-                entity.remove::<OpenInventory>();
-            }
+        if packet.decode::<CloseHandledScreenC2s>().is_none() {
+            continue;
+        }
+
+        if !clients.contains(packet.client) {
+            continue;
+        }
+
+        if let Some(mut entity) = commands.get_entity(packet.client) {
+            entity.remove::<OpenInventory>();
         }
     }
 }
@@ -1109,52 +1119,53 @@ fn handle_player_actions(
     mut drop_item_stack_events: EventWriter<DropItemStackEvent>,
 ) {
     for packet in packets.read() {
-        if let Some(pkt) = packet.decode::<PlayerActionC2s>() {
-            match pkt.action {
-                PlayerAction::DropAllItems => {
-                    if let Ok((mut inv, mut inv_state, &held)) = clients.get_mut(packet.client) {
-                        let stack = inv.replace_slot(held.slot(), ItemStack::EMPTY);
+        let Some(pkt) = packet.decode::<PlayerActionC2s>() else {
+            continue;
+        };
 
-                        if !stack.is_empty() {
-                            inv_state.slots_changed |= 1 << held.slot();
+        let Ok((mut inv, mut inv_state, &held)) = clients.get_mut(packet.client) else {
+            continue;
+        };
 
-                            drop_item_stack_events.send(DropItemStackEvent {
-                                client: packet.client,
-                                from_slot: Some(held.slot()),
-                                stack,
-                            });
-                        }
-                    }
+        match pkt.action {
+            PlayerAction::DropAllItems => {
+                let stack = inv.replace_slot(held.slot(), ItemStack::EMPTY);
+                if stack.is_empty() {
+                    continue;
                 }
-                PlayerAction::DropItem => {
-                    if let Ok((mut inv, mut inv_state, held)) = clients.get_mut(packet.client) {
-                        let mut stack = inv.replace_slot(held.slot(), ItemStack::EMPTY);
 
-                        if !stack.is_empty() {
-                            if stack.count > 1 {
-                                inv.set_slot(
-                                    held.slot(),
-                                    stack.clone().with_count(stack.count - 1),
-                                );
+                inv_state.slots_changed |= 1 << held.slot();
 
-                                stack.count = 1;
-                            }
-
-                            inv_state.slots_changed |= 1 << held.slot();
-
-                            drop_item_stack_events.send(DropItemStackEvent {
-                                client: packet.client,
-                                from_slot: Some(held.slot()),
-                                stack,
-                            })
-                        }
-                    }
-                }
-                PlayerAction::SwapItemWithOffhand => {
-                    // TODO
-                }
-                _ => {}
+                drop_item_stack_events.send(DropItemStackEvent {
+                    client: packet.client,
+                    from_slot: Some(held.slot()),
+                    stack,
+                });
             }
+            PlayerAction::DropItem => {
+                let mut stack = inv.replace_slot(held.slot(), ItemStack::EMPTY);
+                if stack.is_empty() {
+                    continue;
+                }
+
+                if stack.count > 1 {
+                    inv.set_slot(held.slot(), stack.clone().with_count(stack.count - 1));
+
+                    stack.count = 1;
+                }
+
+                inv_state.slots_changed |= 1 << held.slot();
+
+                drop_item_stack_events.send(DropItemStackEvent {
+                    client: packet.client,
+                    from_slot: Some(held.slot()),
+                    stack,
+                })
+            }
+            PlayerAction::SwapItemWithOffhand => {
+                // TODO
+            }
+            _ => {}
         }
     }
 }
@@ -1175,62 +1186,64 @@ fn handle_creative_inventory_action(
         &mut ClientInventoryState,
         &GameMode,
     )>,
-    mut inv_action_events: EventWriter<CreativeInventoryActionEvent>,
+    mut creative_inventory_action_events: EventWriter<CreativeInventoryActionEvent>,
     mut drop_item_stack_events: EventWriter<DropItemStackEvent>,
 ) {
     for packet in packets.read() {
-        if let Some(pkt) = packet.decode::<CreativeInventoryActionC2s>() {
-            let Ok((mut client, mut inventory, mut inv_state, game_mode)) =
-                clients.get_mut(packet.client)
-            else {
-                continue;
-            };
+        let Some(pkt) = packet.decode::<CreativeInventoryActionC2s>() else {
+            continue;
+        };
 
-            if *game_mode != GameMode::Creative {
-                // The client is not in creative mode, ignore.
-                continue;
-            }
+        let Ok((mut client, mut inventory, mut inv_state, game_mode)) =
+            clients.get_mut(packet.client)
+        else {
+            continue;
+        };
 
-            if pkt.slot == -1 {
-                let stack = pkt.clicked_item.clone();
-
-                if !stack.is_empty() {
-                    drop_item_stack_events.send(DropItemStackEvent {
-                        client: packet.client,
-                        from_slot: None,
-                        stack,
-                    });
-                }
-                continue;
-            }
-
-            if pkt.slot < 0 || pkt.slot >= inventory.slot_count() as i16 {
-                // The client is trying to interact with a slot that does not exist, ignore.
-                continue;
-            }
-
-            // Set the slot without marking it as changed.
-            inventory.slots[pkt.slot as usize] = pkt.clicked_item.clone();
-
-            inv_state.state_id += 1;
-
-            // HACK: notchian clients rely on the server to send the slot update when in
-            // creative mode. Simply marking the slot as changed is not enough. This was
-            // discovered because shift-clicking the destroy item slot in creative mode does
-            // not work without this hack.
-            client.write_packet(&ScreenHandlerSlotUpdateS2c {
-                window_id: 0,
-                state_id: VarInt(inv_state.state_id.0),
-                slot_idx: pkt.slot,
-                slot_data: Cow::Borrowed(&pkt.clicked_item),
-            });
-
-            inv_action_events.send(CreativeInventoryActionEvent {
-                client: packet.client,
-                slot: pkt.slot,
-                clicked_item: pkt.clicked_item,
-            });
+        if *game_mode != GameMode::Creative {
+            // The client is not in creative mode, ignore.
+            continue;
         }
+
+        if pkt.slot == -1 {
+            let stack = pkt.clicked_item.clone();
+
+            if !stack.is_empty() {
+                drop_item_stack_events.send(DropItemStackEvent {
+                    client: packet.client,
+                    from_slot: None,
+                    stack,
+                });
+            }
+            continue;
+        }
+
+        if pkt.slot < 0 || pkt.slot >= inventory.slot_count() as i16 {
+            // The client is trying to interact with a slot that does not exist, ignore.
+            continue;
+        }
+
+        // Set the slot without marking it as changed.
+        inventory.slots[pkt.slot as usize] = pkt.clicked_item.clone();
+
+        inv_state.state_id += 1;
+
+        // HACK: notchian clients rely on the server to send the slot update when in
+        // creative mode. Simply marking the slot as changed is not enough. This was
+        // discovered because shift-clicking the destroy item slot in creative mode does
+        // not work without this hack.
+        client.write_packet(&ScreenHandlerSlotUpdateS2c {
+            window_id: 0,
+            state_id: VarInt(inv_state.state_id.0),
+            slot_idx: pkt.slot,
+            slot_data: Cow::Borrowed(&pkt.clicked_item),
+        });
+
+        creative_inventory_action_events.send(CreativeInventoryActionEvent {
+            client: packet.client,
+            slot: pkt.slot,
+            clicked_item: pkt.clicked_item,
+        });
     }
 }
 
@@ -1254,25 +1267,29 @@ fn update_player_selected_slot(mut clients: Query<(&mut Client, &HeldItem), Chan
 fn handle_update_selected_slot(
     mut packets: EventReader<PacketEvent>,
     mut clients: Query<&mut HeldItem>,
-    mut events: EventWriter<UpdateSelectedSlotEvent>,
+    mut update_selected_slot_events: EventWriter<UpdateSelectedSlotEvent>,
 ) {
     for packet in packets.read() {
-        if let Some(pkt) = packet.decode::<UpdateSelectedSlotC2s>() {
-            if let Ok(mut mut_held) = clients.get_mut(packet.client) {
-                let held = mut_held.bypass_change_detection();
-                if pkt.slot > 8 {
-                    // The client is trying to interact with a slot that does not exist, ignore.
-                    continue;
-                }
+        let Some(pkt) = packet.decode::<UpdateSelectedSlotC2s>() else {
+            continue;
+        };
 
-                held.set_hotbar_idx(pkt.slot as u8);
+        let Ok(mut held) = clients.get_mut(packet.client) else {
+            continue;
+        };
 
-                events.send(UpdateSelectedSlotEvent {
-                    client: packet.client,
-                    slot: pkt.slot as u8,
-                });
-            }
+        let held = held.bypass_change_detection();
+        if pkt.slot > 8 {
+            // The client is trying to interact with a slot that does not exist, ignore.
+            continue;
         }
+
+        held.set_hotbar_idx(pkt.slot as u8);
+
+        update_selected_slot_events.send(UpdateSelectedSlotEvent {
+            client: packet.client,
+            slot: pkt.slot as u8,
+        });
     }
 }
 

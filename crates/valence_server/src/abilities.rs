@@ -146,29 +146,33 @@ fn update_player_abilities(
 /// /!\ This system does not trigger change detection on
 /// [`PlayerAbilitiesFlags`]
 fn update_server_player_abilities(
-    mut packet_events: EventReader<PacketEvent>,
-    mut player_start_flying_event_writer: EventWriter<PlayerStartFlyingEvent>,
-    mut player_stop_flying_event_writer: EventWriter<PlayerStopFlyingEvent>,
-    mut client_query: Query<&mut PlayerAbilitiesFlags>,
+    mut packets: EventReader<PacketEvent>,
+    mut clients: Query<&mut PlayerAbilitiesFlags>,
+    mut player_start_flying_events: EventWriter<PlayerStartFlyingEvent>,
+    mut player_stop_flying_events: EventWriter<PlayerStopFlyingEvent>,
 ) {
-    for packets in packet_events.read() {
-        if let Some(pkt) = packets.decode::<UpdatePlayerAbilitiesC2s>() {
-            if let Ok(mut mut_flags) = client_query.get_mut(packets.client) {
-                let flags = mut_flags.bypass_change_detection();
-                match pkt {
-                    UpdatePlayerAbilitiesC2s::StartFlying => {
-                        flags.set_flying(true);
-                        player_start_flying_event_writer.send(PlayerStartFlyingEvent {
-                            client: packets.client,
-                        });
-                    }
-                    UpdatePlayerAbilitiesC2s::StopFlying => {
-                        flags.set_flying(false);
-                        player_stop_flying_event_writer.send(PlayerStopFlyingEvent {
-                            client: packets.client,
-                        });
-                    }
-                }
+    for packets in packets.read() {
+        let Some(pkt) = packets.decode::<UpdatePlayerAbilitiesC2s>() else {
+            continue;
+        };
+
+        let Ok(mut flags) = clients.get_mut(packets.client) else {
+            continue;
+        };
+
+        let flags = flags.bypass_change_detection();
+        match pkt {
+            UpdatePlayerAbilitiesC2s::StartFlying => {
+                flags.set_flying(true);
+                player_start_flying_events.send(PlayerStartFlyingEvent {
+                    client: packets.client,
+                });
+            }
+            UpdatePlayerAbilitiesC2s::StopFlying => {
+                flags.set_flying(false);
+                player_stop_flying_events.send(PlayerStopFlyingEvent {
+                    client: packets.client,
+                });
             }
         }
     }

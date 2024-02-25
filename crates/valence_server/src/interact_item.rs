@@ -25,19 +25,21 @@ pub struct InteractItemEvent {
 fn handle_player_interact_item(
     mut packets: EventReader<PacketEvent>,
     mut clients: Query<&mut ActionSequence>,
-    mut events: EventWriter<InteractItemEvent>,
+    mut interact_item_events: EventWriter<InteractItemEvent>,
 ) {
     for packet in packets.read() {
-        if let Some(pkt) = packet.decode::<PlayerInteractItemC2s>() {
-            if let Ok(mut action_seq) = clients.get_mut(packet.client) {
-                action_seq.update(pkt.sequence.0);
-            }
+        let Some(pkt) = packet.decode::<PlayerInteractItemC2s>() else {
+            continue;
+        };
 
-            events.send(InteractItemEvent {
-                client: packet.client,
-                hand: pkt.hand,
-                sequence: pkt.sequence.0,
-            });
+        if let Ok(mut action_seq) = clients.get_mut(packet.client) {
+            action_seq.update(pkt.sequence.0);
         }
+
+        interact_item_events.send(InteractItemEvent {
+            client: packet.client,
+            hand: pkt.hand,
+            sequence: pkt.sequence.0,
+        });
     }
 }
