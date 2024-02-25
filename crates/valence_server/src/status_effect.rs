@@ -17,14 +17,14 @@ use crate::EventLoopPostUpdate;
 /// Event for when a status effect is added to an entity or the amplifier or
 /// duration of an existing status effect is changed.
 #[derive(Event, Clone, PartialEq, Eq, Debug)]
-pub struct StatusEffectAdded {
+pub struct StatusEffectAddedEvent {
     pub entity: Entity,
     pub status_effect: StatusEffect,
 }
 
 /// Event for when a status effect is removed from an entity.
 #[derive(Event, Clone, PartialEq, Eq, Debug)]
-pub struct StatusEffectRemoved {
+pub struct StatusEffectRemovedEvent {
     pub entity: Entity,
     pub status_effect: ActiveStatusEffect,
 }
@@ -33,8 +33,8 @@ pub struct StatusEffectPlugin;
 
 impl Plugin for StatusEffectPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<StatusEffectAdded>()
-            .add_event::<StatusEffectRemoved>()
+        app.add_event::<StatusEffectAddedEvent>()
+            .add_event::<StatusEffectRemovedEvent>()
             .add_systems(
                 EventLoopPostUpdate,
                 (
@@ -82,32 +82,31 @@ struct StatusEffectQuery {
 }
 
 fn add_status_effects(
-    mut query: Query<StatusEffectQuery>,
-    mut add_events: EventWriter<StatusEffectAdded>,
-    mut remove_events: EventWriter<StatusEffectRemoved>,
+    mut status_effects: Query<StatusEffectQuery>,
+    mut status_effect_added_events: EventWriter<StatusEffectAddedEvent>,
+    mut status_effect_removed_events: EventWriter<StatusEffectRemovedEvent>,
 ) {
-    for mut query in query.iter_mut() {
-        let updated = query.active_effects.apply_changes();
-
+    for mut status_effect in status_effects.iter_mut() {
+        let updated = status_effect.active_effects.apply_changes();
         if updated.is_empty() {
             continue;
         }
 
         set_swirl(
-            &query.active_effects,
-            &mut query.swirl_color,
-            &mut query.swirl_ambient,
+            &status_effect.active_effects,
+            &mut status_effect.swirl_color,
+            &mut status_effect.swirl_ambient,
         );
 
         for (status_effect, prev) in updated {
-            if query.active_effects.has_effect(status_effect) {
-                add_events.send(StatusEffectAdded {
-                    entity: query.entity,
+            if status_effect.active_effects.has_effect(status_effect) {
+                status_effect_added_events.send(StatusEffectAddedEvent {
+                    entity: status_effect.entity,
                     status_effect,
                 });
             } else if let Some(prev) = prev {
-                remove_events.send(StatusEffectRemoved {
-                    entity: query.entity,
+                status_effect_removed_events.send(StatusEffectRemovedEvent {
+                    entity: status_effect.entity,
                     status_effect: prev,
                 });
             } else {
@@ -115,7 +114,7 @@ fn add_status_effects(
                 panic!("status effect was removed but was never added");
             }
 
-            update_status_effect(&mut query, status_effect);
+            update_status_effect(&mut status_effect, status_effect);
         }
     }
 }

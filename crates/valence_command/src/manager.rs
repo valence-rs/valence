@@ -220,14 +220,14 @@ fn update_client_command_tree(
 }
 
 fn parse_incoming_commands(
-    mut event_reader: EventReader<CommandExecutionEvent>,
-    mut event_writer: EventWriter<CommandProcessedEvent>,
+    mut command_execution_events: EventReader<CommandExecutionEvent>,
+    mut command_processed_events: EventWriter<CommandProcessedEvent>,
     command_registry: Res<CommandRegistry>,
     scope_registry: Res<CommandScopeRegistry>,
     entity_scopes: Query<&CommandScopes>,
 ) {
-    for command_event in event_reader.read() {
-        let executor = command_event.executor;
+    for command_execution in command_execution_events.read() {
+        let executor = command_execution.executor;
         // these are the leafs of the graph that are executable under this command
         // group
         let executable_leafs = command_registry
@@ -236,7 +236,7 @@ fn parse_incoming_commands(
             .collect::<Vec<&NodeIndex>>();
         let root = command_registry.graph.root;
 
-        let command_input = &*command_event.command;
+        let command_input = &*command_execution.command;
         let graph = &command_registry.graph.graph;
         let input = ParseInput::new(command_input);
 
@@ -265,11 +265,11 @@ fn parse_incoming_commands(
             command_registry.modifiers.get(&node).unwrap()(modifier, &mut modifiers);
         }
 
-        debug!("Command processed: /{}", command_event.command);
+        debug!("Command processed: /{}", command_execution.command);
 
         for node in to_be_executed {
             println!("executing node: {:?}", node);
-            event_writer.send(CommandProcessedEvent {
+            command_processed_events.send(CommandProcessedEvent {
                 command: args.join(" "),
                 executor,
                 modifiers: modifiers.clone(),

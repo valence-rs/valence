@@ -9,7 +9,7 @@ use valence::status_effects::{AttributeModifier, StatusEffect};
 use valence_server::entity::attributes::{EntityAttribute, EntityAttributes};
 use valence_server::entity::entity::Flags;
 use valence_server::entity::living::{Absorption, Health};
-use valence_server::status_effect::{StatusEffectAdded, StatusEffectRemoved};
+use valence_server::status_effect::{StatusEffectAddedEvent, StatusEffectRemovedEvent};
 
 const SPAWN_Y: i32 = 64;
 
@@ -206,7 +206,7 @@ pub fn handle_status_effect_added(
         Option<&mut Absorption>,
         &mut Flags,
     )>,
-    mut events: EventReader<StatusEffectAdded>,
+    mut events: EventReader<StatusEffectAddedEvent>,
 ) {
     for event in events.read() {
         if let Ok((status, mut attributes, mut health, absorption, mut flags)) =
@@ -261,7 +261,7 @@ pub fn handle_status_effect_removed(
         Option<&mut Absorption>,
         &mut Flags,
     )>,
-    mut events: EventReader<StatusEffectRemoved>,
+    mut events: EventReader<StatusEffectRemovedEvent>,
 ) {
     for event in events.read() {
         if let Ok((mut attributes, mut health, absorption, mut flags)) =

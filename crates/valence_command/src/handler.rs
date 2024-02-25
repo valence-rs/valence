@@ -107,19 +107,19 @@ fn command_startup_system<T>(
 
 /// This system reads incoming command events.
 fn command_event_system<T>(
-    mut commands_executed: EventReader<CommandProcessedEvent>,
-    mut events: EventWriter<CommandResultEvent<T>>,
+    mut command_processed_events: EventReader<CommandProcessedEvent>,
+    mut command_result_events: EventWriter<CommandResultEvent<T>>,
     command: ResMut<CommandResource<T>>,
 ) where
     T: Command + Send + Sync,
 {
-    for command_event in commands_executed.read() {
-        if let Some(executable) = command.executables.get(&command_event.node) {
-            let result = executable(&mut ParseInput::new(&command_event.command));
-            events.send(CommandResultEvent {
+    for command_processed in command_processed_events.read() {
+        if let Some(executable) = command.executables.get(&command_processed.node) {
+            let result = executable(&mut ParseInput::new(&command_processed.command));
+            command_result_events.send(CommandResultEvent {
                 result,
-                executor: command_event.executor,
-                modifiers: command_event.modifiers.clone(),
+                executor: command_processed.executor,
+                modifiers: command_processed.modifiers.clone(),
             });
         }
     }
