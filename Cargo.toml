@@ -13,6 +13,13 @@ categories = ["game-engines"]
 [lints]
 workspace = true
 
+[dependencies]
+anyhow.workspace = true
+evenio = { path = "/home/rj/dev/evenio", version = "0.3.0" }
+monoio.workspace = true
+uuid.workspace = true
+serde = { workspace = true, features = ["derive"] }
+
 #### WORKSPACE ####
 
 [profile.dev.package."*"]
@@ -26,30 +33,49 @@ members = ["crates/*"]
 resolver = "2"
 
 [workspace.package]
-version = "0.2.0-alpha.1+mc.1.20.1"
+version = "0.2.0-alpha.1+mc.1.20.4"
 edition = "2021"
 repository = "https://github.com/valence-rs/valence"
 documentation = "https://docs.rs/valence/"
 license = "MIT"
 
 [workspace.dependencies]
+aes = "0.8.4"
+anyhow = "1.0.80"
+base64 = "0.21.7"
+bitfield-struct = "0.6.0"
 byteorder = "1.5.0"
+bytes = "1.5.0"
 cesu8 = "1.1.0"
+cfb8 = "0.8.1"
+derive_more = "1.0.0-beta.6"
+flate2 = "1.0.28"
+glam = "0.25.0"
 heck = "0.5.0-rc.1"
 indexmap = "2.2.2"
 java_string = { path = "crates/java_string", version = "0.1.2" }
+monoio = "0.2.2"
+num-derive = "0.4.2"
+num-traits = "0.2.18"
+pretty_assertions = "1.4.0"
 proc-macro2 = "1.0.78"
 quote = "1.0.35"
+rand = "0.8.5"
 serde = "1.0.196"
+serde_json = "1.0.113"
 syn = { version = "2.0.48", features = ["full"] }
 thiserror = "1.0.56"
+url = { version = "2.5.0", features = ["serde"] }
 uuid = "1.7.0"
+valence_build_utils = { path = "crates/valence_build_utils", version = "0.2.0-alpha.1" }
+# valence_generated = { path = "crates/valence_generated", version = "0.2.0-alpha.1" }
 valence_ident = { path = "crates/valence_ident", version = "0.2.0-alpha.1" }
 valence_ident_macros = { path = "crates/valence_ident_macros", version = "0.2.0-alpha.1" }
-valence_protocol_macros = { path = "crates/valence_protocol_macros", version = "0.2.0-alpha.1" }
-pretty_assertions = "1.4.0"
-serde_json = "1.0.113"
+valence_math = { path = "crates/valence_math", version = "0.2.0-alpha.1" }
 valence_nbt = { path = "crates/valence_nbt", version = "0.8.0" }
+valence_protocol = { path = "crates/valence_protocol", version = "0.2.0-alpha.1" }
+valence_protocol_macros = { path = "crates/valence_protocol_macros", version = "0.2.0-alpha.1" }
+valence_text = { path = "crates/valence_text", version = "0.2.0-alpha.1" }
 
 [workspace.lints.rust]
 elided_lifetimes_in_paths = "allow" # Warned by `future_incompatible`.

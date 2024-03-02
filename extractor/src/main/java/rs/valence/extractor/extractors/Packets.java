@@ -23,16 +23,16 @@ public class Packets implements Main.Extractor {
     public void extract(MinecraftServer server, DataOutput output, Gson gson) throws IOException {
         var packetsJson = new JsonArray();
 
-        for (var side : NetworkSide.values()) {
-            for (var state : NetworkState.values()) {
+        for (var state : NetworkState.values()) {
+            for (var side : NetworkSide.values()) {
                 var map = state.getPacketIdToPacketMap(side);
 
                 for (var id : new TreeSet<>(map.keySet())) {
                     var packetJson = new JsonObject();
 
                     packetJson.addProperty("name", map.get(id.intValue()).getSimpleName());
-                    packetJson.addProperty("side", side.name().toLowerCase(Locale.ROOT));
                     packetJson.addProperty("state", state.name().toLowerCase(Locale.ROOT));
+                    packetJson.addProperty("side", side.name().toLowerCase(Locale.ROOT));
                     packetJson.addProperty("id", id);
 
                     packetsJson.add(packetJson);
