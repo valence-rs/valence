@@ -110,9 +110,9 @@ impl Plugin for ServerPlugin {
 #[derive(Resource)]
 pub struct Server {
     /// Incremented on every tick.
-    current_tick: i64,
-    threshold: CompressionThreshold,
-    tick_rate: NonZeroU32,
+    pub current_tick: i64,
+    pub threshold: CompressionThreshold,
+    pub tick_rate: NonZeroU32,
 }
 
 impl Server {
