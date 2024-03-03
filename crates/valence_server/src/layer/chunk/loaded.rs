@@ -373,7 +373,7 @@ impl LoadedChunk {
     }
 
     /// Writes the packet data needed to initialize this chunk.
-    pub(crate) fn write_init_packets(
+    pub fn write_init_packets(
         &self,
         mut writer: impl WritePacket,
         pos: ChunkPos,
