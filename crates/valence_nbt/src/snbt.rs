@@ -45,15 +45,15 @@ impl Display for SnbtErrorKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub struct SnbtError {
-    pub error_type: SnbtErrorKind,
+    pub kind: SnbtErrorKind,
     pub line: usize,
     pub column: usize,
 }
 
 impl SnbtError {
-    pub fn new(error_type: SnbtErrorKind, line: usize, column: usize) -> Self {
+    pub fn new(kind: SnbtErrorKind, line: usize, column: usize) -> Self {
         Self {
-            error_type,
+            kind,
             line,
             column,
         }
@@ -62,7 +62,7 @@ impl SnbtError {
 
 impl Display for SnbtError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "@ {},{}: {}", self.line, self.column, self.error_type)
+        write!(f, "@ {},{}: {}", self.line, self.column, self.kind)
     }
 }
 

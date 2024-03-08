@@ -1,20 +1,28 @@
 #![doc = include_str!("../README.md")]
+// Run locally with `RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --all-features --open`
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 #[cfg(feature = "binary")]
+#[cfg_attr(docsrs, doc(cfg(feature = "binary")))]
 pub use binary::{from_binary, to_binary};
 pub use compound::Compound;
+pub use error::*;
 pub use list::List;
-pub use tag::Tag;
+pub use tag::*;
 pub use value::Value;
 
 #[cfg(feature = "binary")]
+#[cfg_attr(docsrs, doc(cfg(feature = "binary")))]
 pub mod binary;
 pub mod compound;
 pub mod conv;
+mod error;
 pub mod list;
 #[cfg(feature = "serde")]
+#[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 pub mod serde;
 #[cfg(feature = "snbt")]
+#[cfg_attr(docsrs, doc(cfg(feature = "snbt")))]
 pub mod snbt;
 mod tag;
 pub mod value;
@@ -85,6 +93,7 @@ macro_rules! compound {
 ///
 /// [`JavaString`]: java_string::JavaString
 #[cfg(feature = "java_string")]
+#[cfg_attr(docsrs, doc(cfg(feature = "java_string")))]
 #[macro_export]
 macro_rules! jcompound {
     ($($key:expr => $value:expr),* $(,)?) => {

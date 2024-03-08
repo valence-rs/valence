@@ -2,7 +2,7 @@ use std::error::Error as StdError;
 use std::fmt::{Display, Formatter};
 use std::io;
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 /// Errors that can occur when encoding or decoding binary NBT.
 #[derive(Debug)]

@@ -61,7 +61,7 @@ where
 
 macro_rules! unsupported {
     ($lit:literal) => {
-        Err(Error::new(concat!("unsupported type: ", $lit)))
+        Err(Error::new_static(concat!("unsupported type: ", $lit)))
     };
 }
 
@@ -458,7 +458,7 @@ impl SerializeSeq for ValueSerializeSeq {
                         $vec.push(val);
                         Ok(())
                     }
-                    _ => Err(Error::new(concat!(
+                    _ => Err(Error::new_static(concat!(
                         "heterogeneous NBT list (expected `",
                         stringify!($variant),
                         "` element)"
@@ -567,7 +567,7 @@ where
                 self.key = Some(s);
                 Ok(())
             }
-            _ => Err(Error::new("invalid map key type (expected string)")),
+            _ => Err(Error::new_static("invalid map key type (expected string)")),
         }
     }
 
