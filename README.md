@@ -16,7 +16,7 @@
             alt="GitHub sponsors"></a>
 </p>
 
-**Note: Valence is currently undergoing a major rewrite. See [#596](https://github.com/valence-rs/valence/issues/596) for details.**
+**Note: Valence is currently undergoing a major rewrite. See [#596](https://github.com/valence-rs/valence/issues/596) and [#599](https://github.com/valence-rs/valence/pull/599) for details.**
 
 ---
 
