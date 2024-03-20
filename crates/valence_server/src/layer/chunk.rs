@@ -64,7 +64,7 @@ impl fmt::Debug for ChunkLayerInfo {
 type ChunkLayerMessages = Messages<GlobalMsg, LocalMsg>;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
-pub(crate) enum GlobalMsg {
+pub enum GlobalMsg {
     /// Send packet data to all clients viewing the layer.
     Packet,
     /// Send packet data to all clients viewing the layer, except the client
@@ -73,7 +73,7 @@ pub(crate) enum GlobalMsg {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
-pub(crate) enum LocalMsg {
+pub enum LocalMsg {
     /// Send packet data to all clients viewing the layer in view of `pos`.
     PacketAt {
         pos: ChunkPos,
@@ -371,7 +371,7 @@ impl ChunkLayer {
         &self.info
     }
 
-    pub(crate) fn messages(&self) -> &ChunkLayerMessages {
+    pub fn messages(&self) -> &ChunkLayerMessages {
         &self.messages
     }
 
