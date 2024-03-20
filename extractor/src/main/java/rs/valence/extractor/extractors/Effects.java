@@ -3,6 +3,7 @@ package rs.valence.extractor.extractors;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import net.minecraft.entity.effect.StatusEffect;
 import net.minecraft.registry.Registries;
 import rs.valence.extractor.Main;
 import rs.valence.extractor.ValenceUtils;
@@ -35,10 +36,11 @@ public class Effects implements Main.Extractor {
             for (var entry : effect.getAttributeModifiers().entrySet()) {
                 var attributeModifierJson = new JsonObject();
 
+                var attributeModidier = entry.getValue().createAttributeModifier(0);
                 attributeModifierJson.addProperty("attribute", Registries.ATTRIBUTE.getRawId(entry.getKey()));
-                attributeModifierJson.addProperty("operation", entry.getValue().getOperation().getId());
-                attributeModifierJson.addProperty("value", entry.getValue().getValue());
-                attributeModifierJson.addProperty("uuid", entry.getValue().getId().toString());
+                attributeModifierJson.addProperty("operation", attributeModidier.getOperation().getId());
+                attributeModifierJson.addProperty("base_value", attributeModidier.getValue());
+                attributeModifierJson.addProperty("uuid", entry.getValue().getUuid().toString());
 
                 attributeModifiersJson.add(attributeModifierJson);
             }

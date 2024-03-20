@@ -163,7 +163,7 @@ fn apply_potion_attribute(
 ) {
     attributes.remove_modifier(attr.attribute, attr.uuid);
 
-    let amount = adjust_modifier_amount(amplifier, attr.value);
+    let amount = adjust_modifier_amount(amplifier, attr.base_value);
 
     attributes.set_modifier(attr.attribute, attr.uuid, amount, attr.operation);
 

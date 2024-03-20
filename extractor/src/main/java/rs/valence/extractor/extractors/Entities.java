@@ -213,7 +213,10 @@ public class Entities implements Main.Extractor {
             final var entityInstance = entityType.equals(EntityType.PLAYER) ? DummyPlayerEntity.INSTANCE
                     : entityType.create(DummyWorld.INSTANCE);
 
-            final var dataTracker = (DataTracker) dataTrackerField.get(entityInstance);
+
+
+            // final var dataTracker = (DataTracker) dataTrackerField.get(entityInstance);
+            final var dataTracker = entityInstance.getDataTracker();
 
             while (entitiesMap.get(entityClass) == null) {
                 var entityJson = new JsonObject();
@@ -281,9 +284,9 @@ public class Entities implements Main.Extractor {
                 if (bb != null && entityType != null) {
                     var boundingBoxJson = new JsonObject();
 
-                    boundingBoxJson.addProperty("size_x", bb.getXLength());
-                    boundingBoxJson.addProperty("size_y", bb.getYLength());
-                    boundingBoxJson.addProperty("size_z", bb.getZLength());
+                    boundingBoxJson.addProperty("size_x", bb.getLengthX());
+                    boundingBoxJson.addProperty("size_y", bb.getLengthY());
+                    boundingBoxJson.addProperty("size_z", bb.getLengthZ());
 
                     entityJson.add("default_bounding_box", boundingBoxJson);
                 }

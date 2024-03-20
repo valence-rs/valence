@@ -1,7 +1,7 @@
-use crate::{packet_id, ByteAngle, Decode, Encode, Packet, VarInt};
+use crate::{PacketSide, ByteAngle, Decode, Encode, Packet, VarInt};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::ROTATE)]
+#[packet(name = "ROTATE", side=PacketSide::Clientbound)]
 pub struct RotateS2c {
     pub entity_id: VarInt,
     pub yaw: ByteAngle,

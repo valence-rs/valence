@@ -55,6 +55,9 @@ fn write_packets(packets: &Vec<Packet>) -> anyhow::Result<()> {
             name
         };
 
+        // // add the state at the start of the name
+        // let name = format!("{}{}", packet.state, name);
+
         let id = packet.id;
         let side = match packet.side.as_str() {
             "clientbound" => quote! { valence_protocol::PacketSide::Clientbound },
@@ -67,6 +70,7 @@ fn write_packets(packets: &Vec<Packet>) -> anyhow::Result<()> {
             "status" => quote! { valence_protocol::PacketState::Status },
             "login" => quote! { valence_protocol::PacketState::Login },
             "play" => quote! { valence_protocol::PacketState::Play },
+            "configuration" => quote! { valence_protocol::PacketState::Configuration },
             _ => unreachable!(),
         };
 
@@ -111,6 +115,7 @@ fn write_transformer(packets: &[Packet]) -> anyhow::Result<()> {
             "status" => "Status".to_string(),
             "login" => "Login".to_string(),
             "play" => "Play".to_string(),
+            "configuration" => "Configuration".to_string(),
             _ => panic!("Invalid state"),
         };
 
@@ -159,7 +164,9 @@ fn write_transformer(packets: &[Packet]) -> anyhow::Result<()> {
             let mut match_arms = TokenStream::new();
 
             for name in id_map.iter_mut() {
-                let name = syn::parse_str::<syn::Ident>(name).unwrap();
+                let state_name = format!("{}::{}", state.to_ascii_lowercase(), name);
+
+                let name = syn::parse_str::<syn::Expr>(&state_name).unwrap();
 
                 match_arms.extend(quote! {
                     #name::ID => {

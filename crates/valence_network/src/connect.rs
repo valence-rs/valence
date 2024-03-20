@@ -29,7 +29,7 @@ use valence_server::protocol::packets::login::{
     LoginQueryRequestS2c, LoginQueryResponseC2s, LoginSuccessS2c,
 };
 use valence_server::protocol::packets::status::{
-    QueryPingC2s, QueryPongS2c, QueryRequestC2s, QueryResponseS2c,
+    QueryPingC2s, PingResultS2c, QueryRequestC2s, QueryResponseS2c,
 };
 use valence_server::protocol::{PacketDecoder, PacketEncoder, RawBytes, VarInt};
 use valence_server::text::{Color, IntoText};
@@ -244,7 +244,7 @@ async fn handle_status(
 
     let QueryPingC2s { payload } = io.recv_packet().await?;
 
-    io.send_packet(&QueryPongS2c { payload }).await?;
+    io.send_packet(&PingResultS2c { payload }).await?;
 
     Ok(())
 }

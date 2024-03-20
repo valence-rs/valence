@@ -1,5 +1,5 @@
-use crate::{packet_id, Decode, Encode, Packet};
+use crate::{PacketSide, Decode, Encode, Packet};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::BUNDLE_SPLITTER)]
+#[packet(name = "BUNDLE_SPLITTER", side = PacketSide::Clientbound)]
 pub struct BundleSplitterS2c;
