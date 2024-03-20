@@ -47,17 +47,17 @@ pub struct PlayerStopFlyingEvent {
 
 /// Order of execution:
 /// 1. `update_game_mode`: Watch [`GameMode`] changes => Send
-/// `GameStateChangeS2c` to update the client's gamemode
+/// [`GameStateChangeS2c`] to update the client's gamemode
 ///
-/// 2. `update_client_player_abilities`: Watch [`PlayerAbilitiesFlags`],
+/// - `sync_player_abilities`: Watch
+/// [`GameMode`] changes => Update [`PlayerAbilitiesFlags`] according to the
+/// [`GameMode`] if there is no change in [`PlayerAbilitiesFlags`]
+///
+/// - `send_player_abilities`: Watch [`PlayerAbilitiesFlags`],
 /// [`FlyingSpeed`] and [`FovModifier`] changes => Send [`PlayerAbilitiesS2c`]
 /// to update the client's abilities
 ///
-/// 3. `update_player_abilities`: Watch
-/// [`GameMode`] changes => Update [`PlayerAbilitiesFlags`] according to the
-/// [`GameMode`]
-///
-/// 4. `update_server_player_abilities`: Watch
+/// - `update_flying_state`: Watch
 /// [`UpdatePlayerAbilitiesC2s`] packets => Update [`PlayerAbilitiesFlags`]
 /// according to the packet
 pub struct AbilitiesPlugin;
@@ -68,18 +68,15 @@ impl Plugin for AbilitiesPlugin {
             .add_event::<PlayerStopFlyingEvent>()
             .add_systems(
                 PostUpdate,
-                (
-                    update_client_player_abilities,
-                    update_player_abilities.before(update_client_player_abilities),
-                )
+                (sync_player_abilities, send_player_abilities)
                     .in_set(UpdateClientsSet)
                     .after(update_game_mode),
             )
-            .add_systems(EventLoopPreUpdate, update_server_player_abilities);
+            .add_systems(EventLoopPreUpdate, update_flying_state);
     }
 }
 
-fn update_client_player_abilities(
+fn send_player_abilities(
     mut clients_query: Query<
         (
             &mut Client,
@@ -103,14 +100,22 @@ fn update_client_player_abilities(
     }
 }
 
+/// Sync [`PlayerAbilitiesFlags`] based on [`GameMode`]
+///
 /// /!\ This system does not trigger change detection on
 /// [`PlayerAbilitiesFlags`]
-fn update_player_abilities(
+fn sync_player_abilities(
     mut player_start_flying_event_writer: EventWriter<PlayerStartFlyingEvent>,
     mut player_stop_flying_event_writer: EventWriter<PlayerStopFlyingEvent>,
-    mut client_query: Query<(Entity, &mut PlayerAbilitiesFlags, &GameMode), Changed<GameMode>>,
+    mut client_query: Query<
+        (Entity, &mut PlayerAbilitiesFlags, &GameMode, Added<Client>),
+        Changed<GameMode>,
+    >,
 ) {
-    for (entity, mut mut_flags, gamemode) in client_query.iter_mut() {
+    for (entity, mut mut_flags, gamemode, new_client) in client_query.iter_mut() {
+        if mut_flags.is_changed() && !new_client {
+            continue;
+        }
         let flags = mut_flags.bypass_change_detection();
         match gamemode {
             GameMode::Creative => {
@@ -145,7 +150,7 @@ fn update_player_abilities(
 
 /// /!\ This system does not trigger change detection on
 /// [`PlayerAbilitiesFlags`]
-fn update_server_player_abilities(
+fn update_flying_state(
     mut packet_events: EventReader<PacketEvent>,
     mut player_start_flying_event_writer: EventWriter<PlayerStartFlyingEvent>,
     mut player_stop_flying_event_writer: EventWriter<PlayerStopFlyingEvent>,

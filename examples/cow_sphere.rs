@@ -6,6 +6,7 @@ use valence::abilities::{PlayerStartFlyingEvent, PlayerStopFlyingEvent};
 use valence::math::{DQuat, EulerRot};
 use valence::message::SendMessage;
 use valence::prelude::*;
+use valence_server::abilities::PlayerAbilitiesFlags;
 use valence_text::color::NamedColor;
 
 type SpherePartBundle = valence::entity::cow::CowEntityBundle;
@@ -33,6 +34,7 @@ fn main() {
                 update_sphere,
                 despawn_disconnected_clients,
                 display_is_flying,
+                keep_flying_state,
             ),
         )
         .run();
@@ -99,6 +101,7 @@ fn init_clients(
             SPAWN_POS.z as f64 + 0.5,
         ]);
         *game_mode = GameMode::Creative;
+        // You can't change abilities here more than the one from the gamemode.
     }
 }
 
@@ -150,7 +153,31 @@ fn lerp(a: f64, b: f64, t: f64) -> f64 {
     a * (1.0 - t) + b * t
 }
 
-// Send an actionbar message to all clients when their flying state changes.
+/// Demonstrate that is it possible to change the gamemode of a client and keeping abilities.
+fn keep_flying_state(
+    mut sneak_events: EventReader<SneakEvent>,
+    mut clients: Query<(&mut GameMode, &mut PlayerAbilitiesFlags)>,
+) {
+    for sneak_event in sneak_events.iter() {
+        if let Ok((mut gamemode, mut abilities)) = clients.get_mut(sneak_event.client) {
+            if sneak_event.state == SneakState::Stop {
+                match *gamemode {
+                    GameMode::Creative => {
+                        *gamemode = GameMode::Survival;
+                        abilities.set_allow_flying(true);
+                        abilities.set_flying(true);
+                    }
+                    GameMode::Survival => {
+                        *gamemode = GameMode::Creative;
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+}
+
+/// Send an actionbar message to all clients when their flying state changes.
 fn display_is_flying(
     mut player_start_flying_events: EventReader<PlayerStartFlyingEvent>,
     mut player_stop_flying_events: EventReader<PlayerStopFlyingEvent>,

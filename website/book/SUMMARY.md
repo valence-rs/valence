@@ -5,3 +5,7 @@
 
 # Developer Guide
 
+## Common Components
+
+- [Player Abilities](2-common-components/abilities.md)
+
