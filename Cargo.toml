@@ -143,7 +143,7 @@ indexmap = "2.2.1"
 itertools = "0.12.0"
 java_string = { path = "crates/java_string", version = "0.1.2" }
 lru = "0.12.0"
-noise = "0.8.2"
+noise = "0.9.0"
 num = "0.4.0"
 num-bigint = "0.4.3"
 owo-colors = "3.5.0"
