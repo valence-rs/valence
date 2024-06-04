@@ -57,7 +57,7 @@ impl ItemStack {
     /// let value = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNzlmOWRkOGQ5MjQ0NTg0NWIwODM1MmZjMmY0OTRjYTE4OGJmNWMzNzFmM2JmOWQwMWJiNzRkOGVlNTk3YmM1YSJ9fX0=";
     /// let head = ItemStack::new(ItemKind::PlayerHead, 1, None).with_playerhead_texture_value(value).unwrap();
     /// ```
-    /// 
+    ///
     /// Simple head command
     /// ```
     /// fn command_handler(
@@ -81,14 +81,14 @@ impl ItemStack {
     ///         if let Some(target) = target {
     ///             let properties = target.2;
     ///             let textures = properties.textures().unwrap();
-    /// 
+    ///
     ///             // Construct a PlayerHead using `with_playerhead_texture_value`
     ///             let head = ItemStack::new(
     ///                 ItemKind::PlayerHead,
     ///                 1,
     ///                 None,
     ///             ).with_playerhead_texture_value(textures.value.clone()).unwrap();
-    /// 
+    ///
     ///             let (_, _, _, mut inventory) = clients_query.get_mut(event.executor).unwrap();
     ///             inventory.set_slot(36, head);
     ///         } else {
