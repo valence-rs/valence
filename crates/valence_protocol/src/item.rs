@@ -1,8 +1,8 @@
 use std::io::Write;
 
-pub use valence_generated::item::ItemKind;
-use valence_nbt::{Compound, compound, List};
 use uuid::Uuid;
+pub use valence_generated::item::ItemKind;
+use valence_nbt::{compound, Compound, List};
 
 use crate::{Decode, Encode};
 
@@ -45,7 +45,10 @@ impl ItemStack {
     }
 
     #[must_use]
-    pub fn with_playerhead_texture_value(mut self, texture_value: impl Into<String>) -> Result<Self, ()> {
+    pub fn with_playerhead_texture_value(
+        mut self,
+        texture_value: impl Into<String>,
+    ) -> Result<Self, ()> {
         if self.item != ItemKind::PlayerHead {
             return Err(());
         }
