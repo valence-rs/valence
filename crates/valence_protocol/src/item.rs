@@ -44,6 +44,12 @@ impl ItemStack {
         self
     }
 
+    /// This function takes the "Value" of the skin you want to apply to a PlayerHead.
+    /// The "Value" is a Base64-encoded JSON object that is usually provided by websites.
+    /// To learn more: https://minecraft.wiki/w/Item_format#Player_Heads
+    /// 
+    /// # Errors
+    /// This function returns an error if the [ItemStack] you call it on isn't a PlayerHead
     #[must_use]
     pub fn with_playerhead_texture_value(
         mut self,
