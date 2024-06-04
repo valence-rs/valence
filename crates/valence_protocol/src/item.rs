@@ -1,7 +1,8 @@
 use std::io::Write;
 
 pub use valence_generated::item::ItemKind;
-use valence_nbt::Compound;
+use valence_nbt::{Compound, compound, List};
+use uuid::Uuid;
 
 use crate::{Decode, Encode};
 
@@ -41,6 +42,34 @@ impl ItemStack {
     pub fn with_nbt(mut self, nbt: impl Into<Option<Compound>>) -> Self {
         self.nbt = nbt.into();
         self
+    }
+
+    #[must_use]
+    pub fn with_playerhead_texture_value(mut self, texture_value: impl Into<String>) -> Result<Self, ()> {
+        if self.item != ItemKind::PlayerHead {
+            return Err(());
+        }
+
+        let new_nbt = compound! {
+            "SkullOwner" => compound! {
+                "Id" => Uuid::default(),
+                "Properties" => compound! {
+                    "textures" => List::Compound(vec![
+                        compound! {
+                            "Value" => texture_value.into()
+                        }
+                    ])
+                }
+            }
+        };
+
+        if let Some(nbt) = &mut self.nbt {
+            nbt.merge(new_nbt);
+        } else {
+            self.nbt = Some(new_nbt);
+        }
+
+        Ok(self)
     }
 
     pub const fn is_empty(&self) -> bool {
