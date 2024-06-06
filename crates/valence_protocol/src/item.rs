@@ -65,14 +65,14 @@ impl ItemStack {
     /// struct HeadCommand {
     ///     username: String,
     /// }
-    /// 
+    ///
     /// fn command_handler(
     ///     mut command_events: EventReader<CommandResultEvent<HeadCommand>>,
     ///     mut clients_query: Query<(&mut Client, &Username, &Properties, &mut Inventory)>,
     /// ) {
     ///     for event in command_events.read() {
     ///         let target_username = &event.result.username;
-    /// 
+    ///
     ///         let target = if !target_username.is_empty() {
     ///             clients_query
     ///                 .iter()
