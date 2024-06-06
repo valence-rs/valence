@@ -44,9 +44,9 @@ impl ItemStack {
         self
     }
 
-    /// This function takes the "Value" of the skin you want to apply to a PlayerHead.
-    /// The "Value" is a Base64-encoded JSON object that is usually provided by websites.
-    /// To learn more: <https://minecraft.wiki/w/Item_format#Player_Heads>
+    /// This function takes the "Value" of the skin you want to apply to a
+    /// PlayerHead. The "Value" is a Base64-encoded JSON object that is
+    /// usually provided by websites. To learn more: <https://minecraft.wiki/w/Item_format#Player_Heads> 
     ///
     /// # Errors
     /// This function returns an error if the [ItemStack] you call it on isn't a PlayerHead
@@ -86,11 +86,9 @@ impl ItemStack {
     ///             let textures = properties.textures().unwrap();
     ///
     ///             // Construct a PlayerHead using `with_playerhead_texture_value`
-    ///             let head = ItemStack::new(
-    ///                 ItemKind::PlayerHead,
-    ///                 1,
-    ///                 None,
-    ///             ).with_playerhead_texture_value(textures.value.clone()).unwrap();
+    ///             let head = ItemStack::new(ItemKind::PlayerHead, 1, None)
+    ///                 .with_playerhead_texture_value(textures.value.clone())
+    ///                 .unwrap();
     ///
     ///             let (_, _, _, mut inventory) = clients_query.get_mut(event.executor).unwrap();
     ///             inventory.set_slot(36, head);
