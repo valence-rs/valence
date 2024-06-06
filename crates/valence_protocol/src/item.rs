@@ -58,22 +58,25 @@ impl ItemStack {
     /// let head = ItemStack::new(ItemKind::PlayerHead, 1, None).with_playerhead_texture_value(value).unwrap();
     /// ```
     ///
-    /// Simple head command
+    /// Simple head command. More examples of Valence's command system: <https://github.com/valence-rs/valence/blob/main/examples/command.rs>
     /// ```
+    /// #[derive(Command)]
+    /// #[paths("head {username}")]
+    /// struct HeadCommand {
+    ///     username: String,
+    /// }
+    /// 
     /// fn command_handler(
-    ///     mut command_events: EventReader<CommandExecutionEvent>,
+    ///     mut command_events: EventReader<CommandResultEvent<HeadCommand>>,
     ///     mut clients_query: Query<(&mut Client, &Username, &Properties, &mut Inventory)>,
     /// ) {
     ///     for event in command_events.read() {
-    ///         if !event.command.starts_with("head") {
-    ///             continue;
-    ///         }
-    ///
-    ///         let target_username = event.command.split(' ').nth(1);
-    ///         let target = if let Some(target_username) = target_username {
+    ///         let target_username = &event.result.username;
+    /// 
+    ///         let target = if !target_username.is_empty() {
     ///             clients_query
     ///                 .iter()
-    ///                 .find(|(_, username, _, _)| username.0 == target_username)
+    ///                 .find(|(_, username, _, _)| username.0 == *target_username)
     ///         } else {
     ///             Some(clients_query.get(event.executor).unwrap())
     ///         };
@@ -96,7 +99,6 @@ impl ItemStack {
     ///             client.send_chat_message(
     ///                 "No player with that username found on the server".color(Color::RED),
     ///             );
-    ///             continue;
     ///         }
     ///     }
     /// }
