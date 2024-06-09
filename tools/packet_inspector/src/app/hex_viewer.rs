@@ -2,7 +2,7 @@ use std::io::Read;
 
 use super::{SharedState, Tab, View};
 
-pub struct HexView {}
+pub(crate) struct HexView;
 
 impl Tab for HexView {
     fn new() -> Self {

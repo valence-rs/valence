@@ -7,6 +7,9 @@ documentation.workspace = true
 license.workspace = true
 publish = false
 
+[lints]
+workspace = true
+
 [dependencies]
 bevy_mod_debugdump.workspace = true
 clap.workspace = true

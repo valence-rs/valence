@@ -5,12 +5,12 @@ use serde::Deserialize;
 use valence_build_utils::{ident, rerun_if_changed};
 
 #[derive(Deserialize, Debug)]
-pub struct Sound {
+struct Sound {
     id: u16,
     name: String,
 }
 
-pub fn build() -> anyhow::Result<TokenStream> {
+pub(crate) fn build() -> anyhow::Result<TokenStream> {
     rerun_if_changed(["extracted/sounds.json"]);
 
     let sounds = serde_json::from_str::<Vec<Sound>>(include_str!("../extracted/sounds.json"))?;

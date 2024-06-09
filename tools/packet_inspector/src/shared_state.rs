@@ -7,12 +7,12 @@ use egui::Context;
 use packet_inspector::Packet;
 
 #[derive(serde::Deserialize, serde::Serialize)]
-pub struct PacketFilter {
+pub(crate) struct PacketFilter {
     inner: HashMap<Packet, bool>,
 }
 
 impl PacketFilter {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let mut inner = HashMap::new();
 
         for p in packet_inspector::STD_PACKETS.iter() {
@@ -22,7 +22,7 @@ impl PacketFilter {
         Self { inner }
     }
 
-    pub fn get(&self, packet: &Packet) -> Option<bool> {
+    pub(crate) fn get(&self, packet: &Packet) -> Option<bool> {
         self.inner
             .iter()
             .find(|(k, _)| k.id == packet.id && k.side == packet.side && k.state == packet.state)
@@ -30,27 +30,27 @@ impl PacketFilter {
             .copied()
     }
 
-    pub fn insert(&mut self, packet: Packet, value: bool) {
+    pub(crate) fn insert(&mut self, packet: Packet, value: bool) {
         self.inner.insert(packet, value);
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (&Packet, &bool)> {
+    pub(crate) fn iter(&self) -> impl Iterator<Item = (&Packet, &bool)> {
         self.inner.iter()
     }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&Packet, &mut bool)> {
+    pub(crate) fn iter_mut(&mut self) -> impl Iterator<Item = (&Packet, &mut bool)> {
         self.inner.iter_mut()
     }
 }
 
-pub enum Event {
+pub(crate) enum Event {
     StartListening,
     StopListening,
     PacketReceived,
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
-pub struct SharedState {
+pub(crate) struct SharedState {
     pub listener_addr: String,
     pub server_addr: String,
     pub autostart: bool,
@@ -95,7 +95,7 @@ impl Default for SharedState {
 
 #[allow(unused)]
 impl SharedState {
-    pub fn new(ctx: Context) -> Self {
+    pub(crate) fn new(ctx: Context) -> Self {
         Self {
             ctx: Some(ctx),
             ..Self::default()
@@ -126,7 +126,7 @@ impl SharedState {
         self
     }
 
-    pub fn send_event(&self, event: Event) {
+    pub(crate) fn send_event(&self, event: Event) {
         if let Some(sender) = &self.sender {
             sender.send(event);
         }

@@ -16,7 +16,7 @@ struct EntityAttribute {
     max_value: f64,
 }
 
-pub fn build() -> anyhow::Result<TokenStream> {
+pub(crate) fn build() -> anyhow::Result<TokenStream> {
     rerun_if_changed(["extracted/attributes.json"]);
 
     let entity_attributes: BTreeMap<String, EntityAttribute> =

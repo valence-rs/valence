@@ -4,7 +4,7 @@ use quote::quote;
 const MAX_VIEW_DIST: u8 = 32;
 const EXTRA_VIEW_RADIUS: i32 = 2;
 
-pub fn build() -> TokenStream {
+pub(crate) fn build() -> TokenStream {
     let entries = (0..=MAX_VIEW_DIST).map(|dist| {
         let dist = dist as i32 + EXTRA_VIEW_RADIUS;
 

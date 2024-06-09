@@ -8,7 +8,7 @@ use valence_protocol::PacketSide;
 
 use super::{SharedState, Tab, View};
 
-pub struct PacketList {}
+pub(crate) struct PacketList;
 
 impl Tab for PacketList {
     fn new() -> Self {
@@ -260,7 +260,7 @@ fn get_triangle(direction: PacketSide, outer_rect: &Rect) -> PathShape {
     shape
 }
 
-pub fn systemtime_strftime(odt: time::OffsetDateTime) -> String {
+pub(crate) fn systemtime_strftime(odt: time::OffsetDateTime) -> String {
     let hour = odt.hour();
     let minute = odt.minute();
     let second = odt.second();

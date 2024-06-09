@@ -4,7 +4,7 @@ use egui::{
 };
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum TriCheckboxState {
+pub(crate) enum TriCheckboxState {
     Enabled,
     Partial,
     Disabled,
@@ -24,21 +24,21 @@ pub enum TriCheckboxState {
 /// # });
 /// ```
 #[must_use = "You should put this widget in an ui with `ui.add(widget);`"]
-pub struct TriCheckbox<'a> {
+pub(crate) struct TriCheckbox<'a> {
     checked: &'a mut TriCheckboxState,
     text: WidgetText,
 }
 
 #[allow(unused)]
 impl<'a> TriCheckbox<'a> {
-    pub fn new(checked: &'a mut TriCheckboxState, text: impl Into<WidgetText>) -> Self {
+    pub(crate) fn new(checked: &'a mut TriCheckboxState, text: impl Into<WidgetText>) -> Self {
         TriCheckbox {
             checked,
             text: text.into(),
         }
     }
 
-    pub fn without_text(checked: &'a mut TriCheckboxState) -> Self {
+    pub(crate) fn without_text(checked: &'a mut TriCheckboxState) -> Self {
         Self::new(checked, WidgetText::default())
     }
 }

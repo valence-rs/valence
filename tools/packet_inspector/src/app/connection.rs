@@ -1,7 +1,7 @@
 use super::{SharedState, Tab, View};
 use crate::shared_state::Event;
 
-pub struct Connection {}
+pub(crate) struct Connection {}
 
 impl Tab for Connection {
     fn new() -> Self {

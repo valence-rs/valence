@@ -5,14 +5,14 @@ use serde::Deserialize;
 use valence_build_utils::{ident, rerun_if_changed};
 
 #[derive(Deserialize, Debug)]
-pub enum StatusEffectCategory {
+pub(crate) enum StatusEffectCategory {
     Beneficial,
     Harmful,
     Neutral,
 }
 
 #[derive(Deserialize, Debug)]
-pub struct AttributeModifiers {
+pub(crate) struct AttributeModifiers {
     attribute: u8,
     operation: u8,
     value: f64,
@@ -20,7 +20,7 @@ pub struct AttributeModifiers {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct StatusEffect {
+pub(crate) struct StatusEffect {
     id: u16,
     name: String,
     translation_key: String,
@@ -30,7 +30,7 @@ pub struct StatusEffect {
     attribute_modifiers: Option<Vec<AttributeModifiers>>,
 }
 
-pub fn build() -> anyhow::Result<TokenStream> {
+pub(crate) fn build() -> anyhow::Result<TokenStream> {
     rerun_if_changed(["extracted/effects.json"]);
 
     let effects =

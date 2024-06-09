@@ -13,12 +13,12 @@ mod hex_viewer;
 mod packet_list;
 mod text_viewer;
 
-pub trait View {
+pub(crate) trait View {
     fn ui(&mut self, ui: &mut egui::Ui, shared_state: &mut SharedState);
 }
 
 /// Something to view
-pub trait Tab: View {
+pub(crate) trait Tab: View {
     fn new() -> Self
     where
         Self: Sized;
@@ -47,14 +47,14 @@ impl egui_dock::TabViewer for TabViewer {
     }
 }
 
-pub struct GuiApp {
+pub(crate) struct GuiApp {
     tree: Tree<Box<dyn Tab>>,
     shared_state: Arc<RwLock<SharedState>>,
     tab_viewer: TabViewer,
 }
 
 impl GuiApp {
-    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+    pub(crate) fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let ctx = cc.egui_ctx.clone();
 
         // Default Application Layout

@@ -9,6 +9,9 @@ repository.workspace = true
 documentation.workspace = true
 license.workspace = true
 
+[lints]
+workspace = true
+
 [dependencies]
 valence_entity.workspace = true
 valence_server.workspace = true

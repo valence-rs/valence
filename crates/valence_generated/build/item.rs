@@ -27,7 +27,7 @@ struct FoodComponent {
     // TODO: effects
 }
 
-pub fn build() -> anyhow::Result<TokenStream> {
+pub(crate) fn build() -> anyhow::Result<TokenStream> {
     rerun_if_changed(["extracted/items.json"]);
 
     let items = serde_json::from_str::<Vec<Item>>(include_str!("../extracted/items.json"))?;

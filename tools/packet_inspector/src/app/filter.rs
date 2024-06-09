@@ -5,7 +5,7 @@ use valence_protocol::PacketState;
 use super::{SharedState, Tab, View};
 use crate::tri_checkbox::{TriCheckbox, TriCheckboxState};
 
-pub struct Filter {}
+pub(crate) struct Filter;
 
 impl Tab for Filter {
     fn new() -> Self {
