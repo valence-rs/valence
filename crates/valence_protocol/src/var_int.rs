@@ -31,7 +31,7 @@ use crate::{Decode, Encode};
 pub struct VarInt(pub i32);
 
 impl VarInt {
-    /// The maximum number of bytes a VarInt could occupy when read from and
+    /// The maximum number of bytes a `VarInt` could occupy when read from and
     /// written to the Minecraft protocol.
     pub const MAX_SIZE: usize = 5;
 
@@ -44,11 +44,11 @@ impl VarInt {
         }
     }
 
-    pub fn decode_partial(mut r: impl Read) -> Result<i32, VarIntDecodeError> {
+    pub fn decode_partial<R: Read>(mut r: R) -> Result<i32, VarIntDecodeError> {
         let mut val = 0;
         for i in 0..Self::MAX_SIZE {
             let byte = r.read_u8().map_err(|_| VarIntDecodeError::Incomplete)?;
-            val |= (byte as i32 & 0b01111111) << (i * 7);
+            val |= (i32::from(byte) & 0b01111111) << (i * 7);
             if byte & 0b10000000 == 0 {
                 return Ok(val);
             }
@@ -100,7 +100,7 @@ impl Decode<'_> for VarInt {
         let mut val = 0;
         for i in 0..Self::MAX_SIZE {
             let byte = r.read_u8()?;
-            val |= (byte as i32 & 0b01111111) << (i * 7);
+            val |= (i32::from(byte) & 0b01111111) << (i * 7);
             if byte & 0b10000000 == 0 {
                 return Ok(VarInt(val));
             }

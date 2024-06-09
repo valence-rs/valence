@@ -38,7 +38,7 @@ fn example_test_client_position() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = ScenarioSingleClient::new();
 
     // Send a packet as the client to the server.
@@ -63,7 +63,7 @@ fn example_test_open_inventory() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = ScenarioSingleClient::new();
 
     let inventory = Inventory::new(InventoryKind::Generic3x3);

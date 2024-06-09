@@ -613,7 +613,7 @@ fn build_entities() -> anyhow::Result<TokenStream> {
         fn update_living_and_player_absorption(
             mut query: Query<(&living::Absorption, &mut player::AbsorptionAmount), Changed<living::Absorption>>
         ) {
-            for (living_absorption, mut player_absorption) in query.iter_mut() {
+            for (living_absorption, mut player_absorption) in &mut query {
                 player_absorption.0 = living_absorption.0;
             }
         }
@@ -626,7 +626,7 @@ fn build_entities() -> anyhow::Result<TokenStream> {
             ),
             Changed<attributes::EntityAttributes>>
         ) {
-            for (mut tracked, mut attributes) in query.iter_mut() {
+            for (mut tracked, mut attributes) in &mut query {
                 for attribute in attributes.take_recently_changed() {
                     tracked.mark_modified(&attributes, attribute);
                 }

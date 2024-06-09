@@ -165,7 +165,7 @@ fn handle_new_clients(
 ) {
     // Remove objectives from the old visible layers that are not in the new visible
     // layers.
-    for (mut client, visible_layers, old_visible_layers) in clients.iter_mut() {
+    for (mut client, visible_layers, old_visible_layers) in &mut clients {
         let removed_layers: BTreeSet<_> = old_visible_layers
             .get()
             .difference(&visible_layers.0)
@@ -184,7 +184,7 @@ fn handle_new_clients(
 
     // Add objectives from the new visible layers that are not in the old visible
     // layers, or send all objectives if the client is new.
-    for (mut client, visible_layers, old_visible_layers) in clients.iter_mut() {
+    for (mut client, visible_layers, old_visible_layers) in &mut clients {
         // not sure how to avoid the clone here
         let added_layers = if client.is_added() {
             debug!("client is new, sending all objectives");
@@ -241,7 +241,7 @@ fn update_scores(
     >,
     mut layers: Query<&mut EntityLayer>,
 ) {
-    for (objective, scores, mut old_scores, entity_layer) in objectives.iter_mut() {
+    for (objective, scores, mut old_scores, entity_layer) in &mut objectives {
         let Ok(mut layer) = layers.get_mut(entity_layer.0) else {
             warn!(
                 "No layer found for entity layer ID {:?}, can't update scores",

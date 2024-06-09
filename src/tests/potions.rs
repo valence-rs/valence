@@ -11,7 +11,7 @@ fn test_status_effects_packets() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = ScenarioSingleClient::new();
 
     // Process a tick to get past the "on join" logic.

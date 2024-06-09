@@ -6,36 +6,35 @@
 //! the command tree that is sent to the client.
 //!
 //! ### The graph is a directed graph with 3 types of nodes:
-//! * Root node ([NodeData::Root]) - This is the root of the graph.  It is used
-//!   to connect all the
-//! other nodes to the graph. It is always present and there should only be one.
-//! * Literal node ([NodeData::Literal]) - This is a literal part of a command.
-//!   It is a string that
-//! must be matched exactly by the client to trigger the validity of the node.
-//! For example, the command `/teleport` would have a literal node with the name
-//! `teleport` which is a child of the root node.
-//! * Argument node ([NodeData::Argument]) - This is a node that represents an
-//!   argument in a
-//! command. It is a string that is matched by the client and checked by the
-//! server. For example, the command `/teleport 0 0 0` would have 1 argument
-//! node with the name "<destination:location>" and the parser [Parser::Vec3]
-//! which is a child of the literal node with the name `teleport`.
+//! * Root node ([`NodeData::Root`]) - This is the root of the graph.  It is
+//!   used to connect all the other nodes to the graph. It is always present and
+//!   there should only be one.
+//! * Literal node ([`NodeData::Literal`]) - This is a literal part of a
+//!   command. It is a string that must be matched exactly by the client to
+//!   trigger the validity of the node. For example, the command `/teleport`
+//!   would have a literal node with the name `teleport` which is a child of the
+//!   root node.
+//! * Argument node ([`NodeData::Argument`]) - This is a node that represents an
+//!   argument in a command. It is a string that is matched by the client and
+//!   checked by the server. For example, the command `/teleport 0 0 0` would
+//!   have 1 argument node with the name "<destination:location>" and the parser
+//!   [`Parser::Vec3`] which is a child of the literal node with the name
+//!   `teleport`.
 //!
 //! #### and 2 types of edges:
-//! * Child edge ([CommandEdgeType::Child]) - This is an edge that connects a
-//!   parent node to a
-//! child node. It is used to determine what nodes are valid children of a
-//! parent node. for example, the literal node with the name `teleport` would
-//! have a child edge to the argument node with the name
-//! "<destination:location>". This means that the argument node is a valid child
-//! of the literal node.
-//! * Redirect edge ([CommandEdgeType::Redirect]) - This edge is special. It is
-//!   used to redirect the
-//! client to another node. For example, the literal node with the name `tp`
-//! would have a Redirect edge to the literal node with the name `teleport`.
-//! This means that if the client enters the command `/tp` the server will
-//! redirect the client to the literal node with the name `teleport`. Making the
-//! command `/tp` functionally equivalent to `/teleport`.
+//! * Child edge ([`CommandEdgeType::Child`]) - This is an edge that connects a
+//!   parent node to a child node. It is used to determine what nodes are valid
+//!   children of a parent node. for example, the literal node with the name
+//!   `teleport` would have a child edge to the argument node with the name
+//!   "<destination:location>". This means that the argument node is a valid
+//!   child of the literal node.
+//! * Redirect edge ([`CommandEdgeType::Redirect`]) - This edge is special. It
+//!   is used to redirect the client to another node. For example, the literal
+//!   node with the name `tp` would have a Redirect edge to the literal node
+//!   with the name `teleport`. This means that if the client enters the command
+//!   `/tp` the server will redirect the client to the literal node with the
+//!   name `teleport`. Making the command `/tp` functionally equivalent to
+//!   `/teleport`.
 //!
 //! # Cool Example Graph For Possible Implementation Of Teleport Command (made with graphviz)
 //! ```text
@@ -68,7 +67,7 @@
 //!                                               └────────────────────────────────┘
 //! ```
 //! If you want a cool graph of your own command graph you can use the display
-//! trait on the [CommandGraph] struct. Then you can use a tool like
+//! trait on the [`CommandGraph`] struct. Then you can use a tool like
 //! [Graphviz Online](https://dreampuf.github.io/GraphvizOnline) to look at the graph.
 
 use std::collections::HashMap;
@@ -133,8 +132,8 @@ impl Display for CommandNode {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self.data {
             NodeData::Root => write!(f, "Root"),
-            NodeData::Literal { name } => write!(f, "Literal: {}", name),
-            NodeData::Argument { name, .. } => write!(f, "Argument: <{}>", name),
+            NodeData::Literal { name } => write!(f, "Literal: {name}"),
+            NodeData::Argument { name, .. } => write!(f, "Argument: <{name}>"),
         }
     }
 }
@@ -303,7 +302,7 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
     /// # Default Values
     /// * executable - `false`
     /// * scopes - `Vec::new()`
-    pub fn literal(&mut self, literal: impl Into<String>) -> &mut Self {
+    pub fn literal<S: Into<String>>(&mut self, literal: S) -> &mut Self {
         let graph = &mut self.graph.graph;
         let current_node = &mut self.current_node;
 
@@ -329,7 +328,7 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
     /// * scopes - `Vec::new()`
     /// * parser - `StringArg::SingleWord`
     /// * suggestion - `None`
-    pub fn argument(&mut self, argument: impl Into<String>) -> &mut Self {
+    pub fn argument<A: Into<String>>(&mut self, argument: A) -> &mut Self {
         let graph = &mut self.graph.graph;
         let current_node = &mut self.current_node;
 
@@ -403,7 +402,7 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
     /// * executable - the executable function to add
     ///
     /// # Example
-    /// have a look at the example for [CommandGraphBuilder]
+    /// have a look at the example for [`CommandGraphBuilder`]
     pub fn with_executable(&mut self, executable: fn(&mut ParseInput) -> T) -> &mut Self {
         let graph = &mut self.graph.graph;
         let current_node = &mut self.current_node;
@@ -462,8 +461,8 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
     /// # Arguments
     /// * scopes - a list of scopes for that are aloud to access a command node
     ///   and its children (list of strings following the system described in
-    ///   [command_scopes](crate::scopes))
-    pub fn with_scopes(&mut self, scopes: Vec<impl Into<String>>) -> &mut Self {
+    ///   [`scopes`](crate::scopes))
+    pub fn with_scopes<S: Into<String>>(&mut self, scopes: Vec<S>) -> &mut Self {
         let graph = &mut self.graph.graph;
         let current_node = &mut self.current_node;
 
@@ -493,7 +492,7 @@ impl<'a, T> CommandGraphBuilder<'a, T> {
     /// or nothing will happen.
     ///
     /// # Type Parameters
-    /// * `P` - the parser to use for the current node (must be [CommandArg])
+    /// * `P` - the parser to use for the current node (must be [`CommandArg`])
     pub fn with_parser<P: CommandArg>(&mut self) -> &mut Self {
         let graph = &mut self.graph.graph;
         let current_node = self.current_node;

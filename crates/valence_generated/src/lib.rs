@@ -1,3 +1,5 @@
+#![allow(clippy::unseparated_literal_suffix)]
+
 pub mod block;
 
 pub mod attributes {

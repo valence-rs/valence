@@ -256,7 +256,7 @@ pub trait Decode<'a>: Sized {
 /// [`Decode`] on `Self` are expected to only encode/decode the _body_ of this
 /// packet without the leading ID.
 pub trait Packet: std::fmt::Debug {
-    /// The leading VarInt ID of this packet.
+    /// The leading `VarInt` ID of this packet.
     const ID: i32;
     /// The name of this packet for debugging purposes.
     const NAME: &'static str;
@@ -265,7 +265,7 @@ pub trait Packet: std::fmt::Debug {
     /// The state in which this packet is used.
     const STATE: PacketState;
 
-    /// Encodes this packet's VarInt ID first, followed by the packet's body.
+    /// Encodes this packet's `VarInt` ID first, followed by the packet's body.
     fn encode_with_id(&self, mut w: impl Write) -> anyhow::Result<()>
     where
         Self: Encode,

@@ -107,7 +107,7 @@ impl<T, const MAX_SURFACE_AREA: i32> ChunkBvh<T, MAX_SURFACE_AREA> {
 }
 
 impl<T: GetChunkPos, const MAX_SURFACE_AREA: i32> ChunkBvh<T, MAX_SURFACE_AREA> {
-    pub fn build(&mut self, items: impl IntoIterator<Item = T>) {
+    pub fn build<I: IntoIterator<Item = T>>(&mut self, items: I) {
         self.nodes.clear();
         self.values.clear();
 
@@ -168,14 +168,14 @@ impl<T: GetChunkPos, const MAX_SURFACE_AREA: i32> ChunkBvh<T, MAX_SURFACE_AREA> 
         });
     }
 
-    pub fn query(&self, view: ChunkView, mut f: impl FnMut(&T)) {
+    pub fn query<F: FnMut(&T)>(&self, view: ChunkView, mut f: F) {
         if let Some(root) = self.nodes.last() {
             let (min, max) = view.bounding_box();
             self.query_rec(root, view, Aabb { min, max }, &mut f);
         }
     }
 
-    fn query_rec(&self, node: &Node, view: ChunkView, view_aabb: Aabb, f: &mut impl FnMut(&T)) {
+    fn query_rec<F: FnMut(&T)>(&self, node: &Node, view: ChunkView, view_aabb: Aabb, f: &mut F) {
         match node {
             Node::Internal {
                 bounds,
@@ -249,7 +249,7 @@ fn value_bounds<T: GetChunkPos>(values: &[T]) -> Option<Aabb> {
 
 fn middle(min: i32, max: i32) -> i32 {
     // Cast to i64 to avoid intermediate overflow.
-    ((min as i64 + max as i64) / 2) as i32
+    ((i64::from(min) + i64::from(max)) / 2) as i32
 }
 
 /// Partitions the slice in place and returns the partition point. Why this

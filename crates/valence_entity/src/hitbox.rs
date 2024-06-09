@@ -129,7 +129,7 @@ fn update_hitbox(
         Or<(Changed<HitboxShape>, Changed<Position>)>,
     >,
 ) {
-    for (mut in_world, hitbox, pos) in hitbox_query.iter_mut() {
+    for (mut in_world, hitbox, pos) in &mut hitbox_query {
         in_world.0 = hitbox.in_world(pos.0);
     }
 }
@@ -140,7 +140,7 @@ fn update_constant_hitbox(
         Or<(Changed<EntityKind>, Added<HitboxShape>)>,
     >,
 ) {
-    for (mut hitbox, entity_kind) in hitbox_query.iter_mut() {
+    for (mut hitbox, entity_kind) in &mut hitbox_query {
         let size = match *entity_kind {
             EntityKind::ALLAY => [0.6, 0.35, 0.6],
             EntityKind::CHEST_BOAT | EntityKind::BOAT => [1.375, 0.5625, 1.375],
@@ -230,7 +230,7 @@ fn update_warden_hitbox(
         ),
     >,
 ) {
-    for (mut hitbox, entity_pose) in query.iter_mut() {
+    for (mut hitbox, entity_pose) in &mut query {
         hitbox.centered(
             match entity_pose.0 {
                 Pose::Emerging | Pose::Digging => [0.9, 1.0, 0.9],
@@ -247,8 +247,8 @@ fn update_area_effect_cloud_hitbox(
         Or<(Changed<area_effect_cloud::Radius>, Added<HitboxShape>)>,
     >,
 ) {
-    for (mut hitbox, cloud_radius) in query.iter_mut() {
-        let diameter = cloud_radius.0 as f64 * 2.0;
+    for (mut hitbox, cloud_radius) in &mut query {
+        let diameter = f64::from(cloud_radius.0) * 2.0;
         hitbox.centered([diameter, 0.5, diameter].into());
     }
 }
@@ -259,7 +259,7 @@ fn update_armor_stand_hitbox(
         Or<(Changed<armor_stand::ArmorStandFlags>, Added<HitboxShape>)>,
     >,
 ) {
-    for (mut hitbox, stand_flags) in query.iter_mut() {
+    for (mut hitbox, stand_flags) in &mut query {
         hitbox.centered(
             if stand_flags.0 & 16 != 0 {
                 // Marker armor stand
@@ -290,7 +290,7 @@ fn update_passive_child_hitbox(
     >,
     pose_query: Query<&entity::Pose>,
 ) {
-    for (entity, mut hitbox, entity_kind, child) in query.iter_mut() {
+    for (entity, mut hitbox, entity_kind, child) in &mut query {
         let big_s = match *entity_kind {
             EntityKind::BEE => [0.7, 0.6, 0.7],
             EntityKind::CAMEL => [1.7, 2.375, 1.7],
@@ -347,7 +347,7 @@ fn update_zombie_hitbox(
         Or<(Changed<zombie::Baby>, Added<HitboxShape>)>,
     >,
 ) {
-    for (mut hitbox, baby) in query.iter_mut() {
+    for (mut hitbox, baby) in &mut query {
         hitbox.centered(child_hitbox(baby.0, [0.6, 1.95, 0.6].into()));
     }
 }
@@ -358,7 +358,7 @@ fn update_piglin_hitbox(
         Or<(Changed<piglin::Baby>, Added<HitboxShape>)>,
     >,
 ) {
-    for (mut hitbox, baby) in query.iter_mut() {
+    for (mut hitbox, baby) in &mut query {
         hitbox.centered(child_hitbox(baby.0, [0.6, 1.95, 0.6].into()));
     }
 }
@@ -369,7 +369,7 @@ fn update_zoglin_hitbox(
         Or<(Changed<zoglin::Baby>, Added<HitboxShape>)>,
     >,
 ) {
-    for (mut hitbox, baby) in query.iter_mut() {
+    for (mut hitbox, baby) in &mut query {
         hitbox.centered(child_hitbox(baby.0, [1.39648, 1.4, 1.39648].into()));
     }
 }
@@ -383,7 +383,7 @@ fn update_player_hitbox(
         ),
     >,
 ) {
-    for (mut hitbox, pose) in query.iter_mut() {
+    for (mut hitbox, pose) in &mut query {
         hitbox.centered(
             match pose.0 {
                 Pose::Sleeping | Pose::Dying => [0.2, 0.2, 0.2],
@@ -402,7 +402,7 @@ fn update_item_frame_hitbox(
         Or<(Changed<item_frame::Rotation>, Added<HitboxShape>)>,
     >,
 ) {
-    for (mut hitbox, rotation) in query.iter_mut() {
+    for (mut hitbox, rotation) in &mut query {
         let mut center_pos = DVec3::splat(0.5);
 
         const A: f64 = 0.46875;
@@ -435,8 +435,8 @@ fn update_slime_hitbox(
         Or<(Changed<slime::SlimeSize>, Added<HitboxShape>)>,
     >,
 ) {
-    for (mut hitbox, slime_size) in query.iter_mut() {
-        let s = 0.5202 * slime_size.0 as f64;
+    for (mut hitbox, slime_size) in &mut query {
+        let s = 0.5202 * f64::from(slime_size.0);
         hitbox.centered([s, s, s].into());
     }
 }
@@ -451,7 +451,7 @@ fn update_painting_hitbox(
         )>,
     >,
 ) {
-    for (mut hitbox, painting_variant, look) in query.iter_mut() {
+    for (mut hitbox, painting_variant, look) in &mut query {
         let bounds: UVec3 = match painting_variant.0 {
             PaintingKind::Kebab => [1, 1, 1],
             PaintingKind::Aztec => [1, 1, 1],
@@ -496,16 +496,16 @@ fn update_painting_hitbox(
                 _ => (1, 0, 0, -1),  // East
             };
 
-        center_pos.x -= facing_x as f64 * 0.46875;
-        center_pos.z -= facing_z as f64 * 0.46875;
+        center_pos.x -= f64::from(facing_x) * 0.46875;
+        center_pos.z -= f64::from(facing_z) * 0.46875;
 
-        center_pos.x += cc_facing_x as f64 * if bounds.x % 2 == 0 { 0.5 } else { 0.0 };
+        center_pos.x += f64::from(cc_facing_x) * if bounds.x % 2 == 0 { 0.5 } else { 0.0 };
         center_pos.y += if bounds.y % 2 == 0 { 0.5 } else { 0.0 };
-        center_pos.z += cc_facing_z as f64 * if bounds.z % 2 == 0 { 0.5 } else { 0.0 };
+        center_pos.z += f64::from(cc_facing_z) * if bounds.z % 2 == 0 { 0.5 } else { 0.0 };
 
         let bounds = match (facing_x, facing_z) {
-            (1, 0) | (-1, 0) => DVec3::new(0.0625, bounds.y as f64, bounds.z as f64),
-            _ => DVec3::new(bounds.x as f64, bounds.y as f64, 0.0625),
+            (1 | -1, 0) => DVec3::new(0.0625, f64::from(bounds.y), f64::from(bounds.z)),
+            _ => DVec3::new(f64::from(bounds.x), f64::from(bounds.y), 0.0625),
         };
 
         hitbox.0 = Aabb::new(center_pos - bounds / 2.0, center_pos + bounds / 2.0);
@@ -528,12 +528,12 @@ fn update_shulker_hitbox(
 ) {
     use std::f64::consts::PI;
 
-    for (mut hitbox, peek_amount, attached_face) in query.iter_mut() {
+    for (mut hitbox, peek_amount, attached_face) in &mut query {
         let pos = DVec3::splat(0.5);
         let mut min = pos - 0.5;
         let mut max = pos + 0.5;
 
-        let peek = 0.5 - f64::cos(peek_amount.0 as f64 * 0.01 * PI) * 0.5;
+        let peek = 0.5 - f64::cos(f64::from(peek_amount.0) * 0.01 * PI) * 0.5;
 
         match attached_face.0 {
             Direction::Down => max.y += peek,

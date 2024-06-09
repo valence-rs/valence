@@ -3,7 +3,7 @@ use valence::prelude::*;
 
 /// Benches the performance of a single server tick while nothing much is
 /// happening.
-pub fn idle_update(c: &mut Criterion) {
+pub(crate) fn idle_update(c: &mut Criterion) {
     let mut app = App::new();
 
     app.add_plugins(DefaultPlugins);

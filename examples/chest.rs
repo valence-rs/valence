@@ -82,7 +82,7 @@ fn init_clients(
         layer_id.0 = layer;
         visible_chunk_layer.0 = layer;
         visible_entity_layers.0.insert(layer);
-        pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
+        pos.set([0.0, f64::from(SPAWN_Y) + 1.0, 0.0]);
         *game_mode = GameMode::Creative;
     }
 }

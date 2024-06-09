@@ -23,9 +23,10 @@ impl<T: Encode> Encode for Option<T> {
 
 impl<'a, T: Decode<'a>> Decode<'a> for Option<T> {
     fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
-        Ok(match bool::decode(r)? {
-            true => Some(T::decode(r)?),
-            false => None,
+        Ok(if bool::decode(r)? {
+            Some(T::decode(r)?)
+        } else {
+            None
         })
     }
 }
@@ -80,7 +81,7 @@ where
 
 impl Encode for BlockState {
     fn encode(&self, w: impl Write) -> anyhow::Result<()> {
-        VarInt(self.to_raw() as i32).encode(w)
+        VarInt(i32::from(self.to_raw())).encode(w)
     }
 }
 
@@ -95,7 +96,7 @@ impl Decode<'_> for BlockState {
 
 impl Encode for BlockKind {
     fn encode(&self, w: impl Write) -> anyhow::Result<()> {
-        VarInt(self.to_raw() as i32).encode(w)
+        VarInt(i32::from(self.to_raw())).encode(w)
     }
 }
 
@@ -123,7 +124,7 @@ impl<'a> Decode<'a> for BlockEntityKind {
 
 impl Encode for ItemKind {
     fn encode(&self, w: impl Write) -> anyhow::Result<()> {
-        VarInt(self.to_raw() as i32).encode(w)
+        VarInt(i32::from(self.to_raw())).encode(w)
     }
 }
 

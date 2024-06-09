@@ -4,7 +4,7 @@ use criterion::Criterion;
 use valence::block::{BlockKind, BlockState, PropName, PropValue};
 use valence::ItemKind;
 
-pub fn block(c: &mut Criterion) {
+pub(crate) fn block(c: &mut Criterion) {
     let mut group = c.benchmark_group("block");
 
     let states = BlockKind::ALL.map(BlockKind::to_state);

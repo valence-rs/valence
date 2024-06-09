@@ -38,7 +38,7 @@ impl CommandArg for EntitySelector {
                         Some('s') => simple_selector = Some(EntitySelectors::SelfPlayer),
                         _ => {
                             return Err(CommandArgParseError::InvalidArgument {
-                                expected: "entity selector".to_string(),
+                                expected: "entity selector".to_owned(),
                                 got: c.to_string(),
                             })
                         }
@@ -52,7 +52,7 @@ impl CommandArg for EntitySelector {
                     input.pop();
                     if simple_selector.is_none() {
                         return Err(CommandArgParseError::InvalidArgument {
-                            expected: "entity selector".to_string(),
+                            expected: "entity selector".to_owned(),
                             got: c.to_string(),
                         });
                     }
@@ -61,11 +61,11 @@ impl CommandArg for EntitySelector {
                         if c == ']' {
                             return Ok(EntitySelector::ComplexSelector(
                                 simple_selector.unwrap(),
-                                s.trim().to_string(),
+                                s.trim().to_owned(),
                             ));
-                        } else {
-                            s.push(c);
                         }
+
+                        s.push(c);
                     }
                 }
                 _ => {

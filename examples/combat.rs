@@ -52,7 +52,7 @@ fn setup(
     // Create circular arena.
     for z in -ARENA_RADIUS..ARENA_RADIUS {
         for x in -ARENA_RADIUS..ARENA_RADIUS {
-            let dist = f64::hypot(x as _, z as _) / ARENA_RADIUS as f64;
+            let dist = f64::hypot(f64::from(x), f64::from(z)) / f64::from(ARENA_RADIUS);
 
             if dist > 1.0 {
                 continue;
@@ -99,7 +99,7 @@ fn init_clients(
         layer_id.0 = layer;
         visible_chunk_layer.0 = layer;
         visible_entity_layers.0.insert(layer);
-        pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
+        pos.set([0.0, f64::from(SPAWN_Y) + 1.0, 0.0]);
         *game_mode = GameMode::Creative;
     }
 }
@@ -175,7 +175,7 @@ fn handle_combat_events(
 fn teleport_oob_clients(mut clients: Query<&mut Position, With<Client>>) {
     for mut pos in &mut clients {
         if pos.0.y < 0.0 {
-            pos.set([0.0, SPAWN_Y as _, 0.0]);
+            pos.set([0.0, f64::from(SPAWN_Y), 0.0]);
         }
     }
 }

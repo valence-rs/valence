@@ -17,24 +17,24 @@ impl CommandArg for Time {
                 't' => {
                     return Ok(Time::Ticks(number_str.parse::<f32>().map_err(|_| {
                         CommandArgParseError::InvalidArgument {
-                            expected: "time".to_string(),
-                            got: "not a valid time".to_string(),
+                            expected: "time".to_owned(),
+                            got: "not a valid time".to_owned(),
                         }
                     })?));
                 }
                 's' => {
                     return Ok(Time::Seconds(number_str.parse::<f32>().map_err(|_| {
                         CommandArgParseError::InvalidArgument {
-                            expected: "time".to_string(),
-                            got: "not a valid time".to_string(),
+                            expected: "time".to_owned(),
+                            got: "not a valid time".to_owned(),
                         }
                     })?));
                 }
                 'd' => {
                     return Ok(Time::Days(number_str.parse::<f32>().map_err(|_| {
                         CommandArgParseError::InvalidArgument {
-                            expected: "time".to_string(),
-                            got: "not a valid time".to_string(),
+                            expected: "time".to_owned(),
+                            got: "not a valid time".to_owned(),
                         }
                     })?));
                 }
@@ -46,15 +46,15 @@ impl CommandArg for Time {
         if !number_str.is_empty() {
             return Ok(Time::Ticks(number_str.parse::<f32>().map_err(|_| {
                 CommandArgParseError::InvalidArgument {
-                    expected: "time".to_string(),
-                    got: "not a valid time".to_string(),
+                    expected: "time".to_owned(),
+                    got: "not a valid time".to_owned(),
                 }
             })?));
         }
 
         Err(CommandArgParseError::InvalidArgument {
-            expected: "time".to_string(),
-            got: "not a valid time".to_string(),
+            expected: "time".to_owned(),
+            got: "not a valid time".to_owned(),
         })
     }
 

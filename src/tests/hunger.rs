@@ -11,7 +11,7 @@ fn test_hunger() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = ScenarioSingleClient::new();
 
     app.update();

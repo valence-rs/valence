@@ -28,12 +28,12 @@ pub struct ChunkDeltaUpdateEntry {
 
 impl Encode for ChunkDeltaUpdateEntry {
     fn encode(&self, w: impl Write) -> anyhow::Result<()> {
-        VarLong(self.0 as _).encode(w)
+        VarLong(self.0 as i64).encode(w)
     }
 }
 
 impl Decode<'_> for ChunkDeltaUpdateEntry {
     fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
-        Ok(ChunkDeltaUpdateEntry(VarLong::decode(r)?.0 as _))
+        Ok(ChunkDeltaUpdateEntry(VarLong::decode(r)?.0 as u64))
     }
 }

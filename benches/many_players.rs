@@ -15,7 +15,7 @@ use valence::testing::create_mock_client;
 use valence::{ident, ChunkPos, DefaultPlugins, Hand, Server, ServerSettings};
 use valence_server::CompressionThreshold;
 
-pub fn many_players(c: &mut Criterion) {
+pub(crate) fn many_players(c: &mut Criterion) {
     run_many_players(c, "many_players", 3000, 16, 16);
     run_many_players(c, "many_players_spread_out", 3000, 8, 200);
 }
@@ -71,8 +71,8 @@ fn run_many_players(
         bundle.view_distance.set(view_dist);
 
         let mut rng = rand::thread_rng();
-        let x = rng.gen_range(-world_size as f64 * 16.0..=world_size as f64 * 16.0);
-        let z = rng.gen_range(-world_size as f64 * 16.0..=world_size as f64 * 16.0);
+        let x = rng.gen_range(-f64::from(world_size) * 16.0..=f64::from(world_size) * 16.0);
+        let z = rng.gen_range(-f64::from(world_size) * 16.0..=f64::from(world_size) * 16.0);
 
         bundle.player.position.set(DVec3::new(x, 64.0, z));
 

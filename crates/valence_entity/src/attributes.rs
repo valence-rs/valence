@@ -60,19 +60,19 @@ impl EntityAttributeInstance {
         let mut value = self.base_value;
 
         // Increment value by modifier
-        for (_, modifier) in self.add_modifiers.iter() {
+        for (_, modifier) in &self.add_modifiers {
             value += modifier;
         }
 
         let v = value;
 
         // Increment value by modifier * v
-        for (_, modifier) in self.multiply_base_modifiers.iter() {
+        for (_, modifier) in &self.multiply_base_modifiers {
             value += v * modifier;
         }
 
         // Increment value by modifier * value
-        for (_, modifier) in self.multiply_total_modifiers.iter() {
+        for (_, modifier) in &self.multiply_total_modifiers {
             value += value * modifier;
         }
 
@@ -209,7 +209,7 @@ impl EntityAttributes {
 }
 
 impl EntityAttributes {
-    /// Creates a new instance of EntityAttributes.
+    /// Creates a new instance of `EntityAttributes`.
     pub fn new() -> Self {
         Self {
             attributes: HashMap::new(),
@@ -349,8 +349,7 @@ impl EntityAttributes {
     pub fn has_modifier(&self, attribute: EntityAttribute, uuid: Uuid) -> bool {
         self.attributes
             .get(&attribute)
-            .map(|instance| instance.has_modifier(uuid))
-            .unwrap_or(false)
+            .is_some_and(|inst| inst.has_modifier(uuid))
     }
 
     /// **For internal use only.**
@@ -406,7 +405,7 @@ impl TrackedEntityProperty {
 }
 
 impl TrackedEntityAttributes {
-    /// Creates a new instance of TrackedEntityAttributes.
+    /// Creates a new instance of [`TrackedEntityAttributes`].
     pub fn new() -> Self {
         Self {
             modified: IndexMap::new(),

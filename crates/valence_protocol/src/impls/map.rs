@@ -15,7 +15,7 @@ where
         let len = self.len();
 
         ensure!(
-            len <= i32::MAX as usize,
+            i32::try_from(len).is_ok(),
             "length of B-tree set ({len}) exceeds i32::MAX"
         );
 
@@ -62,7 +62,7 @@ where
         let len = self.len();
 
         ensure!(
-            len <= i32::MAX as usize,
+            i32::try_from(len).is_ok(),
             "length of hash set ({len}) exceeds i32::MAX"
         );
 
@@ -108,13 +108,13 @@ where
         let len = self.len();
 
         ensure!(
-            len <= i32::MAX as usize,
+            i32::try_from(len).is_ok(),
             "length of B-tree map ({len}) exceeds i32::MAX"
         );
 
         VarInt(len as i32).encode(&mut w)?;
 
-        for pair in self.iter() {
+        for pair in self {
             pair.encode(&mut w)?;
         }
 
@@ -157,13 +157,13 @@ where
         let len = self.len();
 
         ensure!(
-            len <= i32::MAX as usize,
+            i32::try_from(len).is_ok(),
             "length of hash map ({len}) exceeds i32::MAX"
         );
 
         VarInt(len as i32).encode(&mut w)?;
 
-        for pair in self.iter() {
+        for pair in self {
             pair.encode(&mut w)?;
         }
 

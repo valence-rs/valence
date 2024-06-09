@@ -8,7 +8,7 @@ use crate::{Decode, Encode};
 
 impl Encode for bool {
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
-        Ok(w.write_u8(*self as u8)?)
+        Ok(w.write_u8(u8::from(*self))?)
     }
 
     fn encode_slice(slice: &[bool], mut w: impl Write) -> anyhow::Result<()> {

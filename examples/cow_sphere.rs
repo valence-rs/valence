@@ -94,9 +94,9 @@ fn init_clients(
         visible_chunk_layer.0 = layer;
         visible_entity_layers.0.insert(layer);
         pos.set([
-            SPAWN_POS.x as f64 + 0.5,
-            SPAWN_POS.y as f64 + 1.0,
-            SPAWN_POS.z as f64 + 0.5,
+            f64::from(SPAWN_POS.x) + 0.5,
+            f64::from(SPAWN_POS.y) + 1.0,
+            f64::from(SPAWN_POS.z) + 0.5,
         ]);
         *game_mode = GameMode::Creative;
     }
@@ -106,7 +106,7 @@ fn update_sphere(
     server: Res<Server>,
     mut parts: Query<(&mut Position, &mut Look, &mut HeadYaw), With<SpherePart>>,
 ) {
-    let time = server.current_tick() as f64 / server.tick_rate().get() as f64;
+    let time = server.current_tick() as f64 / f64::from(server.tick_rate().get());
 
     let rot_angles = DVec3::new(0.2, 0.4, 0.6) * SPHERE_FREQ * time * TAU % TAU;
     let rot = DQuat::from_euler(EulerRot::XYZ, rot_angles.x, rot_angles.y, rot_angles.z);

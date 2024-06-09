@@ -7,9 +7,9 @@ use crate::ChunkLayer;
 fn player_list_arrives_before_player_spawn() {
     let ScenarioSingleClient {
         mut app,
-        client: _,
         helper: mut client_helper_1,
         layer: layer_ent,
+        ..
     } = ScenarioSingleClient::new();
 
     let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
@@ -30,8 +30,8 @@ fn player_list_arrives_before_player_spawn() {
 
         let pkt = recvd.first::<PlayerListS2c>();
         assert!(pkt.actions.add_player());
-        assert_eq!(pkt.entries.len(), 1);
-    }
+        assert_eq!(pkt.entries.len(), 1)
+    };
 
     let (mut client_2, mut client_helper_2) = create_mock_client("test_2");
     client_2.player.layer.0 = layer_ent;
@@ -50,8 +50,8 @@ fn player_list_arrives_before_player_spawn() {
 
         let pkt = recvd.first::<PlayerListS2c>();
         assert!(pkt.actions.add_player());
-        assert_eq!(pkt.entries.len(), 1);
-    }
+        assert_eq!(pkt.entries.len(), 1)
+    };
 
     {
         let recvd = client_helper_2.collect_received();
@@ -61,6 +61,6 @@ fn player_list_arrives_before_player_spawn() {
 
         let pkt = recvd.first::<PlayerListS2c>();
         assert!(pkt.actions.add_player());
-        assert_eq!(pkt.entries.len(), 2);
-    }
+        assert_eq!(pkt.entries.len(), 2)
+    };
 }

@@ -119,9 +119,9 @@ impl Encode for Node {
         );
 
         let flags: u8 = node_type
-            | (self.executable as u8 * 0x04)
-            | (self.redirect_node.is_some() as u8 * 0x08)
-            | (has_suggestion as u8 * 0x10);
+            | (u8::from(self.executable) * 0x04)
+            | (u8::from(self.redirect_node.is_some()) * 0x08)
+            | (u8::from(has_suggestion) * 0x10);
 
         w.write_u8(flags)?;
 
@@ -209,11 +209,11 @@ impl<'a> Decode<'a> for Node {
 impl Encode for Parser {
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         match self {
-            Parser::Bool => 0u8.encode(&mut w)?,
+            Parser::Bool => 0_u8.encode(&mut w)?,
             Parser::Float { min, max } => {
-                1u8.encode(&mut w)?;
+                1_u8.encode(&mut w)?;
 
-                (min.is_some() as u8 | (max.is_some() as u8 * 0x2)).encode(&mut w)?;
+                (u8::from(min.is_some()) | (u8::from(max.is_some()) * 0x2)).encode(&mut w)?;
 
                 if let Some(min) = min {
                     min.encode(&mut w)?;
@@ -224,9 +224,9 @@ impl Encode for Parser {
                 }
             }
             Parser::Double { min, max } => {
-                2u8.encode(&mut w)?;
+                2_u8.encode(&mut w)?;
 
-                (min.is_some() as u8 | (max.is_some() as u8 * 0x2)).encode(&mut w)?;
+                (u8::from(min.is_some()) | (u8::from(max.is_some()) * 0x2)).encode(&mut w)?;
 
                 if let Some(min) = min {
                     min.encode(&mut w)?;
@@ -237,9 +237,9 @@ impl Encode for Parser {
                 }
             }
             Parser::Integer { min, max } => {
-                3u8.encode(&mut w)?;
+                3_u8.encode(&mut w)?;
 
-                (min.is_some() as u8 | (max.is_some() as u8 * 0x2)).encode(&mut w)?;
+                (u8::from(min.is_some()) | (u8::from(max.is_some()) * 0x2)).encode(&mut w)?;
 
                 if let Some(min) = min {
                     min.encode(&mut w)?;
@@ -250,9 +250,9 @@ impl Encode for Parser {
                 }
             }
             Parser::Long { min, max } => {
-                4u8.encode(&mut w)?;
+                4_u8.encode(&mut w)?;
 
-                (min.is_some() as u8 | (max.is_some() as u8 * 0x2)).encode(&mut w)?;
+                (u8::from(min.is_some()) | (u8::from(max.is_some()) * 0x2)).encode(&mut w)?;
 
                 if let Some(min) = min {
                     min.encode(&mut w)?;
@@ -263,72 +263,72 @@ impl Encode for Parser {
                 }
             }
             Parser::String(arg) => {
-                5u8.encode(&mut w)?;
+                5_u8.encode(&mut w)?;
                 arg.encode(&mut w)?;
             }
             Parser::Entity {
                 single,
                 only_players,
             } => {
-                6u8.encode(&mut w)?;
-                (*single as u8 | (*only_players as u8 * 0x2)).encode(&mut w)?;
+                6_u8.encode(&mut w)?;
+                (u8::from(*single) | (u8::from(*only_players) * 0x2)).encode(&mut w)?;
             }
-            Parser::GameProfile => 7u8.encode(&mut w)?,
-            Parser::BlockPos => 8u8.encode(&mut w)?,
-            Parser::ColumnPos => 9u8.encode(&mut w)?,
-            Parser::Vec3 => 10u8.encode(&mut w)?,
-            Parser::Vec2 => 11u8.encode(&mut w)?,
-            Parser::BlockState => 12u8.encode(&mut w)?,
-            Parser::BlockPredicate => 13u8.encode(&mut w)?,
-            Parser::ItemStack => 14u8.encode(&mut w)?,
-            Parser::ItemPredicate => 15u8.encode(&mut w)?,
-            Parser::Color => 16u8.encode(&mut w)?,
-            Parser::Component => 17u8.encode(&mut w)?,
-            Parser::Message => 18u8.encode(&mut w)?,
-            Parser::NbtCompoundTag => 19u8.encode(&mut w)?,
-            Parser::NbtTag => 20u8.encode(&mut w)?,
-            Parser::NbtPath => 21u8.encode(&mut w)?,
-            Parser::Objective => 22u8.encode(&mut w)?,
-            Parser::ObjectiveCriteria => 23u8.encode(&mut w)?,
-            Parser::Operation => 24u8.encode(&mut w)?,
-            Parser::Particle => 25u8.encode(&mut w)?,
-            Parser::Angle => 26u8.encode(&mut w)?,
-            Parser::Rotation => 27u8.encode(&mut w)?,
-            Parser::ScoreboardSlot => 28u8.encode(&mut w)?,
+            Parser::GameProfile => 7_u8.encode(&mut w)?,
+            Parser::BlockPos => 8_u8.encode(&mut w)?,
+            Parser::ColumnPos => 9_u8.encode(&mut w)?,
+            Parser::Vec3 => 10_u8.encode(&mut w)?,
+            Parser::Vec2 => 11_u8.encode(&mut w)?,
+            Parser::BlockState => 12_u8.encode(&mut w)?,
+            Parser::BlockPredicate => 13_u8.encode(&mut w)?,
+            Parser::ItemStack => 14_u8.encode(&mut w)?,
+            Parser::ItemPredicate => 15_u8.encode(&mut w)?,
+            Parser::Color => 16_u8.encode(&mut w)?,
+            Parser::Component => 17_u8.encode(&mut w)?,
+            Parser::Message => 18_u8.encode(&mut w)?,
+            Parser::NbtCompoundTag => 19_u8.encode(&mut w)?,
+            Parser::NbtTag => 20_u8.encode(&mut w)?,
+            Parser::NbtPath => 21_u8.encode(&mut w)?,
+            Parser::Objective => 22_u8.encode(&mut w)?,
+            Parser::ObjectiveCriteria => 23_u8.encode(&mut w)?,
+            Parser::Operation => 24_u8.encode(&mut w)?,
+            Parser::Particle => 25_u8.encode(&mut w)?,
+            Parser::Angle => 26_u8.encode(&mut w)?,
+            Parser::Rotation => 27_u8.encode(&mut w)?,
+            Parser::ScoreboardSlot => 28_u8.encode(&mut w)?,
             Parser::ScoreHolder { allow_multiple } => {
-                29u8.encode(&mut w)?;
+                29_u8.encode(&mut w)?;
                 allow_multiple.encode(&mut w)?;
             }
-            Parser::Swizzle => 30u8.encode(&mut w)?,
-            Parser::Team => 31u8.encode(&mut w)?,
-            Parser::ItemSlot => 32u8.encode(&mut w)?,
-            Parser::ResourceLocation => 33u8.encode(&mut w)?,
-            Parser::Function => 34u8.encode(&mut w)?,
-            Parser::EntityAnchor => 35u8.encode(&mut w)?,
-            Parser::IntRange => 36u8.encode(&mut w)?,
-            Parser::FloatRange => 37u8.encode(&mut w)?,
-            Parser::Dimension => 38u8.encode(&mut w)?,
-            Parser::GameMode => 39u8.encode(&mut w)?,
-            Parser::Time => 40u8.encode(&mut w)?,
+            Parser::Swizzle => 30_u8.encode(&mut w)?,
+            Parser::Team => 31_u8.encode(&mut w)?,
+            Parser::ItemSlot => 32_u8.encode(&mut w)?,
+            Parser::ResourceLocation => 33_u8.encode(&mut w)?,
+            Parser::Function => 34_u8.encode(&mut w)?,
+            Parser::EntityAnchor => 35_u8.encode(&mut w)?,
+            Parser::IntRange => 36_u8.encode(&mut w)?,
+            Parser::FloatRange => 37_u8.encode(&mut w)?,
+            Parser::Dimension => 38_u8.encode(&mut w)?,
+            Parser::GameMode => 39_u8.encode(&mut w)?,
+            Parser::Time => 40_u8.encode(&mut w)?,
             Parser::ResourceOrTag { registry } => {
-                41u8.encode(&mut w)?;
+                41_u8.encode(&mut w)?;
                 registry.encode(&mut w)?;
             }
             Parser::ResourceOrTagKey { registry } => {
-                42u8.encode(&mut w)?;
+                42_u8.encode(&mut w)?;
                 registry.encode(&mut w)?;
             }
             Parser::Resource { registry } => {
-                43u8.encode(&mut w)?;
+                43_u8.encode(&mut w)?;
                 registry.encode(&mut w)?;
             }
             Parser::ResourceKey { registry } => {
-                44u8.encode(&mut w)?;
+                44_u8.encode(&mut w)?;
                 registry.encode(&mut w)?;
             }
-            Parser::TemplateMirror => 45u8.encode(&mut w)?,
-            Parser::TemplateRotation => 46u8.encode(&mut w)?,
-            Parser::Uuid => 47u8.encode(&mut w)?,
+            Parser::TemplateMirror => 45_u8.encode(&mut w)?,
+            Parser::TemplateRotation => 46_u8.encode(&mut w)?,
+            Parser::Uuid => 47_u8.encode(&mut w)?,
         }
 
         Ok(())

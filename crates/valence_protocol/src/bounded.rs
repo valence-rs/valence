@@ -20,7 +20,7 @@ use derive_more::{AsRef, Deref, DerefMut, From};
 pub struct Bounded<T, const MAX: usize>(pub T);
 
 impl<T, const MAX: usize> Bounded<T, MAX> {
-    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> Bounded<U, MAX> {
+    pub fn map<F: FnOnce(T) -> U, U>(self, f: F) -> Bounded<U, MAX> {
         Bounded(f(self.0))
     }
 

@@ -7,7 +7,7 @@ use crate::parsers::{CommandArg, CommandArgParseError, ParseInput};
 impl CommandArg for String {
     fn parse_arg(input: &mut ParseInput) -> Result<Self, CommandArgParseError> {
         input.skip_whitespace();
-        Ok(input.pop_word().to_string())
+        Ok(input.pop_word().to_owned())
     }
 
     fn display() -> Parser {
@@ -34,7 +34,7 @@ impl CommandArg for GreedyString {
                 Some(s) => s,
                 None => return Err(CommandArgParseError::InvalidArgLength),
             }
-            .to_string(),
+            .to_owned(),
         ))
     }
 

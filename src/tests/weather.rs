@@ -6,9 +6,8 @@ use crate::weather::{Rain, Thunder, WeatherBundle};
 fn test_client_initialization_on_join() {
     let ScenarioSingleClient {
         mut app,
-        client: _,
         mut helper,
-        layer: _,
+        ..
     } = prepare(true);
 
     app.update();
@@ -23,9 +22,8 @@ fn test_client_initialization_on_join() {
 fn test_chunk_layer_initialization_on_join() {
     let ScenarioSingleClient {
         mut app,
-        client: _,
         mut helper,
-        layer: _,
+        ..
     } = prepare(false);
 
     app.update();
@@ -42,7 +40,7 @@ fn test_client_rain_change() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = prepare(true);
 
     app.update();
@@ -66,7 +64,7 @@ fn test_client_thunder_change() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = prepare(true);
 
     app.update();
@@ -88,9 +86,9 @@ fn test_client_thunder_change() {
 fn test_chunk_layer_rain_change() {
     let ScenarioSingleClient {
         mut app,
-        client: _,
         mut helper,
         layer,
+        ..
     } = prepare(false);
 
     app.update();
@@ -112,9 +110,9 @@ fn test_chunk_layer_rain_change() {
 fn test_chunk_layer_thunder_change() {
     let ScenarioSingleClient {
         mut app,
-        client: _,
         mut helper,
         layer,
+        ..
     } = prepare(false);
 
     app.update();

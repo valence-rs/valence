@@ -47,8 +47,8 @@ impl Plugin for CommandPlugin {
 
         app.insert_resource(CommandRegistry {
             graph,
-            modifiers,
             parsers,
+            modifiers,
             executables,
         });
     }
@@ -81,7 +81,7 @@ pub struct CommandProcessedEvent {
 }
 
 fn insert_scope_component(mut clients: Query<Entity, Added<Client>>, mut commands: Commands) {
-    for client in clients.iter_mut() {
+    for client in &mut clients {
         commands.entity(client).insert(CommandScopes::new());
     }
 }
@@ -256,13 +256,13 @@ fn parse_incoming_commands(
 
         let mut modifiers = HashMap::new();
         for (node, modifier) in modifiers_to_be_executed {
-            command_registry.modifiers.get(&node).unwrap()(modifier, &mut modifiers);
+            command_registry.modifiers[&node](modifier, &mut modifiers);
         }
 
         debug!("Command processed: /{}", command_event.command);
 
         for node in to_be_executed {
-            println!("executing node: {:?}", node);
+            println!("executing node: {node:?}");
             event_writer.send(CommandProcessedEvent {
                 command: args.join(" "),
                 executor,
@@ -325,26 +325,23 @@ fn parse_command_args(
             // if the node is a literal, we want to match the name of the literal
             // to the input
             NodeData::Literal { name } => {
-                match input.match_next(name) {
-                    true => {
-                        if !input.match_next(" ") && !input.is_done() {
-                            return false;
-                        } // we want to pop the whitespace after the literal
-                        if command_registry.modifiers.contains_key(&current_node) {
-                            modifiers_to_be_executed.push((current_node, String::new()));
-                        }
+                if input.match_next(name) {
+                    if !input.match_next(" ") && !input.is_done() {
+                        return false;
+                    } // we want to pop the whitespace after the literal
+                    if command_registry.modifiers.contains_key(&current_node) {
+                        modifiers_to_be_executed.push((current_node, String::new()));
                     }
-                    false => return false,
+                } else {
+                    return false;
                 }
             }
             // if the node is an argument, we want to parse the argument
             NodeData::Argument { .. } => {
-                let parser = match command_registry.parsers.get(&current_node) {
-                    Some(parser) => parser,
-                    None => {
-                        return false;
-                    }
+                let Some(parser) = command_registry.parsers.get(&current_node) else {
+                    return false;
                 };
+
                 // we want to save the input before and after parsing
                 // this is so we can save the argument to the command args
                 let pre_input = input.clone().into_inner();
@@ -353,7 +350,7 @@ fn parse_command_args(
                     // If input.len() > pre_input.len() the parser replaced the input
                     let Some(arg) = pre_input
                         .get(..pre_input.len().wrapping_sub(input.len()))
-                        .map(|s| s.to_string())
+                        .map(|s| s.to_owned())
                     else {
                         panic!(
                             "Parser replaced input with another string. This is not allowed. \

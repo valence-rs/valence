@@ -104,10 +104,10 @@ pub struct CommandScopeRegistry {
 impl Default for CommandScopeRegistry {
     fn default() -> Self {
         let mut graph = Graph::new();
-        let root = graph.add_node("root".to_string());
+        let root = graph.add_node("root".to_owned());
         Self {
             graph,
-            string_to_node: HashMap::from([("root".to_string(), root)]),
+            string_to_node: HashMap::from([("root".to_owned(), root)]),
             root,
         }
     }
@@ -147,7 +147,7 @@ impl CommandScopeRegistry {
     /// // the root node is always present
     /// assert_eq!(registry.scope_count(), 4);
     /// ```
-    pub fn add_scope(&mut self, scope: impl Into<String>) {
+    pub fn add_scope<S: Into<String>>(&mut self, scope: S) {
         let scope = scope.into();
         if self.string_to_node.contains_key(&scope) {
             return;
@@ -159,7 +159,7 @@ impl CommandScopeRegistry {
                 .string_to_node
                 .entry(prefix.clone() + part)
                 .or_insert_with(|| {
-                    let node = self.graph.add_node(part.to_string());
+                    let node = self.graph.add_node(part.to_owned());
                     self.graph.add_edge(current_node, node, ());
                     node
                 });
@@ -285,10 +285,10 @@ impl CommandScopeRegistry {
         self.add_scope(scope);
         self.add_scope(other);
 
-        let scope_idx = self.string_to_node.get(scope).unwrap();
-        let other_idx = self.string_to_node.get(other).unwrap();
+        let scope_idx = self.string_to_node[scope];
+        let other_idx = self.string_to_node[other];
 
-        self.graph.add_edge(*scope_idx, *other_idx, ());
+        self.graph.add_edge(scope_idx, other_idx, ());
     }
 
     /// Get the number of scopes in the registry.

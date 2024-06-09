@@ -2,9 +2,9 @@
 //! to the registry by default.
 //!
 //! ### **NOTE:**
-//! - Modifying the biome registry after the server has started can
-//! break invariants within instances and clients! Make sure there are no
-//! instances or clients spawned before mutating.
+//! - Modifying the biome registry after the server has started can break
+//!   invariants within instances and clients! Make sure there are no instances
+//!   or clients spawned before mutating.
 //! - A biome named "minecraft:plains" must exist. Otherwise, vanilla clients
 //!   will be disconnected.
 
@@ -97,16 +97,16 @@ impl BiomeId {
 }
 
 impl RegistryIdx for BiomeId {
-    const MAX: usize = u32::MAX as _;
+    const MAX: usize = u32::MAX as usize;
 
     #[inline]
     fn to_index(self) -> usize {
-        self.0 as _
+        self.0 as usize
     }
 
     #[inline]
     fn from_index(idx: usize) -> Self {
-        Self(idx as _)
+        Self(idx as u32)
     }
 }
 

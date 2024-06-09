@@ -16,7 +16,7 @@ fn show_scoreboard_when_added_to_layer() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = ScenarioSingleClient::new();
 
     // Add a new entity layer for the objective.
@@ -60,7 +60,7 @@ fn show_scoreboard_when_client_join() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = ScenarioSingleClient::new();
 
     // Add a new entity layer for the objective.
@@ -101,7 +101,7 @@ fn should_update_score() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = ScenarioSingleClient::new();
 
     // Add a new entity layer for the objective.
@@ -149,7 +149,7 @@ fn should_only_update_score_diff() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = ScenarioSingleClient::new();
 
     // Add a new entity layer for the objective.

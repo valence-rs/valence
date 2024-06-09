@@ -1,4 +1,4 @@
-# valence_inventory
+# `valence_inventory`
 
 The inventory system.
 

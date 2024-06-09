@@ -19,9 +19,9 @@ use crate::{BlockState, ChunkView, Despawned, Server};
 fn block_create_destroy() {
     let ScenarioSingleClient {
         mut app,
-        client: _,
         mut helper,
         layer: layer_ent,
+        ..
     } = ScenarioSingleClient::new();
 
     let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
@@ -45,8 +45,8 @@ fn block_create_destroy() {
         let recvd = helper.collect_received();
 
         recvd.assert_count::<ChunkDeltaUpdateS2c>(1);
-        recvd.assert_count::<BlockEntityUpdateS2c>(3);
-    }
+        recvd.assert_count::<BlockEntityUpdateS2c>(3)
+    };
 
     let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
 
@@ -185,8 +185,8 @@ fn chunk_viewer_count() {
         let recvd = helper.collect_received();
 
         recvd.assert_count::<ChunkDataS2c>(1);
-        recvd.assert_count::<UnloadChunkS2c>(2);
-    }
+        recvd.assert_count::<UnloadChunkS2c>(2)
+    };
 
     let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
 
@@ -274,8 +274,8 @@ fn entity_layer_switching() {
         // layer. (this could be optimized away in the future)
         recvd.assert_count::<EntitiesDestroyS2c>(1);
         recvd.assert_count::<EntitySpawnS2c>(1);
-        recvd.assert_order::<(EntitiesDestroyS2c, EntitySpawnS2c)>();
-    }
+        recvd.assert_order::<(EntitiesDestroyS2c, EntitySpawnS2c)>()
+    };
 
     // Remove the original layer from the visible layer set.
     assert!(app
@@ -290,8 +290,8 @@ fn entity_layer_switching() {
     // Both entities on the original layer should be removed.
     {
         let recvd = helper.collect_received();
-        recvd.assert_count::<EntitiesDestroyS2c>(1);
-    }
+        recvd.assert_count::<EntitiesDestroyS2c>(1)
+    };
 
     // Despawn l2.
     app.world.entity_mut(l2).insert(Despawned);
@@ -359,8 +359,8 @@ fn chunk_entity_spawn_despawn() {
         recvd.assert_count::<ChunkDataS2c>(1);
         recvd.assert_count::<EntitySpawnS2c>(1);
         recvd.assert_count::<UnloadChunkS2c>(0);
-        recvd.assert_count::<EntitiesDestroyS2c>(0);
-    }
+        recvd.assert_count::<EntitiesDestroyS2c>(0)
+    };
 
     // Move the entity. Client should receive entity move packet.
     app.world.get_mut::<Position>(cow_ent).unwrap().0.x += 0.1;
@@ -383,8 +383,8 @@ fn chunk_entity_spawn_despawn() {
         recvd.assert_count::<UnloadChunkS2c>(1);
         recvd.assert_count::<EntitiesDestroyS2c>(0);
         recvd.assert_count::<ChunkDataS2c>(0);
-        recvd.assert_count::<EntitySpawnS2c>(0);
-    }
+        recvd.assert_count::<EntitySpawnS2c>(0)
+    };
 
     // Placing the chunk back should respawn the chunk and not the entity.
 
@@ -400,8 +400,8 @@ fn chunk_entity_spawn_despawn() {
         recvd.assert_count::<ChunkDataS2c>(1);
         recvd.assert_count::<EntitySpawnS2c>(0);
         recvd.assert_count::<UnloadChunkS2c>(0);
-        recvd.assert_count::<EntitiesDestroyS2c>(0);
-    }
+        recvd.assert_count::<EntitiesDestroyS2c>(0)
+    };
 
     // Move player and entity away from the chunk on the same tick.
 
@@ -416,8 +416,8 @@ fn chunk_entity_spawn_despawn() {
         recvd.assert_count::<UnloadChunkS2c>(1);
         recvd.assert_count::<EntitiesDestroyS2c>(1);
         recvd.assert_count::<ChunkDataS2c>(0);
-        recvd.assert_count::<EntitySpawnS2c>(0);
-    }
+        recvd.assert_count::<EntitySpawnS2c>(0)
+    };
 
     // Put the client and entity back on the same tick.
 
@@ -438,8 +438,8 @@ fn chunk_entity_spawn_despawn() {
         recvd.assert_count::<ChunkDataS2c>(1);
         recvd.assert_count::<EntitySpawnS2c>(1);
         recvd.assert_count::<UnloadChunkS2c>(0);
-        recvd.assert_count::<EntitiesDestroyS2c>(0);
-    }
+        recvd.assert_count::<EntitiesDestroyS2c>(0)
+    };
 
     // Adding and removing a chunk on the same tick should have no effect on
     // the client.
@@ -462,6 +462,6 @@ fn chunk_entity_spawn_despawn() {
         recvd.assert_count::<ChunkDataS2c>(0);
         recvd.assert_count::<EntitySpawnS2c>(0);
         recvd.assert_count::<UnloadChunkS2c>(0);
-        recvd.assert_count::<EntitiesDestroyS2c>(0);
-    }
+        recvd.assert_count::<EntitiesDestroyS2c>(0)
+    };
 }

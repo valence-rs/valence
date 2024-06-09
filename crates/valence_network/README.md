@@ -1,4 +1,4 @@
-# valence_network
+# `valence_network`
 
 The plugin responsible for accepting connections and spawning clients.
 

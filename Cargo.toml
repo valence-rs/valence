@@ -212,12 +212,10 @@ valence_world_border = { path = "crates/valence_world_border", version = "0.2.0-
 zip = "0.6.3"
 
 [workspace.lints.rust]
-# missing_debug_implementations = "warn" # TODO: enable me.
+# missing_debug_implementations = "warn" # TODO: enable me.`
 # missing_docs = "warn"
-nonstandard_style = "warn"
-rust_2018_idioms = "warn"
-elided_lifetimes_in_paths = "allow" # TODO: Remove me?
-trivial_numeric_casts = "warn"
+nonstandard_style = { level = "warn", priority = -1 }
+# rust_2018_idioms = { level = "warn", priority = -1 }
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(unstable_doc)'] }
 unreachable_pub = "warn"
 unused_import_braces = "warn"
@@ -246,7 +244,7 @@ flat_map_option = "warn"
 format_push_string = "warn"
 from_iter_instead_of_collect = "warn"
 get_unwrap = "warn"
-if_then_some_else_none = "warn"
+# if_then_some_else_none = "warn" # TODO: Too many false positives.
 ignored_unit_patterns = "warn"
 impl_trait_in_params = "warn"
 implicit_clone = "warn"
@@ -258,7 +256,7 @@ invalid_upcast_comparisons = "warn"
 iter_filter_is_ok = "warn"
 iter_filter_is_some = "warn"
 iter_not_returning_iterator = "warn"
-iter_over_hash_type = "warn"
+# iter_over_hash_type = "warn" # TODO: enable me.
 iter_without_into_iter = "warn"
 large_stack_arrays = "warn"
 large_types_passed_by_value = "warn"
@@ -276,7 +274,7 @@ mismatching_type_param_order = "warn"
 missing_fields_in_debug = "warn"
 mixed_read_write_in_expression = "warn"
 mod_module_files = "warn"
-multiple_inherent_impl = "warn"
+# multiple_inherent_impl = "warn" TODO: enable me.
 mut_mut = "warn"
 mutex_atomic = "warn"
 needless_bitwise_bool = "warn"
@@ -300,9 +298,10 @@ string_lit_chars_any = "warn"
 string_to_string = "warn"
 struct_field_names = "warn"
 tests_outside_test_module = "warn"
-todo = "warn"
+# todo = "warn"
 trivially_copy_pass_by_ref = "warn"
 try_err = "warn"
+type_complexity = "allow"
 # undocumented_unsafe_blocks = "warn"
 uninlined_format_args = "warn"
 unnecessary_join = "warn"

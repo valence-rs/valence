@@ -75,7 +75,7 @@ impl Plugin for ServerPlugin {
             tick_rate: settings.tick_rate,
         });
 
-        let tick_period = Duration::from_secs_f64((settings.tick_rate.get() as f64).recip());
+        let tick_period = Duration::from_secs_f64(f64::from(settings.tick_rate.get()).recip());
 
         // Make the app loop forever at the configured TPS.
         app.add_plugins(ScheduleRunnerPlugin::run_loop(tick_period));

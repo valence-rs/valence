@@ -195,7 +195,7 @@ impl JavaStr {
     /// assert_eq!(result, "Hello 🦀 World!");
     ///
     /// let s = JavaString::from("Hello ")
-    ///     + JavaString::from(JavaCodePoint::from_u32(0xD800).unwrap()).as_java_str()
+    ///     + JavaString::from(JavaCodePoint::from_u32(0xd800).unwrap()).as_java_str()
     ///     + JavaStr::from_str(" World!");
     /// let result = s.as_str_lossy();
     /// assert!(matches!(result, Cow::Owned(_)));
@@ -1423,10 +1423,10 @@ impl JavaStr {
     /// assert_eq!("ὀδυσσεύς", odysseus.to_lowercase());
     ///
     /// let s = JavaString::from("Hello ")
-    ///     + JavaString::from(JavaCodePoint::from_u32(0xD800).unwrap()).as_java_str()
+    ///     + JavaString::from(JavaCodePoint::from_u32(0xd800).unwrap()).as_java_str()
     ///     + JavaStr::from_str(" World!");
     /// let expected = JavaString::from("hello ")
-    ///     + JavaString::from(JavaCodePoint::from_u32(0xD800).unwrap()).as_java_str()
+    ///     + JavaString::from(JavaCodePoint::from_u32(0xd800).unwrap()).as_java_str()
     ///     + JavaStr::from_str(" world!");
     /// assert_eq!(expected, s.to_lowercase());
     /// ```
@@ -1447,10 +1447,10 @@ impl JavaStr {
     /// assert_eq!("TSCHÜSS", s.to_uppercase());
     ///
     /// let s = JavaString::from("Hello ")
-    ///     + JavaString::from(JavaCodePoint::from_u32(0xD800).unwrap()).as_java_str()
+    ///     + JavaString::from(JavaCodePoint::from_u32(0xd800).unwrap()).as_java_str()
     ///     + JavaStr::from_str(" World!");
     /// let expected = JavaString::from("HELLO ")
-    ///     + JavaString::from(JavaCodePoint::from_u32(0xD800).unwrap()).as_java_str()
+    ///     + JavaString::from(JavaCodePoint::from_u32(0xd800).unwrap()).as_java_str()
     ///     + JavaStr::from_str(" WORLD!");
     /// assert_eq!(expected, s.to_uppercase());
     /// ```
@@ -1855,7 +1855,7 @@ impl Hash for JavaStr {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
         state.write(self.as_bytes());
-        state.write_u8(0xFF);
+        state.write_u8(0xff);
     }
 }
 

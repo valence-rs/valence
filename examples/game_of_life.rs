@@ -112,13 +112,13 @@ fn init_clients(
 
 #[derive(Resource)]
 struct LifeBoard {
-    pub playing: bool,
+    playing: bool,
     board: Box<[bool]>,
     board_buf: Box<[bool]>,
 }
 
 impl LifeBoard {
-    pub fn get(&self, x: i32, z: i32) -> bool {
+    fn get(&self, x: i32, z: i32) -> bool {
         if (BOARD_MIN_X..=BOARD_MAX_X).contains(&x) && (BOARD_MIN_Z..=BOARD_MAX_Z).contains(&z) {
             let x = (x - BOARD_MIN_X) as usize;
             let z = (z - BOARD_MIN_Z) as usize;
@@ -129,7 +129,7 @@ impl LifeBoard {
         }
     }
 
-    pub fn set(&mut self, x: i32, z: i32, value: bool) {
+    fn set(&mut self, x: i32, z: i32, value: bool) {
         if (BOARD_MIN_X..=BOARD_MAX_X).contains(&x) && (BOARD_MIN_Z..=BOARD_MAX_Z).contains(&z) {
             let x = (x - BOARD_MIN_X) as usize;
             let z = (z - BOARD_MIN_Z) as usize;
@@ -138,7 +138,7 @@ impl LifeBoard {
         }
     }
 
-    pub fn update(&mut self) {
+    fn update(&mut self) {
         for (idx, cell) in self.board_buf.iter_mut().enumerate() {
             let x = (idx % BOARD_SIZE_X) as i32;
             let z = (idx / BOARD_SIZE_X) as i32;
@@ -151,7 +151,7 @@ impl LifeBoard {
                         let idx = cx.rem_euclid(BOARD_SIZE_X as i32) as usize
                             + cz.rem_euclid(BOARD_SIZE_Z as i32) as usize * BOARD_SIZE_X;
 
-                        live_neighbors += self.board[idx] as i32;
+                        live_neighbors += i32::from(self.board[idx]);
                     }
                 }
             }
@@ -167,7 +167,7 @@ impl LifeBoard {
         mem::swap(&mut self.board, &mut self.board_buf);
     }
 
-    pub fn clear(&mut self) {
+    fn clear(&mut self) {
         self.board.fill(false);
     }
 }

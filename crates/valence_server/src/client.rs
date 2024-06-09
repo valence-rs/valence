@@ -298,7 +298,7 @@ impl Client {
 
     /// Kills the client and shows `message` on the death screen. If an entity
     /// killed the player, you should supply it as `killer`.
-    pub fn kill<'a>(&mut self, message: impl IntoText<'a>) {
+    pub fn kill<'a, M: IntoText<'a>>(&mut self, message: M) {
         self.write_packet(&DeathMessageS2c {
             player_id: VarInt(0),
             message: message.into_cow_text(),
@@ -314,15 +314,18 @@ impl Client {
     }
 
     /// Puts a particle effect at the given position, only for this client.
-    pub fn play_particle(
+    pub fn play_particle<P, O>(
         &mut self,
         particle: &Particle,
         long_distance: bool,
-        position: impl Into<DVec3>,
-        offset: impl Into<Vec3>,
+        position: P,
+        offset: O,
         max_speed: f32,
         count: i32,
-    ) {
+    ) where
+        P: Into<DVec3>,
+        O: Into<Vec3>,
+    {
         self.write_packet(&ParticleS2c {
             particle: Cow::Borrowed(particle),
             long_distance,
@@ -334,11 +337,11 @@ impl Client {
     }
 
     /// Plays a sound effect at the given position, only for this client.
-    pub fn play_sound(
+    pub fn play_sound<P: Into<DVec3>>(
         &mut self,
         sound: Sound,
         category: SoundCategory,
-        position: impl Into<DVec3>,
+        position: P,
         volume: f32,
         pitch: f32,
     ) {
@@ -358,7 +361,7 @@ impl Client {
     }
 
     /// `velocity` is in m/s.
-    pub fn set_velocity(&mut self, velocity: impl Into<Vec3>) {
+    pub fn set_velocity<V: Into<Vec3>>(&mut self, velocity: V) {
         self.write_packet(&EntityVelocityUpdateS2c {
             entity_id: VarInt(0),
             velocity: Velocity(velocity.into()).to_packet_units(),
@@ -418,7 +421,7 @@ impl EntityRemoveBuf {
 
     /// Sends the entity remove packet and clears the buffer. Does nothing if
     /// the buffer is empty.
-    pub fn send_and_clear(&mut self, mut w: impl WritePacket) {
+    pub fn send_and_clear<W: WritePacket>(&mut self, mut w: W) {
         if !self.0.is_empty() {
             w.write_packet(&EntitiesDestroyS2c {
                 entity_ids: Cow::Borrowed(&self.0),
@@ -466,7 +469,7 @@ impl Properties {
     /// required if you want the skin to show up on vanilla Notchian
     /// clients. You can't sign skins yourself, so you'll have to get it from
     /// Mojang.
-    pub fn set_skin(&mut self, skin: impl Into<String>, signature: impl Into<String>) {
+    pub fn set_skin<Sk: Into<String>, Si: Into<String>>(&mut self, skin: Sk, signature: Si) {
         if let Some(prop) = self.textures_mut() {
             prop.value = skin.into();
             prop.signature = Some(signature.into());
@@ -773,7 +776,7 @@ fn handle_layer_messages(
 
                     // Local messages
                     messages.query_local(old_view, |msg, range| match msg {
-                        crate::layer::entity::LocalMsg::DespawnEntity { pos: _, dest_layer } => {
+                        crate::layer::entity::LocalMsg::DespawnEntity { dest_layer, .. } => {
                             if !old_visible_entity_layers.0.contains(&dest_layer) {
                                 let mut bytes = &bytes[range];
 
@@ -785,8 +788,8 @@ fn handle_layer_messages(
                             }
                         }
                         crate::layer::entity::LocalMsg::DespawnEntityTransition {
-                            pos: _,
                             dest_pos,
+                            ..
                         } => {
                             if !old_view.contains(dest_pos) {
                                 let mut bytes = &bytes[range];
@@ -798,7 +801,7 @@ fn handle_layer_messages(
                                 }
                             }
                         }
-                        crate::layer::entity::LocalMsg::SpawnEntity { pos: _, src_layer } => {
+                        crate::layer::entity::LocalMsg::SpawnEntity { src_layer, .. } => {
                             if !old_visible_entity_layers.0.contains(&src_layer) {
                                 let mut bytes = &bytes[range];
 
@@ -819,8 +822,7 @@ fn handle_layer_messages(
                             }
                         }
                         crate::layer::entity::LocalMsg::SpawnEntityTransition {
-                            pos: _,
-                            src_pos,
+                            src_pos, ..
                         } => {
                             if !old_view.contains(src_pos) {
                                 let mut bytes = &bytes[range];
@@ -841,10 +843,10 @@ fn handle_layer_messages(
                                 }
                             }
                         }
-                        crate::layer::entity::LocalMsg::PacketAt { pos: _ } => {
+                        crate::layer::entity::LocalMsg::PacketAt { .. } => {
                             client.write_packet_bytes(&bytes[range]);
                         }
-                        crate::layer::entity::LocalMsg::PacketAtExcept { pos: _, except } => {
+                        crate::layer::entity::LocalMsg::PacketAtExcept { except, .. } => {
                             if self_entity != except {
                                 client.write_packet_bytes(&bytes[range]);
                             }

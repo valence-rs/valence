@@ -101,7 +101,7 @@ pub struct RegionFolder {
 }
 
 impl RegionFolder {
-    pub fn new(region_root: impl Into<PathBuf>) -> Self {
+    pub fn new<R: Into<PathBuf>>(region_root: R) -> Self {
         Self {
             regions: LruCache::new(LRU_CACHE_SIZE),
             region_root: region_root.into(),
@@ -216,6 +216,7 @@ impl RegionFolder {
                     .read(true)
                     .write(true)
                     .create(true)
+                    .truncate(false)
                     .open(path)?;
 
                 // TODO: try_get_or_insert_mut
@@ -337,7 +338,7 @@ impl Location {
     }
 
     fn offset_and_count(self) -> (u64, usize) {
-        (self.offset() as u64, self.count() as usize)
+        (u64::from(self.offset()), usize::from(self.count()))
     }
 }
 

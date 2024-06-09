@@ -89,7 +89,7 @@ fn update_boss_bar_layer_view(
         _old_position,
         view_distance,
         _old_view_distance,
-    ) in clients_query.iter_mut()
+    ) in &mut clients_query
     {
         let view = ChunkView::new(position.0.into(), view_distance.get());
 
@@ -183,12 +183,12 @@ fn update_boss_bar_chunk_view(
         old_position,
         view_distance,
         old_view_distance,
-    ) in clients_query.iter_mut()
+    ) in &mut clients_query
     {
         let view = ChunkView::new(position.0.into(), view_distance.get());
         let old_view = ChunkView::new(old_position.get().into(), old_view_distance.get());
 
-        for layer in visible_entity_layers.0.iter() {
+        for layer in &visible_entity_layers.0 {
             for (id, title, health, style, flags, _, boss_bar_position) in boss_bars_query
                 .iter()
                 .filter(|(_, _, _, _, _, layer_id, _)| layer_id.0 == *layer)

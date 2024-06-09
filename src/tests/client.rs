@@ -12,9 +12,9 @@ use crate::{ChunkPos, GameMode};
 fn client_teleport_and_move() {
     let ScenarioSingleClient {
         mut app,
-        client: _,
         helper: mut helper_1,
         layer: layer_ent,
+        ..
     } = ScenarioSingleClient::new();
 
     let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();

@@ -13,9 +13,8 @@ use crate::world_border::{
 fn test_initialize_on_join() {
     let ScenarioSingleClient {
         mut app,
-        client: _,
         mut helper,
-        layer: _,
+        ..
     } = prepare();
 
     app.update();
@@ -29,9 +28,9 @@ fn test_initialize_on_join() {
 fn test_center_change() {
     let ScenarioSingleClient {
         mut app,
-        client: _,
         mut helper,
         layer,
+        ..
     } = prepare();
 
     app.update();
@@ -53,9 +52,9 @@ fn test_center_change() {
 fn test_diameter_change() {
     let ScenarioSingleClient {
         mut app,
-        client: _,
         mut helper,
         layer,
+        ..
     } = prepare();
 
     app.update();
@@ -77,9 +76,9 @@ fn test_diameter_change() {
 fn test_interpolation() {
     let ScenarioSingleClient {
         mut app,
-        client: _,
         mut helper,
         layer,
+        ..
     } = prepare();
 
     app.update();
@@ -110,9 +109,9 @@ fn test_interpolation() {
 fn test_warning_blocks_change() {
     let ScenarioSingleClient {
         mut app,
-        client: _,
         mut helper,
         layer,
+        ..
     } = prepare();
 
     app.update();
@@ -134,9 +133,9 @@ fn test_warning_blocks_change() {
 fn test_warning_time_change() {
     let ScenarioSingleClient {
         mut app,
-        client: _,
         mut helper,
         layer,
+        ..
     } = prepare();
 
     app.update();
@@ -158,9 +157,9 @@ fn test_warning_time_change() {
 fn test_portal_tp_boundary_change() {
     let ScenarioSingleClient {
         mut app,
-        client: _,
         mut helper,
         layer,
+        ..
     } = prepare();
 
     app.update();

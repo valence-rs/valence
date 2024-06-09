@@ -23,8 +23,7 @@ pub(super) fn derive_decode(item: TokenStream) -> Result<TokenStream> {
         .generics
         .lifetimes()
         .next()
-        .map(|l| l.lifetime.clone())
-        .unwrap_or_else(|| parse_quote!('a));
+        .map_or_else(|| parse_quote!('a), |l| l.lifetime.clone());
 
     match input.data {
         Data::Struct(struct_) => {

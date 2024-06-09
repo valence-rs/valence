@@ -1,3 +1,5 @@
+#![allow(clippy::cast_lossless)] // TODO: Remove me.
+
 use std::borrow::Cow;
 use std::hash::Hash;
 

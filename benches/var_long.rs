@@ -4,7 +4,7 @@ use criterion::Criterion;
 use rand::Rng;
 use valence::protocol::{Decode, Encode, VarLong};
 
-pub fn var_long(c: &mut Criterion) {
+pub(crate) fn var_long(c: &mut Criterion) {
     let mut group = c.benchmark_group("varlong");
 
     let mut rng = rand::thread_rng();

@@ -78,7 +78,7 @@ impl PlayerList {
         &self.footer
     }
 
-    pub fn set_header<'a>(&mut self, txt: impl IntoText<'a>) {
+    pub fn set_header<'a, T: IntoText<'a>>(&mut self, txt: T) {
         let txt = txt.into_cow_text().into_owned();
 
         if txt != self.header {
@@ -88,7 +88,7 @@ impl PlayerList {
         self.header = txt;
     }
 
-    pub fn set_footer<'a>(&mut self, txt: impl IntoText<'a>) {
+    pub fn set_footer<'a, T: IntoText<'a>>(&mut self, txt: T) {
         let txt = txt.into_cow_text().into_owned();
 
         if txt != self.footer {

@@ -27,7 +27,7 @@ impl<const BIT_COUNT: usize, const BYTE_COUNT: usize> FixedBitSet<BIT_COUNT, BYT
         );
 
         let byte = &mut self.0[idx / 8];
-        *byte |= (val as u8) << (idx % 8);
+        *byte |= u8::from(val) << (idx % 8);
     }
 }
 

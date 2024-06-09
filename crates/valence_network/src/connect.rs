@@ -204,7 +204,7 @@ async fn handle_status(
             // added at 1.16.
             if handshake.protocol_version < 735 {
                 fn fallback_webcolors(txt: &mut Text) {
-                    if let Some(Color::Rgb(ref color)) = txt.color {
+                    if let Some(Color::Rgb(color)) = txt.color {
                         txt.color = Some(Color::Named(color.to_named_lossy()));
                     }
                     for child in &mut txt.extra {
@@ -270,7 +270,7 @@ async fn handle_login(
 
     let LoginHelloC2s {
         username,
-        profile_id: _, // TODO
+        .. // TODO: profile_id
     } = io.recv_packet().await?;
 
     let username = username.0.to_owned();
@@ -432,7 +432,7 @@ fn login_offline(remote_addr: SocketAddr, username: String) -> anyhow::Result<Ne
     })
 }
 
-/// Login procedure for BungeeCord.
+/// Login procedure for `BungeeCord`.
 fn login_bungeecord(
     remote_addr: SocketAddr,
     server_address: &str,

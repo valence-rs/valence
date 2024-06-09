@@ -4,7 +4,7 @@ use criterion::Criterion;
 use rand::Rng;
 use valence::protocol::{Decode, Encode, VarInt};
 
-pub fn var_int(c: &mut Criterion) {
+pub(crate) fn var_int(c: &mut Criterion) {
     let mut group = c.benchmark_group("varint");
 
     let mut rng = rand::thread_rng();

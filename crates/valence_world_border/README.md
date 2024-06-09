@@ -1,4 +1,4 @@
-# valence_world_border
+# `valence_world_border`
 
 Contains the plugin for working with Minecraft's [world border](https://minecraft.wiki/w/World_border).
 

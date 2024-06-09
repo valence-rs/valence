@@ -10,8 +10,8 @@ impl CommandArg for bool {
             Ok(false)
         } else {
             Err(CommandArgParseError::InvalidArgument {
-                expected: "bool".to_string(),
-                got: input.peek_word().to_string(),
+                expected: "bool".to_owned(),
+                got: input.peek_word().to_owned(),
             })
         }
     }

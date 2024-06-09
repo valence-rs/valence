@@ -63,14 +63,14 @@ impl JavaString {
     ///     "Hello World!"
     /// );
     /// assert_eq!(
-    ///     JavaString::from_semi_utf8(vec![0xF0, 0x9F, 0x92, 0x96]).unwrap(),
+    ///     JavaString::from_semi_utf8(vec![0xf0, 0x9f, 0x92, 0x96]).unwrap(),
     ///     "💖"
     /// );
     /// assert_eq!(
-    ///     JavaString::from_semi_utf8(vec![0xED, 0xA0, 0x80]).unwrap(),
-    ///     JavaString::from(JavaCodePoint::from_u32(0xD800).unwrap())
+    ///     JavaString::from_semi_utf8(vec![0xed, 0xa0, 0x80]).unwrap(),
+    ///     JavaString::from(JavaCodePoint::from_u32(0xd800).unwrap())
     /// );
-    /// assert!(JavaString::from_semi_utf8(vec![0xED]).is_err());
+    /// assert!(JavaString::from_semi_utf8(vec![0xed]).is_err());
     /// ```
     pub fn from_semi_utf8(vec: Vec<u8>) -> Result<JavaString, FromUtf8Error> {
         match run_utf8_semi_validation(&vec) {
@@ -89,12 +89,12 @@ impl JavaString {
     /// # use std::borrow::Cow;
     /// # use java_string::{JavaStr, JavaString};
     ///
-    /// let sparkle_heart = [0xF0, 0x9F, 0x92, 0x96];
+    /// let sparkle_heart = [0xf0, 0x9f, 0x92, 0x96];
     /// let result = JavaString::from_semi_utf8_lossy(&sparkle_heart);
     /// assert!(matches!(result, Cow::Borrowed(_)));
     /// assert_eq!(result, JavaStr::from_str("💖"));
     ///
-    /// let foobar_with_error = [b'f', b'o', b'o', 0xED, b'b', b'a', b'r'];
+    /// let foobar_with_error = [b'f', b'o', b'o', 0xed, b'b', b'a', b'r'];
     /// let result = JavaString::from_semi_utf8_lossy(&foobar_with_error);
     /// assert!(matches!(result, Cow::Owned(_)));
     /// assert_eq!(result, JavaStr::from_str("foo�bar"));
@@ -195,7 +195,7 @@ impl JavaString {
     /// );
     ///
     /// let string_with_error = JavaString::from("abc")
-    ///     + JavaString::from(JavaCodePoint::from_u32(0xD800).unwrap()).as_java_str();
+    ///     + JavaString::from(JavaCodePoint::from_u32(0xd800).unwrap()).as_java_str();
     /// assert!(string_with_error.into_string().is_err());
     /// ```
     pub fn into_string(self) -> Result<String, Utf8Error> {

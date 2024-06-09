@@ -136,7 +136,7 @@ pub(super) fn validate_click_slot_packet(
                     1 => -1,
                     0 => {
                         if !cursor_item.is_empty() {
-                            -cursor_item.0.count as i32
+                            -i32::from(cursor_item.0.count)
                         } else {
                             0
                         }
@@ -265,7 +265,7 @@ pub(super) fn validate_click_slot_packet(
                 "drop key must modify exactly one slot"
             );
             ensure!(
-                packet.slot_idx == packet.slot_changes.first().map(|s| s.idx).unwrap_or(-2),
+                packet.slot_idx == packet.slot_changes.first().map_or(-2, |s| s.idx),
                 "slot index does not match modified slot"
             );
 
@@ -287,7 +287,7 @@ pub(super) fn validate_click_slot_packet(
                 0 => -1,
                 1 => {
                     if !old_slot.is_empty() {
-                        -old_slot.count as i32
+                        -i32::from(old_slot.count)
                     } else {
                         0
                     }
@@ -343,17 +343,17 @@ fn calculate_net_item_delta(
         let new_slot = &slot.stack;
 
         net_item_delta += match (!old_slot.is_empty(), !new_slot.is_empty()) {
-            (true, true) => new_slot.count as i32 - old_slot.count as i32,
-            (true, false) => -(old_slot.count as i32),
-            (false, true) => new_slot.count as i32,
+            (true, true) => i32::from(new_slot.count) - i32::from(old_slot.count),
+            (true, false) => -i32::from(old_slot.count),
+            (false, true) => i32::from(new_slot.count),
             (false, false) => 0,
         };
     }
 
     net_item_delta += match (!cursor_item.is_empty(), !packet.carried_item.is_empty()) {
-        (true, true) => packet.carried_item.count as i32 - cursor_item.count as i32,
-        (true, false) => -(cursor_item.count as i32),
-        (false, true) => packet.carried_item.count as i32,
+        (true, true) => i32::from(packet.carried_item.count) - i32::from(cursor_item.count),
+        (true, false) => -i32::from(cursor_item.count),
+        (false, true) => i32::from(packet.carried_item.count),
         (false, false) => 0,
     };
 

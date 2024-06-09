@@ -125,11 +125,7 @@ impl Aabb {
             far = far.min(t0.max(t1));
         }
 
-        if near <= far {
-            Some([near, far])
-        } else {
-            None
-        }
+        (near <= far).then_some([near, far])
     }
 }
 

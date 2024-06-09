@@ -62,6 +62,7 @@ fn build_plugin(app: &mut App) -> anyhow::Result<()> {
         rsa_der::public_key_to_der(&rsa_key.n().to_bytes_be(), &rsa_key.e().to_bytes_be())
             .into_boxed_slice();
 
+    #[allow(clippy::if_then_some_else_none)]
     let runtime = if settings.tokio_handle.is_none() {
         Some(Runtime::new()?)
     } else {
@@ -284,7 +285,7 @@ pub struct ErasedNetworkCallbacks {
 }
 
 impl ErasedNetworkCallbacks {
-    pub fn new(callbacks: impl NetworkCallbacks) -> Self {
+    pub fn new<C: NetworkCallbacks>(callbacks: C) -> Self {
         Self {
             inner: Arc::new(callbacks),
         }
@@ -433,11 +434,7 @@ pub trait NetworkCallbacks: Send + Sync + 'static {
         let success = shared
             .player_count()
             .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |n| {
-                if n < max_players {
-                    Some(n + 1)
-                } else {
-                    None
-                }
+                (n < max_players).then_some(n + 1)
             })
             .is_ok();
 
@@ -647,6 +644,7 @@ pub struct PlayerSampleEntry {
     pub id: Uuid,
 }
 
+#[allow(clippy::infinite_loop)]
 async fn do_broadcast_to_lan_loop(shared: SharedNetworkState) {
     let port = shared.0.address.port();
 

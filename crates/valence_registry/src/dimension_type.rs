@@ -3,8 +3,8 @@
 //!
 //! ### **NOTE:**
 //! - Modifying the dimension type registry after the server has started can
-//! break invariants within instances and clients! Make sure there are no
-//! instances or clients spawned before mutating.
+//!   break invariants within instances and clients! Make sure there are no
+//!   instances or clients spawned before mutating.
 
 use std::ops::{Deref, DerefMut};
 
@@ -86,14 +86,14 @@ impl DimensionTypeRegistry {
 pub struct DimensionTypeId(u16);
 
 impl RegistryIdx for DimensionTypeId {
-    const MAX: usize = u16::MAX as _;
+    const MAX: usize = u16::MAX as usize;
 
     fn to_index(self) -> usize {
-        self.0 as _
+        self.0 as usize
     }
 
     fn from_index(idx: usize) -> Self {
-        Self(idx as _)
+        Self(idx as u16)
     }
 }
 

@@ -24,7 +24,7 @@ impl Encode for OptGameMode {
     fn encode(&self, w: impl Write) -> anyhow::Result<()> {
         match self.0 {
             Some(gm) => (gm as i8).encode(w),
-            None => (-1i8).encode(w),
+            None => (-1_i8).encode(w),
         }
     }
 }

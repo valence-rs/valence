@@ -1,4 +1,4 @@
-# valence_lang
+# `valence_lang`
 
 Contains code for managing Minecraft's languages and translation keys.
 

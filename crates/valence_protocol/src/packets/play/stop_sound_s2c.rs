@@ -16,19 +16,19 @@ impl Encode for StopSoundS2c<'_> {
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         match (self.source, self.sound.as_ref()) {
             (Some(source), Some(sound)) => {
-                3i8.encode(&mut w)?;
+                3_i8.encode(&mut w)?;
                 source.encode(&mut w)?;
                 sound.encode(&mut w)?;
             }
             (None, Some(sound)) => {
-                2i8.encode(&mut w)?;
+                2_i8.encode(&mut w)?;
                 sound.encode(&mut w)?;
             }
             (Some(source), None) => {
-                1i8.encode(&mut w)?;
+                1_i8.encode(&mut w)?;
                 source.encode(&mut w)?;
             }
-            _ => 0i8.encode(&mut w)?,
+            _ => 0_i8.encode(&mut w)?,
         }
 
         Ok(())

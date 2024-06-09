@@ -53,7 +53,7 @@ impl<I: RegistryIdx, V> Registry<I, V> {
         }
     }
 
-    pub fn insert(&mut self, name: impl Into<Ident<String>>, item: V) -> Option<I> {
+    pub fn insert<N: Into<Ident<String>>>(&mut self, name: N, item: V) -> Option<I> {
         if self.items.len() >= I::MAX {
             // Too many items in the registry.
             return None;

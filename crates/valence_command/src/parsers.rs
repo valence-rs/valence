@@ -45,7 +45,6 @@ pub trait CommandArg: Sized {
     fn display() -> Parser;
 }
 
-///
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParseInput<'a>(&'a str);
 
@@ -88,8 +87,7 @@ impl<'a> ParseInput<'a> {
         self.0
             .char_indices()
             .nth(n)
-            .map(|(idx, _)| &self.0[..idx])
-            .unwrap_or(self.0)
+            .map_or(self.0, |(idx, _)| &self.0[..idx])
     }
 
     /// Returns the next word without advancing the input
@@ -97,8 +95,7 @@ impl<'a> ParseInput<'a> {
         self.0
             .char_indices()
             .find(|(_, c)| c.is_whitespace())
-            .map(|(idx, _)| &self.0[..idx])
-            .unwrap_or(self.0)
+            .map_or(self.0, |(idx, _)| &self.0[..idx])
     }
 
     /// Checks if the input is empty

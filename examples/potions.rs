@@ -124,7 +124,7 @@ fn init_clients(
         layer_id.0 = layer;
         visible_chunk_layer.0 = layer;
         visible_entity_layers.0.insert(layer);
-        pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
+        pos.set([0.0, f64::from(SPAWN_Y) + 1.0, 0.0]);
         *game_mode = GameMode::Survival;
 
         client.send_chat_message("Welcome to the potions example.".bold());
@@ -152,7 +152,7 @@ pub fn add_potion_effect(
 }
 
 fn adjust_modifier_amount(amplifier: u8, amount: f64) -> f64 {
-    amount * (amplifier + 1) as f64
+    amount * f64::from(amplifier + 1)
 }
 
 fn apply_potion_attribute(
@@ -220,7 +220,7 @@ pub fn handle_status_effect_added(
                     // need to keep track of the previous absorption value and subtract that from
                     // the new value (because you can take damage while having absorption)
                     if let Some(mut absorption) = absorption {
-                        absorption.0 += (effect.amplifier() + 1) as f32 * 4.0;
+                        absorption.0 += f32::from(effect.amplifier() + 1) * 4.0;
                     }
                 }
                 StatusEffect::InstantHealth => {
@@ -271,7 +271,7 @@ pub fn handle_status_effect_removed(
             match effect.status_effect() {
                 StatusEffect::Absorption => {
                     if let Some(mut absorption) = absorption {
-                        absorption.0 -= (effect.amplifier() + 1) as f32 * 4.0;
+                        absorption.0 -= f32::from(effect.amplifier() + 1) * 4.0;
                     }
                 }
                 StatusEffect::Glowing => {
@@ -297,7 +297,7 @@ pub fn handle_status_effect_update(
         for effect in status.get_current_effects() {
             match effect.status_effect() {
                 StatusEffect::Regeneration => {
-                    let i = 50 >> effect.amplifier().min(31) as u32;
+                    let i = 50 >> u32::from(effect.amplifier().min(31));
 
                     if i == 0 || effect.active_ticks() % i == 0 {
                         if let Some(ref mut health) = health {
@@ -310,7 +310,7 @@ pub fn handle_status_effect_update(
                     }
                 }
                 StatusEffect::Poison => {
-                    let i = 25 >> effect.amplifier().min(31) as u32;
+                    let i = 25 >> u32::from(effect.amplifier().min(31));
 
                     if i == 0 || effect.active_ticks() % i == 0 {
                         if let Some(ref mut health) = health {
@@ -319,7 +319,7 @@ pub fn handle_status_effect_update(
                     }
                 }
                 StatusEffect::Wither => {
-                    let i = 40 >> effect.amplifier().min(31) as u32;
+                    let i = 40 >> u32::from(effect.amplifier().min(31));
 
                     if i == 0 || effect.active_ticks() % i == 0 {
                         if let Some(ref mut health) = health {

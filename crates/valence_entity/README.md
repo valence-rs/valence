@@ -1,4 +1,4 @@
-# valence_entity
+# `valence_entity`
 
 Components and systems concerning Minecraft entities. This includes "zombie", "chicken", "player", etc.
 

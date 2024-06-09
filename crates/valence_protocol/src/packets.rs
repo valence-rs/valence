@@ -1,7 +1,8 @@
 //! All of Minecraft's network packets.
 //!
 //! Packets are grouped in submodules according to the protocol stage they're
-//! used in. Names are derived from the FabricMC Yarn mappings for consistency.
+//! used in. Names are derived from the `FabricMC` Yarn mappings for
+//! consistency.
 
 pub mod handshaking {
     pub mod handshake_c2s;

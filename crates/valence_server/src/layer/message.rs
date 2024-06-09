@@ -217,7 +217,7 @@ where
     /// Takes a visitor function `f` and visits all local messages contained
     /// within the chunk view `view`. `f` is called with the local
     /// message and its span of bytes in [`Self::bytes`].
-    pub fn query_local(&self, view: ChunkView, mut f: impl FnMut(L, Range<usize>)) {
+    pub fn query_local<F: FnMut(L, Range<usize>)>(&self, view: ChunkView, mut f: F) {
         debug_assert!(self.is_ready);
 
         self.bvh.query(view, |pair| {
@@ -252,7 +252,7 @@ where
             .field("global", &self.global)
             .field("local", &self.local)
             .field("is_ready", &self.is_ready)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 

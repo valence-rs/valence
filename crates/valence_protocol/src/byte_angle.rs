@@ -18,11 +18,11 @@ impl ByteAngle {
     }
 
     pub fn to_degrees(self) -> f32 {
-        self.0 as f32 / 256.0 * 360.0
+        f32::from(self.0) / 256.0 * 360.0
     }
 
     pub fn to_radians(self) -> f32 {
-        self.0 as f32 / 256.0 * TAU
+        f32::from(self.0) / 256.0 * TAU
     }
 }
 

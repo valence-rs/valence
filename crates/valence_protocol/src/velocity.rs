@@ -21,12 +21,12 @@ impl Velocity {
 
     /// To meters/second.
     pub fn to_ms_f32(self) -> [f32; 3] {
-        self.0.map(|v| v as f32 / (8000.0 / 20.0))
+        self.0.map(|v| f32::from(v) / (8000.0 / 20.0))
     }
 
     /// To meters/second.
     pub fn to_ms_f64(self) -> [f64; 3] {
-        self.0.map(|v| v as f64 / (8000.0 / 20.0))
+        self.0.map(|v| f64::from(v) / (8000.0 / 20.0))
     }
 }
 

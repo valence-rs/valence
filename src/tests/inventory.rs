@@ -19,7 +19,7 @@ fn test_should_open_inventory() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = ScenarioSingleClient::new();
 
     let inventory = Inventory::new(InventoryKind::Generic3x3);
@@ -52,7 +52,7 @@ fn test_should_close_inventory() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = ScenarioSingleClient::new();
 
     let inventory = Inventory::new(InventoryKind::Generic3x3);
@@ -92,7 +92,7 @@ fn test_should_remove_invalid_open_inventory() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = ScenarioSingleClient::new();
 
     let inventory = Inventory::new(InventoryKind::Generic3x3);
@@ -130,7 +130,7 @@ fn test_should_modify_player_inventory_click_slot() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = ScenarioSingleClient::new();
 
     // Process a tick to get past the "on join" logic.
@@ -196,7 +196,7 @@ fn test_should_modify_player_inventory_server_side() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = ScenarioSingleClient::new();
 
     // Process a tick to get past the "on join" logic.
@@ -233,7 +233,7 @@ fn test_should_sync_entire_player_inventory() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = ScenarioSingleClient::new();
 
     // Process a tick to get past the "on join" logic.
@@ -273,7 +273,7 @@ fn test_should_modify_open_inventory_click_slot() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = ScenarioSingleClient::new();
 
     let inventory_ent = set_up_open_inventory(&mut app, client);
@@ -336,7 +336,7 @@ fn test_should_modify_open_inventory_server_side() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = ScenarioSingleClient::new();
 
     let inventory_ent = set_up_open_inventory(&mut app, client);
@@ -378,7 +378,7 @@ fn test_should_sync_entire_open_inventory() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = ScenarioSingleClient::new();
 
     let inventory_ent = set_up_open_inventory(&mut app, client);
@@ -406,7 +406,7 @@ fn test_set_creative_mode_slot_handling() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = ScenarioSingleClient::new();
 
     let mut game_mode = app
@@ -444,7 +444,7 @@ fn test_ignore_set_creative_mode_slot_if_not_creative() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = ScenarioSingleClient::new();
 
     let mut game_mode = app
@@ -478,7 +478,7 @@ fn test_window_id_increments() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = ScenarioSingleClient::new();
 
     let inventory = Inventory::new(InventoryKind::Generic9x3);
@@ -519,7 +519,7 @@ fn test_should_handle_set_held_item() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = ScenarioSingleClient::new();
 
     // Process a tick to get past the "on join" logic.
@@ -545,7 +545,7 @@ fn should_not_increment_state_id_on_cursor_item_change() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = ScenarioSingleClient::new();
 
     // Process a tick to get past the "on join" logic.
@@ -587,7 +587,7 @@ mod dropping_items {
             mut app,
             client,
             mut helper,
-            layer: _,
+            ..
         } = ScenarioSingleClient::new();
 
         // Process a tick to get past the "on join" logic.
@@ -646,7 +646,7 @@ mod dropping_items {
             mut app,
             client,
             mut helper,
-            layer: _,
+            ..
         } = ScenarioSingleClient::new();
 
         // Process a tick to get past the "on join" logic.
@@ -699,7 +699,7 @@ mod dropping_items {
             mut app,
             client,
             mut helper,
-            layer: _,
+            ..
         } = ScenarioSingleClient::new();
 
         // Process a tick to get past the "on join" logic.
@@ -738,7 +738,7 @@ mod dropping_items {
             mut app,
             client,
             mut helper,
-            layer: _,
+            ..
         } = ScenarioSingleClient::new();
 
         // Process a tick to get past the "on join" logic.
@@ -798,7 +798,7 @@ mod dropping_items {
             mut app,
             client,
             mut helper,
-            layer: _,
+            ..
         } = ScenarioSingleClient::new();
 
         // Process a tick to get past the "on join" logic.
@@ -858,7 +858,7 @@ mod dropping_items {
             mut app,
             client,
             mut helper,
-            layer: _,
+            ..
         } = ScenarioSingleClient::new();
 
         // Process a tick to get past the "on join" logic.
@@ -920,7 +920,7 @@ mod dropping_items {
             mut app,
             client,
             mut helper,
-            layer: _,
+            ..
         } = ScenarioSingleClient::new();
 
         // Process a tick to get past the "on join" logic.
@@ -1008,7 +1008,7 @@ fn should_drop_item_stack_player_open_inventory_with_dropkey() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = ScenarioSingleClient::new();
 
     // Process a tick to get past the "on join" logic.
@@ -1091,7 +1091,7 @@ fn dragging_items() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = ScenarioSingleClient::new();
 
     // Process a tick to get past the "on join" logic.

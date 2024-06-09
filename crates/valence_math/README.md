@@ -1,4 +1,4 @@
-# valence_math
+# `valence_math`
 
 Common math utilities for Valence.
 

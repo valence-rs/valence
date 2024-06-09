@@ -56,7 +56,7 @@ impl Encode for Mode<'_> {
                 team_suffix,
                 entities,
             } => {
-                0i8.encode(&mut w)?;
+                0_i8.encode(&mut w)?;
                 team_display_name.encode(&mut w)?;
                 friendly_flags.encode(&mut w)?;
                 match name_tag_visibility {
@@ -78,7 +78,7 @@ impl Encode for Mode<'_> {
                 team_suffix.encode(&mut w)?;
                 entities.encode(&mut w)?;
             }
-            Mode::RemoveTeam => 1i8.encode(&mut w)?,
+            Mode::RemoveTeam => 1_i8.encode(&mut w)?,
             Mode::UpdateTeamInfo {
                 team_display_name,
                 friendly_flags,
@@ -88,7 +88,7 @@ impl Encode for Mode<'_> {
                 team_prefix,
                 team_suffix,
             } => {
-                2i8.encode(&mut w)?;
+                2_i8.encode(&mut w)?;
                 team_display_name.encode(&mut w)?;
                 friendly_flags.encode(&mut w)?;
                 match name_tag_visibility {
@@ -110,11 +110,11 @@ impl Encode for Mode<'_> {
                 team_suffix.encode(&mut w)?;
             }
             Mode::AddEntities { entities } => {
-                3i8.encode(&mut w)?;
+                3_i8.encode(&mut w)?;
                 entities.encode(&mut w)?;
             }
             Mode::RemoveEntities { entities } => {
-                4i8.encode(&mut w)?;
+                4_i8.encode(&mut w)?;
                 entities.encode(&mut w)?;
             }
         }

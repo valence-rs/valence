@@ -1,4 +1,4 @@
-# valence_scoreboard
+# `valence_scoreboard`
 
 This crate provides functionality for creating and managing scoreboards. In Minecraft, a scoreboard references an [`Objective`], which is a mapping from strings to scores. Typically, the string is a player name, and the score is a number of points, but the string can be any arbitrary string <= 40 chars, and the score can be any integer.
 

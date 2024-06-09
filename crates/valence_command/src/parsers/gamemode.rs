@@ -16,8 +16,8 @@ impl CommandArg for GameMode {
             Ok(GameMode::Spectator)
         } else {
             Err(CommandArgParseError::InvalidArgument {
-                expected: "game_mode".to_string(),
-                got: input.peek_word().to_string(),
+                expected: "game_mode".to_owned(),
+                got: input.peek_word().to_owned(),
             })
         }
     }

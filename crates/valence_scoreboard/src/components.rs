@@ -17,7 +17,7 @@ use valence_server::Text;
 pub struct Objective(pub(crate) String);
 
 impl Objective {
-    pub fn new(name: impl Into<String>) -> Self {
+    pub fn new<N: Into<String>>(name: N) -> Self {
         let name = name.into();
         debug_assert!(
             name.len() <= 16,
@@ -47,7 +47,7 @@ impl ObjectiveScores {
         Default::default()
     }
 
-    pub fn with_map(map: impl Into<HashMap<String, i32>>) -> Self {
+    pub fn with_map<M: Into<HashMap<String, i32>>>(map: M) -> Self {
         Self(map.into())
     }
 
@@ -59,7 +59,7 @@ impl ObjectiveScores {
         self.0.get_mut(key)
     }
 
-    pub fn insert(&mut self, key: impl Into<String>, value: i32) -> Option<i32> {
+    pub fn insert<K: Into<String>>(&mut self, key: K, value: i32) -> Option<i32> {
         self.0.insert(key.into(), value)
     }
 }

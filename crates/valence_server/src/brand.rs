@@ -18,7 +18,7 @@ pub trait SetBrand {
 impl<T: WritePacket> SetBrand for T {
     fn set_brand(&mut self, brand: &str) {
         let mut buf = vec![];
-        let _ = VarInt(brand.len() as _).encode(&mut buf);
+        let _ = VarInt(brand.len() as i32).encode(&mut buf);
         buf.extend_from_slice(brand.as_bytes());
         self.write_packet(&CustomPayloadS2c {
             channel: ident!("minecraft:brand").into(),

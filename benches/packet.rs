@@ -12,7 +12,7 @@ use valence::text::IntoText;
 use valence_server::protocol::Velocity;
 use valence_server::CompressionThreshold;
 
-pub fn packet(c: &mut Criterion) {
+pub(crate) fn packet(c: &mut Criterion) {
     let mut group = c.benchmark_group("packet");
 
     let mut encoder = PacketEncoder::new();

@@ -78,9 +78,12 @@ pub(crate) fn code_view_ui(ui: &mut egui::Ui, mut code: &str) {
 }
 
 /// Memoized Code highlighting
-pub(crate) fn highlight(ctx: &egui::Context, theme: &CodeTheme, code: &str, language: &str) -> LayoutJob {
-
-
+pub(crate) fn highlight(
+    ctx: &egui::Context,
+    theme: &CodeTheme,
+    code: &str,
+    language: &str,
+) -> LayoutJob {
     type HighlightCache = egui::util::cache::FrameCache<LayoutJob, Highlighter>;
 
     ctx.memory_mut(|mem| {

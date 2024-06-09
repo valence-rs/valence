@@ -37,7 +37,7 @@ fn record_tick_start_time(mut commands: Commands) {
 
 fn print_tick_time(server: Res<Server>, time: Res<TickStart>, clients: Query<(), With<Client>>) {
     let tick = server.current_tick();
-    if tick % (server.tick_rate().get() as i64 / 2) == 0 {
+    if tick % (i64::from(server.tick_rate().get()) / 2) == 0 {
         let client_count = clients.iter().len();
 
         let millis = time.0.elapsed().as_secs_f32() * 1000.0;
@@ -96,7 +96,7 @@ fn init_clients(
         layer_id.0 = layer;
         visible_chunk_layer.0 = layer;
         visible_entity_layers.0.insert(layer);
-        pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
+        pos.set([0.0, f64::from(SPAWN_Y) + 1.0, 0.0]);
         *game_mode = GameMode::Creative;
     }
 }

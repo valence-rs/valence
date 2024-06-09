@@ -38,7 +38,7 @@ impl EntityInitQueryItem<'_> {
     /// Writes the appropriate packets to initialize an entity. This will spawn
     /// the entity and initialize tracked data. `pos` is the initial position of
     /// the entity.
-    pub fn write_init_packets(&self, pos: DVec3, mut writer: impl WritePacket) {
+    pub fn write_init_packets<W: WritePacket>(&self, pos: DVec3, mut writer: W) {
         match *self.kind {
             EntityKind::MARKER => {}
             EntityKind::EXPERIENCE_ORB => {
@@ -104,7 +104,7 @@ pub struct UpdateEntityQuery {
 }
 
 impl UpdateEntityQueryItem<'_> {
-    pub fn write_update_packets(&self, mut writer: impl WritePacket) {
+    pub fn write_update_packets<W: WritePacket>(&self, mut writer: W) {
         // TODO: @RJ I saw you're using UpdateEntityPosition and UpdateEntityRotation sometimes. These two packets are actually broken on the client and will erase previous position/rotation https://bugs.mojang.com/browse/MC-255263 -Moulberry
 
         let entity_id = VarInt(self.id.get());

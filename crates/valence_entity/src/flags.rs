@@ -27,7 +27,7 @@ macro_rules! flags {
                         #[doc = "."]
                         #[inline]
                         pub fn [< set_$flag >] (&mut self, $flag: bool) {
-                            self.0 = (self.0 & !(1 << $offset)) | (($flag as i8) << $offset);
+                            self.0 = (self.0 & !(1 << $offset)) | ((i8::from($flag)) << $offset);
                         }
                     }
                 )*
