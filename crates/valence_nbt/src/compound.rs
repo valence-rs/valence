@@ -219,8 +219,8 @@ where
         use indexmap::map::Entry as EntryImpl;
 
         match self.map.entry(k.into()) {
-            EntryImpl::Vacant(ve) => Entry::Vacant(VacantEntry { ve }),
-            EntryImpl::Occupied(oe) => Entry::Occupied(OccupiedEntry { oe }),
+            EntryImpl::Vacant(ve) => Entry::Vacant(VacantEntry { entry: ve }),
+            EntryImpl::Occupied(oe) => Entry::Occupied(OccupiedEntry { entry: oe }),
         }
     }
 
@@ -421,7 +421,7 @@ where
         }
     }
 
-    pub fn or_insert(self, default: impl Into<Value<S>>) -> &'a mut Value<S> {
+    pub fn or_insert<V: Into<Value<S>>>(self, default: V) -> &'a mut Value<S> {
         match self {
             Entry::Vacant(ve) => ve.insert(default),
             Entry::Occupied(oe) => oe.into_mut(),
@@ -453,11 +453,23 @@ where
     }
 }
 
+impl<S> fmt::Debug for Entry<'_, S>
+where
+    S: fmt::Debug + Ord,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Vacant(entry) => f.debug_tuple("Vacant").field(entry).finish(),
+            Self::Occupied(entry) => f.debug_tuple("Occupied").field(entry).finish(),
+        }
+    }
+}
+
 pub struct VacantEntry<'a, S = String> {
     #[cfg(not(feature = "preserve_order"))]
-    ve: std::collections::btree_map::VacantEntry<'a, S, Value<S>>,
+    entry: std::collections::btree_map::VacantEntry<'a, S, Value<S>>,
     #[cfg(feature = "preserve_order")]
-    ve: indexmap::map::VacantEntry<'a, S, Value<S>>,
+    entry: indexmap::map::VacantEntry<'a, S, Value<S>>,
 }
 
 impl<'a, S> VacantEntry<'a, S>
@@ -465,19 +477,30 @@ where
     S: Ord + Hash,
 {
     pub fn key(&self) -> &S {
-        self.ve.key()
+        self.entry.key()
     }
 
-    pub fn insert(self, v: impl Into<Value<S>>) -> &'a mut Value<S> {
-        self.ve.insert(v.into())
+    pub fn insert<V: Into<Value<S>>>(self, v: V) -> &'a mut Value<S> {
+        self.entry.insert(v.into())
+    }
+}
+
+impl<S> fmt::Debug for VacantEntry<'_, S>
+where
+    S: fmt::Debug + Ord,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("VacantEntry")
+            .field("entry", &self.entry)
+            .finish()
     }
 }
 
 pub struct OccupiedEntry<'a, S = String> {
     #[cfg(not(feature = "preserve_order"))]
-    oe: std::collections::btree_map::OccupiedEntry<'a, S, Value<S>>,
+    entry: std::collections::btree_map::OccupiedEntry<'a, S, Value<S>>,
     #[cfg(feature = "preserve_order")]
-    oe: indexmap::map::OccupiedEntry<'a, S, Value<S>>,
+    entry: indexmap::map::OccupiedEntry<'a, S, Value<S>>,
 }
 
 impl<'a, S> OccupiedEntry<'a, S>
@@ -485,40 +508,51 @@ where
     S: Hash + Ord,
 {
     pub fn key(&self) -> &S {
-        self.oe.key()
+        self.entry.key()
     }
 
     pub fn get(&self) -> &Value<S> {
-        self.oe.get()
+        self.entry.get()
     }
 
     pub fn get_mut(&mut self) -> &mut Value<S> {
-        self.oe.get_mut()
+        self.entry.get_mut()
     }
 
     pub fn into_mut(self) -> &'a mut Value<S> {
-        self.oe.into_mut()
+        self.entry.into_mut()
     }
 
-    pub fn insert(&mut self, v: impl Into<Value<S>>) -> Value<S> {
-        self.oe.insert(v.into())
+    pub fn insert<V: Into<Value<S>>>(&mut self, v: V) -> Value<S> {
+        self.entry.insert(v.into())
     }
 
     pub fn remove(self) -> Value<S> {
         #[cfg(feature = "preserve_order")]
         return self.swap_remove();
         #[cfg(not(feature = "preserve_order"))]
-        return self.oe.remove();
+        return self.entry.remove();
     }
 
     #[cfg(feature = "preserve_order")]
     pub fn swap_remove(self) -> Value<S> {
-        self.oe.swap_remove()
+        self.entry.swap_remove()
     }
 
     #[cfg(feature = "preserve_order")]
     pub fn shift_remove(self) -> Value<S> {
-        self.oe.shift_remove()
+        self.entry.shift_remove()
+    }
+}
+
+impl<S> fmt::Debug for OccupiedEntry<'_, S>
+where
+    S: fmt::Debug + Ord,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("OccupiedEntry")
+            .field("entry", &self.entry)
+            .finish()
     }
 }
 
@@ -588,7 +622,7 @@ impl<'a, S> IntoIterator for &'a Compound<S> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Iter<'a, S = String> {
     #[cfg(not(feature = "preserve_order"))]
     iter: std::collections::btree_map::Iter<'a, S, Value<S>>,
@@ -609,6 +643,7 @@ impl<'a, S> IntoIterator for &'a mut Compound<S> {
     }
 }
 
+#[derive(Debug)]
 pub struct IterMut<'a, S = String> {
     #[cfg(not(feature = "preserve_order"))]
     iter: std::collections::btree_map::IterMut<'a, S, Value<S>>,
@@ -629,6 +664,7 @@ impl<S> IntoIterator for Compound<S> {
     }
 }
 
+#[derive(Debug)]
 pub struct IntoIter<S = String> {
     #[cfg(not(feature = "preserve_order"))]
     iter: std::collections::btree_map::IntoIter<S, Value<S>>,
@@ -638,7 +674,7 @@ pub struct IntoIter<S = String> {
 
 impl_iterator_traits!((IntoIter<S>) => (S, Value<S>));
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Keys<'a, S = String> {
     #[cfg(not(feature = "preserve_order"))]
     iter: std::collections::btree_map::Keys<'a, S, Value<S>>,
@@ -648,7 +684,7 @@ pub struct Keys<'a, S = String> {
 
 impl_iterator_traits!((Keys<'a, S>) => &'a S);
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Values<'a, S = String> {
     #[cfg(not(feature = "preserve_order"))]
     iter: std::collections::btree_map::Values<'a, S, Value<S>>,
@@ -658,6 +694,7 @@ pub struct Values<'a, S = String> {
 
 impl_iterator_traits!((Values<'a, S>) => &'a Value<S>);
 
+#[derive(Debug)]
 pub struct ValuesMut<'a, S = String> {
     #[cfg(not(feature = "preserve_order"))]
     iter: std::collections::btree_map::ValuesMut<'a, S, Value<S>>,

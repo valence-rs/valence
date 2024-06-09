@@ -44,7 +44,7 @@ pub enum RegionError {
     #[error("invalid compression scheme number of {0}")]
     InvalidCompressionScheme(u8),
     #[error("failed to parse NBT: {0}")]
-    Nbt(#[from] valence_nbt::binary::Error),
+    Nbt(#[from] valence_nbt::Error),
     #[error("not all chunk NBT data was read")]
     TrailingNbtData,
     #[error("oversized chunk")]

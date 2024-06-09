@@ -45,24 +45,20 @@ impl Display for SnbtErrorKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub struct SnbtError {
-    pub error_type: SnbtErrorKind,
+    pub kind: SnbtErrorKind,
     pub line: usize,
     pub column: usize,
 }
 
 impl SnbtError {
-    pub fn new(error_type: SnbtErrorKind, line: usize, column: usize) -> Self {
-        Self {
-            error_type,
-            line,
-            column,
-        }
+    pub fn new(kind: SnbtErrorKind, line: usize, column: usize) -> Self {
+        Self { kind, line, column }
     }
 }
 
 impl Display for SnbtError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "@ {},{}: {}", self.line, self.column, self.error_type)
+        write!(f, "@ {},{}: {}", self.line, self.column, self.kind)
     }
 }
 
@@ -70,6 +66,7 @@ impl Error for SnbtError {}
 
 type Result<T> = std::result::Result<T, SnbtError>;
 
+#[derive(Debug)]
 pub struct SnbtReader<'a> {
     line: usize,
     column: usize,
@@ -102,8 +99,8 @@ impl<'a> SnbtReader<'a> {
         }
     }
 
-    fn make_error(&self, error_type: SnbtErrorKind) -> SnbtError {
-        SnbtError::new(error_type, self.line, self.column)
+    fn make_error(&self, kind: SnbtErrorKind) -> SnbtError {
+        SnbtError::new(kind, self.line, self.column)
     }
 
     fn peek(&mut self) -> Result<char> {
@@ -444,6 +441,7 @@ pub fn from_snbt_str(snbt: &str) -> Result<Value> {
     SnbtReader::new(snbt).read()
 }
 
+#[derive(Debug)]
 pub struct SnbtWriter<'a> {
     output: &'a mut String,
 }
@@ -549,7 +547,7 @@ impl<'a> SnbtWriter<'a> {
         self.output.push('{');
 
         let mut first = true;
-        for (k, v) in compound.iter() {
+        for (k, v) in compound {
             if !first {
                 self.output.push(',');
             }
@@ -654,56 +652,54 @@ mod tests {
         assert_eq!(list[0], "Bibabo");
 
         assert_eq!(
-            from_snbt_str("\"\\n\"").unwrap_err().error_type,
+            from_snbt_str("\"\\n\"").unwrap_err().kind,
             SnbtErrorKind::InvalidEscapeSequence
         );
 
         assert_eq!(
-            from_snbt_str("[L; 1]").unwrap_err().error_type,
+            from_snbt_str("[L; 1]").unwrap_err().kind,
             SnbtErrorKind::WrongTypeInArray
         );
 
         assert_eq!(
-            from_snbt_str("[L; 1L, 2L, 3L").unwrap_err().error_type,
+            from_snbt_str("[L; 1L, 2L, 3L").unwrap_err().kind,
             SnbtErrorKind::ReachEndOfStream
         );
 
         assert_eq!(
-            from_snbt_str("[L; 1L, 2L, 3L,]dewdwe")
-                .unwrap_err()
-                .error_type,
+            from_snbt_str("[L; 1L, 2L, 3L,]dewdwe").unwrap_err().kind,
             SnbtErrorKind::TrailingData
         );
 
         assert_eq!(
-            from_snbt_str("{ foo: }").unwrap_err().error_type,
+            from_snbt_str("{ foo: }").unwrap_err().kind,
             SnbtErrorKind::ExpectValue
         );
 
         assert_eq!(
-            from_snbt_str("{ {}, }").unwrap_err().error_type,
+            from_snbt_str("{ {}, }").unwrap_err().kind,
             SnbtErrorKind::EmptyKeyInCompound
         );
 
         assert_eq!(
-            from_snbt_str("{ foo 1 }").unwrap_err().error_type,
+            from_snbt_str("{ foo 1 }").unwrap_err().kind,
             SnbtErrorKind::ExpectColon
         );
 
         assert_eq!(
-            from_snbt_str("{ foo: 1 bar: 2 }").unwrap_err().error_type,
+            from_snbt_str("{ foo: 1 bar: 2 }").unwrap_err().kind,
             SnbtErrorKind::ExpectComma
         );
 
         assert_eq!(
-            from_snbt_str("[{}, []]").unwrap_err().error_type,
+            from_snbt_str("[{}, []]").unwrap_err().kind,
             SnbtErrorKind::DifferentTypesInList
         );
 
         assert_eq!(
             from_snbt_str(&String::from_utf8(vec![b'e'; 32768]).unwrap())
                 .unwrap_err()
-                .error_type,
+                .kind,
             SnbtErrorKind::LongString
         );
 
@@ -713,7 +709,7 @@ mod tests {
                     .unwrap()
             )
             .unwrap_err()
-            .error_type,
+            .kind,
             SnbtErrorKind::DepthLimitExceeded
         );
 

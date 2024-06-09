@@ -1,35 +1,39 @@
 [package]
 name = "valence_nbt"
-description = "Minecraft's Named Binary Tag (NBT) format."
-readme = "README.md"
-documentation = "https://docs.rs/valence_nbt/"
-license.workspace = true
-keywords = ["nbt", "minecraft", "serialization"]
 version = "0.8.0"
+description = "Minecraft's Named Binary Tag (NBT) format."
 edition.workspace = true
+license.workspace = true
 repository.workspace = true
+keywords = ["nbt", "minecraft", "serialization"]
+categories = ["data-structures", "game-development"]
+rust-version = "1.78.0"
 
-[lints]
-workspace = true
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 binary = ["dep:byteorder", "dep:cesu8"]
 java_string = ["dep:java_string"]
 snbt = []
-# When enabled, the order of fields in compounds are preserved.
 preserve_order = ["dep:indexmap"]
 serde = ["dep:serde", "dep:thiserror", "indexmap?/serde"]
+valence_ident = ["dep:valence_ident"]
 
 [dependencies]
-byteorder = { workspace = true, optional = true }
-cesu8 = { workspace = true, optional = true }
-indexmap = { workspace = true, optional = true }
-java_string = { workspace = true, optional = true }
-serde = { workspace = true, features = ["derive"], optional = true }
-thiserror = { workspace = true, optional = true }
-uuid = { workspace = true, optional = true }
-valence_ident = { workspace = true, optional = true }
+byteorder = { version = "1.5.0", optional = true }
+cesu8 = { version = "1.1.0", optional = true }
+indexmap = { version = "2.2.6", optional = true }
+java_string = { version = "0.1.2", path = "../java_string", optional = true }
+serde = { version = "1.0.200", features = ["derive"], optional = true }
+thiserror = { version = "1.0.59", optional = true }
+uuid = { version = "1.8.0", optional = true }
+valence_ident = { version = "0.2.0-alpha.1", optional = true }
 
 [dev-dependencies]
-pretty_assertions.workspace = true
-serde_json.workspace = true
+pretty_assertions = "1.4.0"
+serde_json = "1.0.116"
+
+[lints]
+workspace = true

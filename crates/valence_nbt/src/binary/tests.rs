@@ -1,4 +1,3 @@
-use crate::binary::written_size;
 use crate::tag::Tag;
 use crate::{compound, from_binary, to_binary, Compound, List, Value};
 
@@ -10,26 +9,26 @@ fn round_trip() {
 
     let compound = example_compound();
 
-    to_binary(&compound, &mut buf, ROOT_NAME).unwrap();
+    to_binary(&mut buf, ROOT_NAME, &compound).unwrap();
 
     println!("{buf:?}");
 
-    let (decoded, root_name) = crate::from_binary(&mut buf.as_slice()).unwrap();
+    let (root_name, decoded) = from_binary(&mut buf.as_slice()).unwrap().unwrap();
 
     assert_eq!(root_name, ROOT_NAME);
-    assert_eq!(compound, decoded);
+    assert_eq!(Value::from(compound), decoded);
 }
 
 #[test]
 fn check_min_sizes() {
     fn check(min_val: Value, expected_size: usize) {
-        /// TAG_Compound + root name + field tag + field name + TAG_End
+        /// `TAG_Compound` + root name + field tag + field name + `TAG_End`
         const COMPOUND_OVERHEAD: usize = 1 + 2 + 1 + 2 + 1;
 
         let dbg = format!("{min_val:?}");
         let mut buf = vec![];
 
-        to_binary(&compound!("" => min_val), &mut buf, "").unwrap();
+        to_binary(&mut buf, "", &compound!("" => min_val)).unwrap();
 
         assert_eq!(
             expected_size,
@@ -45,7 +44,7 @@ fn check_min_sizes() {
     check(Value::Float(0.0), 4);
     check(Value::Double(0.0), 8);
     check(Value::ByteArray([].into()), 4);
-    check(Value::String("".into()), 2);
+    check(Value::String(String::new()), 2);
     check(Value::List(Vec::<i32>::new().into()), 5);
     check(Value::Compound(compound!()), 1);
     check(Value::IntArray([].into()), 4);
@@ -66,7 +65,7 @@ fn deeply_nested_compound_decode() {
     buf.push(Tag::End as u8); // End root compound
 
     // Should not overflow the stack
-    let _ = from_binary::<String>(&mut buf.as_slice());
+    let _ = from_binary::<_, String>(&mut buf.as_slice());
 }
 
 #[test]
@@ -85,17 +84,7 @@ fn deeply_nested_list_decode() {
     buf.push(Tag::End as u8); // End root compound
 
     // Should not overflow the stack
-    let _ = from_binary::<String>(&mut buf.as_slice());
-}
-
-#[test]
-fn correct_length() {
-    let c = example_compound();
-
-    let mut buf = vec![];
-    to_binary(&c, &mut buf, "abc").unwrap();
-
-    assert_eq!(written_size(&c, "abc"), buf.len());
+    let _ = from_binary::<_, String>(&mut buf.as_slice());
 }
 
 fn example_compound() -> Compound {

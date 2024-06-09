@@ -4,9 +4,8 @@ use std::{fmt, mem};
 
 use byteorder::{BigEndian, ReadBytesExt};
 
-use super::{Error, Result};
 use crate::tag::Tag;
-use crate::{Compound, List, Value};
+use crate::{Compound, Error, List, Result, Value};
 
 /// Decodes uncompressed NBT binary data from the provided slice.
 ///

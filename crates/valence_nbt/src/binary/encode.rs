@@ -4,10 +4,10 @@ use std::io::Write;
 
 use byteorder::{BigEndian, WriteBytesExt};
 
-use super::{modified_utf8, Error, Result};
+use super::modified_utf8;
 use crate::conv::i8_slice_as_u8_slice;
 use crate::tag::Tag;
-use crate::{Compound, List, Value};
+use crate::{Compound, Error, List, Result, Value};
 
 /// Encodes uncompressed NBT binary data to the provided writer.
 ///

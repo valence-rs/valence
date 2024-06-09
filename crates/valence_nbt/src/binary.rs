@@ -18,13 +18,13 @@
 //!
 //! let mut buf = vec![];
 //!
-//! to_binary(&c, &mut buf, "").unwrap();
+//! to_binary(&mut buf, "", &c).unwrap();
 //! ```
 //!
 //! Decode NBT data from its binary form.
 //!
 //! ```
-//! use valence_nbt::{compound, from_binary, Compound};
+//! use valence_nbt::{compound, from_binary, Compound, Value};
 //!
 //! let some_bytes = [10, 0, 0, 3, 0, 3, 105, 110, 116, 0, 0, 222, 173, 0];
 //!
@@ -32,22 +32,20 @@
 //!     "int" => 0xdead
 //! };
 //!
-//! let (nbt, root_name) = from_binary(&mut some_bytes.as_slice()).unwrap();
+//! let (root_name, nbt) = from_binary(&mut some_bytes.as_slice()).unwrap().unwrap();
 //!
-//! assert_eq!(nbt, expected_value);
+//! assert_eq!(nbt, Value::from(expected_value));
 //! assert_eq!(root_name, "");
 //! ```
 
 mod decode;
 mod encode;
-mod error;
 mod modified_utf8;
 #[cfg(test)]
 mod tests;
 
-pub use decode::{from_binary, FromModifiedUtf8, FromModifiedUtf8Error};
-pub use encode::{to_binary, written_size, ToModifiedUtf8};
-pub use error::*;
+pub use decode::*;
+pub use encode::*;
 
 use crate::Tag;
 

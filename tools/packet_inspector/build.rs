@@ -197,7 +197,7 @@ fn write_transformer(packets: &[Packet]) -> anyhow::Result<()> {
     let generated = quote! {
         const NOT_AVAILABLE: &str = "Not yet implemented";
 
-        pub fn packet_to_string(packet: &ProxyPacket) -> Result<String, Box<dyn std::error::Error>> {
+        pub(crate) fn packet_to_string(packet: &ProxyPacket) -> Result<String, Box<dyn std::error::Error>> {
             let bytes = packet.data.as_ref().unwrap();
             let mut data = &bytes.clone()[..];
 

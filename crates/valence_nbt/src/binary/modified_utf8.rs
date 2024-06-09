@@ -17,7 +17,7 @@ pub(crate) fn write_modified_utf8(mut writer: impl Write, text: &str) -> io::Res
     while i < bytes.len() {
         match bytes[i] {
             0 => {
-                writer.write_u16::<BigEndian>(0xc080)?;
+                writer.write_u16::<BigEndian>(0xC080)?;
                 i += 1;
             }
             b @ 1..=127 => {
@@ -35,8 +35,8 @@ pub(crate) fn write_modified_utf8(mut writer: impl Write, text: &str) -> io::Res
                     let s = unsafe { from_utf8_unchecked(&bytes[i..i + w]) };
                     let c = s.chars().next().unwrap() as u32 - 0x10000;
 
-                    let s0 = ((c >> 10) as u16) | 0xd800;
-                    let s1 = ((c & 0x3ff) as u16) | 0xdc00;
+                    let s0 = ((c >> 10) as u16) | 0xD800;
+                    let s1 = ((c & 0x3FF) as u16) | 0xDC00;
 
                     writer.write_all(encode_surrogate(s0).as_slice())?;
                     writer.write_all(encode_surrogate(s1).as_slice())?;
@@ -62,13 +62,13 @@ const fn utf8_char_width(first_byte: u8) -> usize {
         4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     ];
 
-    UTF8_CHAR_WIDTH[first_byte as usize] as _
+    UTF8_CHAR_WIDTH[first_byte as usize] as usize
 }
 
 fn encode_surrogate(surrogate: u16) -> [u8; 3] {
-    debug_assert!((0xd800..=0xdfff).contains(&surrogate));
+    debug_assert!((0xD800..=0xDFFF).contains(&surrogate));
 
-    const TAG_CONT_U8: u8 = 0b1000_0000u8;
+    const TAG_CONT_U8: u8 = 0b1000_0000_u8;
     [
         0b11100000 | ((surrogate & 0b11110000_00000000) >> 12) as u8,
         TAG_CONT_U8 | ((surrogate & 0b00001111_11000000) >> 6) as u8,
