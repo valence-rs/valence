@@ -23,6 +23,7 @@ pub struct JavaString {
     vec: Vec<u8>,
 }
 
+#[allow(clippy::multiple_inherent_impl)]
 impl JavaString {
     #[inline]
     #[must_use]
@@ -62,14 +63,14 @@ impl JavaString {
     ///     "Hello World!"
     /// );
     /// assert_eq!(
-    ///     JavaString::from_semi_utf8(vec![0xf0, 0x9f, 0x92, 0x96]).unwrap(),
+    ///     JavaString::from_semi_utf8(vec![0xF0, 0x9F, 0x92, 0x96]).unwrap(),
     ///     "💖"
     /// );
     /// assert_eq!(
-    ///     JavaString::from_semi_utf8(vec![0xed, 0xa0, 0x80]).unwrap(),
-    ///     JavaString::from(JavaCodePoint::from_u32(0xd800).unwrap())
+    ///     JavaString::from_semi_utf8(vec![0xED, 0xA0, 0x80]).unwrap(),
+    ///     JavaString::from(JavaCodePoint::from_u32(0xD800).unwrap())
     /// );
-    /// assert!(JavaString::from_semi_utf8(vec![0xed]).is_err());
+    /// assert!(JavaString::from_semi_utf8(vec![0xED]).is_err());
     /// ```
     pub fn from_semi_utf8(vec: Vec<u8>) -> Result<JavaString, FromUtf8Error> {
         match run_utf8_semi_validation(&vec) {
@@ -88,12 +89,12 @@ impl JavaString {
     /// # use std::borrow::Cow;
     /// # use java_string::{JavaStr, JavaString};
     ///
-    /// let sparkle_heart = [0xf0, 0x9f, 0x92, 0x96];
+    /// let sparkle_heart = [0xF0, 0x9F, 0x92, 0x96];
     /// let result = JavaString::from_semi_utf8_lossy(&sparkle_heart);
     /// assert!(matches!(result, Cow::Borrowed(_)));
     /// assert_eq!(result, JavaStr::from_str("💖"));
     ///
-    /// let foobar_with_error = [b'f', b'o', b'o', 0xed, b'b', b'a', b'r'];
+    /// let foobar_with_error = [b'f', b'o', b'o', 0xED, b'b', b'a', b'r'];
     /// let result = JavaString::from_semi_utf8_lossy(&foobar_with_error);
     /// assert!(matches!(result, Cow::Owned(_)));
     /// assert_eq!(result, JavaStr::from_str("foo�bar"));
@@ -121,9 +122,8 @@ impl JavaString {
                         Ok(()) => {
                             unsafe {
                                 // SAFETY: validation succeeded
-                                result
-                                    .push_java_str(JavaStr::from_semi_utf8_unchecked(&v[index..]));
-                            }
+                                result.push_java_str(JavaStr::from_semi_utf8_unchecked(&v[index..]))
+                            };
                             return Cow::Owned(result);
                         }
                         Err(error) => {
@@ -131,8 +131,8 @@ impl JavaString {
                                 // SAFETY: validation succeeded up to this index
                                 result.push_java_str(JavaStr::from_semi_utf8_unchecked(
                                     v.get_unchecked(index..index + error.valid_up_to),
-                                ));
-                            }
+                                ))
+                            };
                             result.push_str(REPLACEMENT);
                             index += error.valid_up_to + error.error_len.unwrap_or(1) as usize;
                         }
@@ -195,11 +195,11 @@ impl JavaString {
     /// );
     ///
     /// let string_with_error = JavaString::from("abc")
-    ///     + JavaString::from(JavaCodePoint::from_u32(0xd800).unwrap()).as_java_str();
+    ///     + JavaString::from(JavaCodePoint::from_u32(0xD800).unwrap()).as_java_str();
     /// assert!(string_with_error.into_string().is_err());
     /// ```
     pub fn into_string(self) -> Result<String, Utf8Error> {
-        run_utf8_full_validation_from_semi(self.as_bytes()).map(|_| unsafe {
+        run_utf8_full_validation_from_semi(self.as_bytes()).map(|()| unsafe {
             // SAFETY: validation succeeded
             self.into_string_unchecked()
         })
@@ -326,9 +326,7 @@ impl JavaString {
     pub fn pop(&mut self) -> Option<JavaCodePoint> {
         let ch = self.chars().next_back()?;
         let newlen = self.len() - ch.len_utf8();
-        unsafe {
-            self.vec.set_len(newlen);
-        }
+        unsafe { self.vec.set_len(newlen) };
         Some(ch)
     }
 
@@ -357,9 +355,8 @@ impl JavaString {
     /// ```
     #[inline]
     pub fn remove(&mut self, idx: usize) -> JavaCodePoint {
-        let ch = match self[idx..].chars().next() {
-            Some(ch) => ch,
-            None => panic!("cannot remove a char from the end of a string"),
+        let Some(ch) = self[idx..].chars().next() else {
+            panic!("cannot remove a char from the end of a string")
         };
 
         let next = idx + ch.len_utf8();
@@ -370,8 +367,8 @@ impl JavaString {
                 self.vec.as_mut_ptr().add(idx),
                 len - next,
             );
-            self.vec.set_len(len - (next - idx));
-        }
+            self.vec.set_len(len - (next - idx))
+        };
         ch
     }
 
@@ -829,13 +826,13 @@ impl Extend<JavaString> for JavaString {
 
 impl<'a> Extend<&'a char> for JavaString {
     fn extend<T: IntoIterator<Item = &'a char>>(&mut self, iter: T) {
-        self.extend(iter.into_iter().cloned())
+        self.extend(iter.into_iter().copied())
     }
 }
 
 impl<'a> Extend<&'a JavaCodePoint> for JavaString {
     fn extend<T: IntoIterator<Item = &'a JavaCodePoint>>(&mut self, iter: T) {
-        self.extend(iter.into_iter().cloned())
+        self.extend(iter.into_iter().copied())
     }
 }
 

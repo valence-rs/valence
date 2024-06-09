@@ -10,7 +10,7 @@ pub(crate) const CONT_MASK: u8 = 0b0011_1111;
 
 #[inline]
 const fn utf8_first_byte(byte: u8, width: u32) -> u32 {
-    (byte & (0x7f >> width)) as u32
+    (byte & (0x7F >> width)) as u32
 }
 
 #[inline]
@@ -31,7 +31,7 @@ pub(crate) unsafe fn next_code_point<'a, I: Iterator<Item = &'a u8>>(bytes: &mut
     // Decode UTF-8
     let x = *bytes.next()?;
     if x < 128 {
-        return Some(x as u32);
+        return Some(x.into());
     }
 
     // Multibyte case follows
@@ -42,15 +42,15 @@ pub(crate) unsafe fn next_code_point<'a, I: Iterator<Item = &'a u8>>(bytes: &mut
     // so the iterator must produce a value here.
     let y = unsafe { *bytes.next().unwrap_unchecked() };
     let mut ch = utf8_acc_cont_byte(init, y);
-    if x >= 0xe0 {
+    if x >= 0xE0 {
         // [[x y z] w] case
         // 5th bit in 0xE0 .. 0xEF is always clear, so `init` is still valid
         // SAFETY: `bytes` produces an UTF-8-like string,
         // so the iterator must produce a value here.
         let z = unsafe { *bytes.next().unwrap_unchecked() };
-        let y_z = utf8_acc_cont_byte((y & CONT_MASK) as u32, z);
+        let y_z = utf8_acc_cont_byte((y & CONT_MASK).into(), z);
         ch = init << 12 | y_z;
-        if x >= 0xf0 {
+        if x >= 0xF0 {
             // [x y z w] case
             // use only the lower 3 bits of `init`
             // SAFETY: `bytes` produces an UTF-8-like string,
@@ -72,7 +72,7 @@ pub(crate) unsafe fn next_code_point_reverse<'a, I: DoubleEndedIterator<Item = &
 ) -> Option<u32> {
     // Decode UTF-8
     let w = match *bytes.next_back()? {
-        next_byte if next_byte < 128 => return Some(next_byte as u32),
+        next_byte if next_byte < 128 => return Some(next_byte.into()),
         back_byte => back_byte,
     };
 
@@ -167,7 +167,7 @@ pub(crate) fn run_utf8_semi_validation(v: &[u8]) -> Result<(), Utf8Error> {
                 }
                 3 => {
                     match (first, next!()) {
-                        (0xe0, 0xa0..=0xbf) | (0xe1..=0xef, 0x80..=0xbf) => {} /* INCLUDING surrogate codepoints here */
+                        (0xE0, 0xA0..=0xBF) | (0xE1..=0xEF, 0x80..=0xBF) => {} /* INCLUDING surrogate codepoints here */
                         _ => err!(Some(1)),
                     }
                     if next!() as i8 >= -64 {
@@ -176,7 +176,7 @@ pub(crate) fn run_utf8_semi_validation(v: &[u8]) -> Result<(), Utf8Error> {
                 }
                 4 => {
                     match (first, next!()) {
-                        (0xf0, 0x90..=0xbf) | (0xf1..=0xf3, 0x80..=0xbf) | (0xf4, 0x80..=0x8f) => {}
+                        (0xF0, 0x90..=0xBF) | (0xF1..=0xF3, 0x80..=0xBF) | (0xF4, 0x80..=0x8F) => {}
                         _ => err!(Some(1)),
                     }
                     if next!() as i8 >= -64 {
@@ -232,7 +232,7 @@ pub(crate) const fn run_utf8_full_validation_from_semi(v: &[u8]) -> Result<(), U
     // followed by a >=A0 byte.
     let mut index = 0;
     while index + 3 <= v.len() {
-        if v[index] == 0xed && v[index + 1] >= 0xa0 {
+        if v[index] == 0xED && v[index + 1] >= 0xA0 {
             return Err(Utf8Error {
                 valid_up_to: index,
                 error_len: Some(1),
@@ -258,7 +258,7 @@ pub(crate) const fn utf8_char_width(first_byte: u8) -> usize {
         4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     ];
 
-    UTF8_CHAR_WIDTH[first_byte as usize] as _
+    UTF8_CHAR_WIDTH[first_byte as usize] as usize
 }
 
 #[inline]
@@ -284,11 +284,7 @@ pub(crate) fn slice_error_fail(s: &JavaStr, begin: usize, end: usize) -> ! {
     // 2. begin <= end
     assert!(
         begin <= end,
-        "begin <= end ({} <= {}) when slicing `{}`{}",
-        begin,
-        end,
-        s_trunc,
-        ellipsis
+        "begin <= end ({begin} <= {end}) when slicing `{s_trunc}`{ellipsis}",
     );
 
     // 3. character boundary
@@ -303,8 +299,8 @@ pub(crate) fn slice_error_fail(s: &JavaStr, begin: usize, end: usize) -> ! {
     let ch = s[char_start..].chars().next().unwrap();
     let char_range = char_start..char_start + ch.len_utf8();
     panic!(
-        "byte index {} is not a char boundary; it is inside {:?} (bytes {:?}) of `{}`{}",
-        index, ch, char_range, s_trunc, ellipsis
+        "byte index {index} is not a char boundary; it is inside {ch:?} (bytes {char_range:?}) of \
+         `{s_trunc}`{ellipsis}",
     );
 }
 

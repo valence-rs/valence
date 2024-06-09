@@ -15,16 +15,16 @@ impl JavaStr {
     /// assert_eq!(JavaStr::from_str("Hello World!"), result);
     ///
     /// let result = JavaStr::from_modified_utf8(&[
-    ///     0x61, 0x62, 0x63, 0xc0, 0x80, 0xe2, 0x84, 0x9d, 0xed, 0xa0, 0xbd, 0xed, 0xb2, 0xa3, 0xed,
-    ///     0xa0, 0x80,
+    ///     0x61, 0x62, 0x63, 0xC0, 0x80, 0xE2, 0x84, 0x9D, 0xED, 0xA0, 0xBD, 0xED, 0xB2, 0xA3, 0xED,
+    ///     0xA0, 0x80,
     /// ])
     /// .unwrap();
     /// assert!(matches!(result, Cow::Owned(_)));
     /// let mut expected = JavaString::from("abc\0ℝ💣");
-    /// expected.push_java(JavaCodePoint::from_u32(0xd800).unwrap());
+    /// expected.push_java(JavaCodePoint::from_u32(0xD800).unwrap());
     /// assert_eq!(expected, result);
     ///
-    /// let result = JavaStr::from_modified_utf8(&[0xed]);
+    /// let result = JavaStr::from_modified_utf8(&[0xED]);
     /// assert!(result.is_err());
     /// ```
     #[inline]
@@ -46,11 +46,11 @@ impl JavaStr {
     /// assert_eq!(result, &b"Hello World!"[..]);
     ///
     /// let mut str = JavaString::from("abc\0ℝ💣");
-    /// str.push_java(JavaCodePoint::from_u32(0xd800).unwrap());
+    /// str.push_java(JavaCodePoint::from_u32(0xD800).unwrap());
     /// let result = str.to_modified_utf8();
     /// let expected = [
-    ///     0x61, 0x62, 0x63, 0xc0, 0x80, 0xe2, 0x84, 0x9d, 0xed, 0xa0, 0xbd, 0xed, 0xb2, 0xa3, 0xed,
-    ///     0xa0, 0x80,
+    ///     0x61, 0x62, 0x63, 0xC0, 0x80, 0xE2, 0x84, 0x9D, 0xED, 0xA0, 0xBD, 0xED, 0xB2, 0xA3, 0xED,
+    ///     0xA0, 0x80,
     /// ];
     /// assert!(matches!(result, Cow::Owned(_)));
     /// assert_eq!(result, &expected[..]);
@@ -73,7 +73,7 @@ impl JavaStr {
         while i < bytes.len() {
             let b = bytes[i];
             if b == 0 {
-                encoded.extend([0xc0, 0x80]);
+                encoded.extend([0xC0, 0x80]);
                 i += 1;
             } else if b < 128 {
                 // Pass ASCII through quickly.
@@ -100,7 +100,7 @@ impl JavaStr {
                         // SAFETY: s contains a single char of width 4
                         s.chars().next().unwrap_unchecked().as_u32() - 0x10000
                     };
-                    let s = [((c >> 10) as u16) | 0xd800, ((c & 0x3ff) as u16) | 0xdc00];
+                    let s = [((c >> 10) as u16) | 0xD800, ((c & 0x3FF) as u16) | 0xDC00];
                     encoded.extend(enc_surrogate(s[0]));
                     encoded.extend(enc_surrogate(s[1]));
                 }
@@ -114,7 +114,7 @@ impl JavaStr {
 impl JavaString {
     /// Converts from Java's [modified UTF-8](https://docs.oracle.com/javase/8/docs/api/java/io/DataInput.html#modified-utf-8) format to a `JavaString`.
     ///
-    /// See [JavaStr::from_modified_utf8].
+    /// See [`JavaStr::from_modified_utf8`].
     #[inline]
     pub fn from_modified_utf8(bytes: Vec<u8>) -> Result<JavaString, Utf8Error> {
         match JavaString::from_full_utf8(bytes) {
@@ -168,7 +168,7 @@ impl JavaString {
             } else if first < 128 {
                 // Pass ASCII through directly.
                 decoded.push(first);
-            } else if first == 0xc0 {
+            } else if first == 0xC0 {
                 // modified UTF-8 encoding of null character
                 match next!() {
                     0x80 => decoded.push(0),
@@ -184,6 +184,7 @@ impl JavaString {
                     }
                     3 => {
                         let third = next_cont!(Some(2));
+                        #[allow(clippy::unnested_or_patterns)] // Justification: readability
                         match (first, second) {
                             // These are valid UTF-8, so pass them through.
                             (0xe0, 0xa0..=0xbf)
@@ -227,7 +228,7 @@ impl JavaString {
 
     /// Converts to Java's [modified UTF-8](https://docs.oracle.com/javase/8/docs/api/java/io/DataInput.html#modified-utf-8) format.
     ///
-    /// See [JavaStr::to_modified_utf8].
+    /// See [`JavaStr::to_modified_utf8`].
     #[inline]
     #[must_use]
     pub fn into_modified_utf8(self) -> Vec<u8> {
@@ -241,7 +242,7 @@ impl JavaString {
 
 #[inline]
 fn dec_surrogate(second: u8, third: u8) -> u32 {
-    0xd000 | ((second & CONT_MASK) as u32) << 6 | (third & CONT_MASK) as u32
+    0xD000 | u32::from(second & CONT_MASK) << 6 | u32::from(third & CONT_MASK)
 }
 
 #[inline]
@@ -249,13 +250,13 @@ fn dec_surrogates(second: u8, third: u8, fifth: u8, sixth: u8) -> [u8; 4] {
     // Convert to a 32-bit code point.
     let s1 = dec_surrogate(second, third);
     let s2 = dec_surrogate(fifth, sixth);
-    let c = 0x10000 + (((s1 - 0xd800) << 10) | (s2 - 0xdc00));
-    assert!((0x010000..=0x10ffff).contains(&c));
+    let c = 0x10000 + (((s1 - 0xD800) << 10) | (s2 - 0xDC00));
+    assert!((0x010000..=0x10FFFF).contains(&c));
 
     // Convert to UTF-8.
     // 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
     [
-        0b1111_0000u8 | ((c & 0b1_1100_0000_0000_0000_0000) >> 18) as u8,
+        0b1111_0000_u8 | ((c & 0b1_1100_0000_0000_0000_0000) >> 18) as u8,
         TAG_CONT | ((c & 0b0_0011_1111_0000_0000_0000) >> 12) as u8,
         TAG_CONT | ((c & 0b0_0000_0000_1111_1100_0000) >> 6) as u8,
         TAG_CONT | (c & 0b0_0000_0000_0000_0011_1111) as u8,

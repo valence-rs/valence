@@ -62,7 +62,7 @@ impl JavaCodePoint {
     #[inline]
     #[must_use]
     pub const fn from_u32(i: u32) -> Option<JavaCodePoint> {
-        if i <= 0x10ffff {
+        if i <= 0x10FFFF {
             unsafe { Some(Self::from_u32_unchecked(i)) }
         } else {
             None
@@ -94,7 +94,7 @@ impl JavaCodePoint {
     /// ```
     /// # use java_string::JavaCodePoint;
     /// assert_eq!(65, JavaCodePoint::from_char('A').as_u32());
-    /// assert_eq!(0xd800, JavaCodePoint::from_u32(0xd800).unwrap().as_u32());
+    /// assert_eq!(0xD800, JavaCodePoint::from_u32(0xD800).unwrap().as_u32());
     /// ```
     #[inline]
     #[must_use]
@@ -103,7 +103,7 @@ impl JavaCodePoint {
             // SAFETY: JavaCodePoint has the same repr as a u32
             let result = std::mem::transmute(self);
 
-            if result > 0x10ffff {
+            if result > 0x10FFFF {
                 // SAFETY: JavaCodePoint can never have a value > 0x10FFFF.
                 // This statement may allow the optimizer to remove branches in the calling code
                 // associated with out of bounds chars.
@@ -119,7 +119,7 @@ impl JavaCodePoint {
     /// ```
     /// # use java_string::JavaCodePoint;
     /// assert_eq!(Some('a'), JavaCodePoint::from_char('a').as_char());
-    /// assert_eq!(None, JavaCodePoint::from_u32(0xd800).unwrap().as_char());
+    /// assert_eq!(None, JavaCodePoint::from_u32(0xD800).unwrap().as_char());
     /// ```
     #[inline]
     #[must_use]
@@ -148,7 +148,7 @@ impl JavaCodePoint {
     /// );
     /// assert_eq!(
     ///     1,
-    ///     JavaCodePoint::from_u32(0xd800)
+    ///     JavaCodePoint::from_u32(0xD800)
     ///         .unwrap()
     ///         .encode_utf16(&mut [0; 2])
     ///         .len()
@@ -170,7 +170,7 @@ impl JavaCodePoint {
     }
 
     /// Encodes this `JavaCodePoint` into semi UTF-8, that is, UTF-8 with
-    /// surrogate code points. See also [char::encode_utf8].
+    /// surrogate code points. See also [`char::encode_utf8`].
     ///
     /// ```
     /// # use java_string::JavaCodePoint;
@@ -182,7 +182,7 @@ impl JavaCodePoint {
     /// );
     /// assert_eq!(
     ///     3,
-    ///     JavaCodePoint::from_u32(0xd800)
+    ///     JavaCodePoint::from_u32(0xD800)
     ///         .unwrap()
     ///         .encode_semi_utf8(&mut [0; 4])
     ///         .len()
@@ -202,19 +202,19 @@ impl JavaCodePoint {
                 *a = code as u8;
             }
             (2, [a, b, ..]) => {
-                *a = (code >> 6 & 0x1f) as u8 | TAG_TWO_B;
-                *b = (code & 0x3f) as u8 | TAG_CONT;
+                *a = (code >> 6 & 0x1F) as u8 | TAG_TWO_B;
+                *b = (code & 0x3F) as u8 | TAG_CONT;
             }
             (3, [a, b, c, ..]) => {
-                *a = (code >> 12 & 0x0f) as u8 | TAG_THREE_B;
-                *b = (code >> 6 & 0x3f) as u8 | TAG_CONT;
-                *c = (code & 0x3f) as u8 | TAG_CONT;
+                *a = (code >> 12 & 0x0F) as u8 | TAG_THREE_B;
+                *b = (code >> 6 & 0x3F) as u8 | TAG_CONT;
+                *c = (code & 0x3F) as u8 | TAG_CONT;
             }
             (4, [a, b, c, d, ..]) => {
                 *a = (code >> 18 & 0x07) as u8 | TAG_FOUR_B;
-                *b = (code >> 12 & 0x3f) as u8 | TAG_CONT;
-                *c = (code >> 6 & 0x3f) as u8 | TAG_CONT;
-                *d = (code & 0x3f) as u8 | TAG_CONT;
+                *b = (code >> 12 & 0x3F) as u8 | TAG_CONT;
+                *c = (code >> 6 & 0x3F) as u8 | TAG_CONT;
+                *d = (code & 0x3F) as u8 | TAG_CONT;
             }
             _ => panic!(
                 "encode_utf8: need {} bytes to encode U+{:X}, but the buffer has {}",
@@ -250,7 +250,7 @@ impl JavaCodePoint {
     /// );
     /// assert_eq!(
     ///     "\\u{d800}",
-    ///     JavaCodePoint::from_u32(0xd800)
+    ///     JavaCodePoint::from_u32(0xD800)
     ///         .unwrap()
     ///         .escape_debug()
     ///         .to_string()
@@ -317,7 +317,7 @@ impl JavaCodePoint {
     /// );
     /// assert_eq!(
     ///     "\\u{d800}",
-    ///     JavaCodePoint::from_u32(0xd800)
+    ///     JavaCodePoint::from_u32(0xD800)
     ///         .unwrap()
     ///         .escape_default()
     ///         .to_string()
@@ -342,7 +342,7 @@ impl JavaCodePoint {
                 SINGLE_QUOTE => CharEscapeIter::new([b'\\', b'\'']),
                 DOUBLE_QUOTE => CharEscapeIter::new([b'\\', b'"']),
                 BACKSLASH => CharEscapeIter::new([b'\\', b'\\']),
-                0x20..=0x7e => CharEscapeIter::new([self.as_u32() as u8]),
+                0x20..=0x7E => CharEscapeIter::new([self.as_u32() as u8]),
                 _ => self.escape_unicode(),
             }
         }
@@ -358,7 +358,7 @@ impl JavaCodePoint {
     /// );
     /// assert_eq!(
     ///     "\\u{d800}",
-    ///     JavaCodePoint::from_u32(0xd800)
+    ///     JavaCodePoint::from_u32(0xD800)
     ///         .unwrap()
     ///         .escape_unicode()
     ///         .to_string()
@@ -410,7 +410,7 @@ impl JavaCodePoint {
     #[inline]
     #[must_use]
     pub fn is_ascii(self) -> bool {
-        self.as_u32() <= 0x7f
+        self.as_u32() <= 0x7F
     }
 
     /// See [`char::is_ascii_alphabetic`].
@@ -431,7 +431,7 @@ impl JavaCodePoint {
     #[inline]
     #[must_use]
     pub const fn is_ascii_control(self) -> bool {
-        matches!(self.as_u32(), 0..=0x1f | 0x7f)
+        matches!(self.as_u32(), 0..=0x1F | 0x7F)
     }
 
     /// See [`char::is_ascii_digit`].
@@ -447,7 +447,7 @@ impl JavaCodePoint {
     #[inline]
     #[must_use]
     pub const fn is_ascii_graphic(self) -> bool {
-        matches!(self.as_u32(), 0x21..=0x7e)
+        matches!(self.as_u32(), 0x21..=0x7E)
     }
 
     /// See [`char::is_ascii_hexdigit`].
@@ -485,7 +485,7 @@ impl JavaCodePoint {
     pub const fn is_ascii_punctuation(self) -> bool {
         matches!(
             self.as_u32(),
-            (0x21..=0x2f) | (0x3a..=0x40) | (0x5b..=0x60) | (0x7b..=0x7e)
+            (0x21..=0x2F) | (0x3A..=0x40) | (0x5B..=0x60) | (0x7B..=0x7E)
         )
     }
 
@@ -505,7 +505,7 @@ impl JavaCodePoint {
         const SPACE: u32 = ' ' as u32;
         const HORIZONTAL_TAB: u32 = '\t' as u32;
         const LINE_FEED: u32 = '\n' as u32;
-        const FORM_FEED: u32 = 0xc;
+        const FORM_FEED: u32 = 0xC;
         const CARRIAGE_RETURN: u32 = '\r' as u32;
         matches!(
             self.as_u32(),
@@ -566,7 +566,7 @@ impl JavaCodePoint {
     /// let len = JavaCodePoint::from_char('💣').len_utf16();
     /// assert_eq!(len, 2);
     ///
-    /// assert_eq!(1, JavaCodePoint::from_u32(0xd800).unwrap().len_utf16());
+    /// assert_eq!(1, JavaCodePoint::from_u32(0xD800).unwrap().len_utf16());
     /// ```
     #[inline]
     #[must_use]
@@ -595,7 +595,7 @@ impl JavaCodePoint {
     /// let len = JavaCodePoint::from_char('💣').len_utf8();
     /// assert_eq!(len, 4);
     ///
-    /// let len = JavaCodePoint::from_u32(0xd800).unwrap().len_utf8();
+    /// let len = JavaCodePoint::from_u32(0xD800).unwrap().len_utf8();
     /// assert_eq!(len, 3);
     /// ```
     #[inline]

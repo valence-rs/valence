@@ -175,7 +175,7 @@ impl<'de> Visitor<'de> for JavaCodePointVisitor {
     where
         E: Error,
     {
-        self.visit_i32(v as i32)
+        self.visit_i32(v.into())
     }
 
     #[inline]
@@ -183,7 +183,7 @@ impl<'de> Visitor<'de> for JavaCodePointVisitor {
     where
         E: Error,
     {
-        self.visit_i32(v as i32)
+        self.visit_i32(v.into())
     }
 
     fn visit_i32<E>(self, v: i32) -> Result<Self::Value, E>
@@ -191,7 +191,7 @@ impl<'de> Visitor<'de> for JavaCodePointVisitor {
         E: Error,
     {
         if v < 0 {
-            Err(Error::invalid_value(Unexpected::Signed(v as i64), &self))
+            Err(Error::invalid_value(Unexpected::Signed(v.into()), &self))
         } else {
             self.visit_u32(v as u32)
         }
@@ -213,7 +213,7 @@ impl<'de> Visitor<'de> for JavaCodePointVisitor {
     where
         E: Error,
     {
-        self.visit_u32(v as u32)
+        self.visit_u32(v.into())
     }
 
     #[inline]
@@ -221,7 +221,7 @@ impl<'de> Visitor<'de> for JavaCodePointVisitor {
     where
         E: Error,
     {
-        self.visit_u32(v as u32)
+        self.visit_u32(v.into())
     }
 
     fn visit_u32<E>(self, v: u32) -> Result<Self::Value, E>
@@ -229,17 +229,16 @@ impl<'de> Visitor<'de> for JavaCodePointVisitor {
         E: Error,
     {
         JavaCodePoint::from_u32(v)
-            .ok_or_else(|| Error::invalid_value(Unexpected::Unsigned(v as u64), &self))
+            .ok_or_else(|| Error::invalid_value(Unexpected::Unsigned(v.into()), &self))
     }
 
     fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
     where
         E: Error,
     {
-        if v > u32::MAX as u64 {
-            Err(Error::invalid_value(Unexpected::Unsigned(v), &self))
-        } else {
-            self.visit_u32(v as u32)
+        match u32::try_from(v) {
+            Ok(v) => self.visit_u32(v),
+            Err(_) => Err(Error::invalid_value(Unexpected::Unsigned(v), &self)),
         }
     }
 
