@@ -13,7 +13,7 @@ use valence_server::protocol::Velocity;
 use valence_server::CompressionThreshold;
 
 pub fn setup<'a>() -> (PacketEncoder, ChunkDataS2c<'a>, PlayerListHeaderS2c<'a>, EntitySpawnS2c) {
-    let mut encoder = PacketEncoder::new();
+    let encoder = PacketEncoder::new();
 
     const BLOCKS_AND_BIOMES: [u8; 2000] = [0x80; 2000];
     const SKY_LIGHT_ARRAYS: [FixedArray<u8, 2048>; 26] = [FixedArray([0xff; 2048]); 26];
@@ -142,7 +142,7 @@ fn encode_spawn_entity_compressed(bencher: Bencher) {
 
 #[divan::bench]
 fn decode_chunk_data(bencher: Bencher) {
-    let (mut encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
+    let (encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
 
     let mut decoder = PacketDecoder::new();
     let mut packet_buf = vec![];
@@ -165,7 +165,7 @@ fn decode_chunk_data(bencher: Bencher) {
 
 #[divan::bench]
 fn decode_player_list_header(bencher: Bencher) {
-    let (mut encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
+    let (encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
 
     let mut decoder = PacketDecoder::new();
     let mut packet_buf = vec![];
@@ -188,7 +188,7 @@ fn decode_player_list_header(bencher: Bencher) {
 
 #[divan::bench]
 fn decode_entity_spawn(bencher: Bencher) {
-    let (mut encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
+    let (encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
 
     let mut decoder = PacketDecoder::new();
     let mut packet_buf = vec![];
@@ -211,7 +211,7 @@ fn decode_entity_spawn(bencher: Bencher) {
 
 #[divan::bench]
 fn decode_chunk_data_compressed(bencher: Bencher) {
-    let (mut encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
+    let (encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
 
     let mut decoder = PacketDecoder::new();
     let mut packet_buf = vec![];
@@ -237,7 +237,7 @@ fn decode_chunk_data_compressed(bencher: Bencher) {
 
 #[divan::bench]
 fn decode_player_list_header_compressed(bencher: Bencher) {
-    let (mut encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
+    let (encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
 
     let mut decoder = PacketDecoder::new();
     let mut packet_buf = vec![];
@@ -263,7 +263,7 @@ fn decode_player_list_header_compressed(bencher: Bencher) {
 
 #[divan::bench]
 fn decode_spawn_data_compressed(bencher: Bencher) {
-    let (mut encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
+    let (encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
 
     let mut decoder = PacketDecoder::new();
     let mut packet_buf = vec![];
