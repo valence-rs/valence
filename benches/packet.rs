@@ -12,7 +12,7 @@ use valence::text::IntoText;
 use valence_server::protocol::Velocity;
 use valence_server::CompressionThreshold;
 
-pub fn setup() -> (PacketEncoder, ChunkDataS2c, PlayerListHeaderS2c, EntitySpawnS2c) {
+pub fn setup<'a>() -> (PacketEncoder, ChunkDataS2c<'a>, PlayerListHeaderS2c<'a>, EntitySpawnS2c) {
     let mut encoder = PacketEncoder::new();
 
     const BLOCKS_AND_BIOMES: [u8; 2000] = [0x80; 2000];
@@ -54,6 +54,8 @@ pub fn setup() -> (PacketEncoder, ChunkDataS2c, PlayerListHeaderS2c, EntitySpawn
         data: VarInt(i32::MIN),
         velocity: Velocity([12, 34, 56]),
     };
+
+    (encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet)
 }
 #[divan::bench]
 fn encode_chunk_data(bencher: Bencher) {
