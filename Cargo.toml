@@ -73,7 +73,7 @@ valence_world_border = { workspace = true, optional = true }
 [dev-dependencies]
 anyhow.workspace = true
 clap.workspace = true
-criterion.workspace = true
+divan.workspace = true
 flume.workspace = true
 noise.workspace = true     # For the terrain example.
 tracing.workspace = true
@@ -129,9 +129,9 @@ bytes = "1.2.1"
 cesu8 = "1.1.0"
 cfb8 = "0.8.1"
 clap = { version = "4.0.30", features = ["derive"] }
-criterion = "0.5.1"
 derive_more = "1.0.0-beta.3"
 directories = "5.0.0"
+divan = "0.1.14"
 eframe = { version = "0.22.0", default-features = false }
 egui = "0.22.0"
 egui_dock = "0.6"
