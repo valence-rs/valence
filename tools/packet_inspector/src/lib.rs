@@ -103,7 +103,7 @@ impl Proxy {
             _ = self.main_task => {},
 
             // If the main task doesn't stop after 5 seconds, we force terminate it
-            _ = tokio::time::sleep(Duration::from_secs(5)) => {
+            () = tokio::time::sleep(Duration::from_secs(5)) => {
                 abort_handle.abort();
             },
         }

@@ -118,7 +118,7 @@ impl<'a> Widget for TriCheckbox<'a> {
                         visuals.fg_stroke,
                     ));
                 }
-                _ => {}
+                TriCheckboxState::Disabled => {}
             }
             if let Some(text) = text {
                 let text_pos = pos2(

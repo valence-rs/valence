@@ -15,7 +15,7 @@ impl PacketFilter {
     pub(crate) fn new() -> Self {
         let mut inner = HashMap::new();
 
-        for p in packet_inspector::STD_PACKETS.iter() {
+        for p in &packet_inspector::STD_PACKETS {
             inner.insert(p.clone(), true);
         }
 
@@ -77,8 +77,8 @@ impl Default for SharedState {
         let (sender, receiver) = flume::unbounded();
 
         Self {
-            listener_addr: "127.0.0.1:25566".to_string(),
-            server_addr: "127.0.0.1:25565".to_string(),
+            listener_addr: "127.0.0.1:25566".to_owned(),
+            server_addr: "127.0.0.1:25565".to_owned(),
             autostart: false,
             is_listening: false,
             packet_search: String::new(),
@@ -110,7 +110,7 @@ impl SharedState {
 
         let mut packet_filter = PacketFilter::new();
         // iterate over packet_inspector::STD_PACKETS
-        for p in packet_inspector::STD_PACKETS.iter() {
+        for p in &packet_inspector::STD_PACKETS {
             // if the packet is in the current packet_filter
             if let Some(v) = self.packet_filter.get(p) {
                 // insert it into packet_filter
