@@ -273,7 +273,7 @@ impl LoadedChunk {
             self.changed_biomes = false;
 
             messages.send_local_infallible(LocalMsg::ChangeBiome { pos }, |buf| {
-                for sect in &self.sections {
+                for sect in self.sections.iter() {
                     sect.biomes
                         .encode_mc_format(
                             &mut *buf,
@@ -390,7 +390,7 @@ impl LoadedChunk {
 
             let mut blocks_and_biomes: Vec<u8> = vec![];
 
-            for sect in &self.sections {
+            for sect in self.sections.iter() {
                 sect.count_non_air_blocks()
                     .encode(&mut blocks_and_biomes)
                     .unwrap();
@@ -463,7 +463,7 @@ impl LoadedChunk {
             assert!(!self.changed_biomes);
             assert!(self.changed_block_entities.is_empty());
 
-            for sect in &self.sections {
+            for sect in self.sections.iter() {
                 assert!(sect.updates.is_empty());
             }
         }
@@ -686,7 +686,7 @@ impl Chunk for LoadedChunk {
     fn shrink_to_fit(&mut self) {
         self.cached_init_packets.get_mut().shrink_to_fit();
 
-        for sect in &mut self.sections {
+        for sect in self.sections.iter_mut() {
             sect.block_states.shrink_to_fit();
             sect.biomes.shrink_to_fit();
             sect.updates.shrink_to_fit();

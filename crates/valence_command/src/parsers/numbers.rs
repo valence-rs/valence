@@ -10,8 +10,8 @@ macro_rules! impl_parser_for_number {
                 let parsed = s.parse::<$type>();
 
                 parsed.map_err(|_| CommandArgParseError::InvalidArgument {
-                    expected: $name.to_string(),
-                    got: s.to_string(),
+                    expected: $name.to_owned(),
+                    got: s.to_owned(),
                 })
             }
 
