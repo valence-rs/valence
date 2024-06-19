@@ -26,40 +26,39 @@ impl CommandArg for Vec3 {
 mod tests {
     use super::*;
 
+    #[test]
+    fn test_vec3() {
+        let mut input = ParseInput::new("~-1.5 2.5 3.5");
+        assert_eq!(
+            Vec3::parse_arg(&mut input).unwrap(),
+            Vec3 {
+                x: AbsoluteOrRelative::Relative(-1.5),
+                y: AbsoluteOrRelative::Absolute(2.5),
+                z: AbsoluteOrRelative::Absolute(3.5)
+            }
+        );
+        assert!(input.is_done());
 
-#[test]
-fn test_vec3() {
-    let mut input = ParseInput::new("~-1.5 2.5 3.5");
-    assert_eq!(
-        Vec3::parse_arg(&mut input).unwrap(),
-        Vec3 {
-            x: AbsoluteOrRelative::Relative(-1.5),
-            y: AbsoluteOrRelative::Absolute(2.5),
-            z: AbsoluteOrRelative::Absolute(3.5)
-        }
-    );
-    assert!(input.is_done());
+        let mut input = ParseInput::new("-1.5 ~2.5 3.5 ");
+        assert_eq!(
+            Vec3::parse_arg(&mut input).unwrap(),
+            Vec3 {
+                x: AbsoluteOrRelative::Absolute(-1.5),
+                y: AbsoluteOrRelative::Relative(2.5),
+                z: AbsoluteOrRelative::Absolute(3.5)
+            }
+        );
+        assert!(!input.is_done());
 
-    let mut input = ParseInput::new("-1.5 ~2.5 3.5 ");
-    assert_eq!(
-        Vec3::parse_arg(&mut input).unwrap(),
-        Vec3 {
-            x: AbsoluteOrRelative::Absolute(-1.5),
-            y: AbsoluteOrRelative::Relative(2.5),
-            z: AbsoluteOrRelative::Absolute(3.5)
-        }
-    );
-    assert!(!input.is_done());
-
-    let mut input = ParseInput::new("-1.5 2.5 ~3.5 4.5");
-    assert_eq!(
-        Vec3::parse_arg(&mut input).unwrap(),
-        Vec3 {
-            x: AbsoluteOrRelative::Absolute(-1.5),
-            y: AbsoluteOrRelative::Absolute(2.5),
-            z: AbsoluteOrRelative::Relative(3.5)
-        }
-    );
-    assert!(!input.is_done());
-}
+        let mut input = ParseInput::new("-1.5 2.5 ~3.5 4.5");
+        assert_eq!(
+            Vec3::parse_arg(&mut input).unwrap(),
+            Vec3 {
+                x: AbsoluteOrRelative::Absolute(-1.5),
+                y: AbsoluteOrRelative::Absolute(2.5),
+                z: AbsoluteOrRelative::Relative(3.5)
+            }
+        );
+        assert!(!input.is_done());
+    }
 }

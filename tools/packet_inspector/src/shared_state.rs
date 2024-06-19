@@ -51,25 +51,25 @@ pub(crate) enum Event {
 
 #[derive(serde::Deserialize, serde::Serialize)]
 pub(crate) struct SharedState {
-    pub listener_addr: String,
-    pub server_addr: String,
-    pub autostart: bool,
-    pub packet_filter: PacketFilter,
-    pub packet_search: String,
+    pub(crate) listener_addr: String,
+    pub(crate) server_addr: String,
+    pub(crate) autostart: bool,
+    pub(crate) packet_filter: PacketFilter,
+    pub(crate) packet_search: String,
     #[serde(skip)]
-    pub is_listening: bool,
+    pub(crate) is_listening: bool,
     #[serde(skip)]
-    pub selected_packet: Option<usize>,
+    pub(crate) selected_packet: Option<usize>,
     #[serde(skip)]
-    pub update_scroll: bool,
+    pub(crate) update_scroll: bool,
     #[serde(skip)]
-    pub packets: RwLock<Vec<Packet>>,
+    pub(crate) packets: RwLock<Vec<Packet>>,
     #[serde(skip)]
     pub(super) receiver: Option<flume::Receiver<Event>>,
     #[serde(skip)]
     sender: Option<flume::Sender<Event>>,
     #[serde(skip)]
-    pub ctx: Option<Context>,
+    pub(crate) ctx: Option<Context>,
 }
 
 impl Default for SharedState {

@@ -63,21 +63,26 @@ impl CommandArg for Time {
     }
 }
 
-#[test]
-fn test_time() {
-    let mut input = ParseInput::new("42.31t");
-    let time = Time::parse_arg(&mut input).unwrap();
-    assert_eq!(time, Time::Ticks(42.31));
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    let mut input = ParseInput::new("42.31");
-    let time = Time::parse_arg(&mut input).unwrap();
-    assert_eq!(time, Time::Ticks(42.31));
+    #[test]
+    fn test_time() {
+        let mut input = ParseInput::new("42.31t");
+        let time = Time::parse_arg(&mut input).unwrap();
+        assert_eq!(time, Time::Ticks(42.31));
 
-    let mut input = ParseInput::new("1239.72s");
-    let time = Time::parse_arg(&mut input).unwrap();
-    assert_eq!(time, Time::Seconds(1239.72));
+        let mut input = ParseInput::new("42.31");
+        let time = Time::parse_arg(&mut input).unwrap();
+        assert_eq!(time, Time::Ticks(42.31));
 
-    let mut input = ParseInput::new("133.1d");
-    let time = Time::parse_arg(&mut input).unwrap();
-    assert_eq!(time, Time::Days(133.1));
+        let mut input = ParseInput::new("1239.72s");
+        let time = Time::parse_arg(&mut input).unwrap();
+        assert_eq!(time, Time::Seconds(1239.72));
+
+        let mut input = ParseInput::new("133.1d");
+        let time = Time::parse_arg(&mut input).unwrap();
+        assert_eq!(time, Time::Days(133.1));
+    }
 }
