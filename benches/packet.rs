@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::hint::black_box;
 
-use criterion::Criterion;
+use divan::Bencher;
 use valence::nbt::{compound, List};
 use valence::prelude::*;
 use valence::protocol::decode::PacketDecoder;
@@ -12,9 +12,7 @@ use valence::text::IntoText;
 use valence_server::protocol::Velocity;
 use valence_server::CompressionThreshold;
 
-pub(crate) fn packet(c: &mut Criterion) {
-    let mut group = c.benchmark_group("packet");
-
+pub fn setup() -> (PacketEncoder, ChunkDataS2c, PlayerListHeaderS2c, EntitySpawnS2c) {
     let mut encoder = PacketEncoder::new();
 
     const BLOCKS_AND_BIOMES: [u8; 2000] = [0x80; 2000];
@@ -56,66 +54,81 @@ pub(crate) fn packet(c: &mut Criterion) {
         data: VarInt(i32::MIN),
         velocity: Velocity([12, 34, 56]),
     };
-
-    group.bench_function("encode_chunk_data", |b| {
-        b.iter(|| {
-            let encoder = black_box(&mut encoder);
+}
+#[divan::bench]
+fn encode_chunk_data(bencher: Bencher) {
+    let (mut encoder, chunk_data_packet, _, _) = setup();
+    bencher.bench_local(|| { let encoder = black_box(&mut encoder);
 
             encoder.clear();
             encoder.append_packet(&chunk_data_packet).unwrap();
 
             black_box(encoder);
-        });
     });
+}
 
-    group.bench_function("encode_player_list_header", |b| {
-        b.iter(|| {
+#[divan::bench]
+fn encode_player_list_header(bencher: Bencher) {
+    let (mut encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
+    bencher.bench_local(|| {
             let encoder = black_box(&mut encoder);
 
             encoder.clear();
             encoder.append_packet(&player_list_header_packet).unwrap();
 
             black_box(encoder);
-        });
     });
+}
 
-    group.bench_function("encode_spawn_entity", |b| {
-        b.iter(|| {
+#[divan::bench]
+fn encode_spawn_entity(bencher: Bencher) {
+    let (mut encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
+    bencher.bench_local(|| {
             let encoder = black_box(&mut encoder);
 
             encoder.clear();
             encoder.append_packet(&spawn_entity_packet).unwrap();
 
             black_box(encoder);
-        });
     });
+}
 
+#[divan::bench]
+fn encode_chunk_data_compressed(bencher: Bencher) {
+    let (mut encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
     encoder.set_compression(CompressionThreshold(-1));
 
-    group.bench_function("encode_chunk_data_compressed", |b| {
-        b.iter(|| {
+    bencher.bench_local(|| {
             let encoder = black_box(&mut encoder);
 
             encoder.clear();
             encoder.append_packet(&chunk_data_packet).unwrap();
 
             black_box(encoder);
-        });
     });
+}
 
-    group.bench_function("encode_player_list_header_compressed", |b| {
-        b.iter(|| {
+#[divan::bench]
+fn encode_player_list_header_compressed(bencher: Bencher) {
+    let (mut encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
+    encoder.set_compression(CompressionThreshold(-1));
+
+    bencher.bench_local(|| {
             let encoder = black_box(&mut encoder);
 
             encoder.clear();
             encoder.append_packet(&player_list_header_packet).unwrap();
 
             black_box(encoder);
-        });
     });
+    }
 
-    group.bench_function("encode_spawn_entity_compressed", |b| {
-        b.iter(|| {
+#[divan::bench]
+fn encode_spawn_entity_compressed(bencher: Bencher) {
+    let (mut encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
+    encoder.set_compression(CompressionThreshold(-1));
+
+    bencher.bench_local(|| {
             let encoder = black_box(&mut encoder);
 
             encoder.clear();
@@ -123,15 +136,17 @@ pub(crate) fn packet(c: &mut Criterion) {
 
             black_box(encoder);
         });
-    });
+    }
+
+#[divan::bench]
+fn decode_chunk_data(bencher: Bencher) {
+    let (mut encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
 
     let mut decoder = PacketDecoder::new();
     let mut packet_buf = vec![];
 
     PacketWriter::new(&mut packet_buf, CompressionThreshold(-1)).write_packet(&chunk_data_packet);
-
-    group.bench_function("decode_chunk_data", |b| {
-        b.iter(|| {
+    bencher.bench_local(|| {
             let decoder = black_box(&mut decoder);
 
             decoder.queue_slice(&packet_buf);
@@ -144,14 +159,17 @@ pub(crate) fn packet(c: &mut Criterion) {
 
             black_box(decoder);
         });
-    });
+}
 
-    packet_buf.clear();
-    PacketWriter::new(&mut packet_buf, CompressionThreshold(-1))
-        .write_packet(&player_list_header_packet);
+#[divan::bench]
+fn decode_player_list_header(bencher: Bencher) {
+    let (mut encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
 
-    group.bench_function("decode_player_list_header", |b| {
-        b.iter(|| {
+    let mut decoder = PacketDecoder::new();
+    let mut packet_buf = vec![];
+
+    PacketWriter::new(&mut packet_buf, CompressionThreshold(-1)).write_packet(&player_list_header_packet);
+    bencher.bench_local(move || {
             let decoder = black_box(&mut decoder);
 
             decoder.queue_slice(&packet_buf);
@@ -164,13 +182,17 @@ pub(crate) fn packet(c: &mut Criterion) {
 
             black_box(decoder);
         });
-    });
+}
 
-    packet_buf.clear();
+#[divan::bench]
+fn decode_entity_spawn(bencher: Bencher) {
+    let (mut encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
+
+    let mut decoder = PacketDecoder::new();
+    let mut packet_buf = vec![];
+
     PacketWriter::new(&mut packet_buf, CompressionThreshold(-1)).write_packet(&spawn_entity_packet);
-
-    group.bench_function("decode_entity_spawn", |b| {
-        b.iter(|| {
+    bencher.bench_local(|| {
             let decoder = black_box(&mut decoder);
 
             decoder.queue_slice(&packet_buf);
@@ -182,16 +204,21 @@ pub(crate) fn packet(c: &mut Criterion) {
                 .unwrap();
 
             black_box(decoder);
-        });
     });
+}
+
+#[divan::bench]
+fn decode_chunk_data_compressed(bencher: Bencher) {
+    let (mut encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
+
+    let mut decoder = PacketDecoder::new();
+    let mut packet_buf = vec![];
 
     decoder.set_compression(256.into());
 
-    packet_buf.clear();
     PacketWriter::new(&mut packet_buf, 256.into()).write_packet(&chunk_data_packet);
 
-    group.bench_function("decode_chunk_data_compressed", |b| {
-        b.iter(|| {
+    bencher.bench_local(|| {
             let decoder = black_box(&mut decoder);
 
             decoder.queue_slice(&packet_buf);
@@ -204,13 +231,20 @@ pub(crate) fn packet(c: &mut Criterion) {
 
             black_box(decoder);
         });
-    });
+}
 
-    packet_buf.clear();
+#[divan::bench]
+fn decode_player_list_header_compressed(bencher: Bencher) {
+    let (mut encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
+
+    let mut decoder = PacketDecoder::new();
+    let mut packet_buf = vec![];
+
+    decoder.set_compression(256.into());
+
     PacketWriter::new(&mut packet_buf, 256.into()).write_packet(&player_list_header_packet);
 
-    group.bench_function("decode_player_list_header_compressed", |b| {
-        b.iter(|| {
+    bencher.bench_local(|| {
             let decoder = black_box(&mut decoder);
 
             decoder.queue_slice(&packet_buf);
@@ -223,13 +257,19 @@ pub(crate) fn packet(c: &mut Criterion) {
 
             black_box(decoder);
         });
-    });
+}
 
-    packet_buf.clear();
+#[divan::bench]
+fn decode_spawn_data_compressed(bencher: Bencher) {
+    let (mut encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
+
+    let mut decoder = PacketDecoder::new();
+    let mut packet_buf = vec![];
+
+    decoder.set_compression(256.into());
     PacketWriter::new(&mut packet_buf, 256.into()).write_packet(&spawn_entity_packet);
 
-    group.bench_function("decode_spawn_entity_compressed", |b| {
-        b.iter(|| {
+    bencher.bench_local(|| {
             let decoder = black_box(&mut decoder);
 
             decoder.queue_slice(&packet_buf);
@@ -241,6 +281,5 @@ pub(crate) fn packet(c: &mut Criterion) {
                 .unwrap();
 
             black_box(decoder);
-        });
     });
 }
