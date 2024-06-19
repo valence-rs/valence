@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use bevy_app::prelude::*;
-use criterion::Criterion;
+use divan::Bencher;
 use rand::Rng;
 use valence::entity::Position;
 use valence::keepalive::KeepaliveSettings;
@@ -15,14 +15,18 @@ use valence::testing::create_mock_client;
 use valence::{ident, ChunkPos, DefaultPlugins, Hand, Server, ServerSettings};
 use valence_server::CompressionThreshold;
 
-pub(crate) fn many_players(c: &mut Criterion) {
-    run_many_players(c, "many_players", 3000, 16, 16);
-    run_many_players(c, "many_players_spread_out", 3000, 8, 200);
+#[divan::bench]
+fn many_players(bencher: Bencher) {
+    run_many_players(bencher, 3000, 16, 16);
+}
+
+#[divan::bench]
+fn many_players_spread_out(bencher: Bencher) {
+    run_many_players(bencher, 3000, 8, 200);
 }
 
 fn run_many_players(
-    c: &mut Criterion,
-    func_name: &str,
+    bencher: Bencher,
     client_count: usize,
     view_dist: u8,
     world_size: i32,
@@ -91,34 +95,32 @@ fn run_many_players(
 
     app.update();
 
-    c.bench_function(func_name, |b| {
-        b.iter(|| {
-            let mut rng = rand::thread_rng();
+    bencher.bench_local(|| {
+        let mut rng = rand::thread_rng();
 
-            // Move the clients around randomly. They'll cross chunk borders and cause
-            // interesting things to happen.
-            for (id, helper) in &mut clients {
-                let pos = query.get(&app.world, *id).unwrap().get();
+        // Move the clients around randomly. They'll cross chunk borders and cause
+        // interesting things to happen.
+        for (id, helper) in &mut clients {
+            let pos = query.get(&app.world, *id).unwrap().get();
 
-                let offset = DVec3::new(rng.gen_range(-1.0..=1.0), 0.0, rng.gen_range(-1.0..=1.0));
+            let offset = DVec3::new(rng.gen_range(-1.0..=1.0), 0.0, rng.gen_range(-1.0..=1.0));
 
-                helper.send(&FullC2s {
-                    position: pos + offset,
-                    yaw: rng.gen_range(0.0..=360.0),
-                    pitch: rng.gen_range(0.0..=360.0),
-                    on_ground: rng.gen(),
-                });
+            helper.send(&FullC2s {
+                position: pos + offset,
+                yaw: rng.gen_range(0.0..=360.0),
+                pitch: rng.gen_range(0.0..=360.0),
+                on_ground: rng.gen(),
+            });
 
-                helper.send(&HandSwingC2s { hand: Hand::Main });
-            }
+            helper.send(&HandSwingC2s { hand: Hand::Main });
+        }
 
-            drop(rng);
+        drop(rng);
 
-            app.update(); // The important part.
+        app.update(); // The important part.
 
-            for (_, helper) in &mut clients {
-                helper.clear_received();
-            }
-        });
+        for (_, helper) in &mut clients {
+            helper.clear_received();
+        }
     });
 }
