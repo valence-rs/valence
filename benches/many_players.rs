@@ -25,12 +25,7 @@ fn many_players_spread_out(bencher: Bencher) {
     run_many_players(bencher, 3000, 8, 200);
 }
 
-fn run_many_players(
-    bencher: Bencher,
-    client_count: usize,
-    view_dist: u8,
-    world_size: i32,
-) {
+fn run_many_players(bencher: Bencher, client_count: usize, view_dist: u8, world_size: i32) {
     let mut app = App::new();
 
     app.insert_resource(ServerSettings {

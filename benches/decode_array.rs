@@ -21,7 +21,7 @@ pub fn decode_large_array(bencher: Bencher) {
     let bytes = [42; 4096];
 
     bencher.bench(|| {
-            let mut r = black_box(bytes.as_slice());
-            let _ = black_box(<[u8; 4096]>::decode(&mut r));
+        let mut r = black_box(bytes.as_slice());
+        let _ = black_box(<[u8; 4096]>::decode(&mut r));
     });
 }

@@ -1,7 +1,7 @@
 use std::hint::black_box;
 
-use rand::Rng;
 use divan::Bencher;
+use rand::Rng;
 use valence::protocol::{Decode, Encode, VarLong};
 
 #[divan::bench]
@@ -20,12 +20,14 @@ fn varlong_encode(bencher: Bencher) {
 fn varlong_decode(bencher: Bencher) {
     let mut rng = rand::thread_rng();
 
-    bencher.with_inputs(|| {
-        let mut buf = [0; VarLong::MAX_SIZE];
-        VarLong(rng.gen()).encode(buf.as_mut_slice()).unwrap();
-        buf
-    }).bench_local_values(|buf| {
-        let mut r = black_box(buf.as_slice());
-        let _ = black_box(VarLong::decode(&mut r));
-    });
+    bencher
+        .with_inputs(|| {
+            let mut buf = [0; VarLong::MAX_SIZE];
+            VarLong(rng.gen()).encode(buf.as_mut_slice()).unwrap();
+            buf
+        })
+        .bench_local_values(|buf| {
+            let mut r = black_box(buf.as_slice());
+            let _ = black_box(VarLong::decode(&mut r));
+        });
 }

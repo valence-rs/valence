@@ -1,5 +1,5 @@
-use valence::prelude::*;
 use divan::Bencher;
+use valence::prelude::*;
 
 /// Benches the performance of a single server tick while nothing much is
 /// happening.
@@ -14,7 +14,7 @@ pub fn idle_update(bencher: Bencher) {
     app.update();
 
     bencher.bench_local(move || {
-            app.update();
+        app.update();
     });
 }
 
