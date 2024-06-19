@@ -9,14 +9,14 @@ fn round_trip() {
 
     let compound = example_compound();
 
-    to_binary(&mut buf, ROOT_NAME, &compound).unwrap();
+    to_binary(&compound, &mut buf, ROOT_NAME).unwrap();
 
     println!("{buf:?}");
 
-    let (root_name, decoded) = from_binary(&mut buf.as_slice()).unwrap().unwrap();
+    let (decoded, root_name) = from_binary(&mut buf.as_slice()).unwrap();
 
     assert_eq!(root_name, ROOT_NAME);
-    assert_eq!(Value::from(compound), decoded);
+    assert_eq!(compound, decoded);
 }
 
 #[test]
@@ -28,7 +28,7 @@ fn check_min_sizes() {
         let dbg = format!("{min_val:?}");
         let mut buf = vec![];
 
-        to_binary(&mut buf, "", &compound!("" => min_val)).unwrap();
+        to_binary(&compound!("" => min_val), &mut buf, "").unwrap();
 
         assert_eq!(
             expected_size,
@@ -65,7 +65,7 @@ fn deeply_nested_compound_decode() {
     buf.push(Tag::End as u8); // End root compound
 
     // Should not overflow the stack
-    let _ = from_binary::<_, String>(&mut buf.as_slice());
+    let _ = from_binary::<String>(&mut buf.as_slice());
 }
 
 #[test]
@@ -84,7 +84,7 @@ fn deeply_nested_list_decode() {
     buf.push(Tag::End as u8); // End root compound
 
     // Should not overflow the stack
-    let _ = from_binary::<_, String>(&mut buf.as_slice());
+    let _ = from_binary::<String>(&mut buf.as_slice());
 }
 
 fn example_compound() -> Compound {

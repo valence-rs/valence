@@ -22,6 +22,11 @@ impl CommandArg for Vec3 {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+
 #[test]
 fn test_vec3() {
     let mut input = ParseInput::new("~-1.5 2.5 3.5");
@@ -56,4 +61,5 @@ fn test_vec3() {
         }
     );
     assert!(!input.is_done());
+}
 }
