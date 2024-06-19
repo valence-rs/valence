@@ -71,7 +71,7 @@ fn encode_chunk_data(bencher: Bencher) {
 
 #[divan::bench]
 fn encode_player_list_header(bencher: Bencher) {
-    let (mut encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
+    let (mut encoder, _, player_list_header_packet, _) = setup();
     bencher.bench_local(|| {
             let encoder = black_box(&mut encoder);
 
@@ -84,7 +84,7 @@ fn encode_player_list_header(bencher: Bencher) {
 
 #[divan::bench]
 fn encode_spawn_entity(bencher: Bencher) {
-    let (mut encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
+    let (mut encoder, _, _, spawn_entity_packet) = setup();
     bencher.bench_local(|| {
             let encoder = black_box(&mut encoder);
 
@@ -97,7 +97,7 @@ fn encode_spawn_entity(bencher: Bencher) {
 
 #[divan::bench]
 fn encode_chunk_data_compressed(bencher: Bencher) {
-    let (mut encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
+    let (mut encoder, chunk_data_packet, _, _) = setup();
     encoder.set_compression(CompressionThreshold(-1));
 
     bencher.bench_local(|| {
@@ -112,7 +112,7 @@ fn encode_chunk_data_compressed(bencher: Bencher) {
 
 #[divan::bench]
 fn encode_player_list_header_compressed(bencher: Bencher) {
-    let (mut encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
+    let (mut encoder, _, player_list_header_packet, _) = setup();
     encoder.set_compression(CompressionThreshold(-1));
 
     bencher.bench_local(|| {
@@ -127,7 +127,7 @@ fn encode_player_list_header_compressed(bencher: Bencher) {
 
 #[divan::bench]
 fn encode_spawn_entity_compressed(bencher: Bencher) {
-    let (mut encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
+    let (mut encoder, _, _, spawn_entity_packet) = setup();
     encoder.set_compression(CompressionThreshold(-1));
 
     bencher.bench_local(|| {
@@ -142,7 +142,7 @@ fn encode_spawn_entity_compressed(bencher: Bencher) {
 
 #[divan::bench]
 fn decode_chunk_data(bencher: Bencher) {
-    let (encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
+    let (_, chunk_data_packet, _, _) = setup();
 
     let mut decoder = PacketDecoder::new();
     let mut packet_buf = vec![];
@@ -165,7 +165,7 @@ fn decode_chunk_data(bencher: Bencher) {
 
 #[divan::bench]
 fn decode_player_list_header(bencher: Bencher) {
-    let (encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
+    let (_, _, player_list_header_packet, _) = setup();
 
     let mut decoder = PacketDecoder::new();
     let mut packet_buf = vec![];
@@ -188,7 +188,7 @@ fn decode_player_list_header(bencher: Bencher) {
 
 #[divan::bench]
 fn decode_entity_spawn(bencher: Bencher) {
-    let (encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
+    let (_, _, _, spawn_entity_packet) = setup();
 
     let mut decoder = PacketDecoder::new();
     let mut packet_buf = vec![];
@@ -211,7 +211,7 @@ fn decode_entity_spawn(bencher: Bencher) {
 
 #[divan::bench]
 fn decode_chunk_data_compressed(bencher: Bencher) {
-    let (encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
+    let (_, chunk_data_packet, _, _) = setup();
 
     let mut decoder = PacketDecoder::new();
     let mut packet_buf = vec![];
@@ -237,7 +237,7 @@ fn decode_chunk_data_compressed(bencher: Bencher) {
 
 #[divan::bench]
 fn decode_player_list_header_compressed(bencher: Bencher) {
-    let (encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
+    let (_, _, player_list_header_packet, _) = setup();
 
     let mut decoder = PacketDecoder::new();
     let mut packet_buf = vec![];
@@ -263,7 +263,7 @@ fn decode_player_list_header_compressed(bencher: Bencher) {
 
 #[divan::bench]
 fn decode_spawn_data_compressed(bencher: Bencher) {
-    let (encoder, chunk_data_packet, player_list_header_packet, spawn_entity_packet) = setup();
+    let (_, _, _, spawn_entity_packet) = setup();
 
     let mut decoder = PacketDecoder::new();
     let mut packet_buf = vec![];
