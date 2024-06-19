@@ -1,9 +1,10 @@
-use criterion::Criterion;
 use valence::prelude::*;
+use divan::Bencher;
 
 /// Benches the performance of a single server tick while nothing much is
 /// happening.
-pub(crate) fn idle_update(c: &mut Criterion) {
+#[divan::bench]
+pub fn idle_update(bencher: Bencher) {
     let mut app = App::new();
 
     app.add_plugins(DefaultPlugins);
@@ -12,10 +13,8 @@ pub(crate) fn idle_update(c: &mut Criterion) {
     // Run startup schedule.
     app.update();
 
-    c.bench_function("idle_update", |b| {
-        b.iter(|| {
+    bencher.bench_local(move || {
             app.update();
-        });
     });
 }
 
