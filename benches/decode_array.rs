@@ -4,7 +4,7 @@ use divan::Bencher;
 use valence::protocol::{Decode, Encode};
 
 #[divan::bench]
-pub fn decode_small_array(bencher: Bencher) {
+pub(crate) fn decode_small_array(bencher: Bencher) {
     let floats = [123.0, 456.0, 789.0];
     let mut buf = [0_u8; 24];
 
@@ -17,7 +17,7 @@ pub fn decode_small_array(bencher: Bencher) {
 }
 
 #[divan::bench]
-pub fn decode_large_array(bencher: Bencher) {
+pub(crate) fn decode_large_array(bencher: Bencher) {
     let bytes = [42; 4096];
 
     bencher.bench(|| {

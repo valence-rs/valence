@@ -4,7 +4,7 @@ use valence::prelude::*;
 /// Benches the performance of a single server tick while nothing much is
 /// happening.
 #[divan::bench]
-pub fn idle_update(bencher: Bencher) {
+pub(crate) fn idle_update(bencher: Bencher) {
     let mut app = App::new();
 
     app.add_plugins(DefaultPlugins);
