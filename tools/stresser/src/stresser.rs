@@ -58,7 +58,7 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
 
     enc.append_packet(&LoginHelloC2s {
         username: sess_name.into(),
-        profile_id: Some(Uuid::new_v4()),
+        profile_id: Uuid::new_v4(),
     })?;
 
     let write_buf = enc.take();

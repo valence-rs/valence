@@ -6,5 +6,5 @@ use crate::{Bounded, Decode, Encode, Packet, PacketState};
 #[packet(state = PacketState::Login)]
 pub struct LoginHelloC2s<'a> {
     pub username: Bounded<&'a str, 16>,
-    pub profile_id: Option<Uuid>,
+    pub profile_id: Uuid,
 }

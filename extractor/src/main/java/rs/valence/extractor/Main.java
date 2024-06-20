@@ -84,7 +84,7 @@ public class Main implements ModInitializer {
                 var compound = codecExtractor.extract();
                 // read the compound byte-wise and write it to the file
                 try {
-                    NbtIo.write(compound, out.toFile());
+                    NbtIo.write(compound, out);
                 } catch (IOException var3) {
                     throw new EncoderException(var3);
                 }

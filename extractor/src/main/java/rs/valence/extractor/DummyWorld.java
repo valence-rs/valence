@@ -30,6 +30,7 @@ import net.minecraft.world.dimension.DimensionType;
 import net.minecraft.world.entity.EntityLookup;
 import net.minecraft.world.event.GameEvent;
 import net.minecraft.world.tick.QueryableTickScheduler;
+import net.minecraft.world.tick.TickManager;
 import org.jetbrains.annotations.Nullable;
 import java.util.List;
 import java.util.function.Supplier;
@@ -87,6 +88,11 @@ public class DummyWorld extends World {
     @Nullable
     @Override
     public Entity getEntityById(int id) {
+        return null;
+    }
+
+    @Override
+    public TickManager getTickManager() {
         return null;
     }
 
@@ -158,7 +164,7 @@ public class DummyWorld extends World {
 
     @Override
     public FeatureSet getEnabledFeatures() {
-        return FeatureSet.of(FeatureFlags.VANILLA, FeatureFlags.BUNDLE);
+        return FeatureSet.of(FeatureFlags.VANILLA, FeatureFlags.BUNDLE, FeatureFlags.UPDATE_1_21);
     }
 
     @Override

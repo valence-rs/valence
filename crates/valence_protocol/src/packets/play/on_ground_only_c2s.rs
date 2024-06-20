@@ -1,7 +1,7 @@
-use crate::{packet_id, Decode, Encode, Packet};
+use crate::{PacketSide, Decode, Encode, Packet};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::ON_GROUND_ONLY)]
+#[packet(name = "ON_GROUND_ONLY", side = PacketSide::Serverbound)]
 pub struct OnGroundOnlyC2s {
     pub on_ground: bool,
 }

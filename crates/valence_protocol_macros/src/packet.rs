@@ -13,15 +13,26 @@ pub(super) fn derive_packet(item: TokenStream) -> Result<TokenStream> {
 
     let name = input.ident.clone();
 
+    let state = packet_attr
+    .state
+    .unwrap_or_else(|| parse_quote!(::valence_protocol::PacketState::Play));
+
+    let state_str = match state {
+        Expr::Path(ref path) => path.path.segments.last().unwrap().ident.to_string(),
+        _ => return Err(Error::new(state.span(), "invalid state")),
+    };
+
     let name_str = if let Some(attr_name) = packet_attr.name {
         attr_name.value()
-    } else {
-        name.to_string()
+    } else {   
+        name.to_string()  
     };
+
+    let name_state_str = format!("{}{}", state_str ,name_str);
 
     let packet_id: Expr = match packet_attr.id {
         Some(expr) => expr,
-        None => match syn::parse_str::<Ident>(&name_str.to_shouty_snake_case()) {
+        None => match syn::parse_str::<Ident>(&name_state_str.to_shouty_snake_case()) {
             Ok(ident) => parse_quote!(::valence_protocol::packet_id::#ident),
             Err(_) => {
                 return Err(Error::new(
@@ -48,10 +59,6 @@ pub(super) fn derive_packet(item: TokenStream) -> Result<TokenStream> {
             "missing `side = PacketSide::...` value from `packet` attribute",
         ));
     };
-
-    let state = packet_attr
-        .state
-        .unwrap_or_else(|| parse_quote!(::valence_protocol::PacketState::Play));
 
     Ok(quote! {
         impl #impl_generics ::valence_protocol::__private::Packet for #name #ty_generics
