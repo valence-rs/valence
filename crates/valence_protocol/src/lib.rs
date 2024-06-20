@@ -328,7 +328,7 @@ mod tests {
 
     #[derive(Encode, Decode, Packet, Debug)]
     #[packet(id = 3, side = PacketSide::Clientbound)]
-    struct EmptyStruct {}
+    struct EmptyStruct;
 
     #[derive(Encode, Decode, Packet, Debug)]
     #[packet(id = 4, side = PacketSide::Clientbound)]

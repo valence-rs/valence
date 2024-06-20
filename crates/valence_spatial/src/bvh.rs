@@ -35,7 +35,7 @@ impl<T: Bounded3D + Send + Sync> Bvh<T> {
         }
     }
 
-    pub fn rebuild(&mut self, leaves: impl IntoIterator<Item = T>) {
+    pub fn rebuild<I: IntoIterator<Item = T>>(&mut self, leaves: I) {
         self.internal_nodes.clear();
         self.leaf_nodes.clear();
 
