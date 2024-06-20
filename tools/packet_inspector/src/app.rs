@@ -103,7 +103,11 @@ impl GuiApp {
             shared_state: shared_state.clone(),
         };
 
-        Self { tree, shared_state, tab_viewer }
+        Self {
+            tree,
+            shared_state,
+            tab_viewer,
+        }
     }
 }
 

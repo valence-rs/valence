@@ -81,7 +81,7 @@ fn draw_packet_counter(state: &SharedState, ui: &mut Ui) {
         .filter(|p| state.packet_filter.get(p).unwrap_or(true))
         .count();
 
-    ui.label(format!("({filtered_packets}/{length})", ));
+    ui.label(format!("({filtered_packets}/{length})",));
 }
 
 fn draw_clear_button(state: &mut SharedState, ui: &mut Ui) {
