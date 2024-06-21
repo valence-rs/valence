@@ -81,7 +81,7 @@ fn draw_packet_counter(state: &SharedState, ui: &mut Ui) {
         .filter(|p| state.packet_filter.get(p).unwrap_or(true))
         .count();
 
-    ui.label(format!("({}/{})", filtered_packets, length));
+    ui.label(format!("({filtered_packets}/{length})",));
 }
 
 fn draw_clear_button(state: &mut SharedState, ui: &mut Ui) {
@@ -135,14 +135,16 @@ fn draw_packet_widget(ui: &mut Ui, packet: &Packet, selected: bool) -> Response 
         Sense::click(),
     ); // this should give me a new rect inside the scroll area... no?
 
-    let fill = match selected /*packet.selected*/ {
-        true => Rgba::from_rgba_premultiplied(0.1, 0.1, 0.1, 0.5),
-        false => Rgba::from_rgba_premultiplied(0.0, 0.0, 0.0, 0.0),
+    let fill = if selected {
+        Rgba::from_rgba_premultiplied(0.1, 0.1, 0.1, 0.5)
+    } else {
+        Rgba::from_rgba_premultiplied(0.0, 0.0, 0.0, 0.0)
     };
 
-    let text_color: Color32 = match selected /*packet.selected*/ {
-        true => Rgba::from_rgba_premultiplied(0.0, 0.0, 0.0, 1.0).into(),
-        false => ui.visuals().strong_text_color(),
+    let text_color: Color32 = if selected {
+        Rgba::from_rgba_premultiplied(0.0, 0.0, 0.0, 1.0).into()
+    } else {
+        ui.visuals().strong_text_color()
     };
 
     if ui.is_rect_visible(rect) {

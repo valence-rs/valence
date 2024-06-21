@@ -269,6 +269,6 @@ fn update_scores(
             layer.write_packet(&packet);
         }
 
-        old_scores.0 = scores.0.clone();
+        old_scores.0.clone_from(&scores.0);
     }
 }

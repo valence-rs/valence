@@ -728,13 +728,13 @@ struct FlagManager {
 
 #[derive(Debug, Resource)]
 struct CtfGlobals {
-    pub scoreboard_layer: Entity,
+    pub(crate) scoreboard_layer: Entity,
 
-    pub red_flag: BlockPos,
-    pub blue_flag: BlockPos,
+    pub(crate) red_flag: BlockPos,
+    pub(crate) blue_flag: BlockPos,
 
-    pub red_capture_trigger: TriggerArea,
-    pub blue_capture_trigger: TriggerArea,
+    pub(crate) red_capture_trigger: TriggerArea,
+    pub(crate) blue_capture_trigger: TriggerArea,
 }
 
 fn update_flag_visuals(
@@ -841,9 +841,9 @@ struct CtfLayers {
     /// should be viewed.
     ///
     /// This is used to make friendly players glow.
-    pub friendly_layers: HashMap<Team, Entity>,
+    pub(crate) friendly_layers: HashMap<Team, Entity>,
     /// Ditto, but for enemy players.
-    pub enemy_layers: HashMap<Team, Entity>,
+    pub(crate) enemy_layers: HashMap<Team, Entity>,
 }
 
 impl CtfLayers {

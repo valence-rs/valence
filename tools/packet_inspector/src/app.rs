@@ -104,8 +104,8 @@ impl GuiApp {
         };
 
         Self {
-            shared_state,
             tree,
+            shared_state,
             tab_viewer,
         }
     }

@@ -15,7 +15,7 @@ impl PacketFilter {
     pub(crate) fn new() -> Self {
         let mut inner = HashMap::new();
 
-        for p in packet_inspector::STD_PACKETS.iter() {
+        for p in &packet_inspector::STD_PACKETS {
             inner.insert(p.clone(), true);
         }
 
@@ -51,25 +51,25 @@ pub(crate) enum Event {
 
 #[derive(serde::Deserialize, serde::Serialize)]
 pub(crate) struct SharedState {
-    pub listener_addr: String,
-    pub server_addr: String,
-    pub autostart: bool,
-    pub packet_filter: PacketFilter,
-    pub packet_search: String,
+    pub(crate) listener_addr: String,
+    pub(crate) server_addr: String,
+    pub(crate) autostart: bool,
+    pub(crate) packet_filter: PacketFilter,
+    pub(crate) packet_search: String,
     #[serde(skip)]
-    pub is_listening: bool,
+    pub(crate) is_listening: bool,
     #[serde(skip)]
-    pub selected_packet: Option<usize>,
+    pub(crate) selected_packet: Option<usize>,
     #[serde(skip)]
-    pub update_scroll: bool,
+    pub(crate) update_scroll: bool,
     #[serde(skip)]
-    pub packets: RwLock<Vec<Packet>>,
+    pub(crate) packets: RwLock<Vec<Packet>>,
     #[serde(skip)]
     pub(super) receiver: Option<flume::Receiver<Event>>,
     #[serde(skip)]
     sender: Option<flume::Sender<Event>>,
     #[serde(skip)]
-    pub ctx: Option<Context>,
+    pub(crate) ctx: Option<Context>,
 }
 
 impl Default for SharedState {
@@ -77,8 +77,8 @@ impl Default for SharedState {
         let (sender, receiver) = flume::unbounded();
 
         Self {
-            listener_addr: "127.0.0.1:25566".to_string(),
-            server_addr: "127.0.0.1:25565".to_string(),
+            listener_addr: "127.0.0.1:25566".to_owned(),
+            server_addr: "127.0.0.1:25565".to_owned(),
             autostart: false,
             is_listening: false,
             packet_search: String::new(),
@@ -110,7 +110,7 @@ impl SharedState {
 
         let mut packet_filter = PacketFilter::new();
         // iterate over packet_inspector::STD_PACKETS
-        for p in packet_inspector::STD_PACKETS.iter() {
+        for p in &packet_inspector::STD_PACKETS {
             // if the packet is in the current packet_filter
             if let Some(v) = self.packet_filter.get(p) {
                 // insert it into packet_filter

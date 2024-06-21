@@ -25,38 +25,43 @@ impl CommandArg for BlockPos {
     }
 }
 
-#[test]
-fn test_block_pos() {
-    let mut input = ParseInput::new("~-1 2 3");
-    assert_eq!(
-        BlockPos::parse_arg(&mut input).unwrap(),
-        BlockPos {
-            x: AbsoluteOrRelative::Relative(-1),
-            y: AbsoluteOrRelative::Absolute(2),
-            z: AbsoluteOrRelative::Absolute(3)
-        }
-    );
-    assert!(input.is_done());
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    let mut input = ParseInput::new("-1 ~2 3 ");
-    assert_eq!(
-        BlockPos::parse_arg(&mut input).unwrap(),
-        BlockPos {
-            x: AbsoluteOrRelative::Absolute(-1),
-            y: AbsoluteOrRelative::Relative(2),
-            z: AbsoluteOrRelative::Absolute(3)
-        }
-    );
-    assert!(!input.is_done());
+    #[test]
+    fn test_block_pos() {
+        let mut input = ParseInput::new("~-1 2 3");
+        assert_eq!(
+            BlockPos::parse_arg(&mut input).unwrap(),
+            BlockPos {
+                x: AbsoluteOrRelative::Relative(-1),
+                y: AbsoluteOrRelative::Absolute(2),
+                z: AbsoluteOrRelative::Absolute(3)
+            }
+        );
+        assert!(input.is_done());
 
-    let mut input = ParseInput::new("-1 2 ~3 4");
-    assert_eq!(
-        BlockPos::parse_arg(&mut input).unwrap(),
-        BlockPos {
-            x: AbsoluteOrRelative::Absolute(-1),
-            y: AbsoluteOrRelative::Absolute(2),
-            z: AbsoluteOrRelative::Relative(3)
-        }
-    );
-    assert!(!input.is_done());
+        let mut input = ParseInput::new("-1 ~2 3 ");
+        assert_eq!(
+            BlockPos::parse_arg(&mut input).unwrap(),
+            BlockPos {
+                x: AbsoluteOrRelative::Absolute(-1),
+                y: AbsoluteOrRelative::Relative(2),
+                z: AbsoluteOrRelative::Absolute(3)
+            }
+        );
+        assert!(!input.is_done());
+
+        let mut input = ParseInput::new("-1 2 ~3 4");
+        assert_eq!(
+            BlockPos::parse_arg(&mut input).unwrap(),
+            BlockPos {
+                x: AbsoluteOrRelative::Absolute(-1),
+                y: AbsoluteOrRelative::Absolute(2),
+                z: AbsoluteOrRelative::Relative(3)
+            }
+        );
+        assert!(!input.is_done());
+    }
 }

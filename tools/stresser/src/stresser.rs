@@ -73,7 +73,7 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
 
         match conn.try_read_buf(&mut read_buf) {
             Ok(0) => return Err(io::Error::from(ErrorKind::UnexpectedEof).into()),
-            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => continue,
+            Err(e) if e.kind() == io::ErrorKind::WouldBlock => continue,
             Err(e) => return Err(e.into()),
             Ok(_) => (),
         };
@@ -143,7 +143,7 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
 
         match conn.try_read_buf(&mut read_buf) {
             Ok(0) => return Err(io::Error::from(ErrorKind::UnexpectedEof).into()),
-            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => continue,
+            Err(e) if e.kind() == io::ErrorKind::WouldBlock => continue,
             Err(e) => return Err(e.into()),
             Ok(_) => (),
         };

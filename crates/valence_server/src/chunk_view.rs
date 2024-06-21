@@ -90,7 +90,7 @@ mod tests {
     #[test]
     fn chunk_view_contains() {
         let view = ChunkView::new(ChunkPos::new(0, 0), 32);
-        let positions = BTreeSet::from_iter(view.iter());
+        let positions = view.iter().collect::<BTreeSet<_>>();
 
         for z in -64..64 {
             for x in -64..64 {

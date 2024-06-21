@@ -12,7 +12,7 @@ use valence::text::IntoText;
 use valence_server::protocol::Velocity;
 use valence_server::CompressionThreshold;
 
-pub fn setup<'a>() -> (
+pub(crate) fn setup<'a>() -> (
     PacketEncoder,
     ChunkDataS2c<'a>,
     PlayerListHeaderS2c<'a>,

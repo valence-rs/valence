@@ -21,22 +21,27 @@ impl CommandArg for bool {
     }
 }
 
-#[test]
-fn test_bool() {
-    let mut input = ParseInput::new("true");
-    assert!(bool::parse_arg(&mut input).unwrap());
-    assert!(input.is_done());
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    let mut input = ParseInput::new("false");
-    assert!(!bool::parse_arg(&mut input).unwrap());
-    assert!(input.is_done());
+    #[test]
+    fn test_bool() {
+        let mut input = ParseInput::new("true");
+        assert!(bool::parse_arg(&mut input).unwrap());
+        assert!(input.is_done());
 
-    let mut input = ParseInput::new("false ");
-    assert!(!bool::parse_arg(&mut input).unwrap());
-    assert!(!input.is_done());
+        let mut input = ParseInput::new("false");
+        assert!(!bool::parse_arg(&mut input).unwrap());
+        assert!(input.is_done());
 
-    let mut input = ParseInput::new("falSe trUe");
-    assert!(!bool::parse_arg(&mut input).unwrap());
-    assert!(bool::parse_arg(&mut input).unwrap());
-    assert!(input.is_done());
+        let mut input = ParseInput::new("false ");
+        assert!(!bool::parse_arg(&mut input).unwrap());
+        assert!(!input.is_done());
+
+        let mut input = ParseInput::new("falSe trUe");
+        assert!(!bool::parse_arg(&mut input).unwrap());
+        assert!(bool::parse_arg(&mut input).unwrap());
+        assert!(input.is_done());
+    }
 }
