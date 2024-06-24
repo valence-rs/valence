@@ -58,14 +58,18 @@ impl GuiApp {
         let ctx = cc.egui_ctx.clone();
 
         // Default Application Layout
-        let mut tree: DockState<Box<dyn Tab>> = DockState::new(vec![Box::new(connection::Connection::new())]);
+        let mut tree: DockState<Box<dyn Tab>> =
+            DockState::new(vec![Box::new(connection::Connection::new())]);
 
-        let [a, b] = tree.main_surface_mut().split_right( NodeIndex::root(),
+        let [a, b] = tree.main_surface_mut().split_right(
+            NodeIndex::root(),
             0.3,
             vec![Box::new(packet_list::PacketList::new())],
         );
 
-        let [_, _] = tree.main_surface_mut().split_below(a, 0.25, vec![Box::new(filter::Filter::new())]);
+        let [_, _] =
+            tree.main_surface_mut()
+                .split_below(a, 0.25, vec![Box::new(filter::Filter::new())]);
         let [_, _] = tree.main_surface_mut().split_below(
             b,
             0.5,

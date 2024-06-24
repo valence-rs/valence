@@ -1,7 +1,6 @@
 use eframe::epaint::PathShape;
 use egui::{
-    Color32, Pos2, Rect, Response, Rgba, Sense, Shape, Stroke, TextStyle, Ui, Vec2,
-    WidgetText,
+    Color32, Pos2, Rect, Response, Rgba, Sense, Shape, Stroke, TextStyle, Ui, Vec2, WidgetText,
 };
 use packet_inspector::Packet;
 use valence_protocol::PacketSide;
@@ -148,7 +147,8 @@ fn draw_packet_widget(ui: &mut Ui, packet: &Packet, selected: bool) -> Response 
     };
 
     if ui.is_rect_visible(rect) {
-        ui.painter().rect(rect, 0.0, fill, Stroke::new(1.0, Rgba::BLACK));
+        ui.painter()
+            .rect(rect, 0.0, fill, Stroke::new(1.0, Rgba::BLACK));
 
         let shape = get_triangle(packet.side, &rect);
         ui.painter().add(Shape::Path(shape));

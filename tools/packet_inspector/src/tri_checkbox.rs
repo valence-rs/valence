@@ -96,7 +96,6 @@ impl<'a> Widget for TriCheckbox<'a> {
                 visuals.bg_stroke,
             ));
 
-
             match *checked {
                 TriCheckboxState::Enabled => {
                     // Check mark:
@@ -128,7 +127,6 @@ impl<'a> Widget for TriCheckbox<'a> {
                 );
 
                 ui.painter().galley(text_pos, text, visuals.text_color());
-
             }
         }
 
