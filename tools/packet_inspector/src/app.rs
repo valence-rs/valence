@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 use std::sync::{Arc, RwLock};
 
-use egui_dock::{DockArea, DockState, NodeIndex, Style, Tree};
+use egui_dock::{DockArea, DockState, NodeIndex, Style};
 use packet_inspector::Proxy;
 use tokio::task::JoinHandle;
 
