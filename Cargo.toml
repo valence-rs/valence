@@ -113,15 +113,15 @@ arrayvec = "0.7.4"
 async-trait = "0.1.80"
 atty = "0.2.14"
 base64 = "0.22.1"
-bevy_app = { version = "0.13", default-features = false }
-bevy_derive = "0.13"
-bevy_ecs = { version = "0.13", default-features = false, features = [
+bevy_app = { version = "0.12", default-features = false }
+bevy_derive = "0.12"
+bevy_ecs = { version = "0.12", default-features = false, features = [
     "multi-threaded",
 ] }
-bevy_hierarchy = { version = "0.13", default-features = false }
-bevy_log = { version = "0.13" }
-bevy_mod_debugdump = { version = "0.10.0", default-features = false }
-bevy_utils = { version = "0.13" }
+bevy_hierarchy = { version = "0.12", default-features = false }
+bevy_log = { version = "0.12" }
+bevy_mod_debugdump = { version = "0.9.0", default-features = false }
+bevy_utils = { version = "0.12" }
 bitfield-struct = "0.8.0"
 bitvec = "1.0.1"
 byteorder = "1.5.0"
@@ -132,7 +132,7 @@ clap = { version = "4.5.7", features = ["derive"] }
 derive_more = "1.0.0-beta.6"
 directories = "5.0.1"
 divan = "0.1.14"
-eframe = { version = "0.27.2", default-features = false }
+eframe = { version = "0.27.2" }
 egui = "0.27.2"
 egui_dock = "0.12"
 flate2 = "1.0.30"
