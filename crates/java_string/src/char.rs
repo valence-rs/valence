@@ -101,7 +101,7 @@ impl JavaCodePoint {
     pub const fn as_u32(self) -> u32 {
         unsafe {
             // SAFETY: JavaCodePoint has the same repr as a u32
-            let result = std::mem::transmute(self);
+            let result = std::mem::transmute::<Self, u32>(self);
 
             if result > 0x10ffff {
                 // SAFETY: JavaCodePoint can never have a value > 0x10FFFF.
