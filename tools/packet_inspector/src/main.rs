@@ -1,5 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use egui::{IconData, ViewportBuilder};
+
 mod tri_checkbox;
 
 mod app;
@@ -8,9 +10,9 @@ mod shared_state;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let native_options = eframe::NativeOptions {
-        icon_data: Some(load_icon()),
-        initial_window_size: Some(egui::Vec2::new(1024.0, 768.0)),
-        decorated: true,
+        viewport: ViewportBuilder::default()
+            .with_inner_size(egui::Vec2::new(1024.0, 768.0))
+            .with_icon(load_icon()),
         ..Default::default()
     };
 
@@ -27,7 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn load_icon() -> eframe::IconData {
+fn load_icon() -> IconData {
     let (icon_rgba, icon_width, icon_height) = {
         let icon = include_bytes!("../../../assets/logo-256x256.png");
         let image = image::load_from_memory(icon)
@@ -38,7 +40,7 @@ fn load_icon() -> eframe::IconData {
         (rgba, width, height)
     };
 
-    eframe::IconData {
+    IconData {
         rgba: icon_rgba,
         width: icon_width,
         height: icon_height,
