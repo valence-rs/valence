@@ -1,7 +1,6 @@
-use eframe::epaint::{PathShape, RectShape};
+use eframe::epaint::PathShape;
 use egui::{
-    Color32, Pos2, Rect, Response, Rgba, Rounding, Sense, Shape, Stroke, TextStyle, Ui, Vec2,
-    WidgetText,
+    Color32, Pos2, Rect, Response, Rgba, Sense, Shape, Stroke, TextStyle, Ui, Vec2, WidgetText,
 };
 use packet_inspector::Packet;
 use valence_protocol::PacketSide;
@@ -148,12 +147,8 @@ fn draw_packet_widget(ui: &mut Ui, packet: &Packet, selected: bool) -> Response 
     };
 
     if ui.is_rect_visible(rect) {
-        ui.painter().add(Shape::Rect(RectShape {
-            rect,
-            rounding: Rounding::none(),
-            fill: fill.into(),
-            stroke: Stroke::new(1.0, Rgba::BLACK),
-        }));
+        ui.painter()
+            .rect(rect, 0.0, fill, Stroke::new(1.0, Rgba::BLACK));
 
         let shape = get_triangle(packet.side, &rect);
         ui.painter().add(Shape::Path(shape));
@@ -176,34 +171,33 @@ fn draw_packet_widget(ui: &mut Ui, packet: &Packet, selected: bool) -> Response 
             ui.visuals().weak_text_color()
         };
 
-        identifier.paint_with_fallback_color(
-            ui.painter(),
+        ui.painter().galley(
             Pos2 {
                 x: rect.left() + 21.0,
                 y: rect.top() + 6.0,
             },
+            identifier,
             id_and_timestamp_color,
         );
 
         rect.set_width(rect.width() - 5.0);
 
         let label_width = label.size().x + 50.0;
-
-        label.paint_with_fallback_color(
-            &ui.painter().with_clip_rect(rect),
+        ui.painter().galley(
             Pos2 {
                 x: rect.left() + 55.0,
                 y: rect.top() + 6.0,
             },
+            label,
             text_color,
         );
 
-        timestamp.paint_with_fallback_color(
-            &ui.painter().with_clip_rect(rect),
+        ui.painter().galley(
             Pos2 {
                 x: rect.left() + label_width + 8.0,
                 y: rect.top() + 6.0,
             },
+            timestamp,
             id_and_timestamp_color,
         );
     }

@@ -89,12 +89,12 @@ impl<'a> Widget for TriCheckbox<'a> {
             // let visuals = ui.style().interact_selectable(&response, *checked);
             let visuals = ui.style().interact(&response);
             let (small_icon_rect, big_icon_rect) = ui.spacing().icon_rectangles(rect);
-            ui.painter().add(epaint::RectShape {
-                rect: big_icon_rect.expand(visuals.expansion),
-                rounding: visuals.rounding,
-                fill: visuals.bg_fill,
-                stroke: visuals.bg_stroke,
-            });
+            ui.painter().add(epaint::RectShape::new(
+                big_icon_rect.expand(visuals.expansion),
+                visuals.rounding,
+                visuals.bg_fill,
+                visuals.bg_stroke,
+            ));
 
             match *checked {
                 TriCheckboxState::Enabled => {
@@ -125,7 +125,8 @@ impl<'a> Widget for TriCheckbox<'a> {
                     rect.min.x + icon_width + icon_spacing,
                     rect.center().y - 0.5 * text.size().y,
                 );
-                text.paint_with_visuals(ui.painter(), text_pos, visuals);
+
+                ui.painter().galley(text_pos, text, visuals.text_color());
             }
         }
 

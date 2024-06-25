@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 use std::sync::{Arc, RwLock};
 
-use egui_dock::{DockArea, NodeIndex, Style, Tree};
+use egui_dock::{DockArea, DockState, NodeIndex, Style};
 use packet_inspector::Proxy;
 use tokio::task::JoinHandle;
 
@@ -48,7 +48,7 @@ impl egui_dock::TabViewer for TabViewer {
 }
 
 pub(crate) struct GuiApp {
-    tree: Tree<Box<dyn Tab>>,
+    tree: DockState<Box<dyn Tab>>,
     shared_state: Arc<RwLock<SharedState>>,
     tab_viewer: TabViewer,
 }
@@ -58,16 +58,19 @@ impl GuiApp {
         let ctx = cc.egui_ctx.clone();
 
         // Default Application Layout
-        let mut tree: Tree<Box<dyn Tab>> = Tree::new(vec![Box::new(connection::Connection::new())]);
+        let mut tree: DockState<Box<dyn Tab>> =
+            DockState::new(vec![Box::new(connection::Connection::new())]);
 
-        let [a, b] = tree.split_right(
+        let [a, b] = tree.main_surface_mut().split_right(
             NodeIndex::root(),
             0.3,
             vec![Box::new(packet_list::PacketList::new())],
         );
 
-        let [_, _] = tree.split_below(a, 0.25, vec![Box::new(filter::Filter::new())]);
-        let [_, _] = tree.split_below(
+        let [_, _] =
+            tree.main_surface_mut()
+                .split_below(a, 0.25, vec![Box::new(filter::Filter::new())]);
+        let [_, _] = tree.main_surface_mut().split_below(
             b,
             0.5,
             vec![

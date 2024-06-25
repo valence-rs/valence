@@ -6,7 +6,7 @@ use crate::extras::*;
 
 const SPAWN_Y: i32 = 64;
 
-pub fn build_app(app: &mut App) {
+pub(crate) fn build_app(app: &mut App) {
     app.insert_resource(NetworkSettings {
         connection_mode: ConnectionMode::Offline,
         ..Default::default()
