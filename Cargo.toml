@@ -114,7 +114,7 @@ async-trait = "0.1.80"
 atty = "0.2.14"
 base64 = "0.22.1"
 bevy_app = { version = "0.12", default-features = false }
-bevy_derive = "0.12"
+bevy_derive = "0.13"
 bevy_ecs = { version = "0.12", default-features = false, features = [
     "multi-threaded",
 ] }
