@@ -132,7 +132,7 @@ clap = { version = "4.5.7", features = ["derive"] }
 derive_more = "1.0.0-beta.6"
 directories = "5.0.1"
 divan = "0.1.14"
-eframe = { version = "0.27.2" }
+eframe = { version = "0.28.1" }
 egui = "0.27.2"
 egui_dock = "0.12"
 flate2 = "1.0.30"
