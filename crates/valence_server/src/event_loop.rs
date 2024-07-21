@@ -22,7 +22,7 @@ impl Plugin for EventLoopPlugin {
             .add_schedule(Schedule::new(EventLoopPostUpdate))
             .add_systems(RunEventLoop, run_event_loop);
 
-        app.world
+        app.world_mut()
             .resource_mut::<MainScheduleOrder>()
             .insert_after(PreUpdate, RunEventLoop);
     }

@@ -8,9 +8,6 @@ repository.workspace = true
 documentation.workspace = true
 license.workspace = true
 
-[lints]
-workspace = true
-
 [dependencies]
 anyhow.workspace = true
 bevy_app.workspace = true

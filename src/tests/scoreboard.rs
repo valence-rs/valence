@@ -1,3 +1,4 @@
+use divan::__private::Arg;
 use valence_scoreboard::*;
 
 use crate::client::VisibleEntityLayers;
@@ -20,9 +21,10 @@ fn show_scoreboard_when_added_to_layer() {
     } = ScenarioSingleClient::new();
 
     // Add a new entity layer for the objective.
-    let server = app.world.get_resource::<Server>().unwrap();
-    let obj_layer = app.world.spawn(EntityLayer::new(server)).id();
-    app.world
+    let server = app.world().get_resource::<Server>().unwrap().clone();
+    let obj_layer = app.world_mut().spawn(EntityLayer::new(&server)).id();
+
+    app.world_mut()
         .entity_mut(client)
         .get_mut::<VisibleEntityLayers>()
         .unwrap()
@@ -34,7 +36,7 @@ fn show_scoreboard_when_added_to_layer() {
     helper.clear_received();
 
     // Spawn the objective.
-    app.world.spawn(ObjectiveBundle {
+    app.world_mut().spawn(ObjectiveBundle {
         name: Objective::new("foo"),
         display: ObjectiveDisplay("Foo".into_text()),
         scores: ObjectiveScores::new(),
@@ -64,9 +66,9 @@ fn show_scoreboard_when_client_join() {
     } = ScenarioSingleClient::new();
 
     // Add a new entity layer for the objective.
-    let server = app.world.get_resource::<Server>().unwrap();
-    let obj_layer = app.world.spawn(EntityLayer::new(server)).id();
-    app.world
+    let server = app.world().get_resource::<Server>().unwrap().clone();
+    let obj_layer = app.world_mut().spawn(EntityLayer::new(&server)).id();
+    app.world_mut()
         .entity_mut(client)
         .get_mut::<VisibleEntityLayers>()
         .unwrap()
@@ -74,7 +76,7 @@ fn show_scoreboard_when_client_join() {
         .insert(obj_layer);
 
     // Spawn the objective.
-    app.world.spawn(ObjectiveBundle {
+    app.world_mut().spawn(ObjectiveBundle {
         name: Objective::new("foo"),
         display: ObjectiveDisplay("Foo".into_text()),
         scores: ObjectiveScores::new(),
@@ -105,9 +107,9 @@ fn should_update_score() {
     } = ScenarioSingleClient::new();
 
     // Add a new entity layer for the objective.
-    let server = app.world.get_resource::<Server>().unwrap();
-    let obj_layer = app.world.spawn(EntityLayer::new(server)).id();
-    app.world
+    let server = app.world_mut().get_resource::<Server>().unwrap().clone();
+    let obj_layer = app.world_mut().spawn(EntityLayer::new(&server)).id();
+    app.world_mut()
         .entity_mut(client)
         .get_mut::<VisibleEntityLayers>()
         .unwrap()
@@ -116,7 +118,7 @@ fn should_update_score() {
 
     // Spawn the objective.
     let obj = app
-        .world
+        .world_mut()
         .spawn(ObjectiveBundle {
             name: Objective::new("foo"),
             display: ObjectiveDisplay("Foo".into_text()),
@@ -130,7 +132,7 @@ fn should_update_score() {
     app.update();
     helper.clear_received();
 
-    let mut scores = app.world.get_mut::<ObjectiveScores>(obj).unwrap();
+    let mut scores = app.world_mut().get_mut::<ObjectiveScores>(obj).unwrap();
     scores.insert("foo", 3);
 
     app.update();
@@ -153,9 +155,9 @@ fn should_only_update_score_diff() {
     } = ScenarioSingleClient::new();
 
     // Add a new entity layer for the objective.
-    let server = app.world.get_resource::<Server>().unwrap();
-    let obj_layer = app.world.spawn(EntityLayer::new(server)).id();
-    app.world
+    let server = app.world().get_resource::<Server>().unwrap().clone();
+    let obj_layer = app.world_mut().spawn(EntityLayer::new(&server)).id();
+    app.world_mut()
         .entity_mut(client)
         .get_mut::<VisibleEntityLayers>()
         .unwrap()
@@ -164,7 +166,7 @@ fn should_only_update_score_diff() {
 
     // Spawn the objective.
     let obj = app
-        .world
+        .world_mut()
         .spawn(ObjectiveBundle {
             name: Objective::new("foo"),
             display: ObjectiveDisplay("Foo".into_text()),
@@ -178,7 +180,7 @@ fn should_only_update_score_diff() {
     app.update();
     helper.clear_received();
 
-    let mut scores = app.world.get_mut::<ObjectiveScores>(obj).unwrap();
+    let mut scores = app.world_mut().get_mut::<ObjectiveScores>(obj).unwrap();
     scores.insert("foo", 3);
 
     app.update();

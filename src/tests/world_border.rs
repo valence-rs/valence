@@ -38,7 +38,7 @@ fn test_center_change() {
     helper.clear_received();
 
     // Change the center
-    let mut center = app.world.get_mut::<WorldBorderCenter>(layer).unwrap();
+    let mut center = app.world_mut().get_mut::<WorldBorderCenter>(layer).unwrap();
     center.x = 10.0;
 
     app.update();
@@ -62,7 +62,7 @@ fn test_diameter_change() {
     helper.clear_received();
 
     // Change the diameter
-    let mut lerp = app.world.get_mut::<WorldBorderLerp>(layer).unwrap();
+    let mut lerp = app.world_mut().get_mut::<WorldBorderLerp>(layer).unwrap();
     lerp.target_diameter = 20.0;
 
     app.update();
@@ -86,7 +86,7 @@ fn test_interpolation() {
     helper.clear_received();
 
     // Change the diameter and start interpolation to it over 20 ticks
-    let mut lerp = app.world.get_mut::<WorldBorderLerp>(layer).unwrap();
+    let mut lerp = app.world_mut().get_mut::<WorldBorderLerp>(layer).unwrap();
     lerp.target_diameter = 20.0;
     lerp.remaining_ticks = 20;
 
@@ -100,7 +100,7 @@ fn test_interpolation() {
     frames.assert_count::<WorldBorderInterpolateSizeS2c>(1);
 
     // Check if the interpolation is finished
-    let lerp = app.world.get_mut::<WorldBorderLerp>(layer).unwrap();
+    let lerp = app.world_mut().get_mut::<WorldBorderLerp>(layer).unwrap();
     assert_eq!(lerp.current_diameter, 20.0);
     assert_eq!(lerp.remaining_ticks, 0);
 }
@@ -119,7 +119,7 @@ fn test_warning_blocks_change() {
     helper.clear_received();
 
     // Change the warning blocks
-    let mut warn_blocks = app.world.get_mut::<WorldBorderWarnBlocks>(layer).unwrap();
+    let mut warn_blocks = app.world_mut().get_mut::<WorldBorderWarnBlocks>(layer).unwrap();
     warn_blocks.0 = 10;
 
     app.update();
@@ -143,7 +143,7 @@ fn test_warning_time_change() {
     helper.clear_received();
 
     // Change the warning time
-    let mut warn_time = app.world.get_mut::<WorldBorderWarnTime>(layer).unwrap();
+    let mut warn_time = app.world_mut().get_mut::<WorldBorderWarnTime>(layer).unwrap();
     warn_time.0 = 10;
 
     app.update();
@@ -168,7 +168,7 @@ fn test_portal_tp_boundary_change() {
 
     // Change the portal tp boundary
     let mut portal_tp_boundary = app
-        .world
+        .world_mut()
         .get_mut::<WorldBorderPortalTpBoundary>(layer)
         .unwrap();
     portal_tp_boundary.0 = 10;
@@ -187,7 +187,7 @@ fn prepare() -> ScenarioSingleClient {
     s.app.update();
 
     // Attach the world border bundle to the chunk layer
-    s.app.world.entity_mut(s.layer).insert(WorldBorderBundle {
+    s.app.world_mut().entity_mut(s.layer).insert(WorldBorderBundle {
         lerp: WorldBorderLerp {
             target_diameter: 10.0,
             ..Default::default()

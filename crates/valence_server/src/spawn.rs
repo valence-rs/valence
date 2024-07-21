@@ -4,7 +4,7 @@ use std::borrow::Cow;
 use std::collections::BTreeSet;
 
 use bevy_ecs::prelude::*;
-use bevy_ecs::query::WorldQuery;
+use bevy_ecs::query::QueryData;
 use derive_more::{Deref, DerefMut};
 use valence_entity::EntityLayerId;
 use valence_protocol::packets::play::{GameJoinS2c, PlayerRespawnS2c, PlayerSpawnPositionS2c};
@@ -65,10 +65,10 @@ pub struct RespawnPosition {
     pub yaw: f32,
 }
 
-/// A convenient [`WorldQuery`] for obtaining client spawn components. Also see
+/// A convenient [`QueryData`] for obtaining client spawn components. Also see
 /// [`ClientSpawnQueryReadOnly`].
-#[derive(WorldQuery)]
-#[world_query(mutable)]
+#[derive(QueryData)]
+#[query_data(mutable)]
 pub struct ClientSpawnQuery {
     pub is_hardcore: &'static mut IsHardcore,
     pub game_mode: &'static mut GameMode,

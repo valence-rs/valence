@@ -6,8 +6,8 @@ use std::time::Instant;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use bevy_ecs::query::WorldQuery;
-use bevy_ecs::system::Command;
+use bevy_ecs::query::QueryData;
+use bevy_ecs::world::Command;
 use byteorder::{NativeEndian, ReadBytesExt};
 use bytes::{Bytes, BytesMut};
 use derive_more::{Deref, DerefMut, From, Into};
@@ -529,7 +529,7 @@ impl OldViewDistance {
     }
 }
 
-#[derive(WorldQuery, Copy, Clone, Debug)]
+#[derive(QueryData, Copy, Clone, Debug)]
 pub struct View {
     pub pos: &'static Position,
     pub view_dist: &'static ViewDistance,
@@ -541,7 +541,7 @@ impl ViewItem<'_> {
     }
 }
 
-#[derive(WorldQuery, Copy, Clone, Debug)]
+#[derive(QueryData, Copy, Clone, Debug)]
 pub struct OldView {
     pub old_pos: &'static OldPosition,
     pub old_view_dist: &'static OldViewDistance,

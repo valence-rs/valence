@@ -23,7 +23,7 @@ pub(crate) fn handle_advancement_tab_change(
                     AdvancementTabC2s::ClosedScreen => None,
                     AdvancementTabC2s::OpenedTab { tab_id } => Some(tab_id.into()),
                 },
-            })
+            });
         }
     }
 }

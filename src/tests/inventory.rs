@@ -23,7 +23,7 @@ fn test_should_open_inventory() {
     } = ScenarioSingleClient::new();
 
     let inventory = Inventory::new(InventoryKind::Generic3x3);
-    let inventory_ent = app.world.spawn(inventory).id();
+    let inventory_ent = app.world_mut().spawn(inventory).id();
 
     // Process a tick to get past the "on join" logic.
     app.update();
@@ -31,7 +31,7 @@ fn test_should_open_inventory() {
 
     // Open the inventory.
     let open_inventory = OpenInventory::new(inventory_ent);
-    app.world
+    app.world_mut()
         .get_entity_mut(client)
         .expect("could not find client")
         .insert(open_inventory);
@@ -56,7 +56,7 @@ fn test_should_close_inventory() {
     } = ScenarioSingleClient::new();
 
     let inventory = Inventory::new(InventoryKind::Generic3x3);
-    let inventory_ent = app.world.spawn(inventory).id();
+    let inventory_ent = app.world_mut().spawn(inventory).id();
 
     // Process a tick to get past the "on join" logic.
     app.update();
@@ -64,7 +64,7 @@ fn test_should_close_inventory() {
 
     // Open the inventory.
     let open_inventory = OpenInventory::new(inventory_ent);
-    app.world
+    app.world_mut()
         .get_entity_mut(client)
         .expect("could not find client")
         .insert(open_inventory);
@@ -73,7 +73,7 @@ fn test_should_close_inventory() {
     helper.clear_received();
 
     // Close the inventory.
-    app.world
+    app.world_mut()
         .get_entity_mut(client)
         .expect("could not find client")
         .remove::<OpenInventory>();
@@ -96,7 +96,7 @@ fn test_should_remove_invalid_open_inventory() {
     } = ScenarioSingleClient::new();
 
     let inventory = Inventory::new(InventoryKind::Generic3x3);
-    let inventory_ent = app.world.spawn(inventory).id();
+    let inventory_ent = app.world_mut().spawn(inventory).id();
 
     // Process a tick to get past the "on join" logic.
     app.update();
@@ -104,7 +104,7 @@ fn test_should_remove_invalid_open_inventory() {
 
     // Open the inventory.
     let open_inventory = OpenInventory::new(inventory_ent);
-    app.world
+    app.world_mut()
         .get_entity_mut(client)
         .expect("could not find client")
         .insert(open_inventory);
@@ -113,12 +113,12 @@ fn test_should_remove_invalid_open_inventory() {
     helper.clear_received();
 
     // Remove the inventory.
-    app.world.despawn(inventory_ent);
+    app.world_mut().despawn(inventory_ent);
 
     app.update();
 
     // Make assertions
-    assert!(app.world.get::<OpenInventory>(client).is_none());
+    assert!(app.world_mut().get::<OpenInventory>(client).is_none());
 
     let sent_packets = helper.collect_received();
     sent_packets.assert_count::<CloseScreenS2c>(1);
@@ -138,14 +138,14 @@ fn test_should_modify_player_inventory_click_slot() {
     helper.clear_received();
 
     let mut inventory = app
-        .world
+        .world_mut()
         .get_mut::<Inventory>(client)
         .expect("could not find inventory for client");
     inventory.set_slot(20, ItemStack::new(ItemKind::Diamond, 2, None));
 
     // Make the client click the slot and pick up the item.
     let state_id = app
-        .world
+        .world_mut()
         .get::<ClientInventoryState>(client)
         .unwrap()
         .state_id();
@@ -176,14 +176,14 @@ fn test_should_modify_player_inventory_click_slot() {
     sent_packets.assert_count::<ScreenHandlerSlotUpdateS2c>(0);
 
     let inventory = app
-        .world
+        .world_mut()
         .get::<Inventory>(client)
         .expect("could not find inventory for client");
 
     assert_eq!(inventory.slot(20), &ItemStack::EMPTY);
 
     let cursor_item = app
-        .world
+        .world_mut()
         .get::<CursorItem>(client)
         .expect("could not find client");
 
@@ -203,7 +203,7 @@ fn test_should_modify_player_inventory_server_side() {
     app.update();
 
     let mut inventory = app
-        .world
+        .world_mut()
         .get_mut::<Inventory>(client)
         .expect("could not find inventory for client");
     inventory.set_slot(20, ItemStack::new(ItemKind::Diamond, 2, None));
@@ -213,7 +213,7 @@ fn test_should_modify_player_inventory_server_side() {
 
     // Modify the inventory.
     let mut inventory = app
-        .world
+        .world_mut()
         .get_mut::<Inventory>(client)
         .expect("could not find inventory for client");
     inventory.set_slot(21, ItemStack::new(ItemKind::IronIngot, 1, None));
@@ -241,7 +241,7 @@ fn test_should_sync_entire_player_inventory() {
     helper.clear_received();
 
     let mut inventory = app
-        .world
+        .world_mut()
         .get_mut::<Inventory>(client)
         .expect("could not find inventory for client");
     inventory.changed = u64::MAX;
@@ -255,11 +255,11 @@ fn test_should_sync_entire_player_inventory() {
 
 fn set_up_open_inventory(app: &mut App, client_ent: Entity) -> Entity {
     let inventory = Inventory::new(InventoryKind::Generic9x3);
-    let inventory_ent = app.world.spawn(inventory).id();
+    let inventory_ent = app.world_mut().spawn(inventory).id();
 
     // Open the inventory.
     let open_inventory = OpenInventory::new(inventory_ent);
-    app.world
+    app.world_mut()
         .get_entity_mut(client_ent)
         .expect("could not find client")
         .insert(open_inventory);
@@ -279,7 +279,7 @@ fn test_should_modify_open_inventory_click_slot() {
     let inventory_ent = set_up_open_inventory(&mut app, client);
 
     let mut inventory = app
-        .world
+        .world_mut()
         .get_mut::<Inventory>(inventory_ent)
         .expect("could not find inventory for client");
 
@@ -290,7 +290,7 @@ fn test_should_modify_open_inventory_click_slot() {
     helper.clear_received();
 
     // Make the client click the slot and pick up the item.
-    let inv_state = app.world.get::<ClientInventoryState>(client).unwrap();
+    let inv_state = app.world_mut().get::<ClientInventoryState>(client).unwrap();
     let state_id = inv_state.state_id();
     let window_id = inv_state.window_id();
     helper.send(&ClickSlotC2s {
@@ -319,12 +319,12 @@ fn test_should_modify_open_inventory_click_slot() {
     sent_packets.assert_count::<ScreenHandlerSlotUpdateS2c>(0);
 
     let inventory = app
-        .world
+        .world_mut()
         .get::<Inventory>(inventory_ent)
         .expect("could not find inventory");
     assert_eq!(inventory.slot(20), &ItemStack::EMPTY);
     let cursor_item = app
-        .world
+        .world_mut()
         .get::<CursorItem>(client)
         .expect("could not find client");
     assert_eq!(cursor_item.0, ItemStack::new(ItemKind::Diamond, 2, None));
@@ -347,7 +347,7 @@ fn test_should_modify_open_inventory_server_side() {
 
     // Modify the inventory.
     let mut inventory = app
-        .world
+        .world_mut()
         .get_mut::<Inventory>(inventory_ent)
         .expect("could not find inventory for client");
     inventory.set_slot(5, ItemStack::new(ItemKind::IronIngot, 1, None));
@@ -362,7 +362,7 @@ fn test_should_modify_open_inventory_server_side() {
     sent_packets.assert_count::<ScreenHandlerSlotUpdateS2c>(1);
 
     let inventory = app
-        .world
+        .world_mut()
         .get::<Inventory>(inventory_ent)
         .expect("could not find inventory for client");
 
@@ -388,7 +388,7 @@ fn test_should_sync_entire_open_inventory() {
     helper.clear_received();
 
     let mut inventory = app
-        .world
+        .world_mut()
         .get_mut::<Inventory>(inventory_ent)
         .expect("could not find inventory");
     inventory.changed = u64::MAX;
@@ -410,7 +410,7 @@ fn test_set_creative_mode_slot_handling() {
     } = ScenarioSingleClient::new();
 
     let mut game_mode = app
-        .world
+        .world_mut()
         .get_mut::<GameMode>(client)
         .expect("could not find client");
     *game_mode.as_mut() = GameMode::Creative;
@@ -428,7 +428,7 @@ fn test_set_creative_mode_slot_handling() {
 
     // Make assertions
     let inventory = app
-        .world
+        .world_mut()
         .get::<Inventory>(client)
         .expect("could not find inventory for client");
 
@@ -448,7 +448,7 @@ fn test_ignore_set_creative_mode_slot_if_not_creative() {
     } = ScenarioSingleClient::new();
 
     let mut game_mode = app
-        .world
+        .world_mut()
         .get_mut::<GameMode>(client)
         .expect("could not find client");
     *game_mode.as_mut() = GameMode::Survival;
@@ -466,7 +466,7 @@ fn test_ignore_set_creative_mode_slot_if_not_creative() {
 
     // Make assertions
     let inventory = app
-        .world
+        .world_mut()
         .get::<Inventory>(client)
         .expect("could not find inventory for client");
     assert_eq!(inventory.slot(36), &ItemStack::EMPTY);
@@ -482,7 +482,7 @@ fn test_window_id_increments() {
     } = ScenarioSingleClient::new();
 
     let inventory = Inventory::new(InventoryKind::Generic9x3);
-    let inventory_ent = app.world.spawn(inventory).id();
+    let inventory_ent = app.world_mut().spawn(inventory).id();
 
     // Process a tick to get past the "on join" logic.
     app.update();
@@ -490,14 +490,14 @@ fn test_window_id_increments() {
 
     for _ in 0..3 {
         let open_inventory = OpenInventory::new(inventory_ent);
-        app.world
+        app.world_mut()
             .get_entity_mut(client)
             .expect("could not find client")
             .insert(open_inventory);
 
         app.update();
 
-        app.world
+        app.world_mut()
             .get_entity_mut(client)
             .expect("could not find client")
             .remove::<OpenInventory>();
@@ -507,7 +507,7 @@ fn test_window_id_increments() {
 
     // Make assertions
     let inv_state = app
-        .world
+        .world_mut()
         .get::<ClientInventoryState>(client)
         .expect("could not find client");
     assert_eq!(inv_state.window_id(), 3);
@@ -532,7 +532,7 @@ fn test_should_handle_set_held_item() {
 
     // Make assertions
     let held = app
-        .world
+        .world_mut()
         .get::<HeldItem>(client)
         .expect("could not find client");
 
@@ -553,19 +553,19 @@ fn should_not_increment_state_id_on_cursor_item_change() {
     helper.clear_received();
 
     let inv_state = app
-        .world
+        .world_mut()
         .get::<ClientInventoryState>(client)
         .expect("could not find client");
     let expected_state_id = inv_state.state_id().0;
 
-    let mut cursor_item = app.world.get_mut::<CursorItem>(client).unwrap();
+    let mut cursor_item = app.world_mut().get_mut::<CursorItem>(client).unwrap();
     cursor_item.0 = ItemStack::new(ItemKind::Diamond, 2, None);
 
     app.update();
 
     // Make assertions
     let inv_state = app
-        .world
+        .world_mut()
         .get::<ClientInventoryState>(client)
         .expect("could not find client");
     assert_eq!(
@@ -595,7 +595,7 @@ mod dropping_items {
         helper.clear_received();
 
         let mut inventory = app
-            .world
+            .world_mut()
             .get_mut::<Inventory>(client)
             .expect("could not find inventory");
         inventory.set_slot(36, ItemStack::new(ItemKind::IronIngot, 3, None));
@@ -611,7 +611,7 @@ mod dropping_items {
 
         // Make assertions
         let inventory = app
-            .world
+            .world_mut()
             .get::<Inventory>(client)
             .expect("could not find client");
 
@@ -621,7 +621,7 @@ mod dropping_items {
         );
 
         let events = app
-            .world
+            .world_mut()
             .get_resource::<Events<DropItemStackEvent>>()
             .expect("expected drop item stack events");
 
@@ -654,7 +654,7 @@ mod dropping_items {
         helper.clear_received();
 
         let mut inventory = app
-            .world
+            .world_mut()
             .get_mut::<Inventory>(client)
             .expect("could not find inventory");
         inventory.set_slot(36, ItemStack::new(ItemKind::IronIngot, 32, None));
@@ -670,17 +670,17 @@ mod dropping_items {
 
         // Make assertions
         let held = app
-            .world
+            .world_mut()
             .get::<HeldItem>(client)
             .expect("could not find client");
         assert_eq!(held.slot(), 36);
         let inventory = app
-            .world
+            .world_mut()
             .get::<Inventory>(client)
             .expect("could not find inventory");
         assert_eq!(inventory.slot(36), &ItemStack::EMPTY);
         let events = app
-            .world
+            .world_mut()
             .get_resource::<Events<DropItemStackEvent>>()
             .expect("expected drop item stack events");
         let events = events.iter_current_update_events().collect::<Vec<_>>();
@@ -706,7 +706,7 @@ mod dropping_items {
         app.update();
         helper.clear_received();
 
-        app.world.entity_mut(client).insert(GameMode::Creative);
+        app.world_mut().entity_mut(client).insert(GameMode::Creative);
 
         helper.send(&CreativeInventoryActionC2s {
             slot: -1,
@@ -717,7 +717,7 @@ mod dropping_items {
 
         // Make assertions
         let events = app
-            .world
+            .world_mut()
             .get_resource::<Events<DropItemStackEvent>>()
             .expect("expected drop item stack events")
             .iter_current_update_events()
@@ -746,12 +746,12 @@ mod dropping_items {
         helper.clear_received();
 
         let mut cursor_item = app
-            .world
+            .world_mut()
             .get_mut::<CursorItem>(client)
             .expect("could not find client");
         cursor_item.0 = ItemStack::new(ItemKind::IronIngot, 32, None);
         let inv_state = app
-            .world
+            .world_mut()
             .get_mut::<ClientInventoryState>(client)
             .expect("could not find client");
         let state_id = inv_state.state_id().0;
@@ -770,14 +770,14 @@ mod dropping_items {
 
         // Make assertions
         let cursor_item = app
-            .world
+            .world_mut()
             .get::<CursorItem>(client)
             .expect("could not find client");
 
         assert_eq!(cursor_item.0, ItemStack::EMPTY);
 
         let events = app
-            .world
+            .world_mut()
             .get_resource::<Events<DropItemStackEvent>>()
             .expect("expected drop item stack events");
 
@@ -806,14 +806,14 @@ mod dropping_items {
         helper.clear_received();
 
         let inv_state = app
-            .world
+            .world_mut()
             .get_mut::<ClientInventoryState>(client)
             .expect("could not find client");
 
         let state_id = inv_state.state_id().0;
 
         let mut inventory = app
-            .world
+            .world_mut()
             .get_mut::<Inventory>(client)
             .expect("could not find inventory");
 
@@ -837,7 +837,7 @@ mod dropping_items {
 
         // Make assertions
         let events = app
-            .world
+            .world_mut()
             .get_resource::<Events<DropItemStackEvent>>()
             .expect("expected drop item stack events");
 
@@ -866,14 +866,14 @@ mod dropping_items {
         helper.clear_received();
 
         let inv_state = app
-            .world
+            .world_mut()
             .get_mut::<ClientInventoryState>(client)
             .expect("could not find client");
 
         let state_id = inv_state.state_id().0;
 
         let mut inventory = app
-            .world
+            .world_mut()
             .get_mut::<Inventory>(client)
             .expect("could not find inventory");
 
@@ -897,7 +897,7 @@ mod dropping_items {
 
         // Make assertions
         let events = app
-            .world
+            .world_mut()
             .get_resource::<Events<DropItemStackEvent>>()
             .expect("expected drop item stack events");
 
@@ -927,7 +927,7 @@ mod dropping_items {
         app.update();
 
         let mut inventory = app
-            .world
+            .world_mut()
             .get_mut::<Inventory>(client)
             .expect("could not find inventory");
 
@@ -943,7 +943,7 @@ mod dropping_items {
         helper.clear_received();
 
         let inv_state = app
-            .world
+            .world_mut()
             .get_mut::<ClientInventoryState>(client)
             .expect("could not find client");
 
@@ -968,12 +968,12 @@ mod dropping_items {
 
         // Make assertions
         let events = app
-            .world
+            .world()
             .get_resource::<Events<DropItemStackEvent>>()
             .expect("expected drop item stack events");
 
         let player_inventory = app
-            .world
+            .world()
             .get::<Inventory>(client)
             .expect("could not find inventory");
 
@@ -1015,7 +1015,7 @@ fn should_drop_item_stack_player_open_inventory_with_dropkey() {
     app.update();
 
     let mut inventory = app
-        .world
+        .world_mut()
         .get_mut::<Inventory>(client)
         .expect("could not find inventory");
 
@@ -1030,7 +1030,7 @@ fn should_drop_item_stack_player_open_inventory_with_dropkey() {
     helper.clear_received();
 
     let inv_state = app
-        .world
+        .world_mut()
         .get_mut::<ClientInventoryState>(client)
         .expect("could not find client");
 
@@ -1055,12 +1055,12 @@ fn should_drop_item_stack_player_open_inventory_with_dropkey() {
 
     // Make assertions
     let events = app
-        .world
+        .world()
         .get_resource::<Events<DropItemStackEvent>>()
         .expect("expected drop item stack events");
 
     let player_inventory = app
-        .world
+        .world()
         .get::<Inventory>(client)
         .expect("could not find inventory");
 
@@ -1098,10 +1098,10 @@ fn dragging_items() {
     app.update();
     helper.clear_received();
 
-    app.world.get_mut::<CursorItem>(client).unwrap().0 =
+    app.world_mut().get_mut::<CursorItem>(client).unwrap().0 =
         ItemStack::new(ItemKind::Diamond, 64, None);
 
-    let inv_state = app.world.get::<ClientInventoryState>(client).unwrap();
+    let inv_state = app.world_mut().get::<ClientInventoryState>(client).unwrap();
     let window_id = inv_state.window_id();
     let state_id = inv_state.state_id().0;
 
@@ -1135,14 +1135,14 @@ fn dragging_items() {
     assert_eq!(sent_packets.0.len(), 0);
 
     let cursor_item = app
-        .world
+        .world_mut()
         .get::<CursorItem>(client)
         .expect("could not find client");
 
     assert_eq!(cursor_item.0, ItemStack::new(ItemKind::Diamond, 1, None));
 
     let inventory = app
-        .world
+        .world_mut()
         .get::<Inventory>(client)
         .expect("could not find inventory");
 
