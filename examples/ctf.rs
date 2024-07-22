@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use bevy_ecs::query::{QueryData, WorldQuery};
+use bevy_ecs::query::QueryData;
 use valence::entity::cow::CowEntityBundle;
 use valence::entity::entity::Flags;
 use valence::entity::living::Health;

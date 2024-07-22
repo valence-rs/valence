@@ -1,4 +1,3 @@
-use divan::__private::Arg;
 use valence_scoreboard::*;
 
 use crate::client::VisibleEntityLayers;
