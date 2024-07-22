@@ -706,7 +706,9 @@ mod dropping_items {
         app.update();
         helper.clear_received();
 
-        app.world_mut().entity_mut(client).insert(GameMode::Creative);
+        app.world_mut()
+            .entity_mut(client)
+            .insert(GameMode::Creative);
 
         helper.send(&CreativeInventoryActionC2s {
             slot: -1,

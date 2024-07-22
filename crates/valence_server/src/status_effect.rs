@@ -1,6 +1,6 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use bevy_ecs::query::WorldQuery;
+use bevy_ecs::query::QueryData;
 use bevy_ecs::system::SystemState;
 use valence_entity::active_status_effects::{ActiveStatusEffect, ActiveStatusEffects};
 use valence_entity::entity::Flags;
@@ -70,8 +70,8 @@ fn create_packet(effect: &ActiveStatusEffect) -> EntityStatusEffectS2c {
     }
 }
 
-#[derive(WorldQuery)]
-#[world_query(mutable)]
+#[derive(QueryData)]
+#[query_data(mutable)]
 struct StatusEffectQuery {
     entity: Entity,
     active_effects: &'static mut ActiveStatusEffects,

@@ -84,7 +84,9 @@ fn example_test_open_inventory() {
     app.update();
 
     // Make assertions
-    app.world_mut().get::<Client>(client).expect("client not found");
+    app.world_mut()
+        .get::<Client>(client)
+        .expect("client not found");
 
     let sent_packets = helper.collect_received();
 

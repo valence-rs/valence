@@ -155,7 +155,7 @@ fn update_client_command_tree(
                 continue;
             }
             already_visited.insert((parent.map(|(node_id, _)| node_id), node));
-            
+
             let node_scopes = &old_graph.graph[node].scopes;
             if !node_scopes.is_empty() {
                 let mut has_scope = false;

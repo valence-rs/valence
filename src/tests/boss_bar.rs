@@ -147,7 +147,10 @@ fn test_client_layer_change() {
 
     // Remove the layer from the client
     {
-        let mut visible_entity_layers = app.world_mut().get_mut::<VisibleEntityLayers>(client).unwrap();
+        let mut visible_entity_layers = app
+            .world_mut()
+            .get_mut::<VisibleEntityLayers>(client)
+            .unwrap();
         visible_entity_layers.0.clear()
     };
 
@@ -159,7 +162,10 @@ fn test_client_layer_change() {
 
     // Add the layer back to the client
     {
-        let mut visible_entity_layers = app.world_mut().get_mut::<VisibleEntityLayers>(client).unwrap();
+        let mut visible_entity_layers = app
+            .world_mut()
+            .get_mut::<VisibleEntityLayers>(client)
+            .unwrap();
         visible_entity_layers.0.insert(layer)
     };
 

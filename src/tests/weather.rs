@@ -148,10 +148,13 @@ fn prepare(client_weather: bool) -> ScenarioSingleClient {
 }
 
 fn add_weather_to_client(s: &mut ScenarioSingleClient) {
-    s.app.world_mut().entity_mut(s.client).insert(WeatherBundle {
-        rain: Rain(0.5),
-        thunder: Thunder(0.5),
-    });
+    s.app
+        .world_mut()
+        .entity_mut(s.client)
+        .insert(WeatherBundle {
+            rain: Rain(0.5),
+            thunder: Thunder(0.5),
+        });
 }
 
 fn add_weather_to_chunk_layer(s: &mut ScenarioSingleClient) {

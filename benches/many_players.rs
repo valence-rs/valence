@@ -43,9 +43,9 @@ fn run_many_players(bencher: Bencher, client_count: usize, view_dist: u8, world_
 
     let mut layer = LayerBundle::new(
         ident!("overworld"),
-        app.world.resource::<DimensionTypeRegistry>(),
-        app.world.resource::<BiomeRegistry>(),
-        app.world.resource::<Server>(),
+        app.world().resource::<DimensionTypeRegistry>(),
+        app.world().resource::<BiomeRegistry>(),
+        app.world().resource::<Server>(),
     );
 
     for z in -world_size..world_size {
@@ -56,7 +56,7 @@ fn run_many_players(bencher: Bencher, client_count: usize, view_dist: u8, world_
         }
     }
 
-    let layer = app.world.spawn(layer).id();
+    let layer = app.world_mut().spawn(layer).id();
 
     let mut clients = vec![];
 
@@ -75,12 +75,12 @@ fn run_many_players(bencher: Bencher, client_count: usize, view_dist: u8, world_
 
         bundle.player.position.set(DVec3::new(x, 64.0, z));
 
-        let id = app.world.spawn(bundle).id();
+        let id = app.world_mut().spawn(bundle).id();
 
         clients.push((id, helper));
     }
 
-    let mut query = app.world.query::<&mut Position>();
+    let mut query = app.world_mut().query::<&mut Position>();
 
     app.update();
 
@@ -96,7 +96,7 @@ fn run_many_players(bencher: Bencher, client_count: usize, view_dist: u8, world_
         // Move the clients around randomly. They'll cross chunk borders and cause
         // interesting things to happen.
         for (id, helper) in &mut clients {
-            let pos = query.get(&app.world, *id).unwrap().get();
+            let pos = query.get(&app.world_mut(), *id).unwrap().get();
 
             let offset = DVec3::new(rng.gen_range(-1.0..=1.0), 0.0, rng.gen_range(-1.0..=1.0));
 

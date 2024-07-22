@@ -119,7 +119,10 @@ fn test_warning_blocks_change() {
     helper.clear_received();
 
     // Change the warning blocks
-    let mut warn_blocks = app.world_mut().get_mut::<WorldBorderWarnBlocks>(layer).unwrap();
+    let mut warn_blocks = app
+        .world_mut()
+        .get_mut::<WorldBorderWarnBlocks>(layer)
+        .unwrap();
     warn_blocks.0 = 10;
 
     app.update();
@@ -143,7 +146,10 @@ fn test_warning_time_change() {
     helper.clear_received();
 
     // Change the warning time
-    let mut warn_time = app.world_mut().get_mut::<WorldBorderWarnTime>(layer).unwrap();
+    let mut warn_time = app
+        .world_mut()
+        .get_mut::<WorldBorderWarnTime>(layer)
+        .unwrap();
     warn_time.0 = 10;
 
     app.update();
@@ -187,13 +193,16 @@ fn prepare() -> ScenarioSingleClient {
     s.app.update();
 
     // Attach the world border bundle to the chunk layer
-    s.app.world_mut().entity_mut(s.layer).insert(WorldBorderBundle {
-        lerp: WorldBorderLerp {
-            target_diameter: 10.0,
+    s.app
+        .world_mut()
+        .entity_mut(s.layer)
+        .insert(WorldBorderBundle {
+            lerp: WorldBorderLerp {
+                target_diameter: 10.0,
+                ..Default::default()
+            },
             ..Default::default()
-        },
-        ..Default::default()
-    });
+        });
 
     s
 }
