@@ -1,6 +1,6 @@
 #![allow(clippy::type_complexity)]
 
-use bevy_ecs::query::{QueryData, WorldQuery};
+use bevy_ecs::query::QueryData;
 use rand::Rng;
 use valence::entity::EntityStatuses;
 use valence::math::Vec3Swizzles;
