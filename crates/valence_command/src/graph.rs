@@ -194,7 +194,7 @@ impl From<CommandGraph> for CommandTreeS2c {
 
 /// Ergonomic builder pattern for adding executables, literals and arguments to
 /// a command graph. See the derive macro for a more ergonomic way of doing this
-/// for a basic command with an enum.
+/// for a basic command with an enum or struct.
 ///
 /// # Type Parameters
 /// * `T` - the type that should be constructed by an executable when the
@@ -226,7 +226,7 @@ impl From<CommandGraph> for CommandTreeS2c {
 ///    .literal("test") // add a literal node then transition to it
 ///    .argument("test")
 ///    // a player needs one of these scopes to execute the command
-///    //(note: if you want an admin scope you should use the link method on the scope registry.)
+///    // (note: if you want an admin scope you should use the link method on the scope registry.)
 ///    .with_scopes(vec!["test:admin", "command:test"])
 ///    .with_parser::<i32>()
 ///    // it is reasonably safe to unwrap here because we know that the argument is an integer
