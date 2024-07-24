@@ -33,4 +33,3 @@ valence_generated.workspace = true
 rustc-hash.workspace = true
 parking_lot.workspace = true
 arrayvec.workspace = true
-
