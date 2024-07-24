@@ -151,11 +151,10 @@ fn update_client_command_tree(
         let mut new_root = None;
 
         while let Some((parent, node)) = to_visit.pop() {
-            if already_visited.contains(&(parent.map(|(node_id, _)| node_id), node)) {
+            if already_visited.contains(&(parent.map(|(_, edge)| edge), node)) {
                 continue;
             }
-            already_visited.insert((parent.map(|(node_id, _)| node_id), node));
-
+            already_visited.insert((parent.map(|(_, edge)| edge), node));
             let node_scopes = &old_graph.graph[node].scopes;
             if !node_scopes.is_empty() {
                 let mut has_scope = false;
