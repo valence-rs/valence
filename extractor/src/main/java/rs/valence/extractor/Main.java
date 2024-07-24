@@ -44,6 +44,7 @@ public class Main implements ModInitializer {
                new Attributes(),
                new Blocks(),
                new Effects(),
+                // TODO not implemented yet
                new Enchants(),
                new Entities(),
                new Misc(),
@@ -78,24 +79,27 @@ public class Main implements ModInitializer {
         ServerLifecycleEvents.SERVER_STARTING.register(server -> {
             LOGGER.info("Server starting, Running startup extractors...");
             // TODO: make `Codec` implement `Extractor`
-            var codecExtractor = new Codec(server);
-            try {
-                var out = outputDirectory.resolve(codecExtractor.fileName());
-                var compound = codecExtractor.extract();
-                // read the compound byte-wise and write it to the file
-                try {
-                    NbtIo.write(compound, out);
-                } catch (IOException var3) {
-                    throw new EncoderException(var3);
-                }
-
-                LOGGER.info("Wrote " + out.toAbsolutePath());
-            } catch (Exception e) {
-                LOGGER.error("Extractor for \"" + codecExtractor.fileName() + "\" failed.", e);
-            }
+            // TODO: the way to get Codex has changed, this is not working anymore
+//            var codecExtractor = new Codec(server);
+//            try {
+//                var out = outputDirectory.resolve(codecExtractor.fileName());
+//                var compound = codecExtractor.extract();
+//                // read the compound byte-wise and write it to the file
+//                try {
+//                    NbtIo.write(compound, out);
+//                } catch (IOException var3) {
+//                    throw new EncoderException(var3);
+//                }
+//
+//                LOGGER.info("Wrote " + out.toAbsolutePath());
+//            } catch (Exception e) {
+//                LOGGER.error("Extractor for \"" + codecExtractor.fileName() + "\" failed.", e);
+//            }
 
             var startupExtractors = new Extractor[]{
                 new Tags(server),
+                    // TODO not implemented yet
+                new Paintings(server),
             };
 
             for (var ext : startupExtractors) {

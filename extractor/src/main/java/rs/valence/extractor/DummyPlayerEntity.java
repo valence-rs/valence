@@ -15,15 +15,7 @@ public class DummyPlayerEntity extends PlayerEntity {
     static {
         INSTANCE = Main.magicallyInstantiate(DummyPlayerEntity.class);
 
-        try {
-            var dataTrackerField = Entity.class.getDeclaredField("dataTracker");
-            dataTrackerField.setAccessible(true);
-            dataTrackerField.set(INSTANCE, new DataTracker(INSTANCE));
-
-            INSTANCE.initDataTracker();
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new RuntimeException(e);
-        }
+        INSTANCE.initDataTracker(new DataTracker.Builder(INSTANCE));
     }
 
     private DummyPlayerEntity(World world, BlockPos pos, float yaw, GameProfile gameProfile, @Nullable PlayerPublicKey publicKey) {

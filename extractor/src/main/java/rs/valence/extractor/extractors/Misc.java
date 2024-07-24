@@ -2,6 +2,7 @@ package rs.valence.extractor.extractors;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import net.fabricmc.fabric.impl.biome.modification.BuiltInRegistryKeys;
 import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EntityStatuses;
 import net.minecraft.entity.attribute.ClampedEntityAttribute;
@@ -10,7 +11,10 @@ import net.minecraft.entity.data.TrackedDataHandler;
 import net.minecraft.entity.data.TrackedDataHandlerRegistry;
 import net.minecraft.entity.passive.SnifferEntity;
 import net.minecraft.network.packet.s2c.play.EntityAnimationS2CPacket;
+import net.minecraft.registry.BuiltinRegistries;
 import net.minecraft.registry.Registries;
+import net.minecraft.registry.RegistryBuilder;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.util.math.Direction;
 import rs.valence.extractor.Main;
 import java.lang.reflect.Modifier;
@@ -82,15 +86,7 @@ public class Misc implements Main.Extractor {
         }
         miscJson.add("frog_variant", frogVariantJson);
 
-        var paintingVariantJson = new JsonObject();
-        for (var variant : Registries.PAINTING_VARIANT) {
-            var variantJson = new JsonObject();
-            variantJson.addProperty("id", Registries.PAINTING_VARIANT.getRawId(variant));
-            variantJson.addProperty("width", variant.getWidth());
-            variantJson.addProperty("height", variant.getHeight());
-            paintingVariantJson.add(Registries.PAINTING_VARIANT.getId(variant).getPath(), variantJson);
-        }
-        miscJson.add("painting_variant", paintingVariantJson);
+
 
         var directionJson = new JsonObject();
         for (var dir : Direction.values()) {

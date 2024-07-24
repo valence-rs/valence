@@ -2,12 +2,15 @@ package rs.valence.extractor;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
+import net.minecraft.component.type.MapIdComponent;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.fluid.Fluid;
 import net.minecraft.item.map.MapState;
+import net.minecraft.recipe.BrewingRecipeRegistry;
 import net.minecraft.recipe.RecipeManager;
 import net.minecraft.registry.DynamicRegistryManager;
+import net.minecraft.registry.Registries;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.resource.featuretoggle.FeatureFlags;
@@ -98,18 +101,18 @@ public class DummyWorld extends World {
 
     @Nullable
     @Override
-    public MapState getMapState(String id) {
+    public MapState getMapState(MapIdComponent id) {
         return null;
     }
 
     @Override
-    public void putMapState(String id, MapState state) {
+    public void putMapState(MapIdComponent id, MapState state) {
 
     }
 
     @Override
-    public int getNextMapId() {
-        return 0;
+    public MapIdComponent increaseAndGetMapId() {
+        return null;
     }
 
     @Override
@@ -124,7 +127,7 @@ public class DummyWorld extends World {
 
     @Override
     public RecipeManager getRecipeManager() {
-        return new RecipeManager();
+        return null;
     }
 
     @Override
@@ -153,9 +156,10 @@ public class DummyWorld extends World {
     }
 
     @Override
-    public void emitGameEvent(GameEvent event, Vec3d emitterPos, GameEvent.Emitter emitter) {
+    public void emitGameEvent(RegistryEntry<GameEvent> event, Vec3d emitterPos, GameEvent.Emitter emitter) {
 
     }
+
 
     @Override
     public DynamicRegistryManager getRegistryManager() {
@@ -163,8 +167,13 @@ public class DummyWorld extends World {
     }
 
     @Override
+    public BrewingRecipeRegistry getBrewingRecipeRegistry() {
+        return null;
+    }
+
+    @Override
     public FeatureSet getEnabledFeatures() {
-        return FeatureSet.of(FeatureFlags.VANILLA, FeatureFlags.BUNDLE, FeatureFlags.UPDATE_1_21);
+        return FeatureSet.of(FeatureFlags.VANILLA, FeatureFlags.BUNDLE);
     }
 
     @Override
@@ -184,34 +193,10 @@ public class DummyWorld extends World {
 
     private static class DummyMutableWorldProperties implements MutableWorldProperties {
 
-        @Override
-        public int getSpawnX() {
-            return 0;
-        }
 
         @Override
-        public void setSpawnX(int spawnX) {
-
-        }
-
-        @Override
-        public int getSpawnY() {
-            return 0;
-        }
-
-        @Override
-        public void setSpawnY(int spawnY) {
-
-        }
-
-        @Override
-        public int getSpawnZ() {
-            return 0;
-        }
-
-        @Override
-        public void setSpawnZ(int spawnZ) {
-
+        public BlockPos getSpawnPos() {
+            return null;
         }
 
         @Override
@@ -219,10 +204,6 @@ public class DummyWorld extends World {
             return 0;
         }
 
-        @Override
-        public void setSpawnAngle(float spawnAngle) {
-
-        }
 
         @Override
         public long getTime() {
@@ -267,6 +248,11 @@ public class DummyWorld extends World {
         @Override
         public boolean isDifficultyLocked() {
             return false;
+        }
+
+        @Override
+        public void setSpawnPos(BlockPos pos, float angle) {
+
         }
     }
 }

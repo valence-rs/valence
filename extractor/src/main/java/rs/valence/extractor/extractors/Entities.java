@@ -42,7 +42,7 @@ public class Entities implements Main.Extractor {
     }
 
     private static Pair<String, JsonElement> trackedDataToJson(TrackedData<?> data, DataTracker tracker) {
-        final var handler = data.getType();
+        final var handler = data.dataType();
         final var val = tracker.get(data);
 
         if (handler == TrackedDataHandlerRegistry.BYTE) {
@@ -135,12 +135,12 @@ public class Entities implements Main.Extractor {
             return new Pair<>("optional_global_pos", ((Optional<?>) val).map(o -> {
                 var gp = (GlobalPos) o;
                 var json = new JsonObject();
-                json.addProperty("dimension", gp.getDimension().getValue().toString());
+                json.addProperty("dimension", gp.dimension().getValue().toString());
 
                 var posJson = new JsonObject();
-                posJson.addProperty("x", gp.getPos().getX());
-                posJson.addProperty("y", gp.getPos().getY());
-                posJson.addProperty("z", gp.getPos().getZ());
+                posJson.addProperty("x", gp.pos().getX());
+                posJson.addProperty("y", gp.pos().getY());
+                posJson.addProperty("z", gp.pos().getZ());
 
                 json.add("position", posJson);
                 return (JsonElement) json;
@@ -244,7 +244,7 @@ public class Entities implements Main.Extractor {
                         var fieldJson = new JsonObject();
                         var fieldName = entityField.getName().toLowerCase(Locale.ROOT);
                         fieldJson.addProperty("name", fieldName);
-                        fieldJson.addProperty("index", trackedData.getId());
+                        fieldJson.addProperty("index", trackedData.id());
 
                         var data = Entities.trackedDataToJson(trackedData, dataTracker);
                         fieldJson.addProperty("type", data.left());
@@ -266,7 +266,7 @@ public class Entities implements Main.Extractor {
                                 .get(defaultAttributes);
 
                         for (var instance : instances.values()) {
-                            var attribute = instance.getAttribute();
+                            var attribute = instance.getAttribute().value();
 
                             var attributeJson = new JsonObject();
 
