@@ -10,15 +10,15 @@
 //!     "byte" => 5_i8,
 //!     "string" => "hello",
 //!     "list_of_float" => List::Float(vec![
-//!         3.1415,
-//!         2.7182,
+//!         std::f32::consts::PI,
+//!         std::f32::consts::E,
 //!         1.4142
 //!     ]),
 //! };
 //!
 //! let mut buf = vec![];
 //!
-//! to_binary(&mut buf, "", &c).unwrap();
+//! to_binary(&c, &mut buf, "").unwrap();
 //! ```
 //!
 //! Decode NBT data from its binary form.
@@ -32,9 +32,9 @@
 //!     "int" => 0xdead
 //! };
 //!
-//! let (root_name, nbt) = from_binary(&mut some_bytes.as_slice()).unwrap().unwrap();
+//! let (nbt, root_name) = from_binary(&mut some_bytes.as_slice()).unwrap();
 //!
-//! assert_eq!(nbt, Value::from(expected_value));
+//! assert_eq!(nbt, expected_value);
 //! assert_eq!(root_name, "");
 //! ```
 

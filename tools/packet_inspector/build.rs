@@ -154,9 +154,7 @@ fn write_transformer(packets: &[Packet]) -> anyhow::Result<()> {
         acc
     });
 
-    let mut generated = quote! {
-        #[allow(clippy::match_wildcard_for_single_variants)]
-    };
+    let mut generated = TokenStream::new();
 
     for (side, state_map) in &mut grouped_packets {
         let mut side_arms = TokenStream::new();
@@ -202,6 +200,7 @@ fn write_transformer(packets: &[Packet]) -> anyhow::Result<()> {
     let generated = quote! {
         const NOT_AVAILABLE: &str = "Not yet implemented";
 
+        #[allow(clippy::match_wildcard_for_single_variants)]
         pub(crate) fn packet_to_string(packet: &ProxyPacket) -> Result<String, Box<dyn std::error::Error>> {
             let bytes = packet.data.as_ref().unwrap();
             let mut data = &bytes.clone()[..];
