@@ -96,7 +96,7 @@ fn run_many_players(bencher: Bencher, client_count: usize, view_dist: u8, world_
         // Move the clients around randomly. They'll cross chunk borders and cause
         // interesting things to happen.
         for (id, helper) in &mut clients {
-            let pos = query.get(&app.world_mut(), *id).unwrap().get();
+            let pos = query.get(app.world_mut(), *id).unwrap().get();
 
             let offset = DVec3::new(rng.gen_range(-1.0..=1.0), 0.0, rng.gen_range(-1.0..=1.0));
 
