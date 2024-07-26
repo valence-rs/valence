@@ -23,7 +23,10 @@ pub fn main() -> anyhow::Result<()> {
 }
 
 fn write_packets(packets: &Vec<Packet>) -> anyhow::Result<()> {
-    let mut consts = TokenStream::new();
+    let mut consts = quote! {
+        #[allow(clippy::unseparated_literal_suffix)]
+        
+    };
 
     let len = packets.len();
 
@@ -151,7 +154,9 @@ fn write_transformer(packets: &[Packet]) -> anyhow::Result<()> {
         acc
     });
 
-    let mut generated = TokenStream::new();
+    let mut generated = quote! {
+        #[allow(clippy::match_wildcard_for_single_variants)]
+    };
 
     for (side, state_map) in &mut grouped_packets {
         let mut side_arms = TokenStream::new();
@@ -173,14 +178,14 @@ fn write_transformer(packets: &[Packet]) -> anyhow::Result<()> {
             side_arms.extend(quote! {
                 valence_protocol::PacketState::#state => match packet.id {
                     #match_arms
-                    _ => Ok(NOT_AVAILABLE.to_string()),
+                    _ => Ok(NOT_AVAILABLE.to_owned()),
                 },
             });
         }
 
         if side == "Clientbound" {
             side_arms.extend(quote! {
-                _ => Ok(NOT_AVAILABLE.to_string()),
+                _ => Ok(NOT_AVAILABLE.to_owned()),
             });
         }
 
