@@ -362,6 +362,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[allow(clippy::needless_borrows_for_generic_args)]
     fn intotext_trait() {
         fn is_borrowed<'a>(value: impl IntoText<'a>) -> bool {
             matches!(value.into_cow_text(), Cow::Borrowed(..))
