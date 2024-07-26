@@ -16,6 +16,6 @@ fn main() {
         println!("{src:?} does not exist, skipping");
         return;
     }
-    
+
     std::fs::copy(src, dst).unwrap();
 }

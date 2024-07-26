@@ -25,7 +25,7 @@ pub fn main() -> anyhow::Result<()> {
 fn write_packets(packets: &Vec<Packet>) -> anyhow::Result<()> {
     let mut consts = quote! {
         #[allow(clippy::unseparated_literal_suffix)]
-        
+
     };
 
     let len = packets.len();
