@@ -90,7 +90,7 @@ pub use valence_world_border as world_border;
 ///
 /// This is usually glob imported like so:
 ///
-/// ```no_run 
+/// ```no_run
 /// use valence::prelude::*; // Glob import.
 ///
 /// let mut app = App::empty();
