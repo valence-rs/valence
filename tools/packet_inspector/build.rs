@@ -23,7 +23,10 @@ pub fn main() -> anyhow::Result<()> {
 }
 
 fn write_packets(packets: &Vec<Packet>) -> anyhow::Result<()> {
-    let mut consts = TokenStream::new();
+    let mut consts = quote! {
+        #[allow(clippy::unseparated_literal_suffix)]
+
+    };
 
     let len = packets.len();
 
@@ -173,14 +176,14 @@ fn write_transformer(packets: &[Packet]) -> anyhow::Result<()> {
             side_arms.extend(quote! {
                 valence_protocol::PacketState::#state => match packet.id {
                     #match_arms
-                    _ => Ok(NOT_AVAILABLE.to_string()),
+                    _ => Ok(NOT_AVAILABLE.to_owned()),
                 },
             });
         }
 
         if side == "Clientbound" {
             side_arms.extend(quote! {
-                _ => Ok(NOT_AVAILABLE.to_string()),
+                _ => Ok(NOT_AVAILABLE.to_owned()),
             });
         }
 
@@ -197,6 +200,7 @@ fn write_transformer(packets: &[Packet]) -> anyhow::Result<()> {
     let generated = quote! {
         const NOT_AVAILABLE: &str = "Not yet implemented";
 
+        #[allow(clippy::match_wildcard_for_single_variants)]
         pub(crate) fn packet_to_string(packet: &ProxyPacket) -> Result<String, Box<dyn std::error::Error>> {
             let bytes = packet.data.as_ref().unwrap();
             let mut data = &bytes.clone()[..];

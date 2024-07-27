@@ -20,7 +20,7 @@ fn build() -> anyhow::Result<TokenStream> {
             let const_id = ident(translation.key.to_shouty_snake_case());
             let key = &translation.key;
             let english_translation = &translation.english_translation;
-            let doc = format!("\"{}\"", escape(english_translation));
+            let doc = format!("\"{}\"", escape(english_translation)).replace('`', "\\`");
 
             quote! {
                 #[doc = #doc]
