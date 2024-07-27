@@ -259,7 +259,6 @@ fn parse_incoming_commands(
             command_registry.modifiers[&node](modifier, &mut modifiers);
         }
 
-
         for node in to_be_executed {
             trace!("executing node: {node:?}");
             event_writer.send(CommandProcessedEvent {
@@ -269,9 +268,11 @@ fn parse_incoming_commands(
                 node,
             });
         }
-        info!("Command dispatched: /{} (debug logs for more data)", command_event.command);
+        info!(
+            "Command dispatched: /{} (debug logs for more data)",
+            command_event.command
+        );
         debug!("Command modifiers: {:?}", modifiers);
-        
     }
 }
 
