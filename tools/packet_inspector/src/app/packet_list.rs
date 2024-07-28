@@ -1,6 +1,7 @@
 use eframe::epaint::PathShape;
 use egui::{
-    Color32, Pos2, Rect, Response, Rgba, Sense, Shape, Stroke, TextStyle, Ui, Vec2, WidgetText,
+    Color32, Pos2, Rect, Response, Rgba, Sense, Shape, Stroke, TextStyle, TextWrapMode, Ui, Vec2,
+    WidgetText,
 };
 use packet_inspector::Packet;
 use valence_protocol::PacketSide;
@@ -155,15 +156,28 @@ fn draw_packet_widget(ui: &mut Ui, packet: &Packet, selected: bool) -> Response 
 
         let identifier: WidgetText = format!("0x{:0>2X?}", packet.id).into();
 
-        let identifier =
-            identifier.into_galley(ui, Some(false), rect.width() - 21.0, TextStyle::Button);
+        let identifier = identifier.into_galley(
+            ui,
+            Some(TextWrapMode::Truncate),
+            rect.width() - 21.0,
+            TextStyle::Button,
+        );
 
         let label: WidgetText = packet.name.into();
-        let label = label.into_galley(ui, Some(false), rect.width() - 60.0, TextStyle::Button);
+        let label = label.into_galley(
+            ui,
+            Some(TextWrapMode::Truncate),
+            rect.width() - 60.0,
+            TextStyle::Button,
+        );
 
         let timestamp: WidgetText = systemtime_strftime(packet.timestamp.unwrap()).into();
-        let timestamp =
-            timestamp.into_galley(ui, Some(false), rect.width() - 60.0, TextStyle::Button);
+        let timestamp = timestamp.into_galley(
+            ui,
+            Some(TextWrapMode::Truncate),
+            rect.width() - 60.0,
+            TextStyle::Button,
+        );
 
         let id_and_timestamp_color = if selected {
             text_color

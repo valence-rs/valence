@@ -22,7 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Box::new(move |cc| {
             let gui_app = app::GuiApp::new(cc);
 
-            Box::new(gui_app)
+            Ok(Box::new(gui_app))
         }),
     )?;
 
