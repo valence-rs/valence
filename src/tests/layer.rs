@@ -24,7 +24,7 @@ fn block_create_destroy() {
         ..
     } = ScenarioSingleClient::new();
 
-    let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
+    let mut layer = app.world_mut().get_mut::<ChunkLayer>(layer_ent).unwrap();
 
     // Insert an empty chunk at (0, 0).
     layer.insert_chunk([0, 0], UnloadedChunk::new());
@@ -32,7 +32,7 @@ fn block_create_destroy() {
     // Wait until the next tick to start sending changes.
     app.update();
 
-    let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
+    let mut layer = app.world_mut().get_mut::<ChunkLayer>(layer_ent).unwrap();
 
     // Set some blocks.
     layer.set_block([1, 1, 1], BlockState::CHEST);
@@ -48,7 +48,7 @@ fn block_create_destroy() {
         recvd.assert_count::<BlockEntityUpdateS2c>(3)
     };
 
-    let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
+    let mut layer = app.world_mut().get_mut::<ChunkLayer>(layer_ent).unwrap();
 
     layer.set_block([1, 1, 1], BlockState::AIR);
     layer.set_block([1, 2, 1], BlockState::AIR);
@@ -80,7 +80,7 @@ fn layer_chunk_view_change() {
         layer: layer_ent,
     } = ScenarioSingleClient::new();
 
-    let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
+    let mut layer = app.world_mut().get_mut::<ChunkLayer>(layer_ent).unwrap();
 
     for z in -30..30 {
         for x in -30..30 {
@@ -88,14 +88,14 @@ fn layer_chunk_view_change() {
         }
     }
 
-    let mut client = app.world.entity_mut(client_ent);
+    let mut client = app.world_mut().entity_mut(client_ent);
 
     client.get_mut::<Position>().unwrap().set([8.0, 0.0, 8.0]);
     client.get_mut::<ViewDistance>().unwrap().set(6);
 
     // Tick
     app.update();
-    let mut client = app.world.entity_mut(client_ent);
+    let mut client = app.world_mut().entity_mut(client_ent);
 
     let mut loaded_chunks = BTreeSet::new();
 
@@ -120,7 +120,7 @@ fn layer_chunk_view_change() {
 
     // Tick
     app.update();
-    let client = app.world.entity_mut(client_ent);
+    let client = app.world_mut().entity_mut(client_ent);
 
     // For all chunks received this tick...
     for f in helper.collect_received().0 {
@@ -154,12 +154,12 @@ fn chunk_viewer_count() {
         layer: layer_ent,
     } = ScenarioSingleClient::new();
 
-    let mut client = app.world.entity_mut(client_ent);
+    let mut client = app.world_mut().entity_mut(client_ent);
 
     client.get_mut::<Position>().unwrap().set([8.0, 64.0, 8.0]);
     client.get_mut::<ViewDistance>().unwrap().set(2);
 
-    let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
+    let mut layer = app.world_mut().get_mut::<ChunkLayer>(layer_ent).unwrap();
 
     // Create chunk at (0, 0).
     layer.insert_chunk([0, 0], UnloadedChunk::new());
@@ -168,7 +168,7 @@ fn chunk_viewer_count() {
 
     helper.collect_received().assert_count::<ChunkDataS2c>(1);
 
-    let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
+    let mut layer = app.world_mut().get_mut::<ChunkLayer>(layer_ent).unwrap();
 
     assert_eq!(layer.chunk_mut([0, 0]).unwrap().viewer_count(), 1);
 
@@ -176,7 +176,7 @@ fn chunk_viewer_count() {
     // the same tick.
     layer.insert_chunk([0, 1], UnloadedChunk::new());
 
-    let mut client = app.world.entity_mut(client_ent);
+    let mut client = app.world_mut().entity_mut(client_ent);
     client.get_mut::<Position>().unwrap().set([100.0, 0.0, 0.0]);
 
     app.update(); // Tick.
@@ -188,7 +188,7 @@ fn chunk_viewer_count() {
         recvd.assert_count::<UnloadChunkS2c>(2)
     };
 
-    let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
+    let mut layer = app.world_mut().get_mut::<ChunkLayer>(layer_ent).unwrap();
 
     // Viewer count of both chunks should be zero.
     assert_eq!(layer.chunk([0, 0]).unwrap().viewer_count(), 0);
@@ -198,12 +198,12 @@ fn chunk_viewer_count() {
     layer.insert_chunk([1, 0], UnloadedChunk::new());
 
     // Move the client back in view of all three chunks.
-    let mut client = app.world.entity_mut(client_ent);
+    let mut client = app.world_mut().entity_mut(client_ent);
     client.get_mut::<Position>().unwrap().set([8.0, 0.0, 8.0]);
 
     app.update(); // Tick.
 
-    let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
+    let mut layer = app.world_mut().get_mut::<ChunkLayer>(layer_ent).unwrap();
 
     // All three chunks should have viewer count of one.
     assert_eq!(layer.chunk_mut([0, 0]).unwrap().viewer_count(), 1);
@@ -223,13 +223,13 @@ fn entity_layer_switching() {
         layer: l1,
     } = ScenarioSingleClient::new();
 
-    let server = app.world.resource::<Server>();
+    let server = app.world_mut().resource::<Server>();
 
     let l2 = EntityLayer::new(server);
     let l3 = EntityLayer::new(server);
 
-    let l2 = app.world.spawn(l2).id();
-    let _l3 = app.world.spawn(l3).id();
+    let l2 = app.world_mut().spawn(l2).id();
+    let _l3 = app.world_mut().spawn(l3).id();
 
     // Spawn three entities and put them all on the main layer to start.
 
@@ -248,9 +248,9 @@ fn entity_layer_switching() {
         ..Default::default()
     };
 
-    let e1 = app.world.spawn(e1).id();
-    let _e2 = app.world.spawn(e2).id();
-    let _e3 = app.world.spawn(e3).id();
+    let e1 = app.world_mut().spawn(e1).id();
+    let _e2 = app.world_mut().spawn(e2).id();
+    let _e3 = app.world_mut().spawn(e3).id();
 
     app.update(); // Tick.
 
@@ -258,8 +258,8 @@ fn entity_layer_switching() {
     helper.collect_received().assert_count::<EntitySpawnS2c>(3);
 
     // Move e1 to l2 and add l2 to the visible layers set.
-    app.world.get_mut::<EntityLayerId>(e1).unwrap().0 = l2;
-    app.world
+    app.world_mut().get_mut::<EntityLayerId>(e1).unwrap().0 = l2;
+    app.world_mut()
         .get_mut::<VisibleEntityLayers>(client_ent)
         .unwrap()
         .0
@@ -279,7 +279,7 @@ fn entity_layer_switching() {
 
     // Remove the original layer from the visible layer set.
     assert!(app
-        .world
+        .world_mut()
         .get_mut::<VisibleEntityLayers>(client_ent)
         .unwrap()
         .0
@@ -294,7 +294,7 @@ fn entity_layer_switching() {
     };
 
     // Despawn l2.
-    app.world.entity_mut(l2).insert(Despawned);
+    app.world_mut().entity_mut(l2).insert(Despawned);
 
     app.update(); // Tick.
 
@@ -304,7 +304,7 @@ fn entity_layer_switching() {
         .assert_count::<EntitiesDestroyS2c>(1);
 
     let mut visible_entity_layers = app
-        .world
+        .world_mut()
         .get_mut::<VisibleEntityLayers>(client_ent)
         .unwrap();
 
@@ -334,14 +334,14 @@ fn chunk_entity_spawn_despawn() {
         layer: layer_ent,
     } = ScenarioSingleClient::new();
 
-    let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
+    let mut layer = app.world_mut().get_mut::<ChunkLayer>(layer_ent).unwrap();
 
     // Insert an empty chunk at (0, 0).
     layer.insert_chunk([0, 0], UnloadedChunk::new());
 
     // Put an entity in the new chunk.
     let cow_ent = app
-        .world
+        .world_mut()
         .spawn(CowEntityBundle {
             position: Position::new([8.0, 0.0, 8.0]),
             layer: EntityLayerId(layer_ent),
@@ -363,7 +363,7 @@ fn chunk_entity_spawn_despawn() {
     };
 
     // Move the entity. Client should receive entity move packet.
-    app.world.get_mut::<Position>(cow_ent).unwrap().0.x += 0.1;
+    app.world_mut().get_mut::<Position>(cow_ent).unwrap().0.x += 0.1;
 
     app.update();
 
@@ -371,7 +371,7 @@ fn chunk_entity_spawn_despawn() {
 
     // Despawning the chunk should delete the chunk and not the entity contained
     // within.
-    let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
+    let mut layer = app.world_mut().get_mut::<ChunkLayer>(layer_ent).unwrap();
 
     layer.remove_chunk([0, 0]).unwrap();
 
@@ -388,7 +388,7 @@ fn chunk_entity_spawn_despawn() {
 
     // Placing the chunk back should respawn the chunk and not the entity.
 
-    let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
+    let mut layer = app.world_mut().get_mut::<ChunkLayer>(layer_ent).unwrap();
 
     assert!(layer.insert_chunk([0, 0], UnloadedChunk::new()).is_none());
 
@@ -405,8 +405,8 @@ fn chunk_entity_spawn_despawn() {
 
     // Move player and entity away from the chunk on the same tick.
 
-    app.world.get_mut::<Position>(client_ent).unwrap().0.x = 1000.0;
-    app.world.get_mut::<Position>(cow_ent).unwrap().0.x = -1000.0;
+    app.world_mut().get_mut::<Position>(client_ent).unwrap().0.x = 1000.0;
+    app.world_mut().get_mut::<Position>(cow_ent).unwrap().0.x = -1000.0;
 
     app.update();
 
@@ -421,11 +421,11 @@ fn chunk_entity_spawn_despawn() {
 
     // Put the client and entity back on the same tick.
 
-    app.world
+    app.world_mut()
         .get_mut::<Position>(client_ent)
         .unwrap()
         .set([8.0, 0.0, 8.0]);
-    app.world
+    app.world_mut()
         .get_mut::<Position>(cow_ent)
         .unwrap()
         .set([8.0, 0.0, 8.0]);
@@ -444,12 +444,12 @@ fn chunk_entity_spawn_despawn() {
     // Adding and removing a chunk on the same tick should have no effect on
     // the client.
 
-    let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
+    let mut layer = app.world_mut().get_mut::<ChunkLayer>(layer_ent).unwrap();
 
     layer.insert_chunk([0, 1], UnloadedChunk::new());
     layer.remove_chunk([0, 1]).unwrap();
 
-    app.world
+    app.world_mut()
         .get_mut::<Position>(cow_ent)
         .unwrap()
         .set([24.0, 0.0, 24.0]);

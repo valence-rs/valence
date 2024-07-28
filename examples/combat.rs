@@ -1,6 +1,6 @@
 #![allow(clippy::type_complexity)]
 
-use bevy_ecs::query::WorldQuery;
+use bevy_ecs::query::QueryData;
 use rand::Rng;
 use valence::entity::EntityStatuses;
 use valence::math::Vec3Swizzles;
@@ -104,8 +104,8 @@ fn init_clients(
     }
 }
 
-#[derive(WorldQuery)]
-#[world_query(mutable)]
+#[derive(QueryData)]
+#[query_data(mutable)]
 struct CombatQuery {
     client: &'static mut Client,
     pos: &'static Position,

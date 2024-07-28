@@ -1128,7 +1128,7 @@ fn handle_player_actions(
                                 client: packet.client,
                                 from_slot: Some(held.slot()),
                                 stack,
-                            })
+                            });
                         }
                     }
                 }

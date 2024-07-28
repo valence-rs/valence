@@ -17,11 +17,11 @@ fn test_hunger() {
     app.update();
     helper.clear_received();
 
-    let og_saturation = app.world.get::<Saturation>(client).unwrap().0;
-    let og_health = app.world.get::<Health>(client).unwrap().0;
+    let og_saturation = app.world_mut().get::<Saturation>(client).unwrap().0;
+    let og_health = app.world_mut().get::<Health>(client).unwrap().0;
 
     // set food level to 5
-    app.world.get_mut::<Food>(client).unwrap().0 = 5;
+    app.world_mut().get_mut::<Food>(client).unwrap().0 = 5;
 
     app.update();
 

@@ -29,7 +29,7 @@ fn main() -> io::Result<()> {
 
     app.add_plugins(DefaultPlugins);
 
-    let schedules = app.world.resource::<Schedules>();
+    let schedules = app.world().resource::<Schedules>();
 
     let Some(sched_name) = cli.schedule else {
         print_available_schedules(schedules);
@@ -47,7 +47,7 @@ fn main() -> io::Result<()> {
 
     let dot_graph = bevy_mod_debugdump::schedule_graph::schedule_graph_dot(
         schedule,
-        &app.world,
+        app.world(),
         &bevy_mod_debugdump::schedule_graph::Settings {
             ambiguity_enable: false,
             ..Default::default()

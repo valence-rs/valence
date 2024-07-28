@@ -50,18 +50,18 @@ impl ScenarioSingleClient {
 
         let chunk_layer = ChunkLayer::new(
             ident!("overworld"),
-            app.world.resource::<DimensionTypeRegistry>(),
-            app.world.resource::<BiomeRegistry>(),
-            app.world.resource::<Server>(),
+            app.world().resource::<DimensionTypeRegistry>(),
+            app.world().resource::<BiomeRegistry>(),
+            app.world().resource::<Server>(),
         );
-        let entity_layer = EntityLayer::new(app.world.resource::<Server>());
-        let layer = app.world.spawn((chunk_layer, entity_layer)).id();
+        let entity_layer = EntityLayer::new(app.world().resource::<Server>());
+        let layer = app.world_mut().spawn((chunk_layer, entity_layer)).id();
 
         let (mut client, helper) = create_mock_client("test");
         client.player.layer.0 = layer;
         client.visible_chunk_layer.0 = layer;
         client.visible_entity_layers.0.insert(layer);
-        let client = app.world.spawn(client).id();
+        let client = app.world_mut().spawn(client).id();
 
         ScenarioSingleClient {
             app,
