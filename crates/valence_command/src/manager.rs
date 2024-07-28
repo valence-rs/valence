@@ -9,7 +9,7 @@ use bevy_ecs::prelude::{
 use petgraph::graph::NodeIndex;
 use petgraph::prelude::EdgeRef;
 use petgraph::{Direction, Graph};
-use tracing::{debug, warn};
+use tracing::{debug, info, trace, warn};
 use valence_server::client::{Client, SpawnClientsSet};
 use valence_server::event_loop::PacketEvent;
 use valence_server::protocol::packets::play::command_tree_s2c::NodeData;
@@ -151,10 +151,10 @@ fn update_client_command_tree(
         let mut new_root = None;
 
         while let Some((parent, node)) = to_visit.pop() {
-            if already_visited.contains(&(parent.map(|(_, edge)| edge), node)) {
+            if already_visited.contains(&(parent.map(|(node_id, _)| node_id), node)) {
                 continue;
             }
-            already_visited.insert((parent.map(|(_, edge)| edge), node));
+            already_visited.insert((parent.map(|(node_id, _)| node_id), node));
             let node_scopes = &old_graph.graph[node].scopes;
             if !node_scopes.is_empty() {
                 let mut has_scope = false;
@@ -259,10 +259,8 @@ fn parse_incoming_commands(
             command_registry.modifiers[&node](modifier, &mut modifiers);
         }
 
-        debug!("Command processed: /{}", command_event.command);
-
         for node in to_be_executed {
-            println!("executing node: {node:?}");
+            trace!("executing node: {node:?}");
             event_writer.send(CommandProcessedEvent {
                 command: args.join(" "),
                 executor,
@@ -270,6 +268,11 @@ fn parse_incoming_commands(
                 node,
             });
         }
+        info!(
+            "Command dispatched: /{} (debug logs for more data)",
+            command_event.command
+        );
+        debug!("Command modifiers: {:?}", modifiers);
     }
 }
 
