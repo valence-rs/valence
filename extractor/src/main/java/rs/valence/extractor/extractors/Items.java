@@ -3,6 +3,7 @@ package rs.valence.extractor.extractors;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import net.minecraft.component.DataComponentTypes;
 import net.minecraft.registry.Registries;
 import rs.valence.extractor.Main;
 
@@ -25,31 +26,30 @@ public class Items implements Main.Extractor {
             itemJson.addProperty("name", Registries.ITEM.getId(item).getPath());
             itemJson.addProperty("translation_key", item.getTranslationKey());
             itemJson.addProperty("max_stack", item.getMaxCount());
-            itemJson.addProperty("max_durability", item.getMaxDamage());
+            itemJson.addProperty("max_durability", item.getDefaultStack().getMaxDamage());
             itemJson.addProperty("enchantability", item.getEnchantability());
-            itemJson.addProperty("fireproof", item.isFireproof());
+            itemJson.addProperty("fireproof", item.getComponents().contains(DataComponentTypes.FIRE_RESISTANT));
 
-            if (item.getFoodComponent() != null) {
+            if (item.getComponents().contains(DataComponentTypes.FOOD)) {
                 var foodJson = new JsonObject();
-                var foodComp = item.getFoodComponent();
+                var foodComp = item.getComponents().get(DataComponentTypes.FOOD);
 
-                foodJson.addProperty("hunger", foodComp.getHunger());
-                foodJson.addProperty("saturation", foodComp.getSaturationModifier());
-                foodJson.addProperty("always_edible", foodComp.isAlwaysEdible());
-                foodJson.addProperty("meat", foodComp.isMeat());
-                foodJson.addProperty("snack", foodComp.isSnack());
+                foodJson.addProperty("hunger", foodComp.nutrition());
+                foodJson.addProperty("saturation", foodComp.saturation());
+                foodJson.addProperty("always_edible", foodComp.canAlwaysEat());
+                foodJson.addProperty("eat_ticks", foodComp.getEatTicks());
 
                 itemJson.add("food", foodJson);
 
                 var effectsJson = new JsonArray();
-                for (var pair : foodComp.getStatusEffects()) {
+                for (var effectEntry : foodComp.effects()) {
                     var effectJson = new JsonObject();
 
-                    var effect = pair.getFirst();
-                    var chance = pair.getSecond();
+                    var effect = effectEntry.effect();
+                    var chance = effectEntry.probability();
 
                     effectJson.addProperty("chance", chance);
-                    effectJson.addProperty("translation_key", effect.getEffectType().getTranslationKey());
+                    effectJson.addProperty("translation_key", effect.getTranslationKey());
                     // TODO: more effect information.
 
                     effectsJson.add(effectJson);
