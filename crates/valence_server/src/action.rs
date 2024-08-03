@@ -69,7 +69,7 @@ fn handle_player_action(
                         client: packet.client,
                         position: pkt.position,
                         direction: pkt.direction,
-                        state: DiggingState::Stop,
+                        state: DiggingState::Start,
                     });
                 }
                 PlayerAction::AbortDestroyBlock => {
