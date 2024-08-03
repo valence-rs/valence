@@ -2,8 +2,11 @@ package rs.valence.extractor.extractors;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.mojang.serialization.JsonOps;
+import net.minecraft.entity.decoration.painting.PaintingVariant;
 import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.registry.RegistryKeys;
+import net.minecraft.registry.RegistryOps;
 import net.minecraft.server.MinecraftServer;
 import rs.valence.extractor.Main;
 
@@ -25,26 +28,15 @@ public class Paintings implements Main.Extractor {
         var dataDrivenMiscJson = new JsonObject();
 
         // TODO - For the moment I don't know how does this registers works
-        var paintingRegistryWrapper = registryManager.getWrapperOrThrow(RegistryKeys.PAINTING_VARIANT);
+        var paintingRegistry = registryManager.get(RegistryKeys.PAINTING_VARIANT);
 
-        var paintingVariantJson = new JsonObject();
-        paintingRegistryWrapper.streamKeys().forEach(variant -> {
-            //Main.LOGGER.info("Painting variant: {}", variant);
-//            var variantJson = new JsonObject();
-//            variantJson.addProperty("id", Registries.PAINTING_MOTIVE.getRawId(variant));
-//            variantJson.addProperty("width", variant.getWidth());
-//            variantJson.addProperty("height", variant.getHeight());
-//            paintingVariantJson.add(Registries.PAINTING_VARIANT.getId(variant).getPath(), variantJson);
+        var codec = PaintingVariant.CODEC;
+
+        JsonObject json = new JsonObject();
+        paintingRegistry.streamEntries().forEach(entry -> {
+            json.add(entry.getKey().orElseThrow().getValue().toString(), codec.encodeStart(RegistryOps.of(JsonOps.INSTANCE, registryManager), entry.value()).getOrThrow());
         });
-//        for (var variant : paintingRegistryWrapper.streamKeys()) {
-//            var variantJson = new JsonObject();
-//            variantJson.addProperty("id", Registries.PAINTING_MOTIVE.getRawId(variant));
-//            variantJson.addProperty("width", variant.getWidth());
-//            variantJson.addProperty("height", variant.getHeight());
-//            paintingVariantJson.add(Registries.PAINTING_VARIANT.getId(variant).getPath(), variantJson);
-//        }
-        dataDrivenMiscJson.add("painting_variant", paintingVariantJson);
 
-        return dataDrivenMiscJson;
+        return json;
     }
 }

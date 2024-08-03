@@ -8,6 +8,8 @@ public class ValenceUtils {
         throw new UnsupportedOperationException("This class cannot be instantiated");
     }
 
+
+
     /**
      * Converts a string to PascalCase.
      * 

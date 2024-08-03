@@ -13,6 +13,7 @@ import net.minecraft.entity.attribute.EntityAttributeInstance;
 import net.minecraft.entity.data.DataTracker;
 import net.minecraft.entity.data.TrackedData;
 import net.minecraft.entity.data.TrackedDataHandlerRegistry;
+import net.minecraft.entity.passive.ArmadilloEntity;
 import net.minecraft.entity.passive.CatVariant;
 import net.minecraft.entity.passive.FrogVariant;
 import net.minecraft.entity.passive.SnifferEntity;
@@ -111,7 +112,10 @@ public class Entities implements Main.Extractor {
         } else if (handler == TrackedDataHandlerRegistry.PARTICLE) {
             var id = Registries.PARTICLE_TYPE.getId(((ParticleEffect) val).getType());
             return new Pair<>("particle", new JsonPrimitive(id.getPath()));
-        } else if (handler == TrackedDataHandlerRegistry.VILLAGER_DATA) {
+        } else if (handler == TrackedDataHandlerRegistry.PARTICLE_LIST) {
+            Main.LOGGER.info(val.toString());
+            return new Pair<>("particle_list", new JsonPrimitive(val.toString()));
+        }else if (handler == TrackedDataHandlerRegistry.VILLAGER_DATA) {
             var vd = (VillagerData) val;
             var json = new JsonObject();
             var type = Registries.VILLAGER_TYPE.getId(vd.getType()).getPath();
@@ -127,10 +131,10 @@ public class Entities implements Main.Extractor {
             return new Pair<>("entity_pose", new JsonPrimitive(((EntityPose) val).name().toLowerCase(Locale.ROOT)));
         } else if (handler == TrackedDataHandlerRegistry.CAT_VARIANT) {
             return new Pair<>("cat_variant",
-                    new JsonPrimitive(Registries.CAT_VARIANT.getId((CatVariant) val).getPath()));
+                    new JsonPrimitive(((RegistryEntry<CatVariant>) val).getIdAsString()));
         } else if (handler == TrackedDataHandlerRegistry.FROG_VARIANT) {
             return new Pair<>("frog_variant",
-                    new JsonPrimitive(Registries.FROG_VARIANT.getId((FrogVariant) val).getPath()));
+                    new JsonPrimitive(((RegistryEntry<FrogVariant>) val).getIdAsString()));
         } else if (handler == TrackedDataHandlerRegistry.OPTIONAL_GLOBAL_POS) {
             return new Pair<>("optional_global_pos", ((Optional<?>) val).map(o -> {
                 var gp = (GlobalPos) o;
@@ -151,7 +155,10 @@ public class Entities implements Main.Extractor {
         } else if (handler == TrackedDataHandlerRegistry.SNIFFER_STATE) {
             return new Pair<>("sniffer_state",
                     new JsonPrimitive(((SnifferEntity.State) val).name().toLowerCase(Locale.ROOT)));
-        } else if (handler == TrackedDataHandlerRegistry.VECTOR3F) {
+        } else if (handler == TrackedDataHandlerRegistry.ARMADILLO_STATE) {
+            return new Pair<>("armadillo_state",
+                    new JsonPrimitive(((ArmadilloEntity.State) val).name().toLowerCase(Locale.ROOT)));
+        }else if (handler == TrackedDataHandlerRegistry.VECTOR3F) {
             var vec = (Vector3f) val;
             var json = new JsonObject();
             json.addProperty("x", vec.x);
@@ -168,7 +175,7 @@ public class Entities implements Main.Extractor {
             return new Pair<>("quaternionf", json);
         } else {
             throw new IllegalArgumentException(
-                    "Unexpected tracked handler of ID " + TrackedDataHandlerRegistry.getId(handler));
+                    "Unexpected tracked handler of ID " + TrackedDataHandlerRegistry.getId(handler) + handler.toString());
         }
     }
 
@@ -215,8 +222,8 @@ public class Entities implements Main.Extractor {
 
 
 
-            // final var dataTracker = (DataTracker) dataTrackerField.get(entityInstance);
-            final var dataTracker = entityInstance.getDataTracker();
+             final var dataTracker = (DataTracker) dataTrackerField.get(entityInstance);
+//            final var dataTracker = entityInstance.getDataTracker();
 
             while (entitiesMap.get(entityClass) == null) {
                 var entityJson = new JsonObject();
