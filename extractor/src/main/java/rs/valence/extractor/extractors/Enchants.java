@@ -3,11 +3,20 @@ package rs.valence.extractor.extractors;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.mojang.serialization.JsonOps;
+import net.minecraft.enchantment.Enchantment;
+import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.registry.Registries;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.registry.RegistryOps;
+import net.minecraft.server.MinecraftServer;
 import rs.valence.extractor.Main;
 
 public class Enchants implements Main.Extractor {
-    public Enchants() {
+    private final DynamicRegistryManager.Immutable registryManager;
+
+    public Enchants(MinecraftServer server) {
+        this.registryManager = server.getRegistryManager();
     }
 
     @Override
@@ -17,29 +26,11 @@ public class Enchants implements Main.Extractor {
 
     @Override
     public JsonElement extract() {
-        var enchantsJson = new JsonArray();
+        var enchantsJson = new JsonObject();
 
-        for (var enchant : Registries.ENCHANTMENT) {
-            var enchantJson = new JsonObject();
+        for (var enchant : registryManager.get(RegistryKeys.ENCHANTMENT).streamEntries().toList()) {
+            enchantsJson.add(enchant.getKey().orElseThrow().getValue().toString(), Enchantment.CODEC.encodeStart(RegistryOps.of(JsonOps.INSTANCE, registryManager), enchant.value()).getOrThrow());
 
-            enchantJson.addProperty("id", Registries.ENCHANTMENT.getRawId(enchant));
-            enchantJson.addProperty("name", Registries.ENCHANTMENT.getId(enchant).getPath());
-            enchantJson.addProperty("translation_key", enchant.getTranslationKey());
-
-            enchantJson.addProperty("min_level", enchant.getMinLevel());
-            enchantJson.addProperty("max_level", enchant.getMaxLevel());
-            enchantJson.addProperty("rarity_weight", enchant.getRarity().getWeight());
-            enchantJson.addProperty("cursed", enchant.isCursed());
-
-            var enchantmentSources = new JsonObject();
-            enchantmentSources.addProperty("treasure", enchant.isTreasure());
-            enchantmentSources.addProperty("enchantment_table", enchant.isAvailableForEnchantedBookOffer());
-            // All enchants except for 'Soul speed' and 'Swift sneak' are available for random selection and are only obtainable from loot chests.
-            enchantmentSources.addProperty("random_selection", enchant.isAvailableForRandomSelection());
-
-            enchantJson.add("sources", enchantmentSources);
-
-            enchantsJson.add(enchantJson);
         }
 
         return enchantsJson;

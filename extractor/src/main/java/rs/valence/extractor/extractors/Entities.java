@@ -2,6 +2,7 @@ package rs.valence.extractor.extractors;
 
 import com.google.gson.*;
 
+import com.mojang.authlib.GameProfile;
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityPose;
@@ -13,18 +14,19 @@ import net.minecraft.entity.attribute.EntityAttributeInstance;
 import net.minecraft.entity.data.DataTracker;
 import net.minecraft.entity.data.TrackedData;
 import net.minecraft.entity.data.TrackedDataHandlerRegistry;
-import net.minecraft.entity.passive.CatVariant;
-import net.minecraft.entity.passive.FrogVariant;
-import net.minecraft.entity.passive.SnifferEntity;
+import net.minecraft.entity.passive.*;
 import net.minecraft.item.ItemStack;
 import net.minecraft.particle.ParticleEffect;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.entry.RegistryEntry;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.EulerAngle;
 import net.minecraft.util.math.GlobalPos;
 import net.minecraft.village.VillagerData;
+import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -38,11 +40,14 @@ import java.lang.reflect.ParameterizedType;
 import java.util.*;
 
 public class Entities implements Main.Extractor {
-    public Entities() {
+    private final ServerWorld world;
+
+    public Entities(MinecraftServer server) {
+        this.world = server.getOverworld();
     }
 
     private static Pair<String, JsonElement> trackedDataToJson(TrackedData<?> data, DataTracker tracker) {
-        final var handler = data.getType();
+        final var handler = data.dataType();
         final var val = tracker.get(data);
 
         if (handler == TrackedDataHandlerRegistry.BYTE) {
@@ -111,7 +116,15 @@ public class Entities implements Main.Extractor {
         } else if (handler == TrackedDataHandlerRegistry.PARTICLE) {
             var id = Registries.PARTICLE_TYPE.getId(((ParticleEffect) val).getType());
             return new Pair<>("particle", new JsonPrimitive(id.getPath()));
-        } else if (handler == TrackedDataHandlerRegistry.VILLAGER_DATA) {
+        } else if (handler == TrackedDataHandlerRegistry.PARTICLE_LIST) {
+            List<ParticleEffect> particleList = (List<ParticleEffect>) val;
+            JsonArray json = new JsonArray();
+            for (ParticleEffect particleEffect : particleList) {
+                var id = Registries.PARTICLE_TYPE.getId(((ParticleEffect) val).getType());
+                json.add(id.getPath());
+            }
+            return new Pair<>("particle_list", json);
+        }else if (handler == TrackedDataHandlerRegistry.VILLAGER_DATA) {
             var vd = (VillagerData) val;
             var json = new JsonObject();
             var type = Registries.VILLAGER_TYPE.getId(vd.getType()).getPath();
@@ -127,20 +140,23 @@ public class Entities implements Main.Extractor {
             return new Pair<>("entity_pose", new JsonPrimitive(((EntityPose) val).name().toLowerCase(Locale.ROOT)));
         } else if (handler == TrackedDataHandlerRegistry.CAT_VARIANT) {
             return new Pair<>("cat_variant",
-                    new JsonPrimitive(Registries.CAT_VARIANT.getId((CatVariant) val).getPath()));
-        } else if (handler == TrackedDataHandlerRegistry.FROG_VARIANT) {
+                    new JsonPrimitive(((RegistryEntry<CatVariant>) val).getIdAsString()));
+        } else if (handler == TrackedDataHandlerRegistry.WOLF_VARIANT) {
+            return new Pair<>("wolf_variant",
+                    new JsonPrimitive(((RegistryEntry<WolfVariant>) val).getIdAsString()));
+        }  else if (handler == TrackedDataHandlerRegistry.FROG_VARIANT) {
             return new Pair<>("frog_variant",
-                    new JsonPrimitive(Registries.FROG_VARIANT.getId((FrogVariant) val).getPath()));
+                    new JsonPrimitive(((RegistryEntry<FrogVariant>) val).getIdAsString()));
         } else if (handler == TrackedDataHandlerRegistry.OPTIONAL_GLOBAL_POS) {
             return new Pair<>("optional_global_pos", ((Optional<?>) val).map(o -> {
                 var gp = (GlobalPos) o;
                 var json = new JsonObject();
-                json.addProperty("dimension", gp.getDimension().getValue().toString());
+                json.addProperty("dimension", gp.dimension().getValue().toString());
 
                 var posJson = new JsonObject();
-                posJson.addProperty("x", gp.getPos().getX());
-                posJson.addProperty("y", gp.getPos().getY());
-                posJson.addProperty("z", gp.getPos().getZ());
+                posJson.addProperty("x", gp.pos().getX());
+                posJson.addProperty("y", gp.pos().getY());
+                posJson.addProperty("z", gp.pos().getZ());
 
                 json.add("position", posJson);
                 return (JsonElement) json;
@@ -151,7 +167,10 @@ public class Entities implements Main.Extractor {
         } else if (handler == TrackedDataHandlerRegistry.SNIFFER_STATE) {
             return new Pair<>("sniffer_state",
                     new JsonPrimitive(((SnifferEntity.State) val).name().toLowerCase(Locale.ROOT)));
-        } else if (handler == TrackedDataHandlerRegistry.VECTOR3F) {
+        } else if (handler == TrackedDataHandlerRegistry.ARMADILLO_STATE) {
+            return new Pair<>("armadillo_state",
+                    new JsonPrimitive(((ArmadilloEntity.State) val).name().toLowerCase(Locale.ROOT)));
+        }else if (handler == TrackedDataHandlerRegistry.VECTOR3F) {
             var vec = (Vector3f) val;
             var json = new JsonObject();
             json.addProperty("x", vec.x);
@@ -168,7 +187,7 @@ public class Entities implements Main.Extractor {
             return new Pair<>("quaternionf", json);
         } else {
             throw new IllegalArgumentException(
-                    "Unexpected tracked handler of ID " + TrackedDataHandlerRegistry.getId(handler));
+                    "Unexpected tracked handler of ID " + TrackedDataHandlerRegistry.getId(handler) + handler.toString());
         }
     }
 
@@ -181,14 +200,16 @@ public class Entities implements Main.Extractor {
     @SuppressWarnings("unchecked")
     public JsonElement extract() throws IllegalAccessException, NoSuchFieldException {
 
-        final var entityClassToType = new HashMap<Class<? extends Entity>, EntityType<?>>();
+        final var entityList = new ArrayList<Pair<Class<? extends Entity>, EntityType<?>>>();
+        var entityClassTypeMap = new HashMap<Class<? extends Entity>, EntityType<?>>();
         for (var f : EntityType.class.getFields()) {
             if (f.getType().equals(EntityType.class)) {
                 var entityClass = (Class<? extends Entity>) ((ParameterizedType) f.getGenericType())
                         .getActualTypeArguments()[0];
                 var entityType = (EntityType<?>) f.get(null);
 
-                entityClassToType.put(entityClass, entityType);
+                entityList.add(new Pair<>(entityClass, entityType));
+                entityClassTypeMap.put(entityClass, entityType);
             }
         }
 
@@ -197,10 +218,10 @@ public class Entities implements Main.Extractor {
 
         var entitiesMap = new TreeMap<Class<? extends Entity>, JsonElement>(new ClassComparator());
 
-        for (var entry : entityClassToType.entrySet()) {
-            var entityClass = entry.getKey();
+        for (var entry : entityList) {
+            var entityClass = entry.left();
             @Nullable
-            var entityType = entry.getValue();
+            var entityType = entry.right();
             assert entityType != null;
 
             // While we can use the tracked data registry and reflection to get the tracked
@@ -210,10 +231,13 @@ public class Entities implements Main.Extractor {
             // the data tracker field from the base entity class.
             // We also handle player entities specially since they cannot be spawned with
             // EntityType#create.
-            final var entityInstance = entityType.equals(EntityType.PLAYER) ? DummyPlayerEntity.INSTANCE
-                    : entityType.create(DummyWorld.INSTANCE);
+            final var entityInstance = entityType.equals(EntityType.PLAYER) ? new DummyPlayerEntity(world, BlockPos.ofFloored(0,70,0), 0, new GameProfile(UUID.randomUUID(), "cooldude"), null)
+                    : entityType.create(world);
 
-            final var dataTracker = (DataTracker) dataTrackerField.get(entityInstance);
+
+
+             final var dataTracker = (DataTracker) dataTrackerField.get(entityInstance);
+//            final var dataTracker = entityInstance.getDataTracker();
 
             while (entitiesMap.get(entityClass) == null) {
                 var entityJson = new JsonObject();
@@ -238,10 +262,12 @@ public class Entities implements Main.Extractor {
 
                         var trackedData = (TrackedData<?>) entityField.get(null);
 
+
+
                         var fieldJson = new JsonObject();
                         var fieldName = entityField.getName().toLowerCase(Locale.ROOT);
                         fieldJson.addProperty("name", fieldName);
-                        fieldJson.addProperty("index", trackedData.getId());
+                        fieldJson.addProperty("index", trackedData.id());
 
                         var data = Entities.trackedDataToJson(trackedData, dataTracker);
                         fieldJson.addProperty("type", data.left());
@@ -263,7 +289,7 @@ public class Entities implements Main.Extractor {
                                 .get(defaultAttributes);
 
                         for (var instance : instances.values()) {
-                            var attribute = instance.getAttribute();
+                            var attribute = instance.getAttribute().value();
 
                             var attributeJson = new JsonObject();
 
@@ -281,9 +307,9 @@ public class Entities implements Main.Extractor {
                 if (bb != null && entityType != null) {
                     var boundingBoxJson = new JsonObject();
 
-                    boundingBoxJson.addProperty("size_x", bb.getXLength());
-                    boundingBoxJson.addProperty("size_y", bb.getYLength());
-                    boundingBoxJson.addProperty("size_z", bb.getZLength());
+                    boundingBoxJson.addProperty("size_x", bb.getLengthX());
+                    boundingBoxJson.addProperty("size_y", bb.getLengthY());
+                    boundingBoxJson.addProperty("size_z", bb.getLengthZ());
 
                     entityJson.add("default_bounding_box", boundingBoxJson);
                 }
@@ -295,7 +321,7 @@ public class Entities implements Main.Extractor {
                 }
 
                 entityClass = (Class<? extends Entity>) parent;
-                entityType = entityClassToType.get(entityClass);
+                entityType = entityClassTypeMap.get(entityClass);
             }
         }
 
