@@ -163,7 +163,7 @@ public class DummyWorld extends World {
 
     @Override
     public DynamicRegistryManager getRegistryManager() {
-        return null;
+        return DynamicRegistryManager.of(Registries.REGISTRIES);
     }
 
     @Override
