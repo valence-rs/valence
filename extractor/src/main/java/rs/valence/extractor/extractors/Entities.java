@@ -2,6 +2,7 @@ package rs.valence.extractor.extractors;
 
 import com.google.gson.*;
 
+import com.mojang.authlib.GameProfile;
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityPose;
@@ -13,19 +14,19 @@ import net.minecraft.entity.attribute.EntityAttributeInstance;
 import net.minecraft.entity.data.DataTracker;
 import net.minecraft.entity.data.TrackedData;
 import net.minecraft.entity.data.TrackedDataHandlerRegistry;
-import net.minecraft.entity.passive.ArmadilloEntity;
-import net.minecraft.entity.passive.CatVariant;
-import net.minecraft.entity.passive.FrogVariant;
-import net.minecraft.entity.passive.SnifferEntity;
+import net.minecraft.entity.passive.*;
 import net.minecraft.item.ItemStack;
 import net.minecraft.particle.ParticleEffect;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.entry.RegistryEntry;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.EulerAngle;
 import net.minecraft.util.math.GlobalPos;
 import net.minecraft.village.VillagerData;
+import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -39,7 +40,10 @@ import java.lang.reflect.ParameterizedType;
 import java.util.*;
 
 public class Entities implements Main.Extractor {
-    public Entities() {
+    private final ServerWorld world;
+
+    public Entities(MinecraftServer server) {
+        this.world = server.getOverworld();
     }
 
     private static Pair<String, JsonElement> trackedDataToJson(TrackedData<?> data, DataTracker tracker) {
@@ -113,8 +117,13 @@ public class Entities implements Main.Extractor {
             var id = Registries.PARTICLE_TYPE.getId(((ParticleEffect) val).getType());
             return new Pair<>("particle", new JsonPrimitive(id.getPath()));
         } else if (handler == TrackedDataHandlerRegistry.PARTICLE_LIST) {
-            Main.LOGGER.info(val.toString());
-            return new Pair<>("particle_list", new JsonPrimitive(val.toString()));
+            List<ParticleEffect> particleList = (List<ParticleEffect>) val;
+            JsonArray json = new JsonArray();
+            for (ParticleEffect particleEffect : particleList) {
+                var id = Registries.PARTICLE_TYPE.getId(((ParticleEffect) val).getType());
+                json.add(id.getPath());
+            }
+            return new Pair<>("particle_list", json);
         }else if (handler == TrackedDataHandlerRegistry.VILLAGER_DATA) {
             var vd = (VillagerData) val;
             var json = new JsonObject();
@@ -132,7 +141,10 @@ public class Entities implements Main.Extractor {
         } else if (handler == TrackedDataHandlerRegistry.CAT_VARIANT) {
             return new Pair<>("cat_variant",
                     new JsonPrimitive(((RegistryEntry<CatVariant>) val).getIdAsString()));
-        } else if (handler == TrackedDataHandlerRegistry.FROG_VARIANT) {
+        } else if (handler == TrackedDataHandlerRegistry.WOLF_VARIANT) {
+            return new Pair<>("wolf_variant",
+                    new JsonPrimitive(((RegistryEntry<WolfVariant>) val).getIdAsString()));
+        }  else if (handler == TrackedDataHandlerRegistry.FROG_VARIANT) {
             return new Pair<>("frog_variant",
                     new JsonPrimitive(((RegistryEntry<FrogVariant>) val).getIdAsString()));
         } else if (handler == TrackedDataHandlerRegistry.OPTIONAL_GLOBAL_POS) {
@@ -188,14 +200,16 @@ public class Entities implements Main.Extractor {
     @SuppressWarnings("unchecked")
     public JsonElement extract() throws IllegalAccessException, NoSuchFieldException {
 
-        final var entityClassToType = new HashMap<Class<? extends Entity>, EntityType<?>>();
+        final var entityList = new ArrayList<Pair<Class<? extends Entity>, EntityType<?>>>();
+        var entityClassTypeMap = new HashMap<Class<? extends Entity>, EntityType<?>>();
         for (var f : EntityType.class.getFields()) {
             if (f.getType().equals(EntityType.class)) {
                 var entityClass = (Class<? extends Entity>) ((ParameterizedType) f.getGenericType())
                         .getActualTypeArguments()[0];
                 var entityType = (EntityType<?>) f.get(null);
 
-                entityClassToType.put(entityClass, entityType);
+                entityList.add(new Pair<>(entityClass, entityType));
+                entityClassTypeMap.put(entityClass, entityType);
             }
         }
 
@@ -204,10 +218,10 @@ public class Entities implements Main.Extractor {
 
         var entitiesMap = new TreeMap<Class<? extends Entity>, JsonElement>(new ClassComparator());
 
-        for (var entry : entityClassToType.entrySet()) {
-            var entityClass = entry.getKey();
+        for (var entry : entityList) {
+            var entityClass = entry.left();
             @Nullable
-            var entityType = entry.getValue();
+            var entityType = entry.right();
             assert entityType != null;
 
             // While we can use the tracked data registry and reflection to get the tracked
@@ -217,8 +231,8 @@ public class Entities implements Main.Extractor {
             // the data tracker field from the base entity class.
             // We also handle player entities specially since they cannot be spawned with
             // EntityType#create.
-            final var entityInstance = entityType.equals(EntityType.PLAYER) ? DummyPlayerEntity.INSTANCE
-                    : entityType.create(DummyWorld.INSTANCE);
+            final var entityInstance = entityType.equals(EntityType.PLAYER) ? new DummyPlayerEntity(world, BlockPos.ofFloored(0,70,0), 0, new GameProfile(UUID.randomUUID(), "cooldude"), null)
+                    : entityType.create(world);
 
 
 
@@ -247,6 +261,8 @@ public class Entities implements Main.Extractor {
                         entityField.setAccessible(true);
 
                         var trackedData = (TrackedData<?>) entityField.get(null);
+
+
 
                         var fieldJson = new JsonObject();
                         var fieldName = entityField.getName().toLowerCase(Locale.ROOT);
@@ -305,7 +321,7 @@ public class Entities implements Main.Extractor {
                 }
 
                 entityClass = (Class<? extends Entity>) parent;
-                entityType = entityClassToType.get(entityClass);
+                entityType = entityClassTypeMap.get(entityClass);
             }
         }
 

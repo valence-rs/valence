@@ -44,8 +44,6 @@ public class Main implements ModInitializer {
                new Attributes(),
                new Blocks(),
                new Effects(),
-                // TODO not implemented yet
-               new Entities(),
                new Misc(),
                new Items(),
                new Packets(),
@@ -75,7 +73,7 @@ public class Main implements ModInitializer {
             }
         }
 
-        ServerLifecycleEvents.SERVER_STARTING.register(server -> {
+        ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             LOGGER.info("Server starting, Running startup extractors...");
             // TODO: make `Codec` implement `Extractor`
             // TODO: the way to get Codex has changed, this is not working anymore
@@ -95,6 +93,7 @@ public class Main implements ModInitializer {
                 new Tags(server),
                 new Paintings(server),
                 new Enchants(server),
+                new Entities(server),
             };
 
             for (var ext : startupExtractors) {
@@ -110,7 +109,7 @@ public class Main implements ModInitializer {
             }
 
             LOGGER.info("Done.");
-            server.shutdown();
+            server.stop(false);
         });
     }
 
