@@ -44,10 +44,6 @@
     "english_translation": "Mooshroom gets milked"
   },
   {
-    "key": "recover_world.button",
-    "english_translation": "Attempt to Recover"
-  },
-  {
     "key": "block.minecraft.red_nether_brick_slab",
     "english_translation": "Red Nether Brick Slab"
   },
@@ -76,10 +72,6 @@
     "english_translation": "Scheduled function '%s' in %s tick(s) at gametime %s"
   },
   {
-    "key": "merchant.title",
-    "english_translation": "%s - %s"
-  },
-  {
     "key": "deathScreen.quit.confirm",
     "english_translation": "Are you sure you want to quit?"
   },
@@ -94,10 +86,6 @@
   {
     "key": "entity.minecraft.allay",
     "english_translation": "Allay"
-  },
-  {
-    "key": "title.multiplayer.disabled.banned.name",
-    "english_translation": "You must change your name before you can play online"
   },
   {
     "key": "commands.bossbar.remove.success",
@@ -153,7 +141,7 @@
   },
   {
     "key": "selectWorld.loading_list",
-    "english_translation": "Loading World List"
+    "english_translation": "Loading world list"
   },
   {
     "key": "block.minecraft.white_stained_glass",
@@ -173,7 +161,7 @@
   },
   {
     "key": "mco.configure.world.subscription.timeleft",
-    "english_translation": "Time Left"
+    "english_translation": "Time left"
   },
   {
     "key": "multiplayer.status.no_connection",
@@ -216,10 +204,6 @@
     "english_translation": "Cyan Per Bend Sinister"
   },
   {
-    "key": "symlink_warning.title.world",
-    "english_translation": "The world folder contains symbolic links"
-  },
-  {
     "key": "block.minecraft.banner.stripe_bottom.light_blue",
     "english_translation": "Light Blue Base"
   },
@@ -230,14 +214,6 @@
   {
     "key": "createWorld.customize.custom.biomeScaleWeight",
     "english_translation": "Biome Scale Weight"
-  },
-  {
-    "key": "subtitles.block.trial_spawner.close_shutter",
-    "english_translation": "Trial Spawner closes"
-  },
-  {
-    "key": "selectWorld.incompatible.description",
-    "english_translation": "This world cannot be opened in this version.\nIt was last played in version %s."
   },
   {
     "key": "block.minecraft.end_stone",
@@ -261,7 +237,7 @@
   },
   {
     "key": "mco.download.title",
-    "english_translation": "Downloading Latest World"
+    "english_translation": "Downloading latest world"
   },
   {
     "key": "item.minecraft.splash_potion.effect.fire_resistance",
@@ -274,10 +250,6 @@
   {
     "key": "block.minecraft.banner.triangles_bottom.light_gray",
     "english_translation": "Light Gray Base Indented"
-  },
-  {
-    "key": "jigsaw_block.selection_priority",
-    "english_translation": "Selection Priority:"
   },
   {
     "key": "selectWorld.edit.export_worldgen_settings.success",
@@ -298,10 +270,6 @@
   {
     "key": "block.minecraft.stripped_bamboo_block",
     "english_translation": "Block of Stripped Bamboo"
-  },
-  {
-    "key": "gui.abuseReport.draft.quittotitle.content",
-    "english_translation": "Would you like to continue editing it or discard it?"
   },
   {
     "key": "item.minecraft.shield.red",
@@ -340,10 +308,6 @@
     "english_translation": "Amethyst Shard"
   },
   {
-    "key": "block.minecraft.copper_trapdoor",
-    "english_translation": "Copper Trapdoor"
-  },
-  {
     "key": "subtitles.entity.piglin.celebrate",
     "english_translation": "Piglin celebrates"
   },
@@ -366,10 +330,6 @@
   {
     "key": "jigsaw_block.pool",
     "english_translation": "Target Pool:"
-  },
-  {
-    "key": "subtitles.entity.breeze.land",
-    "english_translation": "Breeze lands"
   },
   {
     "key": "block.minecraft.potatoes",
@@ -464,16 +424,8 @@
     "english_translation": "Magma Cube"
   },
   {
-    "key": "entity.minecraft.breeze",
-    "english_translation": "Breeze"
-  },
-  {
     "key": "block.minecraft.banner.curly_border.gray",
     "english_translation": "Gray Bordure Indented"
-  },
-  {
-    "key": "commands.function.error.missing_arguments",
-    "english_translation": "Missing arguments to function %s"
   },
   {
     "key": "options.particles.all",
@@ -512,20 +464,12 @@
     "english_translation": "Show death messages"
   },
   {
-    "key": "mco.snapshot.tooltip",
-    "english_translation": "Use Snapshot Realms to get a sneak peek at upcoming versions of Minecraft, which might include new features and other changes.\n\nYou can find your normal Realms in the release version of the game."
-  },
-  {
     "key": "commands.enchant.success.single",
     "english_translation": "Applied enchantment %s to %s's item"
   },
   {
     "key": "advancements.end.find_end_city.title",
     "english_translation": "The City at the End of the Game"
-  },
-  {
-    "key": "gui.abuseReport.discard.draft",
-    "english_translation": "Save as Draft"
   },
   {
     "key": "item.minecraft.bamboo_chest_raft",
@@ -752,10 +696,6 @@
     "english_translation": "Failed to create debug report"
   },
   {
-    "key": "commands.function.instantiationFailure",
-    "english_translation": "Failed to instantiate function %s: %s"
-  },
-  {
     "key": "block.minecraft.cyan_stained_glass",
     "english_translation": "Cyan Stained Glass"
   },
@@ -788,10 +728,6 @@
     "english_translation": "Connecting to the realm..."
   },
   {
-    "key": "mco.snapshot.friendsRealm.upgrade",
-    "english_translation": "%s needs to upgrade their Realm before you can play from this version"
-  },
-  {
     "key": "block.minecraft.spruce_slab",
     "english_translation": "Spruce Slab"
   },
@@ -814,10 +750,6 @@
   {
     "key": "block.minecraft.banner.border.magenta",
     "english_translation": "Magenta Bordure"
-  },
-  {
-    "key": "block.minecraft.exposed_copper_door",
-    "english_translation": "Exposed Copper Door"
   },
   {
     "key": "gui.chatReport.discard.content",
@@ -861,7 +793,7 @@
   },
   {
     "key": "gui.chatReport.title",
-    "english_translation": "Report Player Chat"
+    "english_translation": "Report Player"
   },
   {
     "key": "container.hopper",
@@ -928,12 +860,8 @@
     "english_translation": "Mob Kills"
   },
   {
-    "key": "subtitles.entity.breeze.inhale",
-    "english_translation": "Breeze inhales"
-  },
-  {
     "key": "death.attack.fall.player",
-    "english_translation": "%1$s hit the ground too hard while trying to escape %2$s"
+    "english_translation": "%1$s hit the ground too hard whilst trying to escape %2$s"
   },
   {
     "key": "mco.download.percent",
@@ -996,10 +924,6 @@
     "english_translation": "Cartography Table"
   },
   {
-    "key": "commands.debug.function.noReturnRun",
-    "english_translation": "Tracing can't be used with return run"
-  },
-  {
     "key": "itemGroup.consumables",
     "english_translation": "Consumables"
   },
@@ -1040,16 +964,8 @@
     "english_translation": "Applied enchantment %s to %s entities"
   },
   {
-    "key": "block.minecraft.oxidized_copper_trapdoor",
-    "english_translation": "Oxidized Copper Trapdoor"
-  },
-  {
     "key": "commands.advancement.grant.many.to.one.failure",
     "english_translation": "Couldn't grant %s advancements to %s as they already have them"
-  },
-  {
-    "key": "subtitles.block.crafter.craft",
-    "english_translation": "Crafter crafts"
   },
   {
     "key": "subtitles.entity.llama.spit",
@@ -1084,10 +1000,6 @@
     "english_translation": "F3 + N = Cycle previous game mode <-> spectator"
   },
   {
-    "key": "mco.selectServer.create.subtitle",
-    "english_translation": "Select what world to put on your new realm"
-  },
-  {
     "key": "block.minecraft.glow_lichen",
     "english_translation": "Glow Lichen"
   },
@@ -1118,10 +1030,6 @@
   {
     "key": "block.minecraft.banner.half_horizontal_bottom.light_gray",
     "english_translation": "Light Gray Per Fess Inverted"
-  },
-  {
-    "key": "loading.progress",
-    "english_translation": "%s%%"
   },
   {
     "key": "block.minecraft.raw_copper_block",
@@ -1170,10 +1078,6 @@
   {
     "key": "selectWorld.data_read",
     "english_translation": "Reading world data..."
-  },
-  {
-    "key": "subtitles.block.trial_spawner.ambient",
-    "english_translation": "Trial Spawner crackles"
   },
   {
     "key": "gui.stats",
@@ -1226,10 +1130,6 @@
   {
     "key": "block.minecraft.banner.base.black",
     "english_translation": "Fully Black Field"
-  },
-  {
-    "key": "mco.snapshotRealmsPopup.title",
-    "english_translation": "Realms now available in Snapshots"
   },
   {
     "key": "item.minecraft.tipped_arrow.effect.leaping",
@@ -1380,16 +1280,12 @@
     "english_translation": "Iron Golem attacks"
   },
   {
-    "key": "optimizeWorld.progress.percentage",
-    "english_translation": "%s%%"
-  },
-  {
     "key": "commands.bossbar.create.failed",
     "english_translation": "A bossbar already exists with the ID '%s'"
   },
   {
     "key": "mco.configure.world.spawnMonsters",
-    "english_translation": "Spawn Monsters"
+    "english_translation": "Spawn monsters"
   },
   {
     "key": "disconnect.loginFailedInfo",
@@ -1536,10 +1432,6 @@
     "english_translation": "End Barrens"
   },
   {
-    "key": "mco.account.privacy.information",
-    "english_translation": "Mojang implements certain procedures to help protect children and their privacy including complying with the Children’s Online Privacy Protection Act (COPPA) and General Data Protection Regulation (GDPR).\n\nYou may need to obtain parental consent before accessing your Realms account."
-  },
-  {
     "key": "subtitles.block.anvil.land",
     "english_translation": "Anvil landed"
   },
@@ -1558,10 +1450,6 @@
   {
     "key": "mco.selectServer.openserver",
     "english_translation": "Open realm"
-  },
-  {
-    "key": "commands.scoreboard.objectives.modify.objectiveFormat.clear",
-    "english_translation": "Cleared default number format of objective %s"
   },
   {
     "key": "item.minecraft.archer_pottery_sherd",
@@ -1618,10 +1506,6 @@
   {
     "key": "painting.minecraft.skull_and_roses.title",
     "english_translation": "Skull and Roses"
-  },
-  {
-    "key": "item.minecraft.ward_armor_trim_smithing_template",
-    "english_translation": "Smithing Template"
   },
   {
     "key": "entity.minecraft.llama_spit",
@@ -1704,10 +1588,6 @@
     "english_translation": "White Base Gradient"
   },
   {
-    "key": "mco.compatibility.upgrade.title",
-    "english_translation": "Do you really want to upgrade your world?"
-  },
-  {
     "key": "block.minecraft.banner.small_stripes.yellow",
     "english_translation": "Yellow Paly"
   },
@@ -1742,10 +1622,6 @@
   {
     "key": "gui.multiLineEditBox.character_limit",
     "english_translation": "%s/%s"
-  },
-  {
-    "key": "gui.abuseReport.draft.content",
-    "english_translation": "Would you like to continue editing the existing report or discard it and create a new one?"
   },
   {
     "key": "block.minecraft.infested_chiseled_stone_bricks",
@@ -1881,7 +1757,7 @@
   },
   {
     "key": "mco.configure.world.spawnAnimals",
-    "english_translation": "Spawn Animals"
+    "english_translation": "Spawn animals"
   },
   {
     "key": "block.minecraft.magma_block",
@@ -1968,10 +1844,6 @@
     "english_translation": "Player Kills"
   },
   {
-    "key": "download.pack.progress.bytes",
-    "english_translation": "Progress: %s (total size unknown)"
-  },
-  {
     "key": "telemetry.property.advancement_id.title",
     "english_translation": "Advancement ID"
   },
@@ -1986,10 +1858,6 @@
   {
     "key": "commands.advancement.revoke.many.to.many.success",
     "english_translation": "Revoked %s advancements from %s players"
-  },
-  {
-    "key": "mco.notification.transferSubscription.message",
-    "english_translation": "Java Realms subscriptions are moving to the Microsoft Store. Do not let your subscription expire!\nTransfer now and get 30 days of Realms for free.\nGo to Profile on minecraft.net to transfer your subscription."
   },
   {
     "key": "gui.chatSelection.selected",
@@ -2106,10 +1974,6 @@
   {
     "key": "subtitles.entity.cat.death",
     "english_translation": "Cat dies"
-  },
-  {
-    "key": "subtitles.entity.parrot.imitate.breeze",
-    "english_translation": "Parrot whirs"
   },
   {
     "key": "item.minecraft.snowball",
@@ -2264,10 +2128,6 @@
     "english_translation": "Music Disc"
   },
   {
-    "key": "narration.suggestion.usage.cycle.hidable",
-    "english_translation": "Press Tab to cycle to the next suggestion, or Escape to leave suggestions"
-  },
-  {
     "key": "entity.minecraft.villager.mason",
     "english_translation": "Mason"
   },
@@ -2281,7 +2141,7 @@
   },
   {
     "key": "mco.configure.world.subscription.extend",
-    "english_translation": "Extend Subscription"
+    "english_translation": "Extend subscription"
   },
   {
     "key": "container.repair",
@@ -2302,10 +2162,6 @@
   {
     "key": "block.minecraft.chipped_anvil",
     "english_translation": "Chipped Anvil"
-  },
-  {
-    "key": "commands.kick.singleplayer.failed",
-    "english_translation": "Cannot kick in an offline singleplayer game"
   },
   {
     "key": "argument.entity.options.type.invalid",
@@ -2350,10 +2206,6 @@
   {
     "key": "subtitles.entity.ender_pearl.throw",
     "english_translation": "Ender Pearl flies"
-  },
-  {
-    "key": "item.minecraft.shaper_armor_trim_smithing_template",
-    "english_translation": "Smithing Template"
   },
   {
     "key": "commands.experience.query.levels",
@@ -2424,20 +2276,12 @@
     "english_translation": "Failed to load world in Safe Mode."
   },
   {
-    "key": "mco.snapshot.parent.tooltip",
-    "english_translation": "Use the latest release of Minecraft to play on this Realm"
-  },
-  {
     "key": "argument.dimension.invalid",
     "english_translation": "Unknown dimension '%s'"
   },
   {
     "key": "debug.dump_dynamic_textures",
     "english_translation": "Saved dynamic textures to %s"
-  },
-  {
-    "key": "block.minecraft.polished_tuff_stairs",
-    "english_translation": "Polished Tuff Stairs"
   },
   {
     "key": "argument.entity.selector.self",
@@ -2482,10 +2326,6 @@
   {
     "key": "selectWorld.seedInfo",
     "english_translation": "Leave blank for a random seed"
-  },
-  {
-    "key": "mco.selectServer.minigameName",
-    "english_translation": "Minigame: %s"
   },
   {
     "key": "commands.bossbar.set.name.success",
@@ -2564,10 +2404,6 @@
     "english_translation": "Warped Roots"
   },
   {
-    "key": "telemetry_info.opt_in.description",
-    "english_translation": "I consent to sending optional telemetry data"
-  },
-  {
     "key": "telemetry.property.client_modded.title",
     "english_translation": "Client Modded"
   },
@@ -2602,10 +2438,6 @@
   {
     "key": "arguments.swizzle.invalid",
     "english_translation": "Invalid swizzle, expected combination of 'x', 'y' and 'z'"
-  },
-  {
-    "key": "gui.abuseReport.report_sent_msg",
-    "english_translation": "We’ve successfully received your report. Thank you!\n\nOur team will review it as soon as possible."
   },
   {
     "key": "menu.multiplayer",
@@ -2650,10 +2482,6 @@
   {
     "key": "item.minecraft.zombified_piglin_spawn_egg",
     "english_translation": "Zombified Piglin Spawn Egg"
-  },
-  {
-    "key": "recover_world.state_entry",
-    "english_translation": "State from %s: "
   },
   {
     "key": "advancements.adventure.read_power_from_chiseled_bookshelf.description",
@@ -2756,10 +2584,6 @@
     "english_translation": "The world will be downloaded and added to your single player worlds."
   },
   {
-    "key": "commands.scoreboard.players.display.name.clear.success.multiple",
-    "english_translation": "Cleared display name for %s entities in %s"
-  },
-  {
     "key": "options.multiplayer.title",
     "english_translation": "Multiplayer Settings..."
   },
@@ -2824,10 +2648,6 @@
     "english_translation": "Match"
   },
   {
-    "key": "mco.download.speed.narration",
-    "english_translation": "%s/s"
-  },
-  {
     "key": "multiplayer.status.player_count.narration",
     "english_translation": "%s out of %s players online"
   },
@@ -2880,10 +2700,6 @@
     "english_translation": "Lower Limit Scale"
   },
   {
-    "key": "gamerule.enderPearlsVanishOnDeath",
-    "english_translation": "Thrown ender pearls vanish on death"
-  },
-  {
     "key": "subtitles.entity.wolf.shake",
     "english_translation": "Wolf shakes"
   },
@@ -2913,7 +2729,7 @@
   },
   {
     "key": "gui.abuseReport.reason.self_harm_or_suicide",
-    "english_translation": "Self-harm or suicide"
+    "english_translation": "Imminent harm - Self-harm or suicide"
   },
   {
     "key": "block.minecraft.light_gray_concrete_powder",
@@ -2962,10 +2778,6 @@
   {
     "key": "commands.scoreboard.players.list.success",
     "english_translation": "There are %s tracked entity/entities: %s"
-  },
-  {
-    "key": "gui.abuseReport.type.skin",
-    "english_translation": "Player Skin"
   },
   {
     "key": "book.byAuthor",
@@ -3032,10 +2844,6 @@
     "english_translation": "Light Gray Carpet"
   },
   {
-    "key": "subtitles.entity.breeze.hurt",
-    "english_translation": "Breeze hurts"
-  },
-  {
     "key": "selectWorld.delete",
     "english_translation": "Delete"
   },
@@ -3070,10 +2878,6 @@
   {
     "key": "options.modelPart.cape",
     "english_translation": "Cape"
-  },
-  {
-    "key": "options.hideSplashTexts.tooltip",
-    "english_translation": "Hides the yellow splash text in the main menu."
   },
   {
     "key": "commands.whitelist.disabled",
@@ -3182,10 +2986,6 @@
   {
     "key": "item.minecraft.netherite_pickaxe",
     "english_translation": "Netherite Pickaxe"
-  },
-  {
-    "key": "recover_world.warning",
-    "english_translation": "Failed to load world summary"
   },
   {
     "key": "block.minecraft.mangrove_wood",
@@ -3436,10 +3236,6 @@
     "english_translation": "Backup failed"
   },
   {
-    "key": "commands.scoreboard.players.display.name.clear.success.single",
-    "english_translation": "Cleared display name for %s in %s"
-  },
-  {
     "key": "container.smoker",
     "english_translation": "Smoker"
   },
@@ -3493,7 +3289,7 @@
   },
   {
     "key": "mco.selectServer.popup",
-    "english_translation": "Realms is a safe, simple way to enjoy an online Minecraft world with up to ten friends at a time. It supports loads of minigames and plenty of custom worlds! Only the owner of the realm needs to pay."
+    "english_translation": "Realms is a safe, simple way to enjoy an online Minecraft world with up to ten friends at a time.   It supports loads of minigames and plenty of custom worlds! Only the owner of the realm needs to pay."
   },
   {
     "key": "block.minecraft.end_stone_bricks",
@@ -3514,10 +3310,6 @@
   {
     "key": "stat_type.minecraft.killed",
     "english_translation": "You killed %s %s"
-  },
-  {
-    "key": "recover_world.no_fallback",
-    "english_translation": "No state to recover from available"
   },
   {
     "key": "block.minecraft.banner.diagonal_right.gray",
@@ -3592,10 +3384,6 @@
     "english_translation": "Lily Pad"
   },
   {
-    "key": "jigsaw_block.selection_priority.tooltip",
-    "english_translation": "When the parent piece is being processed for connections, this is the order in which this Jigsaw block attempts to connect to its target piece.\n\nJigsaws will be processed in descending priority with random ordering breaking ties."
-  },
-  {
     "key": "commands.data.block.invalid",
     "english_translation": "The target block is not a block entity"
   },
@@ -3610,18 +3398,6 @@
   {
     "key": "commands.forceload.added.none",
     "english_translation": "No force loaded chunks were found in %s"
-  },
-  {
-    "key": "symlink_warning.title.pack",
-    "english_translation": "Added pack(s) contain(s) symbolic links"
-  },
-  {
-    "key": "block.minecraft.waxed_copper_door",
-    "english_translation": "Waxed Copper Door"
-  },
-  {
-    "key": "block.minecraft.chiseled_tuff_bricks",
-    "english_translation": "Chiseled Tuff Bricks"
   },
   {
     "key": "item.minecraft.smithing_template.armor_trim.applies_to",
@@ -3716,10 +3492,6 @@
     "english_translation": "Kicked for spamming"
   },
   {
-    "key": "gui.abuseReport.name.title",
-    "english_translation": "Report Player Name"
-  },
-  {
     "key": "key.keyboard.insert",
     "english_translation": "Insert"
   },
@@ -3742,10 +3514,6 @@
   {
     "key": "block.minecraft.potted_spruce_sapling",
     "english_translation": "Potted Spruce Sapling"
-  },
-  {
-    "key": "gamerule.playersNetherPortalDefaultDelay",
-    "english_translation": "Player's Nether portal delay in non-creative mode"
   },
   {
     "key": "item.minecraft.cave_spider_spawn_egg",
@@ -3880,14 +3648,6 @@
     "english_translation": "Sticky Piston"
   },
   {
-    "key": "item.minecraft.coast_armor_trim_smithing_template",
-    "english_translation": "Smithing Template"
-  },
-  {
-    "key": "subtitles.block.decorated_pot.insert",
-    "english_translation": "Decorated Pot fills"
-  },
-  {
     "key": "item.minecraft.birch_boat",
     "english_translation": "Birch Boat"
   },
@@ -3938,10 +3698,6 @@
   {
     "key": "commands.effect.give.success.multiple",
     "english_translation": "Applied effect %s to %s targets"
-  },
-  {
-    "key": "event.minecraft.raid.victory.full",
-    "english_translation": "Raid - Victory"
   },
   {
     "key": "advMode.mode.redstone",
@@ -4000,10 +3756,6 @@
     "english_translation": "New World"
   },
   {
-    "key": "recover_world.issue.none",
-    "english_translation": "No issues"
-  },
-  {
     "key": "block.minecraft.tinted_glass",
     "english_translation": "Tinted Glass"
   },
@@ -4012,20 +3764,12 @@
     "english_translation": "Pink Chevron"
   },
   {
-    "key": "multiplayer.player.list.hp",
-    "english_translation": "%shp"
-  },
-  {
     "key": "commands.team.join.success.multiple",
     "english_translation": "Added %s members to team %s"
   },
   {
     "key": "death.attack.sonic_boom",
     "english_translation": "%1$s was obliterated by a sonically-charged shriek"
-  },
-  {
-    "key": "item.minecraft.rib_armor_trim_smithing_template",
-    "english_translation": "Smithing Template"
   },
   {
     "key": "multiplayer.disconnect.invalid_entity_attacked",
@@ -4108,10 +3852,6 @@
     "english_translation": "Expected quote to start a string"
   },
   {
-    "key": "download.pack.title",
-    "english_translation": "Downloading resource pack %s/%s"
-  },
-  {
     "key": "entity.minecraft.phantom",
     "english_translation": "Phantom"
   },
@@ -4164,10 +3904,6 @@
     "english_translation": "There are no objectives"
   },
   {
-    "key": "recover_world.done.title",
-    "english_translation": "Recovery done"
-  },
-  {
     "key": "item.minecraft.glow_berries",
     "english_translation": "Glow Berries"
   },
@@ -4178,10 +3914,6 @@
   {
     "key": "structure_block.hover.load",
     "english_translation": "Load: %s"
-  },
-  {
-    "key": "block.minecraft.copper_door",
-    "english_translation": "Copper Door"
   },
   {
     "key": "item.minecraft.dragon_breath",
@@ -4244,10 +3976,6 @@
     "english_translation": "Polished Blackstone Bricks"
   },
   {
-    "key": "subtitles.block.hanging_sign.waxed_interact_fail",
-    "english_translation": "Sign wobbles"
-  },
-  {
     "key": "options.accessibility.high_contrast.error.tooltip",
     "english_translation": "High Contrast resource pack is not available"
   },
@@ -4306,18 +4034,6 @@
   {
     "key": "key.use",
     "english_translation": "Use Item/Place Block"
-  },
-  {
-    "key": "item.minecraft.host_armor_trim_smithing_template",
-    "english_translation": "Smithing Template"
-  },
-  {
-    "key": "commands.scoreboard.players.display.name.set.success.single",
-    "english_translation": "Changed display name to %s for %s in %s"
-  },
-  {
-    "key": "item.minecraft.wild_armor_trim_smithing_template",
-    "english_translation": "Smithing Template"
   },
   {
     "key": "resourcepack.downloading",
@@ -4792,10 +4508,6 @@
     "english_translation": "Illusioner displaces"
   },
   {
-    "key": "dataPack.trade_rebalance.description",
-    "english_translation": "Updated trades for Villagers"
-  },
-  {
     "key": "block.minecraft.infested_stone_bricks",
     "english_translation": "Infested Stone Bricks"
   },
@@ -4824,14 +4536,6 @@
     "english_translation": "%s Next"
   },
   {
-    "key": "advancements.progress",
-    "english_translation": "%s/%s"
-  },
-  {
-    "key": "item.minecraft.vex_armor_trim_smithing_template",
-    "english_translation": "Smithing Template"
-  },
-  {
     "key": "subtitles.entity.goat.hurt",
     "english_translation": "Goat hurts"
   },
@@ -4850,10 +4554,6 @@
   {
     "key": "block.minecraft.acacia_trapdoor",
     "english_translation": "Acacia Trapdoor"
-  },
-  {
-    "key": "commands.random.error.range_too_large",
-    "english_translation": "The range of the random value must be at most 2147483646"
   },
   {
     "key": "commands.spectate.success.stopped",
@@ -4902,10 +4602,6 @@
   {
     "key": "block.minecraft.waxed_cut_copper",
     "english_translation": "Waxed Cut Copper"
-  },
-  {
-    "key": "commands.execute.function.instantiationFailure",
-    "english_translation": "Failed to instantiate function %s: %s"
   },
   {
     "key": "block.minecraft.birch_slab",
@@ -4958,10 +4654,6 @@
   {
     "key": "argument.nbt.array.mixed",
     "english_translation": "Can't insert %s into %s"
-  },
-  {
-    "key": "connect.reconfiging",
-    "english_translation": "Reconfiguring..."
   },
   {
     "key": "block.minecraft.banner.triangle_top.gray",
@@ -5085,7 +4777,7 @@
   },
   {
     "key": "gui.abuseReport.reason.defamation_impersonation_false_information.description",
-    "english_translation": "Someone is damaging your or someone else's reputation, for example sharing false information with the aim to exploit or mislead others."
+    "english_translation": "Someone is damaging someone else's reputation, pretending to be someone they're not, or sharing false information with the aim to exploit or mislead others."
   },
   {
     "key": "block.minecraft.banner.gradient_up.cyan",
@@ -5196,10 +4888,6 @@
     "english_translation": "Elder Guardian moans"
   },
   {
-    "key": "subtitles.entity.breeze.death",
-    "english_translation": "Breeze dies"
-  },
-  {
     "key": "advancements.nether.brew_potion.description",
     "english_translation": "Brew a Potion"
   },
@@ -5270,10 +4958,6 @@
   {
     "key": "block.minecraft.banner.flower.purple",
     "english_translation": "Purple Flower Charge"
-  },
-  {
-    "key": "gui.abuseReport.send.no_reason",
-    "english_translation": "Please select a report category"
   },
   {
     "key": "mco.configure.world.edit.subscreen.inspiration",
@@ -5744,10 +5428,6 @@
     "english_translation": "Yellow Thing"
   },
   {
-    "key": "item.minecraft.netherite_upgrade_smithing_template",
-    "english_translation": "Smithing Template"
-  },
-  {
     "key": "narrator.loading",
     "english_translation": "Loading: %s"
   },
@@ -5788,12 +5468,8 @@
     "english_translation": "Invalid long '%s'"
   },
   {
-    "key": "attribute.name.generic.max_absorption",
-    "english_translation": "Max Absorption"
-  },
-  {
     "key": "mco.selectServer.buy",
-    "english_translation": "Buy a Realm!"
+    "english_translation": "Buy a realm!"
   },
   {
     "key": "block.minecraft.spruce_wall_sign",
@@ -5932,10 +5608,6 @@
     "english_translation": "Green"
   },
   {
-    "key": "block.minecraft.trial_spawner",
-    "english_translation": "Trial Spawner"
-  },
-  {
     "key": "advancements.story.enchant_item.title",
     "english_translation": "Enchanter"
   },
@@ -5994,10 +5666,6 @@
   {
     "key": "item.minecraft.golden_helmet",
     "english_translation": "Golden Helmet"
-  },
-  {
-    "key": "block.minecraft.oxidized_copper_bulb",
-    "english_translation": "Oxidized Copper Bulb"
   },
   {
     "key": "block.minecraft.soul_lantern",
@@ -6073,7 +5741,7 @@
   },
   {
     "key": "death.attack.sonic_boom.player",
-    "english_translation": "%1$s was obliterated by a sonically-charged shriek while trying to escape %2$s"
+    "english_translation": "%1$s was obliterated by a sonically-charged shriek whilst trying to escape %2$s"
   },
   {
     "key": "block.minecraft.bamboo",
@@ -6081,7 +5749,7 @@
   },
   {
     "key": "death.attack.thorns.item",
-    "english_translation": "%1$s was killed by %3$s while trying to hurt %2$s"
+    "english_translation": "%1$s was killed by %3$s trying to hurt %2$s"
   },
   {
     "key": "item.minecraft.cooked_porkchop",
@@ -6316,14 +5984,6 @@
     "english_translation": "Cotton Candy Betta"
   },
   {
-    "key": "item.minecraft.spire_armor_trim_smithing_template",
-    "english_translation": "Smithing Template"
-  },
-  {
-    "key": "block.minecraft.short_grass",
-    "english_translation": "Short Grass"
-  },
-  {
     "key": "multiplayer.disconnect.slow_login",
     "english_translation": "Took too long to log in"
   },
@@ -6362,10 +6022,6 @@
   {
     "key": "connect.failed",
     "english_translation": "Failed to connect to the server"
-  },
-  {
-    "key": "mco.version",
-    "english_translation": "Version: %s"
   },
   {
     "key": "disconnect.disconnected",
@@ -6458,10 +6114,6 @@
   {
     "key": "key.sprint",
     "english_translation": "Sprint"
-  },
-  {
-    "key": "options.fullscreen.entry",
-    "english_translation": "%sx%s@%s (%sbit)"
   },
   {
     "key": "subtitles.block.button.click",
@@ -6732,10 +6384,6 @@
     "english_translation": "Yellow Carpet"
   },
   {
-    "key": "jigsaw_block.placement_priority.tooltip",
-    "english_translation": "When this Jigsaw block connects to a piece, this is the order in which that piece is processed for connections in the wider structure.\n\nPieces will be processed in descending priority with insertion order breaking ties."
-  },
-  {
     "key": "block.minecraft.banner.stripe_center.cyan",
     "english_translation": "Cyan Pale"
   },
@@ -6854,10 +6502,6 @@
   {
     "key": "key.keyboard.f20",
     "english_translation": "F20"
-  },
-  {
-    "key": "narration.suggestion.usage.fill.hidable",
-    "english_translation": "Press Tab to use suggestion, or Escape to leave suggestions"
   },
   {
     "key": "key.keyboard.f21",
@@ -7157,11 +6801,7 @@
   },
   {
     "key": "death.attack.sonic_boom.item",
-    "english_translation": "%1$s was obliterated by a sonically-charged shriek while trying to escape %2$s wielding %3$s"
-  },
-  {
-    "key": "commands.tick.step.stop.fail",
-    "english_translation": "No tick step in progress"
+    "english_translation": "%1$s was obliterated by a sonically-charged shriek whilst trying to escape %2$s wielding %3$s"
   },
   {
     "key": "block.minecraft.banner.stripe_top.white",
@@ -7206,10 +6846,6 @@
   {
     "key": "commands.bossbar.set.color.success",
     "english_translation": "Custom bossbar %s has changed color"
-  },
-  {
-    "key": "selectWorld.incompatible.info",
-    "english_translation": "Incompatible version: %s"
   },
   {
     "key": "biome.minecraft.desert",
@@ -7326,10 +6962,6 @@
   {
     "key": "tutorial.find_tree.description",
     "english_translation": "Punch it to collect wood"
-  },
-  {
-    "key": "block.minecraft.polished_tuff_wall",
-    "english_translation": "Polished Tuff Wall"
   },
   {
     "key": "mco.template.select.none",
@@ -7477,7 +7109,7 @@
   },
   {
     "key": "mco.backup.button.reset",
-    "english_translation": "Reset World"
+    "english_translation": "Reset world"
   },
   {
     "key": "mco.selectServer.expiredSubscribe",
@@ -7493,7 +7125,7 @@
   },
   {
     "key": "gamerule.commandModificationBlockLimit",
-    "english_translation": "Command modification block limit"
+    "english_translation": "Command Modification Block Limit"
   },
   {
     "key": "gui.banned.reason.imminent_harm_to_person_or_property",
@@ -7530,10 +7162,6 @@
   {
     "key": "commands.kick.success",
     "english_translation": "Kicked %s: %s"
-  },
-  {
-    "key": "commands.scoreboard.players.display.numberFormat.set.success.single",
-    "english_translation": "Changed number format for %s in %s"
   },
   {
     "key": "key.keyboard.keypad.subtract",
@@ -7668,10 +7296,6 @@
     "english_translation": "Junk Fished"
   },
   {
-    "key": "selectWorld.incompatible.tooltip",
-    "english_translation": "This world cannot be opened because it was created by an incompatible version."
-  },
-  {
     "key": "subtitles.entity.skeleton.ambient",
     "english_translation": "Skeleton rattles"
   },
@@ -7698,10 +7322,6 @@
   {
     "key": "advancements.husbandry.allay_deliver_item_to_player.title",
     "english_translation": "You've Got a Friend in Me"
-  },
-  {
-    "key": "block.minecraft.exposed_copper_bulb",
-    "english_translation": "Exposed Copper Bulb"
   },
   {
     "key": "mco.upload.cancelled",
@@ -7848,10 +7468,6 @@
     "english_translation": "Light Blue Base Sinister Canton"
   },
   {
-    "key": "block.minecraft.chiseled_copper",
-    "english_translation": "Chiseled Copper"
-  },
-  {
     "key": "block.minecraft.banner.triangle_top.pink",
     "english_translation": "Pink Inverted Chevron"
   },
@@ -7880,10 +7496,6 @@
     "english_translation": "[%s]"
   },
   {
-    "key": "item.minecraft.snout_armor_trim_smithing_template",
-    "english_translation": "Smithing Template"
-  },
-  {
     "key": "entity.minecraft.tropical_fish.type.betty",
     "english_translation": "Betty"
   },
@@ -7910,10 +7522,6 @@
   {
     "key": "mco.reset.world.resetting.screen.title",
     "english_translation": "Resetting world..."
-  },
-  {
-    "key": "block.minecraft.waxed_oxidized_copper_trapdoor",
-    "english_translation": "Waxed Oxidized Copper Trapdoor"
   },
   {
     "key": "mco.configure.world.resourcepack.question.line2",
@@ -7962,10 +7570,6 @@
   {
     "key": "painting.minecraft.skeleton.title",
     "english_translation": "Mortal Coil"
-  },
-  {
-    "key": "gui.abuseReport.discard.discard",
-    "english_translation": "Leave and Discard Report"
   },
   {
     "key": "subtitles.entity.shulker.close",
@@ -8080,18 +7684,6 @@
     "english_translation": "Gray Base Indented"
   },
   {
-    "key": "block.minecraft.waxed_weathered_copper_trapdoor",
-    "english_translation": "Waxed Weathered Copper Trapdoor"
-  },
-  {
-    "key": "subtitles.block.copper_trapdoor.open",
-    "english_translation": "Trapdoor opens"
-  },
-  {
-    "key": "gui.abuseReport.reason.generic.description",
-    "english_translation": "I'm annoyed with them / they have done something I do not like."
-  },
-  {
     "key": "subtitles.entity.potion.throw",
     "english_translation": "Bottle thrown"
   },
@@ -8190,10 +7782,6 @@
   {
     "key": "block.minecraft.tube_coral_wall_fan",
     "english_translation": "Tube Coral Wall Fan"
-  },
-  {
-    "key": "options.accessibility.narrator_hotkey.tooltip",
-    "english_translation": "Allows the Narrator to be toggled on and off with 'Ctrl+B'"
   },
   {
     "key": "subtitles.block.water.ambient",
@@ -8309,11 +7897,7 @@
   },
   {
     "key": "mco.configure.world.buttons.resetworld",
-    "english_translation": "Reset World"
-  },
-  {
-    "key": "event.minecraft.raid.defeat.full",
-    "english_translation": "Raid - Defeat"
+    "english_translation": "Reset world"
   },
   {
     "key": "block.minecraft.sunflower",
@@ -8408,10 +7992,6 @@
     "english_translation": "Shulker hurts"
   },
   {
-    "key": "item.minecraft.silence_armor_trim_smithing_template",
-    "english_translation": "Smithing Template"
-  },
-  {
     "key": "block.minecraft.jungle_leaves",
     "english_translation": "Jungle Leaves"
   },
@@ -8426,10 +8006,6 @@
   {
     "key": "painting.minecraft.kebab.title",
     "english_translation": "Kebab med tre pepperoni"
-  },
-  {
-    "key": "gui.abuseReport.describe",
-    "english_translation": "Sharing details will help us make a well-informed decision."
   },
   {
     "key": "gamerule.category.mobs",
@@ -8589,7 +8165,7 @@
   },
   {
     "key": "mco.configure.world.backup",
-    "english_translation": "World Backups"
+    "english_translation": "World backups"
   },
   {
     "key": "block.minecraft.banner.globe.gray",
@@ -8661,7 +8237,7 @@
   },
   {
     "key": "subtitles.block.decorated_pot.shatter",
-    "english_translation": "Decorated Pot shatters"
+    "english_translation": "Pot shatters"
   },
   {
     "key": "tutorial.bundleInsert.title",
@@ -8689,11 +8265,7 @@
   },
   {
     "key": "death.attack.onFire.item",
-    "english_translation": "%1$s was burned to a crisp while fighting %2$s wielding %3$s"
-  },
-  {
-    "key": "commands.scoreboard.objectives.modify.displayAutoUpdate.disable",
-    "english_translation": "Disabled display auto-update for objective %s"
+    "english_translation": "%1$s was burnt to a crisp whilst fighting %2$s wielding %3$s"
   },
   {
     "key": "item.minecraft.potion.effect.empty",
@@ -8764,10 +8336,6 @@
     "english_translation": "No recipes could be forgotten"
   },
   {
-    "key": "gamerule.projectilesCanBreakBlocks.description",
-    "english_translation": "Controls whether impact projectiles will destroy blocks that are destructible by them."
-  },
-  {
     "key": "mco.errorMessage.realmsService.realmsError",
     "english_translation": "Realms (%s):"
   },
@@ -8814,10 +8382,6 @@
   {
     "key": "mco.template.select.narrate.authors",
     "english_translation": "Authors: %s"
-  },
-  {
-    "key": "block.minecraft.tuff_brick_slab",
-    "english_translation": "Tuff Brick Slab"
   },
   {
     "key": "death.attack.wither",
@@ -8896,10 +8460,6 @@
     "english_translation": "Bottom - %s"
   },
   {
-    "key": "connect.reconfiguring",
-    "english_translation": "Reconfiguring..."
-  },
-  {
     "key": "tutorial.craft_planks.title",
     "english_translation": "Craft wooden planks"
   },
@@ -8972,10 +8532,6 @@
     "english_translation": "Dirt"
   },
   {
-    "key": "block.minecraft.weathered_copper_door",
-    "english_translation": "Weathered Copper Door"
-  },
-  {
     "key": "build.tooHigh",
     "english_translation": "Height limit for building is %s"
   },
@@ -8986,10 +8542,6 @@
   {
     "key": "subtitles.item.shield.block",
     "english_translation": "Shield blocks"
-  },
-  {
-    "key": "gui.abuseReport.observed_what",
-    "english_translation": "Why are you reporting this?"
   },
   {
     "key": "mco.configure.world.subscription.expired",
@@ -9148,16 +8700,8 @@
     "english_translation": "Command set: %s"
   },
   {
-    "key": "commands.scoreboard.players.display.numberFormat.clear.success.multiple",
-    "english_translation": "Cleared number format for %s entities in %s"
-  },
-  {
     "key": "commands.fillbiome.success",
     "english_translation": "Biomes set between %s, %s, %s and %s, %s, %s"
-  },
-  {
-    "key": "block.minecraft.waxed_exposed_copper_grate",
-    "english_translation": "Waxed Exposed Copper Grate"
   },
   {
     "key": "commands.jfr.started",
@@ -9216,10 +8760,6 @@
     "english_translation": "%1$s left the confines of this world"
   },
   {
-    "key": "commands.tick.query.rate.sprinting",
-    "english_translation": "Target tick rate: %s per second (ignored, reference only).\nAverage time per tick: %sms"
-  },
-  {
     "key": "options.narrator.notavailable",
     "english_translation": "Not Available"
   },
@@ -9238,10 +8778,6 @@
   {
     "key": "subtitles.entity.cat.hurt",
     "english_translation": "Cat hurts"
-  },
-  {
-    "key": "mco.compatibility.upgrade",
-    "english_translation": "Upgrade"
   },
   {
     "key": "block.minecraft.sandstone_stairs",
@@ -9332,10 +8868,6 @@
     "english_translation": "Tube Coral"
   },
   {
-    "key": "chat.tag.error",
-    "english_translation": "Server sent invalid message."
-  },
-  {
     "key": "item.minecraft.creeper_spawn_egg",
     "english_translation": "Creeper Spawn Egg"
   },
@@ -9377,7 +8909,7 @@
   },
   {
     "key": "mco.upload.select.world.title",
-    "english_translation": "Upload World"
+    "english_translation": "Upload world"
   },
   {
     "key": "subtitles.entity.villager.work_weaponsmith",
@@ -9460,14 +8992,6 @@
     "english_translation": "Disabled"
   },
   {
-    "key": "options.accessibility.narrator_hotkey",
-    "english_translation": "Narrator Hotkey"
-  },
-  {
-    "key": "subtitles.block.trial_spawner.eject_item",
-    "english_translation": "Trial Spawner ejects items"
-  },
-  {
     "key": "advancements.nether.explore_nether.title",
     "english_translation": "Hot Tourist Destinations"
   },
@@ -9548,10 +9072,6 @@
     "english_translation": "Updated %s for %s entities"
   },
   {
-    "key": "mco.errorMessage.retry",
-    "english_translation": "Retry operation"
-  },
-  {
     "key": "argument.gamemode.invalid",
     "english_translation": "Unknown game mode: %s"
   },
@@ -9562,10 +9082,6 @@
   {
     "key": "block.minecraft.yellow_glazed_terracotta",
     "english_translation": "Yellow Glazed Terracotta"
-  },
-  {
-    "key": "options.accessibility.narrator_hotkey.mac.tooltip",
-    "english_translation": "Allows the Narrator to be toggled on and off with 'Cmd+B'"
   },
   {
     "key": "block.minecraft.brown_shulker_box",
@@ -9594,10 +9110,6 @@
   {
     "key": "gui.socialInteractions.server_label.single",
     "english_translation": "%s - %s player"
-  },
-  {
-    "key": "block.minecraft.waxed_weathered_copper_door",
-    "english_translation": "Waxed Weathered Copper Door"
   },
   {
     "key": "commands.stopsound.success.sourceless.sound",
@@ -9654,10 +9166,6 @@
   {
     "key": "mco.download.done",
     "english_translation": "Download done"
-  },
-  {
-    "key": "block.minecraft.oxidized_chiseled_copper",
-    "english_translation": "Oxidized Chiseled Copper"
   },
   {
     "key": "subtitles.entity.horse.jump",
@@ -9725,11 +9233,7 @@
   },
   {
     "key": "death.attack.anvil.player",
-    "english_translation": "%1$s was squashed by a falling anvil while fighting %2$s"
-  },
-  {
-    "key": "mco.account.privacy.info.button",
-    "english_translation": "Read more about GDPR"
+    "english_translation": "%1$s was squashed by a falling anvil whilst fighting %2$s"
   },
   {
     "key": "subtitles.entity.ghast.shoot",
@@ -9820,10 +9324,6 @@
     "english_translation": "Soul Sand"
   },
   {
-    "key": "gui.loadingMinecraft",
-    "english_translation": "Loading Minecraft"
-  },
-  {
     "key": "stat.minecraft.raid_win",
     "english_translation": "Raids Won"
   },
@@ -9833,7 +9333,7 @@
   },
   {
     "key": "death.attack.stalagmite.player",
-    "english_translation": "%1$s was impaled on a stalagmite while fighting %2$s"
+    "english_translation": "%1$s was impaled on a stalagmite whilst fighting %2$s"
   },
   {
     "key": "item.minecraft.shield.magenta",
@@ -9989,7 +9489,7 @@
   },
   {
     "key": "death.attack.thorns",
-    "english_translation": "%1$s was killed while trying to hurt %2$s"
+    "english_translation": "%1$s was killed trying to hurt %2$s"
   },
   {
     "key": "block.minecraft.light_blue_stained_glass_pane",
@@ -10144,10 +9644,6 @@
     "english_translation": "Potato"
   },
   {
-    "key": "command.forkLimit",
-    "english_translation": "Maximum number of contexts (%s) reached"
-  },
-  {
     "key": "mco.notification.visitUrl.message.default",
     "english_translation": "Please visit the link below"
   },
@@ -10173,7 +9669,7 @@
   },
   {
     "key": "mco.backup.button.upload",
-    "english_translation": "Upload World"
+    "english_translation": "Upload world"
   },
   {
     "key": "subtitles.item.armor.equip_iron",
@@ -10196,10 +9692,6 @@
     "english_translation": "Fire Coral Block"
   },
   {
-    "key": "narration.suggestion.usage.fill.fixed",
-    "english_translation": "Press Tab to use suggestion"
-  },
-  {
     "key": "item.minecraft.shield.green",
     "english_translation": "Green Shield"
   },
@@ -10217,7 +9709,7 @@
   },
   {
     "key": "mco.configure.world.description",
-    "english_translation": "Realm Description"
+    "english_translation": "Realm description"
   },
   {
     "key": "block.minecraft.banner.diagonal_up_right.light_blue",
@@ -10305,15 +9797,7 @@
   },
   {
     "key": "mco.configure.world.subscription.start",
-    "english_translation": "Start Date"
-  },
-  {
-    "key": "gui.abuseReport.type.chat",
-    "english_translation": "Chat Messages"
-  },
-  {
-    "key": "block.minecraft.oxidized_copper_grate",
-    "english_translation": "Oxidized Copper Grate"
+    "english_translation": "Start date"
   },
   {
     "key": "stat.minecraft.ring_bell",
@@ -10596,10 +10080,6 @@
     "english_translation": "Blue Orchid"
   },
   {
-    "key": "gui.abuseReport.read_info",
-    "english_translation": "Learn About Reporting"
-  },
-  {
     "key": "menu.savingChunks",
     "english_translation": "Saving chunks"
   },
@@ -10780,10 +10260,6 @@
     "english_translation": "Some of the drops from blocks destroyed by explosions caused by block interactions are lost in the explosion."
   },
   {
-    "key": "gui.abuseReport.discard.content",
-    "english_translation": "If you leave, you'll lose this report and your comments.\nAre you sure you want to leave?"
-  },
-  {
     "key": "item.minecraft.string",
     "english_translation": "String"
   },
@@ -10808,16 +10284,8 @@
     "english_translation": "Damage Taken"
   },
   {
-    "key": "download.pack.progress.percent",
-    "english_translation": "Progress: %s%%"
-  },
-  {
     "key": "block.minecraft.banner.square_bottom_right.red",
     "english_translation": "Red Base Sinister Canton"
-  },
-  {
-    "key": "commands.scoreboard.objectives.modify.objectiveFormat.set",
-    "english_translation": "Changed default number format of objective %s"
   },
   {
     "key": "generator.minecraft.single_biome_surface",
@@ -10854,10 +10322,6 @@
   {
     "key": "createWorld.customize.custom.upperLimitScale",
     "english_translation": "Upper Limit Scale"
-  },
-  {
-    "key": "symlink_warning.more_info",
-    "english_translation": "More Information"
   },
   {
     "key": "item.minecraft.lava_bucket",
@@ -11040,10 +10504,6 @@
     "english_translation": "Applied %s damage to %s"
   },
   {
-    "key": "item.minecraft.sentry_armor_trim_smithing_template",
-    "english_translation": "Smithing Template"
-  },
-  {
     "key": "advancements.adventure.trade_at_world_height.description",
     "english_translation": "Trade with a Villager at the build height limit"
   },
@@ -11082,14 +10542,6 @@
   {
     "key": "item.minecraft.torchflower_seeds",
     "english_translation": "Torchflower Seeds"
-  },
-  {
-    "key": "selectWorld.incompatible.title",
-    "english_translation": "Incompatible version"
-  },
-  {
-    "key": "argument.style.invalid",
-    "english_translation": "Invalid style: %s"
   },
   {
     "key": "selectWorld.edit.backup",
@@ -11161,7 +10613,7 @@
   },
   {
     "key": "mco.configure.world.buttons.invite",
-    "english_translation": "Invite Player"
+    "english_translation": "Invite player"
   },
   {
     "key": "block.minecraft.cut_red_sandstone_slab",
@@ -11245,7 +10697,7 @@
   },
   {
     "key": "mco.configure.world.name",
-    "english_translation": "Realm Name"
+    "english_translation": "Realm name"
   },
   {
     "key": "chat.disabled.expiredProfileKey",
@@ -11289,7 +10741,7 @@
   },
   {
     "key": "mco.configure.world.buttons.options",
-    "english_translation": "World Options"
+    "english_translation": "World options"
   },
   {
     "key": "block.minecraft.jungle_fence_gate",
@@ -11329,7 +10781,7 @@
   },
   {
     "key": "mco.configure.world.forceGameMode",
-    "english_translation": "Force Game Mode"
+    "english_translation": "Force game mode"
   },
   {
     "key": "chat.filtered_full",
@@ -11420,10 +10872,6 @@
     "english_translation": "Mud"
   },
   {
-    "key": "commands.tick.query.percentiles",
-    "english_translation": "Percentiles: P50: %sms P95: %sms P99: %sms, sample: %s"
-  },
-  {
     "key": "effect.minecraft.luck",
     "english_translation": "Luck"
   },
@@ -11473,7 +10921,7 @@
   },
   {
     "key": "death.attack.wither.player",
-    "english_translation": "%1$s withered away while fighting %2$s"
+    "english_translation": "%1$s withered away whilst fighting %2$s"
   },
   {
     "key": "itemGroup.coloredBlocks",
@@ -11526,10 +10974,6 @@
   {
     "key": "mco.configure.world.invites.ops.tooltip",
     "english_translation": "Operator"
-  },
-  {
-    "key": "commands.banlist.entry.unknown",
-    "english_translation": "(Unknown)"
   },
   {
     "key": "block.minecraft.dead_brain_coral_block",
@@ -11672,16 +11116,8 @@
     "english_translation": "Silverfish Spawn Egg"
   },
   {
-    "key": "recover_world.bug_tracker",
-    "english_translation": "Report a Bug"
-  },
-  {
     "key": "block.minecraft.mangrove_stairs",
     "english_translation": "Mangrove Stairs"
-  },
-  {
-    "key": "commands.function.error.missing_argument",
-    "english_translation": "Missing argument %2$s to function %1$s"
   },
   {
     "key": "subtitles.entity.creeper.hurt",
@@ -11768,10 +11204,6 @@
     "english_translation": "You have no home bed or charged respawn anchor, or it was obstructed"
   },
   {
-    "key": "mco.snapshot.paired",
-    "english_translation": "This Snapshot Realm is paired with \"%s\""
-  },
-  {
     "key": "advancements.nether.obtain_ancient_debris.description",
     "english_translation": "Obtain Ancient Debris"
   },
@@ -11821,15 +11253,11 @@
   },
   {
     "key": "death.attack.fallingBlock.player",
-    "english_translation": "%1$s was squashed by a falling block while fighting %2$s"
+    "english_translation": "%1$s was squashed by a falling block whilst fighting %2$s"
   },
   {
     "key": "mco.configure.world.invite.narration",
     "english_translation": "You have %s new invite(s)"
-  },
-  {
-    "key": "block.minecraft.waxed_oxidized_copper_grate",
-    "english_translation": "Waxed Oxidized Copper Grate"
   },
   {
     "key": "spectatorMenu.team_teleport.prompt",
@@ -11918,10 +11346,6 @@
   {
     "key": "block.minecraft.yellow_candle_cake",
     "english_translation": "Cake with Yellow Candle"
-  },
-  {
-    "key": "gui.togglable_slot",
-    "english_translation": "Click to disable slot"
   },
   {
     "key": "commands.perf.reportSaved",
@@ -12032,10 +11456,6 @@
     "english_translation": "Protect yourself with a piece of iron armor"
   },
   {
-    "key": "item.minecraft.raiser_armor_trim_smithing_template",
-    "english_translation": "Smithing Template"
-  },
-  {
     "key": "commands.experience.set.points.invalid",
     "english_translation": "Cannot set experience points above the maximum points for the player's current level"
   },
@@ -12128,10 +11548,6 @@
     "english_translation": "<%s> %s"
   },
   {
-    "key": "block.minecraft.waxed_copper_bulb",
-    "english_translation": "Waxed Copper Bulb"
-  },
-  {
     "key": "menu.returnToGame",
     "english_translation": "Back to Game"
   },
@@ -12194,10 +11610,6 @@
   {
     "key": "block.minecraft.polished_deepslate_stairs",
     "english_translation": "Polished Deepslate Stairs"
-  },
-  {
-    "key": "commands.function.result",
-    "english_translation": "Function %s returned %s"
   },
   {
     "key": "tutorial.look.description",
@@ -12388,10 +11800,6 @@
     "english_translation": "Tick count must not be less than %s, found %s"
   },
   {
-    "key": "gui.abuseReport.discard.return",
-    "english_translation": "Continue Editing"
-  },
-  {
     "key": "commands.experience.set.points.success.multiple",
     "english_translation": "Set %s experience points on %s players"
   },
@@ -12421,7 +11829,7 @@
   },
   {
     "key": "mco.configure.world.edit.slot.name",
-    "english_translation": "World Name"
+    "english_translation": "World name"
   },
   {
     "key": "block.minecraft.blast_furnace",
@@ -12476,10 +11884,6 @@
     "english_translation": "An unexpected error occurred trying to execute that command"
   },
   {
-    "key": "chat.validation_error",
-    "english_translation": "Chat validation error"
-  },
-  {
     "key": "block.minecraft.lime_bed",
     "english_translation": "Lime Bed"
   },
@@ -12508,10 +11912,6 @@
     "english_translation": "The Healing Power of Friendship!"
   },
   {
-    "key": "block.minecraft.waxed_oxidized_copper_door",
-    "english_translation": "Waxed Oxidized Copper Door"
-  },
-  {
     "key": "entity.minecraft.elder_guardian",
     "english_translation": "Elder Guardian"
   },
@@ -12530,10 +11930,6 @@
   {
     "key": "structure_block.load_success",
     "english_translation": "Structure loaded from '%s'"
-  },
-  {
-    "key": "block.minecraft.waxed_oxidized_chiseled_copper",
-    "english_translation": "Waxed Oxidized Chiseled Copper"
   },
   {
     "key": "advancements.husbandry.tame_an_animal.description",
@@ -12560,24 +11956,12 @@
     "english_translation": "Light Gray Lozenge"
   },
   {
-    "key": "gui.recipebook.page",
-    "english_translation": "%s/%s"
-  },
-  {
-    "key": "mco.errorMessage.realmsService.unknownCompatibility",
-    "english_translation": "Could not check compatible version, got response: %s"
-  },
-  {
     "key": "multiplayer.player.joined",
     "english_translation": "%s joined the game"
   },
   {
     "key": "subtitles.entity.mule.ambient",
     "english_translation": "Mule hee-haws"
-  },
-  {
-    "key": "item.minecraft.eye_armor_trim_smithing_template",
-    "english_translation": "Smithing Template"
   },
   {
     "key": "subtitles.entity.parrot.imitate.zombie",
@@ -12608,10 +11992,6 @@
     "english_translation": "Donkey eats"
   },
   {
-    "key": "mco.snapshotRealmsPopup.urlText",
-    "english_translation": "Learn More"
-  },
-  {
     "key": "subtitles.entity.parrot.imitate.ender_dragon",
     "english_translation": "Parrot roars"
   },
@@ -12638,10 +12018,6 @@
   {
     "key": "subtitles.entity.strider.death",
     "english_translation": "Strider dies"
-  },
-  {
-    "key": "narration.suggestion.usage.cycle.fixed",
-    "english_translation": "Press Tab to cycle to the next suggestion"
   },
   {
     "key": "options.operatorItemsTab",
@@ -12692,16 +12068,12 @@
     "english_translation": "Spruce Leaves"
   },
   {
-    "key": "block.minecraft.tuff_slab",
-    "english_translation": "Tuff Slab"
-  },
-  {
     "key": "gui.socialInteractions.narration.hide",
     "english_translation": "Hide messages from %s"
   },
   {
     "key": "death.attack.drown.player",
-    "english_translation": "%1$s drowned while trying to escape %2$s"
+    "english_translation": "%1$s drowned whilst trying to escape %2$s"
   },
   {
     "key": "commands.data.modify.expected_value",
@@ -12774,10 +12146,6 @@
   {
     "key": "narrator.screen.usage",
     "english_translation": "Use mouse cursor or Tab button to select element"
-  },
-  {
-    "key": "recover_world.message",
-    "english_translation": "The following issues occurred while trying to read world folder \"%s\".\nIt might be possible to restore the world from an older state or you can report this issue on the bug tracker."
   },
   {
     "key": "subtitles.entity.shulker.death",
@@ -12874,10 +12242,6 @@
   {
     "key": "tutorial.open_inventory.title",
     "english_translation": "Open your inventory"
-  },
-  {
-    "key": "gui.banned.name.title",
-    "english_translation": "Name Not Allowed in Multiplayer"
   },
   {
     "key": "mco.backup.entry.description",
@@ -13008,10 +12372,6 @@
     "english_translation": "Unknown item modifier: %s"
   },
   {
-    "key": "block.minecraft.copper_bulb",
-    "english_translation": "Copper Bulb"
-  },
-  {
     "key": "block.minecraft.banner.globe.light_blue",
     "english_translation": "Light Blue Globe"
   },
@@ -13100,10 +12460,6 @@
     "english_translation": "%s: %spx"
   },
   {
-    "key": "mco.snapshot.friendsRealm.downgrade",
-    "english_translation": "You need to be on version %s to join this Realm"
-  },
-  {
     "key": "item.minecraft.splash_potion.effect.water_breathing",
     "english_translation": "Splash Potion of Water Breathing"
   },
@@ -13126,10 +12482,6 @@
   {
     "key": "block.minecraft.banner.stripe_bottom.purple",
     "english_translation": "Purple Base"
-  },
-  {
-    "key": "commands.tick.sprint.stop.fail",
-    "english_translation": "No tick sprint in progress"
   },
   {
     "key": "resourcePack.broken_assets",
@@ -13156,10 +12508,6 @@
     "english_translation": "White Banner"
   },
   {
-    "key": "block.minecraft.waxed_weathered_chiseled_copper",
-    "english_translation": "Waxed Weathered Chiseled Copper"
-  },
-  {
     "key": "entity.minecraft.rabbit",
     "english_translation": "Rabbit"
   },
@@ -13184,20 +12532,12 @@
     "english_translation": "Received unrequested status"
   },
   {
-    "key": "gui.abuseReport.comments",
-    "english_translation": "Comments"
-  },
-  {
     "key": "block.minecraft.banner.triangles_top.brown",
     "english_translation": "Brown Chief Indented"
   },
   {
     "key": "advancements.story.iron_tools.title",
     "english_translation": "Isn't It Iron Pick"
-  },
-  {
-    "key": "commands.tick.status.frozen",
-    "english_translation": "The game is frozen"
   },
   {
     "key": "menu.generatingLevel",
@@ -13277,7 +12617,7 @@
   },
   {
     "key": "mco.configure.world.spawnProtection",
-    "english_translation": "Spawn Protection"
+    "english_translation": "Spawn protection"
   },
   {
     "key": "gui.recipebook.moreRecipes",
@@ -13352,10 +12692,6 @@
     "english_translation": "Invited (%s)"
   },
   {
-    "key": "options.languageAccuracyWarning",
-    "english_translation": "(Language translations may not be 100%% accurate)"
-  },
-  {
     "key": "item.minecraft.splash_potion.effect.thick",
     "english_translation": "Thick Splash Potion"
   },
@@ -13394,10 +12730,6 @@
   {
     "key": "commands.team.option.friendlyfire.alreadyDisabled",
     "english_translation": "Nothing changed. Friendly fire is already disabled for that team"
-  },
-  {
-    "key": "commands.random.reset.all.success",
-    "english_translation": "Reset %s random sequence(s)"
   },
   {
     "key": "item.minecraft.firework_star.shape.large_ball",
@@ -13532,10 +12864,6 @@
     "english_translation": "Red Chevron"
   },
   {
-    "key": "recover_world.state_entry.unknown",
-    "english_translation": "unknown"
-  },
-  {
     "key": "block.minecraft.cyan_carpet",
     "english_translation": "Cyan Carpet"
   },
@@ -13656,10 +12984,6 @@
     "english_translation": "Spider"
   },
   {
-    "key": "mco.compatibility.downgrade.description",
-    "english_translation": "This world was last played in version %s; you are on version %s. Downgrading a world could cause corruption - we cannot guarantee that it will load or work.\n\nA backup of your world will be saved under \"World backups\". Please restore your world if needed."
-  },
-  {
     "key": "subtitles.entity.endermite.death",
     "english_translation": "Endermite dies"
   },
@@ -13694,10 +13018,6 @@
   {
     "key": "mco.configure.world.opening",
     "english_translation": "Opening the realm..."
-  },
-  {
-    "key": "commands.tick.rate.success",
-    "english_translation": "Set the target tick rate to %s per second"
   },
   {
     "key": "block.minecraft.clay",
@@ -13840,16 +13160,8 @@
     "english_translation": "Lime Inverted Chevron"
   },
   {
-    "key": "commands.scoreboard.objectives.modify.displayAutoUpdate.enable",
-    "english_translation": "Enabled display auto-update for objective %s"
-  },
-  {
     "key": "block.minecraft.potted_dead_bush",
     "english_translation": "Potted Dead Bush"
-  },
-  {
-    "key": "gui.abuseReport.send.comment_too_long",
-    "english_translation": "Please shorten the comment"
   },
   {
     "key": "subtitles.entity.ender_dragon.growl",
@@ -14012,10 +13324,6 @@
     "english_translation": "Hit the bullseye of a Target block from at least 30 meters away"
   },
   {
-    "key": "subtitles.entity.generic.wind_burst",
-    "english_translation": "Wind Charge bursts"
-  },
-  {
     "key": "block.minecraft.pink_terracotta",
     "english_translation": "Pink Terracotta"
   },
@@ -14050,10 +13358,6 @@
   {
     "key": "block.minecraft.magenta_stained_glass_pane",
     "english_translation": "Magenta Stained Glass Pane"
-  },
-  {
-    "key": "recover_world.restore",
-    "english_translation": "Attempt to Restore"
   },
   {
     "key": "subtitles.event.raid.horn",
@@ -14276,10 +13580,6 @@
     "english_translation": "Leash Knot"
   },
   {
-    "key": "mco.selectServer.noRealms",
-    "english_translation": "You don't seem to have a Realm. Add a Realm to play together with your friends."
-  },
-  {
     "key": "key.categories.multiplayer",
     "english_translation": "Multiplayer"
   },
@@ -14341,7 +13641,7 @@
   },
   {
     "key": "mco.configure.world.switch.slot",
-    "english_translation": "Create World"
+    "english_translation": "Create world"
   },
   {
     "key": "subtitles.entity.chicken.death",
@@ -14532,10 +13832,6 @@
     "english_translation": "Are you sure that you want to uninvite"
   },
   {
-    "key": "subtitles.block.decorated_pot.insert_fail",
-    "english_translation": "Decorated Pot wobbles"
-  },
-  {
     "key": "block.minecraft.light_gray_stained_glass",
     "english_translation": "Light Gray Stained Glass"
   },
@@ -14592,10 +13888,6 @@
     "english_translation": "Light Blue Shield"
   },
   {
-    "key": "commands.function.scheduled.multiple",
-    "english_translation": "Running functions %s"
-  },
-  {
     "key": "mco.download.speed",
     "english_translation": "(%s/s)"
   },
@@ -14614,10 +13906,6 @@
   {
     "key": "entity.minecraft.illusioner",
     "english_translation": "Illusioner"
-  },
-  {
-    "key": "symlink_warning.message.world",
-    "english_translation": "Loading worlds from folders with symbolic links can be unsafe if you don't know exactly what you are doing. Please visit %s to learn more."
   },
   {
     "key": "subtitles.entity.cat.beg_for_food",
@@ -14700,10 +13988,6 @@
     "english_translation": "Violating Community Standards"
   },
   {
-    "key": "gui.abuseReport.message",
-    "english_translation": "Where did you observe the bad behavior?\nThis will help us in researching your case."
-  },
-  {
     "key": "block.minecraft.banner.stripe_right.yellow",
     "english_translation": "Yellow Pale Sinister"
   },
@@ -14737,7 +14021,7 @@
   },
   {
     "key": "mco.configure.world.title",
-    "english_translation": "Configure Realm:"
+    "english_translation": "Configure realm:"
   },
   {
     "key": "commands.scoreboard.players.set.success.multiple",
@@ -14750,10 +14034,6 @@
   {
     "key": "commands.team.list.members.success",
     "english_translation": "Team %s has %s member(s): %s"
-  },
-  {
-    "key": "gui.abuseReport.draft.quittotitle.title",
-    "english_translation": "You have a draft chat report that will be lost if you quit"
   },
   {
     "key": "block.minecraft.potted_wither_rose",
@@ -14808,10 +14088,6 @@
     "english_translation": "Can't connect to server"
   },
   {
-    "key": "recover_world.issue.missing_file",
-    "english_translation": "Missing file"
-  },
-  {
     "key": "enchantment.minecraft.binding_curse",
     "english_translation": "Curse of Binding"
   },
@@ -14830,10 +14106,6 @@
   {
     "key": "options.chat.color",
     "english_translation": "Colors"
-  },
-  {
-    "key": "options.hideSplashTexts",
-    "english_translation": "Hide Splash Texts"
   },
   {
     "key": "debug.chunk_boundaries.on",
@@ -14936,10 +14208,6 @@
     "english_translation": "Could not parse command: %s"
   },
   {
-    "key": "gui.banned.name.description",
-    "english_translation": "Your current name - \"%s\" - violates our Community Standards. You can play singleplayer, but will need to change your name to play online.\n\nLearn more or submit a case review at the following link: %s"
-  },
-  {
     "key": "block.minecraft.blue_bed",
     "english_translation": "Blue Bed"
   },
@@ -14982,10 +14250,6 @@
   {
     "key": "commands.scoreboard.objectives.list.success",
     "english_translation": "There are %s objective(s): %s"
-  },
-  {
-    "key": "mco.snapshotRealmsPopup.message",
-    "english_translation": "Realms are now available in Snapshots starting with Snapshot 23w41a. Every Realms subscription comes with a free Snapshot Realm that is separate from your normal Java Realm!"
   },
   {
     "key": "block.minecraft.banner.stripe_middle.purple",
@@ -15116,10 +14380,6 @@
     "english_translation": "Turtle Egg"
   },
   {
-    "key": "commands.function.error.argument_not_compound",
-    "english_translation": "Invalid argument type: %s, expected Compound"
-  },
-  {
     "key": "subtitles.entity.llama.angry",
     "english_translation": "Llama bleats angrily"
   },
@@ -15153,7 +14413,7 @@
   },
   {
     "key": "death.attack.cactus.player",
-    "english_translation": "%1$s walked into a cactus while trying to escape %2$s"
+    "english_translation": "%1$s walked into a cactus whilst trying to escape %2$s"
   },
   {
     "key": "block.minecraft.warped_button",
@@ -15254,10 +14514,6 @@
   {
     "key": "trim_material.minecraft.emerald",
     "english_translation": "Emerald Material"
-  },
-  {
-    "key": "block.minecraft.waxed_exposed_chiseled_copper",
-    "english_translation": "Waxed Exposed Chiseled Copper"
   },
   {
     "key": "block.minecraft.magenta_candle",
@@ -15492,10 +14748,6 @@
     "english_translation": "Portal noise fades"
   },
   {
-    "key": "mco.selectServer.loading",
-    "english_translation": "Loading Realms List"
-  },
-  {
     "key": "block.minecraft.orange_candle",
     "english_translation": "Orange Candle"
   },
@@ -15518,10 +14770,6 @@
   {
     "key": "advancements.nether.root.title",
     "english_translation": "Nether"
-  },
-  {
-    "key": "subtitles.block.sponge.absorb",
-    "english_translation": "Sponge sucks"
   },
   {
     "key": "block.minecraft.banner.diagonal_up_right.blue",
@@ -15600,10 +14848,6 @@
     "english_translation": "Glow Item Frame"
   },
   {
-    "key": "mco.snapshot.createSnapshotPopup.title",
-    "english_translation": "Create Snapshot Realm?"
-  },
-  {
     "key": "advancements.husbandry.fishy_business.title",
     "english_translation": "Fishy Business"
   },
@@ -15646,10 +14890,6 @@
   {
     "key": "block.minecraft.polished_deepslate_slab",
     "english_translation": "Polished Deepslate Slab"
-  },
-  {
-    "key": "filled_map.village_snowy",
-    "english_translation": "Snowy Village Map"
   },
   {
     "key": "options.graphics",
@@ -15740,10 +14980,6 @@
     "english_translation": "Nothing changed. The player is already banned"
   },
   {
-    "key": "mco.compatibility.unverifiable.message",
-    "english_translation": "The version this world was last played in could not be verified. If the world gets upgraded or downgraded, a backup will be automatically created and saved under \"World backups\"."
-  },
-  {
     "key": "stat.minecraft.interact_with_stonecutter",
     "english_translation": "Interactions with Stonecutter"
   },
@@ -15784,10 +15020,6 @@
     "english_translation": "Camel stands up"
   },
   {
-    "key": "gui.banned.skin.title",
-    "english_translation": "Skin Not Allowed"
-  },
-  {
     "key": "item.minecraft.pufferfish_spawn_egg",
     "english_translation": "Pufferfish Spawn Egg"
   },
@@ -15812,10 +15044,6 @@
     "english_translation": "Removed %s from %s for %s entities"
   },
   {
-    "key": "recover_world.done.failed",
-    "english_translation": "Failed to recover from previous state."
-  },
-  {
     "key": "block.minecraft.banner.diagonal_right.blue",
     "english_translation": "Blue Per Bend"
   },
@@ -15832,10 +15060,6 @@
     "english_translation": "%s - %s players"
   },
   {
-    "key": "item.minecraft.breeze_spawn_egg",
-    "english_translation": "Breeze Spawn Egg"
-  },
-  {
     "key": "options.telemetry.state.none",
     "english_translation": "None"
   },
@@ -15848,16 +15072,8 @@
     "english_translation": "Voluntary Exile"
   },
   {
-    "key": "subtitles.block.copper_bulb.turn_on",
-    "english_translation": "Copper Bulb turns on"
-  },
-  {
     "key": "mco.backup.nobackups",
     "english_translation": "This realm doesn't have any backups currently."
-  },
-  {
-    "key": "commands.scoreboard.players.display.name.set.success.multiple",
-    "english_translation": "Changed display name to %s for %s entities in %s"
   },
   {
     "key": "gui.chatReport.selected_chat",
@@ -15866,10 +15082,6 @@
   {
     "key": "argument.entity.options.unknown",
     "english_translation": "Unknown option '%s'"
-  },
-  {
-    "key": "mco.compatibility.unverifiable.title",
-    "english_translation": "Compatibility not verifiable"
   },
   {
     "key": "commands.place.feature.failed",
@@ -15976,10 +15188,6 @@
     "english_translation": "Brown Per Pale"
   },
   {
-    "key": "commands.tick.sprint.report",
-    "english_translation": "Sprint completed with %s ticks per second, or %s ms per tick"
-  },
-  {
     "key": "block.minecraft.hay_block",
     "english_translation": "Hay Bale"
   },
@@ -16084,16 +15292,12 @@
     "english_translation": "Wall Torch"
   },
   {
-    "key": "block.minecraft.tuff_stairs",
-    "english_translation": "Tuff Stairs"
-  },
-  {
     "key": "entity.minecraft.horse",
     "english_translation": "Horse"
   },
   {
     "key": "mco.backup.info.title",
-    "english_translation": "Changes From Last Backup"
+    "english_translation": "Changes from last backup"
   },
   {
     "key": "options.audioDevice",
@@ -16156,10 +15360,6 @@
     "english_translation": "Escape the island"
   },
   {
-    "key": "block.minecraft.exposed_copper_trapdoor",
-    "english_translation": "Exposed Copper Trapdoor"
-  },
-  {
     "key": "dataPack.validation.back",
     "english_translation": "Go Back"
   },
@@ -16206,10 +15406,6 @@
   {
     "key": "block.minecraft.banner.mojang.blue",
     "english_translation": "Blue Thing"
-  },
-  {
-    "key": "container.shulkerBox.itemCount",
-    "english_translation": "%s x%s"
   },
   {
     "key": "mco.upload.preparing",
@@ -16300,10 +15496,6 @@
     "english_translation": "Arrow of the Turtle Master"
   },
   {
-    "key": "item.minecraft.trial_key",
-    "english_translation": "Trial Key"
-  },
-  {
     "key": "item.minecraft.iron_sword",
     "english_translation": "Iron Sword"
   },
@@ -16332,10 +15524,6 @@
     "english_translation": "Item Selection"
   },
   {
-    "key": "commands.random.sample.success",
-    "english_translation": "Randomized value: %s"
-  },
-  {
     "key": "block.minecraft.banner.mojang.lime",
     "english_translation": "Lime Thing"
   },
@@ -16362,10 +15550,6 @@
   {
     "key": "block.minecraft.candle_cake",
     "english_translation": "Cake with Candle"
-  },
-  {
-    "key": "title.credits",
-    "english_translation": "Copyright Mojang AB. Do not distribute!"
   },
   {
     "key": "subtitles.entity.cow.death",
@@ -16564,10 +15748,6 @@
     "english_translation": "Edit Hanging Sign Message"
   },
   {
-    "key": "subtitles.block.crafter.fail",
-    "english_translation": "Crafter fails crafting"
-  },
-  {
     "key": "entity.minecraft.villager.librarian",
     "english_translation": "Librarian"
   },
@@ -16760,10 +15940,6 @@
     "english_translation": "Talked to Villagers"
   },
   {
-    "key": "gui.abuseReport.reason.generic",
-    "english_translation": "I want to report them"
-  },
-  {
     "key": "title.multiplayer.lan",
     "english_translation": "Multiplayer (LAN)"
   },
@@ -16793,7 +15969,7 @@
   },
   {
     "key": "mco.error.invalid.session.title",
-    "english_translation": "Invalid Session"
+    "english_translation": "Invalid session"
   },
   {
     "key": "subtitles.entity.lightning_bolt.thunder",
@@ -16840,10 +16016,6 @@
     "english_translation": "Social Interactions"
   },
   {
-    "key": "stats.none",
-    "english_translation": "-"
-  },
-  {
     "key": "item.minecraft.ravager_spawn_egg",
     "english_translation": "Ravager Spawn Egg"
   },
@@ -16888,10 +16060,6 @@
     "english_translation": "There is no template with id \"%s\""
   },
   {
-    "key": "gui.abuseReport.skin.title",
-    "english_translation": "Report Player Skin"
-  },
-  {
     "key": "multiplayer.disconnect.ip_banned",
     "english_translation": "You have been IP banned from this server"
   },
@@ -16900,16 +16068,8 @@
     "english_translation": "Download cancelled"
   },
   {
-    "key": "gui.abuseReport.discard.title",
-    "english_translation": "Discard report and comments?"
-  },
-  {
     "key": "options.percent_add_value",
     "english_translation": "%s: +%s%%"
-  },
-  {
-    "key": "optimizeWorld.progress.counter",
-    "english_translation": "%s / %s"
   },
   {
     "key": "item.minecraft.firework_star.light_gray",
@@ -16952,10 +16112,6 @@
     "english_translation": "Account temporarily suspended"
   },
   {
-    "key": "mco.notification.transferSubscription.buttonText",
-    "english_translation": "Transfer Now"
-  },
-  {
     "key": "block.minecraft.banner.triangles_bottom.cyan",
     "english_translation": "Cyan Base Indented"
   },
@@ -16982,10 +16138,6 @@
   {
     "key": "subtitles.entity.bat.death",
     "english_translation": "Bat dies"
-  },
-  {
-    "key": "item.minecraft.wayfinder_armor_trim_smithing_template",
-    "english_translation": "Smithing Template"
   },
   {
     "key": "instrument.minecraft.sing_goat_horn",
@@ -17197,7 +16349,7 @@
   },
   {
     "key": "mco.backup.button.download",
-    "english_translation": "Download Latest"
+    "english_translation": "Download latest"
   },
   {
     "key": "advancements.adventure.spyglass_at_dragon.title",
@@ -17210,10 +16362,6 @@
   {
     "key": "lectern.take_book",
     "english_translation": "Take Book"
-  },
-  {
-    "key": "deathScreen.score.value",
-    "english_translation": "Score: %s"
   },
   {
     "key": "subtitles.entity.painting.break",
@@ -17249,7 +16397,7 @@
   },
   {
     "key": "death.attack.flyIntoWall.player",
-    "english_translation": "%1$s experienced kinetic energy while trying to escape %2$s"
+    "english_translation": "%1$s experienced kinetic energy whilst trying to escape %2$s"
   },
   {
     "key": "commands.tag.list.multiple.empty",
@@ -17262,10 +16410,6 @@
   {
     "key": "key.socialInteractions",
     "english_translation": "Social Interactions Screen"
-  },
-  {
-    "key": "item.minecraft.dune_armor_trim_smithing_template",
-    "english_translation": "Smithing Template"
   },
   {
     "key": "commands.team.option.deathMessageVisibility.success",
@@ -17298,14 +16442,6 @@
   {
     "key": "subtitles.entity.iron_golem.damage",
     "english_translation": "Iron Golem breaks"
-  },
-  {
-    "key": "subtitles.block.copper_trapdoor.close",
-    "english_translation": "Trapdoor closes"
-  },
-  {
-    "key": "gui.abuseReport.title",
-    "english_translation": "Report Player"
   },
   {
     "key": "pack.openFolder",
@@ -17360,10 +16496,6 @@
     "english_translation": "Crimson Pressure Plate"
   },
   {
-    "key": "subtitles.block.copper_bulb.turn_off",
-    "english_translation": "Copper Bulb turns off"
-  },
-  {
     "key": "item.canPlace",
     "english_translation": "Can be placed on:"
   },
@@ -17386,10 +16518,6 @@
   {
     "key": "mco.selectServer.configure",
     "english_translation": "Configure"
-  },
-  {
-    "key": "gamerule.projectilesCanBreakBlocks",
-    "english_translation": "Projectiles can break blocks"
   },
   {
     "key": "commands.debug.function.traceFailed",
@@ -17433,7 +16561,7 @@
   },
   {
     "key": "mco.selectServer.leave",
-    "english_translation": "Leave Realm"
+    "english_translation": "Leave realm"
   },
   {
     "key": "block.minecraft.purpur_block",
@@ -17494,10 +16622,6 @@
   {
     "key": "subtitles.entity.parrot.imitate.spider",
     "english_translation": "Parrot hisses"
-  },
-  {
-    "key": "filled_map.village_savanna",
-    "english_translation": "Savanna Village Map"
   },
   {
     "key": "mco.reset.world.seed",
@@ -17720,16 +16844,8 @@
     "english_translation": "Firework Rocket"
   },
   {
-    "key": "block.minecraft.weathered_copper_grate",
-    "english_translation": "Weathered Copper Grate"
-  },
-  {
     "key": "block.minecraft.banner.rhombus.black",
     "english_translation": "Black Lozenge"
-  },
-  {
-    "key": "commands.tick.sprint.stop.success",
-    "english_translation": "A tick sprint interrupted"
   },
   {
     "key": "subtitles.entity.elder_guardian.ambient_land",
@@ -17828,10 +16944,6 @@
     "english_translation": "Instant Damage"
   },
   {
-    "key": "commands.tick.status.sprinting",
-    "english_translation": "The game is sprinting"
-  },
-  {
     "key": "item.canBreak",
     "english_translation": "Can break:"
   },
@@ -17912,10 +17024,6 @@
     "english_translation": "The time is %s"
   },
   {
-    "key": "mco.upload.percent",
-    "english_translation": "%s %%"
-  },
-  {
     "key": "advancements.end.enter_end_gateway.title",
     "english_translation": "Remote Getaway"
   },
@@ -17952,20 +17060,12 @@
     "english_translation": "Template Name"
   },
   {
-    "key": "block.minecraft.waxed_oxidized_copper_bulb",
-    "english_translation": "Waxed Oxidized Copper Bulb"
-  },
-  {
     "key": "subtitles.enchant.thorns.hit",
     "english_translation": "Thorns prick"
   },
   {
     "key": "options.ao.max",
     "english_translation": "Maximum"
-  },
-  {
-    "key": "container.shulkerBox.unknownContents",
-    "english_translation": "???????"
   },
   {
     "key": "block.minecraft.cyan_candle_cake",
@@ -17993,7 +17093,7 @@
   },
   {
     "key": "death.attack.lightningBolt.player",
-    "english_translation": "%1$s was struck by lightning while fighting %2$s"
+    "english_translation": "%1$s was struck by lightning whilst fighting %2$s"
   },
   {
     "key": "options.key.toggle",
@@ -18368,14 +17468,6 @@
     "english_translation": "Only players may be affected by this command, but the provided selector includes entities"
   },
   {
-    "key": "dataPack.update_1_21.name",
-    "english_translation": "Update 1.21"
-  },
-  {
-    "key": "recover_world.done.success",
-    "english_translation": "Recovery was successful!"
-  },
-  {
     "key": "subtitles.entity.ravager.attack",
     "english_translation": "Ravager bites"
   },
@@ -18462,10 +17554,6 @@
   {
     "key": "mco.brokenworld.title",
     "english_translation": "Your current world is no longer supported"
-  },
-  {
-    "key": "commands.kick.owner.failed",
-    "english_translation": "Cannot kick server owner in LAN game"
   },
   {
     "key": "createWorld.customize.flat.height",
@@ -18564,10 +17652,6 @@
     "english_translation": "Cake with Light Gray Candle"
   },
   {
-    "key": "commands.tick.step.fail",
-    "english_translation": "Unable to step the game - the game must be frozen first"
-  },
-  {
     "key": "block.minecraft.waxed_oxidized_copper",
     "english_translation": "Waxed Oxidized Copper"
   },
@@ -18598,10 +17682,6 @@
   {
     "key": "block.minecraft.stripped_spruce_wood",
     "english_translation": "Stripped Spruce Wood"
-  },
-  {
-    "key": "subtitles.entity.breeze.jump",
-    "english_translation": "Breeze jumps"
   },
   {
     "key": "block.minecraft.banner.half_horizontal.white",
@@ -18716,10 +17796,6 @@
     "english_translation": "Name:"
   },
   {
-    "key": "gui.abuseReport.name.reporting",
-    "english_translation": "You are reporting \"%s\"."
-  },
-  {
     "key": "item.minecraft.ender_dragon_spawn_egg",
     "english_translation": "Ender Dragon Spawn Egg"
   },
@@ -18770,14 +17846,6 @@
   {
     "key": "commands.advancement.revoke.criterion.to.many.failure",
     "english_translation": "Couldn't revoke criterion '%s' of advancement %s from %s players as they don't have it"
-  },
-  {
-    "key": "gui.banned.skin.description",
-    "english_translation": "Your current skin violates our Community Standards. You can still play with a default skin, or select a new one.\n\nLearn more or submit a case review at the following link: %s"
-  },
-  {
-    "key": "commands.random.error.range_too_small",
-    "english_translation": "The range of the random value must be at least 2"
   },
   {
     "key": "structure_block.position.z",
@@ -18850,10 +17918,6 @@
   {
     "key": "subtitles.entity.dolphin.eat",
     "english_translation": "Dolphin eats"
-  },
-  {
-    "key": "entity.minecraft.wind_charge",
-    "english_translation": "Wind Charge"
   },
   {
     "key": "subtitles.block.fire.ambient",
@@ -19028,10 +18092,6 @@
     "english_translation": "Gray Chief Sinister Canton"
   },
   {
-    "key": "gamerule.enderPearlsVanishOnDeath.description",
-    "english_translation": "Whether ender pearls thrown by a player vanish when that player dies."
-  },
-  {
     "key": "death.fell.assist",
     "english_translation": "%1$s was doomed to fall by %2$s"
   },
@@ -19132,10 +18192,6 @@
     "english_translation": "Lightning Bolt"
   },
   {
-    "key": "block.minecraft.weathered_chiseled_copper",
-    "english_translation": "Weathered Chiseled Copper"
-  },
-  {
     "key": "item.minecraft.firework_star.black",
     "english_translation": "Black"
   },
@@ -19169,7 +18225,7 @@
   },
   {
     "key": "mco.configure.world.buttons.open",
-    "english_translation": "Open Realm"
+    "english_translation": "Open realm"
   },
   {
     "key": "block.minecraft.banner.square_top_right.green",
@@ -19182,10 +18238,6 @@
   {
     "key": "itemGroup.inventory",
     "english_translation": "Survival Inventory"
-  },
-  {
-    "key": "subtitles.block.trial_spawner.detect_player",
-    "english_translation": "Trial Spawner charges up"
   },
   {
     "key": "block.minecraft.banner.triangles_top.black",
@@ -19365,7 +18417,7 @@
   },
   {
     "key": "options.accessibility.title",
-    "english_translation": "Accessibility Settings"
+    "english_translation": "Accessibility Settings..."
   },
   {
     "key": "subtitles.entity.dolphin.play",
@@ -19596,16 +18648,12 @@
     "english_translation": "Added tag '%s' to %s"
   },
   {
-    "key": "recover_world.restoring",
-    "english_translation": "Attempting to restore world..."
-  },
-  {
     "key": "narrator.button.difficulty_lock.locked",
     "english_translation": "Locked"
   },
   {
     "key": "death.attack.message_too_long",
-    "english_translation": "Actually, the message was too long to deliver fully. Sorry! Here's a stripped version: %s"
+    "english_translation": "Actually, the message was too long to deliver fully. Sorry! Here's stripped version: %s"
   },
   {
     "key": "block.minecraft.banner.globe.cyan",
@@ -19662,10 +18710,6 @@
   {
     "key": "subtitles.entity.piglin.step",
     "english_translation": "Piglin steps"
-  },
-  {
-    "key": "block.minecraft.waxed_exposed_copper_door",
-    "english_translation": "Waxed Exposed Copper Door"
   },
   {
     "key": "effect.minecraft.hunger",
@@ -20000,10 +19044,6 @@
     "english_translation": "Advancements"
   },
   {
-    "key": "download.pack.failed",
-    "english_translation": "%s out of %s packs failed to download"
-  },
-  {
     "key": "subtitles.block.tripwire.detach",
     "english_translation": "Tripwire detaches"
   },
@@ -20013,7 +19053,7 @@
   },
   {
     "key": "death.attack.starve.player",
-    "english_translation": "%1$s starved to death while fighting %2$s"
+    "english_translation": "%1$s starved to death whilst fighting %2$s"
   },
   {
     "key": "item.minecraft.elder_guardian_spawn_egg",
@@ -20065,7 +19105,7 @@
   },
   {
     "key": "outOfMemory.message",
-    "english_translation": "Minecraft has run out of memory.\n\nThis could be caused by a bug in the game or by the Java Virtual Machine not being allocated enough memory.\n\nTo prevent world corruption, the current game has quit. We've tried to free up enough memory to let you go back to the main menu and back to playing, but this may not have worked.\n\nPlease restart the game if you see this message again."
+    "english_translation": "Minecraft has run out of memory.\n\nThis could be caused by a bug in the game or by the Java Virtual Machine not being allocated enough memory.\n\nTo prevent level corruption, the current game has quit. We've tried to free up enough memory to let you go back to the main menu and back to playing, but this may not have worked.\n\nPlease restart the game if you see this message again."
   },
   {
     "key": "biome.minecraft.crimson_forest",
@@ -20074,10 +19114,6 @@
   {
     "key": "block.minecraft.banner.gradient_up.light_gray",
     "english_translation": "Light Gray Base Gradient"
-  },
-  {
-    "key": "mco.snapshot.subscription.info",
-    "english_translation": "This is a Snapshot Realm that is paired to the subscription of your Realm '%s'. It will stay active for as long as its paired Realm is."
   },
   {
     "key": "subtitles.entity.enderman.stare",
@@ -20168,10 +19204,6 @@
     "english_translation": "Intentional Game Design"
   },
   {
-    "key": "block.minecraft.chiseled_tuff",
-    "english_translation": "Chiseled Tuff"
-  },
-  {
     "key": "gamerule.fallDamage",
     "english_translation": "Deal fall damage"
   },
@@ -20182,10 +19214,6 @@
   {
     "key": "block.minecraft.warped_planks",
     "english_translation": "Warped Planks"
-  },
-  {
-    "key": "mco.errorMessage.noDetails",
-    "english_translation": "No error details provided"
   },
   {
     "key": "dataPack.bundle.name",
@@ -20220,10 +19248,6 @@
     "english_translation": "Up Arrow"
   },
   {
-    "key": "gamerule.playersNetherPortalDefaultDelay.description",
-    "english_translation": "Time (in ticks) that a non-creative mode player needs to stand in a Nether portal before changing dimensions."
-  },
-  {
     "key": "block.minecraft.banner.stripe_downleft.green",
     "english_translation": "Green Bend Sinister"
   },
@@ -20252,10 +19276,6 @@
     "english_translation": "Stone Bricks"
   },
   {
-    "key": "subtitles.entity.breeze.idle_air",
-    "english_translation": "Breeze flies"
-  },
-  {
     "key": "block.minecraft.blackstone_slab",
     "english_translation": "Blackstone Slab"
   },
@@ -20278,10 +19298,6 @@
   {
     "key": "subtitles.entity.goat.eat",
     "english_translation": "Goat eats"
-  },
-  {
-    "key": "subtitles.block.trial_spawner.open_shutter",
-    "english_translation": "Trial Spawner opens"
   },
   {
     "key": "item.minecraft.heart_pottery_shard",
@@ -20376,10 +19392,6 @@
     "english_translation": "Stopped tick profiling after %s seconds and %s ticks (%s ticks per second)"
   },
   {
-    "key": "block.minecraft.weathered_copper_trapdoor",
-    "english_translation": "Weathered Copper Trapdoor"
-  },
-  {
     "key": "entity.minecraft.blaze",
     "english_translation": "Blaze"
   },
@@ -20449,11 +19461,7 @@
   },
   {
     "key": "selectWorld.backupWarning.snapshot",
-    "english_translation": "This world was last played in version %s; you are on version %s. Please make a backup in case you experience world corruptions."
-  },
-  {
-    "key": "block.minecraft.tuff_brick_stairs",
-    "english_translation": "Tuff Brick Stairs"
+    "english_translation": "This world was last played in version %s; you are on version %s. Please make a backup in case you experience world corruptions!"
   },
   {
     "key": "subtitles.entity.rabbit.ambient",
@@ -20508,10 +19516,6 @@
     "english_translation": "Magenta Base Dexter Canton"
   },
   {
-    "key": "commands.function.scheduled.no_functions",
-    "english_translation": "Can't find any functions for name %s"
-  },
-  {
     "key": "options.autosaveIndicator",
     "english_translation": "Autosave Indicator"
   },
@@ -20521,7 +19525,7 @@
   },
   {
     "key": "death.attack.inWall.player",
-    "english_translation": "%1$s suffocated in a wall while fighting %2$s"
+    "english_translation": "%1$s suffocated in a wall whilst fighting %2$s"
   },
   {
     "key": "item.minecraft.llama_spawn_egg",
@@ -20538,10 +19542,6 @@
   {
     "key": "death.fell.accident.scaffolding",
     "english_translation": "%1$s fell off scaffolding"
-  },
-  {
-    "key": "block.minecraft.waxed_copper_trapdoor",
-    "english_translation": "Waxed Copper Trapdoor"
   },
   {
     "key": "item.minecraft.stone_hoe",
@@ -20641,7 +19641,7 @@
   },
   {
     "key": "death.attack.magic.player",
-    "english_translation": "%1$s was killed by magic while trying to escape %2$s"
+    "english_translation": "%1$s was killed by magic whilst trying to escape %2$s"
   },
   {
     "key": "commands.attribute.failed.no_attribute",
@@ -20996,10 +19996,6 @@
     "english_translation": "Snow Golem"
   },
   {
-    "key": "gui.abuseReport.select_reason",
-    "english_translation": "Select Report Category"
-  },
-  {
     "key": "options.particles.minimal",
     "english_translation": "Minimal"
   },
@@ -21165,7 +20161,7 @@
   },
   {
     "key": "death.attack.dryout.player",
-    "english_translation": "%1$s died from dehydration while trying to escape %2$s"
+    "english_translation": "%1$s died from dehydration whilst trying to escape %2$s"
   },
   {
     "key": "item.minecraft.iron_helmet",
@@ -21212,24 +20208,12 @@
     "english_translation": "Potted Blue Orchid"
   },
   {
-    "key": "gui.abuseReport.more_comments",
-    "english_translation": "Please describe what happened:"
-  },
-  {
     "key": "block.minecraft.brick_stairs",
     "english_translation": "Brick Stairs"
   },
   {
     "key": "structure_block.mode.data",
     "english_translation": "Data"
-  },
-  {
-    "key": "telemetry_info.button.privacy_statement",
-    "english_translation": "Privacy Statement"
-  },
-  {
-    "key": "block.minecraft.waxed_weathered_copper_grate",
-    "english_translation": "Waxed Weathered Copper Grate"
   },
   {
     "key": "item.minecraft.beetroot_soup",
@@ -21266,10 +20250,6 @@
   {
     "key": "block.minecraft.banner.diagonal_right.magenta",
     "english_translation": "Magenta Per Bend"
-  },
-  {
-    "key": "gui.abuseReport.type.name",
-    "english_translation": "Player Name"
   },
   {
     "key": "mco.upload.size.failure.line2",
@@ -21397,7 +20377,7 @@
   },
   {
     "key": "death.attack.outsideBorder.player",
-    "english_translation": "%1$s left the confines of this world while fighting %2$s"
+    "english_translation": "%1$s left the confines of this world whilst fighting %2$s"
   },
   {
     "key": "block.minecraft.gray_banner",
@@ -21406,10 +20386,6 @@
   {
     "key": "commands.function.success.single",
     "english_translation": "Executed %s command(s) from function '%s'"
-  },
-  {
-    "key": "block.minecraft.polished_tuff",
-    "english_translation": "Polished Tuff"
   },
   {
     "key": "multiplayer.message_not_delivered",
@@ -21426,10 +20402,6 @@
   {
     "key": "item.minecraft.spyglass",
     "english_translation": "Spyglass"
-  },
-  {
-    "key": "multiplayer.status.player_count",
-    "english_translation": "%s/%s"
   },
   {
     "key": "subtitles.item.bucket.fill_axolotl",
@@ -21450,10 +20422,6 @@
   {
     "key": "createWorld.customize.custom.prev",
     "english_translation": "Previous Page"
-  },
-  {
-    "key": "block.minecraft.tuff_wall",
-    "english_translation": "Tuff Wall"
   },
   {
     "key": "createWorld.customize.presets.title",
@@ -21548,20 +20516,12 @@
     "english_translation": "Pointer"
   },
   {
-    "key": "gamerule.playersNetherPortalCreativeDelay",
-    "english_translation": "Player's Nether portal delay in creative mode"
-  },
-  {
     "key": "block.minecraft.birch_button",
     "english_translation": "Birch Button"
   },
   {
     "key": "subtitles.weather.rain",
     "english_translation": "Rain falls"
-  },
-  {
-    "key": "gui.abuseReport.draft.title",
-    "english_translation": "Edit draft chat report?"
   },
   {
     "key": "gamerule.tntExplosionDropDecay",
@@ -21586,10 +20546,6 @@
   {
     "key": "subtitles.entity.camel.eat",
     "english_translation": "Camel eats"
-  },
-  {
-    "key": "block.minecraft.exposed_chiseled_copper",
-    "english_translation": "Exposed Chiseled Copper"
   },
   {
     "key": "subtitles.entity.wandering_trader.death",
@@ -21884,10 +20840,6 @@
     "english_translation": "Press up and down buttons to move to another entry"
   },
   {
-    "key": "mco.compatibility.upgrade.description",
-    "english_translation": "This world was last played in version %s; you are on version %s.\n\nA backup of your world will be saved under \"World backups\". Please restore your world if needed."
-  },
-  {
     "key": "block.minecraft.banner.straight_cross.brown",
     "english_translation": "Brown Cross"
   },
@@ -21926,10 +20878,6 @@
   {
     "key": "commands.drop.no_held_items",
     "english_translation": "Entity can't hold any items"
-  },
-  {
-    "key": "mco.errorMessage.realmsService.connectivity",
-    "english_translation": "Could not connect to Realms: %s"
   },
   {
     "key": "narrator.position.object_list",
@@ -22044,10 +20992,6 @@
     "english_translation": "OFF"
   },
   {
-    "key": "commands.tick.status.running",
-    "english_translation": "The game runs normally"
-  },
-  {
     "key": "item.minecraft.tipped_arrow.effect.levitation",
     "english_translation": "Arrow of Levitation"
   },
@@ -22124,14 +21068,6 @@
     "english_translation": "Magenta"
   },
   {
-    "key": "block.minecraft.exposed_copper_grate",
-    "english_translation": "Exposed Copper Grate"
-  },
-  {
-    "key": "subtitles.entity.breeze.shoot",
-    "english_translation": "Breeze shoots"
-  },
-  {
     "key": "subtitles.entity.villager.work_shepherd",
     "english_translation": "Shepherd works"
   },
@@ -22160,10 +21096,6 @@
     "english_translation": "Couldn't save screenshot: %s"
   },
   {
-    "key": "gamerule.maxCommandForkCount",
-    "english_translation": "Command context limit"
-  },
-  {
     "key": "parsing.quote.escape",
     "english_translation": "Invalid escape sequence '\\%s' in quoted string"
   },
@@ -22182,14 +21114,6 @@
   {
     "key": "biome.minecraft.dark_forest",
     "english_translation": "Dark Forest"
-  },
-  {
-    "key": "commands.random.reset.success",
-    "english_translation": "Reset random sequence %s"
-  },
-  {
-    "key": "block.minecraft.tuff_bricks",
-    "english_translation": "Tuff Bricks"
   },
   {
     "key": "entity.minecraft.trident",
@@ -22257,11 +21181,7 @@
   },
   {
     "key": "mco.selectServer.trial",
-    "english_translation": "Get a Trial!"
-  },
-  {
-    "key": "telemetry.event.optional.disabled",
-    "english_translation": "%s (Optional) - Disabled"
+    "english_translation": "Get a trial!"
   },
   {
     "key": "block.minecraft.yellow_stained_glass",
@@ -22309,7 +21229,7 @@
   },
   {
     "key": "gui.abuseReport.reason.defamation_impersonation_false_information",
-    "english_translation": "Defamation"
+    "english_translation": "Defamation, impersonation, or false information"
   },
   {
     "key": "block.minecraft.birch_sign",
@@ -22377,7 +21297,7 @@
   },
   {
     "key": "selectWorld.backupWarning.downgrade",
-    "english_translation": "This world was last played in version %s; you are on version %s. Downgrading a world could cause corruption - we cannot guarantee that it will load or work. If you still want to continue, please make a backup."
+    "english_translation": "This world was last played in version %s; you are on version %s. Downgrading a world could cause corruption - we cannot guarantee that it will load or work. If you still want to continue, please make a backup!"
   },
   {
     "key": "key.keyboard.keypad.add",
@@ -22398,10 +21318,6 @@
   {
     "key": "block.minecraft.banner.diagonal_up_left.yellow",
     "english_translation": "Yellow Per Bend Inverted"
-  },
-  {
-    "key": "options.language.title",
-    "english_translation": "Language"
   },
   {
     "key": "menu.generatingTerrain",
@@ -22434,10 +21350,6 @@
   {
     "key": "options.forceUnicodeFont",
     "english_translation": "Force Unicode Font"
-  },
-  {
-    "key": "block.minecraft.waxed_copper_grate",
-    "english_translation": "Waxed Copper Grate"
   },
   {
     "key": "block.minecraft.cobblestone",
@@ -22512,10 +21424,6 @@
     "english_translation": "Warden lands hit"
   },
   {
-    "key": "mco.snapshot.creating",
-    "english_translation": "Creating Snapshot Realm..."
-  },
-  {
     "key": "block.minecraft.magenta_terracotta",
     "english_translation": "Magenta Terracotta"
   },
@@ -22588,10 +21496,6 @@
     "english_translation": "Mojang"
   },
   {
-    "key": "commands.tick.status.lagging",
-    "english_translation": "The game is running, but can't keep up with the target tick rate"
-  },
-  {
     "key": "block.minecraft.yellow_bed",
     "english_translation": "Yellow Bed"
   },
@@ -22661,7 +21565,7 @@
   },
   {
     "key": "death.attack.sweetBerryBush.player",
-    "english_translation": "%1$s was poked to death by a sweet berry bush while trying to escape %2$s"
+    "english_translation": "%1$s was poked to death by a sweet berry bush whilst trying to escape %2$s"
   },
   {
     "key": "block.minecraft.prismarine_brick_stairs",
@@ -22670,10 +21574,6 @@
   {
     "key": "block.minecraft.ladder",
     "english_translation": "Ladder"
-  },
-  {
-    "key": "filled_map.explorer_jungle",
-    "english_translation": "Jungle Explorer Map"
   },
   {
     "key": "selectWorld.customizeType",
@@ -22736,16 +21636,8 @@
     "english_translation": "This world must be opened in an older version (like 1.6.4) to be safely converted"
   },
   {
-    "key": "container.crafter",
-    "english_translation": "Crafter"
-  },
-  {
     "key": "block.minecraft.banner.square_bottom_right.cyan",
     "english_translation": "Cyan Base Sinister Canton"
-  },
-  {
-    "key": "mco.snapshot.description",
-    "english_translation": "Paired with \"%s\""
   },
   {
     "key": "block.minecraft.banner.creeper.light_gray",
@@ -22846,10 +21738,6 @@
   {
     "key": "controls.reset",
     "english_translation": "Reset"
-  },
-  {
-    "key": "mco.snapshot.createSnapshotPopup.text",
-    "english_translation": "You are about to create a free Snapshot Realm that will be paired with your paid Realms subscription. This new Snapshot Realm will be accessible for as long as the paid subscription is active. Your paid Realm will not be affected."
   },
   {
     "key": "trim_pattern.minecraft.eye",
@@ -22973,7 +21861,7 @@
   },
   {
     "key": "mco.selectServer.create",
-    "english_translation": "Create Realm"
+    "english_translation": "Create realm"
   },
   {
     "key": "block.minecraft.banner.stripe_left.purple",
@@ -23021,7 +21909,7 @@
   },
   {
     "key": "death.attack.onFire.player",
-    "english_translation": "%1$s was burned to a crisp while fighting %2$s"
+    "english_translation": "%1$s was burnt to a crisp whilst fighting %2$s"
   },
   {
     "key": "subtitles.block.composter.empty",
@@ -23148,10 +22036,6 @@
     "english_translation": "Kill a mob near a Sculk Catalyst"
   },
   {
-    "key": "block.minecraft.polished_tuff_slab",
-    "english_translation": "Polished Tuff Slab"
-  },
-  {
     "key": "item.minecraft.prize_pottery_sherd",
     "english_translation": "Prize Pottery Sherd"
   },
@@ -23174,10 +22058,6 @@
   {
     "key": "item.minecraft.panda_spawn_egg",
     "english_translation": "Panda Spawn Egg"
-  },
-  {
-    "key": "commands.random.roll",
-    "english_translation": "%s rolled %s (from %s to %s)"
   },
   {
     "key": "block.minecraft.conduit",
@@ -23205,7 +22085,7 @@
   },
   {
     "key": "gui.abuseReport.reason.imminent_harm",
-    "english_translation": "Threat of harm to others"
+    "english_translation": "Imminent harm - Threat to harm others"
   },
   {
     "key": "mco.invites.nopending",
@@ -23280,10 +22160,6 @@
     "english_translation": "Customized worlds are no longer supported in this version of Minecraft. We can try to recreate it with the same seed and properties, but any terrain customizations will be lost. We're sorry for the inconvenience!"
   },
   {
-    "key": "block.minecraft.waxed_exposed_copper_bulb",
-    "english_translation": "Waxed Exposed Copper Bulb"
-  },
-  {
     "key": "block.minecraft.jungle_door",
     "english_translation": "Jungle Door"
   },
@@ -23350,10 +22226,6 @@
   {
     "key": "stat.minecraft.minecart_one_cm",
     "english_translation": "Distance by Minecart"
-  },
-  {
-    "key": "block.minecraft.waxed_exposed_copper_trapdoor",
-    "english_translation": "Waxed Exposed Copper Trapdoor"
   },
   {
     "key": "selectWorld.edit.backupSize",
@@ -23573,11 +22445,7 @@
   },
   {
     "key": "death.attack.inFire.player",
-    "english_translation": "%1$s walked into fire while fighting %2$s"
-  },
-  {
-    "key": "mco.snapshot.start",
-    "english_translation": "Start free Snapshot Realm"
+    "english_translation": "%1$s walked into fire whilst fighting %2$s"
   },
   {
     "key": "block.minecraft.prismarine",
@@ -23598,10 +22466,6 @@
   {
     "key": "entity.minecraft.panda",
     "english_translation": "Panda"
-  },
-  {
-    "key": "subtitles.entity.player.teleport",
-    "english_translation": "Player teleports"
   },
   {
     "key": "narration.button",
@@ -23709,7 +22573,7 @@
   },
   {
     "key": "telemetry_info.button.show_data",
-    "english_translation": "View My Data"
+    "english_translation": "Open My Data"
   },
   {
     "key": "subtitles.entity.zombie_villager.cure",
@@ -23732,10 +22596,6 @@
     "english_translation": "Players can't be ridden"
   },
   {
-    "key": "filled_map.explorer_swamp",
-    "english_translation": "Swamp Explorer Map"
-  },
-  {
     "key": "gamerule.doInsomnia",
     "english_translation": "Spawn phantoms"
   },
@@ -23753,7 +22613,7 @@
   },
   {
     "key": "mco.configure.world.buttons.close",
-    "english_translation": "Close Realm"
+    "english_translation": "Close realm"
   },
   {
     "key": "key.smoothCamera",
@@ -23785,7 +22645,7 @@
   },
   {
     "key": "mco.backup.entry.enabledPack",
-    "english_translation": "Enabled Pack(s)"
+    "english_translation": "Enabled Pack"
   },
   {
     "key": "commands.list.nameAndId",
@@ -23826,10 +22686,6 @@
   {
     "key": "block.minecraft.birch_sapling",
     "english_translation": "Birch Sapling"
-  },
-  {
-    "key": "subtitles.entity.breeze.idle_ground",
-    "english_translation": "Breeze whirs"
   },
   {
     "key": "gui.abuseReport.sent.title",
@@ -23874,10 +22730,6 @@
   {
     "key": "death.attack.hotFloor.player",
     "english_translation": "%1$s walked into the danger zone due to %2$s"
-  },
-  {
-    "key": "symlink_warning.message.pack",
-    "english_translation": "Loading packs with symbolic links can be unsafe if you don't know exactly what you are doing. Please visit %s to learn more."
   },
   {
     "key": "commands.spectate.success.started",
@@ -23954,10 +22806,6 @@
   {
     "key": "trim_pattern.minecraft.tide",
     "english_translation": "Tide Armor Trim"
-  },
-  {
-    "key": "dataPack.update_1_21.description",
-    "english_translation": "New features and content for Minecraft 1.21"
   },
   {
     "key": "block.minecraft.banner.stripe_middle.white",
@@ -24092,16 +22940,8 @@
     "english_translation": "Dead Horn Coral"
   },
   {
-    "key": "commands.function.scheduled.single",
-    "english_translation": "Running function %s"
-  },
-  {
     "key": "item.minecraft.suspicious_stew",
     "english_translation": "Suspicious Stew"
-  },
-  {
-    "key": "block.minecraft.waxed_weathered_copper_bulb",
-    "english_translation": "Waxed Weathered Copper Bulb"
   },
   {
     "key": "subtitles.block.bell.use",
@@ -24126,10 +22966,6 @@
   {
     "key": "subtitles.entity.zoglin.step",
     "english_translation": "Zoglin steps"
-  },
-  {
-    "key": "block.minecraft.weathered_copper_bulb",
-    "english_translation": "Weathered Copper Bulb"
   },
   {
     "key": "block.minecraft.pink_stained_glass",
@@ -24157,7 +22993,7 @@
   },
   {
     "key": "death.attack.fallingStalactite.player",
-    "english_translation": "%1$s was skewered by a falling stalactite while fighting %2$s"
+    "english_translation": "%1$s was skewered by a falling stalactite whilst fighting %2$s"
   },
   {
     "key": "block.minecraft.banner.stripe_middle.yellow",
@@ -24181,7 +23017,7 @@
   },
   {
     "key": "mco.configure.world.commandBlocks",
-    "english_translation": "Command Blocks"
+    "english_translation": "Command blocks"
   },
   {
     "key": "subtitles.entity.horse.breathe",
@@ -24213,7 +23049,7 @@
   },
   {
     "key": "mco.configure.world.subscription.title",
-    "english_translation": "Your Subscription"
+    "english_translation": "Your subscription"
   },
   {
     "key": "block.minecraft.banner.square_top_left.light_blue",
@@ -24284,10 +23120,6 @@
     "english_translation": "Spooky Scary Skeleton"
   },
   {
-    "key": "gui.abuseReport.draft.discard",
-    "english_translation": "Discard"
-  },
-  {
     "key": "block.minecraft.birch_pressure_plate",
     "english_translation": "Birch Pressure Plate"
   },
@@ -24297,7 +23129,7 @@
   },
   {
     "key": "mco.reset.world.generate",
-    "english_translation": "New World"
+    "english_translation": "New world"
   },
   {
     "key": "selectWorld.gameMode.creative",
@@ -24384,10 +23216,6 @@
     "english_translation": "Piglin Brute dies"
   },
   {
-    "key": "gui.abuseReport.draft.edit",
-    "english_translation": "Continue Editing"
-  },
-  {
     "key": "advancements.nether.use_lodestone.title",
     "english_translation": "Country Lode, Take Me Home"
   },
@@ -24426,10 +23254,6 @@
   {
     "key": "block.minecraft.banner.circle.gray",
     "english_translation": "Gray Roundel"
-  },
-  {
-    "key": "pack.dropRejected.message",
-    "english_translation": "The following entries were not valid packs and were not copied:\n %s"
   },
   {
     "key": "block.minecraft.banner.diagonal_up_left.gray",
@@ -24532,20 +23356,12 @@
     "english_translation": "Cyan Dye"
   },
   {
-    "key": "filled_map.village_plains",
-    "english_translation": "Plains Village Map"
-  },
-  {
     "key": "commands.gamerule.set",
     "english_translation": "Gamerule %s is now set to: %s"
   },
   {
     "key": "block.minecraft.banner.stripe_bottom.orange",
     "english_translation": "Orange Base"
-  },
-  {
-    "key": "selectWorld.resource_load",
-    "english_translation": "Preparing Resources..."
   },
   {
     "key": "title.singleplayer",
@@ -24704,20 +23520,12 @@
     "english_translation": "References to illegal drugs"
   },
   {
-    "key": "mco.compatibility.downgrade",
-    "english_translation": "Downgrade"
-  },
-  {
     "key": "item.minecraft.music_disc_ward.desc",
     "english_translation": "C418 - ward"
   },
   {
     "key": "subtitles.entity.mule.angry",
     "english_translation": "Mule neighs"
-  },
-  {
-    "key": "recover_world.title",
-    "english_translation": "Failed to load world"
   },
   {
     "key": "block.minecraft.light_gray_glazed_terracotta",
@@ -24744,16 +23552,12 @@
     "english_translation": "Game Rules"
   },
   {
-    "key": "block.minecraft.oxidized_copper_door",
-    "english_translation": "Oxidized Copper Door"
-  },
-  {
     "key": "options.fovEffectScale",
     "english_translation": "FOV Effects"
   },
   {
     "key": "options.chat.title",
-    "english_translation": "Chat Settings"
+    "english_translation": "Chat Settings..."
   },
   {
     "key": "subtitles.entity.ender_dragon.shoot",
@@ -24800,10 +23604,6 @@
     "english_translation": "When it snows, layers of snow form on the ground up to at most this number of layers."
   },
   {
-    "key": "block.minecraft.copper_grate",
-    "english_translation": "Copper Grate"
-  },
-  {
     "key": "subtitles.entity.warden.nearby_closest",
     "english_translation": "Warden draws close"
   },
@@ -24822,10 +23622,6 @@
   {
     "key": "block.minecraft.deepslate_iron_ore",
     "english_translation": "Deepslate Iron Ore"
-  },
-  {
-    "key": "gamerule.playersNetherPortalCreativeDelay.description",
-    "english_translation": "Time (in ticks) that a creative mode player needs to stand in a Nether portal before changing dimensions."
   },
   {
     "key": "death.attack.badRespawnPoint.message",
@@ -24900,14 +23696,6 @@
     "english_translation": "Graphics Device Unsupported"
   },
   {
-    "key": "item.minecraft.tide_armor_trim_smithing_template",
-    "english_translation": "Smithing Template"
-  },
-  {
-    "key": "commands.scoreboard.players.display.numberFormat.set.success.multiple",
-    "english_translation": "Changed number format for %s entities in %s"
-  },
-  {
     "key": "block.minecraft.banner.stripe_top.blue",
     "english_translation": "Blue Chief"
   },
@@ -24972,10 +23760,6 @@
     "english_translation": "Renderer detected: [%s]"
   },
   {
-    "key": "commands.function.error.parse",
-    "english_translation": "While instantiating macro %s: Command '%s' caused error: %s"
-  },
-  {
     "key": "block.minecraft.banner.half_horizontal.magenta",
     "english_translation": "Magenta Per Fess"
   },
@@ -25020,10 +23804,6 @@
     "english_translation": "Dead Bubble Coral Fan"
   },
   {
-    "key": "filled_map.village_desert",
-    "english_translation": "Desert Village Map"
-  },
-  {
     "key": "selectWorld.edit.backupFolder",
     "english_translation": "Open Backups Folder"
   },
@@ -25033,7 +23813,7 @@
   },
   {
     "key": "death.attack.fireworks.player",
-    "english_translation": "%1$s went off with a bang while fighting %2$s"
+    "english_translation": "%1$s went off with a bang whilst fighting %2$s"
   },
   {
     "key": "subtitles.entity.parrot.imitate.pillager",
@@ -25058,10 +23838,6 @@
   {
     "key": "item.minecraft.splash_potion.effect.strength",
     "english_translation": "Splash Potion of Strength"
-  },
-  {
-    "key": "jigsaw_block.placement_priority",
-    "english_translation": "Placement Priority:"
   },
   {
     "key": "effect.minecraft.night_vision",
@@ -25104,16 +23880,8 @@
     "english_translation": "Forest"
   },
   {
-    "key": "gui.abuseReport.send",
-    "english_translation": "Send Report"
-  },
-  {
     "key": "gui.abuseReport.reason.self_harm_or_suicide.description",
     "english_translation": "Someone is threatening to harm themselves in real life or talking about harming themselves in real life."
-  },
-  {
-    "key": "accessibility.onboarding.accessibility.button",
-    "english_translation": "Accessibility Settings..."
   },
   {
     "key": "commands.scoreboard.objectives.modify.displayname",
@@ -25149,7 +23917,7 @@
   },
   {
     "key": "mco.configure.world.delete.button",
-    "english_translation": "Delete Realm"
+    "english_translation": "Delete realm"
   },
   {
     "key": "telemetry.property.launcher_name.title",
@@ -25316,20 +24084,12 @@
     "english_translation": "Your graphics device is detected as unsupported for the %s graphics option.\n\nYou may ignore this and continue, however support will not be provided for your device if you choose to use %s graphics."
   },
   {
-    "key": "commands.tick.step.stop.success",
-    "english_translation": "A tick step interrupted"
-  },
-  {
     "key": "options.renderClouds",
     "english_translation": "Clouds"
   },
   {
     "key": "subtitles.entity.panda.cant_breed",
     "english_translation": "Panda bleats"
-  },
-  {
-    "key": "block.minecraft.waxed_chiseled_copper",
-    "english_translation": "Waxed Chiseled Copper"
   },
   {
     "key": "item.minecraft.chainmail_boots",
@@ -25412,10 +24172,6 @@
     "english_translation": "Ending minigame..."
   },
   {
-    "key": "gamerule.maxCommandForkCount.description",
-    "english_translation": "Maximum number of contexts that can be used by commands like 'execute as'."
-  },
-  {
     "key": "advancements.story.shiny_gear.title",
     "english_translation": "Cover Me with Diamonds"
   },
@@ -25445,7 +24201,7 @@
   },
   {
     "key": "mco.reset.world.title",
-    "english_translation": "Reset World"
+    "english_translation": "Reset world"
   },
   {
     "key": "telemetry.event.world_load_times.description",
@@ -25534,10 +24290,6 @@
   {
     "key": "options.biomeBlendRadius.3",
     "english_translation": "3x3 (Fast)"
-  },
-  {
-    "key": "subtitles.block.trial_spawner.spawn_mob",
-    "english_translation": "Mob spawns"
   },
   {
     "key": "commands.advancement.grant.one.to.one.failure",
@@ -25632,10 +24384,6 @@
     "english_translation": "Black Fess"
   },
   {
-    "key": "block.minecraft.tuff_brick_wall",
-    "english_translation": "Tuff Brick Wall"
-  },
-  {
     "key": "item.minecraft.spruce_chest_boat",
     "english_translation": "Spruce Boat with Chest"
   },
@@ -25646,10 +24394,6 @@
   {
     "key": "commands.give.failed.toomanyitems",
     "english_translation": "Can't give more than %s of %s"
-  },
-  {
-    "key": "options.accessibility",
-    "english_translation": "Accessibility Settings..."
   },
   {
     "key": "subtitles.entity.parrot.imitate.ravager",
@@ -25681,7 +24425,7 @@
   },
   {
     "key": "death.attack.genericKill.player",
-    "english_translation": "%1$s was killed while fighting %2$s"
+    "english_translation": "%1$s was killed whilst fighting %2$s"
   },
   {
     "key": "block.minecraft.orange_bed",
@@ -25750,10 +24494,6 @@
   {
     "key": "gui.abuseReport.reason.terrorism_or_violent_extremism.description",
     "english_translation": "Someone is talking about, promoting, or threatening to commit acts of terrorism or violent extremism for political, religious, ideological, or other reasons."
-  },
-  {
-    "key": "dataPack.trade_rebalance.name",
-    "english_translation": "Villager Trade Rebalance"
   },
   {
     "key": "subtitles.block.furnace.fire_crackle",
@@ -25848,10 +24588,6 @@
     "english_translation": "Torch fizzes"
   },
   {
-    "key": "commands.tick.step.success",
-    "english_translation": "Stepping %s tick(s)"
-  },
-  {
     "key": "entity.minecraft.villager.nitwit",
     "english_translation": "Nitwit"
   },
@@ -25940,10 +24676,6 @@
     "english_translation": "Player Wall Head"
   },
   {
-    "key": "options.chat",
-    "english_translation": "Chat Settings..."
-  },
-  {
     "key": "optimizeWorld.info.converted",
     "english_translation": "Upgraded chunks: %s"
   },
@@ -25956,10 +24688,6 @@
     "english_translation": "Miner Pottery Sherd"
   },
   {
-    "key": "subtitles.entity.breeze.slide",
-    "english_translation": "Breeze slides"
-  },
-  {
     "key": "block.minecraft.brown_glazed_terracotta",
     "english_translation": "Brown Glazed Terracotta"
   },
@@ -25969,7 +24697,7 @@
   },
   {
     "key": "mco.reset.world.template",
-    "english_translation": "World Templates"
+    "english_translation": "World templates"
   },
   {
     "key": "effect.minecraft.resistance",
@@ -25982,10 +24710,6 @@
   {
     "key": "subtitles.entity.zombie_villager.hurt",
     "english_translation": "Zombie Villager hurts"
-  },
-  {
-    "key": "commands.scoreboard.players.display.numberFormat.clear.success.single",
-    "english_translation": "Cleared number format for %s in %s"
   },
   {
     "key": "block.minecraft.cave_vines",
@@ -26006,10 +24730,6 @@
   {
     "key": "stat.minecraft.interact_with_smoker",
     "english_translation": "Interactions with Smoker"
-  },
-  {
-    "key": "block.minecraft.crafter",
-    "english_translation": "Crafter"
   },
   {
     "key": "createWorld.customize.flat.title",
@@ -26076,10 +24796,6 @@
     "english_translation": "Raw Porkchop"
   },
   {
-    "key": "pack.dropRejected.title",
-    "english_translation": "Non-pack entries"
-  },
-  {
     "key": "attribute.modifier.take.1",
     "english_translation": "-%s%% %s"
   },
@@ -26114,10 +24830,6 @@
   {
     "key": "argument.pos2d.incomplete",
     "english_translation": "Incomplete (expected 2 coordinates)"
-  },
-  {
-    "key": "filled_map.village_taiga",
-    "english_translation": "Taiga Village Map"
   },
   {
     "key": "block.minecraft.banner.triangles_bottom.red",
@@ -26194,10 +24906,6 @@
   {
     "key": "advancements.husbandry.ride_a_boat_with_a_goat.description",
     "english_translation": "Get in a Boat and float with a Goat"
-  },
-  {
-    "key": "commands.tick.query.rate.running",
-    "english_translation": "Target tick rate: %s per second.\nAverage time per tick: %sms (Target: %sms)"
   },
   {
     "key": "entity.minecraft.wolf",
