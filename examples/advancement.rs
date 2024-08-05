@@ -228,7 +228,7 @@ fn init_advancements(
 ) {
     let root_c = root_criteria.single();
     let root2_c = root2_criteria.single();
-    for (mut advancement_client_update, root_criteria, tab_change) in clients.iter_mut() {
+    for (mut advancement_client_update, root_criteria, tab_change) in &mut clients {
         for root_advancement in root_advancement_query.iter() {
             advancement_client_update.send_advancements(
                 root_advancement,
@@ -257,16 +257,21 @@ fn sneak(
         if sneaking.state == SneakState::Stop {
             continue;
         }
+
         let Ok((mut advancement_client_update, mut root_criteria_done)) =
             client.get_mut(sneaking.client)
         else {
             continue;
         };
+
         root_criteria_done.0 = !root_criteria_done.0;
-        match root_criteria_done.0 {
-            true => advancement_client_update.criteria_done(root_criteria),
-            false => advancement_client_update.criteria_undone(root_criteria),
+
+        if root_criteria_done.0 {
+            advancement_client_update.criteria_done(root_criteria)
+        } else {
+            advancement_client_update.criteria_undone(root_criteria)
         }
+
         client_save
             .0
             .get_mut(&client_uuid.get(sneaking.client).unwrap().0)
@@ -291,14 +296,12 @@ fn tab_change(
         else {
             continue;
         };
-        if let Some(ref opened) = tab_change.opened_tab {
+        if let Some(opened) = &tab_change.opened_tab {
             if opened.as_str() == "custom:root2" {
                 tab_change_count.0 += 1;
             } else {
                 continue;
             }
-        } else {
-            continue;
         }
         if tab_change_count.0 == 5 {
             advancement_client_update.criteria_done(root2_criteria);

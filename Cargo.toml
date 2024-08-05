@@ -11,6 +11,9 @@ keywords = ["minecraft", "gamedev", "server", "ecs"]
 categories = ["game-engines"]
 include = ["/src", "/benches", "/examples", "/README.md", "/LICENSE.txt"]
 
+[lints]
+workspace = true
+
 [features]
 default = [
     "advancement",
@@ -70,7 +73,7 @@ valence_world_border = { workspace = true, optional = true }
 [dev-dependencies]
 anyhow.workspace = true
 clap.workspace = true
-criterion.workspace = true
+divan.workspace = true
 flume.workspace = true
 noise.workspace = true     # For the terrain example.
 tracing.workspace = true
@@ -103,81 +106,81 @@ documentation = "https://docs.rs/valence/"
 license = "MIT"
 
 [workspace.dependencies]
-aes = "0.8.2"
-anyhow = { version = "1.0.70", features = ["backtrace"] }
+aes = "0.8.4"
+anyhow = { version = "1.0.86", features = ["backtrace"] }
 approx = "0.5.1"
-arrayvec = "0.7.2"
-async-trait = "0.1.60"
+arrayvec = "0.7.4"
+async-trait = "0.1.81"
 atty = "0.2.14"
-base64 = "0.21.0"
-bevy_app = { version = "0.12", default-features = false }
-bevy_derive = "0.12"
-bevy_ecs = { version = "0.12", default-features = false, features = [
-    "multi-threaded",
+base64 = "0.22.1"
+bevy_app = { version = "0.14.0", default-features = false }
+bevy_derive = "0.14.0"
+bevy_ecs = { version = "0.14.0", default-features = false, features = [
+    "multi_threaded",
 ] }
-bevy_hierarchy = { version = "0.12", default-features = false }
-bevy_log = { version = "0.12" }
-bevy_mod_debugdump = { version = "0.9.0", default-features = false }
-bevy_utils = { version = "0.12" }
-bitfield-struct = "0.5.3"
+bevy_hierarchy = { version = "0.14.0", default-features = false, features = ["bevy_app"] }
+bevy_log = { version = "0.14.0" }
+bevy_mod_debugdump = { version = "0.11.0" }
+bevy_utils = { version = "0.14.0" }
+bitfield-struct = "0.8.0"
 bitvec = "1.0.1"
-byteorder = "1.4.3"
-bytes = "1.2.1"
+byteorder = "1.5.0"
+bytes = "1.6.1"
 cesu8 = "1.1.0"
 cfb8 = "0.8.1"
-clap = { version = "4.0.30", features = ["derive"] }
-criterion = "0.5.1"
-derive_more = "1.0.0-beta.3"
-directories = "5.0.0"
-eframe = { version = "0.22.0", default-features = false }
-egui = "0.22.0"
-egui_dock = "0.6"
-flate2 = "1.0.24"
+clap = { version = "4.5.11", features = ["derive"] }
+derive_more = "1.0.0-beta.6"
+directories = "5.0.1"
+divan = "0.1.14"
+eframe = { version = "0.28.1" }
+egui = "0.28.1"
+egui_dock = "0.13"
+flate2 = "1.0.30"
 flume = "0.11.0"
-fs_extra = "1.2.0"
-glam = "0.26.0"
-heck = "0.5.0-rc.1"
+fs_extra = "1.3.0"
+glam = "0.28.0"
+heck = "0.5.0"
 hmac = "0.12.1"
-image = "0.24.6"
-indexmap = "2.2.1"
-itertools = "0.12.0"
+image = "0.25.2"
+indexmap = "2.2.6"
+itertools = "0.13.0"
 java_string = { path = "crates/java_string", version = "0.1.2" }
-lru = "0.12.0"
-noise = "0.8.2"
-num = "0.4.0"
-num-bigint = "0.4.3"
-owo-colors = "3.5.0"
-ordered-float = "4.1.1"
-parking_lot = "0.12.1"
-paste = "1.0.11"
-petgraph = "0.6.3"
-pretty_assertions = "1.3.0"
-proc-macro2 = "1.0.56"
-quote = "1.0.26"
+lru = "0.12.3"
+noise = "0.9.0"
+num = "0.4.3"
+num-bigint = "0.4.6"
+owo-colors = "4.0.0"
+ordered-float = "4.2.1"
+parking_lot = "0.12.3"
+paste = "1.0.15"
+petgraph = "0.6.5"
+pretty_assertions = "1.4.0"
+proc-macro2 = "1.0.86"
+quote = "1.0.36"
 rand = "0.8.5"
-rayon = "1.7.0"
-regex = "1.6.0"
-reqwest = { version = "0.11.12", default-features = false }
-rfd = "0.11.3"
-rsa = "0.9.2"
+rayon = "1.10.0"
+regex = "1.10.5"
+reqwest = { version = "0.12.5", default-features = false }
+rfd = "0.14.1"
+rsa = "0.9.6"
 rsa-der = "0.3.0"
-rustc-hash = "1.1.0"
-serde = "1.0.160"
+rustc-hash = "2.0.0"
+serde = "1.0.204"
 serde-value = "0.7.0"
-serde_json = "1.0.96"
-sha1 = "0.10.5"
-sha2 = "0.10.6"
-syn = "2.0.15"
-syntect = { version = "5.0.0", default-features = false }
-tempfile = "3.3.0"
-thiserror = "1.0.40"
-time = "0.3.17"
-tokio = { version = "1.27.0", features = ["full"] }
-toml = "0.7.2"
-tracing = "0.1.37"
-tracing-subscriber = "0.3.16"
-url = { version = "2.2.2", features = ["serde"] }
-uuid = "1.3.1"
+serde_json = "1.0.121"
+sha1 = "0.10.6"
+sha2 = "0.10.8"
+syn = "2.0.72"
+syntect = { version = "5.2.0", default-features = false }
+tempfile = "3.10.1"
+thiserror = "1.0.63"
+time = "0.3.36"
+tokio = { version = "1.39.2", features = ["full"] }
+toml = "0.8.16"
+tracing = "0.1.40"
+tracing-subscriber = "0.3.18"
+url = { version = "2.5.2", features = ["serde"] }
+uuid = "1.10.0"
 valence = { path = ".", version = "0.2.0-alpha.1" }
 valence_advancement = { path = "crates/valence_advancement", version = "0.2.0-alpha.1" }
 valence_anvil = { path = "crates/valence_anvil", version = "0.1.0" }
@@ -206,4 +209,111 @@ valence_server_common = { path = "crates/valence_server_common", version = "0.2.
 valence_text = { path = "crates/valence_text", version = "0.2.0-alpha.1" }
 valence_weather = { path = "crates/valence_weather", version = "0.2.0-alpha.1" }
 valence_world_border = { path = "crates/valence_world_border", version = "0.2.0-alpha.1" }
-zip = "0.6.3"
+zip = "2.1.5"
+
+[workspace.lints.rust]
+# missing_debug_implementations = "warn" # TODO: enable me.`
+# missing_docs = "warn"
+nonstandard_style = { level = "warn", priority = -1 }
+# rust_2018_idioms = { level = "warn", priority = -1 }
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(unstable_doc)'] }
+unreachable_pub = "warn"
+unused_import_braces = "warn"
+unused_lifetimes = "warn"
+
+[workspace.lints.clippy]
+alloc_instead_of_core = "warn"
+as_ptr_cast_mut = "warn"
+as_underscore = "warn"
+bool_to_int_with_if = "warn"
+case_sensitive_file_extension_comparisons = "warn"
+cast_lossless = "warn"
+checked_conversions = "warn"
+cloned_instead_of_copied = "warn"
+copy_iterator = "warn"
+dbg_macro = "warn"
+doc_link_with_quotes = "warn"
+doc_markdown = "warn"
+empty_enum_variants_with_brackets = "warn"
+empty_structs_with_brackets = "warn"
+explicit_deref_methods = "warn"
+explicit_into_iter_loop = "warn"
+explicit_iter_loop = "warn"
+filter_map_next = "warn"
+flat_map_option = "warn"
+format_push_string = "warn"
+from_iter_instead_of_collect = "warn"
+get_unwrap = "warn"
+# if_then_some_else_none = "warn" # TODO: Too many false positives.
+ignored_unit_patterns = "warn"
+impl_trait_in_params = "warn"
+implicit_clone = "warn"
+inconsistent_struct_constructor = "warn"
+inefficient_to_string = "warn"
+infinite_loop = "warn"
+into_iter_without_iter = "warn"
+invalid_upcast_comparisons = "warn"
+iter_filter_is_ok = "warn"
+iter_filter_is_some = "warn"
+iter_not_returning_iterator = "warn"
+# iter_over_hash_type = "warn" # TODO: enable me.
+iter_without_into_iter = "warn"
+large_stack_arrays = "warn"
+large_types_passed_by_value = "warn"
+macro_use_imports = "warn"
+manual_assert = "warn"
+manual_instant_elapsed = "warn"
+manual_is_variant_and = "warn"
+manual_let_else = "warn"
+manual_ok_or = "warn"
+manual_string_new = "warn"
+map_unwrap_or = "warn"
+match_bool = "warn"
+match_wildcard_for_single_variants = "warn"
+mismatching_type_param_order = "warn"
+missing_fields_in_debug = "warn"
+mixed_read_write_in_expression = "warn"
+mod_module_files = "warn"
+# multiple_inherent_impl = "warn" TODO: enable me.
+mut_mut = "warn"
+mutex_atomic = "warn"
+needless_bitwise_bool = "warn"
+needless_continue = "warn"
+needless_for_each = "warn"
+needless_raw_string_hashes = "warn"
+needless_raw_strings = "warn"
+negative_feature_names = "warn"
+no_mangle_with_rust_abi = "warn"
+option_as_ref_cloned = "warn"
+pub_underscore_fields = "warn"
+rc_buffer = "warn"
+rc_mutex = "warn"
+redundant_else = "warn"
+redundant_feature_names = "warn"
+ref_patterns = "warn"
+rest_pat_in_fully_bound_structs = "warn"
+semicolon_outside_block = "warn"
+str_to_string = "warn"
+string_lit_chars_any = "warn"
+string_to_string = "warn"
+struct_field_names = "warn"
+tests_outside_test_module = "warn"
+# todo = "warn"
+trivially_copy_pass_by_ref = "warn"
+try_err = "warn"
+type_complexity = "allow"
+# undocumented_unsafe_blocks = "warn"
+uninlined_format_args = "warn"
+unnecessary_join = "warn"
+# unnecessary_safety_doc = "warn"
+unnecessary_self_imports = "warn"
+unneeded_field_pattern = "warn"
+unnested_or_patterns = "warn"
+unseparated_literal_suffix = "warn"
+unused_self = "warn"
+used_underscore_binding = "warn"
+wildcard_dependencies = "warn"
+zero_sized_map_values = "warn"
+
+[workspace.lints.rustdoc]
+unescaped_backticks = "warn"

@@ -31,7 +31,7 @@ pub(crate) unsafe fn next_code_point<'a, I: Iterator<Item = &'a u8>>(bytes: &mut
     // Decode UTF-8
     let x = *bytes.next()?;
     if x < 128 {
-        return Some(x as u32);
+        return Some(x.into());
     }
 
     // Multibyte case follows
@@ -48,7 +48,7 @@ pub(crate) unsafe fn next_code_point<'a, I: Iterator<Item = &'a u8>>(bytes: &mut
         // SAFETY: `bytes` produces an UTF-8-like string,
         // so the iterator must produce a value here.
         let z = unsafe { *bytes.next().unwrap_unchecked() };
-        let y_z = utf8_acc_cont_byte((y & CONT_MASK) as u32, z);
+        let y_z = utf8_acc_cont_byte((y & CONT_MASK).into(), z);
         ch = init << 12 | y_z;
         if x >= 0xf0 {
             // [x y z w] case
@@ -72,7 +72,7 @@ pub(crate) unsafe fn next_code_point_reverse<'a, I: DoubleEndedIterator<Item = &
 ) -> Option<u32> {
     // Decode UTF-8
     let w = match *bytes.next_back()? {
-        next_byte if next_byte < 128 => return Some(next_byte as u32),
+        next_byte if next_byte < 128 => return Some(next_byte.into()),
         back_byte => back_byte,
     };
 
@@ -258,7 +258,7 @@ pub(crate) const fn utf8_char_width(first_byte: u8) -> usize {
         4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     ];
 
-    UTF8_CHAR_WIDTH[first_byte as usize] as _
+    UTF8_CHAR_WIDTH[first_byte as usize] as usize
 }
 
 #[inline]
@@ -284,11 +284,7 @@ pub(crate) fn slice_error_fail(s: &JavaStr, begin: usize, end: usize) -> ! {
     // 2. begin <= end
     assert!(
         begin <= end,
-        "begin <= end ({} <= {}) when slicing `{}`{}",
-        begin,
-        end,
-        s_trunc,
-        ellipsis
+        "begin <= end ({begin} <= {end}) when slicing `{s_trunc}`{ellipsis}",
     );
 
     // 3. character boundary
@@ -303,8 +299,8 @@ pub(crate) fn slice_error_fail(s: &JavaStr, begin: usize, end: usize) -> ! {
     let ch = s[char_start..].chars().next().unwrap();
     let char_range = char_start..char_start + ch.len_utf8();
     panic!(
-        "byte index {} is not a char boundary; it is inside {:?} (bytes {:?}) of `{}`{}",
-        index, ch, char_range, s_trunc, ellipsis
+        "byte index {index} is not a char boundary; it is inside {ch:?} (bytes {char_range:?}) of \
+         `{s_trunc}`{ellipsis}",
     );
 }
 

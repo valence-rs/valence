@@ -40,7 +40,7 @@ pub struct AnvilLevel {
 }
 
 impl AnvilLevel {
-    pub fn new(world_root: impl Into<PathBuf>, biomes: &BiomeRegistry) -> Self {
+    pub fn new<R: Into<PathBuf>>(world_root: R, biomes: &BiomeRegistry) -> Self {
         let (pending_sender, pending_receiver) = flume::unbounded();
         let (finished_sender, finished_receiver) = flume::bounded(4096);
 

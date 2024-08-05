@@ -7,20 +7,12 @@ use crate::parsers::{CommandArg, CommandArgParseError, ParseInput};
 impl CommandArg for String {
     fn parse_arg(input: &mut ParseInput) -> Result<Self, CommandArgParseError> {
         input.skip_whitespace();
-        Ok(input.pop_word().to_string())
+        Ok(input.pop_word().to_owned())
     }
 
     fn display() -> Parser {
         Parser::String(StringArg::SingleWord)
     }
-}
-
-#[test]
-fn test_string() {
-    let mut input = ParseInput::new("hello world");
-    assert_eq!("hello", String::parse_arg(&mut input).unwrap());
-    assert_eq!("world", String::parse_arg(&mut input).unwrap());
-    assert!(input.is_done());
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Deref)]
@@ -34,23 +26,13 @@ impl CommandArg for GreedyString {
                 Some(s) => s,
                 None => return Err(CommandArgParseError::InvalidArgLength),
             }
-            .to_string(),
+            .to_owned(),
         ))
     }
 
     fn display() -> Parser {
         Parser::String(StringArg::GreedyPhrase)
     }
-}
-
-#[test]
-fn test_greedy_string() {
-    let mut input = ParseInput::new("hello world");
-    assert_eq!(
-        "hello world",
-        GreedyString::parse_arg(&mut input).unwrap().0
-    );
-    assert!(input.is_done());
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Deref)]
@@ -88,20 +70,42 @@ impl CommandArg for QuotableString {
     }
 }
 
-#[test]
-fn test_quotable_string() {
-    let mut input = ParseInput::new("\"hello world\"");
-    assert_eq!(
-        "hello world",
-        QuotableString::parse_arg(&mut input).unwrap().0
-    );
-    assert!(input.is_done());
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    let mut input = ParseInput::new("\"hello w\"orld");
-    assert_eq!("hello w", QuotableString::parse_arg(&mut input).unwrap().0);
-    assert!(!input.is_done());
+    #[test]
+    fn test_quotable_string() {
+        let mut input = ParseInput::new("\"hello world\"");
+        assert_eq!(
+            "hello world",
+            QuotableString::parse_arg(&mut input).unwrap().0
+        );
+        assert!(input.is_done());
 
-    let mut input = ParseInput::new("hello world\"");
-    assert_eq!("hello", QuotableString::parse_arg(&mut input).unwrap().0);
-    assert!(!input.is_done());
+        let mut input = ParseInput::new("\"hello w\"orld");
+        assert_eq!("hello w", QuotableString::parse_arg(&mut input).unwrap().0);
+        assert!(!input.is_done());
+
+        let mut input = ParseInput::new("hello world\"");
+        assert_eq!("hello", QuotableString::parse_arg(&mut input).unwrap().0);
+        assert!(!input.is_done());
+    }
+
+    #[test]
+    fn test_greedy_string() {
+        let mut input = ParseInput::new("hello world");
+        assert_eq!(
+            "hello world",
+            GreedyString::parse_arg(&mut input).unwrap().0
+        );
+        assert!(input.is_done());
+    }
+    #[test]
+    fn test_string() {
+        let mut input = ParseInput::new("hello world");
+        assert_eq!("hello", String::parse_arg(&mut input).unwrap());
+        assert_eq!("world", String::parse_arg(&mut input).unwrap());
+        assert!(input.is_done());
+    }
 }

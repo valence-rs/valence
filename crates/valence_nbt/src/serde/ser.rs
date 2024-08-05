@@ -61,11 +61,12 @@ where
 
 macro_rules! unsupported {
     ($lit:literal) => {
-        Err(Error::new(concat!("unsupported type: ", $lit)))
+        Err(Error::new_static(concat!("unsupported type: ", $lit)))
     };
 }
 
 /// [`Serializer`] whose output is [`Compound`].
+#[derive(Debug)]
 pub struct CompoundSerializer;
 
 impl Serializer for CompoundSerializer {
@@ -147,9 +148,9 @@ impl Serializer for CompoundSerializer {
         unsupported!("none")
     }
 
-    fn serialize_some<T: ?Sized>(self, _value: &T) -> Result<Self::Ok, Self::Error>
+    fn serialize_some<T>(self, _value: &T) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         unsupported!("some")
     }
@@ -171,18 +172,18 @@ impl Serializer for CompoundSerializer {
         unsupported!("unit variant")
     }
 
-    fn serialize_newtype_struct<T: ?Sized>(
+    fn serialize_newtype_struct<T>(
         self,
         _name: &'static str,
         _value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         unsupported!("newtype struct")
     }
 
-    fn serialize_newtype_variant<T: ?Sized>(
+    fn serialize_newtype_variant<T>(
         self,
         _name: &'static str,
         _variant_index: u32,
@@ -190,7 +191,7 @@ impl Serializer for CompoundSerializer {
         _value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         unsupported!("newtype variant")
     }
@@ -267,7 +268,7 @@ impl Serializer for ValueSerializer {
     type SerializeStructVariant = Impossible<Self::Ok, Self::Error>;
 
     fn serialize_bool(self, v: bool) -> Result<Self::Ok, Self::Error> {
-        Ok(Value::Byte(v as _))
+        Ok(Value::Byte(v.into()))
     }
 
     fn serialize_i8(self, v: i8) -> Result<Self::Ok, Self::Error> {
@@ -287,19 +288,19 @@ impl Serializer for ValueSerializer {
     }
 
     fn serialize_u8(self, v: u8) -> Result<Self::Ok, Self::Error> {
-        Ok(Value::Byte(v as _))
+        Ok(Value::Byte(v as i8))
     }
 
     fn serialize_u16(self, v: u16) -> Result<Self::Ok, Self::Error> {
-        Ok(Value::Short(v as _))
+        Ok(Value::Short(v as i16))
     }
 
     fn serialize_u32(self, v: u32) -> Result<Self::Ok, Self::Error> {
-        Ok(Value::Int(v as _))
+        Ok(Value::Int(v as i32))
     }
 
     fn serialize_u64(self, v: u64) -> Result<Self::Ok, Self::Error> {
-        Ok(Value::Long(v as _))
+        Ok(Value::Long(v as i64))
     }
 
     fn serialize_f32(self, v: f32) -> Result<Self::Ok, Self::Error> {
@@ -326,9 +327,9 @@ impl Serializer for ValueSerializer {
         unsupported!("none")
     }
 
-    fn serialize_some<T: ?Sized>(self, value: &T) -> Result<Self::Ok, Self::Error>
+    fn serialize_some<T>(self, value: &T) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         value.serialize(self)
     }
@@ -350,18 +351,18 @@ impl Serializer for ValueSerializer {
         Ok(Value::String(variant.into()))
     }
 
-    fn serialize_newtype_struct<T: ?Sized>(
+    fn serialize_newtype_struct<T>(
         self,
         _name: &'static str,
         value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         value.serialize(self)
     }
 
-    fn serialize_newtype_variant<T: ?Sized>(
+    fn serialize_newtype_variant<T>(
         self,
         _name: &'static str,
         _variant_index: u32,
@@ -369,7 +370,7 @@ impl Serializer for ValueSerializer {
         _value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         unsupported!("newtype variant")
     }
@@ -446,9 +447,9 @@ impl SerializeSeq for ValueSerializeSeq {
 
     type Error = Error;
 
-    fn serialize_element<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
+    fn serialize_element<T>(&mut self, value: &T) -> Result<(), Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         macro_rules! serialize_variant {
             ($variant:ident, $vec:ident, $elem:ident) => {{
@@ -457,7 +458,7 @@ impl SerializeSeq for ValueSerializeSeq {
                         $vec.push(val);
                         Ok(())
                     }
-                    _ => Err(Error::new(concat!(
+                    _ => Err(Error::new_static(concat!(
                         "heterogeneous NBT list (expected `",
                         stringify!($variant),
                         "` element)"
@@ -526,6 +527,7 @@ impl SerializeSeq for ValueSerializeSeq {
 }
 
 #[doc(hidden)]
+#[derive(Debug)]
 pub struct GenericSerializeMap<Ok> {
     /// Temp storage for `serialize_key`.
     key: Option<String>,
@@ -551,9 +553,9 @@ where
 
     type Error = Error;
 
-    fn serialize_key<T: ?Sized>(&mut self, key: &T) -> Result<(), Self::Error>
+    fn serialize_key<T>(&mut self, key: &T) -> Result<(), Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         debug_assert!(
             self.key.is_none(),
@@ -565,13 +567,13 @@ where
                 self.key = Some(s);
                 Ok(())
             }
-            _ => Err(Error::new("invalid map key type (expected string)")),
+            _ => Err(Error::new_static("invalid map key type (expected string)")),
         }
     }
 
-    fn serialize_value<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
+    fn serialize_value<T>(&mut self, value: &T) -> Result<(), Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         let key = self
             .key
@@ -587,6 +589,7 @@ where
 }
 
 #[doc(hidden)]
+#[derive(Debug)]
 pub struct GenericSerializeStruct<Ok> {
     c: Compound,
     _marker: PhantomData<Ok>,
@@ -609,13 +612,9 @@ where
 
     type Error = Error;
 
-    fn serialize_field<T: ?Sized>(
-        &mut self,
-        key: &'static str,
-        value: &T,
-    ) -> Result<(), Self::Error>
+    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         self.c.insert(key, value.serialize(ValueSerializer)?);
         Ok(())

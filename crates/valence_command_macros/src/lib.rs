@@ -18,21 +18,16 @@ fn command(input: DeriveInput) -> Result<TokenStream> {
     let outer_scopes = input
         .attrs
         .iter()
-        .filter_map(|attr| get_lit_list_attr(attr, "scopes"))
-        .next()
-        .unwrap_or(Vec::new());
+        .find_map(|attr| get_lit_list_attr(attr, "scopes"))
+        .unwrap_or_default();
 
     match input.data {
-        Data::Enum(ref data_enum) => {
-            let mut alias_paths = match input.attrs.iter().filter_map(parse_path).next() {
-                // there should only be one base command name set
-                Some(paths) => paths,
-                None => {
-                    return Err(Error::new_spanned(
-                        input_name,
-                        "No paths attribute found for command enum",
-                    ))
-                }
+        Data::Enum(data_enum) => {
+            let Some(mut alias_paths) = input.attrs.iter().find_map(parse_path) else {
+                return Err(Error::new_spanned(
+                    input_name,
+                    "No paths attribute found for command enum",
+                ));
             };
 
             let base_path = alias_paths.remove(0);
@@ -41,7 +36,7 @@ fn command(input: DeriveInput) -> Result<TokenStream> {
             let mut paths = Vec::new();
 
             for variant in fields {
-                for attr in variant.attrs.iter() {
+                for attr in &variant.attrs {
                     if let Some(attr_paths) = parse_path(attr) {
                         paths.push((attr_paths, variant.fields.clone(), variant.ident.clone()));
                     }
@@ -140,7 +135,7 @@ fn command(input: DeriveInput) -> Result<TokenStream> {
         Data::Struct(x) => {
             let mut paths = Vec::new();
 
-            for attr in input.attrs.iter() {
+            for attr in &input.attrs {
                 if let Some(attr_paths) = parse_path(attr) {
                     paths.push(attr_paths);
                 }
@@ -277,7 +272,7 @@ fn process_paths_enum(
 
                     // get what is inside the Option<...>
                     let option_inner = match field_type {
-                        syn::Type::Path(ref type_path) => {
+                        syn::Type::Path(type_path) => {
                             let path = &type_path.path;
                             if path.segments.len() != 1 {
                                 return Error::new_spanned(
@@ -295,7 +290,7 @@ fn process_paths_enum(
                                 .into_compile_error();
                             }
                             match &segment.arguments {
-                                syn::PathArguments::AngleBracketed(ref angle_bracketed) => {
+                                syn::PathArguments::AngleBracketed(angle_bracketed) => {
                                     if angle_bracketed.args.len() != 1 {
                                         return Error::new_spanned(
                                             angle_bracketed,
@@ -304,9 +299,7 @@ fn process_paths_enum(
                                         .into_compile_error();
                                     }
                                     match angle_bracketed.args.first().unwrap() {
-                                        syn::GenericArgument::Type(ref generic_type) => {
-                                            generic_type
-                                        }
+                                        syn::GenericArgument::Type(generic_type) => generic_type,
                                         _ => {
                                             return Error::new_spanned(
                                                 angle_bracketed,
@@ -485,7 +478,7 @@ fn process_paths_struct(
 
                     // get what is inside the Option<...>
                     let option_inner = match field_type {
-                        syn::Type::Path(ref type_path) => {
+                        syn::Type::Path(type_path) => {
                             let path = &type_path.path;
                             if path.segments.len() != 1 {
                                 return Error::new_spanned(
@@ -503,7 +496,7 @@ fn process_paths_struct(
                                 .into_compile_error();
                             }
                             match &segment.arguments {
-                                syn::PathArguments::AngleBracketed(ref angle_bracketed) => {
+                                syn::PathArguments::AngleBracketed(angle_bracketed) => {
                                     if angle_bracketed.args.len() != 1 {
                                         return Error::new_spanned(
                                             angle_bracketed,
@@ -512,9 +505,7 @@ fn process_paths_struct(
                                         .into_compile_error();
                                     }
                                     match angle_bracketed.args.first().unwrap() {
-                                        syn::GenericArgument::Type(ref generic_type) => {
-                                            generic_type
-                                        }
+                                        syn::GenericArgument::Type(generic_type) => generic_type,
                                         _ => {
                                             return Error::new_spanned(
                                                 angle_bracketed,
@@ -624,24 +615,21 @@ fn parse_path(path: &Attribute) -> Option<Vec<(Vec<CommandArg>, bool)>> {
         let mut args = Vec::new();
         let at_root = path_str.starts_with("{/}");
 
-        for word in path_str
-            .split_whitespace()
-            .skip(if at_root { 1 } else { 0 })
-        {
+        for word in path_str.split_whitespace().skip(usize::from(at_root)) {
             if word.starts_with('{') && word.ends_with('}') {
                 if word.ends_with("?}") {
                     args.push(CommandArg::Optional(format_ident!(
                         "{}",
-                        word[1..word.len() - 2].to_string()
+                        word[1..word.len() - 2].to_owned()
                     )));
                 } else {
                     args.push(CommandArg::Required(format_ident!(
                         "{}",
-                        word[1..word.len() - 1].to_string()
+                        word[1..word.len() - 1].to_owned()
                     )));
                 }
             } else {
-                args.push(CommandArg::Literal(word.to_string()));
+                args.push(CommandArg::Literal(word.to_owned()));
             }
         }
         paths.push((args, at_root));
@@ -651,21 +639,21 @@ fn parse_path(path: &Attribute) -> Option<Vec<(Vec<CommandArg>, bool)>> {
 }
 
 fn get_lit_list_attr(attr: &Attribute, ident: &str) -> Option<Vec<String>> {
-    match attr.meta {
-        Meta::NameValue(ref key_value) => {
+    match &attr.meta {
+        Meta::NameValue(key_value) => {
             if !key_value.path.is_ident(ident) {
                 return None;
             }
 
-            match key_value.value {
-                Expr::Lit(ref lit) => match lit.lit {
-                    syn::Lit::Str(ref lit_str) => Some(vec![lit_str.value()]),
+            match &key_value.value {
+                Expr::Lit(lit) => match &lit.lit {
+                    syn::Lit::Str(lit_str) => Some(vec![lit_str.value()]),
                     _ => None,
                 },
                 _ => None,
             }
         }
-        Meta::List(ref list) => {
+        Meta::List(list) => {
             if !list.path.is_ident(ident) {
                 return None;
             }
@@ -686,7 +674,7 @@ fn get_lit_list_attr(attr: &Attribute, ident: &str) -> Option<Vec<String>> {
                                 .unwrap()
                                 .strip_suffix('"')
                                 .unwrap()
-                                .to_string(),
+                                .to_owned(),
                         );
                         comma_next = true;
                     }
@@ -701,6 +689,6 @@ fn get_lit_list_attr(attr: &Attribute, ident: &str) -> Option<Vec<String>> {
             }
             Some(path_strings)
         }
-        _ => None,
+        Meta::Path(_) => None,
     }
 }

@@ -6,9 +6,8 @@ use crate::weather::{Rain, Thunder, WeatherBundle};
 fn test_client_initialization_on_join() {
     let ScenarioSingleClient {
         mut app,
-        client: _,
         mut helper,
-        layer: _,
+        ..
     } = prepare(true);
 
     app.update();
@@ -23,9 +22,8 @@ fn test_client_initialization_on_join() {
 fn test_chunk_layer_initialization_on_join() {
     let ScenarioSingleClient {
         mut app,
-        client: _,
         mut helper,
-        layer: _,
+        ..
     } = prepare(false);
 
     app.update();
@@ -42,7 +40,7 @@ fn test_client_rain_change() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = prepare(true);
 
     app.update();
@@ -50,7 +48,7 @@ fn test_client_rain_change() {
     helper.clear_received();
 
     // Change the rain value
-    let mut rain = app.world.get_mut::<Rain>(client).unwrap();
+    let mut rain = app.world_mut().get_mut::<Rain>(client).unwrap();
     rain.0 = 1.0;
 
     app.update();
@@ -66,7 +64,7 @@ fn test_client_thunder_change() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = prepare(true);
 
     app.update();
@@ -74,7 +72,7 @@ fn test_client_thunder_change() {
     helper.clear_received();
 
     // Change the thunder value
-    let mut thunder = app.world.get_mut::<Thunder>(client).unwrap();
+    let mut thunder = app.world_mut().get_mut::<Thunder>(client).unwrap();
     thunder.0 = 1.0;
 
     app.update();
@@ -88,9 +86,9 @@ fn test_client_thunder_change() {
 fn test_chunk_layer_rain_change() {
     let ScenarioSingleClient {
         mut app,
-        client: _,
         mut helper,
         layer,
+        ..
     } = prepare(false);
 
     app.update();
@@ -98,7 +96,7 @@ fn test_chunk_layer_rain_change() {
     helper.clear_received();
 
     // Change the rain value
-    let mut rain = app.world.get_mut::<Rain>(layer).unwrap();
+    let mut rain = app.world_mut().get_mut::<Rain>(layer).unwrap();
     rain.0 = 1.0;
 
     app.update();
@@ -112,9 +110,9 @@ fn test_chunk_layer_rain_change() {
 fn test_chunk_layer_thunder_change() {
     let ScenarioSingleClient {
         mut app,
-        client: _,
         mut helper,
         layer,
+        ..
     } = prepare(false);
 
     app.update();
@@ -122,7 +120,7 @@ fn test_chunk_layer_thunder_change() {
     helper.clear_received();
 
     // Change the thunder value
-    let mut thunder = app.world.get_mut::<Thunder>(layer).unwrap();
+    let mut thunder = app.world_mut().get_mut::<Thunder>(layer).unwrap();
     thunder.0 = 1.0;
 
     app.update();
@@ -150,14 +148,17 @@ fn prepare(client_weather: bool) -> ScenarioSingleClient {
 }
 
 fn add_weather_to_client(s: &mut ScenarioSingleClient) {
-    s.app.world.entity_mut(s.client).insert(WeatherBundle {
-        rain: Rain(0.5),
-        thunder: Thunder(0.5),
-    });
+    s.app
+        .world_mut()
+        .entity_mut(s.client)
+        .insert(WeatherBundle {
+            rain: Rain(0.5),
+            thunder: Thunder(0.5),
+        });
 }
 
 fn add_weather_to_chunk_layer(s: &mut ScenarioSingleClient) {
-    s.app.world.entity_mut(s.layer).insert(WeatherBundle {
+    s.app.world_mut().entity_mut(s.layer).insert(WeatherBundle {
         rain: Rain(0.5),
         thunder: Thunder(0.5),
     });

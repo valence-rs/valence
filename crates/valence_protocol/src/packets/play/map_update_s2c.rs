@@ -71,7 +71,7 @@ impl Encode for MapUpdateS2c<'_> {
         self.icons.encode(&mut w)?;
 
         match self.data {
-            None => 0u8.encode(&mut w)?,
+            None => 0_u8.encode(&mut w)?,
             Some(data) => data.encode(&mut w)?,
         }
 

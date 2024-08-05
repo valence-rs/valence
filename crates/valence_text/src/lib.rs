@@ -249,7 +249,10 @@ pub enum Font {
 #[allow(clippy::self_named_constructors)]
 impl Text {
     /// Constructs a new plain text object.
-    pub fn text(plain: impl Into<Cow<'static, str>>) -> Self {
+    pub fn text<P>(plain: P) -> Self
+    where
+        P: Into<Cow<'static, str>>,
+    {
         Self(Box::new(TextInner {
             content: TextContent::Text { text: plain.into() },
             ..Default::default()
@@ -258,7 +261,11 @@ impl Text {
 
     /// Create translated text based on the given translation key, with extra
     /// text components to be inserted into the slots of the translation text.
-    pub fn translate(key: impl Into<Cow<'static, str>>, with: impl Into<Vec<Text>>) -> Self {
+    pub fn translate<K, W>(key: K, with: W) -> Self
+    where
+        K: Into<Cow<'static, str>>,
+        W: Into<Vec<Text>>,
+    {
         Self(Box::new(TextInner {
             content: TextContent::Translate {
                 translate: key.into(),
@@ -269,11 +276,11 @@ impl Text {
     }
 
     /// Create a score from the scoreboard with an optional custom value.
-    pub fn score(
-        name: impl Into<Cow<'static, str>>,
-        objective: impl Into<Cow<'static, str>>,
-        value: Option<Cow<'static, str>>,
-    ) -> Self {
+    pub fn score<N, O>(name: N, objective: O, value: Option<Cow<'static, str>>) -> Self
+    where
+        N: Into<Cow<'static, str>>,
+        O: Into<Cow<'static, str>>,
+    {
         Self(Box::new(TextInner {
             content: TextContent::ScoreboardValue {
                 score: ScoreboardValueContent {
@@ -288,7 +295,10 @@ impl Text {
 
     /// Creates a text component for selecting entity names with an optional
     /// custom separator.
-    pub fn selector(selector: impl Into<Cow<'static, str>>, separator: Option<Text>) -> Self {
+    pub fn selector<S>(selector: S, separator: Option<Text>) -> Self
+    where
+        S: Into<Cow<'static, str>>,
+    {
         Self(Box::new(TextInner {
             content: TextContent::EntityNames {
                 selector: selector.into(),
@@ -302,7 +312,10 @@ impl Text {
     /// [`keybind identifier`].
     ///
     /// [`keybind identifier`]: https://minecraft.wiki/w/Controls#Configurable_controls
-    pub fn keybind(keybind: impl Into<Cow<'static, str>>) -> Self {
+    pub fn keybind<K>(keybind: K) -> Self
+    where
+        K: Into<Cow<'static, str>>,
+    {
         Self(Box::new(TextInner {
             content: TextContent::Keybind {
                 keybind: keybind.into(),
@@ -312,12 +325,16 @@ impl Text {
     }
 
     /// Creates a text component for a block NBT tag.
-    pub fn block_nbt(
-        block: impl Into<Cow<'static, str>>,
-        nbt: impl Into<Cow<'static, str>>,
+    pub fn block_nbt<B, N>(
+        block: B,
+        nbt: N,
         interpret: Option<bool>,
         separator: Option<Text>,
-    ) -> Self {
+    ) -> Self
+    where
+        B: Into<Cow<'static, str>>,
+        N: Into<Cow<'static, str>>,
+    {
         Self(Box::new(TextInner {
             content: TextContent::BlockNbt {
                 block: block.into(),
@@ -330,12 +347,16 @@ impl Text {
     }
 
     /// Creates a text component for an entity NBT tag.
-    pub fn entity_nbt(
-        entity: impl Into<Cow<'static, str>>,
-        nbt: impl Into<Cow<'static, str>>,
+    pub fn entity_nbt<E, N>(
+        entity: E,
+        nbt: N,
         interpret: Option<bool>,
         separator: Option<Text>,
-    ) -> Self {
+    ) -> Self
+    where
+        E: Into<Cow<'static, str>>,
+        N: Into<Cow<'static, str>>,
+    {
         Self(Box::new(TextInner {
             content: TextContent::EntityNbt {
                 entity: entity.into(),
@@ -348,12 +369,16 @@ impl Text {
     }
 
     /// Creates a text component for a command storage NBT tag.
-    pub fn storage_nbt(
-        storage: impl Into<Ident<Cow<'static, str>>>,
-        nbt: impl Into<Cow<'static, str>>,
+    pub fn storage_nbt<S, N>(
+        storage: S,
+        nbt: N,
         interpret: Option<bool>,
         separator: Option<Text>,
-    ) -> Self {
+    ) -> Self
+    where
+        S: Into<Ident<Cow<'static, str>>>,
+        N: Into<Cow<'static, str>>,
+    {
         Self(Box::new(TextInner {
             content: TextContent::StorageNbt {
                 storage: storage.into(),
@@ -617,7 +642,7 @@ impl<'de> Deserialize<'de> for Text {
             }
 
             fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
-                Ok(Text::text(v.to_string()))
+                Ok(Text::text(v.to_owned()))
             }
 
             fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {

@@ -83,7 +83,7 @@ fn handle_client_command(
                     sneaking_events.send(SneakEvent {
                         client: packet.client,
                         state: SneakState::Start,
-                    })
+                    });
                 }
                 ClientCommand::StopSneaking => {
                     if let Ok((mut pose, mut flags)) = clients.get_mut(packet.client) {
@@ -94,11 +94,13 @@ fn handle_client_command(
                     sneaking_events.send(SneakEvent {
                         client: packet.client,
                         state: SneakState::Stop,
-                    })
+                    });
                 }
-                ClientCommand::LeaveBed => leave_bed_events.send(LeaveBedEvent {
-                    client: packet.client,
-                }),
+                ClientCommand::LeaveBed => {
+                    leave_bed_events.send(LeaveBedEvent {
+                        client: packet.client,
+                    });
+                }
                 ClientCommand::StartSprinting => {
                     if let Ok((_, mut flags)) = clients.get_mut(packet.client) {
                         flags.set_sprinting(true);
@@ -117,7 +119,7 @@ fn handle_client_command(
                     sprinting_events.send(SprintEvent {
                         client: packet.client,
                         state: SprintState::Stop,
-                    })
+                    });
                 }
                 ClientCommand::StartJumpWithHorse => {
                     jump_with_horse_events.send(JumpWithHorseEvent {
@@ -125,13 +127,13 @@ fn handle_client_command(
                         state: JumpWithHorseState::Start {
                             power: pkt.jump_boost.0 as u8,
                         },
-                    })
+                    });
                 }
                 ClientCommand::StopJumpWithHorse => {
                     jump_with_horse_events.send(JumpWithHorseEvent {
                         client: packet.client,
                         state: JumpWithHorseState::Stop,
-                    })
+                    });
                 }
                 ClientCommand::OpenHorseInventory => {} // TODO
                 ClientCommand::StartFlyingWithElytra => {

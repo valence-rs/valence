@@ -1,22 +1,4 @@
 #![doc = include_str!("../README.md")]
-#![deny(
-    rustdoc::broken_intra_doc_links,
-    rustdoc::private_intra_doc_links,
-    rustdoc::missing_crate_level_docs,
-    rustdoc::invalid_codeblock_attributes,
-    rustdoc::invalid_rust_codeblocks,
-    rustdoc::bare_urls,
-    rustdoc::invalid_html_tags
-)]
-#![warn(
-    trivial_casts,
-    trivial_numeric_casts,
-    unused_lifetimes,
-    unused_import_braces,
-    unreachable_pub,
-    clippy::dbg_macro
-)]
-#![allow(clippy::unusual_byte_groupings)]
 
 mod despawn;
 mod uuid;
@@ -83,7 +65,7 @@ pub struct ServerPlugin;
 impl Plugin for ServerPlugin {
     fn build(&self, app: &mut App) {
         let settings = app
-            .world
+            .world_mut()
             .get_resource_or_insert_with(ServerSettings::default)
             .clone();
 
@@ -93,7 +75,7 @@ impl Plugin for ServerPlugin {
             tick_rate: settings.tick_rate,
         });
 
-        let tick_period = Duration::from_secs_f64((settings.tick_rate.get() as f64).recip());
+        let tick_period = Duration::from_secs_f64(f64::from(settings.tick_rate.get()).recip());
 
         // Make the app loop forever at the configured TPS.
         app.add_plugins(ScheduleRunnerPlugin::run_loop(tick_period));
@@ -107,7 +89,7 @@ impl Plugin for ServerPlugin {
 }
 
 /// Contains global server state accessible as a [`Resource`].
-#[derive(Resource)]
+#[derive(Resource, Clone)]
 pub struct Server {
     /// Incremented on every tick.
     current_tick: i64,

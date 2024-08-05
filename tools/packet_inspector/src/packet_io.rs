@@ -141,7 +141,7 @@ impl PacketIoWriter {
         self.enc.set_compression(threshold);
     }
 
-    pub async fn shutdown(&mut self) -> std::io::Result<()> {
+    pub(crate) async fn shutdown(&mut self) -> std::io::Result<()> {
         self.writer.shutdown().await?;
         Ok(())
     }
@@ -166,7 +166,7 @@ impl PacketIo {
         }
     }
 
-    pub fn split(self) -> (PacketIoReader, PacketIoWriter) {
+    pub(crate) fn split(self) -> (PacketIoReader, PacketIoWriter) {
         let (reader, writer) = tokio::io::split(self.stream);
 
         (
@@ -191,7 +191,7 @@ impl PacketIo {
     }
 }
 
-pub fn varint_to_bytes(i: VarInt) -> BytesMut {
+pub(crate) fn varint_to_bytes(i: VarInt) -> BytesMut {
     let mut buf = BytesMut::new();
     let mut writer = (&mut buf).writer();
     i.encode(&mut writer).unwrap();

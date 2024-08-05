@@ -90,11 +90,12 @@ pub use valence_world_border as world_border;
 ///
 /// This is usually glob imported like so:
 ///
-/// ```
+/// ```no_run
 /// use valence::prelude::*; // Glob import.
 ///
-/// let mut app = App::new();
+/// let mut app = App::empty();
 /// app.add_systems(Update, || println!("yippee!"));
+/// app.update()
 /// // ...
 /// ```
 pub mod prelude {
@@ -200,27 +201,27 @@ impl PluginGroup for DefaultPlugins {
 
         #[cfg(feature = "log")]
         {
-            group = group.add(bevy_log::LogPlugin::default());
+            group = group.add(bevy_log::LogPlugin::default())
         }
 
         #[cfg(feature = "network")]
         {
-            group = group.add(valence_network::NetworkPlugin);
+            group = group.add(valence_network::NetworkPlugin)
         }
 
         #[cfg(feature = "player_list")]
         {
-            group = group.add(valence_player_list::PlayerListPlugin);
+            group = group.add(valence_player_list::PlayerListPlugin)
         }
 
         #[cfg(feature = "inventory")]
         {
-            group = group.add(valence_inventory::InventoryPlugin);
+            group = group.add(valence_inventory::InventoryPlugin)
         }
 
         #[cfg(feature = "anvil")]
         {
-            group = group.add(valence_anvil::AnvilPlugin);
+            group = group.add(valence_anvil::AnvilPlugin)
         }
 
         #[cfg(feature = "advancement")]
@@ -230,27 +231,27 @@ impl PluginGroup for DefaultPlugins {
 
         #[cfg(feature = "weather")]
         {
-            group = group.add(valence_weather::WeatherPlugin);
+            group = group.add(valence_weather::WeatherPlugin)
         }
 
         #[cfg(feature = "world_border")]
         {
-            group = group.add(valence_world_border::WorldBorderPlugin);
+            group = group.add(valence_world_border::WorldBorderPlugin)
         }
 
         #[cfg(feature = "boss_bar")]
         {
-            group = group.add(valence_boss_bar::BossBarPlugin);
+            group = group.add(valence_boss_bar::BossBarPlugin)
         }
 
         #[cfg(feature = "command")]
         {
-            group = group.add(valence_command::manager::CommandPlugin);
+            group = group.add(valence_command::manager::CommandPlugin)
         }
 
         #[cfg(feature = "scoreboard")]
         {
-            group = group.add(valence_scoreboard::ScoreboardPlugin);
+            group = group.add(valence_scoreboard::ScoreboardPlugin)
         }
 
         group

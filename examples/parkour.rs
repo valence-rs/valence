@@ -63,9 +63,7 @@ fn init_clients(
     biomes: Res<BiomeRegistry>,
     mut commands: Commands,
 ) {
-    for (entity, mut client, mut visible_chunk_layer, mut is_flat, mut game_mode) in
-        clients.iter_mut()
-    {
+    for (entity, mut client, mut visible_chunk_layer, mut is_flat, mut game_mode) in &mut clients {
         visible_chunk_layer.0 = entity;
         is_flat.0 = true;
         *game_mode = GameMode::Adventure;
@@ -95,7 +93,7 @@ fn reset_clients(
         &mut ChunkLayer,
     )>,
 ) {
-    for (mut client, mut pos, mut look, mut state, mut layer) in clients.iter_mut() {
+    for (mut client, mut pos, mut look, mut state, mut layer) in &mut clients {
         let out_of_bounds = (pos.0.y as i32) < START_POS.y - 32;
 
         if out_of_bounds || state.is_added() {
@@ -131,9 +129,9 @@ fn reset_clients(
             }
 
             pos.set([
-                START_POS.x as f64 + 0.5,
-                START_POS.y as f64 + 1.0,
-                START_POS.z as f64 + 0.5,
+                f64::from(START_POS.x) + 0.5,
+                f64::from(START_POS.y) + 1.0,
+                f64::from(START_POS.z) + 0.5,
             ]);
             look.yaw = 0.0;
             look.pitch = 0.0;
@@ -142,7 +140,7 @@ fn reset_clients(
 }
 
 fn manage_blocks(mut clients: Query<(&mut Client, &Position, &mut GameState, &mut ChunkLayer)>) {
-    for (mut client, pos, mut state, mut layer) in clients.iter_mut() {
+    for (mut client, pos, mut state, mut layer) in &mut clients {
         let pos_under_player = BlockPos::new(
             (pos.0.x - 0.5).round() as i32,
             pos.0.y as i32 - 1,
@@ -155,8 +153,8 @@ fn manage_blocks(mut clients: Query<(&mut Client, &Position, &mut GameState, &mu
             .position(|block| *block == pos_under_player)
         {
             if index > 0 {
-                let power_result = 2.0f32.powf((state.combo as f32) / 45.0);
-                let max_time_taken = (1000.0f32 * (index as f32) / power_result) as u128;
+                let power_result = 2_f32.powf((state.combo as f32) / 45.0);
+                let max_time_taken = (1000_f32 * (index as f32) / power_result) as u128;
 
                 let current_time_millis = SystemTime::now()
                     .duration_since(UNIX_EPOCH)

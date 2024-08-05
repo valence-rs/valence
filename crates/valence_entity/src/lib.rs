@@ -1,22 +1,5 @@
 #![doc = include_str!("../README.md")]
-#![deny(
-    rustdoc::broken_intra_doc_links,
-    rustdoc::private_intra_doc_links,
-    rustdoc::missing_crate_level_docs,
-    rustdoc::invalid_codeblock_attributes,
-    rustdoc::invalid_rust_codeblocks,
-    rustdoc::bare_urls,
-    rustdoc::invalid_html_tags
-)]
-#![warn(
-    trivial_casts,
-    trivial_numeric_casts,
-    unused_lifetimes,
-    unused_import_braces,
-    unreachable_pub,
-    clippy::dbg_macro
-)]
-#![allow(clippy::type_complexity)]
+#![allow(clippy::unseparated_literal_suffix, clippy::manual_string_new)]
 
 pub mod active_status_effects;
 pub mod attributes;
@@ -219,7 +202,7 @@ impl PartialEq<EntityLayerId> for OldEntityLayerId {
 pub struct Position(pub DVec3);
 
 impl Position {
-    pub fn new(pos: impl Into<DVec3>) -> Self {
+    pub fn new<P: Into<DVec3>>(pos: P) -> Self {
         Self(pos.into())
     }
 
@@ -227,7 +210,7 @@ impl Position {
         self.0
     }
 
-    pub fn set(&mut self, pos: impl Into<DVec3>) {
+    pub fn set<P: Into<DVec3>>(&mut self, pos: P) {
         self.0 = pos.into();
     }
 }
@@ -245,7 +228,7 @@ impl PartialEq<OldPosition> for Position {
 pub struct OldPosition(DVec3);
 
 impl OldPosition {
-    pub fn new(pos: impl Into<DVec3>) -> Self {
+    pub fn new<P: Into<DVec3>>(pos: P) -> Self {
         Self(pos.into())
     }
 
@@ -358,7 +341,7 @@ impl EntityStatuses {
     }
 
     pub fn set(&mut self, status: EntityStatus, triggered: bool) {
-        self.0 |= (triggered as u64) << status as u64;
+        self.0 |= u64::from(triggered) << status as u64;
     }
 
     pub fn get(&self, status: EntityStatus) -> bool {
@@ -375,7 +358,7 @@ impl EntityAnimations {
     }
 
     pub fn set(&mut self, anim: EntityAnimation, triggered: bool) {
-        self.0 |= (triggered as u8) << anim as u8;
+        self.0 |= u8::from(triggered) << anim as u8;
     }
 
     pub fn get(&self, anim: EntityAnimation) -> bool {

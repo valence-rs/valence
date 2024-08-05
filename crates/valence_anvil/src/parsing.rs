@@ -21,7 +21,7 @@ pub struct DimensionFolder {
 }
 
 impl DimensionFolder {
-    pub fn new(dimension_root: impl Into<PathBuf>, biomes: &BiomeRegistry) -> Self {
+    pub fn new<R: Into<PathBuf>>(dimension_root: R, biomes: &BiomeRegistry) -> Self {
         let mut region_root = dimension_root.into();
         region_root.push("region");
 
@@ -130,17 +130,19 @@ fn parse_chunk(
     let mut chunk =
         UnloadedChunk::with_height((sections.len() * 16).try_into().unwrap_or(u32::MAX));
 
-    let min_sect_y = sections
-        .iter()
-        .flat_map(|sect| {
-            if let Some(Value::Byte(sect_y)) = sect.get("Y") {
-                Some(*sect_y)
-            } else {
-                None
-            }
-        })
-        .min()
-        .unwrap() as i32;
+    let min_sect_y = i32::from(
+        sections
+            .iter()
+            .filter_map(|sect| {
+                if let Some(Value::Byte(sect_y)) = sect.get("Y") {
+                    Some(*sect_y)
+                } else {
+                    None
+                }
+            })
+            .min()
+            .unwrap(),
+    );
 
     let mut converted_block_palette = vec![];
     let mut converted_biome_palette = vec![];
@@ -150,7 +152,7 @@ fn parse_chunk(
             return Err(ParseChunkError::MissingSectionY);
         };
 
-        let sect_y = (sect_y as i32 - min_sect_y) as u32;
+        let sect_y = (i32::from(sect_y) - min_sect_y) as u32;
 
         if sect_y >= chunk.height() / 16 {
             return Err(ParseChunkError::SectionYOutOfBounds);
@@ -231,7 +233,7 @@ fn parse_chunk(
 
                     let idx = (u64 >> (bits_per_idx * j)) & mask;
 
-                    let Some(block) = converted_block_palette.get(idx as usize).cloned() else {
+                    let Some(block) = converted_block_palette.get(idx as usize).copied() else {
                         return Err(ParseChunkError::BadBlockPaletteIndex);
                     };
 
@@ -288,7 +290,7 @@ fn parse_chunk(
             };
 
             let mut i: u32 = 0;
-            for &long in data.iter() {
+            for &long in data {
                 let u64 = long as u64;
 
                 for j in 0..idxs_per_long {
@@ -298,7 +300,7 @@ fn parse_chunk(
 
                     let idx = (u64 >> (bits_per_idx * j)) & mask;
 
-                    let Some(biome) = converted_biome_palette.get(idx as usize).cloned() else {
+                    let Some(biome) = converted_biome_palette.get(idx as usize).copied() else {
                         return Err(ParseChunkError::BadBiomePaletteIndex);
                     };
 
@@ -374,5 +376,5 @@ fn ident_path(ident: &str) -> &str {
 
 /// Returns the minimum number of bits needed to represent the integer `n`.
 const fn bit_width(n: usize) -> usize {
-    (usize::BITS - n.leading_zeros()) as _
+    (usize::BITS - n.leading_zeros()) as usize
 }

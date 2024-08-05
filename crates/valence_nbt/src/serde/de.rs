@@ -37,7 +37,7 @@ where
             where
                 E: de::Error,
             {
-                Ok(Value::Byte(v as _))
+                Ok(Value::Byte(v.into()))
             }
 
             fn visit_i8<E>(self, v: i8) -> Result<Self::Value, E>
@@ -72,28 +72,28 @@ where
             where
                 E: de::Error,
             {
-                Ok(Value::Byte(v as _))
+                Ok(Value::Byte(v as i8))
             }
 
             fn visit_u16<E>(self, v: u16) -> Result<Self::Value, E>
             where
                 E: de::Error,
             {
-                Ok(Value::Short(v as _))
+                Ok(Value::Short(v as i16))
             }
 
             fn visit_u32<E>(self, v: u32) -> Result<Self::Value, E>
             where
                 E: de::Error,
             {
-                Ok(Value::Int(v as _))
+                Ok(Value::Int(v as i32))
             }
 
             fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
             where
                 E: de::Error,
             {
-                Ok(Value::Long(v as _))
+                Ok(Value::Long(v as i64))
             }
 
             fn visit_f32<E>(self, v: f32) -> Result<Self::Value, E>

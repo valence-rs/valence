@@ -126,8 +126,8 @@ impl ChunkLayer {
 
     /// Creates a new chunk layer.
     #[track_caller]
-    pub fn new(
-        dimension_type_name: impl Into<Ident<String>>,
+    pub fn new<N: Into<Ident<String>>>(
+        dimension_type_name: N,
         dimensions: &DimensionTypeRegistry,
         biomes: &BiomeRegistry,
         server: &Server,
@@ -171,21 +171,21 @@ impl ChunkLayer {
     }
 
     /// Get a reference to the chunk at the given position, if it is loaded.
-    pub fn chunk(&self, pos: impl Into<ChunkPos>) -> Option<&LoadedChunk> {
+    pub fn chunk<P: Into<ChunkPos>>(&self, pos: P) -> Option<&LoadedChunk> {
         self.chunks.get(&pos.into())
     }
 
     /// Get a mutable reference to the chunk at the given position, if it is
     /// loaded.
-    pub fn chunk_mut(&mut self, pos: impl Into<ChunkPos>) -> Option<&mut LoadedChunk> {
+    pub fn chunk_mut<P: Into<ChunkPos>>(&mut self, pos: P) -> Option<&mut LoadedChunk> {
         self.chunks.get_mut(&pos.into())
     }
 
     /// Insert a chunk into the instance at the given position. The previous
     /// chunk data is returned.
-    pub fn insert_chunk(
+    pub fn insert_chunk<P: Into<ChunkPos>>(
         &mut self,
-        pos: impl Into<ChunkPos>,
+        pos: P,
         chunk: UnloadedChunk,
     ) -> Option<UnloadedChunk> {
         match self.chunk_entry(pos) {
@@ -199,7 +199,7 @@ impl ChunkLayer {
 
     /// Unload the chunk at the given position, if it is loaded. Returns the
     /// chunk if it was loaded.
-    pub fn remove_chunk(&mut self, pos: impl Into<ChunkPos>) -> Option<UnloadedChunk> {
+    pub fn remove_chunk<P: Into<ChunkPos>>(&mut self, pos: P) -> Option<UnloadedChunk> {
         match self.chunk_entry(pos) {
             ChunkEntry::Occupied(oe) => Some(oe.remove()),
             ChunkEntry::Vacant(_) => None,
@@ -231,7 +231,7 @@ impl ChunkLayer {
     }
 
     /// Get a [`ChunkEntry`] for the given position.
-    pub fn chunk_entry(&mut self, pos: impl Into<ChunkPos>) -> ChunkEntry {
+    pub fn chunk_entry<P: Into<ChunkPos>>(&mut self, pos: P) -> ChunkEntry {
         match self.chunks.entry(pos.into()) {
             Entry::Occupied(oe) => ChunkEntry::Occupied(OccupiedChunkEntry {
                 messages: &mut self.messages,
@@ -267,7 +267,7 @@ impl ChunkLayer {
         self.messages.shrink_to_fit();
     }
 
-    pub fn block(&self, pos: impl Into<BlockPos>) -> Option<BlockRef> {
+    pub fn block<P: Into<BlockPos>>(&self, pos: P) -> Option<BlockRef> {
         let pos = pos.into();
 
         let y = pos
@@ -287,7 +287,11 @@ impl ChunkLayer {
         Some(chunk.block(x, y, z))
     }
 
-    pub fn set_block(&mut self, pos: impl Into<BlockPos>, block: impl IntoBlock) -> Option<Block> {
+    pub fn set_block<P, B>(&mut self, pos: P, block: B) -> Option<Block>
+    where
+        P: Into<BlockPos>,
+        B: IntoBlock,
+    {
         let pos = pos.into();
 
         let y = pos
@@ -307,7 +311,7 @@ impl ChunkLayer {
         Some(chunk.set_block(x, y, z, block))
     }
 
-    pub fn block_entity_mut(&mut self, pos: impl Into<BlockPos>) -> Option<&mut Compound> {
+    pub fn block_entity_mut<P: Into<BlockPos>>(&mut self, pos: P) -> Option<&mut Compound> {
         let pos = pos.into();
 
         let y = pos
@@ -327,7 +331,7 @@ impl ChunkLayer {
         chunk.block_entity_mut(x, y, z)
     }
 
-    pub fn biome(&self, pos: impl Into<BiomePos>) -> Option<BiomeId> {
+    pub fn biome<P: Into<BiomePos>>(&self, pos: P) -> Option<BiomeId> {
         let pos = pos.into();
 
         let y = pos
@@ -347,7 +351,7 @@ impl ChunkLayer {
         Some(chunk.biome(x, y, z))
     }
 
-    pub fn set_biome(&mut self, pos: impl Into<BiomePos>, biome: BiomeId) -> Option<BiomeId> {
+    pub fn set_biome<P: Into<BiomePos>>(&mut self, pos: P, biome: BiomeId) -> Option<BiomeId> {
         let pos = pos.into();
 
         let y = pos
@@ -379,15 +383,18 @@ impl ChunkLayer {
     /// Puts a particle effect at the given position in the world. The particle
     /// effect is visible to all players in the instance with the
     /// appropriate chunk in view.
-    pub fn play_particle(
+    pub fn play_particle<P, O>(
         &mut self,
         particle: &Particle,
         long_distance: bool,
-        position: impl Into<DVec3>,
-        offset: impl Into<Vec3>,
+        position: P,
+        offset: O,
         max_speed: f32,
         count: i32,
-    ) {
+    ) where
+        P: Into<DVec3>,
+        O: Into<Vec3>,
+    {
         let position = position.into();
 
         self.view_writer(position).write_packet(&ParticleS2c {
@@ -404,11 +411,11 @@ impl ChunkLayer {
     /// Plays a sound effect at the given position in the world. The sound
     /// effect is audible to all players in the instance with the
     /// appropriate chunk in view.
-    pub fn play_sound(
+    pub fn play_sound<P: Into<DVec3>>(
         &mut self,
         sound: Sound,
         category: SoundCategory,
-        position: impl Into<DVec3>,
+        position: P,
         volume: f32,
         pitch: f32,
     ) {

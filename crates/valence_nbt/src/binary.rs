@@ -10,8 +10,8 @@
 //!     "byte" => 5_i8,
 //!     "string" => "hello",
 //!     "list_of_float" => List::Float(vec![
-//!         3.1415,
-//!         2.7182,
+//!         std::f32::consts::PI,
+//!         std::f32::consts::E,
 //!         1.4142
 //!     ]),
 //! };
@@ -24,7 +24,7 @@
 //! Decode NBT data from its binary form.
 //!
 //! ```
-//! use valence_nbt::{compound, from_binary, Compound};
+//! use valence_nbt::{compound, from_binary, Compound, Value};
 //!
 //! let some_bytes = [10, 0, 0, 3, 0, 3, 105, 110, 116, 0, 0, 222, 173, 0];
 //!
@@ -40,14 +40,12 @@
 
 mod decode;
 mod encode;
-mod error;
 mod modified_utf8;
 #[cfg(test)]
 mod tests;
 
-pub use decode::{from_binary, FromModifiedUtf8, FromModifiedUtf8Error};
-pub use encode::{to_binary, written_size, ToModifiedUtf8};
-pub use error::*;
+pub use decode::*;
+pub use encode::*;
 
 use crate::Tag;
 

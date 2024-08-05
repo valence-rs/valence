@@ -94,6 +94,7 @@ enum TestCommand {
     },
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 enum ComplexRedirectionCommand {
     A(Vec3Parser),
@@ -245,7 +246,7 @@ fn handle_teleport_command(
                         event,
                         from,
                     )
-                    .to_vec(),
+                    .clone(),
                 ),
                 TeleportDestination::Target(
                     find_targets(
@@ -272,7 +273,7 @@ fn handle_teleport_command(
                         event,
                         target,
                     )
-                    .to_vec(),
+                    .clone(),
                 ),
                 TeleportDestination::Location(*location),
             ),
@@ -280,17 +281,14 @@ fn handle_teleport_command(
 
         let (TeleportTarget::Targets(targets), destination) = compiled_command;
 
-        println!(
-            "executing teleport command {:#?} -> {:#?}",
-            targets, destination
-        );
+        println!("executing teleport command {targets:#?} -> {destination:#?}");
         match destination {
             TeleportDestination::Location(location) => {
                 for target in targets {
                     let mut pos = positions.get_mut(target).unwrap();
-                    pos.0.x = location.x.get(pos.0.x as f32) as f64;
-                    pos.0.y = location.y.get(pos.0.y as f32) as f64;
-                    pos.0.z = location.z.get(pos.0.z as f32) as f64;
+                    pos.0.x = f64::from(location.x.get(pos.0.x as f32));
+                    pos.0.y = f64::from(location.y.get(pos.0.y as f32));
+                    pos.0.z = f64::from(location.z.get(pos.0.z as f32));
                 }
             }
             TeleportDestination::Target(target) => {
@@ -331,7 +329,7 @@ fn find_targets(
                 match target {
                     None => {
                         let client = &mut clients.get_mut(event.executor).unwrap().1;
-                        client.send_chat_message(format!("Could not find target: {}", name));
+                        client.send_chat_message(format!("Could not find target: {name}"));
                         vec![]
                     }
                     Some(target_entity) => {
@@ -376,7 +374,7 @@ fn find_targets(
                 match target {
                     None => {
                         let mut client = clients.get_mut(event.executor).unwrap().1;
-                        client.send_chat_message("Could not find target".to_string());
+                        client.send_chat_message("Could not find target".to_owned());
                         vec![]
                     }
                     Some(target_entity) => {
@@ -396,7 +394,7 @@ fn find_targets(
                 match target {
                     None => {
                         let mut client = clients.get_mut(event.executor).unwrap().1;
-                        client.send_chat_message("Could not find target".to_string());
+                        client.send_chat_message("Could not find target".to_owned());
                         vec![]
                     }
                     Some(target_entity) => {
@@ -407,7 +405,7 @@ fn find_targets(
         },
         EntitySelector::ComplexSelector(_, _) => {
             let mut client = clients.get_mut(event.executor).unwrap().1;
-            client.send_chat_message("complex selector not implemented".to_string());
+            client.send_chat_message("complex selector not implemented".to_owned());
             vec![]
         }
     }
@@ -502,8 +500,7 @@ fn handle_gamemode_command(
                         match target {
                             None => {
                                 let client = &mut clients.get_mut(event.executor).unwrap().0;
-                                client
-                                    .send_chat_message(format!("Could not find target: {}", name));
+                                client.send_chat_message(format!("Could not find target: {name}"));
                             }
                             Some(target) => {
                                 let mut game_mode = clients.get_mut(target).unwrap().1;
@@ -554,7 +551,7 @@ fn handle_gamemode_command(
                         match target {
                             None => {
                                 let client = &mut clients.get_mut(event.executor).unwrap().0;
-                                client.send_chat_message("Could not find target".to_string());
+                                client.send_chat_message("Could not find target".to_owned());
                             }
                             Some(target) => {
                                 let mut game_mode = clients.get_mut(target).unwrap().1;
@@ -578,7 +575,7 @@ fn handle_gamemode_command(
                         match target {
                             None => {
                                 let client = &mut clients.get_mut(event.executor).unwrap().0;
-                                client.send_chat_message("Could not find target".to_string());
+                                client.send_chat_message("Could not find target".to_owned());
                             }
                             Some(target) => {
                                 let mut game_mode = clients.get_mut(target).unwrap().1;
@@ -597,7 +594,7 @@ fn handle_gamemode_command(
                 EntitySelector::ComplexSelector(_, _) => {
                     let client = &mut clients.get_mut(event.executor).unwrap().0;
                     client
-                        .send_chat_message("Complex selectors are not implemented yet".to_string());
+                        .send_chat_message("Complex selectors are not implemented yet".to_owned());
                 }
             },
         }
@@ -667,7 +664,7 @@ fn init_clients(
         visible_chunk_layer.0 = layer;
         visible_entity_layers.0.insert(layer);
 
-        pos.0 = [0.0, SPAWN_Y as f64 + 1.0, 0.0].into();
+        pos.0 = [0.0, f64::from(SPAWN_Y) + 1.0, 0.0].into();
         *game_mode = GameMode::Creative;
         op_level.set(4);
 

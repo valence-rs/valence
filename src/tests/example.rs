@@ -22,11 +22,11 @@ fn example_test_server_tick_increment() {
 
     app.add_plugins(DefaultPlugins);
 
-    let tick = app.world.resource::<Server>().current_tick();
+    let tick = app.world_mut().resource::<Server>().current_tick();
 
     app.update();
 
-    let server = app.world.resource::<Server>();
+    let server = app.world_mut().resource::<Server>();
     assert_eq!(server.current_tick(), tick + 1);
 }
 
@@ -38,7 +38,7 @@ fn example_test_client_position() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = ScenarioSingleClient::new();
 
     // Send a packet as the client to the server.
@@ -52,7 +52,7 @@ fn example_test_client_position() {
     app.update();
 
     // Make assertions
-    let pos = app.world.get::<Position>(client).unwrap();
+    let pos = app.world_mut().get::<Position>(client).unwrap();
     assert_eq!(pos.0, DVec3::new(12.0, 64.0, 0.0));
 }
 
@@ -63,11 +63,11 @@ fn example_test_open_inventory() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = ScenarioSingleClient::new();
 
     let inventory = Inventory::new(InventoryKind::Generic3x3);
-    let inventory_ent = app.world.spawn(inventory).id();
+    let inventory_ent = app.world_mut().spawn(inventory).id();
 
     // Process a tick to get past the "on join" logic.
     app.update();
@@ -75,7 +75,7 @@ fn example_test_open_inventory() {
 
     // Open the inventory.
     let open_inventory = OpenInventory::new(inventory_ent);
-    app.world
+    app.world_mut()
         .get_entity_mut(client)
         .expect("could not find client")
         .insert(open_inventory);
@@ -84,7 +84,9 @@ fn example_test_open_inventory() {
     app.update();
 
     // Make assertions
-    app.world.get::<Client>(client).expect("client not found");
+    app.world_mut()
+        .get::<Client>(client)
+        .expect("client not found");
 
     let sent_packets = helper.collect_received();
 

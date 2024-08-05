@@ -32,21 +32,13 @@ unsafe impl JavaStrPattern for char {
     #[inline]
     fn prefix_len_in(&mut self, haystack: &JavaStr) -> Option<usize> {
         let ch = haystack.chars().next()?;
-        if ch == *self {
-            Some(ch.len_utf8())
-        } else {
-            None
-        }
+        (ch == *self).then(|| ch.len_utf8())
     }
 
     #[inline]
     fn suffix_len_in(&mut self, haystack: &JavaStr) -> Option<usize> {
         let ch = haystack.chars().next_back()?;
-        if ch == *self {
-            Some(ch.len_utf8())
-        } else {
-            None
-        }
+        (ch == *self).then(|| ch.len_utf8())
     }
 
     #[inline]
@@ -68,21 +60,13 @@ unsafe impl JavaStrPattern for JavaCodePoint {
     #[inline]
     fn prefix_len_in(&mut self, haystack: &JavaStr) -> Option<usize> {
         let ch = haystack.chars().next()?;
-        if ch == *self {
-            Some(ch.len_utf8())
-        } else {
-            None
-        }
+        (ch == *self).then(|| ch.len_utf8())
     }
 
     #[inline]
     fn suffix_len_in(&mut self, haystack: &JavaStr) -> Option<usize> {
         let ch = haystack.chars().next_back()?;
-        if ch == *self {
-            Some(ch.len_utf8())
-        } else {
-            None
-        }
+        (ch == *self).then(|| ch.len_utf8())
     }
 
     #[inline]
@@ -103,20 +87,18 @@ unsafe impl JavaStrPattern for JavaCodePoint {
 unsafe impl JavaStrPattern for &str {
     #[inline]
     fn prefix_len_in(&mut self, haystack: &JavaStr) -> Option<usize> {
-        if haystack.as_bytes().starts_with(self.as_bytes()) {
-            Some(self.len())
-        } else {
-            None
-        }
+        haystack
+            .as_bytes()
+            .starts_with(self.as_bytes())
+            .then_some(self.len())
     }
 
     #[inline]
     fn suffix_len_in(&mut self, haystack: &JavaStr) -> Option<usize> {
-        if haystack.as_bytes().ends_with(self.as_bytes()) {
-            Some(self.len())
-        } else {
-            None
-        }
+        haystack
+            .as_bytes()
+            .ends_with(self.as_bytes())
+            .then_some(self.len())
     }
 
     #[inline]
@@ -133,20 +115,18 @@ unsafe impl JavaStrPattern for &str {
 unsafe impl JavaStrPattern for &JavaStr {
     #[inline]
     fn prefix_len_in(&mut self, haystack: &JavaStr) -> Option<usize> {
-        if haystack.as_bytes().starts_with(self.as_bytes()) {
-            Some(self.len())
-        } else {
-            None
-        }
+        haystack
+            .as_bytes()
+            .starts_with(self.as_bytes())
+            .then(|| self.len())
     }
 
     #[inline]
     fn suffix_len_in(&mut self, haystack: &JavaStr) -> Option<usize> {
-        if haystack.as_bytes().ends_with(self.as_bytes()) {
-            Some(self.len())
-        } else {
-            None
-        }
+        haystack
+            .as_bytes()
+            .ends_with(self.as_bytes())
+            .then(|| self.len())
     }
 
     #[inline]
@@ -167,21 +147,13 @@ where
     #[inline]
     fn prefix_len_in(&mut self, haystack: &JavaStr) -> Option<usize> {
         let ch = haystack.chars().next()?;
-        if self(ch) {
-            Some(ch.len_utf8())
-        } else {
-            None
-        }
+        self(ch).then(|| ch.len_utf8())
     }
 
     #[inline]
     fn suffix_len_in(&mut self, haystack: &JavaStr) -> Option<usize> {
         let ch = haystack.chars().next_back()?;
-        if self(ch) {
-            Some(ch.len_utf8())
-        } else {
-            None
-        }
+        self(ch).then(|| ch.len_utf8())
     }
 
     #[inline]
@@ -205,21 +177,13 @@ unsafe impl JavaStrPattern for &[char] {
     #[inline]
     fn prefix_len_in(&mut self, haystack: &JavaStr) -> Option<usize> {
         let ch = haystack.chars().next()?;
-        if self.iter().any(|c| ch == *c) {
-            Some(ch.len_utf8())
-        } else {
-            None
-        }
+        self.iter().any(|c| ch == *c).then(|| ch.len_utf8())
     }
 
     #[inline]
     fn suffix_len_in(&mut self, haystack: &JavaStr) -> Option<usize> {
         let ch = haystack.chars().next_back()?;
-        if self.iter().any(|c| ch == *c) {
-            Some(ch.len_utf8())
-        } else {
-            None
-        }
+        self.iter().any(|c| ch == *c).then(|| ch.len_utf8())
     }
 
     #[inline]
@@ -243,21 +207,13 @@ unsafe impl JavaStrPattern for &[JavaCodePoint] {
     #[inline]
     fn prefix_len_in(&mut self, haystack: &JavaStr) -> Option<usize> {
         let ch = haystack.chars().next()?;
-        if self.contains(&ch) {
-            Some(ch.len_utf8())
-        } else {
-            None
-        }
+        self.contains(&ch).then(|| ch.len_utf8())
     }
 
     #[inline]
     fn suffix_len_in(&mut self, haystack: &JavaStr) -> Option<usize> {
         let ch = haystack.chars().next_back()?;
-        if self.contains(&ch) {
-            Some(ch.len_utf8())
-        } else {
-            None
-        }
+        self.contains(&ch).then(|| ch.len_utf8())
     }
 
     #[inline]

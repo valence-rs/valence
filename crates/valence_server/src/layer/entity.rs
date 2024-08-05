@@ -100,9 +100,9 @@ impl EntityLayer {
 
     /// Returns an iterator over all entities contained within the given chunk
     /// position in this layer.
-    pub fn entities_at(
+    pub fn entities_at<P: Into<ChunkPos>>(
         &self,
-        pos: impl Into<ChunkPos>,
+        pos: P,
     ) -> impl Iterator<Item = Entity> + Clone + '_ {
         self.entities
             .get(&pos.into())
@@ -473,7 +473,7 @@ fn send_entity_update_messages(
     entities: Query<(Entity, UpdateEntityQuery, Has<Client>), Without<Despawned>>,
     mut layers: Query<&mut EntityLayer>,
 ) {
-    for layer in layers.iter_mut() {
+    for layer in &mut layers {
         let layer = layer.into_inner();
 
         for cell in layer.entities.values_mut() {

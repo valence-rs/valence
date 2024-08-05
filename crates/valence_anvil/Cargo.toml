@@ -9,6 +9,9 @@ repository.workspace = true
 documentation.workspace = true
 license.workspace = true
 
+[lints]
+workspace = true
+
 [features]
 bevy_plugin = ["dep:bevy_app", "dep:bevy_ecs", "dep:flume", "parsing"]
 parsing = ["dep:valence_server"]

@@ -4,9 +4,9 @@ use quote::quote;
 const MAX_VIEW_DIST: u8 = 32;
 const EXTRA_VIEW_RADIUS: i32 = 2;
 
-pub fn build() -> TokenStream {
+pub(crate) fn build() -> TokenStream {
     let entries = (0..=MAX_VIEW_DIST).map(|dist| {
-        let dist = dist as i32 + EXTRA_VIEW_RADIUS;
+        let dist = i32::from(dist) + EXTRA_VIEW_RADIUS;
 
         let mut positions = vec![];
 
@@ -18,7 +18,7 @@ pub fn build() -> TokenStream {
             }
         }
 
-        positions.sort_by_key(|&(x, z)| (x as i32).pow(2) + (z as i32).pow(2));
+        positions.sort_by_key(|&(x, z)| i32::from(x).pow(2) + i32::from(z).pow(2));
 
         let array_elems = positions.into_iter().map(|(x, z)| quote!((#x, #z)));
 

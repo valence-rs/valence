@@ -23,7 +23,10 @@ pub fn main() -> anyhow::Result<()> {
 }
 
 fn write_packets(packets: &Vec<Packet>) -> anyhow::Result<()> {
-    let mut consts = TokenStream::new();
+    let mut consts = quote! {
+        #[allow(clippy::unseparated_literal_suffix)]
+
+    };
 
     let len = packets.len();
 
@@ -43,14 +46,14 @@ fn write_packets(packets: &Vec<Packet>) -> anyhow::Result<()> {
 
         // if the packet is clientbound, but the name does not ends with S2c, add it
         let name = if packet.side == "clientbound" && !name.ends_with("S2c") {
-            format!("{}S2c", name)
+            format!("{name}S2c")
         } else {
             name
         };
 
         // same for serverbound
         let name = if packet.side == "serverbound" && !name.ends_with("C2s") {
-            format!("{}C2s", name)
+            format!("{name}C2s")
         } else {
             name
         };
@@ -101,16 +104,16 @@ fn write_transformer(packets: &[Packet]) -> anyhow::Result<()> {
 
     let mut grouped_packets = packets.iter().fold(grouped_packets, |mut acc, packet| {
         let side = match packet.side.as_str() {
-            "serverbound" => "Serverbound".to_string(),
-            "clientbound" => "Clientbound".to_string(),
+            "serverbound" => "Serverbound".to_owned(),
+            "clientbound" => "Clientbound".to_owned(),
             _ => panic!("Invalid side"),
         };
 
         let state = match packet.state.as_str() {
-            "handshaking" => "Handshaking".to_string(),
-            "status" => "Status".to_string(),
-            "login" => "Login".to_string(),
-            "play" => "Play".to_string(),
+            "handshaking" => "Handshaking".to_owned(),
+            "status" => "Status".to_owned(),
+            "login" => "Login".to_owned(),
+            "play" => "Play".to_owned(),
             _ => panic!("Invalid state"),
         };
 
@@ -118,7 +121,7 @@ fn write_transformer(packets: &[Packet]) -> anyhow::Result<()> {
             .name
             .strip_suffix("Packet")
             .unwrap_or(&packet.name)
-            .to_string();
+            .to_owned();
 
         // lowercase the last character of name
         let name = {
@@ -132,14 +135,14 @@ fn write_transformer(packets: &[Packet]) -> anyhow::Result<()> {
 
         // if the packet is clientbound, but the name does not ends with S2c, add it
         let name = if side == "Clientbound" && !name.ends_with("S2c") {
-            format!("{}S2c", name)
+            format!("{name}S2c")
         } else {
             name
         };
 
         // same for serverbound
         let name = if side == "Serverbound" && !name.ends_with("C2s") {
-            format!("{}C2s", name)
+            format!("{name}C2s")
         } else {
             name
         };
@@ -153,7 +156,7 @@ fn write_transformer(packets: &[Packet]) -> anyhow::Result<()> {
 
     let mut generated = TokenStream::new();
 
-    for (side, state_map) in grouped_packets.iter_mut() {
+    for (side, state_map) in &mut grouped_packets {
         let mut side_arms = TokenStream::new();
         for (state, id_map) in state_map.iter_mut() {
             let mut match_arms = TokenStream::new();
@@ -173,14 +176,14 @@ fn write_transformer(packets: &[Packet]) -> anyhow::Result<()> {
             side_arms.extend(quote! {
                 valence_protocol::PacketState::#state => match packet.id {
                     #match_arms
-                    _ => Ok(NOT_AVAILABLE.to_string()),
+                    _ => Ok(NOT_AVAILABLE.to_owned()),
                 },
             });
         }
 
         if side == "Clientbound" {
             side_arms.extend(quote! {
-                _ => Ok(NOT_AVAILABLE.to_string()),
+                _ => Ok(NOT_AVAILABLE.to_owned()),
             });
         }
 
@@ -197,7 +200,8 @@ fn write_transformer(packets: &[Packet]) -> anyhow::Result<()> {
     let generated = quote! {
         const NOT_AVAILABLE: &str = "Not yet implemented";
 
-        pub fn packet_to_string(packet: &ProxyPacket) -> Result<String, Box<dyn std::error::Error>> {
+        #[allow(clippy::match_wildcard_for_single_variants)]
+        pub(crate) fn packet_to_string(packet: &ProxyPacket) -> Result<String, Box<dyn std::error::Error>> {
             let bytes = packet.data.as_ref().unwrap();
             let mut data = &bytes.clone()[..];
 

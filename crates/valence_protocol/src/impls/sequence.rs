@@ -7,7 +7,7 @@ use anyhow::ensure;
 use crate::impls::cautious_capacity;
 use crate::{Bounded, Decode, Encode, VarInt};
 
-/// Like tuples, fixed-length arrays are encoded and decoded without a VarInt
+/// Like tuples, fixed-length arrays are encoded and decoded without a `VarInt`
 /// length prefix.
 impl<T: Encode, const N: usize> Encode for [T; N] {
     fn encode(&self, w: impl Write) -> anyhow::Result<()> {
@@ -60,7 +60,7 @@ impl<T: Encode> Encode for [T] {
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         let len = self.len();
         ensure!(
-            len <= i32::MAX as usize,
+            i32::try_from(len).is_ok(),
             "length of {} slice exceeds i32::MAX (got {len})",
             std::any::type_name::<T>()
         );

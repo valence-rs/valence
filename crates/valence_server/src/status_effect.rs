@@ -1,6 +1,6 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use bevy_ecs::query::WorldQuery;
+use bevy_ecs::query::QueryData;
 use bevy_ecs::system::SystemState;
 use valence_entity::active_status_effects::{ActiveStatusEffect, ActiveStatusEffects};
 use valence_entity::entity::Flags;
@@ -51,7 +51,7 @@ fn update_active_status_effects(
     state: &mut SystemState<Query<&mut ActiveStatusEffects>>,
 ) {
     let mut query = state.get_mut(world);
-    for mut active_status_effects in query.iter_mut() {
+    for mut active_status_effects in &mut query {
         active_status_effects.increment_active_ticks();
     }
 }
@@ -59,7 +59,7 @@ fn update_active_status_effects(
 fn create_packet(effect: &ActiveStatusEffect) -> EntityStatusEffectS2c {
     EntityStatusEffectS2c {
         entity_id: VarInt(0), // We reserve ID 0 for clients.
-        effect_id: VarInt(effect.status_effect().to_raw() as i32),
+        effect_id: VarInt(i32::from(effect.status_effect().to_raw())),
         amplifier: effect.amplifier(),
         duration: VarInt(effect.remaining_duration().unwrap_or(-1)),
         flags: entity_status_effect_s2c::Flags::new()
@@ -70,8 +70,8 @@ fn create_packet(effect: &ActiveStatusEffect) -> EntityStatusEffectS2c {
     }
 }
 
-#[derive(WorldQuery)]
-#[world_query(mutable)]
+#[derive(QueryData)]
+#[query_data(mutable)]
 struct StatusEffectQuery {
     entity: Entity,
     active_effects: &'static mut ActiveStatusEffects,
@@ -86,7 +86,7 @@ fn add_status_effects(
     mut add_events: EventWriter<StatusEffectAdded>,
     mut remove_events: EventWriter<StatusEffectRemoved>,
 ) {
-    for mut query in query.iter_mut() {
+    for mut query in &mut query {
         let updated = query.active_effects.apply_changes();
 
         if updated.is_empty() {
@@ -129,7 +129,7 @@ fn update_status_effect(query: &mut StatusEffectQueryItem, status_effect: Status
         } else {
             client.write_packet(&RemoveEntityStatusEffectS2c {
                 entity_id: VarInt(0),
-                effect_id: VarInt(status_effect.to_raw() as i32),
+                effect_id: VarInt(i32::from(status_effect.to_raw())),
             });
         }
     }
@@ -175,7 +175,7 @@ fn get_color(effects: &ActiveStatusEffects) -> i32 {
         }
 
         let k = status_effect_instance.status_effect().color();
-        let l = (status_effect_instance.amplifier() + 1) as f32;
+        let l = f32::from(status_effect_instance.amplifier() + 1);
         f += (l * ((k >> 16) & 0xff) as f32) / 255.0;
         g += (l * ((k >> 8) & 0xff) as f32) / 255.0;
         h += (l * ((k) & 0xff) as f32) / 255.0;

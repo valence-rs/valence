@@ -1,7 +1,7 @@
 use std::mem;
 
 use bevy_ecs::prelude::DetectChanges;
-use bevy_ecs::query::WorldQuery;
+use bevy_ecs::query::QueryData;
 use bevy_ecs::world::Ref;
 use valence_math::DVec3;
 use valence_protocol::encode::WritePacket;
@@ -21,7 +21,7 @@ use crate::{
     ObjectData, OldEntityLayerId, OldPosition, OnGround, Position, Velocity,
 };
 
-#[derive(WorldQuery)]
+#[derive(QueryData)]
 pub struct EntityInitQuery {
     pub entity_id: &'static EntityId,
     pub uuid: &'static UniqueId,
@@ -38,7 +38,7 @@ impl EntityInitQueryItem<'_> {
     /// Writes the appropriate packets to initialize an entity. This will spawn
     /// the entity and initialize tracked data. `pos` is the initial position of
     /// the entity.
-    pub fn write_init_packets(&self, pos: DVec3, mut writer: impl WritePacket) {
+    pub fn write_init_packets<W: WritePacket>(&self, pos: DVec3, mut writer: W) {
         match *self.kind {
             EntityKind::MARKER => {}
             EntityKind::EXPERIENCE_ORB => {
@@ -85,7 +85,7 @@ impl EntityInitQueryItem<'_> {
     }
 }
 
-#[derive(WorldQuery)]
+#[derive(QueryData)]
 pub struct UpdateEntityQuery {
     pub id: &'static EntityId,
     pub pos: &'static Position,
@@ -104,7 +104,7 @@ pub struct UpdateEntityQuery {
 }
 
 impl UpdateEntityQueryItem<'_> {
-    pub fn write_update_packets(&self, mut writer: impl WritePacket) {
+    pub fn write_update_packets<W: WritePacket>(&self, mut writer: W) {
         // TODO: @RJ I saw you're using UpdateEntityPosition and UpdateEntityRotation sometimes. These two packets are actually broken on the client and will erase previous position/rotation https://bugs.mojang.com/browse/MC-255263 -Moulberry
 
         let entity_id = VarInt(self.id.get());

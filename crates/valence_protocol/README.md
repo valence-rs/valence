@@ -1,4 +1,4 @@
-# valence_protocol
+# `valence_protocol`
 
 A protocol library for _Minecraft: Java Edition_. Use this to build clients, servers, proxies, or something novel!
 

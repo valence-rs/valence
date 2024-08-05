@@ -8,5 +8,8 @@ repository.workspace = true
 documentation.workspace = true
 license.workspace = true
 
+[lints]
+workspace = true
+
 [dependencies]
 glam.workspace = true

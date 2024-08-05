@@ -45,7 +45,6 @@ pub trait CommandArg: Sized {
     fn display() -> Parser;
 }
 
-///
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParseInput<'a>(&'a str);
 
@@ -88,8 +87,7 @@ impl<'a> ParseInput<'a> {
         self.0
             .char_indices()
             .nth(n)
-            .map(|(idx, _)| &self.0[..idx])
-            .unwrap_or(self.0)
+            .map_or(self.0, |(idx, _)| &self.0[..idx])
     }
 
     /// Returns the next word without advancing the input
@@ -97,8 +95,7 @@ impl<'a> ParseInput<'a> {
         self.0
             .char_indices()
             .find(|(_, c)| c.is_whitespace())
-            .map(|(idx, _)| &self.0[..idx])
-            .unwrap_or(self.0)
+            .map_or(self.0, |(idx, _)| &self.0[..idx])
     }
 
     /// Checks if the input is empty
@@ -178,28 +175,6 @@ impl<'a> ParseInput<'a> {
     }
 }
 
-#[test]
-fn test_parse_input() {
-    let mut input = ParseInput::new("The QuIck brown FOX jumps over the lazy dog");
-    assert_eq!(input.peek(), Some('T'));
-    assert_eq!(input.peek_n(0), "");
-    assert_eq!(input.peek_n(1), "T");
-    assert_eq!(input.peek_n(2), "Th");
-    assert_eq!(input.peek_n(3), "The");
-
-    assert_eq!(input.peek_word(), "The");
-    input.pop_word();
-    input.skip_whitespace();
-    assert_eq!(input.peek_word(), "QuIck");
-
-    assert!(input.match_next("quick"));
-    input.pop();
-    assert_eq!(input.peek_word(), "brown");
-
-    assert!(input.match_next("brown fox"));
-    assert_eq!(input.pop_all(), Some(" jumps over the lazy dog"));
-}
-
 #[derive(Debug, Error)]
 pub enum CommandArgParseError {
     // these should be player facing and not disclose internal information
@@ -252,58 +227,83 @@ where
     }
 }
 
-#[test]
-fn test_absolute_or_relative() {
-    let mut input = ParseInput::new("~");
-    assert_eq!(
-        AbsoluteOrRelative::<i32>::parse_arg(&mut input).unwrap(),
-        AbsoluteOrRelative::Relative(0)
-    );
-    assert!(input.is_done());
-
-    let mut input = ParseInput::new("~1");
-    assert_eq!(
-        AbsoluteOrRelative::<i32>::parse_arg(&mut input).unwrap(),
-        AbsoluteOrRelative::Relative(1)
-    );
-    assert!(input.is_done());
-
-    let mut input = ParseInput::new("~1.5");
-    assert_eq!(
-        AbsoluteOrRelative::<f32>::parse_arg(&mut input).unwrap(),
-        AbsoluteOrRelative::Relative(1.5)
-    );
-    assert!(input.is_done());
-
-    let mut input = ParseInput::new("1");
-    assert_eq!(
-        AbsoluteOrRelative::<i32>::parse_arg(&mut input).unwrap(),
-        AbsoluteOrRelative::Absolute(1)
-    );
-    assert!(input.is_done());
-
-    let mut input = ParseInput::new("1.5 ");
-    assert_eq!(
-        AbsoluteOrRelative::<f32>::parse_arg(&mut input).unwrap(),
-        AbsoluteOrRelative::Absolute(1.5)
-    );
-    assert!(!input.is_done());
-
-    let mut input = ParseInput::new("1.5 2");
-    assert_eq!(
-        AbsoluteOrRelative::<f32>::parse_arg(&mut input).unwrap(),
-        AbsoluteOrRelative::Absolute(1.5)
-    );
-    assert!(!input.is_done());
-    assert_eq!(
-        AbsoluteOrRelative::<f32>::parse_arg(&mut input).unwrap(),
-        AbsoluteOrRelative::Absolute(2.0)
-    );
-    assert!(input.is_done());
-}
-
 impl<T: Default> Default for AbsoluteOrRelative<T> {
     fn default() -> Self {
         AbsoluteOrRelative::Absolute(T::default())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn test_parse_input() {
+        let mut input = ParseInput::new("The QuIck brown FOX jumps over the lazy dog");
+        assert_eq!(input.peek(), Some('T'));
+        assert_eq!(input.peek_n(0), "");
+        assert_eq!(input.peek_n(1), "T");
+        assert_eq!(input.peek_n(2), "Th");
+        assert_eq!(input.peek_n(3), "The");
+
+        assert_eq!(input.peek_word(), "The");
+        input.pop_word();
+        input.skip_whitespace();
+        assert_eq!(input.peek_word(), "QuIck");
+
+        assert!(input.match_next("quick"));
+        input.pop();
+        assert_eq!(input.peek_word(), "brown");
+
+        assert!(input.match_next("brown fox"));
+        assert_eq!(input.pop_all(), Some(" jumps over the lazy dog"));
+    }
+    #[test]
+    fn test_absolute_or_relative() {
+        let mut input = ParseInput::new("~");
+        assert_eq!(
+            AbsoluteOrRelative::<i32>::parse_arg(&mut input).unwrap(),
+            AbsoluteOrRelative::Relative(0)
+        );
+        assert!(input.is_done());
+
+        let mut input = ParseInput::new("~1");
+        assert_eq!(
+            AbsoluteOrRelative::<i32>::parse_arg(&mut input).unwrap(),
+            AbsoluteOrRelative::Relative(1)
+        );
+        assert!(input.is_done());
+
+        let mut input = ParseInput::new("~1.5");
+        assert_eq!(
+            AbsoluteOrRelative::<f32>::parse_arg(&mut input).unwrap(),
+            AbsoluteOrRelative::Relative(1.5)
+        );
+        assert!(input.is_done());
+
+        let mut input = ParseInput::new("1");
+        assert_eq!(
+            AbsoluteOrRelative::<i32>::parse_arg(&mut input).unwrap(),
+            AbsoluteOrRelative::Absolute(1)
+        );
+        assert!(input.is_done());
+
+        let mut input = ParseInput::new("1.5 ");
+        assert_eq!(
+            AbsoluteOrRelative::<f32>::parse_arg(&mut input).unwrap(),
+            AbsoluteOrRelative::Absolute(1.5)
+        );
+        assert!(!input.is_done());
+
+        let mut input = ParseInput::new("1.5 2");
+        assert_eq!(
+            AbsoluteOrRelative::<f32>::parse_arg(&mut input).unwrap(),
+            AbsoluteOrRelative::Absolute(1.5)
+        );
+        assert!(!input.is_done());
+        assert_eq!(
+            AbsoluteOrRelative::<f32>::parse_arg(&mut input).unwrap(),
+            AbsoluteOrRelative::Absolute(2.0)
+        );
+        assert!(input.is_done());
     }
 }

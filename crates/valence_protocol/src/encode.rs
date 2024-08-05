@@ -58,6 +58,7 @@ impl PacketEncoder {
         Ok(())
     }
 
+    #[allow(clippy::needless_borrows_for_generic_args)]
     pub fn append_packet<P>(&mut self, pkt: &P) -> anyhow::Result<()>
     where
         P: Packet + Encode,
@@ -329,6 +330,7 @@ where
 }
 
 #[cfg(feature = "compression")]
+#[allow(clippy::needless_borrows_for_generic_args)]
 fn encode_packet_compressed<P>(buf: &mut Vec<u8>, pkt: &P, threshold: u32) -> anyhow::Result<()>
 where
     P: Packet + Encode,

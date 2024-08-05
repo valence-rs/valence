@@ -96,7 +96,7 @@ struct BlockPos {
 }
 
 impl Value {
-    pub fn type_id(&self) -> u8 {
+    fn type_id(&self) -> u8 {
         match self {
             Value::Byte(_) => 0,
             Value::Integer(_) => 1,
@@ -129,7 +129,7 @@ impl Value {
         }
     }
 
-    pub fn field_type(&self) -> TokenStream {
+    fn field_type(&self) -> TokenStream {
         match self {
             Value::Byte(_) => quote!(i8),
             Value::Integer(_) => quote!(i32),
@@ -162,7 +162,7 @@ impl Value {
         }
     }
 
-    pub fn default_expr(&self) -> TokenStream {
+    fn default_expr(&self) -> TokenStream {
         match self {
             Value::Byte(b) => quote!(#b),
             Value::Integer(i) => quote!(#i),
@@ -266,7 +266,7 @@ impl Value {
         }
     }
 
-    pub fn encodable_expr(&self, self_lvalue: TokenStream) -> TokenStream {
+    fn encodable_expr(&self, self_lvalue: TokenStream) -> TokenStream {
         match self {
             Value::Integer(_) => quote!(VarInt(#self_lvalue)),
             Value::OptionalInt(_) => quote!(OptionalInt(#self_lvalue)),
@@ -613,7 +613,7 @@ fn build_entities() -> anyhow::Result<TokenStream> {
         fn update_living_and_player_absorption(
             mut query: Query<(&living::Absorption, &mut player::AbsorptionAmount), Changed<living::Absorption>>
         ) {
-            for (living_absorption, mut player_absorption) in query.iter_mut() {
+            for (living_absorption, mut player_absorption) in &mut query {
                 player_absorption.0 = living_absorption.0;
             }
         }
@@ -626,7 +626,7 @@ fn build_entities() -> anyhow::Result<TokenStream> {
             ),
             Changed<attributes::EntityAttributes>>
         ) {
-            for (mut tracked, mut attributes) in query.iter_mut() {
+            for (mut tracked, mut attributes) in &mut query {
                 for attribute in attributes.take_recently_changed() {
                     tracked.mark_modified(&attributes, attribute);
                 }

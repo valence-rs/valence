@@ -1,4 +1,4 @@
-# valence_player_list
+# `valence_player_list`
 
 Manages Minecraft's "player list" which is the table seen while holding the tab key in game.
 

@@ -12,7 +12,7 @@ pub struct ChunkView {
 
 impl ChunkView {
     /// Creates a new chunk view. `dist` is clamped to the range
-    /// 0..[MAX_VIEW_DIST].
+    /// 0..[`MAX_VIEW_DIST`].
     pub const fn new(pos: ChunkPos, dist: u8) -> Self {
         Self {
             pos,
@@ -43,8 +43,8 @@ impl ChunkView {
         CHUNK_VIEW_LUT[self.dist as usize]
             .iter()
             .map(move |&(x, z)| ChunkPos {
-                x: self.pos.x + x as i32,
-                z: self.pos.z + z as i32,
+                x: self.pos.x + i32::from(x),
+                z: self.pos.z + i32::from(z),
             })
     }
 
@@ -72,7 +72,7 @@ impl ChunkView {
     /// }
     /// ```
     pub fn bounding_box(self) -> (ChunkPos, ChunkPos) {
-        let r = self.dist as i32 + EXTRA_VIEW_RADIUS;
+        let r = i32::from(self.dist) + EXTRA_VIEW_RADIUS;
 
         (
             ChunkPos::new(self.pos.x - r, self.pos.z - r),
@@ -90,7 +90,7 @@ mod tests {
     #[test]
     fn chunk_view_contains() {
         let view = ChunkView::new(ChunkPos::new(0, 0), 32);
-        let positions = BTreeSet::from_iter(view.iter());
+        let positions = view.iter().collect::<BTreeSet<_>>();
 
         for z in -64..64 {
             for x in -64..64 {

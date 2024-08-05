@@ -40,6 +40,6 @@ impl EntityManager {
 
     /// Gets the entity with the given entity ID.
     pub fn get_by_id(&self, entity_id: i32) -> Option<Entity> {
-        self.id_to_entity.get(&entity_id).cloned()
+        self.id_to_entity.get(&entity_id).copied()
     }
 }

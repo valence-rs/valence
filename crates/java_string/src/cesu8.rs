@@ -114,7 +114,7 @@ impl JavaStr {
 impl JavaString {
     /// Converts from Java's [modified UTF-8](https://docs.oracle.com/javase/8/docs/api/java/io/DataInput.html#modified-utf-8) format to a `JavaString`.
     ///
-    /// See [JavaStr::from_modified_utf8].
+    /// See [`JavaStr::from_modified_utf8`].
     #[inline]
     pub fn from_modified_utf8(bytes: Vec<u8>) -> Result<JavaString, Utf8Error> {
         match JavaString::from_full_utf8(bytes) {
@@ -184,6 +184,7 @@ impl JavaString {
                     }
                     3 => {
                         let third = next_cont!(Some(2));
+                        #[allow(clippy::unnested_or_patterns)] // Justification: readability
                         match (first, second) {
                             // These are valid UTF-8, so pass them through.
                             (0xe0, 0xa0..=0xbf)
@@ -227,7 +228,7 @@ impl JavaString {
 
     /// Converts to Java's [modified UTF-8](https://docs.oracle.com/javase/8/docs/api/java/io/DataInput.html#modified-utf-8) format.
     ///
-    /// See [JavaStr::to_modified_utf8].
+    /// See [`JavaStr::to_modified_utf8`].
     #[inline]
     #[must_use]
     pub fn into_modified_utf8(self) -> Vec<u8> {
@@ -241,7 +242,7 @@ impl JavaString {
 
 #[inline]
 fn dec_surrogate(second: u8, third: u8) -> u32 {
-    0xd000 | ((second & CONT_MASK) as u32) << 6 | (third & CONT_MASK) as u32
+    0xd000 | u32::from(second & CONT_MASK) << 6 | u32::from(third & CONT_MASK)
 }
 
 #[inline]
@@ -255,7 +256,7 @@ fn dec_surrogates(second: u8, third: u8, fifth: u8, sixth: u8) -> [u8; 4] {
     // Convert to UTF-8.
     // 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
     [
-        0b1111_0000u8 | ((c & 0b1_1100_0000_0000_0000_0000) >> 18) as u8,
+        0b1111_0000_u8 | ((c & 0b1_1100_0000_0000_0000_0000) >> 18) as u8,
         TAG_CONT | ((c & 0b0_0011_1111_0000_0000_0000) >> 12) as u8,
         TAG_CONT | ((c & 0b0_0000_0000_1111_1100_0000) >> 6) as u8,
         TAG_CONT | (c & 0b0_0000_0000_0000_0011_1111) as u8,

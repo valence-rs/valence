@@ -108,9 +108,9 @@ impl RgbColor {
     pub fn to_named_lossy(self) -> NamedColor {
         // calculates the squared distance between 2 colors
         fn squared_distance(c1: RgbColor, c2: RgbColor) -> i32 {
-            (c1.r as i32 - c2.r as i32).pow(2)
-                + (c1.g as i32 - c2.g as i32).pow(2)
-                + (c1.b as i32 - c2.b as i32).pow(2)
+            (i32::from(c1.r) - i32::from(c2.r)).pow(2)
+                + (i32::from(c1.g) - i32::from(c2.g)).pow(2)
+                + (i32::from(c1.b) - i32::from(c2.b)).pow(2)
         }
 
         [
@@ -297,7 +297,7 @@ impl TryFrom<&str> for RgbColor {
 
 impl Serialize for Color {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        format!("{}", self).serialize(serializer)
+        format!("{self}").serialize(serializer)
     }
 }
 

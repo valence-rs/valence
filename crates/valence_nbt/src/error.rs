@@ -2,7 +2,7 @@ use std::error::Error as StdError;
 use std::fmt::{Display, Formatter};
 use std::io;
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 /// Errors that can occur when encoding or decoding binary NBT.
 #[derive(Debug)]
@@ -19,12 +19,14 @@ enum Cause {
 }
 
 impl Error {
+    #[allow(dead_code)]
     pub(crate) fn new_owned(msg: impl Into<Box<str>>) -> Self {
         Self {
             cause: Box::new(Cause::Owned(msg.into())),
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn new_static(msg: &'static str) -> Self {
         Self {
             cause: Box::new(Cause::Static(msg)),

@@ -17,24 +17,24 @@ impl CommandArg for Time {
                 't' => {
                     return Ok(Time::Ticks(number_str.parse::<f32>().map_err(|_| {
                         CommandArgParseError::InvalidArgument {
-                            expected: "time".to_string(),
-                            got: "not a valid time".to_string(),
+                            expected: "time".to_owned(),
+                            got: "not a valid time".to_owned(),
                         }
                     })?));
                 }
                 's' => {
                     return Ok(Time::Seconds(number_str.parse::<f32>().map_err(|_| {
                         CommandArgParseError::InvalidArgument {
-                            expected: "time".to_string(),
-                            got: "not a valid time".to_string(),
+                            expected: "time".to_owned(),
+                            got: "not a valid time".to_owned(),
                         }
                     })?));
                 }
                 'd' => {
                     return Ok(Time::Days(number_str.parse::<f32>().map_err(|_| {
                         CommandArgParseError::InvalidArgument {
-                            expected: "time".to_string(),
-                            got: "not a valid time".to_string(),
+                            expected: "time".to_owned(),
+                            got: "not a valid time".to_owned(),
                         }
                     })?));
                 }
@@ -46,15 +46,15 @@ impl CommandArg for Time {
         if !number_str.is_empty() {
             return Ok(Time::Ticks(number_str.parse::<f32>().map_err(|_| {
                 CommandArgParseError::InvalidArgument {
-                    expected: "time".to_string(),
-                    got: "not a valid time".to_string(),
+                    expected: "time".to_owned(),
+                    got: "not a valid time".to_owned(),
                 }
             })?));
         }
 
         Err(CommandArgParseError::InvalidArgument {
-            expected: "time".to_string(),
-            got: "not a valid time".to_string(),
+            expected: "time".to_owned(),
+            got: "not a valid time".to_owned(),
         })
     }
 
@@ -63,21 +63,26 @@ impl CommandArg for Time {
     }
 }
 
-#[test]
-fn test_time() {
-    let mut input = ParseInput::new("42.31t");
-    let time = Time::parse_arg(&mut input).unwrap();
-    assert_eq!(time, Time::Ticks(42.31));
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    let mut input = ParseInput::new("42.31");
-    let time = Time::parse_arg(&mut input).unwrap();
-    assert_eq!(time, Time::Ticks(42.31));
+    #[test]
+    fn test_time() {
+        let mut input = ParseInput::new("42.31t");
+        let time = Time::parse_arg(&mut input).unwrap();
+        assert_eq!(time, Time::Ticks(42.31));
 
-    let mut input = ParseInput::new("1239.72s");
-    let time = Time::parse_arg(&mut input).unwrap();
-    assert_eq!(time, Time::Seconds(1239.72));
+        let mut input = ParseInput::new("42.31");
+        let time = Time::parse_arg(&mut input).unwrap();
+        assert_eq!(time, Time::Ticks(42.31));
 
-    let mut input = ParseInput::new("133.1d");
-    let time = Time::parse_arg(&mut input).unwrap();
-    assert_eq!(time, Time::Days(133.1));
+        let mut input = ParseInput::new("1239.72s");
+        let time = Time::parse_arg(&mut input).unwrap();
+        assert_eq!(time, Time::Seconds(1239.72));
+
+        let mut input = ParseInput::new("133.1d");
+        let time = Time::parse_arg(&mut input).unwrap();
+        assert_eq!(time, Time::Days(133.1));
+    }
 }

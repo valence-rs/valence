@@ -112,7 +112,7 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>
                     indices: [0; HALF_LEN],
                 };
 
-                for (i, val) in dir.iter().cloned().enumerate() {
+                for (i, val) in dir.iter().copied().enumerate() {
                     if ind.set(i, val).is_none() {
                         return;
                     }
@@ -179,7 +179,7 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>
                     (direct_bits as u8).encode(&mut writer)?;
 
                     // Number of longs in data array.
-                    VarInt(compact_u64s_len(LEN, direct_bits) as _).encode(&mut writer)?;
+                    VarInt(compact_u64s_len(LEN, direct_bits) as i32).encode(&mut writer)?;
                     // Data array
                     encode_compact_u64s(
                         writer,
@@ -198,13 +198,13 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>
                     }
 
                     // Number of longs in data array.
-                    VarInt(compact_u64s_len(LEN, bits_per_entry) as _).encode(&mut writer)?;
+                    VarInt(compact_u64s_len(LEN, bits_per_entry) as i32).encode(&mut writer)?;
                     // Data array
                     encode_compact_u64s(
                         writer,
                         ind.indices
                             .iter()
-                            .cloned()
+                            .copied()
                             .flat_map(|byte| [byte & 0b1111, byte >> 4])
                             .map(u64::from)
                             .take(LEN),
@@ -217,9 +217,9 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>
                 (direct_bits as u8).encode(&mut writer)?;
 
                 // Number of longs in data array.
-                VarInt(compact_u64s_len(LEN, direct_bits) as _).encode(&mut writer)?;
+                VarInt(compact_u64s_len(LEN, direct_bits) as i32).encode(&mut writer)?;
                 // Data array
-                encode_compact_u64s(writer, dir.iter().cloned().map(to_bits), direct_bits)?;
+                encode_compact_u64s(writer, dir.iter().copied().map(to_bits), direct_bits)?;
             }
         }
 
@@ -278,7 +278,7 @@ fn encode_compact_u64s(
         for i in 0..vals_per_u64 {
             match vals.next() {
                 Some(val) => {
-                    debug_assert!(val < 2_u128.pow(bits_per_val as _) as _);
+                    debug_assert!(val < 2_u128.pow(bits_per_val as u32) as u64);
                     n |= val << (i * bits_per_val);
                 }
                 None if i > 0 => return n.encode(&mut w),

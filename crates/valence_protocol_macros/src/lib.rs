@@ -1,21 +1,4 @@
 #![doc = include_str!("../README.md")]
-#![deny(
-    rustdoc::broken_intra_doc_links,
-    rustdoc::private_intra_doc_links,
-    rustdoc::missing_crate_level_docs,
-    rustdoc::invalid_codeblock_attributes,
-    rustdoc::invalid_rust_codeblocks,
-    rustdoc::bare_urls,
-    rustdoc::invalid_html_tags
-)]
-#![warn(
-    trivial_casts,
-    trivial_numeric_casts,
-    unused_lifetimes,
-    unused_import_braces,
-    unreachable_pub,
-    clippy::dbg_macro
-)]
 
 use proc_macro::TokenStream as StdTokenStream;
 use proc_macro2::TokenStream;
@@ -93,8 +76,8 @@ fn parse_tag_attr(attrs: &[Attribute]) -> Result<Option<i32>> {
 }
 
 /// Adding our lifetime to the generics before calling `.split_for_impl()` would
-/// also add it to the resulting ty_generics, which we don't want. So I'm doing
-/// this hack.
+/// also add it to the resulting `ty_generics`, which we don't want. So I'm
+/// doing this hack.
 fn decode_split_for_impl(
     mut generics: Generics,
     lifetime: Lifetime,

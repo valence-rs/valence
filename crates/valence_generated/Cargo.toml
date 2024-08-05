@@ -9,6 +9,9 @@ documentation.workspace = true
 license.workspace = true
 build = "build/main.rs"
 
+[lints]
+workspace = true
+
 [dependencies]
 valence_math.workspace = true
 valence_ident.workspace = true

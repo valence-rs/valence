@@ -12,12 +12,12 @@ use crate::{ChunkPos, GameMode};
 fn client_teleport_and_move() {
     let ScenarioSingleClient {
         mut app,
-        client: _,
         helper: mut helper_1,
         layer: layer_ent,
+        ..
     } = ScenarioSingleClient::new();
 
-    let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
+    let mut layer = app.world_mut().get_mut::<ChunkLayer>(layer_ent).unwrap();
 
     for z in -10..10 {
         for x in -10..10 {
@@ -31,7 +31,7 @@ fn client_teleport_and_move() {
     bundle.visible_chunk_layer.0 = layer_ent;
     bundle.visible_entity_layers.0.insert(layer_ent);
 
-    app.world.spawn(bundle);
+    app.world_mut().spawn(bundle);
 
     app.update();
 
@@ -67,7 +67,7 @@ fn client_gamemode_changed_ability() {
 
     *scenario
         .app
-        .world
+        .world_mut()
         .get_mut::<GameMode>(scenario.client)
         .unwrap() = GameMode::Creative;
 
@@ -75,7 +75,7 @@ fn client_gamemode_changed_ability() {
 
     let abilities = scenario
         .app
-        .world
+        .world_mut()
         .get::<PlayerAbilitiesFlags>(scenario.client)
         .unwrap();
 
@@ -85,7 +85,7 @@ fn client_gamemode_changed_ability() {
 
     *scenario
         .app
-        .world
+        .world_mut()
         .get_mut::<GameMode>(scenario.client)
         .unwrap() = GameMode::Adventure;
 
@@ -93,7 +93,7 @@ fn client_gamemode_changed_ability() {
 
     let abilities = scenario
         .app
-        .world
+        .world_mut()
         .get::<PlayerAbilitiesFlags>(scenario.client)
         .unwrap();
 

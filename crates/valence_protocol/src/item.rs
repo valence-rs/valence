@@ -38,7 +38,7 @@ impl ItemStack {
     }
 
     #[must_use]
-    pub fn with_nbt(mut self, nbt: impl Into<Option<Compound>>) -> Self {
+    pub fn with_nbt<C: Into<Option<Compound>>>(mut self, nbt: C) -> Self {
         self.nbt = nbt.into();
         self
     }
@@ -58,7 +58,7 @@ impl Encode for ItemStack {
             self.count.encode(&mut w)?;
             match &self.nbt {
                 Some(n) => n.encode(w),
-                None => 0u8.encode(w),
+                None => 0_u8.encode(w),
             }
         }
     }

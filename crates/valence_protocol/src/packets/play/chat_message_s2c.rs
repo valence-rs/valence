@@ -45,7 +45,7 @@ impl<'a> Encode for ChatMessageS2c<'a> {
         if self.filter_type == MessageFilterType::PartiallyFiltered {
             match self.filter_type_bits {
                 // Filler data
-                None => 0u8.encode(&mut w)?,
+                None => 0_u8.encode(&mut w)?,
                 Some(bits) => bits.encode(&mut w)?,
             }
         }

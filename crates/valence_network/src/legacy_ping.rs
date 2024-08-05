@@ -68,7 +68,7 @@ pub(crate) async fn try_handle_legacy_ping(
     stream: &mut TcpStream,
     remote_addr: SocketAddr,
 ) -> io::Result<bool> {
-    let mut temp_buf = [0u8; 3];
+    let mut temp_buf = [0_u8; 3];
     let mut n = stream.peek(&mut temp_buf).await?;
 
     if let [0xfe] | [0xfe, 0x01] = &temp_buf[..n] {
@@ -184,10 +184,10 @@ pub(crate) async fn try_handle_legacy_ping(
 // Reads the payload of a 1.6 legacy ping
 async fn read_payload(stream: &mut TcpStream) -> io::Result<ServerListLegacyPingPayload> {
     // consume the first 29 useless bytes of this amazing protocol
-    stream.read_exact(&mut [0u8; 29]).await?;
+    stream.read_exact(&mut [0_u8; 29]).await?;
 
-    let protocol = stream.read_u8().await? as i32;
-    let hostname_len = (stream.read_u16().await? as usize) * 2;
+    let protocol = i32::from(stream.read_u8().await?);
+    let hostname_len = usize::from(stream.read_u16().await?) * 2;
 
     if hostname_len > 512 {
         return Err(io::Error::new(
@@ -196,7 +196,7 @@ async fn read_payload(stream: &mut TcpStream) -> io::Result<ServerListLegacyPing
         ));
     }
 
-    let mut hostname = vec![0u8; hostname_len];
+    let mut hostname = vec![0_u8; hostname_len];
     stream.read_exact(&mut hostname).await?;
     let hostname = String::from_utf16_lossy(
         &hostname
@@ -248,7 +248,7 @@ impl ServerListLegacyPingResponse {
     ///
     /// Use [`max_description`][Self::max_description] method to get the max
     /// valid length for this specific packet with the already set fields
-    /// (version, protocol, online players, max_players).
+    /// (version, protocol, online players, max players).
     ///
     /// Also any null bytes will be removed.
     pub fn description(mut self, description: String) -> Self {
@@ -276,7 +276,7 @@ impl ServerListLegacyPingResponse {
     ///
     /// Use [`max_version`][Self::max_version] method to get the max valid
     /// length for this specific packet with the already set fields
-    /// (description, protocol, online players, max_players).
+    /// (description, protocol, online players, max players).
     ///
     /// Also any null bytes will be removed.
     pub fn version(mut self, version: String) -> Self {
@@ -311,7 +311,7 @@ impl ServerListLegacyPingResponse {
 
 // Returns the length of a string representation of a signed integer
 fn int_len(num: i32) -> usize {
-    let num_abs = num.abs() as f64;
+    let num_abs = f64::from(num.abs());
 
     if num < 0 {
         (num_abs.log10() + 2.0) as usize // because minus sign

@@ -1,22 +1,4 @@
 #![doc = include_str!("../README.md")]
-#![allow(clippy::type_complexity)]
-#![deny(
-    rustdoc::broken_intra_doc_links,
-    rustdoc::private_intra_doc_links,
-    rustdoc::missing_crate_level_docs,
-    rustdoc::invalid_codeblock_attributes,
-    rustdoc::invalid_rust_codeblocks,
-    rustdoc::bare_urls,
-    rustdoc::invalid_html_tags
-)]
-#![warn(
-    trivial_casts,
-    trivial_numeric_casts,
-    unused_lifetimes,
-    unused_import_braces,
-    unreachable_pub,
-    clippy::dbg_macro
-)]
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
@@ -147,7 +129,7 @@ fn init_world_border_for_new_clients(
 ) {
     for (mut client, layer) in &mut clients {
         if let Ok((center, lerp, portal_tp_boundary, warn_time, warn_blocks)) = wbs.get(layer.0) {
-            let millis = lerp.remaining_ticks as i64 * 1000 / server.tick_rate().get() as i64;
+            let millis = lerp.remaining_ticks as i64 * 1000 / i64::from(server.tick_rate().get());
 
             client.write_packet(&WorldBorderInitializeS2c {
                 x: center.x,
@@ -176,7 +158,8 @@ fn tick_world_border_lerp(
 
                 lerp.current_diameter = lerp.target_diameter;
             } else {
-                let millis = lerp.remaining_ticks as i64 * 1000 / server.tick_rate().get() as i64;
+                let millis =
+                    lerp.remaining_ticks as i64 * 1000 / i64::from(server.tick_rate().get());
 
                 layer.write_packet(&WorldBorderInterpolateSizeS2c {
                     old_diameter: lerp.current_diameter,
@@ -241,7 +224,7 @@ fn change_world_border_portal_tp_boundary(
     server: Res<Server>,
 ) {
     for (mut layer, center, lerp, portal_tp_boundary, warn_time, warn_blocks) in &mut wbs {
-        let millis = lerp.remaining_ticks as i64 * 1000 / server.tick_rate().get() as i64;
+        let millis = lerp.remaining_ticks as i64 * 1000 / i64::from(server.tick_rate().get());
 
         layer.write_packet(&WorldBorderInitializeS2c {
             x: center.x,

@@ -39,7 +39,7 @@ impl Hash for ModifierValue {
         H: Hasher,
     {
         self.discriminant().hash(hasher);
-        match *self {
+        match self {
             ModifierValue::Bool(v) => v.hash(hasher),
             ModifierValue::U8(v) => v.hash(hasher),
             ModifierValue::U16(v) => v.hash(hasher),
@@ -49,14 +49,14 @@ impl Hash for ModifierValue {
             ModifierValue::I16(v) => v.hash(hasher),
             ModifierValue::I32(v) => v.hash(hasher),
             ModifierValue::I64(v) => v.hash(hasher),
-            ModifierValue::F32(v) => OrderedFloat(v).hash(hasher),
-            ModifierValue::F64(v) => OrderedFloat(v).hash(hasher),
+            ModifierValue::F32(v) => OrderedFloat(*v).hash(hasher),
+            ModifierValue::F64(v) => OrderedFloat(*v).hash(hasher),
             ModifierValue::Char(v) => v.hash(hasher),
-            ModifierValue::String(ref v) => v.hash(hasher),
+            ModifierValue::String(v) => v.hash(hasher),
             ModifierValue::Unit => ().hash(hasher),
-            ModifierValue::Option(ref v) => v.hash(hasher),
-            ModifierValue::Seq(ref v) => v.hash(hasher),
-            ModifierValue::Map(ref v) => v.hash(hasher),
+            ModifierValue::Option(v) => v.hash(hasher),
+            ModifierValue::Seq(v) => v.hash(hasher),
+            ModifierValue::Map(v) => v.hash(hasher),
         }
     }
 }
@@ -112,12 +112,12 @@ impl Ord for ModifierValue {
             (&ModifierValue::F64(v0), &ModifierValue::F64(v1)) => {
                 OrderedFloat(v0).cmp(&OrderedFloat(v1))
             }
-            (ModifierValue::Char(v0), ModifierValue::Char(ref v1)) => v0.cmp(v1),
-            (ModifierValue::String(ref v0), ModifierValue::String(ref v1)) => v0.cmp(v1),
+            (ModifierValue::Char(v0), ModifierValue::Char(v1)) => v0.cmp(v1),
+            (ModifierValue::String(v0), ModifierValue::String(v1)) => v0.cmp(v1),
             (ModifierValue::Unit, &ModifierValue::Unit) => Ordering::Equal,
-            (ModifierValue::Option(ref v0), ModifierValue::Option(ref v1)) => v0.cmp(v1),
-            (ModifierValue::Seq(ref v0), ModifierValue::Seq(ref v1)) => v0.cmp(v1),
-            (ModifierValue::Map(ref v0), ModifierValue::Map(ref v1)) => v0.cmp(v1),
+            (ModifierValue::Option(v0), ModifierValue::Option(v1)) => v0.cmp(v1),
+            (ModifierValue::Seq(v0), ModifierValue::Seq(v1)) => v0.cmp(v1),
+            (ModifierValue::Map(v0), ModifierValue::Map(v1)) => v0.cmp(v1),
             (v0, v1) => v0.discriminant().cmp(&v1.discriminant()),
         }
     }
@@ -189,7 +189,7 @@ impl From<&str> for ModifierValue {
 }
 
 impl From<()> for ModifierValue {
-    fn from(_: ()) -> Self {
+    fn from((): ()) -> Self {
         ModifierValue::Unit
     }
 }

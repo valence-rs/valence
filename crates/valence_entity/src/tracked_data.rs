@@ -22,11 +22,7 @@ impl TrackedData {
     ///
     /// [packet]: valence_protocol::packets::play::EntityTrackerUpdateS2c
     pub fn init_data(&self) -> Option<&[u8]> {
-        if self.init_data.len() > 1 {
-            Some(&self.init_data)
-        } else {
-            None
-        }
+        (self.init_data.len() > 1).then_some(&self.init_data)
     }
 
     /// Contains updated tracked data for the entity, ready to be sent in the
@@ -35,14 +31,10 @@ impl TrackedData {
     ///
     /// [packet]: valence_protocol::packets::play::EntityTrackerUpdateS2c
     pub fn update_data(&self) -> Option<&[u8]> {
-        if self.update_data.len() > 1 {
-            Some(&self.update_data)
-        } else {
-            None
-        }
+        (self.update_data.len() > 1).then_some(&self.update_data)
     }
 
-    pub fn insert_init_value(&mut self, index: u8, type_id: u8, value: impl Encode) {
+    pub fn insert_init_value<V: Encode>(&mut self, index: u8, type_id: u8, value: V) {
         debug_assert!(
             index != 0xff,
             "index of 0xff is reserved for the terminator"
@@ -86,7 +78,7 @@ impl TrackedData {
         false
     }
 
-    pub fn append_update_value(&mut self, index: u8, type_id: u8, value: impl Encode) {
+    pub fn append_update_value<V: Encode>(&mut self, index: u8, type_id: u8, value: V) {
         debug_assert!(
             index != 0xff,
             "index of 0xff is reserved for the terminator"

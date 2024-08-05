@@ -21,9 +21,7 @@ impl Plugin for MovementPlugin {
 
 /// Configuration resource for client movement checks.
 #[derive(Resource, Default)]
-pub struct MovementSettings {
-    // TODO
-}
+pub struct MovementSettings; // TODO
 
 /// Event sent when a client successfully moves.
 #[derive(Event, Clone, Debug)]

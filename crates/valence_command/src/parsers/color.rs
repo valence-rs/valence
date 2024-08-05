@@ -42,8 +42,8 @@ impl CommandArg for Color {
             Ok(Self::Reset)
         } else {
             Err(CommandArgParseError::InvalidArgument {
-                expected: "chat_color".to_string(),
-                got: "not a valid chat color".to_string(),
+                expected: "chat_color".to_owned(),
+                got: "not a valid chat color".to_owned(),
             })
         }
     }

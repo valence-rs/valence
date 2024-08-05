@@ -11,7 +11,7 @@ fn test_status_effects_packets() {
         mut app,
         client,
         mut helper,
-        layer: _,
+        ..
     } = ScenarioSingleClient::new();
 
     // Process a tick to get past the "on join" logic.
@@ -20,7 +20,7 @@ fn test_status_effects_packets() {
 
     // Add a potion effect to the client.
     let mut effects = app
-        .world
+        .world_mut()
         .get_mut::<ActiveStatusEffects>(client)
         .expect("Client should have status effects");
     effects.apply(
@@ -54,7 +54,7 @@ fn test_status_effects_packets() {
 
     // Make assertions
     let effects = app
-        .world
+        .world()
         .get::<ActiveStatusEffects>(client)
         .expect("Client should have status effects");
 

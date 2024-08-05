@@ -42,8 +42,8 @@ impl ActiveStatusEffects {
     /// 1. if the new effect is the same as the old one and its duration is
     ///    longer, it replaces the old effect. Otherwise, it does nothing.
     /// 2. if the new effect is stronger than the old one:
-    ///   a. if the new effect's duration is longer, it replaces the old effect.
-    ///   b. if the new effect's duration is shorter, it overrides the old
+    ///    - if the new effect's duration is longer, it replaces the old effect.
+    ///    - if the new effect's duration is shorter, it overrides the old
     /// 3. if the new effect is weaker than the old one and if the new effect's
     ///    duration is longer, it will be overridden by the old effect until the
     ///    old effect's duration is over.
@@ -284,7 +284,7 @@ impl ActiveStatusEffects {
                 }
                 StatusEffectChange::RemoveAll => {
                     self.remove_all_effects();
-                    for (status, effects) in current.iter() {
+                    for (status, effects) in &current {
                         if let Some(effect) = effects.first() {
                             updated_effects.insert(*status, Some(effect.clone()));
                         }

@@ -1,21 +1,4 @@
 #![doc = include_str!("../README.md")]
-#![deny(
-    rustdoc::broken_intra_doc_links,
-    rustdoc::private_intra_doc_links,
-    rustdoc::missing_crate_level_docs,
-    rustdoc::invalid_codeblock_attributes,
-    rustdoc::invalid_rust_codeblocks,
-    rustdoc::bare_urls,
-    rustdoc::invalid_html_tags
-)]
-#![warn(
-    trivial_casts,
-    trivial_numeric_casts,
-    unused_lifetimes,
-    unused_import_braces,
-    unreachable_pub,
-    clippy::dbg_macro
-)]
 
 use std::fs::{DirEntry, File};
 use std::hash::Hash;
@@ -61,7 +44,7 @@ pub enum RegionError {
     #[error("invalid compression scheme number of {0}")]
     InvalidCompressionScheme(u8),
     #[error("failed to parse NBT: {0}")]
-    Nbt(#[from] valence_nbt::binary::Error),
+    Nbt(#[from] valence_nbt::Error),
     #[error("not all chunk NBT data was read")]
     TrailingNbtData,
     #[error("oversized chunk")]
@@ -118,7 +101,7 @@ pub struct RegionFolder {
 }
 
 impl RegionFolder {
-    pub fn new(region_root: impl Into<PathBuf>) -> Self {
+    pub fn new<R: Into<PathBuf>>(region_root: R) -> Self {
         Self {
             regions: LruCache::new(LRU_CACHE_SIZE),
             region_root: region_root.into(),
@@ -233,6 +216,7 @@ impl RegionFolder {
                     .read(true)
                     .write(true)
                     .create(true)
+                    .truncate(false)
                     .open(path)?;
 
                 // TODO: try_get_or_insert_mut
@@ -354,7 +338,7 @@ impl Location {
     }
 
     fn offset_and_count(self) -> (u64, usize) {
-        (self.offset() as u64, self.count() as usize)
+        (u64::from(self.offset()), usize::from(self.count()))
     }
 }
 

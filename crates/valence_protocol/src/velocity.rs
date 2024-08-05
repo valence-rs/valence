@@ -21,12 +21,12 @@ impl Velocity {
 
     /// To meters/second.
     pub fn to_ms_f32(self) -> [f32; 3] {
-        self.0.map(|v| v as f32 / (8000.0 / 20.0))
+        self.0.map(|v| f32::from(v) / (8000.0 / 20.0))
     }
 
     /// To meters/second.
     pub fn to_ms_f64(self) -> [f64; 3] {
-        self.0.map(|v| v as f64 / (8000.0 / 20.0))
+        self.0.map(|v| f64::from(v) / (8000.0 / 20.0))
     }
 }
 
@@ -46,8 +46,8 @@ impl fmt::Display for Velocity {
 #[cfg(test)]
 #[test]
 fn velocity_from_ms() {
-    let val_1 = Velocity::from_ms_f32([(); 3].map(|_| -3.3575)).0[0];
-    let val_2 = Velocity::from_ms_f64([(); 3].map(|_| -3.3575)).0[0];
+    let val_1 = Velocity::from_ms_f32([(); 3].map(|()| -3.3575)).0[0];
+    let val_2 = Velocity::from_ms_f64([(); 3].map(|()| -3.3575)).0[0];
 
     assert_eq!(val_1, val_2);
     assert_eq!(val_1, -1343);

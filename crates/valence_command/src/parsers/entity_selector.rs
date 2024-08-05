@@ -38,7 +38,7 @@ impl CommandArg for EntitySelector {
                         Some('s') => simple_selector = Some(EntitySelectors::SelfPlayer),
                         _ => {
                             return Err(CommandArgParseError::InvalidArgument {
-                                expected: "entity selector".to_string(),
+                                expected: "entity selector".to_owned(),
                                 got: c.to_string(),
                             })
                         }
@@ -52,7 +52,7 @@ impl CommandArg for EntitySelector {
                     input.pop();
                     if simple_selector.is_none() {
                         return Err(CommandArgParseError::InvalidArgument {
-                            expected: "entity selector".to_string(),
+                            expected: "entity selector".to_owned(),
                             got: c.to_string(),
                         });
                     }
@@ -61,11 +61,11 @@ impl CommandArg for EntitySelector {
                         if c == ']' {
                             return Ok(EntitySelector::ComplexSelector(
                                 simple_selector.unwrap(),
-                                s.trim().to_string(),
+                                s.trim().to_owned(),
                             ));
-                        } else {
-                            s.push(c);
                         }
+
+                        s.push(c);
                     }
                 }
                 _ => {
@@ -86,51 +86,71 @@ impl CommandArg for EntitySelector {
     }
 }
 
-#[test]
-fn test_entity_selector() {
-    let mut input = ParseInput::new("@e");
-    assert_eq!(
-        EntitySelector::parse_arg(&mut input).unwrap(),
-        EntitySelector::SimpleSelector(EntitySelectors::AllEntities)
-    );
-    assert!(input.is_done());
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    let mut input = ParseInput::new("@e[distance=..5]");
-    assert_eq!(
-        EntitySelector::parse_arg(&mut input).unwrap(),
-        EntitySelector::ComplexSelector(EntitySelectors::AllEntities, "distance=..5".to_string())
-    );
-    assert!(input.is_done());
+    #[test]
+    fn test_entity_selector() {
+        let mut input = ParseInput::new("@e");
+        assert_eq!(
+            EntitySelector::parse_arg(&mut input).unwrap(),
+            EntitySelector::SimpleSelector(EntitySelectors::AllEntities)
+        );
+        assert!(input.is_done());
 
-    let mut input = ParseInput::new("@s[distance=..5");
-    assert!(EntitySelector::parse_arg(&mut input).is_err());
-    assert!(input.is_done());
+        let mut input = ParseInput::new("@e[distance=..5]");
+        assert_eq!(
+            EntitySelector::parse_arg(&mut input).unwrap(),
+            EntitySelector::ComplexSelector(
+                EntitySelectors::AllEntities,
+                "distance=..5".to_owned()
+            )
+        );
+        assert!(input.is_done());
 
-    let mut input = ParseInput::new("@r[distance=..5] hello");
-    assert_eq!(
-        EntitySelector::parse_arg(&mut input).unwrap(),
-        EntitySelector::ComplexSelector(EntitySelectors::RandomPlayer, "distance=..5".to_string())
-    );
-    assert!(!input.is_done());
+        let mut input = ParseInput::new("@s[distance=..5");
+        assert!(EntitySelector::parse_arg(&mut input).is_err());
+        assert!(input.is_done());
 
-    let mut input = ParseInput::new("@p[distance=..5]hello");
-    assert_eq!(
-        EntitySelector::parse_arg(&mut input).unwrap(),
-        EntitySelector::ComplexSelector(EntitySelectors::NearestPlayer, "distance=..5".to_string())
-    );
-    assert!(!input.is_done());
+        let mut input = ParseInput::new("@r[distance=..5] hello");
+        assert_eq!(
+            EntitySelector::parse_arg(&mut input).unwrap(),
+            EntitySelector::ComplexSelector(
+                EntitySelectors::RandomPlayer,
+                "distance=..5".to_owned()
+            )
+        );
+        assert!(!input.is_done());
 
-    let mut input = ParseInput::new("@e[distance=..5] hello world");
-    assert_eq!(
-        EntitySelector::parse_arg(&mut input).unwrap(),
-        EntitySelector::ComplexSelector(EntitySelectors::AllEntities, "distance=..5".to_string())
-    );
-    assert!(!input.is_done());
+        let mut input = ParseInput::new("@p[distance=..5]hello");
+        assert_eq!(
+            EntitySelector::parse_arg(&mut input).unwrap(),
+            EntitySelector::ComplexSelector(
+                EntitySelectors::NearestPlayer,
+                "distance=..5".to_owned()
+            )
+        );
+        assert!(!input.is_done());
 
-    let mut input = ParseInput::new("@e[distance=..5]hello world");
-    assert_eq!(
-        EntitySelector::parse_arg(&mut input).unwrap(),
-        EntitySelector::ComplexSelector(EntitySelectors::AllEntities, "distance=..5".to_string())
-    );
-    assert!(!input.is_done());
+        let mut input = ParseInput::new("@e[distance=..5] hello world");
+        assert_eq!(
+            EntitySelector::parse_arg(&mut input).unwrap(),
+            EntitySelector::ComplexSelector(
+                EntitySelectors::AllEntities,
+                "distance=..5".to_owned()
+            )
+        );
+        assert!(!input.is_done());
+
+        let mut input = ParseInput::new("@e[distance=..5]hello world");
+        assert_eq!(
+            EntitySelector::parse_arg(&mut input).unwrap(),
+            EntitySelector::ComplexSelector(
+                EntitySelectors::AllEntities,
+                "distance=..5".to_owned()
+            )
+        );
+        assert!(!input.is_done());
+    }
 }

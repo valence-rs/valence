@@ -89,7 +89,7 @@ fn init_clients(
         layer_id.0 = layer;
         visible_chunk_layer.0 = layer;
         visible_entity_layers.0.insert(layer);
-        pos.set([0.5, SPAWN_Y as f64 + 1.0, 0.5]);
+        pos.set([0.5, f64::from(SPAWN_Y) + 1.0, 0.5]);
         let pickaxe = ItemStack::new(ItemKind::WoodenPickaxe, 1, None);
         inv.set_slot(main_slot.slot(), pickaxe);
         client

@@ -5,7 +5,7 @@ use valence::prelude::*;
 
 /// Toggles client's game mode between survival and creative when they start
 /// sneaking.
-pub fn toggle_gamemode_on_sneak(
+pub(crate) fn toggle_gamemode_on_sneak(
     mut clients: Query<&mut GameMode>,
     mut events: EventReader<SneakEvent>,
 ) {

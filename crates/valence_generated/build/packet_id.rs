@@ -12,7 +12,7 @@ struct Packet {
     id: i32,
 }
 
-pub fn build() -> anyhow::Result<TokenStream> {
+pub(crate) fn build() -> anyhow::Result<TokenStream> {
     rerun_if_changed(["extracted/packets.json"]);
 
     let packets: Vec<Packet> = serde_json::from_str(include_str!("../extracted/packets.json"))?;

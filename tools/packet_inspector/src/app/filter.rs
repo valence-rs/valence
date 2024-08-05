@@ -5,7 +5,7 @@ use valence_protocol::PacketState;
 use super::{SharedState, Tab, View};
 use crate::tri_checkbox::{TriCheckbox, TriCheckboxState};
 
-pub struct Filter {}
+pub(crate) struct Filter;
 
 impl Tab for Filter {
     fn new() -> Self {
@@ -144,9 +144,9 @@ fn draw_packet_list(ui: &mut Ui, state: &mut SharedState, packet_state: PacketSt
 }
 
 fn int_to_hex(i: i32) -> String {
-    format!("0x{:0>2X}", i)
+    format!("0x{i:0>2X}")
 }
 
 fn int_to_hex_lower(i: i32) -> String {
-    format!("0x{:0>2x}", i)
+    format!("0x{i:0>2x}")
 }

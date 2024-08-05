@@ -1,21 +1,4 @@
 #![doc = include_str!("../README.md")]
-#![deny(
-    rustdoc::broken_intra_doc_links,
-    rustdoc::private_intra_doc_links,
-    rustdoc::missing_crate_level_docs,
-    rustdoc::invalid_codeblock_attributes,
-    rustdoc::invalid_rust_codeblocks,
-    rustdoc::bare_urls,
-    rustdoc::invalid_html_tags
-)]
-#![warn(
-    trivial_casts,
-    trivial_numeric_casts,
-    unused_lifetimes,
-    unused_import_braces,
-    unreachable_pub,
-    clippy::dbg_macro
-)]
 
 use std::path::Path;
 use std::process::Command;
@@ -40,7 +23,7 @@ pub fn write_generated_file(content: TokenStream, out_file: &str) -> anyhow::Res
 
 /// Parses a [`proc_macro2::Ident`] from a `str`. Rust keywords are prepended
 /// with underscores to make them valid identifiers.
-pub fn ident(s: impl AsRef<str>) -> Ident {
+pub fn ident<I: AsRef<str>>(s: I) -> Ident {
     let s = s.as_ref().trim();
 
     // Parse the ident from a str. If the string is a Rust keyword, stick an

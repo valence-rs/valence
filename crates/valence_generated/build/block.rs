@@ -26,11 +26,11 @@ struct Block {
 }
 
 impl Block {
-    pub fn min_state_id(&self) -> u16 {
+    pub(crate) fn min_state_id(&self) -> u16 {
         self.states.iter().map(|s| s.id).min().unwrap()
     }
 
-    pub fn max_state_id(&self) -> u16 {
+    pub(crate) fn max_state_id(&self) -> u16 {
         self.states.iter().map(|s| s.id).max().unwrap()
     }
 }
@@ -69,7 +69,7 @@ struct Shape {
     max_z: f64,
 }
 
-pub fn build() -> anyhow::Result<TokenStream> {
+pub(crate) fn build() -> anyhow::Result<TokenStream> {
     rerun_if_changed(["extracted/blocks.json"]);
 
     let TopLevel {

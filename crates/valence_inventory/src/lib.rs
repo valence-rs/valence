@@ -1,22 +1,4 @@
 #![doc = include_str!("../README.md")]
-#![deny(
-    rustdoc::broken_intra_doc_links,
-    rustdoc::private_intra_doc_links,
-    rustdoc::missing_crate_level_docs,
-    rustdoc::invalid_codeblock_attributes,
-    rustdoc::invalid_rust_codeblocks,
-    rustdoc::bare_urls,
-    rustdoc::invalid_html_tags
-)]
-#![warn(
-    trivial_casts,
-    trivial_numeric_casts,
-    unused_lifetimes,
-    unused_import_braces,
-    unreachable_pub,
-    clippy::dbg_macro
-)]
-#![allow(clippy::type_complexity)]
 
 use std::borrow::Cow;
 use std::iter::FusedIterator;
@@ -97,7 +79,7 @@ impl Inventory {
         Self::with_title(kind, "Inventory")
     }
 
-    pub fn with_title<'a>(kind: InventoryKind, title: impl IntoText<'a>) -> Self {
+    pub fn with_title<'a, T: IntoText<'a>>(kind: InventoryKind, title: T) -> Self {
         Inventory {
             title: title.into_cow_text().into_owned(),
             kind,
@@ -126,7 +108,7 @@ impl Inventory {
     /// ```
     #[track_caller]
     #[inline]
-    pub fn set_slot(&mut self, idx: u16, item: impl Into<ItemStack>) {
+    pub fn set_slot<I: Into<ItemStack>>(&mut self, idx: u16, item: I) {
         let _ = self.replace_slot(idx, item);
     }
 
@@ -145,7 +127,7 @@ impl Inventory {
     /// ```
     #[track_caller]
     #[must_use]
-    pub fn replace_slot(&mut self, idx: u16, item: impl Into<ItemStack>) -> ItemStack {
+    pub fn replace_slot<I: Into<ItemStack>>(&mut self, idx: u16, item: I) -> ItemStack {
         assert!(idx < self.slot_count(), "slot index of {idx} out of bounds");
 
         let new = item.into();
@@ -257,14 +239,14 @@ impl Inventory {
     /// inv.set_title("Box of Holding");
     /// ```
     #[inline]
-    pub fn set_title<'a>(&mut self, title: impl IntoText<'a>) {
+    pub fn set_title<'a, T: IntoText<'a>>(&mut self, title: T) {
         let _ = self.replace_title(title);
     }
 
     /// Replace the text displayed on the inventory's title bar, and returns the
     /// old text.
     #[must_use]
-    pub fn replace_title<'a>(&mut self, title: impl IntoText<'a>) -> Text {
+    pub fn replace_title<'a, T: IntoText<'a>>(&mut self, title: T) -> Text {
         // TODO: set title modified flag
         std::mem::replace(&mut self.title, title.into_cow_text().into_owned())
     }
@@ -555,7 +537,7 @@ impl<'a> InventoryWindowMut<'a> {
 
     #[track_caller]
     #[must_use]
-    pub fn replace_slot(&mut self, idx: u16, item: impl Into<ItemStack>) -> ItemStack {
+    pub fn replace_slot<I: Into<ItemStack>>(&mut self, idx: u16, item: I) -> ItemStack {
         assert!(idx < self.slot_count(), "slot index of {idx} out of bounds");
 
         if let Some(open_inv) = self.open_inventory.as_mut() {
@@ -572,7 +554,7 @@ impl<'a> InventoryWindowMut<'a> {
 
     #[track_caller]
     #[inline]
-    pub fn set_slot(&mut self, idx: u16, item: impl Into<ItemStack>) {
+    pub fn set_slot<I: Into<ItemStack>>(&mut self, idx: u16, item: I) {
         let _ = self.replace_slot(idx, item);
     }
 
@@ -922,7 +904,7 @@ fn handle_click_slot(
                     continue;
                 }
 
-                if (0i16..target_inventory.slot_count() as i16).contains(&pkt.slot_idx) {
+                if (0_i16..target_inventory.slot_count() as i16).contains(&pkt.slot_idx) {
                     // The player is dropping an item from another inventory.
 
                     let stack = target_inventory.slot(pkt.slot_idx as u16);
@@ -1039,7 +1021,7 @@ fn handle_click_slot(
                 cursor_item.set_if_neq(CursorItem(pkt.carried_item.clone()));
 
                 for slot in pkt.slot_changes.iter() {
-                    if (0i16..target_inventory.slot_count() as i16).contains(&slot.idx) {
+                    if (0_i16..target_inventory.slot_count() as i16).contains(&slot.idx) {
                         // The client is interacting with a slot in the target inventory.
                         target_inventory.set_slot(slot.idx as u16, slot.stack.clone());
                         open_inventory.client_changed |= 1 << slot.idx;
@@ -1075,7 +1057,7 @@ fn handle_click_slot(
                 inv_state.client_updated_cursor_item = true;
 
                 for slot in pkt.slot_changes.iter() {
-                    if (0i16..client_inv.slot_count() as i16).contains(&slot.idx) {
+                    if (0_i16..client_inv.slot_count() as i16).contains(&slot.idx) {
                         client_inv.set_slot(slot.idx as u16, slot.stack.clone());
                         inv_state.slots_changed |= 1 << slot.idx;
                     } else {
@@ -1146,7 +1128,7 @@ fn handle_player_actions(
                                 client: packet.client,
                                 from_slot: Some(held.slot()),
                                 stack,
-                            })
+                            });
                         }
                     }
                 }
@@ -1252,7 +1234,7 @@ fn update_player_selected_slot(mut clients: Query<(&mut Client, &HeldItem), Chan
     }
 }
 
-/// Client to Server HeldItem Slot
+/// Client to Server `HeldItem` Slot
 fn handle_update_selected_slot(
     mut packets: EventReader<PacketEvent>,
     mut clients: Query<&mut HeldItem>,

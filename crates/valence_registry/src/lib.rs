@@ -1,21 +1,4 @@
 #![doc = include_str!("../README.md")]
-#![deny(
-    rustdoc::broken_intra_doc_links,
-    rustdoc::private_intra_doc_links,
-    rustdoc::missing_crate_level_docs,
-    rustdoc::invalid_codeblock_attributes,
-    rustdoc::invalid_rust_codeblocks,
-    rustdoc::bare_urls,
-    rustdoc::invalid_html_tags
-)]
-#![warn(
-    trivial_casts,
-    trivial_numeric_casts,
-    unused_lifetimes,
-    unused_import_braces,
-    unreachable_pub,
-    clippy::dbg_macro
-)]
 
 pub mod biome;
 pub mod codec;
@@ -70,7 +53,7 @@ impl<I: RegistryIdx, V> Registry<I, V> {
         }
     }
 
-    pub fn insert(&mut self, name: impl Into<Ident<String>>, item: V) -> Option<I> {
+    pub fn insert<N: Into<Ident<String>>>(&mut self, name: N, item: V) -> Option<I> {
         if self.items.len() >= I::MAX {
             // Too many items in the registry.
             return None;

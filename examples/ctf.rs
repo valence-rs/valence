@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use bevy_ecs::query::WorldQuery;
+use bevy_ecs::query::QueryData;
 use valence::entity::cow::CowEntityBundle;
 use valence::entity::entity::Flags;
 use valence::entity::living::Health;
@@ -409,26 +409,26 @@ enum Team {
 }
 
 impl Team {
-    pub fn spawn_pos(&self) -> DVec3 {
+    fn spawn_pos(self) -> DVec3 {
         [
             match self {
                 Team::Red => -40.0,
                 Team::Blue => 40.0,
             },
-            ARENA_Y as f64 + 1.0,
+            f64::from(ARENA_Y) + 1.0,
             0.0,
         ]
         .into()
     }
 
-    pub fn team_text(&self) -> Text {
+    fn team_text(self) -> Text {
         match self {
             Team::Red => "RED".color(Color::RED).bold(),
             Team::Blue => "BLUE".color(Color::BLUE).bold(),
         }
     }
 
-    pub fn iter() -> impl Iterator<Item = Self> {
+    fn iter() -> impl Iterator<Item = Self> {
         [Team::Red, Team::Blue].iter().copied()
     }
 }
@@ -569,7 +569,7 @@ fn do_team_selector_portals(
     ctf_layers: Res<CtfLayers>,
     main_layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
 ) {
-    for player in players.iter_mut() {
+    for player in &mut players {
         let (
             player,
             mut pos,
@@ -580,7 +580,7 @@ fn do_team_selector_portals(
             mut ent_layers,
             unique_id,
         ) = player;
-        if pos.0.y < SPAWN_BOX[1] as f64 - 5.0 {
+        if pos.0.y < f64::from(SPAWN_BOX[1]) - 5.0 {
             pos.0 = SPAWN_POS.into();
             continue;
         }
@@ -662,19 +662,19 @@ fn do_team_selector_portals(
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct TriggerArea {
-    pub a: BlockPos,
-    pub b: BlockPos,
+    a: BlockPos,
+    b: BlockPos,
 }
 
 impl TriggerArea {
-    pub fn new(a: impl Into<BlockPos>, b: impl Into<BlockPos>) -> Self {
+    fn new<P: Into<BlockPos>>(a: impl Into<BlockPos>, b: P) -> Self {
         Self {
             a: a.into(),
             b: b.into(),
         }
     }
 
-    pub fn contains(&self, pos: BlockPos) -> bool {
+    fn contains(&self, pos: BlockPos) -> bool {
         let min = BlockPos::new(
             self.a.x.min(self.b.x),
             self.a.y.min(self.b.y),
@@ -694,11 +694,11 @@ impl TriggerArea {
             && pos.z <= max.z
     }
 
-    pub fn contains_pos(&self, pos: DVec3) -> bool {
+    fn contains_pos(&self, pos: DVec3) -> bool {
         self.contains(pos.into())
     }
 
-    pub fn iter_block_pos(&self) -> impl Iterator<Item = BlockPos> {
+    fn iter_block_pos(&self) -> impl Iterator<Item = BlockPos> {
         let min = BlockPos::new(
             self.a.x.min(self.b.x),
             self.a.y.min(self.b.y),
@@ -728,13 +728,13 @@ struct FlagManager {
 
 #[derive(Debug, Resource)]
 struct CtfGlobals {
-    pub scoreboard_layer: Entity,
+    pub(crate) scoreboard_layer: Entity,
 
-    pub red_flag: BlockPos,
-    pub blue_flag: BlockPos,
+    pub(crate) red_flag: BlockPos,
+    pub(crate) blue_flag: BlockPos,
 
-    pub red_capture_trigger: TriggerArea,
-    pub blue_capture_trigger: TriggerArea,
+    pub(crate) red_capture_trigger: TriggerArea,
+    pub(crate) blue_capture_trigger: TriggerArea,
 }
 
 fn update_flag_visuals(
@@ -769,7 +769,7 @@ fn do_flag_capturing(
     mut flag_manager: ResMut<FlagManager>,
     mut score: ResMut<Score>,
 ) {
-    for (ent, mut client, team, position, has_flag) in players.iter_mut() {
+    for (ent, mut client, team, position, has_flag) in &mut players {
         let capture_trigger = match team {
             Team::Red => &globals.red_capture_trigger,
             Team::Blue => &globals.blue_capture_trigger,
@@ -794,11 +794,11 @@ fn do_flag_capturing(
 
 #[derive(Debug, Default, Resource)]
 struct Score {
-    pub scores: HashMap<Team, u32>,
+    scores: HashMap<Team, u32>,
 }
 
 impl Score {
-    pub fn render_scores(&self) -> Text {
+    fn render_scores(&self) -> Text {
         let mut text = "Scores:\n".into_text();
         for team in Team::iter() {
             let score = self.scores.get(&team).unwrap_or(&0);
@@ -816,7 +816,11 @@ fn visualize_triggers(globals: Res<CtfGlobals>, mut layers: Query<&mut ChunkLaye
             layer.play_particle(
                 &Particle::Crit,
                 false,
-                [pos.x as f64 + 0.5, pos.y as f64 + 0.5, pos.z as f64 + 0.5],
+                [
+                    f64::from(pos.x) + 0.5,
+                    f64::from(pos.y) + 0.5,
+                    f64::from(pos.z) + 0.5,
+                ],
                 [0., 0., 0.],
                 0.0,
                 1,
@@ -824,7 +828,7 @@ fn visualize_triggers(globals: Res<CtfGlobals>, mut layers: Query<&mut ChunkLaye
         }
     }
 
-    for mut layer in layers.iter_mut() {
+    for mut layer in &mut layers {
         vis_trigger(&globals.red_capture_trigger, &mut layer);
         vis_trigger(&globals.blue_capture_trigger, &mut layer);
     }
@@ -837,13 +841,13 @@ struct CtfLayers {
     /// should be viewed.
     ///
     /// This is used to make friendly players glow.
-    pub friendly_layers: HashMap<Team, Entity>,
+    pub(crate) friendly_layers: HashMap<Team, Entity>,
     /// Ditto, but for enemy players.
-    pub enemy_layers: HashMap<Team, Entity>,
+    pub(crate) enemy_layers: HashMap<Team, Entity>,
 }
 
 impl CtfLayers {
-    pub fn init(commands: &mut Commands, server: &Server) -> Self {
+    fn init(commands: &mut Commands, server: &Server) -> Self {
         let mut friendly_layers = HashMap::new();
         let mut enemy_layers = HashMap::new();
 
@@ -866,8 +870,8 @@ impl CtfLayers {
 #[derive(Debug, Component)]
 struct ClonedEntity(Entity);
 
-#[derive(Debug, WorldQuery)]
-#[world_query(mutable)]
+#[derive(Debug, QueryData)]
+#[query_data(mutable)]
 struct CloneQuery {
     position: &'static mut Position,
     head_yaw: &'static mut HeadYaw,
@@ -883,7 +887,7 @@ fn update_clones(
     mut clone_ents: Query<(CloneQuery, &ClonedEntity, Entity)>,
     mut commands: Commands,
 ) {
-    for clone in clone_ents.iter_mut() {
+    for clone in &mut clone_ents {
         let (mut clone, cloned_from, ent) = clone;
         let Ok(src) = ents.get(cloned_from.0) else {
             commands.entity(ent).insert(Despawned);
@@ -908,8 +912,8 @@ struct CombatState {
     has_bonus_knockback: bool,
 }
 
-#[derive(WorldQuery)]
-#[world_query(mutable)]
+#[derive(QueryData)]
+#[query_data(mutable)]
 struct CombatQuery {
     client: &'static mut Client,
     pos: &'static Position,

@@ -7,6 +7,9 @@ repository.workspace = true
 documentation.workspace = true
 license.workspace = true
 
+[lints]
+workspace = true
+
 [dependencies]
 approx.workspace = true
 rayon.workspace = true

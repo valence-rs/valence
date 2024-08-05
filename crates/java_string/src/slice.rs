@@ -23,12 +23,13 @@ use crate::{
     SplitInclusive, SplitN, SplitTerminator, SplitWhitespace, Utf8Error,
 };
 
-#[repr(transparent)]
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[repr(transparent)]
 pub struct JavaStr {
     inner: [u8],
 }
 
+#[allow(clippy::multiple_inherent_impl)]
 impl JavaStr {
     /// Converts `v` to a `&JavaStr` if it is fully-valid UTF-8, i.e. UTF-8
     /// without surrogate code points. See [`std::str::from_utf8`].
@@ -367,7 +368,7 @@ impl JavaStr {
     ///
     /// assert_eq!(s.find('L'), Some(0));
     /// assert_eq!(s.find('é'), Some(14));
-    /// assert_eq!(s.find("pard"), Some(17));
+    /// assert_eq!(s.find("par"), Some(17));
     ///
     /// let x: &[_] = &['1', '2'];
     /// assert_eq!(s.find(x), None);
@@ -735,7 +736,7 @@ impl JavaStr {
     ///
     /// assert_eq!(s.rfind('L'), Some(13));
     /// assert_eq!(s.rfind('é'), Some(14));
-    /// assert_eq!(s.rfind("pard"), Some(24));
+    /// assert_eq!(s.rfind("par"), Some(24));
     ///
     /// let x: &[_] = &['1', '2'];
     /// assert_eq!(s.rfind(x), None);
@@ -1435,7 +1436,7 @@ impl JavaStr {
         self.transform_string(str::to_lowercase, |ch| ch)
     }
 
-    /// See [str::to_uppercase].
+    /// See [`str::to_uppercase`].
     ///
     /// ```
     /// # use java_string::{JavaCodePoint, JavaStr, JavaString};
@@ -1459,21 +1460,21 @@ impl JavaStr {
         self.transform_string(str::to_uppercase, |ch| ch)
     }
 
-    /// See [str::trim].
+    /// See [`str::trim`].
     #[inline]
     #[must_use]
     pub fn trim(&self) -> &JavaStr {
         self.trim_matches(|c: JavaCodePoint| c.is_whitespace())
     }
 
-    /// See [str::trim_end].
+    /// See [`str::trim_end`].
     #[inline]
     #[must_use]
     pub fn trim_end(&self) -> &JavaStr {
         self.trim_end_matches(|c: JavaCodePoint| c.is_whitespace())
     }
 
-    /// See [str::trim_end_matches].
+    /// See [`str::trim_end_matches`].
     ///
     /// ```
     /// # use java_string::{JavaCodePoint, JavaStr};
@@ -1509,7 +1510,7 @@ impl JavaStr {
         str
     }
 
-    /// See [str::trim_matches].
+    /// See [`str::trim_matches`].
     ///
     /// ```
     /// # use java_string::{JavaCodePoint, JavaStr};
@@ -1549,14 +1550,14 @@ impl JavaStr {
         str
     }
 
-    /// See [str::trim_start].
+    /// See [`str::trim_start`].
     #[inline]
     #[must_use]
     pub fn trim_start(&self) -> &JavaStr {
         self.trim_start_matches(|c: JavaCodePoint| c.is_whitespace())
     }
 
-    /// See [str::trim_start_matches].
+    /// See [`str::trim_start_matches`].
     ///
     /// ```
     /// # use java_string::{JavaCodePoint, JavaStr};
@@ -1746,8 +1747,8 @@ impl Debug for JavaStr {
             if esc.len() != 1 || c.as_char().is_none() {
                 unsafe {
                     // SAFETY: any invalid UTF-8 should have been caught by a previous iteration
-                    f.write_str(self[from..i].as_str_unchecked())?;
-                }
+                    f.write_str(self[from..i].as_str_unchecked())?
+                };
                 for c in esc {
                     f.write_char(c)?;
                 }
@@ -1756,8 +1757,8 @@ impl Debug for JavaStr {
         }
         unsafe {
             // SAFETY: any invalid UTF-8 should have been caught by the loop above
-            f.write_str(self[from..].as_str_unchecked())?;
-        }
+            f.write_str(self[from..].as_str_unchecked())?
+        };
         f.write_char('"')
     }
 }
@@ -1987,35 +1988,35 @@ impl PartialEq<JavaStr> for str {
 impl<'a> PartialEq<JavaStr> for &'a str {
     #[inline]
     fn eq(&self, other: &JavaStr) -> bool {
-        *self == other
+        self.as_bytes() == &other.inner
     }
 }
 
 impl PartialEq<str> for JavaStr {
     #[inline]
     fn eq(&self, other: &str) -> bool {
-        self == JavaStr::from_str(other)
+        &self.inner == other.as_bytes()
     }
 }
 
 impl<'a> PartialEq<&'a str> for JavaStr {
     #[inline]
     fn eq(&self, other: &&'a str) -> bool {
-        self == *other
+        &self.inner == other.as_bytes()
     }
 }
 
 impl<'a> PartialEq<JavaStr> for &'a JavaStr {
     #[inline]
     fn eq(&self, other: &JavaStr) -> bool {
-        *self == other
+        self.inner == other.inner
     }
 }
 
 impl<'a> PartialEq<&'a JavaStr> for JavaStr {
     #[inline]
     fn eq(&self, other: &&'a JavaStr) -> bool {
-        self == *other
+        self.inner == other.inner
     }
 }
 
@@ -2067,20 +2068,14 @@ pub unsafe trait JavaStrSliceIndex: private_slice_index::Sealed + Sized {
 
     #[inline]
     fn get(self, slice: &JavaStr) -> Option<&JavaStr> {
-        if self.check_bounds(slice) {
-            Some(unsafe { &*self.get_unchecked(slice) })
-        } else {
-            None
-        }
+        self.check_bounds(slice)
+            .then(|| unsafe { &*self.get_unchecked(slice) })
     }
 
     #[inline]
     fn get_mut(self, slice: &mut JavaStr) -> Option<&mut JavaStr> {
-        if self.check_bounds(slice) {
-            Some(unsafe { &mut *self.get_unchecked_mut(slice) })
-        } else {
-            None
-        }
+        self.check_bounds(slice)
+            .then(|| unsafe { &mut *self.get_unchecked_mut(slice) })
     }
 
     #[inline]

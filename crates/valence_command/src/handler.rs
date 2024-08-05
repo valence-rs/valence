@@ -61,7 +61,7 @@ struct CommandResource<T: Command + Send + Sync> {
 }
 
 impl<T: Command + Send + Sync> CommandResource<T> {
-    pub fn new() -> Self {
+    fn new() -> Self {
         CommandResource {
             command: PhantomData,
             executables: HashMap::new(),

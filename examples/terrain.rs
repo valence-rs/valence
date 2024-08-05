@@ -232,7 +232,7 @@ fn chunk_worker(state: Arc<ChunkWorkerState>) {
                 for y in (0..chunk.height() as i32).rev() {
                     const WATER_HEIGHT: i32 = 55;
 
-                    let p = DVec3::new(x as f64, y as f64, z as f64);
+                    let p = DVec3::new(f64::from(x), f64::from(y), f64::from(z));
 
                     let block = if has_terrain_at(&state, p) {
                         let gravel_height = WATER_HEIGHT
@@ -282,7 +282,7 @@ fn chunk_worker(state: Arc<ChunkWorkerState>) {
                     if chunk.block_state(offset_x, y, offset_z).is_air()
                         && chunk.block_state(offset_x, y - 1, offset_z) == BlockState::GRASS_BLOCK
                     {
-                        let p = DVec3::new(x as f64, y as f64, z as f64);
+                        let p = DVec3::new(f64::from(x), f64::from(y), f64::from(z));
                         let density = fbm(&state.grass, p / 5.0, 4, 2.0, 0.7);
 
                         if density > 0.55 {

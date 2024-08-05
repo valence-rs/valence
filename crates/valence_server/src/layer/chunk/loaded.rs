@@ -50,7 +50,7 @@ struct Section {
     biomes: BiomeContainer,
     /// Contains modifications for the update section packet. (Or the regular
     /// block update packet if len == 1).
-    section_updates: Vec<ChunkDeltaUpdateEntry>,
+    updates: Vec<ChunkDeltaUpdateEntry>,
 }
 
 impl Section {
@@ -109,7 +109,7 @@ impl LoadedChunk {
             .iter_mut()
             .zip(chunk.sections)
             .map(|(sect, other_sect)| {
-                sect.section_updates.clear();
+                sect.updates.clear();
 
                 unloaded::Section {
                     block_states: mem::replace(&mut sect.block_states, other_sect.block_states),
@@ -134,7 +134,7 @@ impl LoadedChunk {
             .sections
             .iter_mut()
             .map(|sect| {
-                sect.section_updates.clear();
+                sect.updates.clear();
 
                 unloaded::Section {
                     block_states: mem::take(&mut sect.block_states),
@@ -196,12 +196,12 @@ impl LoadedChunk {
 
         // Block states
         for (sect_y, sect) in self.sections.iter_mut().enumerate() {
-            match sect.section_updates.as_slice() {
+            match sect.updates.as_slice() {
                 &[] => {}
                 &[entry] => {
-                    let global_x = pos.x * 16 + entry.off_x() as i32;
-                    let global_y = info.min_y + sect_y as i32 * 16 + entry.off_y() as i32;
-                    let global_z = pos.z * 16 + entry.off_z() as i32;
+                    let global_x = pos.x * 16 + i32::from(entry.off_x());
+                    let global_y = info.min_y + sect_y as i32 * 16 + i32::from(entry.off_y());
+                    let global_z = pos.z * 16 + i32::from(entry.off_z());
 
                     messages.send_local_infallible(LocalMsg::PacketAt { pos }, |buf| {
                         let mut writer = PacketWriter::new(buf, info.threshold);
@@ -230,7 +230,7 @@ impl LoadedChunk {
                 }
             }
 
-            sect.section_updates.clear();
+            sect.updates.clear();
         }
 
         // Block entities
@@ -273,11 +273,11 @@ impl LoadedChunk {
             self.changed_biomes = false;
 
             messages.send_local_infallible(LocalMsg::ChangeBiome { pos }, |buf| {
-                for sect in self.sections.iter() {
+                for sect in &self.sections {
                     sect.biomes
                         .encode_mc_format(
                             &mut *buf,
-                            |b| b.to_index() as _,
+                            |b| b.to_index() as u64,
                             0,
                             3,
                             bit_width(info.biome_registry_len - 1),
@@ -304,7 +304,7 @@ impl LoadedChunk {
     ///
     /// We take these two special cases into account by adding a value of 2 to
     /// our heightmap if we find a motion-blocking block, since
-    /// `self.block_state(x, 0, z)` corresponds to the block at (x, min_y, z)
+    /// `self.block_state(x, 0, z)` corresponds to the block at `(x, min_y, z)`
     /// ingame.
     ///
     /// [`DimensionType::min_y`]: valence_registry::dimension_type::DimensionType::min_y
@@ -360,7 +360,7 @@ impl LoadedChunk {
         let mut encoded: Vec<i64> = vec![0; LONGS_PER_PACKET as usize];
         let mut iter = heightmap.into_iter().flatten();
 
-        for long in encoded.iter_mut() {
+        for long in &mut encoded {
             for j in 0..ENTRIES_PER_LONG {
                 match iter.next() {
                     None => break,
@@ -390,7 +390,7 @@ impl LoadedChunk {
 
             let mut blocks_and_biomes: Vec<u8> = vec![];
 
-            for sect in self.sections.iter() {
+            for sect in &self.sections {
                 sect.count_non_air_blocks()
                     .encode(&mut blocks_and_biomes)
                     .unwrap();
@@ -408,7 +408,7 @@ impl LoadedChunk {
                 sect.biomes
                     .encode_mc_format(
                         &mut blocks_and_biomes,
-                        |b| b.to_index() as _,
+                        |b| b.to_index() as u64,
                         0,
                         3,
                         bit_width(info.biome_registry_len - 1),
@@ -463,8 +463,8 @@ impl LoadedChunk {
             assert!(!self.changed_biomes);
             assert!(self.changed_block_entities.is_empty());
 
-            for sect in self.sections.iter() {
-                assert!(sect.section_updates.is_empty());
+            for sect in &self.sections {
+                assert!(sect.updates.is_empty());
             }
         }
     }
@@ -497,7 +497,7 @@ impl Chunk for LoadedChunk {
             self.cached_init_packets.get_mut().clear();
 
             if *self.viewer_count.get_mut() > 0 {
-                sect.section_updates.push(
+                sect.updates.push(
                     ChunkDeltaUpdateEntry::new()
                         .with_off_x(x as u8)
                         .with_off_y((y % 16) as u8)
@@ -522,14 +522,14 @@ impl Chunk for LoadedChunk {
                 if *self.viewer_count.get_mut() > 0 {
                     // The whole section is being modified, so any previous modifications would
                     // be overwritten.
-                    sect.section_updates.clear();
+                    sect.updates.clear();
 
                     // Push section updates for all the blocks in the section.
-                    sect.section_updates.reserve_exact(SECTION_BLOCK_COUNT);
+                    sect.updates.reserve_exact(SECTION_BLOCK_COUNT);
                     for z in 0..16 {
                         for x in 0..16 {
                             for y in 0..16 {
-                                sect.section_updates.push(
+                                sect.updates.push(
                                     ChunkDeltaUpdateEntry::new()
                                         .with_off_x(x)
                                         .with_off_y(y)
@@ -551,7 +551,7 @@ impl Chunk for LoadedChunk {
                             self.cached_init_packets.get_mut().clear();
 
                             if *self.viewer_count.get_mut() > 0 {
-                                sect.section_updates.push(
+                                sect.updates.push(
                                     ChunkDeltaUpdateEntry::new()
                                         .with_off_x(x as u8)
                                         .with_off_y(y as u8)
@@ -686,10 +686,10 @@ impl Chunk for LoadedChunk {
     fn shrink_to_fit(&mut self) {
         self.cached_init_packets.get_mut().shrink_to_fit();
 
-        for sect in self.sections.iter_mut() {
+        for sect in &mut self.sections {
             sect.block_states.shrink_to_fit();
             sect.biomes.shrink_to_fit();
-            sect.section_updates.shrink_to_fit();
+            sect.updates.shrink_to_fit();
         }
     }
 }

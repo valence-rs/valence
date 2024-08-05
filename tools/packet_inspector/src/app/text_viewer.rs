@@ -11,7 +11,7 @@ mod utils {
     include!(concat!(env!("OUT_DIR"), "/packet_to_string.rs"));
 }
 
-pub struct TextView {
+pub(crate) struct TextView {
     last_packet_id: Option<usize>,
     packet_str: String,
 }
@@ -20,7 +20,7 @@ impl Tab for TextView {
     fn new() -> Self {
         Self {
             last_packet_id: None,
-            packet_str: "".to_string(),
+            packet_str: String::new(),
         }
     }
 
@@ -34,7 +34,7 @@ impl View for TextView {
         let packets = state.packets.read().unwrap();
         let Some(packet_index) = state.selected_packet else {
             self.last_packet_id = None;
-            self.packet_str = "".to_string();
+            self.packet_str = String::new();
             return;
         };
 
@@ -43,7 +43,7 @@ impl View for TextView {
 
             self.packet_str = match utils::packet_to_string(&packets[packet_index]) {
                 Ok(str) => str,
-                Err(err) => format!("Error: {}", err),
+                Err(err) => format!("Error: {err}"),
             };
         }
 
@@ -56,7 +56,7 @@ impl View for TextView {
 use egui::text::LayoutJob;
 
 /// View some code with syntax highlighting and selection.
-pub fn code_view_ui(ui: &mut egui::Ui, mut code: &str) {
+pub(crate) fn code_view_ui(ui: &mut egui::Ui, mut code: &str) {
     let language = "rs";
     let theme = CodeTheme::from_memory(ui.ctx());
 
@@ -78,13 +78,12 @@ pub fn code_view_ui(ui: &mut egui::Ui, mut code: &str) {
 }
 
 /// Memoized Code highlighting
-pub fn highlight(ctx: &egui::Context, theme: &CodeTheme, code: &str, language: &str) -> LayoutJob {
-    impl egui::util::cache::ComputerMut<(&CodeTheme, &str, &str), LayoutJob> for Highlighter {
-        fn compute(&mut self, (theme, code, lang): (&CodeTheme, &str, &str)) -> LayoutJob {
-            self.highlight(theme, code, lang)
-        }
-    }
-
+pub(crate) fn highlight(
+    ctx: &egui::Context,
+    theme: &CodeTheme,
+    code: &str,
+    language: &str,
+) -> LayoutJob {
     type HighlightCache = egui::util::cache::FrameCache<LayoutJob, Highlighter>;
 
     ctx.memory_mut(|mem| {
@@ -124,7 +123,7 @@ impl SyntectTheme {
         .copied()
     }
 
-    fn name(&self) -> &'static str {
+    fn name(self) -> &'static str {
         match self {
             Self::Base16EightiesDark => "Base16 Eighties (dark)",
             Self::Base16MochaDark => "Base16 Mocha (dark)",
@@ -136,7 +135,7 @@ impl SyntectTheme {
         }
     }
 
-    fn syntect_key_name(&self) -> &'static str {
+    fn syntect_key_name(self) -> &'static str {
         match self {
             Self::Base16EightiesDark => "base16-eighties.dark",
             Self::Base16MochaDark => "base16-mocha.dark",
@@ -148,7 +147,7 @@ impl SyntectTheme {
         }
     }
 
-    pub fn is_dark(&self) -> bool {
+    pub(crate) fn is_dark(self) -> bool {
         match self {
             Self::Base16EightiesDark
             | Self::Base16MochaDark
@@ -162,7 +161,7 @@ impl SyntectTheme {
 
 #[derive(Clone, Hash, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-pub struct CodeTheme {
+pub(crate) struct CodeTheme {
     dark_mode: bool,
 
     syntect_theme: SyntectTheme,
@@ -176,7 +175,7 @@ impl Default for CodeTheme {
 
 #[allow(unused)]
 impl CodeTheme {
-    pub fn from_style(style: &egui::Style) -> Self {
+    pub(crate) fn from_style(style: &egui::Style) -> Self {
         if style.visuals.dark_mode {
             Self::dark()
         } else {
@@ -184,7 +183,7 @@ impl CodeTheme {
         }
     }
 
-    pub fn from_memory(ctx: &egui::Context) -> Self {
+    pub(crate) fn from_memory(ctx: &egui::Context) -> Self {
         if ctx.style().visuals.dark_mode {
             ctx.data_mut(|d| {
                 d.get_persisted(egui::Id::new("dark"))
@@ -198,7 +197,7 @@ impl CodeTheme {
         }
     }
 
-    pub fn store_in_memory(self, ctx: &egui::Context) {
+    pub(crate) fn store_in_memory(self, ctx: &egui::Context) {
         if self.dark_mode {
             ctx.data_mut(|d| d.insert_persisted(egui::Id::new("dark"), self));
         } else {
@@ -209,21 +208,21 @@ impl CodeTheme {
 
 #[allow(unused)]
 impl CodeTheme {
-    pub fn dark() -> Self {
+    pub(crate) fn dark() -> Self {
         Self {
             dark_mode: true,
             syntect_theme: SyntectTheme::SolarizedDark,
         }
     }
 
-    pub fn light() -> Self {
+    pub(crate) fn light() -> Self {
         Self {
             dark_mode: false,
             syntect_theme: SyntectTheme::SolarizedLight,
         }
     }
 
-    pub fn ui(&mut self, ui: &mut egui::Ui) {
+    pub(crate) fn ui(&mut self, ui: &mut egui::Ui) {
         egui::widgets::global_dark_light_mode_buttons(ui);
 
         for theme in SyntectTheme::all() {
@@ -247,6 +246,12 @@ impl Default for Highlighter {
             ps: syntect::parsing::SyntaxSet::load_defaults_newlines(),
             ts: syntect::highlighting::ThemeSet::load_defaults(),
         }
+    }
+}
+
+impl egui::util::cache::ComputerMut<(&CodeTheme, &str, &str), LayoutJob> for Highlighter {
+    fn compute(&mut self, (theme, code, lang): (&CodeTheme, &str, &str)) -> LayoutJob {
+        self.highlight(theme, code, lang)
     }
 }
 

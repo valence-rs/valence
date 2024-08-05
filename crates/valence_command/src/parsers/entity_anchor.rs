@@ -17,8 +17,8 @@ impl CommandArg for EntityAnchor {
             Ok(EntityAnchor::Feet)
         } else {
             Err(CommandArgParseError::InvalidArgument {
-                expected: "entity_anchor".to_string(),
-                got: "not a valid entity anchor".to_string(),
+                expected: "entity_anchor".to_owned(),
+                got: "not a valid entity anchor".to_owned(),
             })
         }
     }

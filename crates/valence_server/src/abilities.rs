@@ -47,19 +47,17 @@ pub struct PlayerStopFlyingEvent {
 
 /// Order of execution:
 /// 1. `update_game_mode`: Watch [`GameMode`] changes => Send
-/// `GameStateChangeS2c` to update the client's gamemode
+///    `GameStateChangeS2c` to update the client's gamemode
 ///
 /// 2. `update_client_player_abilities`: Watch [`PlayerAbilitiesFlags`],
-/// [`FlyingSpeed`] and [`FovModifier`] changes => Send [`PlayerAbilitiesS2c`]
-/// to update the client's abilities
+///    [`FlyingSpeed`] and [`FovModifier`] changes => Send
+///    [`PlayerAbilitiesS2c`] to update the client's abilities
 ///
-/// 3. `update_player_abilities`: Watch
-/// [`GameMode`] changes => Update [`PlayerAbilitiesFlags`] according to the
-/// [`GameMode`]
+/// 3. `update_player_abilities`: Watch [`GameMode`] changes => Update
+///    [`PlayerAbilitiesFlags`] according to the [`GameMode`]
 ///
-/// 4. `update_server_player_abilities`: Watch
-/// [`UpdatePlayerAbilitiesC2s`] packets => Update [`PlayerAbilitiesFlags`]
-/// according to the packet
+/// 4. `update_server_player_abilities`: Watch [`UpdatePlayerAbilitiesC2s`]
+///    packets => Update [`PlayerAbilitiesFlags`] according to the packet
 pub struct AbilitiesPlugin;
 
 impl Plugin for AbilitiesPlugin {
@@ -94,7 +92,7 @@ fn update_client_player_abilities(
         )>,
     >,
 ) {
-    for (mut client, flags, flying_speed, fov_modifier) in clients_query.iter_mut() {
+    for (mut client, flags, flying_speed, fov_modifier) in &mut clients_query {
         client.write_packet(&PlayerAbilitiesS2c {
             flags: *flags,
             flying_speed: flying_speed.0,
@@ -110,7 +108,7 @@ fn update_player_abilities(
     mut player_stop_flying_event_writer: EventWriter<PlayerStopFlyingEvent>,
     mut client_query: Query<(Entity, &mut PlayerAbilitiesFlags, &GameMode), Changed<GameMode>>,
 ) {
-    for (entity, mut mut_flags, gamemode) in client_query.iter_mut() {
+    for (entity, mut mut_flags, gamemode) in &mut client_query {
         let flags = mut_flags.bypass_change_detection();
         match gamemode {
             GameMode::Creative => {

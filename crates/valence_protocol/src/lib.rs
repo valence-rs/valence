@@ -1,21 +1,4 @@
 #![doc = include_str!("../README.md")]
-#![deny(
-    rustdoc::broken_intra_doc_links,
-    rustdoc::private_intra_doc_links,
-    rustdoc::missing_crate_level_docs,
-    rustdoc::invalid_codeblock_attributes,
-    rustdoc::invalid_rust_codeblocks,
-    rustdoc::bare_urls,
-    rustdoc::invalid_html_tags
-)]
-#![warn(
-    trivial_casts,
-    trivial_numeric_casts,
-    unused_lifetimes,
-    unused_import_braces,
-    unreachable_pub,
-    clippy::dbg_macro
-)]
 
 /// Used only by macros. Not public API.
 #[doc(hidden)]
@@ -273,7 +256,7 @@ pub trait Decode<'a>: Sized {
 /// [`Decode`] on `Self` are expected to only encode/decode the _body_ of this
 /// packet without the leading ID.
 pub trait Packet: std::fmt::Debug {
-    /// The leading VarInt ID of this packet.
+    /// The leading `VarInt` ID of this packet.
     const ID: i32;
     /// The name of this packet for debugging purposes.
     const NAME: &'static str;
@@ -282,7 +265,7 @@ pub trait Packet: std::fmt::Debug {
     /// The state in which this packet is used.
     const STATE: PacketState;
 
-    /// Encodes this packet's VarInt ID first, followed by the packet's body.
+    /// Encodes this packet's `VarInt` ID first, followed by the packet's body.
     fn encode_with_id(&self, mut w: impl Write) -> anyhow::Result<()>
     where
         Self: Encode,
@@ -345,7 +328,7 @@ mod tests {
 
     #[derive(Encode, Decode, Packet, Debug)]
     #[packet(id = 3, side = PacketSide::Clientbound)]
-    struct EmptyStruct {}
+    struct EmptyStruct;
 
     #[derive(Encode, Decode, Packet, Debug)]
     #[packet(id = 4, side = PacketSide::Clientbound)]

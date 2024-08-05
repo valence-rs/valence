@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use bevy_app::prelude::*;
-use criterion::Criterion;
+use divan::Bencher;
 use rand::Rng;
 use valence::entity::Position;
 use valence::keepalive::KeepaliveSettings;
@@ -15,18 +15,17 @@ use valence::testing::create_mock_client;
 use valence::{ident, ChunkPos, DefaultPlugins, Hand, Server, ServerSettings};
 use valence_server::CompressionThreshold;
 
-pub fn many_players(c: &mut Criterion) {
-    run_many_players(c, "many_players", 3000, 16, 16);
-    run_many_players(c, "many_players_spread_out", 3000, 8, 200);
+#[divan::bench]
+fn many_players(bencher: Bencher) {
+    run_many_players(bencher, 3000, 16, 16);
 }
 
-fn run_many_players(
-    c: &mut Criterion,
-    func_name: &str,
-    client_count: usize,
-    view_dist: u8,
-    world_size: i32,
-) {
+#[divan::bench]
+fn many_players_spread_out(bencher: Bencher) {
+    run_many_players(bencher, 3000, 8, 200);
+}
+
+fn run_many_players(bencher: Bencher, client_count: usize, view_dist: u8, world_size: i32) {
     let mut app = App::new();
 
     app.insert_resource(ServerSettings {
@@ -44,9 +43,9 @@ fn run_many_players(
 
     let mut layer = LayerBundle::new(
         ident!("overworld"),
-        app.world.resource::<DimensionTypeRegistry>(),
-        app.world.resource::<BiomeRegistry>(),
-        app.world.resource::<Server>(),
+        app.world().resource::<DimensionTypeRegistry>(),
+        app.world().resource::<BiomeRegistry>(),
+        app.world().resource::<Server>(),
     );
 
     for z in -world_size..world_size {
@@ -57,7 +56,7 @@ fn run_many_players(
         }
     }
 
-    let layer = app.world.spawn(layer).id();
+    let layer = app.world_mut().spawn(layer).id();
 
     let mut clients = vec![];
 
@@ -71,17 +70,17 @@ fn run_many_players(
         bundle.view_distance.set(view_dist);
 
         let mut rng = rand::thread_rng();
-        let x = rng.gen_range(-world_size as f64 * 16.0..=world_size as f64 * 16.0);
-        let z = rng.gen_range(-world_size as f64 * 16.0..=world_size as f64 * 16.0);
+        let x = rng.gen_range(-f64::from(world_size) * 16.0..=f64::from(world_size) * 16.0);
+        let z = rng.gen_range(-f64::from(world_size) * 16.0..=f64::from(world_size) * 16.0);
 
         bundle.player.position.set(DVec3::new(x, 64.0, z));
 
-        let id = app.world.spawn(bundle).id();
+        let id = app.world_mut().spawn(bundle).id();
 
         clients.push((id, helper));
     }
 
-    let mut query = app.world.query::<&mut Position>();
+    let mut query = app.world_mut().query::<&mut Position>();
 
     app.update();
 
@@ -91,34 +90,32 @@ fn run_many_players(
 
     app.update();
 
-    c.bench_function(func_name, |b| {
-        b.iter(|| {
-            let mut rng = rand::thread_rng();
+    bencher.bench_local(|| {
+        let mut rng = rand::thread_rng();
 
-            // Move the clients around randomly. They'll cross chunk borders and cause
-            // interesting things to happen.
-            for (id, helper) in &mut clients {
-                let pos = query.get(&app.world, *id).unwrap().get();
+        // Move the clients around randomly. They'll cross chunk borders and cause
+        // interesting things to happen.
+        for (id, helper) in &mut clients {
+            let pos = query.get(app.world_mut(), *id).unwrap().get();
 
-                let offset = DVec3::new(rng.gen_range(-1.0..=1.0), 0.0, rng.gen_range(-1.0..=1.0));
+            let offset = DVec3::new(rng.gen_range(-1.0..=1.0), 0.0, rng.gen_range(-1.0..=1.0));
 
-                helper.send(&FullC2s {
-                    position: pos + offset,
-                    yaw: rng.gen_range(0.0..=360.0),
-                    pitch: rng.gen_range(0.0..=360.0),
-                    on_ground: rng.gen(),
-                });
+            helper.send(&FullC2s {
+                position: pos + offset,
+                yaw: rng.gen_range(0.0..=360.0),
+                pitch: rng.gen_range(0.0..=360.0),
+                on_ground: rng.gen(),
+            });
 
-                helper.send(&HandSwingC2s { hand: Hand::Main });
-            }
+            helper.send(&HandSwingC2s { hand: Hand::Main });
+        }
 
-            drop(rng);
+        drop(rng);
 
-            app.update(); // The important part.
+        app.update(); // The important part.
 
-            for (_, helper) in &mut clients {
-                helper.clear_received();
-            }
-        });
+        for (_, helper) in &mut clients {
+            helper.clear_received();
+        }
     });
 }

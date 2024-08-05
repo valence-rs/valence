@@ -1,6 +1,6 @@
-use eframe::epaint::{PathShape, RectShape};
+use eframe::epaint::PathShape;
 use egui::{
-    Color32, Pos2, Rect, Response, Rgba, Rounding, Sense, Shape, Stroke, TextStyle, Ui, Vec2,
+    Color32, Pos2, Rect, Response, Rgba, Sense, Shape, Stroke, TextStyle, TextWrapMode, Ui, Vec2,
     WidgetText,
 };
 use packet_inspector::Packet;
@@ -8,7 +8,7 @@ use valence_protocol::PacketSide;
 
 use super::{SharedState, Tab, View};
 
-pub struct PacketList {}
+pub(crate) struct PacketList;
 
 impl Tab for PacketList {
     fn new() -> Self {
@@ -81,7 +81,7 @@ fn draw_packet_counter(state: &SharedState, ui: &mut Ui) {
         .filter(|p| state.packet_filter.get(p).unwrap_or(true))
         .count();
 
-    ui.label(format!("({}/{})", filtered_packets, length));
+    ui.label(format!("({filtered_packets}/{length})",));
 }
 
 fn draw_clear_button(state: &mut SharedState, ui: &mut Ui) {
@@ -135,38 +135,49 @@ fn draw_packet_widget(ui: &mut Ui, packet: &Packet, selected: bool) -> Response 
         Sense::click(),
     ); // this should give me a new rect inside the scroll area... no?
 
-    let fill = match selected /*packet.selected*/ {
-        true => Rgba::from_rgba_premultiplied(0.1, 0.1, 0.1, 0.5),
-        false => Rgba::from_rgba_premultiplied(0.0, 0.0, 0.0, 0.0),
+    let fill = if selected {
+        Rgba::from_rgba_premultiplied(0.1, 0.1, 0.1, 0.5)
+    } else {
+        Rgba::from_rgba_premultiplied(0.0, 0.0, 0.0, 0.0)
     };
 
-    let text_color: Color32 = match selected /*packet.selected*/ {
-        true => Rgba::from_rgba_premultiplied(0.0, 0.0, 0.0, 1.0).into(),
-        false => ui.visuals().strong_text_color(),
+    let text_color: Color32 = if selected {
+        Rgba::from_rgba_premultiplied(0.0, 0.0, 0.0, 1.0).into()
+    } else {
+        ui.visuals().strong_text_color()
     };
 
     if ui.is_rect_visible(rect) {
-        ui.painter().add(Shape::Rect(RectShape {
-            rect,
-            rounding: Rounding::none(),
-            fill: fill.into(),
-            stroke: Stroke::new(1.0, Rgba::BLACK),
-        }));
+        ui.painter()
+            .rect(rect, 0.0, fill, Stroke::new(1.0, Rgba::BLACK));
 
         let shape = get_triangle(packet.side, &rect);
         ui.painter().add(Shape::Path(shape));
 
         let identifier: WidgetText = format!("0x{:0>2X?}", packet.id).into();
 
-        let identifier =
-            identifier.into_galley(ui, Some(false), rect.width() - 21.0, TextStyle::Button);
+        let identifier = identifier.into_galley(
+            ui,
+            Some(TextWrapMode::Truncate),
+            rect.width() - 21.0,
+            TextStyle::Button,
+        );
 
         let label: WidgetText = packet.name.into();
-        let label = label.into_galley(ui, Some(false), rect.width() - 60.0, TextStyle::Button);
+        let label = label.into_galley(
+            ui,
+            Some(TextWrapMode::Truncate),
+            rect.width() - 60.0,
+            TextStyle::Button,
+        );
 
         let timestamp: WidgetText = systemtime_strftime(packet.timestamp.unwrap()).into();
-        let timestamp =
-            timestamp.into_galley(ui, Some(false), rect.width() - 60.0, TextStyle::Button);
+        let timestamp = timestamp.into_galley(
+            ui,
+            Some(TextWrapMode::Truncate),
+            rect.width() - 60.0,
+            TextStyle::Button,
+        );
 
         let id_and_timestamp_color = if selected {
             text_color
@@ -174,34 +185,33 @@ fn draw_packet_widget(ui: &mut Ui, packet: &Packet, selected: bool) -> Response 
             ui.visuals().weak_text_color()
         };
 
-        identifier.paint_with_fallback_color(
-            ui.painter(),
+        ui.painter().galley(
             Pos2 {
                 x: rect.left() + 21.0,
                 y: rect.top() + 6.0,
             },
+            identifier,
             id_and_timestamp_color,
         );
 
         rect.set_width(rect.width() - 5.0);
 
         let label_width = label.size().x + 50.0;
-
-        label.paint_with_fallback_color(
-            &ui.painter().with_clip_rect(rect),
+        ui.painter().galley(
             Pos2 {
                 x: rect.left() + 55.0,
                 y: rect.top() + 6.0,
             },
+            label,
             text_color,
         );
 
-        timestamp.paint_with_fallback_color(
-            &ui.painter().with_clip_rect(rect),
+        ui.painter().galley(
             Pos2 {
                 x: rect.left() + label_width + 8.0,
                 y: rect.top() + 6.0,
             },
+            timestamp,
             id_and_timestamp_color,
         );
     }
@@ -260,7 +270,7 @@ fn get_triangle(direction: PacketSide, outer_rect: &Rect) -> PathShape {
     shape
 }
 
-pub fn systemtime_strftime(odt: time::OffsetDateTime) -> String {
+pub(crate) fn systemtime_strftime(odt: time::OffsetDateTime) -> String {
     let hour = odt.hour();
     let minute = odt.minute();
     let second = odt.second();

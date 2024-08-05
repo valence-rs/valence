@@ -2,7 +2,7 @@ use std::io::Read;
 
 use super::{SharedState, Tab, View};
 
-pub struct HexView {}
+pub(crate) struct HexView;
 
 impl Tab for HexView {
     fn new() -> Self {
@@ -16,7 +16,7 @@ impl Tab for HexView {
 
 impl View for HexView {
     fn ui(&mut self, ui: &mut egui::Ui, state: &mut SharedState) {
-        let mut buf = [0u8; 16];
+        let mut buf = [0_u8; 16];
         let mut count = 0;
 
         let packets = state.packets.read().unwrap();
@@ -34,7 +34,7 @@ impl View for HexView {
             .show(ui, |ui| {
                 ui.label(" ");
                 for i in 0..16 {
-                    ui.label(format!("{:02X}", i));
+                    ui.label(format!("{i:02X}"));
                 }
                 ui.end_row();
                 loop {
@@ -43,14 +43,14 @@ impl View for HexView {
                         break;
                     }
 
-                    ui.label(format!("{:08X}", count));
+                    ui.label(format!("{count:08X}"));
                     let text_color = if ui.style().visuals.dark_mode {
                         egui::Color32::from_gray(255)
                     } else {
                         egui::Color32::from_gray(0)
                     };
                     for b in buf.iter().take(bytes_read) {
-                        ui.colored_label(text_color, format!("{:02X}", b));
+                        ui.colored_label(text_color, format!("{b:02X}"));
                     }
                     for _ in 0..16 - bytes_read {
                         ui.label(" ");

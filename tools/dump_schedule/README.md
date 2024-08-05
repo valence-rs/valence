@@ -1,4 +1,4 @@
-# dump_schedule
+# `dump_schedule`
 
 A simple debugging utility for visualizing Valence's schedule graph. Generates a SVG file.
 

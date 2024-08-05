@@ -4,7 +4,7 @@ use egui::{
 };
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum TriCheckboxState {
+pub(crate) enum TriCheckboxState {
     Enabled,
     Partial,
     Disabled,
@@ -24,21 +24,21 @@ pub enum TriCheckboxState {
 /// # });
 /// ```
 #[must_use = "You should put this widget in an ui with `ui.add(widget);`"]
-pub struct TriCheckbox<'a> {
+pub(crate) struct TriCheckbox<'a> {
     checked: &'a mut TriCheckboxState,
     text: WidgetText,
 }
 
 #[allow(unused)]
 impl<'a> TriCheckbox<'a> {
-    pub fn new(checked: &'a mut TriCheckboxState, text: impl Into<WidgetText>) -> Self {
+    pub(crate) fn new(checked: &'a mut TriCheckboxState, text: impl Into<WidgetText>) -> Self {
         TriCheckbox {
             checked,
             text: text.into(),
         }
     }
 
-    pub fn without_text(checked: &'a mut TriCheckboxState) -> Self {
+    pub(crate) fn without_text(checked: &'a mut TriCheckboxState) -> Self {
         Self::new(checked, WidgetText::default())
     }
 }
@@ -80,6 +80,7 @@ impl<'a> Widget for TriCheckbox<'a> {
             WidgetInfo::selected(
                 WidgetType::Checkbox,
                 *checked == TriCheckboxState::Enabled,
+                false,
                 text.as_ref().map_or("", |x| x.text()),
             )
         });
@@ -89,12 +90,12 @@ impl<'a> Widget for TriCheckbox<'a> {
             // let visuals = ui.style().interact_selectable(&response, *checked);
             let visuals = ui.style().interact(&response);
             let (small_icon_rect, big_icon_rect) = ui.spacing().icon_rectangles(rect);
-            ui.painter().add(epaint::RectShape {
-                rect: big_icon_rect.expand(visuals.expansion),
-                rounding: visuals.rounding,
-                fill: visuals.bg_fill,
-                stroke: visuals.bg_stroke,
-            });
+            ui.painter().add(epaint::RectShape::new(
+                big_icon_rect.expand(visuals.expansion),
+                visuals.rounding,
+                visuals.bg_fill,
+                visuals.bg_stroke,
+            ));
 
             match *checked {
                 TriCheckboxState::Enabled => {
@@ -118,14 +119,15 @@ impl<'a> Widget for TriCheckbox<'a> {
                         visuals.fg_stroke,
                     ));
                 }
-                _ => {}
+                TriCheckboxState::Disabled => {}
             }
             if let Some(text) = text {
                 let text_pos = pos2(
                     rect.min.x + icon_width + icon_spacing,
                     rect.center().y - 0.5 * text.size().y,
                 );
-                text.paint_with_visuals(ui.painter(), text_pos, visuals);
+
+                ui.painter().galley(text_pos, text, visuals.text_color());
             }
         }
 

@@ -1,22 +1,4 @@
 #![doc = include_str!("../README.md")]
-#![deny(
-    rustdoc::broken_intra_doc_links,
-    rustdoc::private_intra_doc_links,
-    rustdoc::missing_crate_level_docs,
-    rustdoc::invalid_codeblock_attributes,
-    rustdoc::invalid_rust_codeblocks,
-    rustdoc::bare_urls,
-    rustdoc::invalid_html_tags
-)]
-#![warn(
-    trivial_casts,
-    trivial_numeric_casts,
-    unused_lifetimes,
-    unused_import_braces,
-    unreachable_pub,
-    clippy::dbg_macro
-)]
-#![allow(clippy::type_complexity)]
 
 use std::borrow::Cow;
 
@@ -96,7 +78,7 @@ impl PlayerList {
         &self.footer
     }
 
-    pub fn set_header<'a>(&mut self, txt: impl IntoText<'a>) {
+    pub fn set_header<'a, T: IntoText<'a>>(&mut self, txt: T) {
         let txt = txt.into_cow_text().into_owned();
 
         if txt != self.header {
@@ -106,7 +88,7 @@ impl PlayerList {
         self.header = txt;
     }
 
-    pub fn set_footer<'a>(&mut self, txt: impl IntoText<'a>) {
+    pub fn set_footer<'a, T: IntoText<'a>>(&mut self, txt: T) {
         let txt = txt.into_cow_text().into_owned();
 
         if txt != self.footer {

@@ -1,20 +1,4 @@
 #![doc = include_str!("../README.md")]
-#![deny(
-    rustdoc::broken_intra_doc_links,
-    rustdoc::private_intra_doc_links,
-    rustdoc::missing_crate_level_docs,
-    rustdoc::invalid_codeblock_attributes,
-    rustdoc::invalid_rust_codeblocks,
-    rustdoc::bare_urls,
-    rustdoc::invalid_html_tags
-)]
-#![warn(
-    trivial_casts,
-    trivial_numeric_casts,
-    unused_lifetimes,
-    unused_import_braces,
-    clippy::dbg_macro
-)]
 
 use std::io;
 use std::io::Write;
@@ -45,7 +29,7 @@ fn main() -> io::Result<()> {
 
     app.add_plugins(DefaultPlugins);
 
-    let schedules = app.world.resource::<Schedules>();
+    let schedules = app.world().resource::<Schedules>();
 
     let Some(sched_name) = cli.schedule else {
         print_available_schedules(schedules);
@@ -63,7 +47,7 @@ fn main() -> io::Result<()> {
 
     let dot_graph = bevy_mod_debugdump::schedule_graph::schedule_graph_dot(
         schedule,
-        &app.world,
+        app.world(),
         &bevy_mod_debugdump::schedule_graph::Settings {
             ambiguity_enable: false,
             ..Default::default()
