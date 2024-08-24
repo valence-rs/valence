@@ -1,11 +1,12 @@
 package rs.valence.extractor;
 
+import java.io.Serializable;
 import java.util.Comparator;
 
 /**
  * Compare Class objects by their simple names lexicographically.
  */
-public class ClassComparator implements Comparator<Class<?>> {
+public class ClassComparator implements Comparator<Class<?>>, Serializable {
     public ClassComparator() {
     }
 

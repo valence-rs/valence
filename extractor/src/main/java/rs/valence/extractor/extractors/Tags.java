@@ -64,7 +64,7 @@ public class Tags implements Main.Extractor {
             RegistryEntryList<T> registryEntryList = pair.getSecond();
             JsonArray intList = new JsonArray(registryEntryList.size());
             for (RegistryEntry<T> registryEntry : registryEntryList) {
-                if (registryEntry.getType() != RegistryEntry.Type.REFERENCE) {
+                if (RegistryEntry.Type.REFERENCE != registryEntry.getType()) {
                     throw new IllegalStateException("Can't serialize unregistered value " + registryEntry);
                 }
                 intList.add(registry.getRawId(registryEntry.value()));

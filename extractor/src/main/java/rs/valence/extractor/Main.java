@@ -44,10 +44,7 @@ public class Main implements ModInitializer {
                new Attributes(),
                new Blocks(),
                new Effects(),
-               new Enchants(),
-               new Entities(),
                new Misc(),
-               new Items(),
                new Packets(),
                new Sounds(),
                new TranslationKeys(),
@@ -75,27 +72,28 @@ public class Main implements ModInitializer {
             }
         }
 
-        ServerLifecycleEvents.SERVER_STARTING.register(server -> {
+        ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             LOGGER.info("Server starting, Running startup extractors...");
             // TODO: make `Codec` implement `Extractor`
-            var codecExtractor = new Codec(server);
+            // TODO: the way to get Codex has changed, this is not working anymore
+            var packetRegistryExtractor = new PacketRegistries(server);
             try {
-                var out = outputDirectory.resolve(codecExtractor.fileName());
-                var compound = codecExtractor.extract();
-                // read the compound byte-wise and write it to the file
-                try {
-                    NbtIo.write(compound, out.toFile());
-                } catch (IOException var3) {
-                    throw new EncoderException(var3);
-                }
+                var out = outputDirectory.resolve(packetRegistryExtractor.fileName());
+                var fileWriter = new FileWriter(out.toFile(), StandardCharsets.UTF_8);
+                gson.toJson(packetRegistryExtractor.extract(), fileWriter);
+                fileWriter.close();
 
                 LOGGER.info("Wrote " + out.toAbsolutePath());
             } catch (Exception e) {
-                LOGGER.error("Extractor for \"" + codecExtractor.fileName() + "\" failed.", e);
+                LOGGER.error("Extractor for \"" + packetRegistryExtractor.fileName() + "\" failed.", e);
             }
 
             var startupExtractors = new Extractor[]{
                 new Tags(server),
+                new Paintings(server),
+                new Enchants(server),
+                new Entities(server),
+                new Items(server),
             };
 
             for (var ext : startupExtractors) {
@@ -111,7 +109,7 @@ public class Main implements ModInitializer {
             }
 
             LOGGER.info("Done.");
-            server.shutdown();
+            server.stop(false);
         });
     }
 

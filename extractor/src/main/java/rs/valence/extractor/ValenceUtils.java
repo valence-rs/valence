@@ -8,6 +8,8 @@ public class ValenceUtils {
         throw new UnsupportedOperationException("This class cannot be instantiated");
     }
 
+
+
     /**
      * Converts a string to PascalCase.
      * 
@@ -19,7 +21,7 @@ public class ValenceUtils {
         boolean capitalizeNext = true;
 
         for (char c : str.toCharArray()) {
-            if (Character.isWhitespace(c) || c == '_') {
+            if (Character.isWhitespace(c) || '_' == c) {
                 capitalizeNext = true;
             } else if (capitalizeNext) {
                 result.append(Character.toUpperCase(c));
