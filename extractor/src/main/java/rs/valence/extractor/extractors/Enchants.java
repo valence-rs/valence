@@ -15,8 +15,8 @@ import rs.valence.extractor.Main;
 public class Enchants implements Main.Extractor {
     private final DynamicRegistryManager.Immutable registryManager;
 
-    public Enchants(final MinecraftServer server) {
-        registryManager = server.getRegistryManager();
+    public Enchants(MinecraftServer server) {
+        this.registryManager = server.getRegistryManager();
     }
 
     @Override
@@ -26,10 +26,10 @@ public class Enchants implements Main.Extractor {
 
     @Override
     public JsonElement extract() {
-        final var enchantsJson = new JsonObject();
+        var enchantsJson = new JsonObject();
 
-        for (final var enchant : this.registryManager.get(RegistryKeys.ENCHANTMENT).streamEntries().toList()) {
-            enchantsJson.add(enchant.getKey().orElseThrow().getValue().toString(), Enchantment.CODEC.encodeStart(RegistryOps.of(JsonOps.INSTANCE, this.registryManager), enchant.value()).getOrThrow());
+        for (var enchant : registryManager.get(RegistryKeys.ENCHANTMENT).streamEntries().toList()) {
+            enchantsJson.add(enchant.getKey().orElseThrow().getValue().toString(), Enchantment.CODEC.encodeStart(RegistryOps.of(JsonOps.INSTANCE, registryManager), enchant.value()).getOrThrow());
 
         }
 

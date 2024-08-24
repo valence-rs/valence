@@ -18,10 +18,10 @@ public class Items implements Main.Extractor {
 
     @Override
     public JsonElement extract() throws Exception {
-        final var itemsJson = new JsonArray();
+        var itemsJson = new JsonArray();
 
-        for (final var item : Registries.ITEM) {
-            final var itemJson = new JsonObject();
+        for (var item : Registries.ITEM) {
+            var itemJson = new JsonObject();
             itemJson.addProperty("id", Registries.ITEM.getRawId(item));
             itemJson.addProperty("name", Registries.ITEM.getId(item).getPath());
             itemJson.addProperty("translation_key", item.getTranslationKey());
@@ -31,8 +31,8 @@ public class Items implements Main.Extractor {
             itemJson.addProperty("fireproof", item.getComponents().contains(DataComponentTypes.FIRE_RESISTANT));
 
             if (item.getComponents().contains(DataComponentTypes.FOOD)) {
-                final var foodJson = new JsonObject();
-                final var foodComp = item.getComponents().get(DataComponentTypes.FOOD);
+                var foodJson = new JsonObject();
+                var foodComp = item.getComponents().get(DataComponentTypes.FOOD);
 
                 foodJson.addProperty("hunger", foodComp.nutrition());
                 foodJson.addProperty("saturation", foodComp.saturation());
@@ -41,12 +41,12 @@ public class Items implements Main.Extractor {
 
                 itemJson.add("food", foodJson);
 
-                final var effectsJson = new JsonArray();
-                for (final var effectEntry : foodComp.effects()) {
-                    final var effectJson = new JsonObject();
+                var effectsJson = new JsonArray();
+                for (var effectEntry : foodComp.effects()) {
+                    var effectJson = new JsonObject();
 
-                    final var effect = effectEntry.effect();
-                    final var chance = effectEntry.probability();
+                    var effect = effectEntry.effect();
+                    var chance = effectEntry.probability();
 
                     effectJson.addProperty("chance", chance);
                     effectJson.addProperty("translation_key", effect.getTranslationKey());

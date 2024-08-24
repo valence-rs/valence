@@ -19,24 +19,24 @@ public class Packets implements Main.Extractor {
 
     @Override
     public JsonElement extract() throws IOException {
-        final var packetsJson = new JsonArray();
+        var packetsJson = new JsonArray();
 
-        Packets.serializeFactory(HandshakeStates.C2S_FACTORY, packetsJson);
-        Packets.serializeFactory(QueryStates.C2S_FACTORY, packetsJson);
-        Packets.serializeFactory(QueryStates.S2C_FACTORY, packetsJson);
-        Packets.serializeFactory(LoginStates.C2S_FACTORY, packetsJson);
-        Packets.serializeFactory(LoginStates.S2C_FACTORY, packetsJson);
-        Packets.serializeFactory(ConfigurationStates.C2S_FACTORY, packetsJson);
-        Packets.serializeFactory(ConfigurationStates.S2C_FACTORY, packetsJson);
-        Packets.serializeFactory(PlayStateFactories.C2S, packetsJson);
-        Packets.serializeFactory(PlayStateFactories.S2C, packetsJson);
+        serializeFactory(HandshakeStates.C2S_FACTORY, packetsJson);
+        serializeFactory(QueryStates.C2S_FACTORY, packetsJson);
+        serializeFactory(QueryStates.S2C_FACTORY, packetsJson);
+        serializeFactory(LoginStates.C2S_FACTORY, packetsJson);
+        serializeFactory(LoginStates.S2C_FACTORY, packetsJson);
+        serializeFactory(ConfigurationStates.C2S_FACTORY, packetsJson);
+        serializeFactory(ConfigurationStates.S2C_FACTORY, packetsJson);
+        serializeFactory(PlayStateFactories.C2S, packetsJson);
+        serializeFactory(PlayStateFactories.S2C, packetsJson);
 
         return packetsJson;
     }
 
-    private static <T extends PacketListener, B extends ByteBuf> void serializeFactory(final NetworkState.Factory<T, B> factory, final JsonArray json) {
+    private static <T extends PacketListener, B extends ByteBuf> void serializeFactory(NetworkState.Factory<T, B> factory, JsonArray json) {
         factory.forEachPacketType((type, i) -> {
-            final var packetJson = new JsonObject();
+            var packetJson = new JsonObject();
             packetJson.addProperty("name", type.id().getPath());
             packetJson.addProperty("phase", factory.phase().getId());
             packetJson.addProperty("side", factory.side().getName());

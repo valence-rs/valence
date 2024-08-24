@@ -11,12 +11,12 @@ public class ClassComparator implements Comparator<Class<?>>, Serializable {
     }
 
     @Override
-    public int compare(final Class<?> c1, final Class<?> c2) {
+    public int compare(Class<?> c1, Class<?> c2) {
         return c1.getSimpleName().compareTo(c2.getSimpleName());
     }
 
     @Override
-    public boolean equals(final Object comp) {
+    public boolean equals(Object comp) {
         return comp instanceof ClassComparator;
     }
 }

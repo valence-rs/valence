@@ -15,10 +15,10 @@ public class DummyPlayerEntity extends PlayerEntity {
     static {
         INSTANCE = Main.magicallyInstantiate(DummyPlayerEntity.class);
 
-        DummyPlayerEntity.INSTANCE.initDataTracker(new DataTracker.Builder(DummyPlayerEntity.INSTANCE));
+        INSTANCE.initDataTracker(new DataTracker.Builder(INSTANCE));
     }
 
-    public DummyPlayerEntity(final World world, final BlockPos pos, final float yaw, final GameProfile gameProfile, @Nullable final PlayerPublicKey publicKey) {
+    public DummyPlayerEntity(World world, BlockPos pos, float yaw, GameProfile gameProfile, @Nullable PlayerPublicKey publicKey) {
         super(world, pos, yaw, gameProfile);
     }
 

@@ -28,18 +28,18 @@ public class Misc implements Main.Extractor {
 
     @Override
     public JsonElement extract() throws Exception {
-        final var miscJson = new JsonObject();
+        var miscJson = new JsonObject();
 
-        final var entityTypeJson = new JsonObject();
-        for (final var type : Registries.ENTITY_TYPE) {
+        var entityTypeJson = new JsonObject();
+        for (var type : Registries.ENTITY_TYPE) {
             entityTypeJson.addProperty(Registries.ENTITY_TYPE.getId(type).getPath(),
                     Registries.ENTITY_TYPE.getRawId(type));
         }
         miscJson.add("entity_type", entityTypeJson);
 
-        final var entityStatusJson = new JsonObject();
-        for (final var field : EntityStatuses.class.getDeclaredFields()) {
-            if (field.canAccess(null) && field.get(null) instanceof final Byte code) {
+        var entityStatusJson = new JsonObject();
+        for (var field : EntityStatuses.class.getDeclaredFields()) {
+            if (field.canAccess(null) && field.get(null) instanceof Byte code) {
                 if ("field_30030".equals(field.getName())) {
                     entityStatusJson.addProperty("stop_attack", code);
                 } else {
@@ -49,38 +49,38 @@ public class Misc implements Main.Extractor {
         }
         miscJson.add("entity_status", entityStatusJson);
 
-        final var entityAnimationJson = new JsonObject();
-        for (final var field : EntityAnimationS2CPacket.class.getDeclaredFields()) {
+        var entityAnimationJson = new JsonObject();
+        for (var field : EntityAnimationS2CPacket.class.getDeclaredFields()) {
             field.setAccessible(true);
             if (Modifier.isStatic(field.getModifiers()) && field.canAccess(null)
-                    && field.get(null) instanceof final Integer i) {
+                    && field.get(null) instanceof Integer i) {
                 entityAnimationJson.addProperty(field.getName().toLowerCase(Locale.ROOT), i);
             }
         }
         miscJson.add("entity_animation", entityAnimationJson);
 
-        final var villagerTypeJson = new JsonObject();
-        for (final var type : Registries.VILLAGER_TYPE) {
+        var villagerTypeJson = new JsonObject();
+        for (var type : Registries.VILLAGER_TYPE) {
             villagerTypeJson.addProperty(Registries.VILLAGER_TYPE.getId(type).getPath(),
                     Registries.VILLAGER_TYPE.getRawId(type));
         }
         miscJson.add("villager_type", villagerTypeJson);
 
-        final var villagerProfessionJson = new JsonObject();
-        for (final var profession : Registries.VILLAGER_PROFESSION) {
+        var villagerProfessionJson = new JsonObject();
+        for (var profession : Registries.VILLAGER_PROFESSION) {
             villagerProfessionJson.addProperty(profession.id(), Registries.VILLAGER_PROFESSION.getRawId(profession));
         }
         miscJson.add("villager_profession", villagerProfessionJson);
 
-        final var catVariantJson = new JsonObject();
-        for (final var variant : Registries.CAT_VARIANT) {
+        var catVariantJson = new JsonObject();
+        for (var variant : Registries.CAT_VARIANT) {
             catVariantJson.addProperty(Registries.CAT_VARIANT.getId(variant).getPath(),
                     Registries.CAT_VARIANT.getRawId(variant));
         }
         miscJson.add("cat_variant", catVariantJson);
 
-        final var frogVariantJson = new JsonObject();
-        for (final var variant : Registries.FROG_VARIANT) {
+        var frogVariantJson = new JsonObject();
+        for (var variant : Registries.FROG_VARIANT) {
             frogVariantJson.addProperty(Registries.FROG_VARIANT.getId(variant).getPath(),
                     Registries.FROG_VARIANT.getRawId(variant));
         }
@@ -88,38 +88,38 @@ public class Misc implements Main.Extractor {
 
 
 
-        final var directionJson = new JsonObject();
-        for (final var dir : Direction.values()) {
+        var directionJson = new JsonObject();
+        for (var dir : Direction.values()) {
             directionJson.addProperty(dir.getName(), dir.getId());
         }
         miscJson.add("direction", directionJson);
 
-        final var entityPoseJson = new JsonObject();
-        final var poses = EntityPose.values();
+        var entityPoseJson = new JsonObject();
+        var poses = EntityPose.values();
         for (int i = 0; i < poses.length; i++) {
             entityPoseJson.addProperty(poses[i].name().toLowerCase(Locale.ROOT), i);
         }
         miscJson.add("entity_pose", entityPoseJson);
 
-        final var particleTypesJson = new JsonObject();
-        for (final var type : Registries.PARTICLE_TYPE) {
+        var particleTypesJson = new JsonObject();
+        for (var type : Registries.PARTICLE_TYPE) {
             particleTypesJson.addProperty(Registries.PARTICLE_TYPE.getId(type).getPath(),
                     Registries.PARTICLE_TYPE.getRawId(type));
         }
         miscJson.add("particle_type", particleTypesJson);
 
-        final var snifferStateJson = new JsonObject();
-        for (final var state : SnifferEntity.State.values()) {
+        var snifferStateJson = new JsonObject();
+        for (var state : SnifferEntity.State.values()) {
             snifferStateJson.addProperty(state.name().toLowerCase(Locale.ROOT), state.ordinal());
         }
         miscJson.add("sniffer_state", snifferStateJson);
 
-        final var trackedDataHandlerJson = new JsonObject();
-        for (final var field : TrackedDataHandlerRegistry.class.getDeclaredFields()) {
+        var trackedDataHandlerJson = new JsonObject();
+        for (var field : TrackedDataHandlerRegistry.class.getDeclaredFields()) {
             field.setAccessible(true);
-            if (Modifier.isStatic(field.getModifiers()) && field.get(null) instanceof final TrackedDataHandler<?> handler) {
-                final var name = field.getName().toLowerCase(Locale.ROOT);
-                final var id = TrackedDataHandlerRegistry.getId(handler);
+            if (Modifier.isStatic(field.getModifiers()) && field.get(null) instanceof TrackedDataHandler<?> handler) {
+                var name = field.getName().toLowerCase(Locale.ROOT);
+                var id = TrackedDataHandlerRegistry.getId(handler);
 
                 trackedDataHandlerJson.addProperty(name, id);
             }

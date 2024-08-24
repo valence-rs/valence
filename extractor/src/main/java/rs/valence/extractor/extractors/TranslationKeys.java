@@ -18,14 +18,14 @@ public class TranslationKeys implements Main.Extractor {
 
     @Override
     public JsonElement extract() {
-        final JsonArray translationsJson = new JsonArray();
+        JsonArray translationsJson = new JsonArray();
 
-        final Map<String, String> translations = TranslationKeys.extractTranslations();
-        for (final var translation : translations.entrySet()) {
-            final String translationKey = translation.getKey();
-            final String translationValue = translation.getValue();
+        Map<String, String> translations = extractTranslations();
+        for (var translation : translations.entrySet()) {
+            String translationKey = translation.getKey();
+            String translationValue = translation.getValue();
 
-            final var translationJson = new JsonObject();
+            var translationJson = new JsonObject();
             translationJson.addProperty("key", translationKey);
             translationJson.addProperty("english_translation", translationValue);
 
@@ -37,16 +37,16 @@ public class TranslationKeys implements Main.Extractor {
 
     @SuppressWarnings("unchecked")
     private static Map<String, String> extractTranslations() {
-        final Language language = Language.getInstance();
+        Language language = Language.getInstance();
 
-        final Class<? extends Language> anonymousClass = language.getClass();
-        for (final Field field : anonymousClass.getDeclaredFields()) {
+        Class<? extends Language> anonymousClass = language.getClass();
+        for (Field field : anonymousClass.getDeclaredFields()) {
             try {
-                final Object fieldValue = field.get(language);
+                Object fieldValue = field.get(language);
                 if (fieldValue instanceof Map<?, ?>) {
                     return (Map<String, String>) fieldValue;
                 }
-            } catch (final IllegalAccessException e) {
+            } catch (IllegalAccessException e) {
                 throw new RuntimeException("Failed reflection on field '" + field + "' on class '" + anonymousClass + "'", e);
             }
         }

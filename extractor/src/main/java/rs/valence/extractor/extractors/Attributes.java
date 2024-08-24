@@ -21,10 +21,10 @@ public class Attributes implements Main.Extractor {
 
     @Override
     public JsonElement extract() {
-        final var attributesJson = new JsonObject();
+        var attributesJson = new JsonObject();
 
-        for (final EntityAttribute attribute : Registries.ATTRIBUTE) {
-            final var attributeJson = new JsonObject();
+        for (EntityAttribute attribute : Registries.ATTRIBUTE) {
+            var attributeJson = new JsonObject();
 
             attributeJson.addProperty("id", Registries.ATTRIBUTE.getRawId(attribute));
             attributeJson.addProperty("name", Registries.ATTRIBUTE.getId(attribute).getPath());
@@ -32,7 +32,7 @@ public class Attributes implements Main.Extractor {
             attributeJson.addProperty("translation_key", attribute.getTranslationKey());
             attributeJson.addProperty("tracked", attribute.isTracked());
 
-            if (attribute instanceof final ClampedEntityAttribute a) {
+            if (attribute instanceof ClampedEntityAttribute a) {
                 attributeJson.addProperty("min_value", a.getMinValue());
                 attributeJson.addProperty("max_value", a.getMaxValue());
             }

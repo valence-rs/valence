@@ -18,10 +18,10 @@ public class Effects implements Main.Extractor {
 
     @Override
     public JsonElement extract() {
-        final var effectsJson = new JsonArray();
+        var effectsJson = new JsonArray();
 
-        for (final var effect : Registries.STATUS_EFFECT) {
-            final var effectJson = new JsonObject();
+        for (var effect : Registries.STATUS_EFFECT) {
+            var effectJson = new JsonObject();
 
             effectJson.addProperty("id", Registries.STATUS_EFFECT.getRawId(effect));
             effectJson.addProperty("name", Registries.STATUS_EFFECT.getId(effect).getPath());
@@ -30,10 +30,10 @@ public class Effects implements Main.Extractor {
             effectJson.addProperty("instant", effect.isInstant());
             effectJson.addProperty("category", ValenceUtils.toPascalCase(effect.getCategory().name()));
 
-            final var attributeModifiersJson = new JsonArray();
+            var attributeModifiersJson = new JsonArray();
 
             effect.forEachAttributeModifier(0, (attribute, modifier) -> {
-                final var attributeModifierJson = new JsonObject();
+                var attributeModifierJson = new JsonObject();
 
                 attributeModifierJson.addProperty("attribute", attribute.getIdAsString());
                 attributeModifierJson.addProperty("operation", modifier.operation().getId());

@@ -10,8 +10,8 @@ public class RegistryKeyComparator implements Comparator<RegistryKey<?>>, Serial
     }
 
     @Override
-    public int compare(final RegistryKey<?> o1, final RegistryKey<?> o2) {
-        final var c1 = o1.getRegistry().compareTo(o2.getRegistry());
+    public int compare(RegistryKey<?> o1, RegistryKey<?> o2) {
+        var c1 = o1.getRegistry().compareTo(o2.getRegistry());
 
         if (0 != c1) {
             return c1;
