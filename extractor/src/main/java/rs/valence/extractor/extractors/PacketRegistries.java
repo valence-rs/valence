@@ -12,7 +12,6 @@ import java.util.stream.Stream;
 
 public class PacketRegistries implements Main.Extractor  {
 
-//    private static final RegistryOps<JsonElement> REGISTRY_OPS= RegistryOps.of(JsonOps.INSTANCE, DynamicRegistryManager.of(Regist));
     private final DynamicRegistryManager.Immutable registryManager;
     private final CombinedDynamicRegistries<ServerDynamicRegistryType> registries;
 

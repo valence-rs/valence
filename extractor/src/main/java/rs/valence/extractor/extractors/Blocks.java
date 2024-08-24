@@ -72,8 +72,6 @@ public class Blocks implements Main.Extractor {
                 stateJson.addProperty("luminance", state.getLuminance());
                 stateJson.addProperty("opaque", state.isOpaque());
                 stateJson.addProperty("replaceable", state.isReplaceable());
-                // TODO `blocksMovement` seems to be deprecated. How else can one get this property?
-                stateJson.addProperty("blocks_motion", state.blocksMovement());
 
                 if (block.getDefaultState().equals(state)) {
                     blockJson.addProperty("default_state_id", id);

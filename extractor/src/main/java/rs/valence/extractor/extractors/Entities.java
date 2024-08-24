@@ -236,7 +236,6 @@ public class Entities implements Main.Extractor {
 
 
             final var dataTracker = (DataTracker) dataTrackerField.get(entityInstance);
-//            final var dataTracker = entityInstance.getDataTracker();
 
             while (null == entitiesMap.get(entityClass)) {
                 var entityJson = new JsonObject();
