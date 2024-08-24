@@ -16,12 +16,12 @@ public class ValenceUtils {
      * @param str The string to convert.
      * @return The converted string.
      */
-    public static String toPascalCase(String str) {
-        StringBuilder result = new StringBuilder();
+    public static String toPascalCase(final String str) {
+        final StringBuilder result = new StringBuilder();
         boolean capitalizeNext = true;
 
-        for (char c : str.toCharArray()) {
-            if (Character.isWhitespace(c) || c == '_') {
+        for (final char c : str.toCharArray()) {
+            if (Character.isWhitespace(c) || '_' == c) {
                 capitalizeNext = true;
             } else if (capitalizeNext) {
                 result.append(Character.toUpperCase(c));

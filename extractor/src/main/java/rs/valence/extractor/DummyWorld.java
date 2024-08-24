@@ -46,40 +46,40 @@ public class DummyWorld extends World {
         INSTANCE = Main.magicallyInstantiate(DummyWorld.class);
 
         try {
-            var randomField = World.class.getDeclaredField("random");
+            final var randomField = World.class.getDeclaredField("random");
             randomField.setAccessible(true);
-            randomField.set(INSTANCE, Random.create());
+            randomField.set(DummyWorld.INSTANCE, Random.create());
 
-            var propertiesField = World.class.getDeclaredField("properties");
+            final var propertiesField = World.class.getDeclaredField("properties");
             propertiesField.setAccessible(true);
-            propertiesField.set(INSTANCE, new DummyMutableWorldProperties());
+            propertiesField.set(DummyWorld.INSTANCE, new DummyMutableWorldProperties());
 
-        } catch (NoSuchFieldException | IllegalAccessException e) {
+        } catch (final NoSuchFieldException | IllegalAccessException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private DummyWorld(MutableWorldProperties properties, RegistryKey<World> registryRef, DynamicRegistryManager registryManager, RegistryEntry<DimensionType> dimension, Supplier<Profiler> profiler, boolean isClient, boolean debugWorld, long seed, int maxChainedNeighborUpdates) {
+    private DummyWorld(final MutableWorldProperties properties, final RegistryKey<World> registryRef, final DynamicRegistryManager registryManager, final RegistryEntry<DimensionType> dimension, final Supplier<Profiler> profiler, final boolean isClient, final boolean debugWorld, final long seed, final int maxChainedNeighborUpdates) {
         super(properties, registryRef, registryManager, dimension, profiler, isClient, debugWorld, seed, maxChainedNeighborUpdates);
     }
 
     @Override
-    public void updateListeners(BlockPos pos, BlockState oldState, BlockState newState, int flags) {
+    public void updateListeners(final BlockPos pos, final BlockState oldState, final BlockState newState, final int flags) {
 
     }
 
     @Override
-    public void playSound(@Nullable PlayerEntity except, double x, double y, double z, RegistryEntry<SoundEvent> sound, SoundCategory category, float volume, float pitch, long seed) {
+    public void playSound(@Nullable final PlayerEntity except, final double x, final double y, final double z, final RegistryEntry<SoundEvent> sound, final SoundCategory category, final float volume, final float pitch, final long seed) {
 
     }
 
     @Override
-    public void playSound(@Nullable PlayerEntity except, double x, double y, double z, SoundEvent sound, SoundCategory category, float volume, float pitch, long seed) {
+    public void playSound(@Nullable final PlayerEntity except, final double x, final double y, final double z, final SoundEvent sound, final SoundCategory category, final float volume, final float pitch, final long seed) {
 
     }
 
     @Override
-    public void playSoundFromEntity(@Nullable PlayerEntity except, Entity entity, RegistryEntry<SoundEvent> sound, SoundCategory category, float volume, float pitch, long seed) {
+    public void playSoundFromEntity(@Nullable final PlayerEntity except, final Entity entity, final RegistryEntry<SoundEvent> sound, final SoundCategory category, final float volume, final float pitch, final long seed) {
 
     }
 
@@ -90,7 +90,7 @@ public class DummyWorld extends World {
 
     @Nullable
     @Override
-    public Entity getEntityById(int id) {
+    public Entity getEntityById(final int id) {
         return null;
     }
 
@@ -101,12 +101,12 @@ public class DummyWorld extends World {
 
     @Nullable
     @Override
-    public MapState getMapState(MapIdComponent id) {
+    public MapState getMapState(final MapIdComponent id) {
         return null;
     }
 
     @Override
-    public void putMapState(MapIdComponent id, MapState state) {
+    public void putMapState(final MapIdComponent id, final MapState state) {
 
     }
 
@@ -116,7 +116,7 @@ public class DummyWorld extends World {
     }
 
     @Override
-    public void setBlockBreakingInfo(int entityId, BlockPos pos, int progress) {
+    public void setBlockBreakingInfo(final int entityId, final BlockPos pos, final int progress) {
 
     }
 
@@ -151,12 +151,12 @@ public class DummyWorld extends World {
     }
 
     @Override
-    public void syncWorldEvent(@Nullable PlayerEntity player, int eventId, BlockPos pos, int data) {
+    public void syncWorldEvent(@Nullable final PlayerEntity player, final int eventId, final BlockPos pos, final int data) {
 
     }
 
     @Override
-    public void emitGameEvent(RegistryEntry<GameEvent> event, Vec3d emitterPos, GameEvent.Emitter emitter) {
+    public void emitGameEvent(final RegistryEntry<GameEvent> event, final Vec3d emitterPos, final GameEvent.Emitter emitter) {
 
     }
 
@@ -177,7 +177,7 @@ public class DummyWorld extends World {
     }
 
     @Override
-    public float getBrightness(Direction direction, boolean shaded) {
+    public float getBrightness(final Direction direction, final boolean shaded) {
         return 0;
     }
 
@@ -187,7 +187,7 @@ public class DummyWorld extends World {
     }
 
     @Override
-    public RegistryEntry<Biome> getGeneratorStoredBiome(int biomeX, int biomeY, int biomeZ) {
+    public RegistryEntry<Biome> getGeneratorStoredBiome(final int biomeX, final int biomeY, final int biomeZ) {
         return null;
     }
 
@@ -226,7 +226,7 @@ public class DummyWorld extends World {
         }
 
         @Override
-        public void setRaining(boolean raining) {
+        public void setRaining(final boolean raining) {
 
         }
 
@@ -251,7 +251,7 @@ public class DummyWorld extends World {
         }
 
         @Override
-        public void setSpawnPos(BlockPos pos, float angle) {
+        public void setSpawnPos(final BlockPos pos, final float angle) {
 
         }
     }

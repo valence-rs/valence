@@ -16,19 +16,19 @@ public class PacketRegistries implements Main.Extractor  {
     private final DynamicRegistryManager.Immutable registryManager;
     private final CombinedDynamicRegistries<ServerDynamicRegistryType> registries;
 
-    public PacketRegistries(MinecraftServer server) {
-        this.registryManager = server.getRegistryManager();
-        this.registries = server.getCombinedDynamicRegistries();
+    public PacketRegistries(final MinecraftServer server) {
+        registryManager = server.getRegistryManager();
+        registries = server.getCombinedDynamicRegistries();
     }
 
     public String fileName() {
         return "registry_codec.json";
     }
 
-    public static <T> JsonObject mapJson(RegistryLoader.Entry<T> registry_entry, DynamicRegistryManager.Immutable registryManager, CombinedDynamicRegistries<ServerDynamicRegistryType> combinedRegistries) {
-        Codec<T> codec = registry_entry.elementCodec();
-        Registry<T> registry = registryManager.get(registry_entry.key());
-        JsonObject json = new JsonObject();
+    public static <T> JsonObject mapJson(final RegistryLoader.Entry<T> registry_entry, final DynamicRegistryManager.Immutable registryManager, final CombinedDynamicRegistries<ServerDynamicRegistryType> combinedRegistries) {
+        final Codec<T> codec = registry_entry.elementCodec();
+        final Registry<T> registry = registryManager.get(registry_entry.key());
+        final JsonObject json = new JsonObject();
         registry.streamEntries().forEach(entry -> {
             json.add(entry.getKey().orElseThrow().getValue().toString(), codec.encodeStart(combinedRegistries.getCombinedRegistryManager().getOps(JsonOps.INSTANCE), entry.value()).resultOrPartial((e) -> Main.LOGGER.error("Cannot encode json: {}", e)).orElseThrow());
         });
@@ -36,10 +36,10 @@ public class PacketRegistries implements Main.Extractor  {
     }
 
     public JsonElement extract() {
-        Stream<RegistryLoader.Entry<?>> registries = RegistryLoader.SYNCED_REGISTRIES.stream();
-        JsonObject json = new JsonObject();
+        final Stream<RegistryLoader.Entry<?>> registries = RegistryLoader.SYNCED_REGISTRIES.stream();
+        final JsonObject json = new JsonObject();
         registries.forEach(entry -> {
-            json.add(entry.key().getValue().toString(), mapJson(entry, registryManager, this.registries));
+            json.add(entry.key().getValue().toString(), PacketRegistries.mapJson(entry, this.registryManager, this.registries));
         });
         return json;
     }

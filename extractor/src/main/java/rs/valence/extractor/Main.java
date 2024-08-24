@@ -20,27 +20,27 @@ import java.nio.file.Paths;
 
 public class Main implements ModInitializer {
     public static final String MOD_ID = "valence_extractor";
-    public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+    public static final Logger LOGGER = LoggerFactory.getLogger(Main.MOD_ID);
 
     /**
      * Magically creates an instance of a <i>concrete</i> class without calling its constructor.
      */
-    public static <T> T magicallyInstantiate(Class<T> clazz) {
-        var rf = ReflectionFactory.getReflectionFactory();
+    public static <T> T magicallyInstantiate(final Class<T> clazz) {
+        final var rf = ReflectionFactory.getReflectionFactory();
         try {
-            var objCon = Object.class.getDeclaredConstructor();
-            var con = rf.newConstructorForSerialization(clazz, objCon);
+            final var objCon = Object.class.getDeclaredConstructor();
+            final var con = rf.newConstructorForSerialization(clazz, objCon);
             return clazz.cast(con.newInstance());
-        } catch (Throwable e) {
+        } catch (final Throwable e) {
             throw new IllegalArgumentException("Failed to magically instantiate " + clazz.getName(), e);
         }
     }
 
     @Override
     public void onInitialize() {
-        LOGGER.info("Starting extractors...");
+        Main.LOGGER.info("Starting extractors...");
 
-        var extractors = new Extractor[]{
+        final var extractors = new Extractor[]{
                new Attributes(),
                new Blocks(),
                new Effects(),
@@ -51,64 +51,64 @@ public class Main implements ModInitializer {
                new TranslationKeys(),
         };
 
-        Path outputDirectory;
+        final Path outputDirectory;
         try {
             outputDirectory = Files.createDirectories(Paths.get("valence_extractor_output"));
-        } catch (IOException e) {
-            LOGGER.info("Failed to create output directory.", e);
+        } catch (final IOException e) {
+            Main.LOGGER.info("Failed to create output directory.", e);
             return;
         }
 
-        var gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().serializeNulls().create();
+        final var gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().serializeNulls().create();
 
-        for (var ext : extractors) {
+        for (final var ext : extractors) {
             try {
-                var out = outputDirectory.resolve(ext.fileName());
-                var fileWriter = new FileWriter(out.toFile(), StandardCharsets.UTF_8);
+                final var out = outputDirectory.resolve(ext.fileName());
+                final var fileWriter = new FileWriter(out.toFile(), StandardCharsets.UTF_8);
                 gson.toJson(ext.extract(), fileWriter);
                 fileWriter.close();
-                LOGGER.info("Wrote " + out.toAbsolutePath());
-            } catch (Exception e) {
-                LOGGER.error("Extractor for \"" + ext.fileName() + "\" failed.", e);
+                Main.LOGGER.info("Wrote " + out.toAbsolutePath());
+            } catch (final Exception e) {
+                Main.LOGGER.error("Extractor for \"" + ext.fileName() + "\" failed.", e);
             }
         }
 
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
-            LOGGER.info("Server starting, Running startup extractors...");
+            Main.LOGGER.info("Server starting, Running startup extractors...");
             // TODO: make `Codec` implement `Extractor`
             // TODO: the way to get Codex has changed, this is not working anymore
-            var packetRegistryExtractor = new PacketRegistries(server);
+            final var packetRegistryExtractor = new PacketRegistries(server);
             try {
-                var out = outputDirectory.resolve(packetRegistryExtractor.fileName());
-                var fileWriter = new FileWriter(out.toFile(), StandardCharsets.UTF_8);
+                final var out = outputDirectory.resolve(packetRegistryExtractor.fileName());
+                final var fileWriter = new FileWriter(out.toFile(), StandardCharsets.UTF_8);
                 gson.toJson(packetRegistryExtractor.extract(), fileWriter);
                 fileWriter.close();
 
-                LOGGER.info("Wrote " + out.toAbsolutePath());
-            } catch (Exception e) {
-                LOGGER.error("Extractor for \"" + packetRegistryExtractor.fileName() + "\" failed.", e);
+                Main.LOGGER.info("Wrote " + out.toAbsolutePath());
+            } catch (final Exception e) {
+                Main.LOGGER.error("Extractor for \"" + packetRegistryExtractor.fileName() + "\" failed.", e);
             }
 
-            var startupExtractors = new Extractor[]{
+            final var startupExtractors = new Extractor[]{
                 new Tags(server),
                 new Paintings(server),
                 new Enchants(server),
                 new Entities(server),
             };
 
-            for (var ext : startupExtractors) {
+            for (final var ext : startupExtractors) {
                 try {
-                    var out = outputDirectory.resolve(ext.fileName());
-                    var fileWriter = new FileWriter(out.toFile(), StandardCharsets.UTF_8);
+                    final var out = outputDirectory.resolve(ext.fileName());
+                    final var fileWriter = new FileWriter(out.toFile(), StandardCharsets.UTF_8);
                     gson.toJson(ext.extract(), fileWriter);
                     fileWriter.close();
-                    LOGGER.info("Wrote " + out.toAbsolutePath());
-                } catch (Exception e) {
-                    LOGGER.error("Extractor for \"" + ext.fileName() + "\" failed.", e);
+                    Main.LOGGER.info("Wrote " + out.toAbsolutePath());
+                } catch (final Exception e) {
+                    Main.LOGGER.error("Extractor for \"" + ext.fileName() + "\" failed.", e);
                 }
             }
 
-            LOGGER.info("Done.");
+            Main.LOGGER.info("Done.");
             server.stop(false);
         });
     }

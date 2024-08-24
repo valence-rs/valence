@@ -26,35 +26,35 @@ public class Blocks implements Main.Extractor {
 
     @Override
     public JsonElement extract() {
-        var topLevelJson = new JsonObject();
+        final var topLevelJson = new JsonObject();
 
-        var blocksJson = new JsonArray();
+        final var blocksJson = new JsonArray();
         var stateIdCounter = 0;
 
-        var shapes = new LinkedHashMap<Shape, Integer>();
+        final var shapes = new LinkedHashMap<Shape, Integer>();
 
-        for (var block : Registries.BLOCK) {
-            var blockJson = new JsonObject();
+        for (final var block : Registries.BLOCK) {
+            final var blockJson = new JsonObject();
             blockJson.addProperty("id", Registries.BLOCK.getRawId(block));
             blockJson.addProperty("name", Registries.BLOCK.getId(block).getPath());
             blockJson.addProperty("translation_key", block.getTranslationKey());
             blockJson.addProperty("item_id", Registries.ITEM.getRawId(block.asItem()));
 
-            if (block.asItem() instanceof VerticallyAttachableBlockItem wsbItem) {
+            if (block.asItem() instanceof final VerticallyAttachableBlockItem wsbItem) {
                 if (wsbItem.getBlock() == block) {
-                    var wallBlock = ((ExposeWallBlock) wsbItem).getWallBlock();
+                    final var wallBlock = ((ExposeWallBlock) wsbItem).getWallBlock();
                     blockJson.addProperty("wall_variant_id", Registries.BLOCK.getRawId(wallBlock));
                 }
             }
 
-            var propsJson = new JsonArray();
-            for (var prop : block.getStateManager().getProperties()) {
-                var propJson = new JsonObject();
+            final var propsJson = new JsonArray();
+            for (final var prop : block.getStateManager().getProperties()) {
+                final var propJson = new JsonObject();
 
                 propJson.addProperty("name", prop.getName());
 
-                var valuesJson = new JsonArray();
-                for (var value : prop.getValues()) {
+                final var valuesJson = new JsonArray();
+                for (final var value : prop.getValues()) {
                     valuesJson.add(value.toString().toLowerCase(Locale.ROOT));
                 }
                 propJson.add("values", valuesJson);
@@ -63,10 +63,11 @@ public class Blocks implements Main.Extractor {
             }
             blockJson.add("properties", propsJson);
 
-            var statesJson = new JsonArray();
-            for (var state : block.getStateManager().getStates()) {
-                var stateJson = new JsonObject();
-                var id = stateIdCounter++;
+            final var statesJson = new JsonArray();
+            for (final var state : block.getStateManager().getStates()) {
+                final var stateJson = new JsonObject();
+                final var id = stateIdCounter;
+                stateIdCounter++;
                 stateJson.addProperty("id", id);
                 stateJson.addProperty("luminance", state.getLuminance());
                 stateJson.addProperty("opaque", state.isOpaque());
@@ -78,17 +79,17 @@ public class Blocks implements Main.Extractor {
                     blockJson.addProperty("default_state_id", id);
                 }
 
-                var collisionShapeIdxsJson = new JsonArray();
-                for (var box : state.getCollisionShape(EmptyBlockView.INSTANCE, BlockPos.ORIGIN).getBoundingBoxes()) {
-                    var collisionShape = new Shape(box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ);
+                final var collisionShapeIdxsJson = new JsonArray();
+                for (final var box : state.getCollisionShape(EmptyBlockView.INSTANCE, BlockPos.ORIGIN).getBoundingBoxes()) {
+                    final var collisionShape = new Shape(box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ);
 
-                    var idx = shapes.putIfAbsent(collisionShape, shapes.size());
+                    final var idx = shapes.putIfAbsent(collisionShape, shapes.size());
                     collisionShapeIdxsJson.add(Objects.requireNonNullElseGet(idx, () -> shapes.size() - 1));
                 }
 
                 stateJson.add("collision_shapes", collisionShapeIdxsJson);
 
-                for (var blockEntity : Registries.BLOCK_ENTITY_TYPE) {
+                for (final var blockEntity : Registries.BLOCK_ENTITY_TYPE) {
                     if (blockEntity.supports(state)) {
                         stateJson.addProperty("block_entity_type", Registries.BLOCK_ENTITY_TYPE.getRawId(blockEntity));
                     }
@@ -101,9 +102,9 @@ public class Blocks implements Main.Extractor {
             blocksJson.add(blockJson);
         }
 
-        var blockEntitiesJson = new JsonArray();
-        for (var blockEntity : Registries.BLOCK_ENTITY_TYPE) {
-            var blockEntityJson = new JsonObject();
+        final var blockEntitiesJson = new JsonArray();
+        for (final var blockEntity : Registries.BLOCK_ENTITY_TYPE) {
+            final var blockEntityJson = new JsonObject();
             blockEntityJson.addProperty("id", Registries.BLOCK_ENTITY_TYPE.getRawId(blockEntity));
             blockEntityJson.addProperty("ident", Registries.BLOCK_ENTITY_TYPE.getId(blockEntity).toString());
             blockEntityJson.addProperty("name", Registries.BLOCK_ENTITY_TYPE.getId(blockEntity).getPath());
@@ -111,9 +112,9 @@ public class Blocks implements Main.Extractor {
             blockEntitiesJson.add(blockEntityJson);
         }
 
-        var shapesJson = new JsonArray();
-        for (var shape : shapes.keySet()) {
-            var shapeJson = new JsonObject();
+        final var shapesJson = new JsonArray();
+        for (final var shape : shapes.keySet()) {
+            final var shapeJson = new JsonObject();
             shapeJson.addProperty("min_x", shape.minX);
             shapeJson.addProperty("min_y", shape.minY);
             shapeJson.addProperty("min_z", shape.minZ);

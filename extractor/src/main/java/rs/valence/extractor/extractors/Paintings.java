@@ -14,8 +14,8 @@ public class Paintings implements Main.Extractor {
 
     private final DynamicRegistryManager.Immutable registryManager;
 
-    public Paintings(MinecraftServer server) {
-        this.registryManager = server.getRegistryManager();
+    public Paintings(final MinecraftServer server) {
+        registryManager = server.getRegistryManager();
     }
 
     @Override
@@ -25,16 +25,15 @@ public class Paintings implements Main.Extractor {
 
     @Override
     public JsonElement extract() throws Exception {
-        var dataDrivenMiscJson = new JsonObject();
+        final var dataDrivenMiscJson = new JsonObject();
 
-        // TODO - For the moment I don't know how does this registers works
-        var paintingRegistry = registryManager.get(RegistryKeys.PAINTING_VARIANT);
+        final var paintingRegistry = this.registryManager.get(RegistryKeys.PAINTING_VARIANT);
 
-        var codec = PaintingVariant.CODEC;
+        final var codec = PaintingVariant.CODEC;
 
-        JsonObject json = new JsonObject();
+        final JsonObject json = new JsonObject();
         paintingRegistry.streamEntries().forEach(entry -> {
-            json.add(entry.getKey().orElseThrow().getValue().toString(), codec.encodeStart(RegistryOps.of(JsonOps.INSTANCE, registryManager), entry.value()).getOrThrow());
+            json.add(entry.getKey().orElseThrow().getValue().toString(), codec.encodeStart(RegistryOps.of(JsonOps.INSTANCE, this.registryManager), entry.value()).getOrThrow());
         });
 
         return json;

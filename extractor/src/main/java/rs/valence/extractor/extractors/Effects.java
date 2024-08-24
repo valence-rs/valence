@@ -3,7 +3,6 @@ package rs.valence.extractor.extractors;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import net.minecraft.entity.effect.StatusEffect;
 import net.minecraft.registry.Registries;
 import rs.valence.extractor.Main;
 import rs.valence.extractor.ValenceUtils;
@@ -19,10 +18,10 @@ public class Effects implements Main.Extractor {
 
     @Override
     public JsonElement extract() {
-        var effectsJson = new JsonArray();
+        final var effectsJson = new JsonArray();
 
-        for (var effect : Registries.STATUS_EFFECT) {
-            var effectJson = new JsonObject();
+        for (final var effect : Registries.STATUS_EFFECT) {
+            final var effectJson = new JsonObject();
 
             effectJson.addProperty("id", Registries.STATUS_EFFECT.getRawId(effect));
             effectJson.addProperty("name", Registries.STATUS_EFFECT.getId(effect).getPath());
@@ -31,10 +30,10 @@ public class Effects implements Main.Extractor {
             effectJson.addProperty("instant", effect.isInstant());
             effectJson.addProperty("category", ValenceUtils.toPascalCase(effect.getCategory().name()));
 
-            var attributeModifiersJson = new JsonArray();
+            final var attributeModifiersJson = new JsonArray();
 
             effect.forEachAttributeModifier(0, (attribute, modifier) -> {
-                var attributeModifierJson = new JsonObject();
+                final var attributeModifierJson = new JsonObject();
 
                 attributeModifierJson.addProperty("attribute", attribute.getIdAsString());
                 attributeModifierJson.addProperty("operation", modifier.operation().getId());
