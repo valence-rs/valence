@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use tracing::error;
+use tracing::{debug, error};
 use valence_ident::Ident;
 use valence_nbt::{compound, Compound, List, Value};
 
@@ -51,10 +51,9 @@ impl RegistryCodec {
 
 impl Default for RegistryCodec {
     fn default() -> Self {
-        let codec = include_bytes!("../extracted/registry_codec.dat");
-        let compound = valence_nbt::from_binary(&mut codec.as_slice())
-            .expect("failed to decode vanilla registry codec")
-            .0;
+        let codec = include_bytes!("../extracted/registry_codec.json");
+        let compound = serde_json::from_slice::<Compound>(codec)
+            .expect("failed to decode vanilla registry codec");
 
         let mut registries = BTreeMap::new();
 
@@ -62,40 +61,32 @@ impl Default for RegistryCodec {
             let reg_name: Ident<String> = Ident::new(k).expect("invalid registry name").into();
             let mut reg_values = vec![];
 
-            let Value::Compound(mut outer) = v else {
+            let Value::Compound(inner) = v else {
                 error!("registry {reg_name} is not a compound");
                 continue;
             };
 
-            let values = match outer.remove("value") {
-                Some(Value::List(List::Compound(values))) => values,
-                Some(Value::List(List::End)) => continue,
-                _ => {
-                    error!("missing \"value\" compound in {reg_name}");
-                    continue;
-                }
-            };
-
-            for mut value in values {
-                let Some(Value::String(name)) = value.remove("name") else {
-                    error!("missing \"name\" string in value for {reg_name}");
-                    continue;
-                };
-
-                let name = match Ident::new(name) {
+            for (k,v) in inner {
+                let name = match Ident::new(k) {
                     Ok(n) => n.into(),
                     Err(e) => {
                         error!("invalid registry value name \"{}\"", e.0);
                         continue;
                     }
                 };
-
-                let Some(Value::Compound(element)) = value.remove("element") else {
-                    error!("missing \"element\" compound in value for {reg_name}");
-                    continue;
+                
+                let value = match v {
+                    Value::Compound(c) => c,
+                    _ => {
+                        error!("registry value {name} is not a compound");
+                        continue;
+                    }
                 };
 
-                reg_values.push(RegistryValue { name, element });
+                reg_values.push(RegistryValue {
+                    name,
+                    element: value,
+                });
             }
 
             registries.insert(reg_name, reg_values);
