@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use bevy_ecs::query::WorldQuery;
+use bevy_ecs::query::QueryData;
 use valence::entity::cow::CowEntityBundle;
 use valence::entity::entity::Flags;
 use valence::entity::living::Health;
@@ -870,8 +870,8 @@ impl CtfLayers {
 #[derive(Debug, Component)]
 struct ClonedEntity(Entity);
 
-#[derive(Debug, WorldQuery)]
-#[world_query(mutable)]
+#[derive(Debug, QueryData)]
+#[query_data(mutable)]
 struct CloneQuery {
     position: &'static mut Position,
     head_yaw: &'static mut HeadYaw,
@@ -912,8 +912,8 @@ struct CombatState {
     has_bonus_knockback: bool,
 }
 
-#[derive(WorldQuery)]
-#[world_query(mutable)]
+#[derive(QueryData)]
+#[query_data(mutable)]
 struct CombatQuery {
     client: &'static mut Client,
     pos: &'static Position,

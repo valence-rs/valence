@@ -65,7 +65,7 @@ pub struct ServerPlugin;
 impl Plugin for ServerPlugin {
     fn build(&self, app: &mut App) {
         let settings = app
-            .world
+            .world_mut()
             .get_resource_or_insert_with(ServerSettings::default)
             .clone();
 
@@ -89,7 +89,7 @@ impl Plugin for ServerPlugin {
 }
 
 /// Contains global server state accessible as a [`Resource`].
-#[derive(Resource)]
+#[derive(Resource, Clone)]
 pub struct Server {
     /// Incremented on every tick.
     current_tick: i64,

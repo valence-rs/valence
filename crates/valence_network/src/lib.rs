@@ -45,13 +45,13 @@ impl Plugin for NetworkPlugin {
 
 fn build_plugin(app: &mut App) -> anyhow::Result<()> {
     let threshold = app
-        .world
+        .world()
         .get_resource::<Server>()
         .context("missing server resource")?
         .compression_threshold();
 
     let settings = app
-        .world
+        .world_mut()
         .get_resource_or_insert_with(NetworkSettings::default);
 
     let (new_clients_send, new_clients_recv) = flume::bounded(64);

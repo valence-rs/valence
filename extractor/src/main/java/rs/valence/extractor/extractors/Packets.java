@@ -3,12 +3,13 @@ package rs.valence.extractor.extractors;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import net.minecraft.network.NetworkSide;
+import io.netty.buffer.ByteBuf;
 import net.minecraft.network.NetworkState;
+import net.minecraft.network.listener.PacketListener;
+import net.minecraft.network.state.*;
 import rs.valence.extractor.Main;
 
-import java.util.Locale;
-import java.util.TreeSet;
+import java.io.IOException;
 
 public class Packets implements Main.Extractor {
     @Override
@@ -17,26 +18,30 @@ public class Packets implements Main.Extractor {
     }
 
     @Override
-    public JsonElement extract() {
+    public JsonElement extract() throws IOException {
         var packetsJson = new JsonArray();
 
-        for (var side : NetworkSide.values()) {
-            for (var state : NetworkState.values()) {
-                var map = state.getPacketIdToPacketMap(side);
-
-                for (var id : new TreeSet<>(map.keySet())) {
-                    var packetJson = new JsonObject();
-
-                    packetJson.addProperty("name", map.get(id.intValue()).getSimpleName());
-                    packetJson.addProperty("side", side.name().toLowerCase(Locale.ROOT));
-                    packetJson.addProperty("state", state.name().toLowerCase(Locale.ROOT));
-                    packetJson.addProperty("id", id);
-
-                    packetsJson.add(packetJson);
-                }
-            }
-        }
+        serializeFactory(HandshakeStates.C2S_FACTORY, packetsJson);
+        serializeFactory(QueryStates.C2S_FACTORY, packetsJson);
+        serializeFactory(QueryStates.S2C_FACTORY, packetsJson);
+        serializeFactory(LoginStates.C2S_FACTORY, packetsJson);
+        serializeFactory(LoginStates.S2C_FACTORY, packetsJson);
+        serializeFactory(ConfigurationStates.C2S_FACTORY, packetsJson);
+        serializeFactory(ConfigurationStates.S2C_FACTORY, packetsJson);
+        serializeFactory(PlayStateFactories.C2S, packetsJson);
+        serializeFactory(PlayStateFactories.S2C, packetsJson);
 
         return packetsJson;
+    }
+
+    private static <T extends PacketListener, B extends ByteBuf> void serializeFactory(NetworkState.Factory<T, B> factory, JsonArray json) {
+        factory.forEachPacketType((type, i) -> {
+            var packetJson = new JsonObject();
+            packetJson.addProperty("name", type.id().getPath());
+            packetJson.addProperty("phase", factory.phase().getId());
+            packetJson.addProperty("side", factory.side().getName());
+            packetJson.addProperty("id", i);
+            json.add(packetJson);
+        });
     }
 }

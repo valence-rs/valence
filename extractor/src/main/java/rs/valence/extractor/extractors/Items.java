@@ -3,11 +3,25 @@ package rs.valence.extractor.extractors;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.mojang.serialization.JsonOps;
+import net.minecraft.component.ComponentMap;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.FoodComponent;
+import net.minecraft.enchantment.Enchantment;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.registry.Registries;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.registry.RegistryOps;
+import net.minecraft.server.MinecraftServer;
 import rs.valence.extractor.Main;
 
 public class Items implements Main.Extractor {
-    public Items() {
+    private final DynamicRegistryManager.Immutable registryManager;
+
+    public Items(MinecraftServer server) {
+        this.registryManager = server.getRegistryManager();
     }
 
     @Override
@@ -19,48 +33,22 @@ public class Items implements Main.Extractor {
     public JsonElement extract() throws Exception {
         var itemsJson = new JsonArray();
 
-        for (var item : Registries.ITEM) {
+        for (var item : registryManager.get(RegistryKeys.ITEM).streamEntries().toList()) {
             var itemJson = new JsonObject();
-            itemJson.addProperty("id", Registries.ITEM.getRawId(item));
-            itemJson.addProperty("name", Registries.ITEM.getId(item).getPath());
-            itemJson.addProperty("translation_key", item.getTranslationKey());
-            itemJson.addProperty("max_stack", item.getMaxCount());
-            itemJson.addProperty("max_durability", item.getMaxDamage());
-            itemJson.addProperty("enchantability", item.getEnchantability());
-            itemJson.addProperty("fireproof", item.isFireproof());
 
-            if (item.getFoodComponent() != null) {
-                var foodJson = new JsonObject();
-                var foodComp = item.getFoodComponent();
+            itemJson.addProperty("id", item.getKey().orElseThrow().getValue().toString());
+            itemJson.addProperty("name", item.getKey().orElseThrow().getValue().toString());
+            Item realItem = item.value();
+            itemJson.addProperty("translation_key", realItem.getTranslationKey());
+            itemJson.addProperty("max_stack", realItem.getMaxCount());
+            itemJson.addProperty("max_durability", realItem.getDefaultStack().getMaxDamage());
+            itemJson.addProperty("enchantability", realItem.getEnchantability());
+            itemJson.addProperty("fireproof", realItem.getComponents().contains(DataComponentTypes.FIRE_RESISTANT));
 
-                foodJson.addProperty("hunger", foodComp.getHunger());
-                foodJson.addProperty("saturation", foodComp.getSaturationModifier());
-                foodJson.addProperty("always_edible", foodComp.isAlwaysEdible());
-                foodJson.addProperty("meat", foodComp.isMeat());
-                foodJson.addProperty("snack", foodComp.isSnack());
-
-                itemJson.add("food", foodJson);
-
-                var effectsJson = new JsonArray();
-                for (var pair : foodComp.getStatusEffects()) {
-                    var effectJson = new JsonObject();
-
-                    var effect = pair.getFirst();
-                    var chance = pair.getSecond();
-
-                    effectJson.addProperty("chance", chance);
-                    effectJson.addProperty("translation_key", effect.getEffectType().getTranslationKey());
-                    // TODO: more effect information.
-
-                    effectsJson.add(effectJson);
-                }
-
-                foodJson.add("effects", effectsJson);
-            }
+            itemJson.add("components", ComponentMap.CODEC.encodeStart(RegistryOps.of(JsonOps.INSTANCE, registryManager), realItem.getComponents()).getOrThrow());
 
             itemsJson.add(itemJson);
         }
-
         return itemsJson;
     }
 }

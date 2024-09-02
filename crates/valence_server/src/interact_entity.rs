@@ -43,7 +43,7 @@ fn handle_interact_entity(
                     entity,
                     sneaking: pkt.sneaking,
                     interact: pkt.interact,
-                })
+                });
             }
         }
     }

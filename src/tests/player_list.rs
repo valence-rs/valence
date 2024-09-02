@@ -12,7 +12,7 @@ fn player_list_arrives_before_player_spawn() {
         ..
     } = ScenarioSingleClient::new();
 
-    let mut layer = app.world.get_mut::<ChunkLayer>(layer_ent).unwrap();
+    let mut layer = app.world_mut().get_mut::<ChunkLayer>(layer_ent).unwrap();
 
     for z in -5..5 {
         for x in -5..5 {
@@ -38,7 +38,7 @@ fn player_list_arrives_before_player_spawn() {
     client_2.visible_chunk_layer.0 = layer_ent;
     client_2.visible_entity_layers.0.insert(layer_ent);
 
-    app.world.spawn(client_2);
+    app.world_mut().spawn(client_2);
 
     app.update();
 

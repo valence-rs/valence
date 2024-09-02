@@ -1,7 +1,7 @@
 use std::mem;
 
 use bevy_ecs::prelude::DetectChanges;
-use bevy_ecs::query::WorldQuery;
+use bevy_ecs::query::QueryData;
 use bevy_ecs::world::Ref;
 use valence_math::DVec3;
 use valence_protocol::encode::WritePacket;
@@ -21,7 +21,7 @@ use crate::{
     ObjectData, OldEntityLayerId, OldPosition, OnGround, Position, Velocity,
 };
 
-#[derive(WorldQuery)]
+#[derive(QueryData)]
 pub struct EntityInitQuery {
     pub entity_id: &'static EntityId,
     pub uuid: &'static UniqueId,
@@ -85,7 +85,7 @@ impl EntityInitQueryItem<'_> {
     }
 }
 
-#[derive(WorldQuery)]
+#[derive(QueryData)]
 pub struct UpdateEntityQuery {
     pub id: &'static EntityId,
     pub pos: &'static Position,

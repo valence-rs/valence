@@ -64,24 +64,30 @@ fn handle_player_action(
             // TODO: check that blocks are being broken at the appropriate speeds.
 
             match pkt.action {
-                PlayerAction::StartDestroyBlock => digging_events.send(DiggingEvent {
-                    client: packet.client,
-                    position: pkt.position,
-                    direction: pkt.direction,
-                    state: DiggingState::Start,
-                }),
-                PlayerAction::AbortDestroyBlock => digging_events.send(DiggingEvent {
-                    client: packet.client,
-                    position: pkt.position,
-                    direction: pkt.direction,
-                    state: DiggingState::Abort,
-                }),
-                PlayerAction::StopDestroyBlock => digging_events.send(DiggingEvent {
-                    client: packet.client,
-                    position: pkt.position,
-                    direction: pkt.direction,
-                    state: DiggingState::Stop,
-                }),
+                PlayerAction::StartDestroyBlock => {
+                    digging_events.send(DiggingEvent {
+                        client: packet.client,
+                        position: pkt.position,
+                        direction: pkt.direction,
+                        state: DiggingState::Start,
+                    });
+                }
+                PlayerAction::AbortDestroyBlock => {
+                    digging_events.send(DiggingEvent {
+                        client: packet.client,
+                        position: pkt.position,
+                        direction: pkt.direction,
+                        state: DiggingState::Abort,
+                    });
+                }
+                PlayerAction::StopDestroyBlock => {
+                    digging_events.send(DiggingEvent {
+                        client: packet.client,
+                        position: pkt.position,
+                        direction: pkt.direction,
+                        state: DiggingState::Stop,
+                    });
+                }
                 PlayerAction::DropAllItems => {}
                 PlayerAction::DropItem => {}
                 PlayerAction::ReleaseUseItem => {}

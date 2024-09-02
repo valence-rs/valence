@@ -58,7 +58,7 @@ fn handle_resource_pack_status(
             events.send(ResourcePackStatusEvent {
                 client: packet.client,
                 status: pkt,
-            })
+            });
         }
     }
 }

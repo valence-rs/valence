@@ -18,7 +18,7 @@ fn test_initialize_on_join() {
     // Insert a boss bar into the world
     scenario
         .app
-        .world
+        .world_mut()
         .entity_mut(scenario.layer)
         .insert(BossBarBundle {
             title: BossBarTitle("Boss Bar".into_text()),
@@ -44,7 +44,7 @@ fn test_despawn() {
     } = prepare();
 
     // Despawn the boss bar
-    app.world.entity_mut(layer).insert(Despawned);
+    app.world_mut().entity_mut(layer).insert(Despawned);
 
     app.update();
 
@@ -63,7 +63,7 @@ fn test_title_update() {
     } = prepare();
 
     // Update the title
-    app.world
+    app.world_mut()
         .entity_mut(layer)
         .insert(BossBarTitle(Text::text("Test 2")));
 
@@ -84,7 +84,7 @@ fn test_health_update() {
     } = prepare();
 
     // Update the health
-    app.world.entity_mut(layer).insert(BossBarHealth(0.5));
+    app.world_mut().entity_mut(layer).insert(BossBarHealth(0.5));
 
     app.update();
 
@@ -103,7 +103,7 @@ fn test_style_update() {
     } = prepare();
 
     // Update the style
-    app.world.entity_mut(layer).insert(BossBarStyle {
+    app.world_mut().entity_mut(layer).insert(BossBarStyle {
         color: BossBarColor::Red,
         division: BossBarDivision::TenNotches,
     });
@@ -127,7 +127,7 @@ fn test_flags_update() {
     // Update the flags
     let mut new_flags = BossBarFlags::new();
     new_flags.set_create_fog(true);
-    app.world.entity_mut(layer).insert(new_flags);
+    app.world_mut().entity_mut(layer).insert(new_flags);
 
     app.update();
 
@@ -147,7 +147,10 @@ fn test_client_layer_change() {
 
     // Remove the layer from the client
     {
-        let mut visible_entity_layers = app.world.get_mut::<VisibleEntityLayers>(client).unwrap();
+        let mut visible_entity_layers = app
+            .world_mut()
+            .get_mut::<VisibleEntityLayers>(client)
+            .unwrap();
         visible_entity_layers.0.clear()
     };
 
@@ -159,7 +162,10 @@ fn test_client_layer_change() {
 
     // Add the layer back to the client
     {
-        let mut visible_entity_layers = app.world.get_mut::<VisibleEntityLayers>(client).unwrap();
+        let mut visible_entity_layers = app
+            .world_mut()
+            .get_mut::<VisibleEntityLayers>(client)
+            .unwrap();
         visible_entity_layers.0.insert(layer)
     };
 
@@ -180,7 +186,7 @@ fn prepare() -> ScenarioSingleClient {
     // Insert a boss bar into the world
 
     // Attach the new boss bar to the layer for convenience.
-    s.app.world.entity_mut(s.layer).insert(BossBarBundle {
+    s.app.world_mut().entity_mut(s.layer).insert(BossBarBundle {
         title: BossBarTitle("Boss Bar".into_text()),
         health: BossBarHealth(0.5),
         layer: EntityLayerId(s.layer),

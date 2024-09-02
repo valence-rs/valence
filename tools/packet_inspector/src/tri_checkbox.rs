@@ -80,6 +80,7 @@ impl<'a> Widget for TriCheckbox<'a> {
             WidgetInfo::selected(
                 WidgetType::Checkbox,
                 *checked == TriCheckboxState::Enabled,
+                false,
                 text.as_ref().map_or("", |x| x.text()),
             )
         });
