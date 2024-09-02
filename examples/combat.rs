@@ -10,7 +10,7 @@ const SPAWN_Y: i32 = 64;
 const ARENA_RADIUS: i32 = 32;
 
 /// Attached to every client.
-#[derive(Component)]
+#[derive(Component, Default)]
 struct CombatState {
     /// The tick the client was last attacked.
     last_attacked_tick: i64,
@@ -76,6 +76,7 @@ fn setup(
 fn init_clients(
     mut clients: Query<
         (
+            Entity,
             &mut EntityLayerId,
             &mut VisibleChunkLayer,
             &mut VisibleEntityLayers,
@@ -85,8 +86,10 @@ fn init_clients(
         Added<Client>,
     >,
     layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
+    mut commands: Commands,
 ) {
     for (
+        entity,
         mut layer_id,
         mut visible_chunk_layer,
         mut visible_entity_layers,
@@ -101,6 +104,8 @@ fn init_clients(
         visible_entity_layers.0.insert(layer);
         pos.set([0.0, f64::from(SPAWN_Y) + 1.0, 0.0]);
         *game_mode = GameMode::Creative;
+
+        commands.entity(entity).insert(CombatState::default());
     }
 }
 
