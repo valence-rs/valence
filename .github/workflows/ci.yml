@@ -202,7 +202,7 @@ jobs:
           </details>" > ./bad-depgraph/pr-comment.txt
 
       - name: Upload comment artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         if: ${{ failure() && github.event_name == 'pull_request' }}
         with:
           name: bad-depgraph
