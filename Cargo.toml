@@ -209,6 +209,7 @@ valence_server_common = { path = "crates/valence_server_common", version = "0.2.
 valence_text = { path = "crates/valence_text", version = "0.2.0-alpha.1" }
 valence_weather = { path = "crates/valence_weather", version = "0.2.0-alpha.1" }
 valence_world_border = { path = "crates/valence_world_border", version = "0.2.0-alpha.1" }
+vek = "0.17.1"
 zip = "2.2.0"
 
 [workspace.lints.rust]

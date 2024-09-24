@@ -13,4 +13,4 @@ workspace = true
 [dependencies]
 approx.workspace = true
 rayon.workspace = true
-vek = "0.16.1" # TODO: remove this.
+vek.workspace = true
