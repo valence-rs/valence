@@ -133,7 +133,7 @@ derive_more = "1.0.0"
 directories = "5.0.1"
 divan = "0.1.14"
 eframe = { version = "0.28.1" }
-egui = "0.28.1"
+egui = "0.29.0"
 egui_dock = "0.13"
 flate2 = "1.0.33"
 flume = "0.11.0"
