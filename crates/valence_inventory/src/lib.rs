@@ -652,7 +652,6 @@ fn update_player_inventories(
             // Contrary to what you might think, we actually don't want to increment the
             // state ID here because the client doesn't actually acknowledge the
             // state_id change for this packet specifically. See #304.
-
             client.write_packet(&ScreenHandlerSlotUpdateS2c {
                 window_id: -1,
                 state_id: VarInt(inv_state.state_id.0),
@@ -673,7 +672,7 @@ fn update_open_inventories(
         Entity,
         &mut Client,
         &mut ClientInventoryState,
-        &CursorItem,
+        Ref<CursorItem>,
         &mut OpenInventory,
     )>,
     mut inventories: Query<&mut Inventory>,
@@ -746,6 +745,18 @@ fn update_open_inventories(
                             });
                         }
                     }
+                }
+                if cursor_item.is_changed() && !inv_state.client_updated_cursor_item {
+                    // Contrary to what you might think, we actually don't want to increment the
+                    // state ID here because the client doesn't actually acknowledge the
+                    // state_id change for this packet specifically. See #304.
+
+                    client.write_packet(&ScreenHandlerSlotUpdateS2c {
+                        window_id: -1,
+                        state_id: VarInt(inv_state.state_id.0),
+                        slot_idx: -1,
+                        slot_data: Cow::Borrowed(&cursor_item.0),
+                    });
                 }
             }
         }
