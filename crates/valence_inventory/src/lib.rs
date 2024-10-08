@@ -1206,6 +1206,7 @@ fn handle_player_actions(
                                 slots: Cow::Borrowed(inv.slot_slice()),
                                 carried_item: Cow::Borrowed(&ItemStack::EMPTY),
                             });
+                            continue;
                         }
 
                         let stack = inv.replace_slot(held.slot(), ItemStack::EMPTY);
