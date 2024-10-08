@@ -73,7 +73,7 @@ pub struct Inventory {
     pub changed: u64,
     /// Makes a inventory read-only. This will prevent adding
     /// or removing items. If this is a player inventory
-    /// This will also make it impossible to drop items while not 
+    /// This will also make it impossible to drop items while not
     /// in the inventory (e.g. by pressing Q)
     pub readonly: bool,
 }
@@ -868,7 +868,7 @@ fn handle_click_slot(
 
         if pkt.slot_idx < 0 && pkt.mode == ClickMode::Click {
             // The client is dropping the cursor item by clicking outside the window.
-            
+
             let stack = std::mem::take(&mut cursor_item.0);
 
             if !stack.is_empty() {
