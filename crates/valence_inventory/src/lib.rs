@@ -42,6 +42,7 @@ impl Plugin for InventoryPlugin {
                 update_player_selected_slot,
                 update_open_inventories,
                 update_player_inventories,
+                update_cursor_item,
             )
                 .before(FlushPacketsSet),
         )
@@ -357,10 +358,10 @@ pub struct ClientInventoryState {
     /// Tracks what slots have been changed by this client in this tick, so we
     /// don't need to send updates for them.
     slots_changed: u64,
-    /// Whether the client has updated the cursor item in this tick. This is not
-    /// on the `CursorItem` component to make maintaining accurate change
-    /// detection for end users easier.
-    client_updated_cursor_item: bool,
+    /// The item the user things they updated thier cursor item to on the last
+    /// tick if Some if none the user did not update thier cursor item this
+    /// last tick this is so we can inform the user of the update
+    client_updated_cursor_item: Option<ItemStack>,
 }
 
 impl ClientInventoryState {
@@ -579,7 +580,7 @@ fn init_new_client_inventories(clients: Query<Entity, Added<Client>>, mut comman
                 window_id: 0,
                 state_id: Wrapping(0),
                 slots_changed: 0,
-                client_updated_cursor_item: false,
+                client_updated_cursor_item: None,
             },
             HeldItem {
                 // First slot of the hotbar.
@@ -596,7 +597,7 @@ fn update_player_inventories(
             &mut Inventory,
             &mut Client,
             &mut ClientInventoryState,
-            Ref<CursorItem>,
+            &CursorItem,
         ),
         Without<OpenInventory>,
     >,
@@ -647,20 +648,6 @@ fn update_player_inventories(
             inventory.changed = 0;
             inv_state.slots_changed = 0;
         }
-
-        if cursor_item.is_changed() && !inv_state.client_updated_cursor_item {
-            // Contrary to what you might think, we actually don't want to increment the
-            // state ID here because the client doesn't actually acknowledge the
-            // state_id change for this packet specifically. See #304.
-            client.write_packet(&ScreenHandlerSlotUpdateS2c {
-                window_id: -1,
-                state_id: VarInt(inv_state.state_id.0),
-                slot_idx: -1,
-                slot_data: Cow::Borrowed(&cursor_item.0),
-            });
-        }
-
-        inv_state.client_updated_cursor_item = false;
     }
 }
 
@@ -672,7 +659,7 @@ fn update_open_inventories(
         Entity,
         &mut Client,
         &mut ClientInventoryState,
-        Ref<CursorItem>,
+        &CursorItem,
         &mut OpenInventory,
     )>,
     mut inventories: Query<&mut Inventory>,
@@ -746,25 +733,33 @@ fn update_open_inventories(
                         }
                     }
                 }
-                if cursor_item.is_changed() && !inv_state.client_updated_cursor_item {
-                    // Contrary to what you might think, we actually don't want to increment the
-                    // state ID here because the client doesn't actually acknowledge the
-                    // state_id change for this packet specifically. See #304.
-
-                    client.write_packet(&ScreenHandlerSlotUpdateS2c {
-                        window_id: -1,
-                        state_id: VarInt(inv_state.state_id.0),
-                        slot_idx: -1,
-                        slot_data: Cow::Borrowed(&cursor_item.0),
-                    });
-                }
             }
         }
 
         open_inventory.client_changed = 0;
         inv_state.slots_changed = 0;
-        inv_state.client_updated_cursor_item = false;
         inventory.changed = 0;
+    }
+}
+
+fn update_cursor_item(
+    mut clients: Query<(&mut Client, &mut ClientInventoryState, &CursorItem), Changed<CursorItem>>,
+) {
+    for (mut client, mut inv_state, cursor_item) in &mut clients {
+        // The cursor item was not the item the user themselves interacted with
+        if inv_state.client_updated_cursor_item.as_ref() != Some(&cursor_item.0) {
+            // Contrary to what you might think, we actually don't want to increment the
+            // state ID here because the client doesn't actually acknowledge the
+            // state_id change for this packet specifically. See #304.
+            client.write_packet(&ScreenHandlerSlotUpdateS2c {
+                window_id: -1,
+                state_id: VarInt(inv_state.state_id.0),
+                slot_idx: -1,
+                slot_data: Cow::Borrowed(&cursor_item.0),
+            });
+        }
+
+        inv_state.client_updated_cursor_item = None;
     }
 }
 
@@ -1030,6 +1025,7 @@ fn handle_click_slot(
                 }
 
                 cursor_item.set_if_neq(CursorItem(pkt.carried_item.clone()));
+                inv_state.client_updated_cursor_item = Some(pkt.carried_item.clone());
 
                 for slot in pkt.slot_changes.iter() {
                     if (0_i16..target_inventory.slot_count() as i16).contains(&slot.idx) {
@@ -1065,7 +1061,7 @@ fn handle_click_slot(
                 }
 
                 cursor_item.set_if_neq(CursorItem(pkt.carried_item.clone()));
-                inv_state.client_updated_cursor_item = true;
+                inv_state.client_updated_cursor_item = Some(pkt.carried_item.clone());
 
                 for slot in pkt.slot_changes.iter() {
                     if (0_i16..client_inv.slot_count() as i16).contains(&slot.idx) {
