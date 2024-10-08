@@ -71,6 +71,11 @@ pub struct Inventory {
     /// Contains a set bit for each modified slot in `slots`.
     #[doc(hidden)]
     pub changed: u64,
+    /// Makes a inventory read-only. This will prevent adding
+    /// or removing items. If this is a player inventory
+    /// This will also make it impossible to drop items while not 
+    /// in the inventory (e.g. by pressing Q)
+    pub readonly: bool,
 }
 
 impl Inventory {
@@ -85,6 +90,7 @@ impl Inventory {
             kind,
             slots: vec![ItemStack::EMPTY; kind.slot_count()].into(),
             changed: 0,
+            readonly: false,
         }
     }
 
@@ -862,7 +868,7 @@ fn handle_click_slot(
 
         if pkt.slot_idx < 0 && pkt.mode == ClickMode::Click {
             // The client is dropping the cursor item by clicking outside the window.
-
+            
             let stack = std::mem::take(&mut cursor_item.0);
 
             if !stack.is_empty() {
@@ -907,6 +913,17 @@ fn handle_click_slot(
                 if (0_i16..target_inventory.slot_count() as i16).contains(&pkt.slot_idx) {
                     // The player is dropping an item from another inventory.
 
+                    if target_inventory.readonly {
+                        // resync target inventory
+                        client.write_packet(&InventoryS2c {
+                            window_id: inv_state.window_id,
+                            state_id: VarInt(inv_state.state_id.0),
+                            slots: Cow::Borrowed(target_inventory.slot_slice()),
+                            carried_item: Cow::Borrowed(&cursor_item.0),
+                        });
+                        continue;
+                    }
+
                     let stack = target_inventory.slot(pkt.slot_idx as u16);
 
                     if !stack.is_empty() {
@@ -930,6 +947,18 @@ fn handle_click_slot(
                     }
                 } else {
                     // The player is dropping an item from their inventory.
+
+                    if client_inv.readonly {
+                        // resync the client inventory
+                        client.write_packet(&InventoryS2c {
+                            window_id: 0,
+                            state_id: VarInt(inv_state.state_id.0),
+                            slots: Cow::Borrowed(client_inv.slot_slice()),
+                            carried_item: Cow::Borrowed(&cursor_item.0),
+                        });
+                        continue;
+                    }
+
                     let slot_id =
                         convert_to_player_slot_id(target_inventory.kind, pkt.slot_idx as u16);
 
@@ -957,6 +986,17 @@ fn handle_click_slot(
             } else {
                 // The player has no inventory open and is dropping an item from their
                 // inventory.
+
+                if client_inv.readonly {
+                    // resync the client inventory
+                    client.write_packet(&InventoryS2c {
+                        window_id: 0,
+                        state_id: VarInt(inv_state.state_id.0),
+                        slots: Cow::Borrowed(client_inv.slot_slice()),
+                        carried_item: Cow::Borrowed(&cursor_item.0),
+                    });
+                    continue;
+                }
 
                 let stack = client_inv.slot(pkt.slot_idx as u16);
 
@@ -994,7 +1034,8 @@ fn handle_click_slot(
             }
 
             if let Some(mut open_inventory) = open_inventory {
-                // The player is interacting with an inventory that is open.
+                // The player is interacting with an inventory that is
+                // open or has an inventory open while interacting with their own inventory.
 
                 let Ok(mut target_inventory) = inventories.get_mut(open_inventory.entity) else {
                     // The inventory does not exist, ignore.
@@ -1018,20 +1059,58 @@ fn handle_click_slot(
                     continue;
                 }
 
-                cursor_item.set_if_neq(CursorItem(pkt.carried_item.clone()));
+                let mut new_cursor = pkt.carried_item.clone();
 
                 for slot in pkt.slot_changes.iter() {
+                    let transferred_between_inventories =
+                        ((0_i16..target_inventory.slot_count() as i16).contains(&pkt.slot_idx)
+                            && pkt.mode == ClickMode::Hotbar)
+                            || pkt.mode == ClickMode::ShiftClick;
+
                     if (0_i16..target_inventory.slot_count() as i16).contains(&slot.idx) {
-                        // The client is interacting with a slot in the target inventory.
+                        if (client_inv.readonly && transferred_between_inventories)
+                            || target_inventory.readonly
+                        {
+                            new_cursor = cursor_item.0.clone();
+                            continue;
+                        }
+
                         target_inventory.set_slot(slot.idx as u16, slot.stack.clone());
                         open_inventory.client_changed |= 1 << slot.idx;
                     } else {
+                        if (target_inventory.readonly && transferred_between_inventories)
+                            || client_inv.readonly
+                        {
+                            new_cursor = cursor_item.0.clone();
+                            continue;
+                        }
+
                         // The client is interacting with a slot in their own inventory.
                         let slot_id =
                             convert_to_player_slot_id(target_inventory.kind, slot.idx as u16);
                         client_inv.set_slot(slot_id, slot.stack.clone());
                         inv_state.slots_changed |= 1 << slot_id;
                     }
+                }
+
+                cursor_item.set_if_neq(CursorItem(new_cursor));
+
+                if target_inventory.readonly || client_inv.readonly {
+                    // resync the target inventory
+                    client.write_packet(&InventoryS2c {
+                        window_id: inv_state.window_id,
+                        state_id: VarInt(inv_state.state_id.0),
+                        slots: Cow::Borrowed(target_inventory.slot_slice()),
+                        carried_item: Cow::Borrowed(&cursor_item.0),
+                    });
+
+                    // resync the client inventory
+                    client.write_packet(&InventoryS2c {
+                        window_id: 0,
+                        state_id: VarInt(inv_state.state_id.0),
+                        slots: Cow::Borrowed(client_inv.slot_slice()),
+                        carried_item: Cow::Borrowed(&cursor_item.0),
+                    });
                 }
             } else {
                 // The client is interacting with their own inventory.
@@ -1053,11 +1132,16 @@ fn handle_click_slot(
                     continue;
                 }
 
-                cursor_item.set_if_neq(CursorItem(pkt.carried_item.clone()));
+                let mut new_cursor = pkt.carried_item.clone();
+
                 inv_state.client_updated_cursor_item = true;
 
                 for slot in pkt.slot_changes.iter() {
                     if (0_i16..client_inv.slot_count() as i16).contains(&slot.idx) {
+                        if client_inv.readonly {
+                            new_cursor = cursor_item.0.clone();
+                            continue;
+                        }
                         client_inv.set_slot(slot.idx as u16, slot.stack.clone());
                         inv_state.slots_changed |= 1 << slot.idx;
                     } else {
@@ -1068,6 +1152,18 @@ fn handle_click_slot(
                             slot.idx
                         );
                     }
+                }
+
+                cursor_item.set_if_neq(CursorItem(new_cursor));
+
+                if client_inv.readonly {
+                    // resync the client inventory
+                    client.write_packet(&InventoryS2c {
+                        window_id: 0,
+                        state_id: VarInt(inv_state.state_id.0),
+                        slots: Cow::Borrowed(client_inv.slot_slice()),
+                        carried_item: Cow::Borrowed(&cursor_item.0),
+                    });
                 }
             }
 
@@ -1087,14 +1183,31 @@ fn handle_click_slot(
 
 fn handle_player_actions(
     mut packets: EventReader<PacketEvent>,
-    mut clients: Query<(&mut Inventory, &mut ClientInventoryState, &HeldItem)>,
+    mut clients: Query<(
+        &mut Inventory,
+        &mut ClientInventoryState,
+        &HeldItem,
+        &mut Client,
+    )>,
     mut drop_item_stack_events: EventWriter<DropItemStackEvent>,
 ) {
     for packet in packets.read() {
         if let Some(pkt) = packet.decode::<PlayerActionC2s>() {
             match pkt.action {
                 PlayerAction::DropAllItems => {
-                    if let Ok((mut inv, mut inv_state, &held)) = clients.get_mut(packet.client) {
+                    if let Ok((mut inv, mut inv_state, &held, mut client)) =
+                        clients.get_mut(packet.client)
+                    {
+                        if inv.readonly {
+                            // resync the client inventory
+                            client.write_packet(&InventoryS2c {
+                                window_id: 0,
+                                state_id: VarInt(inv_state.state_id.0),
+                                slots: Cow::Borrowed(inv.slot_slice()),
+                                carried_item: Cow::Borrowed(&ItemStack::EMPTY),
+                            });
+                        }
+
                         let stack = inv.replace_slot(held.slot(), ItemStack::EMPTY);
 
                         if !stack.is_empty() {
@@ -1109,7 +1222,20 @@ fn handle_player_actions(
                     }
                 }
                 PlayerAction::DropItem => {
-                    if let Ok((mut inv, mut inv_state, held)) = clients.get_mut(packet.client) {
+                    if let Ok((mut inv, mut inv_state, held, mut client)) =
+                        clients.get_mut(packet.client)
+                    {
+                        if inv.readonly {
+                            // resync the client inventory
+                            client.write_packet(&InventoryS2c {
+                                window_id: 0,
+                                state_id: VarInt(inv_state.state_id.0),
+                                slots: Cow::Borrowed(inv.slot_slice()),
+                                carried_item: Cow::Borrowed(&ItemStack::EMPTY),
+                            });
+                            continue;
+                        }
+
                         let mut stack = inv.replace_slot(held.slot(), ItemStack::EMPTY);
 
                         if !stack.is_empty() {
@@ -1133,7 +1259,21 @@ fn handle_player_actions(
                     }
                 }
                 PlayerAction::SwapItemWithOffhand => {
-                    if let Ok((mut inv, _, held)) = clients.get_mut(packet.client) {
+                    if let Ok((mut inv, inv_state, held, mut client)) =
+                        clients.get_mut(packet.client)
+                    {
+                        // this check here might not actually be necessary
+                        if inv.readonly {
+                            // resync the client inventory
+                            client.write_packet(&InventoryS2c {
+                                window_id: 0,
+                                state_id: VarInt(inv_state.state_id.0),
+                                slots: Cow::Borrowed(inv.slot_slice()),
+                                carried_item: Cow::Borrowed(&ItemStack::EMPTY),
+                            });
+                            continue;
+                        }
+
                         inv.swap_slot(held.slot(), PlayerInventory::SLOT_OFFHAND);
                     }
                 }
