@@ -71,7 +71,7 @@ pub struct Inventory {
     /// Contains a set bit for each modified slot in `slots`.
     #[doc(hidden)]
     pub changed: u64,
-    /// Makes a inventory read-only. This will prevent adding
+    /// Makes an inventory read-only for clients. This will prevent adding
     /// or removing items. If this is a player inventory
     /// This will also make it impossible to drop items while not
     /// in the inventory (e.g. by pressing Q)
