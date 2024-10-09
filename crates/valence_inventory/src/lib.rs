@@ -358,9 +358,11 @@ pub struct ClientInventoryState {
     /// Tracks what slots have been changed by this client in this tick, so we
     /// don't need to send updates for them.
     slots_changed: u64,
-    /// The item the user things they updated their cursor item to on the last
-    /// tick if Some if none the user did not update their cursor item this
-    /// last tick this is so we can inform the user of the update
+    /// If `Some`: The item the user thinks they updated their cursor item to on
+    /// the last tick.
+    /// If `None`: the user did not update their cursor item in the last tick.
+    /// This is so we can inform the user of the update through change detection
+    /// when they differ in a given tick
     client_updated_cursor_item: Option<ItemStack>,
 }
 
