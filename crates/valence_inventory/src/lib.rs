@@ -1066,7 +1066,7 @@ fn handle_click_slot(
 
                     continue;
                 }
-              
+
                 let mut new_cursor = pkt.carried_item.clone();
 
                 for slot in pkt.slot_changes.iter() {
@@ -1101,7 +1101,7 @@ fn handle_click_slot(
                     }
                 }
 
-                cursor_item.set_if_neq(CursorItem(new_cursor));
+                cursor_item.set_if_neq(CursorItem(new_cursor.clone()));
                 inv_state.client_updated_cursor_item = Some(new_cursor);
 
                 if target_inventory.readonly || client_inv.readonly {
@@ -1161,9 +1161,9 @@ fn handle_click_slot(
                     }
                 }
 
-                cursor_item.set_if_neq(CursorItem(new_cursor));
+                cursor_item.set_if_neq(CursorItem(new_cursor.clone()));
                 inv_state.client_updated_cursor_item = Some(new_cursor);
-              
+
                 if client_inv.readonly {
                     // resync the client inventory
                     client.write_packet(&InventoryS2c {
