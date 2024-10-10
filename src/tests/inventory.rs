@@ -445,261 +445,373 @@ fn test_should_modify_open_inventory_server_side() {
     );
 }
 
-// NOT WORKING
-// #[test]
-// fn test_prevent_hotbar_item_click_container_readonly_inventory() {
-//     let ScenarioSingleClient {
-//         mut app,
-//         client,
-//         mut helper,
-//         ..
-//     } = ScenarioSingleClient::new();
+#[test]
+fn test_hotbar_item_swap_container() {
+    let ScenarioSingleClient {
+        mut app,
+        client,
+        mut helper,
+        ..
+    } = ScenarioSingleClient::new();
 
-//     // Process a tick to get past the "on join" logic.
-//     app.update();
-//     helper.clear_received();
+    // Process a tick to get past the "on join" logic.
+    app.update();
 
-//     // player inventory is not read-only
-//     let mut player_inventory = app
-//         .world_mut()
-//         .get_mut::<Inventory>(client)
-//         .expect("could not find inventory for client");
+    let mut player_inventory = app
+        .world_mut()
+        .get_mut::<Inventory>(client)
+        .expect("could not find inventory for client");
 
-//     // 36 is the first hotbar slot
-//     player_inventory.set_slot(36, ItemStack::new(ItemKind::Diamond, 1,
-// None));
+    // 36 is the first hotbar slot
+    player_inventory.set_slot(36, ItemStack::new(ItemKind::Diamond, 1, None));
 
-//     let open_inv_ent = set_up_open_inventory(&mut app, client);
+    let open_inv_ent = set_up_open_inventory(&mut app, client);
 
-//     let mut open_inventory = app
-//         .world_mut()
-//         .get_mut::<Inventory>(open_inv_ent)
-//         .expect("could not find inventory for client");
+    let mut open_inventory = app
+        .world_mut()
+        .get_mut::<Inventory>(open_inv_ent)
+        .expect("could not find inventory for client");
 
-//     // Open inventory is read-only
-//     // open_inventory.readonly = true;
-//     open_inventory.set_slot(0, ItemStack::new(ItemKind::IronIngot, 10,
-// None));
+    open_inventory.set_slot(0, ItemStack::new(ItemKind::IronIngot, 10, None));
 
-//     let inv_state =
-// app.world_mut().get::<ClientInventoryState>(client).unwrap();
-//     let state_id = inv_state.state_id();
-//     let window_id = inv_state.window_id();
+    // This update makes sure we have the items in the inventory by the time the
+    // client wants to update these
+    app.update();
+    helper.clear_received();
+    let inv_state = app.world_mut().get::<ClientInventoryState>(client).unwrap();
+    let state_id = inv_state.state_id();
+    let window_id = inv_state.window_id();
 
-//     // The player hovers over the iron ingots in the open inventory, and
-// tries     // to move them to their own (via pressing 1), which should swap
-// the iron     // for the diamonds. However the opened inventory is read-only,
-// so nothing     // should happen.
-//     helper.send(&ClickSlotC2s {
-//         window_id,
-//         state_id: VarInt(state_id.0),
-//         slot_idx: 0,
-//         button: 0, // hotbar slot starting at 0
-//         mode: ClickMode::Hotbar,
-//         slot_changes: vec![
-//             // First SlotChange is the item is the slot in the player's
-// hotbar.             // target slot.
-//             SlotChange {
-//                 idx: 0,
-//                 stack: ItemStack::new(ItemKind::Diamond, 1, None),
-//             },
-//             SlotChange {
-//                 // 54 is the players hotbar slot 1, when the 9x3 inventory is
-// opnened.                 idx: 54,
-//                 stack: ItemStack::new(ItemKind::IronIngot, 10, None),
-//             },
-//             // The second one is the slot in the open inventory, after the
-// ClickSlot action             // source slot.
-//         ]
-//         .into(),
-//         carried_item: ItemStack::EMPTY,
-//     });
+    // The player hovers over the iron ingots in the open inventory, and tries
+    // to move them to their own (via pressing 1), which should swap the iron
+    // for the diamonds.
+    helper.send(&ClickSlotC2s {
+        window_id,
+        state_id: VarInt(state_id.0),
+        slot_idx: 0,
+        button: 0, // hotbar slot starting at 0
+        mode: ClickMode::Hotbar,
+        slot_changes: vec![
+            // First SlotChange is the item is the slot in the player's hotbar.
+            // target slot.
+            SlotChange {
+                idx: 0,
+                stack: ItemStack::new(ItemKind::Diamond, 1, None),
+            },
+            SlotChange {
+                // 54 is the players hotbar slot 1, when the 9x3 inventory is opnened.
+                idx: 54,
+                stack: ItemStack::new(ItemKind::IronIngot, 10, None),
+            },
+            // The second one is the slot in the open inventory, after the ClickSlot action
+            // source slot.
+        ]
+        .into(),
+        carried_item: ItemStack::EMPTY,
+    });
 
-//     app.update();
+    app.update();
 
-//     let sent_packets = helper.collect_received();
+    let sent_packets = helper.collect_received();
 
-//     // 1 resync for each inventory
-//     sent_packets.assert_count::<InventoryS2c>(2);
+    // No resyncs because the client was in sync and sent us the updates
+    sent_packets.assert_count::<InventoryS2c>(0);
 
-//     // Make assertions
-//     let player_inventory = app
-//         .world_mut()
-//         .get::<Inventory>(client)
-//         .expect("could not find client");
+    // Make assertions
+    let player_inventory = app
+        .world_mut()
+        .get::<Inventory>(client)
+        .expect("could not find client");
 
-//     // Opened inventory is read-only, the items are not swapped.
-//     assert_eq!(player_inventory.slot(36), &ItemStack::new(ItemKind::Diamond,
-// 1, None));
+    // Swapped items successfully
+    assert_eq!(
+        player_inventory.slot(36),
+        &ItemStack::new(ItemKind::IronIngot, 10, None)
+    );
 
-//     let open_inventory = app
-//         .world_mut()
-//         .get::<Inventory>(open_inv_ent)
-//         .expect("could not find inventory");
+    let open_inventory = app
+        .world_mut()
+        .get::<Inventory>(open_inv_ent)
+        .expect("could not find inventory");
 
-//     // Opened inventory is read-only, the items are not swapped.
-//     assert_eq!(open_inventory.slot(0), &ItemStack::new(ItemKind::IronIngot,
-// 10, None)); }
+    assert_eq!(
+        open_inventory.slot(0),
+        &ItemStack::new(ItemKind::Diamond, 1, None)
+    );
+}
 
-// NOT WORKING
-// #[test]
-// fn test_still_allow_hotbar_item_click_in_own_inventory_if_container_readonly_inventory() {
-//     let ScenarioSingleClient {
-//         mut app,
-//         client,
-//         mut helper,
-//         ..
-//     } = ScenarioSingleClient::new();
+#[test]
+fn test_prevent_hotbar_item_click_container_readonly_inventory() {
+    let ScenarioSingleClient {
+        mut app,
+        client,
+        mut helper,
+        ..
+    } = ScenarioSingleClient::new();
 
-//     // Process a tick to get past the "on join" logic.
-//     app.update();
-//     helper.clear_received();
+    // Process a tick to get past the "on join" logic.
+    app.update();
+    helper.clear_received();
 
-//     // player inventory is not read-only
-//     let mut player_inventory = app
-//         .world_mut()
-//         .get_mut::<Inventory>(client)
-//         .expect("could not find inventory for client");
+    // player inventory is not read-only
+    let mut player_inventory = app
+        .world_mut()
+        .get_mut::<Inventory>(client)
+        .expect("could not find inventory for client");
 
-//     // 36 is the first hotbar slot
-//     player_inventory.set_slot(36, ItemStack::new(ItemKind::Diamond, 10,
-// None));
+    // 36 is the first hotbar slot
+    player_inventory.set_slot(36, ItemStack::new(ItemKind::Diamond, 1, None));
 
-//     let open_inv_ent = set_up_open_inventory(&mut app, client);
+    let open_inv_ent = set_up_open_inventory(&mut app, client);
 
-//     let mut open_inventory = app
-//         .world_mut()
-//         .get_mut::<Inventory>(open_inv_ent)
-//         .expect("could not find inventory for client");
+    let mut open_inventory = app
+        .world_mut()
+        .get_mut::<Inventory>(open_inv_ent)
+        .expect("could not find inventory for client");
 
-//     // Open inventory is read-only
-//     open_inventory.readonly = true;
+    // Open inventory is read-only
+    open_inventory.readonly = true;
+    open_inventory.set_slot(0, ItemStack::new(ItemKind::IronIngot, 10, None));
 
-//     let inv_state =
-// app.world_mut().get::<ClientInventoryState>(client).unwrap();
-//     let state_id = inv_state.state_id();
-//     let window_id = inv_state.window_id();
+    // This update makes sure we have the items in the inventory by the time the
+    // client wants to update these
+    app.update();
+    helper.clear_received();
 
-//     // The player's inventory is not readonly, so the player should still be
-//     // able to move items from the hotbar to other parts of the inventory
-// even     // if the other inventory is still open.
-//     helper.send(&ClickSlotC2s {
-//         window_id,
-//         state_id: VarInt(state_id.0),
-//         slot_idx: 27,
-//         button: 0, // hotbar slot starting at 0
-//         mode: ClickMode::Hotbar,
-//         slot_changes: vec![
-//             SlotChange {
-//                 idx: 27,
-//                 stack: ItemStack::new(ItemKind::Diamond, 10, None),
-//             },
-//             SlotChange {
-//                 idx: 54,
-//                 stack: ItemStack::EMPTY,
-//             },
-//         ]
-//         .into(),
-//         carried_item: ItemStack::EMPTY,
-//     });
+    let inv_state = app.world_mut().get::<ClientInventoryState>(client).unwrap();
+    let state_id = inv_state.state_id();
+    let window_id = inv_state.window_id();
 
-//     app.update();
-//     // Make assertions
-//     let sent_packets = helper.collect_received();
-//     sent_packets.assert_count::<InventoryS2c>(2);
+    // The player hovers over the iron ingots in the open inventory, and tries
+    // to move them to their own (via pressing 1), which should swap the iron
+    // for the diamonds. However the opened inventory is read-only, so nothing
+    // should happen.
+    helper.send(&ClickSlotC2s {
+        window_id,
+        state_id: VarInt(state_id.0),
+        slot_idx: 0,
+        button: 0, // hotbar slot starting at 0
+        mode: ClickMode::Hotbar,
+        slot_changes: vec![
+            // First SlotChange is the item is the slot in the player's hotbar.
+            // target slot.
+            SlotChange {
+                idx: 0,
+                stack: ItemStack::new(ItemKind::Diamond, 1, None),
+            },
+            // The second one is the slot in the open inventory, after the ClickSlot action
+            // source slot.
+            SlotChange {
+                // 54 is the players hotbar slot 1, when the 9x3 inventory is opnened.
+                idx: 54,
+                stack: ItemStack::new(ItemKind::IronIngot, 10, None),
+            },
+        ]
+        .into(),
+        carried_item: ItemStack::EMPTY,
+    });
 
-//     let player_inventory = app
-//         .world_mut()
-//         .get::<Inventory>(client)
-//         .expect("could not find client");
+    app.update();
 
-//     // Items swapped successfully, as player item is not read-only
-//     assert_eq!(player_inventory.slot(36), &ItemStack::EMPTY);
-//     assert_eq!(player_inventory.slot(9), &ItemStack::new(ItemKind::Diamond,
-// 1, None)); }
+    let sent_packets = helper.collect_received();
 
-// NOT WORKING
-// #[test]
-// fn test_prevent_shift_item_click_container_readonly_inventory() {
-//     let ScenarioSingleClient {
-//         mut app,
-//         client,
-//         mut helper,
-//         ..
-//     } = ScenarioSingleClient::new();
+    // 1 resync for each inventory
+    sent_packets.assert_count::<InventoryS2c>(2);
 
-//     // Process a tick to get past the "on join" logic.
-//     app.update();
-//     helper.clear_received();
+    // Make assertions
+    let player_inventory = app
+        .world_mut()
+        .get::<Inventory>(client)
+        .expect("could not find client");
 
-//     // player inventory is not read-only
-//     let mut player_inventory = app
-//         .world_mut()
-//         .get_mut::<Inventory>(client)
-//         .expect("could not find inventory for client");
+    // Opened inventory is read-only, the items are not swapped.
+    assert_eq!(
+        player_inventory.slot(36),
+        &ItemStack::new(ItemKind::Diamond, 1, None)
+    );
 
-//     player_inventory.set_slot(9, ItemStack::new(ItemKind::Diamond, 64,
-// None));
+    let open_inventory = app
+        .world_mut()
+        .get::<Inventory>(open_inv_ent)
+        .expect("could not find inventory");
 
-//     let open_inv_ent = set_up_open_inventory(&mut app, client);
+    // Opened inventory is read-only, the items are not swapped.
+    assert_eq!(
+        open_inventory.slot(0),
+        &ItemStack::new(ItemKind::IronIngot, 10, None)
+    );
+}
 
-//     let mut open_inventory = app
-//         .world_mut()
-//         .get_mut::<Inventory>(open_inv_ent)
-//         .expect("could not find inventory for client");
+#[test]
+fn test_still_allow_hotbar_item_click_in_own_inventory_if_container_readonly_inventory() {
+    let ScenarioSingleClient {
+        mut app,
+        client,
+        mut helper,
+        ..
+    } = ScenarioSingleClient::new();
 
-//     // Open inventory is read-only
-//     open_inventory.readonly = true;
+    // Process a tick to get past the "on join" logic.
+    app.update();
+    helper.clear_received();
 
-//     let inv_state =
-// app.world_mut().get::<ClientInventoryState>(client).unwrap();
-//     let state_id = inv_state.state_id();
-//     let window_id = inv_state.window_id();
+    // player inventory is not read-only
+    let mut player_inventory = app
+        .world_mut()
+        .get_mut::<Inventory>(client)
+        .expect("could not find inventory for client");
 
-//     // The player tries to Shift-click transfer the stack of diamonds into
-// the open container     helper.send(&ClickSlotC2s {
-//         window_id,
-//         state_id: VarInt(state_id.0),
-//         slot_idx: 54,
-//         button: 0, // hotbar slot starting at 0
-//         mode: ClickMode::ShiftClick,
-//         slot_changes: vec![
-//             // target
-//             SlotChange {
-//                 idx: 0,
-//                 stack: ItemStack::new(ItemKind::Diamond, 64, None),
-//             },
-//             // source
-//             SlotChange {
-//                 idx: 27,
-//                 stack: ItemStack::EMPTY,
-//             },
-//         ]
-//         .into(),
-//         carried_item: ItemStack::EMPTY,
-//     });
+    // 36 is the first hotbar slot
+    player_inventory.set_slot(36, ItemStack::new(ItemKind::Diamond, 10, None));
 
-//     app.update();
+    let open_inv_ent = set_up_open_inventory(&mut app, client);
 
-//     // Make assertions
-//     let sent_packets = helper.collect_received();
-//     sent_packets.assert_count::<InventoryS2c>(2);
+    let mut open_inventory = app
+        .world_mut()
+        .get_mut::<Inventory>(open_inv_ent)
+        .expect("could not find inventory for client");
 
-//     let player_inventory = app
-//         .world_mut()
-//         .get::<Inventory>(client)
-//         .expect("could not find client");
+    // Open inventory is read-only
+    open_inventory.readonly = true;
 
-//     assert_eq!(player_inventory.slot(9), &ItemStack::new(ItemKind::Diamond,
-// 64, None));
+    // This update makes sure we have the items in the inventory by the time the
+    // client wants to update these
+    app.update();
+    helper.clear_received();
 
-//     let open_inventory = app
-//         .world_mut()
-//         .get::<Inventory>(open_inv_ent)
-//         .expect("could not find inventory");
+    let inv_state = app.world_mut().get::<ClientInventoryState>(client).unwrap();
+    let state_id = inv_state.state_id();
+    let window_id = inv_state.window_id();
 
-//     assert_eq!(open_inventory.slot(0), &ItemStack::EMPTY);
-// }
+    // The player's inventory is not readonly, so the player should still be
+    // able to move items from the hotbar to other parts of the inventory even
+    // if the other inventory is still open.
+    helper.send(&ClickSlotC2s {
+        window_id,
+        state_id: VarInt(state_id.0),
+        slot_idx: 27,
+        button: 0, // hotbar slot starting at 0
+        mode: ClickMode::Hotbar,
+        slot_changes: vec![
+            SlotChange {
+                idx: 27,
+                stack: ItemStack::new(ItemKind::Diamond, 10, None),
+            },
+            SlotChange {
+                idx: 54,
+                stack: ItemStack::EMPTY,
+            },
+        ]
+        .into(),
+        carried_item: ItemStack::EMPTY,
+    });
+
+    app.update();
+    // Make assertions
+    let sent_packets = helper.collect_received();
+    sent_packets.assert_count::<InventoryS2c>(2);
+
+    let player_inventory = app
+        .world_mut()
+        .get::<Inventory>(client)
+        .expect("could not find client");
+
+    // Items swapped successfully, as player item is not read-only
+    assert_eq!(player_inventory.slot(36), &ItemStack::EMPTY);
+    assert_eq!(
+        player_inventory.slot(9),
+        &ItemStack::new(ItemKind::Diamond, 10, None)
+    );
+}
+
+#[test]
+fn test_prevent_shift_item_click_container_readonly_inventory() {
+    let ScenarioSingleClient {
+        mut app,
+        client,
+        mut helper,
+        ..
+    } = ScenarioSingleClient::new();
+
+    // Process a tick to get past the "on join" logic.
+    app.update();
+    helper.clear_received();
+
+    // player inventory is not read-only
+    let mut player_inventory = app
+        .world_mut()
+        .get_mut::<Inventory>(client)
+        .expect("could not find inventory for client");
+
+    player_inventory.set_slot(9, ItemStack::new(ItemKind::Diamond, 64, None));
+
+    let open_inv_ent = set_up_open_inventory(&mut app, client);
+
+    let mut open_inventory = app
+        .world_mut()
+        .get_mut::<Inventory>(open_inv_ent)
+        .expect("could not find inventory for client");
+
+    // Open inventory is read-only
+    open_inventory.readonly = true;
+
+    // This update makes sure we have the items in the inventory by the time the
+    // client wants to update these
+    app.update();
+    helper.clear_received();
+
+    let inv_state = app.world_mut().get::<ClientInventoryState>(client).unwrap();
+    let state_id = inv_state.state_id();
+    let window_id = inv_state.window_id();
+
+    // The player tries to Shift-click transfer the stack of diamonds into
+    // the open container
+    helper.send(&ClickSlotC2s {
+        window_id,
+        state_id: VarInt(state_id.0),
+        slot_idx: 27,
+        button: 0, // hotbar slot starting at 0
+        mode: ClickMode::ShiftClick,
+        slot_changes: vec![
+            // target
+            SlotChange {
+                idx: 0,
+                stack: ItemStack::new(ItemKind::Diamond, 64, None),
+            },
+            // source
+            SlotChange {
+                idx: 27,
+                stack: ItemStack::EMPTY,
+            },
+        ]
+        .into(),
+        carried_item: ItemStack::EMPTY,
+    });
+
+    app.update();
+
+    // Make assertions
+    let sent_packets = helper.collect_received();
+    // 1 resync per inventory
+    sent_packets.assert_count::<InventoryS2c>(2);
+
+    let player_inventory = app
+        .world_mut()
+        .get::<Inventory>(client)
+        .expect("could not find client");
+
+    assert_eq!(
+        player_inventory.slot(9),
+        &ItemStack::new(ItemKind::Diamond, 64, None)
+    );
+
+    let open_inventory = app
+        .world_mut()
+        .get::<Inventory>(open_inv_ent)
+        .expect("could not find inventory");
+
+    assert_eq!(open_inventory.slot(0), &ItemStack::EMPTY);
+}
 
 #[test]
 fn test_should_sync_entire_open_inventory() {
