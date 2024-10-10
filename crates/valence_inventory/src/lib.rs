@@ -673,7 +673,7 @@ fn update_open_inventories(
     for (client_entity, mut client, mut inv_state, cursor_item, mut open_inventory) in &mut clients
     {
         // Validate that the inventory exists.
-        let Ok(mut inventory) = inventories.get_mut(open_inventory.entity) else {
+        let Ok(inventory) = inventories.get_mut(open_inventory.entity) else {
             // The inventory no longer exists, so close the inventory.
             commands.entity(client_entity).remove::<OpenInventory>();
 
@@ -737,17 +737,24 @@ fn update_open_inventories(
                 }
             }
         }
-
-        open_inventory.client_changed = 0;
-        inv_state.slots_changed = 0;
-        inventory.changed = 0;
+        // Since these happen every gametick we only want to trigger change detection
+        // if we actually did update these. Otherwise systems that are
+        // running looking for changes to the `Inventory`,`ClientInventoryState`
+        // or `OpenInventory` components get unneccerely ran each gametick
+        open_inventory
+            .map_unchanged(|f| &mut f.client_changed)
+            .set_if_neq(0);
+        inv_state
+            .map_unchanged(|f| &mut f.slots_changed)
+            .set_if_neq(0);
+        inventory.map_unchanged(|f| &mut f.changed).set_if_neq(0);
     }
 }
 
 fn update_cursor_item(
     mut clients: Query<(&mut Client, &mut ClientInventoryState, &CursorItem), Changed<CursorItem>>,
 ) {
-    for (mut client, mut inv_state, cursor_item) in &mut clients {
+    for (mut client, inv_state, cursor_item) in &mut clients {
         // The cursor item was not the item the user themselves interacted with
         if inv_state.client_updated_cursor_item.as_ref() != Some(&cursor_item.0) {
             // Contrary to what you might think, we actually don't want to increment the
@@ -761,7 +768,9 @@ fn update_cursor_item(
             });
         }
 
-        inv_state.client_updated_cursor_item = None;
+        inv_state
+            .map_unchanged(|f| &mut f.client_updated_cursor_item)
+            .set_if_neq(None);
     }
 }
 
