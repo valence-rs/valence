@@ -1016,6 +1016,29 @@ fn should_not_increment_state_id_on_cursor_item_change() {
     );
 }
 
+#[test]
+fn should_send_cursor_item_change_when_modified_on_the_server() {
+    let ScenarioSingleClient {
+        mut app,
+        client,
+        mut helper,
+        ..
+    } = ScenarioSingleClient::new();
+
+    // Process a tick to get past the "on join" logic.
+    app.update();
+    helper.clear_received();
+
+    let mut cursor_item = app.world_mut().get_mut::<CursorItem>(client).unwrap();
+    cursor_item.0 = ItemStack::new(ItemKind::Diamond, 2, None);
+
+    app.update();
+
+    let sent_packets = helper.collect_received();
+
+    sent_packets.assert_count::<ScreenHandlerSlotUpdateS2c>(1);
+}
+
 mod dropping_items {
     use super::*;
     use crate::inventory::{convert_to_player_slot_id, PlayerAction};
