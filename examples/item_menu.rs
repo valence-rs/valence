@@ -134,7 +134,7 @@ fn on_make_selection(
             1.0,
             1.0,
         );
-        client.send_chat_message(format!("you clicked: {}", selected_color));
+        client.send_chat_message(format!("you clicked: {selected_color}"));
     }
 }
 
@@ -177,7 +177,7 @@ mod item_menu {
         mut commands: Commands,
         mut clients: Query<(Entity, &mut ItemMenu), Added<ItemMenu>>,
     ) {
-        for (player, item_menu) in clients.iter_mut() {
+        for (player, item_menu) in &mut clients {
             let inventory = commands.spawn(item_menu.menu.clone()).id();
 
             commands
