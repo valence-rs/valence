@@ -173,6 +173,9 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
         .collect::<TokenStream>();
 
     Ok(quote! {
+        use serde::{Deserialize, Deserializer, Serialize, Serializer};
+        use serde::de::{self, Unexpected};
+
         /// Represents an item from the game
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
         #[repr(u16)]
@@ -191,6 +194,27 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
             pub always_edible: bool,
             pub meat: bool,
             pub snack: bool,
+        }
+
+        impl Serialize for ItemKind {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: Serializer,
+            {
+                serializer.serialize_str(self.to_str())
+            }
+        }
+
+        impl<'de> Deserialize<'de> for ItemKind {
+            fn deserialize<D>(deserializer: D) -> Result<ItemKind, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                let s: &str = Deserialize::deserialize(deserializer)?;
+                ItemKind::from_str(s).ok_or_else(|| {
+                    de::Error::invalid_value(Unexpected::Str(s), &"the snake case item name, like \"white_wool\"")
+                })
+            }
         }
 
         impl ItemKind {

@@ -1,12 +1,13 @@
 use std::io::Write;
 
+use serde::{Deserialize, Serialize};
 pub use valence_generated::item::ItemKind;
 use valence_nbt::Compound;
 
 use crate::{Decode, Encode};
 
 /// A stack of items in an inventory.
-#[derive(Clone, PartialEq, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Default)]
 pub struct ItemStack {
     pub item: ItemKind,
     pub count: i8,
