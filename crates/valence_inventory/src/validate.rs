@@ -1,4 +1,4 @@
-use valence_server::protocol::anyhow::{self, bail, ensure};
+use valence_server::protocol::anyhow::{self, bail, ensure}
 use valence_server::protocol::packets::play::click_slot_c2s::ClickMode;
 use valence_server::protocol::packets::play::ClickSlotC2s;
 
@@ -877,7 +877,7 @@ mod tests {
             .expect("packet should be valid");
     }
     #[test]
-    fn allow_clicking_outside_inventory_when_not_holding_anything_sucess() {
+    fn allow_clicking_outside_inventory_when_not_holding_anything_success() {
         let player_inventory = Inventory::new(InventoryKind::Player);
         let cursor_item = CursorItem(ItemStack::new(ItemKind::Air, 0, None));
 
@@ -896,7 +896,7 @@ mod tests {
             .expect("packet should be valid");
     }
     #[test]
-    fn allow_clicking_outside_inventory_when_holding_somthing_sucess() {
+    fn allow_clicking_outside_inventory_when_holding_something_success() {
         let player_inventory = Inventory::new(InventoryKind::Player);
         let cursor_item = CursorItem(ItemStack::new(ItemKind::Air, 0, None));
 
