@@ -1,3 +1,7 @@
+//! This example shows how to use a read-only [`OpenInventory`] as a menu,
+//! in which the player is able to select items by clicking on them.
+//! This is commonly used on minigame servers (e.g for team selection).
+
 #![allow(clippy::type_complexity)]
 
 const SPAWN_Y: i32 = 64;
@@ -152,6 +156,7 @@ mod item_menu {
         }
     }
 
+    /// This event is fired when the player interacts with an item in the menu.
     #[derive(Debug, Clone, PartialEq, Eq, Event)]
     pub(crate) struct MenuItemSelectEvent {
         /// Player entity
@@ -160,6 +165,9 @@ mod item_menu {
         pub idx: u16,
     }
 
+    /// The [`ItemMenu`] is a component, so it will open up once you attach it
+    /// to a player and it will close once you remove it from the player (or
+    /// in this implementation also if the player closes it).
     #[derive(Debug, Clone, Component)]
     pub(crate) struct ItemMenu {
         /// Item menu
