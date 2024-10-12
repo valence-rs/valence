@@ -1,4 +1,4 @@
-use valence_server::protocol::anyhow::{self, bail, ensure}
+use valence_server::protocol::anyhow::{self, bail, ensure};
 use valence_server::protocol::packets::play::click_slot_c2s::ClickMode;
 use valence_server::protocol::packets::play::ClickSlotC2s;
 
