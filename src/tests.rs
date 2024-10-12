@@ -7,5 +7,6 @@ mod layer;
 mod player_list;
 mod potions;
 mod scoreboard;
+mod serialization;
 mod weather;
 mod world_border;
