@@ -883,7 +883,7 @@ fn handle_click_slot(
             continue;
         }
 
-        if pkt.slot_idx < 0 && pkt.mode == ClickMode::Click {
+        if pkt.slot_idx == -999 && pkt.mode == ClickMode::Click {
             // The client is dropping the cursor item by clicking outside the window.
 
             let stack = std::mem::take(&mut cursor_item.0);
@@ -924,6 +924,10 @@ fn handle_click_slot(
                         carried_item: Cow::Borrowed(&cursor_item.0),
                     });
 
+                    continue;
+                }
+                if pkt.slot_idx == -999 {
+                    // The player was just clicking outside the inventories without holding an item
                     continue;
                 }
 
@@ -1014,7 +1018,10 @@ fn handle_click_slot(
                     });
                     continue;
                 }
-
+                if pkt.slot_idx == -999 {
+                    // The player was just clicking outside the inventories without holding an item
+                    continue;
+                }
                 let stack = client_inv.slot(pkt.slot_idx as u16);
 
                 if !stack.is_empty() {

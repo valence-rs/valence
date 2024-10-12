@@ -61,7 +61,9 @@ pub(super) fn validate_click_slot_packet(
         ClickMode::Click => {
             ensure!((0..=1).contains(&packet.button), "invalid button");
             ensure!(
-                (0..=max_slot).contains(&(packet.slot_idx as u16)) || packet.slot_idx == -999,
+                (0..=max_slot).contains(&(packet.slot_idx as u16))
+                    || packet.slot_idx == -999
+                    || packet.slot_idx == -1,
                 "invalid slot index"
             )
         }
@@ -97,7 +99,7 @@ pub(super) fn validate_click_slot_packet(
                 "carried item must be empty for an item drop"
             );
             ensure!(
-                (0..=max_slot).contains(&(packet.slot_idx as u16)),
+                (0..=max_slot).contains(&(packet.slot_idx as u16)) || packet.slot_idx == -999,
                 "invalid slot index"
             )
         }
@@ -123,7 +125,20 @@ pub(super) fn validate_click_slot_packet(
 
     match packet.mode {
         ClickMode::Click => {
-            if packet.slot_idx == -999 {
+            if packet.slot_idx == -1 {
+                // Clicked outside the allowed window
+                ensure!(
+                    packet.slot_changes.is_empty(),
+                    "slot modifications must be empty"
+                );
+
+                let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
+                ensure!(
+                    count_deltas == 0,
+                    "invalid item delta: expected 0, got {}",
+                    count_deltas
+                );
+            } else if packet.slot_idx == -999 {
                 // Clicked outside the window, so the client is dropping an item
                 ensure!(
                     packet.slot_changes.is_empty(),
@@ -150,156 +165,194 @@ pub(super) fn validate_click_slot_packet(
                     count_deltas
                 );
             } else {
-                ensure!(
-                    packet.slot_changes.len() == 1,
-                    "click must modify one slot, got {}",
-                    packet.slot_changes.len()
-                );
-
-                let old_slot = window.slot(packet.slot_changes[0].idx as u16);
-                // TODO: make sure NBT is the same.
-                //       Sometimes, the client will add nbt data to an item if it's missing,
-                // like       "Damage" to a sword.
-                let should_swap: bool = packet.button == 0
-                    && match (!old_slot.is_empty(), !cursor_item.is_empty()) {
-                        (true, true) => old_slot.item != cursor_item.item,
-                        (true, false) => true,
-                        (false, true) => cursor_item.count <= cursor_item.item.max_stack(),
-                        (false, false) => false,
-                    };
-
-                if should_swap {
-                    // assert that a swap occurs
-                    ensure!(
-                        // There are some cases where the client will add NBT data that
-                        // did not previously exist.
-                        old_slot.item == packet.carried_item.item
-                            && old_slot.count == packet.carried_item.count
-                            && cursor_item.0 == packet.slot_changes[0].stack,
-                        "swapped items must match"
-                    );
-                } else {
-                    // assert that a merge occurs
+                // If the user clicked on an empty slot for example
+                if packet.slot_changes.len() == 0 {
                     let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
                     ensure!(
                         count_deltas == 0,
-                        "invalid item delta for stack merge: {}",
+                        "invalid item delta: expected 0, got {}",
                         count_deltas
                     );
+                } else {
+                    ensure!(
+                        packet.slot_changes.len() == 1,
+                        "click must modify one slot, got {}",
+                        packet.slot_changes.len()
+                    );
+
+                    let old_slot = window.slot(packet.slot_changes[0].idx as u16);
+                    // TODO: make sure NBT is the same.
+                    //       Sometimes, the client will add nbt data to an item if it's missing,
+                    // like       "Damage" to a sword.
+                    let should_swap: bool = packet.button == 0
+                        && match (!old_slot.is_empty(), !cursor_item.is_empty()) {
+                            (true, true) => old_slot.item != cursor_item.item,
+                            (true, false) => true,
+                            (false, true) => cursor_item.count <= cursor_item.item.max_stack(),
+                            (false, false) => false,
+                        };
+
+                    if should_swap {
+                        // assert that a swap occurs
+                        ensure!(
+                            // There are some cases where the client will add NBT data that
+                            // did not previously exist.
+                            old_slot.item == packet.carried_item.item
+                                && old_slot.count == packet.carried_item.count
+                                && cursor_item.0 == packet.slot_changes[0].stack,
+                            "swapped items must match"
+                        );
+                    } else {
+                        // assert that a merge occurs
+                        let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
+                        ensure!(
+                            count_deltas == 0,
+                            "invalid item delta for stack merge: {}",
+                            count_deltas
+                        );
+                    }
                 }
             }
         }
         ClickMode::ShiftClick => {
-            ensure!(
-                (2..=3).contains(&packet.slot_changes.len()),
-                "shift click must modify 2 or 3 slots, got {}",
-                packet.slot_changes.len()
-            );
+            // If the user clicked on an empty slot for example
+            if packet.slot_changes.len() == 0 {
+                let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
+                ensure!(
+                    count_deltas == 0,
+                    "invalid item delta: expected 0, got {}",
+                    count_deltas
+                );
+            } else {
+                ensure!(
+                    (2..=3).contains(&packet.slot_changes.len()),
+                    "shift click must modify 2 or 3 slots, got {}",
+                    packet.slot_changes.len()
+                );
 
-            let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
-            ensure!(
-                count_deltas == 0,
-                "invalid item delta: expected 0, got {}",
-                count_deltas
-            );
+                let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
+                ensure!(
+                    count_deltas == 0,
+                    "invalid item delta: expected 0, got {}",
+                    count_deltas
+                );
 
-            let Some(item_kind) = packet
-                .slot_changes
-                .iter()
-                .find(|s| !s.stack.is_empty())
-                .map(|s| s.stack.item)
-            else {
-                bail!("shift click must move an item");
-            };
-
-            let old_slot_kind = window.slot(packet.slot_idx as u16).item;
-            ensure!(
-                old_slot_kind == item_kind,
-                "shift click must move the same item kind as modified slots"
-            );
-
-            // assert all moved items are the same kind
-            ensure!(
-                packet
+                let Some(item_kind) = packet
                     .slot_changes
                     .iter()
-                    .filter(|s| !s.stack.is_empty())
-                    .all(|s| s.stack.item == item_kind),
-                "shift click must move the same item kind"
-            );
+                    .find(|s| !s.stack.is_empty())
+                    .map(|s| s.stack.item)
+                else {
+                    bail!("shift click must move an item");
+                };
+
+                let old_slot_kind = window.slot(packet.slot_idx as u16).item;
+                ensure!(
+                    old_slot_kind == item_kind,
+                    "shift click must move the same item kind as modified slots"
+                );
+
+                // assert all moved items are the same kind
+                ensure!(
+                    packet
+                        .slot_changes
+                        .iter()
+                        .filter(|s| !s.stack.is_empty())
+                        .all(|s| s.stack.item == item_kind),
+                    "shift click must move the same item kind"
+                );
+            }
         }
 
         ClickMode::Hotbar => {
-            ensure!(
-                packet.slot_changes.len() == 2,
-                "hotbar swap must modify two slots, got {}",
-                packet.slot_changes.len()
-            );
+            if packet.slot_changes.len() == 0 {
+                let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
+                ensure!(
+                    count_deltas == 0,
+                    "invalid item delta: expected 0, got {}",
+                    count_deltas
+                );
+            } else {
+                ensure!(
+                    packet.slot_changes.len() == 2,
+                    "hotbar swap must modify two slots, got {}",
+                    packet.slot_changes.len()
+                );
 
-            let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
-            ensure!(
-                count_deltas == 0,
-                "invalid item delta: expected 0, got {}",
-                count_deltas
-            );
+                let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
+                ensure!(
+                    count_deltas == 0,
+                    "invalid item delta: expected 0, got {}",
+                    count_deltas
+                );
 
-            // assert that a swap occurs
-            let old_slots = [
-                window.slot(packet.slot_changes[0].idx as u16),
-                window.slot(packet.slot_changes[1].idx as u16),
-            ];
-            ensure!(
-                old_slots
-                    .iter()
-                    .any(|s| *s == &packet.slot_changes[0].stack)
-                    && old_slots
+                // assert that a swap occurs
+                let old_slots = [
+                    window.slot(packet.slot_changes[0].idx as u16),
+                    window.slot(packet.slot_changes[1].idx as u16),
+                ];
+                ensure!(
+                    old_slots
                         .iter()
-                        .any(|s| *s == &packet.slot_changes[1].stack),
-                "swapped items must match"
-            );
+                        .any(|s| *s == &packet.slot_changes[0].stack)
+                        && old_slots
+                            .iter()
+                            .any(|s| *s == &packet.slot_changes[1].stack),
+                    "swapped items must match"
+                );
+            }
         }
         ClickMode::CreativeMiddleClick => {}
         ClickMode::DropKey => {
-            ensure!(
-                packet.slot_changes.len() == 1,
-                "drop key must modify exactly one slot"
-            );
-            ensure!(
-                packet.slot_idx == packet.slot_changes.first().map_or(-2, |s| s.idx),
-                "slot index does not match modified slot"
-            );
+            if packet.slot_changes.len() == 0 {
+                let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
+                ensure!(
+                    count_deltas == 0,
+                    "invalid item delta: expected 0, got {}",
+                    count_deltas
+                );
+            } else {
+                ensure!(
+                    packet.slot_changes.len() == 1,
+                    "drop key must modify exactly one slot"
+                );
+                ensure!(
+                    packet.slot_idx == packet.slot_changes.first().map_or(-2, |s| s.idx),
+                    "slot index does not match modified slot"
+                );
 
-            let old_slot = window.slot(packet.slot_idx as u16);
-            let new_slot = &packet.slot_changes[0].stack;
-            let is_transmuting = match (!old_slot.is_empty(), !new_slot.is_empty()) {
-                // TODO: make sure NBT is the same.
-                // Sometimes, the client will add nbt data to an item if it's missing, like
-                // "Damage" to a sword.
-                (true, true) => old_slot.item != new_slot.item,
-                (_, false) => false,
-                (false, true) => true,
-            };
-            ensure!(!is_transmuting, "transmuting items is not allowed");
+                let old_slot = window.slot(packet.slot_idx as u16);
+                let new_slot = &packet.slot_changes[0].stack;
+                let is_transmuting = match (!old_slot.is_empty(), !new_slot.is_empty()) {
+                    // TODO: make sure NBT is the same.
+                    // Sometimes, the client will add nbt data to an item if it's missing, like
+                    // "Damage" to a sword.
+                    (true, true) => old_slot.item != new_slot.item,
+                    (_, false) => false,
+                    (false, true) => true,
+                };
+                ensure!(!is_transmuting, "transmuting items is not allowed");
 
-            let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
+                let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
 
-            let expected_delta = match packet.button {
-                0 => -1,
-                1 => {
-                    if !old_slot.is_empty() {
-                        -i32::from(old_slot.count)
-                    } else {
-                        0
+                let expected_delta = match packet.button {
+                    0 => -1,
+                    1 => {
+                        if !old_slot.is_empty() {
+                            -i32::from(old_slot.count)
+                        } else {
+                            0
+                        }
                     }
-                }
-                _ => unreachable!(),
-            };
-            ensure!(
-                count_deltas == expected_delta,
-                "invalid item delta: expected {}, got {}",
-                expected_delta,
-                count_deltas
-            );
+                    _ => unreachable!(),
+                };
+                ensure!(
+                    count_deltas == expected_delta,
+                    "invalid item delta: expected {}, got {}",
+                    expected_delta,
+                    count_deltas
+                );
+            }
         }
         ClickMode::Drag => {
             if matches!(packet.button, 2 | 6 | 10) {
@@ -818,6 +871,98 @@ mod tests {
             }]
             .into(),
             carried_item: ItemStack::new(ItemKind::Apple, 36, None),
+        };
+
+        validate_click_slot_packet(&packet, &player_inventory, None, &cursor_item)
+            .expect("packet should be valid");
+    }
+    #[test]
+    fn allow_clicking_outside_inventory_when_not_holding_anything_sucess() {
+        let player_inventory = Inventory::new(InventoryKind::Player);
+        let cursor_item = CursorItem(ItemStack::new(ItemKind::Air, 0, None));
+
+        let packet = ClickSlotC2s {
+            window_id: 0,
+            state_id: VarInt(2),
+            slot_idx: -999, // -999 means outside inventory
+            button: 0,
+            mode: ClickMode::DropKey, // when not holding an item and clicking outside the user
+            // interface the client sends this kind of packet
+            slot_changes: vec![].into(),
+            carried_item: ItemStack::new(ItemKind::Air, 0, None),
+        };
+
+        validate_click_slot_packet(&packet, &player_inventory, None, &cursor_item)
+            .expect("packet should be valid");
+    }
+    #[test]
+    fn allow_clicking_outside_inventory_when_holding_somthing_sucess() {
+        let player_inventory = Inventory::new(InventoryKind::Player);
+        let cursor_item = CursorItem(ItemStack::new(ItemKind::Air, 0, None));
+
+        // This is in the notchian server a stack drop
+        let packet = ClickSlotC2s {
+            window_id: 0,
+            state_id: VarInt(2),
+            slot_idx: -999, // -999 means outside inventory
+            button: 0,
+            mode: ClickMode::Click, // when holding an item its a click
+            slot_changes: vec![].into(),
+            carried_item: ItemStack::new(ItemKind::Air, 0, None),
+        };
+
+        validate_click_slot_packet(&packet, &player_inventory, None, &cursor_item)
+            .expect("packet should be valid");
+    }
+    #[test]
+    fn allow_clicking_on_the_margin_area_in_inventory_success() {
+        let player_inventory = Inventory::new(InventoryKind::Player);
+        let cursor_item = CursorItem(ItemStack::new(ItemKind::Air, 0, None));
+
+        let packet = ClickSlotC2s {
+            window_id: 0,
+            state_id: VarInt(2),
+            slot_idx: -1, // -1 here means on the margin areas
+            button: 0,
+            mode: ClickMode::Click,
+            slot_changes: vec![].into(),
+            carried_item: ItemStack::new(ItemKind::Air, 0, None),
+        };
+
+        validate_click_slot_packet(&packet, &player_inventory, None, &cursor_item)
+            .expect("packet should be valid");
+    }
+    #[test]
+    fn allow_clicking_on_an_empty_slot_with_empty_carried_item_success() {
+        let player_inventory = Inventory::new(InventoryKind::Player);
+        let cursor_item = CursorItem(ItemStack::new(ItemKind::Air, 0, None));
+
+        let packet = ClickSlotC2s {
+            window_id: 0,
+            state_id: VarInt(2),
+            slot_idx: 3,
+            button: 0,
+            mode: ClickMode::Click,
+            slot_changes: vec![].into(),
+            carried_item: ItemStack::new(ItemKind::Air, 0, None),
+        };
+
+        validate_click_slot_packet(&packet, &player_inventory, None, &cursor_item)
+            .expect("packet should be valid");
+    }
+    #[test]
+    fn allow_clicking_hotbar_keybinds_when_both_source_and_target_are_empty() {
+        let player_inventory = Inventory::new(InventoryKind::Player);
+        let cursor_item = CursorItem(ItemStack::new(ItemKind::Air, 0, None));
+
+        let packet = ClickSlotC2s {
+            window_id: 0,
+            state_id: VarInt(2),
+            slot_idx: 0,
+            button: 0,
+            mode: ClickMode::Hotbar,
+            slot_changes: vec![].into(),
+            carried_item: ItemStack::new(ItemKind::Air, 0, None),
         };
 
         validate_click_slot_packet(&packet, &player_inventory, None, &cursor_item)

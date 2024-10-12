@@ -191,6 +191,85 @@ fn test_should_modify_player_inventory_click_slot() {
 }
 
 #[test]
+fn test_should_allow_non_modifying_inventory_clicks() {
+    let ScenarioSingleClient {
+        mut app,
+        client,
+        mut helper,
+        ..
+    } = ScenarioSingleClient::new();
+
+    // Process a tick to get past the "on join" logic.
+    app.update();
+    helper.clear_received();
+
+    let mut inventory = app
+        .world_mut()
+        .get_mut::<Inventory>(client)
+        .expect("could not find inventory for client");
+    inventory.set_slot(20, ItemStack::new(ItemKind::Diamond, 2, None));
+
+    // Make the client click the slot and pick up the item.
+    let state_id = app
+        .world_mut()
+        .get::<ClientInventoryState>(client)
+        .unwrap()
+        .state_id();
+    // Used keyboard to "click" on one of the slots, but both the hovered slot and
+    // the target hotbar slot are empty
+    helper.send(&ClickSlotC2s {
+        window_id: 0,
+        button: 0,
+        mode: ClickMode::Hotbar,
+        state_id: VarInt(state_id.0),
+        slot_idx: 0,
+        slot_changes: vec![].into(),
+        carried_item: ItemStack::new(ItemKind::Air, 0, None),
+    });
+    // Clicked on a real slot, but the slot is empty
+    helper.send(&ClickSlotC2s {
+        window_id: 0,
+        button: 0,
+        mode: ClickMode::Click,
+        state_id: VarInt(state_id.0),
+        slot_idx: 1,
+        slot_changes: vec![].into(),
+        carried_item: ItemStack::new(ItemKind::Air, 0, None),
+    });
+    // Clicked in the margin area of an inventory (in the main ui but not in one of
+    // the slots)
+    helper.send(&ClickSlotC2s {
+        window_id: 0,
+        button: 0,
+        mode: ClickMode::Click,
+        state_id: VarInt(state_id.0),
+        slot_idx: -1,
+        slot_changes: vec![].into(),
+        carried_item: ItemStack::new(ItemKind::Air, 0, None),
+    });
+    // Clicked outside the user interface without holding an item (this is a drop
+    // key mode from the client for some reason)
+    helper.send(&ClickSlotC2s {
+        window_id: 0,
+        button: 0,
+        mode: ClickMode::DropKey,
+        state_id: VarInt(state_id.0),
+        slot_idx: -999,
+        slot_changes: vec![].into(),
+        carried_item: ItemStack::new(ItemKind::Air, 0, None),
+    });
+
+    app.update();
+
+    // Make assertions
+    let sent_packets = helper.collect_received();
+
+    // The user intereacted with the inventory themselves, and should not get a
+    // resync
+    sent_packets.assert_count::<InventoryS2c>(0);
+}
+
+#[test]
 fn test_should_modify_player_inventory_server_side() {
     let ScenarioSingleClient {
         mut app,
