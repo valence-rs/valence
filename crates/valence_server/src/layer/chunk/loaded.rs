@@ -259,8 +259,8 @@ impl LoadedChunk {
                 let mut writer = PacketWriter::new(buf, info.threshold);
 
                 writer.write_packet(&BlockEntityUpdateS2c {
-                    position: BlockPos::new(global_x, global_y, global_z),
-                    kind,
+                    location: BlockPos::new(global_x, global_y, global_z),
+                    r#type: kind,
                     data: Cow::Borrowed(nbt),
                 });
             });

@@ -8,7 +8,7 @@ use valence_text::Text;
 use crate::{Decode, Encode, Packet};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-pub struct BossBarS2c<'a> {
+pub struct BossEventS2c<'a> {
     pub id: Uuid,
     pub action: BossBarAction<'a>,
 }

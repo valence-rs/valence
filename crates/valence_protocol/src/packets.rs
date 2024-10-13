@@ -61,11 +61,10 @@ pub mod configuration {
     pub use pong_c2s::PongC2s;
     pub mod reset_chat_s2c;
     pub use reset_chat_s2c::ResetChatS2c;
-    pub mod remove_resource_pack_s2c;
-    pub use remove_resource_pack_s2c::RemoveResourcePackS2c;
-    pub mod add_resource_pack_s2c;
-    pub use add_resource_pack_s2c::AddResourcePackS2c;
-    
+    pub mod resource_pack_pop_s2c;
+    pub use resource_pack_pop_s2c::ResourcePackPopS2c;
+    pub mod resource_pack_push_s2c;
+    pub use resource_pack_push_s2c::ResourcePackPushS2c;
 }
 
 pub mod play {
@@ -73,20 +72,20 @@ pub mod play {
     pub use advancement_tab_c2s::AdvancementTabC2s;
     pub mod advancement_update_s2c;
     pub use advancement_update_s2c::AdvancementUpdateS2c;
-    pub mod block_breaking_progress_s2c;
-    pub use block_breaking_progress_s2c::BlockBreakingProgressS2c;
-    pub mod block_entity_update_s2c;
-    pub use block_entity_update_s2c::BlockEntityUpdateS2c;
+    pub mod block_destruction_s2c;
+    pub use block_destruction_s2c::BlockDestructionS2c;
+    pub mod block_entity_data_s2c;
+    pub use block_entity_data_s2c::BlockEntityDataS2c;
     pub mod block_event_s2c;
     pub use block_event_s2c::BlockEventS2c;
     pub mod block_update_s2c;
     pub use block_update_s2c::BlockUpdateS2c;
-    pub mod boat_paddle_state_c2s;
-    pub use boat_paddle_state_c2s::BoatPaddleStateC2s;
-    pub mod book_update_c2s;
-    pub use book_update_c2s::BookUpdateC2s;
-    pub mod boss_bar_s2c;
-    pub use boss_bar_s2c::BossBarS2c;
+    pub mod paddle_boat_c2s;
+    pub use paddle_boat_c2s::PaddleBoatC2s;
+    pub mod edit_book_c2s;
+    pub use edit_book_c2s::EditBookC2s;
+    pub mod boss_event_s2c;
+    pub use boss_event_s2c::BossEventS2c;
     pub mod bundle_splitter_s2c;
     pub use bundle_splitter_s2c::BundleSplitterS2c;
     pub mod button_click_c2s;
@@ -391,8 +390,8 @@ pub mod play {
     pub use world_border_warning_time_changed_s2c::WorldBorderWarningTimeChangedS2c;
     pub mod world_event_s2c;
     pub use world_event_s2c::WorldEventS2c;
-    pub mod world_time_update_s2c;
-    pub use world_time_update_s2c::WorldTimeUpdateS2c;
+    pub mod set_time_s2c;
+    pub use set_time_s2c::SetTimeS2c;
 }
 
 pub mod status {

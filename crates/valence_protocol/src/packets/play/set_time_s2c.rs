@@ -1,7 +1,7 @@
 use crate::{Decode, Encode, Packet};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-pub struct WorldTimeUpdateS2c {
+pub struct SetTimeS2c {
     /// The age of the world in 1/20ths of a second.
     pub world_age: i64,
     /// The current time of day in 1/20ths of a second.

@@ -8,6 +8,8 @@ use valence_generated::item::ItemKind;
 use valence_ident::{Ident, IdentError};
 use valence_nbt::Compound;
 use valence_text::Text;
+
+use crate::text_component::NbtText;
 use crate::{Decode, Encode, VarInt};
 
 impl<T: Encode> Encode for Option<T> {
@@ -138,23 +140,10 @@ impl Decode<'_> for ItemKind {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-/// A wrapper around `Text` that encodes and decodes as an NBT string.
-pub struct NbtText(Text);
-
-impl NbtText{
-    pub fn new(text: Text) -> Self {
-        Self(text)
-    }
-
-    pub fn into_inner(self) -> Text {
-        self.0
-    }
-}
-
 impl Encode for NbtText {
     fn encode(&self, w: impl Write) -> anyhow::Result<()> {
-        self.serialize(valence_nbt::serde::CompoundSerializer)?.encode(w)
+        self.serialize(valence_nbt::serde::CompoundSerializer)?
+            .encode(w)
     }
 }
 
@@ -163,4 +152,3 @@ impl Decode<'_> for NbtText {
         Ok(Self::deserialize(Compound::new())?)
     }
 }
-
