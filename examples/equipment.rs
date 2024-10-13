@@ -100,8 +100,6 @@ fn randomize_equipment(mut query: Query<&mut Equipment>, server: Res<Server>) {
     for mut equipment in &mut query {
         equipment.clear();
 
-        tracing::info!("Randomizing equipment for entity");
-
         let (slot, item_stack) = match rand::thread_rng().gen_range(0..=5) {
             0 => (
                 Equipment::MAIN_HAND_IDX,
