@@ -114,9 +114,16 @@ fn init_new_client_equipment(clients: Query<Entity, Added<Client>>, mut commands
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct EquipmentSlotChange {
+    idx: u8,
+    stack: ItemStack,
+}
+
 #[derive(Debug, Clone, Event)]
 pub struct EquipmentChangeEvent {
     pub client: Entity,
+    pub changed: Vec<EquipmentSlotChange>,
 }
 
 fn emit_equipment_change_event(
@@ -125,7 +132,22 @@ fn emit_equipment_change_event(
 ) {
     for (entity, mut equipment) in &mut clients {
         if equipment.changed != 0 {
-            event_writer.send(EquipmentChangeEvent { client: entity });
+            let mut slots_changed: Vec<EquipmentSlotChange> =
+                Vec::with_capacity(Equipment::SLOT_COUNT);
+
+            for slot in 0..Equipment::SLOT_COUNT {
+                if equipment.changed & (1 << slot) != 0 {
+                    slots_changed.push(EquipmentSlotChange {
+                        idx: slot as u8,
+                        stack: equipment.equipment[slot].clone(),
+                    });
+                }
+            }
+
+            event_writer.send(EquipmentChangeEvent {
+                client: entity,
+                changed: slots_changed,
+            });
 
             equipment.changed = 0;
         }
@@ -133,27 +155,26 @@ fn emit_equipment_change_event(
 }
 
 fn update_equipment(
-    mut clients: Query<(&EntityId, Option<&mut Client>, &Equipment)>,
+    mut clients: Query<(&EntityId, Option<&mut Client>)>,
     mut events: EventReader<EquipmentChangeEvent>,
 ) {
     for event in events.read() {
-        let Ok((entity_id, _, equipment)) = clients.get(event.client) else {
+        let Ok((entity_id, _)) = clients.get(event.client) else {
             continue;
         };
 
         // The entity ID of the entity that changed equipment.
         let entity_id_changed_equipment = entity_id.get();
 
-        let mut entries = Vec::with_capacity(Equipment::SLOT_COUNT);
-        for slot in 0..Equipment::SLOT_COUNT {
-            let item = equipment.slot(slot as u8);
+        let mut entries: Vec<EquipmentEntry> = Vec::with_capacity(event.changed.len());
+        for change in &event.changed {
             entries.push(EquipmentEntry {
-                slot: slot as i8,
-                item: item.clone(),
+                slot: change.idx as i8,
+                item: change.stack.clone(),
             });
         }
 
-        for (entity_id, client, _) in &mut clients {
+        for (entity_id, client) in &mut clients {
             // Dont send the packet to the entity that changed equipment.
             if entity_id.get() == entity_id_changed_equipment {
                 continue;
