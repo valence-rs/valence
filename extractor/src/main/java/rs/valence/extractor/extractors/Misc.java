@@ -9,18 +9,23 @@ import net.minecraft.entity.attribute.ClampedEntityAttribute;
 import net.minecraft.entity.attribute.EntityAttribute;
 import net.minecraft.entity.data.TrackedDataHandler;
 import net.minecraft.entity.data.TrackedDataHandlerRegistry;
+import net.minecraft.entity.passive.ArmadilloEntity;
 import net.minecraft.entity.passive.SnifferEntity;
 import net.minecraft.network.packet.s2c.play.EntityAnimationS2CPacket;
-import net.minecraft.registry.BuiltinRegistries;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.RegistryBuilder;
-import net.minecraft.registry.RegistryWrapper;
+import net.minecraft.registry.*;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.math.Direction;
 import rs.valence.extractor.Main;
 import java.lang.reflect.Modifier;
 import java.util.Locale;
 
 public class Misc implements Main.Extractor {
+    private final DynamicRegistryManager.Immutable registryManager;
+
+    public Misc(MinecraftServer server) {
+        this.registryManager = server.getRegistryManager();
+    }
+
     @Override
     public String fileName() {
         return "misc.json";
@@ -86,7 +91,12 @@ public class Misc implements Main.Extractor {
         }
         miscJson.add("frog_variant", frogVariantJson);
 
-
+        var wolfVariantJson = new JsonObject();
+        for (var variant : registryManager.get(RegistryKeys.WOLF_VARIANT)) {
+            wolfVariantJson.addProperty(registryManager.get(RegistryKeys.WOLF_VARIANT).getId(variant).getPath(),
+                    registryManager.get(RegistryKeys.WOLF_VARIANT).getRawId(variant));
+        }
+        miscJson.add("wolf_variant", wolfVariantJson);
 
         var directionJson = new JsonObject();
         for (var dir : Direction.values()) {
@@ -113,6 +123,12 @@ public class Misc implements Main.Extractor {
             snifferStateJson.addProperty(state.name().toLowerCase(Locale.ROOT), state.ordinal());
         }
         miscJson.add("sniffer_state", snifferStateJson);
+
+        var armadilloStateJson = new JsonObject();
+        for (var state : ArmadilloEntity.State.values()) {
+            armadilloStateJson.addProperty(state.name().toLowerCase(Locale.ROOT), state.ordinal());
+        }
+        miscJson.add("sniffer_state", armadilloStateJson);
 
         var trackedDataHandlerJson = new JsonObject();
         for (var field : TrackedDataHandlerRegistry.class.getDeclaredFields()) {

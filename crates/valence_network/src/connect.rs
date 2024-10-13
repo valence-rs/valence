@@ -22,14 +22,14 @@ use valence_lang::keys;
 use valence_protocol::profile::Property;
 use valence_protocol::Decode;
 use valence_server::client::Properties;
-use valence_server::protocol::packets::handshaking::handshake_c2s::HandshakeNextState;
+use valence_server::protocol::packets::handshaking::intention_c2s::HandshakeNextState;
 use valence_server::protocol::packets::handshaking::HandshakeC2s;
 use valence_server::protocol::packets::login::{
-    LoginCompressionS2c, LoginDisconnectS2c, LoginHelloC2s, LoginHelloS2c, LoginKeyC2s,
-    LoginQueryRequestS2c, LoginQueryResponseC2s, LoginSuccessS2c,
+    LoginCompressionS2c, LoginDisconnectS2c, HelloC2s, HelloS2c, KeyC2s,
+    CustomQueryS2c, CustomQueryAnswerC2s, SuccessS2c,
 };
 use valence_server::protocol::packets::status::{
-    QueryPingC2s, QueryPongS2c, QueryRequestC2s, QueryResponseS2c,
+    PingC2s, PongS2c, RequestC2s, ResponseS2c,
 };
 use valence_server::protocol::{PacketDecoder, PacketEncoder, RawBytes, VarInt};
 use valence_server::text::{Color, IntoText};
@@ -181,7 +181,7 @@ async fn handle_status(
     remote_addr: SocketAddr,
     handshake: HandshakeData,
 ) -> anyhow::Result<()> {
-    io.recv_packet::<QueryRequestC2s>().await?;
+    io.recv_packet::<RequestC2s>().await?;
 
     match shared
         .0
@@ -234,7 +234,7 @@ async fn handle_status(
                 json["favicon"] = Value::String(buf);
             }
 
-            io.send_packet(&QueryResponseS2c {
+            io.send_packet(&ResponseS2c {
                 json: &json.to_string(),
             })
             .await?;
@@ -242,9 +242,9 @@ async fn handle_status(
         ServerListPing::Ignore => return Ok(()),
     }
 
-    let QueryPingC2s { payload } = io.recv_packet().await?;
+    let PingC2s { payload } = io.recv_packet().await?;
 
-    io.send_packet(&QueryPongS2c { payload }).await?;
+    io.send_packet(&PongS2c { payload }).await?;
 
     Ok(())
 }
@@ -268,7 +268,7 @@ async fn handle_login(
         return Ok(None);
     }
 
-    let LoginHelloC2s {
+    let HelloC2s {
         username,
         .. // TODO: profile_id
     } = io.recv_packet().await?;
@@ -305,7 +305,7 @@ async fn handle_login(
         }
     };
 
-    io.send_packet(&LoginSuccessS2c {
+    io.send_packet(&SuccessS2c {
         uuid: info.uuid,
         username: info.username.as_str().into(),
         properties: Default::default(),
@@ -324,14 +324,14 @@ async fn login_online(
 ) -> anyhow::Result<NewClientInfo> {
     let my_verify_token: [u8; 16] = rand::random();
 
-    io.send_packet(&LoginHelloS2c {
+    io.send_packet(&HelloS2c {
         server_id: "".into(), // Always empty
         public_key: &shared.0.public_key_der,
         verify_token: &my_verify_token,
     })
     .await?;
 
-    let LoginKeyC2s {
+    let KeyC2s {
         shared_secret,
         verify_token: encrypted_verify_token,
     } = io.recv_packet().await?;
@@ -482,7 +482,7 @@ async fn login_velocity(
     let message_id: i32 = 0; // TODO: make this random?
 
     // Send Player Info Request into the Plugin Channel
-    io.send_packet(&LoginQueryRequestS2c {
+    io.send_packet(&CustomQueryS2c {
         message_id: VarInt(message_id),
         channel: ident!("velocity:player_info").into(),
         data: RawBytes(&[VELOCITY_MIN_SUPPORTED_VERSION]).into(),
@@ -490,7 +490,7 @@ async fn login_velocity(
     .await?;
 
     // Get Response
-    let plugin_response: LoginQueryResponseC2s = io.recv_packet().await?;
+    let plugin_response: CustomQueryAnswerC2s = io.recv_packet().await?;
 
     ensure!(
         plugin_response.message_id.0 == message_id,

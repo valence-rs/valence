@@ -62,6 +62,7 @@ enum Value {
     OptionalBlockState(Option<String>),
     NbtCompound(String),
     Particle(String),
+    ParticleList(Vec<String>),
     VillagerData {
         #[serde(rename = "type")]
         typ: String,
@@ -71,10 +72,12 @@ enum Value {
     OptionalInt(Option<i32>),
     EntityPose(String),
     CatVariant(String),
+    WolfVariant(String),
     FrogVariant(String),
     OptionalGlobalPos(Option<()>), // TODO
     PaintingVariant(String),
     SnifferState(String),
+    ArmadilloState(String),
     Vector3f {
         x: f32,
         y: f32,
@@ -116,16 +119,19 @@ impl Value {
             Value::OptionalBlockState(_) => 15,
             Value::NbtCompound(_) => 16,
             Value::Particle(_) => 17,
-            Value::VillagerData { .. } => 18,
-            Value::OptionalInt(_) => 19,
-            Value::EntityPose(_) => 20,
-            Value::CatVariant(_) => 21,
-            Value::FrogVariant(_) => 22,
-            Value::OptionalGlobalPos(_) => 23,
-            Value::PaintingVariant(_) => 24,
-            Value::SnifferState(_) => 25,
-            Value::Vector3f { .. } => 26,
-            Value::Quaternionf { .. } => 27,
+            Value::ParticleList(_) => 18,
+            Value::VillagerData { .. } => 19,
+            Value::OptionalInt(_) => 20,
+            Value::EntityPose(_) => 21,
+            Value::CatVariant(_) => 22,
+            Value::WolfVariant(_) => 23,
+            Value::FrogVariant(_) => 24,
+            Value::OptionalGlobalPos(_) => 25,
+            Value::PaintingVariant(_) => 26,
+            Value::SnifferState(_) => 27,
+            Value::ArmadilloState(_) => 28,
+            Value::Vector3f { .. } => 29,
+            Value::Quaternionf { .. } => 30,
         }
     }
 
@@ -149,14 +155,17 @@ impl Value {
             Value::OptionalBlockState(_) => quote!(valence_protocol::BlockState),
             Value::NbtCompound(_) => quote!(valence_nbt::Compound),
             Value::Particle(_) => quote!(valence_protocol::packets::play::particle_s2c::Particle),
+            Value::ParticleList(_) => quote!(Vec<valence_protocol::packets::play::particle_s2c::Particle>),
             Value::VillagerData { .. } => quote!(crate::VillagerData),
             Value::OptionalInt(_) => quote!(Option<i32>),
             Value::EntityPose(_) => quote!(crate::Pose),
             Value::CatVariant(_) => quote!(crate::CatKind),
+            Value::WolfVariant(_) => quote!(crate::WolfKind),
             Value::FrogVariant(_) => quote!(crate::FrogKind),
             Value::OptionalGlobalPos(_) => quote!(()), // TODO
             Value::PaintingVariant(_) => quote!(crate::PaintingKind),
             Value::SnifferState(_) => quote!(crate::SnifferState),
+            Value::ArmadilloState(_) => quote!(crate::ArmadilloState),
             Value::Vector3f { .. } => quote!(valence_math::Vec3),
             Value::Quaternionf { .. } => quote!(valence_math::Quat),
         }
@@ -178,7 +187,6 @@ impl Value {
                 quote!(None)
             }
             Value::ItemStack(stack) => {
-                assert_eq!(stack, "0 air");
                 quote!(valence_protocol::ItemStack::default())
             }
             Value::Boolean(b) => quote!(#b),
@@ -219,6 +227,7 @@ impl Value {
                 let variant = ident(p.to_pascal_case());
                 quote!(valence_protocol::packets::play::particle_s2c::Particle::#variant)
             }
+            Value::ParticleList(_) => quote!(Vec::new()),
             Value::VillagerData {
                 typ,
                 profession,
@@ -246,6 +255,10 @@ impl Value {
                 let variant = ident(c.to_pascal_case());
                 quote!(crate::CatKind::#variant)
             }
+            Value::WolfVariant(w) => {
+                let variant = ident(w.to_pascal_case());
+                quote!(crate::WolfKind::#variant)
+            }
             Value::FrogVariant(f) => {
                 let variant = ident(f.to_pascal_case());
                 quote!(crate::FrogKind::#variant)
@@ -258,6 +271,10 @@ impl Value {
             Value::SnifferState(s) => {
                 let state = ident(s.to_pascal_case());
                 quote!(crate::SnifferState::#state)
+            }
+            Value::ArmadilloState(s) => {
+                let state = ident(s.to_pascal_case());
+                quote!(crate::ArmadilloState::#state)
             }
             Value::Vector3f { x, y, z } => quote!(valence_math::Vec3::new(#x, #y, #z)),
             Value::Quaternionf { x, y, z, w } => quote! {

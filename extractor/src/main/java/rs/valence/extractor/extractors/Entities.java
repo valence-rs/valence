@@ -68,7 +68,6 @@ public class Entities implements Main.Extractor {
                     .orElse(JsonNull.INSTANCE);
             return new Main.Pair<>("optional_text_component", res);
         } else if (handler == TrackedDataHandlerRegistry.ITEM_STACK) {
-            // TODO
             return new Main.Pair<>("item_stack", new JsonPrimitive(((ItemStack) val).toString()));
         } else if (handler == TrackedDataHandlerRegistry.BOOLEAN) {
             return new Main.Pair<>("boolean", new JsonPrimitive((Boolean) val));

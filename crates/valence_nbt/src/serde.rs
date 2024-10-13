@@ -1,6 +1,7 @@
 use std::fmt;
 
 pub use ser::*;
+pub use de::*;
 
 use crate::Error;
 

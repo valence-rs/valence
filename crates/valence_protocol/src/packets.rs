@@ -1,31 +1,71 @@
 //! All of Minecraft's network packets.
 //!
 //! Packets are grouped in submodules according to the protocol stage they're
-//! used in. Names are derived from the `FabricMC` Yarn mappings for
+//! used in. Names are derived from the minecraft canonical packet names for
 //! consistency.
 
 pub mod handshaking {
-    pub mod handshake_c2s;
-    pub use handshake_c2s::HandshakeC2s;
+    pub mod intention_c2s;
+    pub use intention_c2s::IntentionC2s;
 }
 
 pub mod login {
     pub mod login_compression_s2c;
     pub use login_compression_s2c::LoginCompressionS2c;
+    pub mod cookie_request_s2c;
+    pub use cookie_request_s2c::CookieRequestS2c;
+    pub mod cookie_response_c2s;
+    pub use cookie_response_c2s::CookieResponseC2s;
     pub mod login_disconnect_s2c;
     pub use login_disconnect_s2c::LoginDisconnectS2c;
-    pub mod login_hello_c2s;
-    pub use login_hello_c2s::LoginHelloC2s;
-    pub mod login_hello_s2c;
-    pub use login_hello_s2c::LoginHelloS2c;
-    pub mod login_key_c2s;
-    pub use login_key_c2s::LoginKeyC2s;
-    pub mod login_query_request_s2c;
-    pub use login_query_request_s2c::LoginQueryRequestS2c;
-    pub mod login_query_response_c2s;
-    pub use login_query_response_c2s::LoginQueryResponseC2s;
-    pub mod login_success_s2c;
-    pub use login_success_s2c::LoginSuccessS2c;
+    pub mod hello_c2s;
+    pub use hello_c2s::HelloC2s;
+    pub mod hello_s2c;
+    pub use hello_s2c::HelloS2c;
+    pub mod key_c2s;
+    pub use key_c2s::KeyC2s;
+    pub mod custom_query_s2c;
+    pub use custom_query_s2c::CustomQueryS2c;
+    pub mod custom_query_answer_c2s;
+    pub use custom_query_answer_c2s::CustomQueryAnswerC2s;
+    pub mod game_profile_s2c;
+    pub use game_profile_s2c::GameProfileS2c;
+    pub mod login_acknowledged_c2s;
+    pub use login_acknowledged_c2s::LoginAcknowledgedC2s;
+}
+
+pub mod configuration {
+    pub mod cookie_request_s2c;
+    pub use cookie_request_s2c::CookieRequestS2c;
+    pub mod cookie_response_c2s;
+    pub use cookie_response_c2s::CookieResponseC2s;
+    pub mod registry_data_s2c;
+    pub use registry_data_s2c::RegistryDataS2c;
+    pub mod disconnect_s2c;
+    pub use disconnect_s2c::DisconnectS2c;
+    pub mod custom_payload_c2s;
+    pub use custom_payload_c2s::CustomPayloadC2s;
+    pub mod custom_payload_s2c;
+    pub use custom_payload_s2c::CustomPayloadS2c;
+    pub mod finish_configuration_c2s;
+    pub use finish_configuration_c2s::FinishConfigurationC2s;
+    pub mod finish_configuration_s2c;
+    pub use finish_configuration_s2c::FinishConfigurationS2c;
+    pub mod keep_alive_c2s;
+    pub use keep_alive_c2s::KeepAliveC2s;
+    pub mod keep_alive_s2c;
+    pub use keep_alive_s2c::KeepAliveS2c;
+    pub mod ping_s2c;
+    pub use ping_s2c::PingS2c;
+    pub mod pong_c2s;
+    pub use pong_c2s::PongC2s;
+    pub mod reset_chat_s2c;
+    pub use reset_chat_s2c::ResetChatS2c;
+    pub mod remove_resource_pack_s2c;
+    pub use remove_resource_pack_s2c::RemoveResourcePackS2c;
+    pub mod add_resource_pack_s2c;
+    pub use add_resource_pack_s2c::AddResourcePackS2c;
+    
 }
 
 pub mod play {
@@ -356,12 +396,12 @@ pub mod play {
 }
 
 pub mod status {
-    pub mod query_ping_c2s;
-    pub use query_ping_c2s::QueryPingC2s;
-    pub mod query_pong_s2c;
-    pub use query_pong_s2c::QueryPongS2c;
-    pub mod query_request_c2s;
-    pub use query_request_c2s::QueryRequestC2s;
-    pub mod query_response_s2c;
-    pub use query_response_s2c::QueryResponseS2c;
+    pub mod ping_request_c2s;
+    pub use ping_request_c2s::PingRequestC2s;
+    pub mod pong_response_s2c;
+    pub use pong_response_s2c::PongResponseS2c;
+    pub mod status_request_c2s;
+    pub use status_request_c2s::StatusRequestC2s;
+    pub mod status_response_s2c;
+    pub use status_response_s2c::StatusResponseS2c;
 }

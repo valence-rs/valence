@@ -36,8 +36,8 @@ public class Items implements Main.Extractor {
         for (var item : registryManager.get(RegistryKeys.ITEM).streamEntries().toList()) {
             var itemJson = new JsonObject();
 
-            itemJson.addProperty("id", item.getKey().orElseThrow().getValue().toString());
-            itemJson.addProperty("name", item.getKey().orElseThrow().getValue().toString());
+            itemJson.addProperty("id", registryManager.get(RegistryKeys.ITEM).getRawId(item.value()));
+            itemJson.addProperty("name", item.getKey().orElseThrow().getValue().getPath());
             Item realItem = item.value();
             itemJson.addProperty("translation_key", realItem.getTranslationKey());
             itemJson.addProperty("max_stack", realItem.getMaxCount());

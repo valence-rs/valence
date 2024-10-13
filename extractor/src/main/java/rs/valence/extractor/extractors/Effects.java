@@ -28,22 +28,23 @@ public class Effects implements Main.Extractor {
             effectJson.addProperty("translation_key", effect.getTranslationKey());
             effectJson.addProperty("color", effect.getColor());
             effectJson.addProperty("instant", effect.isInstant());
-            effectJson.addProperty("category", ValenceUtils.toPascalCase(effect.getCategory().name()));
+            effectJson.addProperty("category", effect.getCategory().name());
 
             var attributeModifiersJson = new JsonArray();
 
-            effect.forEachAttributeModifier(0, (attribute, modifier) -> {
+            effect.forEachAttributeModifier(0, (attrRegistryEntry, modifier) -> {
                 var attributeModifierJson = new JsonObject();
 
-                attributeModifierJson.addProperty("attribute", attribute.getIdAsString());
+                var attr = attrRegistryEntry.getKeyOrValue().map(k -> Registries.ATTRIBUTE.get(k), v -> v);
+                attributeModifierJson.addProperty("attribute_id", Registries.ATTRIBUTE.getRawId(attr));
+                attributeModifierJson.addProperty("attribute_name", attr.getTranslationKey().replaceFirst("^attribute.name.", ""));
                 attributeModifierJson.addProperty("operation", modifier.operation().getId());
                 attributeModifierJson.addProperty("base_value", modifier.value());
-                attributeModifierJson.addProperty("uuid", modifier.id().toTranslationKey());
 
                 attributeModifiersJson.add(attributeModifierJson);
             });
 
-            if (!attributeModifiersJson.isEmpty()) {
+            if (attributeModifiersJson.size() > 0) {
                 effectJson.add("attribute_modifiers", attributeModifiersJson);
             }
 

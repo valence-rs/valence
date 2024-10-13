@@ -1,6 +1,6 @@
 use heck::ToShoutySnakeCase;
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote};
 use serde::Deserialize;
 use valence_build_utils::{ident, rerun_if_changed};
 
@@ -8,7 +8,7 @@ use valence_build_utils::{ident, rerun_if_changed};
 struct Packet {
     name: String,
     side: String,
-    state: String,
+    phase: String,
     id: i32,
 }
 
@@ -20,12 +20,17 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
     let mut consts = TokenStream::new();
 
     for packet in packets {
-        let stripped_name = packet.name.strip_suffix("Packet").unwrap_or(&packet.name);
-
-        let name_ident = ident(stripped_name.to_shouty_snake_case());
         let id = packet.id;
+        let sufix = match packet.side.as_str() {
+            "serverbound" => "C2S",
+            "clientbound" => "S2C",
+            _ => unreachable!(),
+        };
+        
+        let name_ident = format_ident!("{}_{}_{}",packet.phase.to_shouty_snake_case(), packet.name.to_shouty_snake_case(), sufix);
+        
 
-        let doc = format!("Side: {}\n\nState: {}", packet.side, packet.state);
+        let doc = format!("Side: {}\n\nState: {}", packet.side, packet.phase);
 
         consts.extend([quote! {
             #[doc = #doc]

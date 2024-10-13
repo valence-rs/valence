@@ -44,7 +44,6 @@ public class Main implements ModInitializer {
                new Attributes(),
                new Blocks(),
                new Effects(),
-               new Misc(),
                new Packets(),
                new Sounds(),
                new TranslationKeys(),
@@ -94,6 +93,7 @@ public class Main implements ModInitializer {
                 new Enchants(server),
                 new Entities(server),
                 new Items(server),
+                new Misc(server),
             };
 
             for (var ext : startupExtractors) {

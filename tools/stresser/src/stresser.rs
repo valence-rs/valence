@@ -5,10 +5,10 @@ use anyhow::bail;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use uuid::Uuid;
-use valence_protocol::packets::handshaking::handshake_c2s::HandshakeNextState;
+use valence_protocol::packets::handshaking::intention_c2s::HandshakeNextState;
 use valence_protocol::packets::handshaking::HandshakeC2s;
 use valence_protocol::packets::login::{
-    LoginCompressionS2c, LoginHelloC2s, LoginHelloS2c, LoginSuccessS2c,
+    LoginCompressionS2c, HelloC2s, HelloS2c, SuccessS2c,
 };
 use valence_protocol::packets::play::{
     KeepAliveC2s, KeepAliveS2c, PlayerPositionLookS2c, PositionAndOnGroundC2s, TeleportConfirmC2s,
@@ -56,7 +56,7 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
 
     enc.append_packet(&handshake_pkt)?;
 
-    enc.append_packet(&LoginHelloC2s {
+    enc.append_packet(&HelloC2s {
         username: sess_name.into(),
         profile_id: Some(Uuid::new_v4()),
     })?;
@@ -90,11 +90,11 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
                     enc.set_compression(CompressionThreshold(threshold));
                 }
 
-                LoginSuccessS2c::ID => {
+                SuccessS2c::ID => {
                     break;
                 }
 
-                LoginHelloS2c::ID => {
+                HelloS2c::ID => {
                     bail!("encryption not implemented");
                 }
 
