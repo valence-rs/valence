@@ -3,6 +3,7 @@
 const SPAWN_Y: i32 = 64;
 
 use rand::Rng;
+use valence::entity::armor_stand::ArmorStandEntityBundle;
 use valence::entity::zombie::ZombieEntityBundle;
 use valence::prelude::*;
 use valence_inventory::player_inventory::PlayerInventory;
@@ -47,7 +48,19 @@ fn setup(
         }
     }
 
-    commands.spawn(layer);
+    let layer_id = commands.spawn(layer).id();
+
+    commands.spawn(ZombieEntityBundle {
+        position: Position::new(DVec3::new(0.0, f64::from(SPAWN_Y) + 1.0, 0.0)),
+        layer: EntityLayerId(layer_id),
+        ..Default::default()
+    });
+
+    commands.spawn(ArmorStandEntityBundle {
+        position: Position::new(DVec3::new(1.0, f64::from(SPAWN_Y) + 1.0, 0.0)),
+        layer: EntityLayerId(layer_id),
+        ..Default::default()
+    });
 }
 
 fn init_clients(
@@ -62,7 +75,6 @@ fn init_clients(
         Added<Client>,
     >,
     layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
-    mut commands: Commands,
 ) {
     for (
         mut pos,
@@ -79,14 +91,6 @@ fn init_clients(
         visible_chunk_layer.0 = layer;
         visible_entity_layers.0.insert(layer);
         *game_mode = GameMode::Survival;
-
-        commands
-            .spawn(ZombieEntityBundle {
-                position: *pos,
-                layer: *layer_id,
-                ..Default::default()
-            })
-            .insert(Equipment::default());
     }
 }
 

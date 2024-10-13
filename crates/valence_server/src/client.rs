@@ -100,7 +100,9 @@ impl Plugin for ClientPlugin {
                 ClearEntityChangesSet.after(UpdateClientsSet),
                 FlushPacketsSet,
             ),
-        );
+        )
+        .add_event::<LoadEntityForClientEvent>()
+        .add_event::<UnloadEntityForClientEvent>();
     }
 }
 
@@ -878,6 +880,26 @@ fn handle_layer_messages(
     );
 }
 
+/// This event will be emitted when a entity is unloaded for a client (e.g when
+/// moving out of range of the entity).
+#[derive(Debug, Clone, PartialEq, Event)]
+pub struct UnloadEntityForClientEvent {
+    /// The client to unload the entity for.
+    pub client: Entity,
+    /// The entity ID of the entity that will be unloaded.
+    pub entity_unloaded: Entity,
+}
+
+/// This event will be emitted when a entity is loaded for a client (e.g when
+/// moving into range of the entity).
+#[derive(Debug, Clone, PartialEq, Event)]
+pub struct LoadEntityForClientEvent {
+    /// The client to load the entity for.
+    pub client: Entity,
+    /// The entity that will be loaded.
+    pub entity_loaded: Entity,
+}
+
 pub(crate) fn update_view_and_layers(
     mut clients: Query<
         (
@@ -904,8 +926,19 @@ pub(crate) fn update_view_and_layers(
     entity_layers: Query<&EntityLayer>,
     entity_ids: Query<&EntityId>,
     entity_init: Query<(EntityInitQuery, &Position)>,
+
+    mut unload_entity_writer: EventWriter<UnloadEntityForClientEvent>,
+    mut load_entity_writer: EventWriter<LoadEntityForClientEvent>,
 ) {
-    clients.par_iter_mut().for_each(
+    // Wrap the events in this, so we only need one channel.
+    enum ChannelEvent {
+        UnloadEntity(UnloadEntityForClientEvent),
+        LoadEntity(LoadEntityForClientEvent),
+    }
+
+    let (tx, rx) = std::sync::mpsc::channel();
+
+    (clients).par_iter_mut().for_each(
         |(
             self_entity,
             mut client,
@@ -962,6 +995,14 @@ pub(crate) fn update_view_and_layers(
                             for entity in layer.entities_at(pos) {
                                 if self_entity != entity {
                                     if let Ok(id) = entity_ids.get(entity) {
+                                        tx.send(ChannelEvent::UnloadEntity(
+                                            UnloadEntityForClientEvent {
+                                                client: self_entity,
+                                                entity_unloaded: entity,
+                                            },
+                                        ))
+                                        .unwrap();
+
                                         remove_buf.push(id.get());
                                     }
                                 }
@@ -979,6 +1020,14 @@ pub(crate) fn update_view_and_layers(
                             for entity in layer.entities_at(pos) {
                                 if self_entity != entity {
                                     if let Ok((init, pos)) = entity_init.get(entity) {
+                                        tx.send(ChannelEvent::LoadEntity(
+                                            LoadEntityForClientEvent {
+                                                client: self_entity,
+                                                entity_loaded: entity,
+                                            },
+                                        ))
+                                        .unwrap();
+
                                         init.write_init_packets(pos.get(), &mut *client);
                                     }
                                 }
@@ -999,6 +1048,14 @@ pub(crate) fn update_view_and_layers(
                                 for entity in layer.entities_at(pos) {
                                     if self_entity != entity {
                                         if let Ok(id) = entity_ids.get(entity) {
+                                            tx.send(ChannelEvent::UnloadEntity(
+                                                UnloadEntityForClientEvent {
+                                                    client: self_entity,
+                                                    entity_unloaded: entity,
+                                                },
+                                            ))
+                                            .unwrap();
+
                                             remove_buf.push(id.get());
                                         }
                                     }
@@ -1019,6 +1076,14 @@ pub(crate) fn update_view_and_layers(
                                 for entity in layer.entities_at(pos) {
                                     if self_entity != entity {
                                         if let Ok((init, pos)) = entity_init.get(entity) {
+                                            tx.send(ChannelEvent::LoadEntity(
+                                                LoadEntityForClientEvent {
+                                                    client: self_entity,
+                                                    entity_loaded: entity,
+                                                },
+                                            ))
+                                            .unwrap();
+
                                             init.write_init_packets(pos.get(), &mut *client);
                                         }
                                     }
@@ -1061,6 +1126,14 @@ pub(crate) fn update_view_and_layers(
                                 for entity in layer.entities_at(pos) {
                                     if self_entity != entity {
                                         if let Ok(id) = entity_ids.get(entity) {
+                                            tx.send(ChannelEvent::UnloadEntity(
+                                                UnloadEntityForClientEvent {
+                                                    client: self_entity,
+                                                    entity_unloaded: entity,
+                                                },
+                                            ))
+                                            .unwrap();
+
                                             remove_buf.push(id.get());
                                         }
                                     }
@@ -1076,6 +1149,14 @@ pub(crate) fn update_view_and_layers(
                                 for entity in layer.entities_at(pos) {
                                     if self_entity != entity {
                                         if let Ok((init, pos)) = entity_init.get(entity) {
+                                            tx.send(ChannelEvent::LoadEntity(
+                                                LoadEntityForClientEvent {
+                                                    client: self_entity,
+                                                    entity_loaded: entity,
+                                                },
+                                            ))
+                                            .unwrap();
+
                                             init.write_init_packets(pos.get(), &mut *client);
                                         }
                                     }
@@ -1097,6 +1178,18 @@ pub(crate) fn update_view_and_layers(
             }
         },
     );
+
+    // Send the events.
+    for event in rx.try_iter() {
+        match event {
+            ChannelEvent::UnloadEntity(event) => {
+                unload_entity_writer.send(event);
+            }
+            ChannelEvent::LoadEntity(event) => {
+                load_entity_writer.send(event);
+            }
+        };
+    }
 }
 
 pub(crate) fn update_game_mode(mut clients: Query<(&mut Client, &GameMode), Changed<GameMode>>) {
