@@ -1,6 +1,6 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use valence_protocol::packets::play::ClientStatusC2s;
+use valence_protocol::packets::play::ClientCommandC2s;
 
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 
@@ -30,14 +30,14 @@ fn handle_status(
     mut request_stats_events: EventWriter<RequestStatsEvent>,
 ) {
     for packet in packets.read() {
-        if let Some(pkt) = packet.decode::<ClientStatusC2s>() {
+        if let Some(pkt) = packet.decode::<ClientCommandC2s>() {
             match pkt {
-                ClientStatusC2s::PerformRespawn => {
+                ClientCommandC2s::PerformRespawn => {
                     respawn_events.send(RequestRespawnEvent {
                         client: packet.client,
                     });
                 }
-                ClientStatusC2s::RequestStats => {
+                ClientCommandC2s::RequestStats => {
                     request_stats_events.send(RequestStatsEvent {
                         client: packet.client,
                     });

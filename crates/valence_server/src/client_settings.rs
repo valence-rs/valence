@@ -2,7 +2,7 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use valence_entity::player::{self, PlayerModelParts};
 use valence_protocol::packets::play::client_settings_c2s::ChatMode;
-use valence_protocol::packets::play::ClientSettingsC2s;
+use valence_protocol::packets::play::ClientInformationC2s;
 
 use crate::client::ViewDistance;
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
@@ -35,7 +35,7 @@ fn handle_client_settings(
     )>,
 ) {
     for packet in packets.read() {
-        if let Some(pkt) = packet.decode::<ClientSettingsC2s>() {
+        if let Some(pkt) = packet.decode::<ClientInformationC2s>() {
             if let Ok((mut view_dist, mut settings, mut model_parts, mut main_arm)) =
                 clients.get_mut(packet.client)
             {

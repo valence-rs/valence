@@ -16,8 +16,8 @@ pub use valence_server::protocol::packets::play::click_slot_c2s::{ClickMode, Slo
 use valence_server::protocol::packets::play::open_screen_s2c::WindowType;
 pub use valence_server::protocol::packets::play::player_action_c2s::PlayerAction;
 use valence_server::protocol::packets::play::{
-    ClickSlotC2s, CloseHandledScreenC2s, CloseScreenS2c, CreativeInventoryActionC2s, InventoryS2c,
-    OpenScreenS2c, PlayerActionC2s, ScreenHandlerSlotUpdateS2c, UpdateSelectedSlotC2s,
+    ContainerClickC2s, ContainerCloseC2s, ContainerCloseS2c, ContainerSetContentS2c, OpenScreenS2c,
+    PlayerActionC2s, ScreenHandlerSlotUpdateS2c, SetCreativeModeSlotC2s, UpdateSelectedSlotC2s,
     UpdateSelectedSlotS2c,
 };
 use valence_server::protocol::{VarInt, WritePacket};
@@ -620,7 +620,7 @@ fn update_player_inventories(
 
             inv_state.state_id += 1;
 
-            client.write_packet(&InventoryS2c {
+            client.write_packet(&ContainerSetContentS2c {
                 window_id: 0,
                 state_id: VarInt(inv_state.state_id.0),
                 slots: Cow::Borrowed(inventory.slot_slice()),
@@ -683,7 +683,7 @@ fn update_open_inventories(
             // The inventory no longer exists, so close the inventory.
             commands.entity(client_entity).remove::<OpenInventory>();
 
-            client.write_packet(&CloseScreenS2c {
+            client.write_packet(&ContainerCloseS2c {
                 window_id: inv_state.window_id,
             });
 
@@ -701,7 +701,7 @@ fn update_open_inventories(
                 window_title: Cow::Borrowed(&inventory.title),
             });
 
-            client.write_packet(&InventoryS2c {
+            client.write_packet(&ContainerSetContentS2c {
                 window_id: inv_state.window_id,
                 state_id: VarInt(inv_state.state_id.0),
                 slots: Cow::Borrowed(inventory.slot_slice()),
@@ -715,7 +715,7 @@ fn update_open_inventories(
 
                 inv_state.state_id += 1;
 
-                client.write_packet(&InventoryS2c {
+                client.write_packet(&ContainerSetContentS2c {
                     window_id: inv_state.window_id,
                     state_id: VarInt(inv_state.state_id.0),
                     slots: Cow::Borrowed(inventory.slot_slice()),
@@ -783,7 +783,7 @@ fn update_cursor_item(
 /// Handles clients telling the server that they are closing an inventory.
 fn handle_close_handled_screen(mut packets: EventReader<PacketEvent>, mut commands: Commands) {
     for packet in packets.read() {
-        if packet.decode::<CloseHandledScreenC2s>().is_some() {
+        if packet.decode::<ContainerCloseC2s>().is_some() {
             if let Some(mut entity) = commands.get_entity(packet.client) {
                 entity.remove::<OpenInventory>();
             }
@@ -799,7 +799,7 @@ fn update_client_on_close_inventory(
 ) {
     for entity in &mut removals.read() {
         if let Ok((mut client, inv_state)) = clients.get_mut(entity) {
-            client.write_packet(&CloseScreenS2c {
+            client.write_packet(&ContainerCloseS2c {
                 window_id: inv_state.window_id,
             })
         }
@@ -840,7 +840,7 @@ fn handle_click_slot(
     mut click_slot_events: EventWriter<ClickSlotEvent>,
 ) {
     for packet in packets.read() {
-        let Some(pkt) = packet.decode::<ClickSlotC2s>() else {
+        let Some(pkt) = packet.decode::<ContainerClickC2s>() else {
             // Not the packet we're looking for.
             continue;
         };
@@ -869,7 +869,7 @@ fn handle_click_slot(
 
             // Resync the inventory.
 
-            client.write_packet(&InventoryS2c {
+            client.write_packet(&ContainerSetContentS2c {
                 window_id: if open_inv.is_some() {
                     inv_state.window_id
                 } else {
@@ -917,7 +917,7 @@ fn handle_click_slot(
 
                     inv_state.state_id += 1;
 
-                    client.write_packet(&InventoryS2c {
+                    client.write_packet(&ContainerSetContentS2c {
                         window_id: inv_state.window_id,
                         state_id: VarInt(inv_state.state_id.0),
                         slots: Cow::Borrowed(target_inventory.slot_slice()),
@@ -932,7 +932,7 @@ fn handle_click_slot(
 
                     if target_inventory.readonly {
                         // resync target inventory
-                        client.write_packet(&InventoryS2c {
+                        client.write_packet(&ContainerSetContentS2c {
                             window_id: inv_state.window_id,
                             state_id: VarInt(inv_state.state_id.0),
                             slots: Cow::Borrowed(target_inventory.slot_slice()),
@@ -967,7 +967,7 @@ fn handle_click_slot(
 
                     if client_inv.readonly {
                         // resync the client inventory
-                        client.write_packet(&InventoryS2c {
+                        client.write_packet(&ContainerSetContentS2c {
                             window_id: 0,
                             state_id: VarInt(inv_state.state_id.0),
                             slots: Cow::Borrowed(client_inv.slot_slice()),
@@ -1006,7 +1006,7 @@ fn handle_click_slot(
 
                 if client_inv.readonly {
                     // resync the client inventory
-                    client.write_packet(&InventoryS2c {
+                    client.write_packet(&ContainerSetContentS2c {
                         window_id: 0,
                         state_id: VarInt(inv_state.state_id.0),
                         slots: Cow::Borrowed(client_inv.slot_slice()),
@@ -1066,7 +1066,7 @@ fn handle_click_slot(
 
                     inv_state.state_id += 1;
 
-                    client.write_packet(&InventoryS2c {
+                    client.write_packet(&ContainerSetContentS2c {
                         window_id: inv_state.window_id,
                         state_id: VarInt(inv_state.state_id.0),
                         slots: Cow::Borrowed(target_inventory.slot_slice()),
@@ -1115,7 +1115,7 @@ fn handle_click_slot(
 
                 if target_inventory.readonly || client_inv.readonly {
                     // resync the target inventory
-                    client.write_packet(&InventoryS2c {
+                    client.write_packet(&ContainerSetContentS2c {
                         window_id: inv_state.window_id,
                         state_id: VarInt(inv_state.state_id.0),
                         slots: Cow::Borrowed(target_inventory.slot_slice()),
@@ -1123,7 +1123,7 @@ fn handle_click_slot(
                     });
 
                     // resync the client inventory
-                    client.write_packet(&InventoryS2c {
+                    client.write_packet(&ContainerSetContentS2c {
                         window_id: 0,
                         state_id: VarInt(inv_state.state_id.0),
                         slots: Cow::Borrowed(client_inv.slot_slice()),
@@ -1140,7 +1140,7 @@ fn handle_click_slot(
 
                     inv_state.state_id += 1;
 
-                    client.write_packet(&InventoryS2c {
+                    client.write_packet(&ContainerSetContentS2c {
                         window_id: inv_state.window_id,
                         state_id: VarInt(inv_state.state_id.0),
                         slots: Cow::Borrowed(client_inv.slot_slice()),
@@ -1175,7 +1175,7 @@ fn handle_click_slot(
 
                 if client_inv.readonly {
                     // resync the client inventory
-                    client.write_packet(&InventoryS2c {
+                    client.write_packet(&ContainerSetContentS2c {
                         window_id: 0,
                         state_id: VarInt(inv_state.state_id.0),
                         slots: Cow::Borrowed(client_inv.slot_slice()),
@@ -1217,7 +1217,7 @@ fn handle_player_actions(
                     {
                         if inv.readonly {
                             // resync the client inventory
-                            client.write_packet(&InventoryS2c {
+                            client.write_packet(&ContainerSetContentS2c {
                                 window_id: 0,
                                 state_id: VarInt(inv_state.state_id.0),
                                 slots: Cow::Borrowed(inv.slot_slice()),
@@ -1245,7 +1245,7 @@ fn handle_player_actions(
                     {
                         if inv.readonly {
                             // resync the client inventory
-                            client.write_packet(&InventoryS2c {
+                            client.write_packet(&ContainerSetContentS2c {
                                 window_id: 0,
                                 state_id: VarInt(inv_state.state_id.0),
                                 slots: Cow::Borrowed(inv.slot_slice()),
@@ -1283,7 +1283,7 @@ fn handle_player_actions(
                         // this check here might not actually be necessary
                         if inv.readonly {
                             // resync the client inventory
-                            client.write_packet(&InventoryS2c {
+                            client.write_packet(&ContainerSetContentS2c {
                                 window_id: 0,
                                 state_id: VarInt(inv_state.state_id.0),
                                 slots: Cow::Borrowed(inv.slot_slice()),
@@ -1321,7 +1321,7 @@ fn handle_creative_inventory_action(
     mut drop_item_stack_events: EventWriter<DropItemStackEvent>,
 ) {
     for packet in packets.read() {
-        if let Some(pkt) = packet.decode::<CreativeInventoryActionC2s>() {
+        if let Some(pkt) = packet.decode::<SetCreativeModeSlotC2s>() {
             let Ok((mut client, mut inventory, mut inv_state, game_mode)) =
                 clients.get_mut(packet.client)
             else {

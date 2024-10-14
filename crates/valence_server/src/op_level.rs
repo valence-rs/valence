@@ -1,7 +1,7 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use derive_more::Deref;
-use valence_protocol::packets::play::EntityStatusS2c;
+use valence_protocol::packets::play::EntityEventS2c;
 use valence_protocol::WritePacket;
 
 use crate::client::{Client, UpdateClientsSet};
@@ -30,7 +30,7 @@ impl OpLevel {
 
 fn update_op_level(mut clients: Query<(&mut Client, &OpLevel), Changed<OpLevel>>) {
     for (mut client, lvl) in &mut clients.iter_mut() {
-        client.write_packet(&EntityStatusS2c {
+        client.write_packet(&EntityEventS2c {
             entity_id: 0,
             entity_status: 24 + lvl.0,
         });

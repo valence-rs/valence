@@ -1,4 +1,4 @@
-use crate::protocol::packets::play::GameStateChangeS2c;
+use crate::protocol::packets::play::GameEventS2c;
 use crate::testing::*;
 use crate::weather::{Rain, Thunder, WeatherBundle};
 
@@ -15,7 +15,7 @@ fn test_client_initialization_on_join() {
     // Check if two game state change packets were sent, one for rain and one for
     // thunder
     let frames = helper.collect_received();
-    frames.assert_count::<GameStateChangeS2c>(2);
+    frames.assert_count::<GameEventS2c>(2);
 }
 
 #[test]
@@ -31,7 +31,7 @@ fn test_chunk_layer_initialization_on_join() {
     // Check if two game state change packets were sent, one for rain and one for
     // thunder
     let frames = helper.collect_received();
-    frames.assert_count::<GameStateChangeS2c>(2);
+    frames.assert_count::<GameEventS2c>(2);
 }
 
 #[test]
@@ -55,7 +55,7 @@ fn test_client_rain_change() {
 
     // Check if a game state change packet was sent
     let frames = helper.collect_received();
-    frames.assert_count::<GameStateChangeS2c>(1);
+    frames.assert_count::<GameEventS2c>(1);
 }
 
 #[test]
@@ -79,7 +79,7 @@ fn test_client_thunder_change() {
 
     // Check if a game state change packet was sent
     let frames = helper.collect_received();
-    frames.assert_count::<GameStateChangeS2c>(1);
+    frames.assert_count::<GameEventS2c>(1);
 }
 
 #[test]
@@ -103,7 +103,7 @@ fn test_chunk_layer_rain_change() {
 
     // Check if a game state change packet was sent
     let frames = helper.collect_received();
-    frames.assert_count::<GameStateChangeS2c>(1);
+    frames.assert_count::<GameEventS2c>(1);
 }
 
 #[test]
@@ -127,7 +127,7 @@ fn test_chunk_layer_thunder_change() {
 
     // Check if a game state change packet was sent
     let frames = helper.collect_received();
-    frames.assert_count::<GameStateChangeS2c>(1);
+    frames.assert_count::<GameEventS2c>(1);
 }
 
 fn prepare(client_weather: bool) -> ScenarioSingleClient {

@@ -3,7 +3,7 @@ use crate::layer::chunk::UnloadedChunk;
 use crate::layer::ChunkLayer;
 use crate::math::DVec3;
 use crate::protocol::packets::play::{
-    FullC2s, MoveRelativeS2c, PlayerPositionLookS2c, TeleportConfirmC2s,
+    MovePlayerPosRotC2s, MoveRelativeS2c, PlayerPositionLookS2c, TeleportConfirmC2s,
 };
 use crate::testing::{create_mock_client, ScenarioSingleClient};
 use crate::{ChunkPos, GameMode};
@@ -46,7 +46,7 @@ fn client_teleport_and_move() {
     });
 
     // Move a little.
-    helper_1.send(&FullC2s {
+    helper_1.send(&MovePlayerPosRotC2s {
         position: DVec3::new(1.0, 0.0, 0.0),
         yaw: 0.0,
         pitch: 0.0,

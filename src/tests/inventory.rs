@@ -6,8 +6,8 @@ use crate::inventory::{
     HeldItem, Inventory, InventoryKind, OpenInventory, SlotChange,
 };
 use crate::protocol::packets::play::{
-    ClickSlotC2s, CloseScreenS2c, CreativeInventoryActionC2s, InventoryS2c, OpenScreenS2c,
-    ScreenHandlerSlotUpdateS2c, UpdateSelectedSlotC2s,
+    ContainerClickC2s, ContainerCloseS2c, ContainerSetContentS2c, OpenScreenS2c,
+    ScreenHandlerSlotUpdateS2c, SetCreativeModeSlotC2s, UpdateSelectedSlotC2s,
 };
 use crate::protocol::VarInt;
 use crate::testing::ScenarioSingleClient;
@@ -42,8 +42,8 @@ fn test_should_open_inventory() {
     let sent_packets = helper.collect_received();
 
     sent_packets.assert_count::<OpenScreenS2c>(1);
-    sent_packets.assert_count::<InventoryS2c>(1);
-    sent_packets.assert_order::<(OpenScreenS2c, InventoryS2c)>();
+    sent_packets.assert_count::<ContainerSetContentS2c>(1);
+    sent_packets.assert_order::<(OpenScreenS2c, ContainerSetContentS2c)>();
 }
 
 #[test]
@@ -83,7 +83,7 @@ fn test_should_close_inventory() {
     // Make assertions
     let sent_packets = helper.collect_received();
 
-    sent_packets.assert_count::<CloseScreenS2c>(1);
+    sent_packets.assert_count::<ContainerCloseS2c>(1);
 }
 
 #[test]
@@ -121,7 +121,7 @@ fn test_should_remove_invalid_open_inventory() {
     assert!(app.world_mut().get::<OpenInventory>(client).is_none());
 
     let sent_packets = helper.collect_received();
-    sent_packets.assert_count::<CloseScreenS2c>(1);
+    sent_packets.assert_count::<ContainerCloseS2c>(1);
 }
 
 #[test]
@@ -150,7 +150,7 @@ fn test_should_modify_player_inventory_click_slot() {
         .unwrap()
         .state_id();
 
-    helper.send(&ClickSlotC2s {
+    helper.send(&ContainerClickC2s {
         window_id: 0,
         button: 0,
         mode: ClickMode::Click,
@@ -172,7 +172,7 @@ fn test_should_modify_player_inventory_click_slot() {
     // because the inventory was changed as a result of the client's click, the
     // server should not send any packets to the client because the client
     // already knows about the change.
-    sent_packets.assert_count::<InventoryS2c>(0);
+    sent_packets.assert_count::<ContainerSetContentS2c>(0);
     sent_packets.assert_count::<ScreenHandlerSlotUpdateS2c>(0);
 
     let inventory = app
@@ -250,7 +250,7 @@ fn test_should_sync_entire_player_inventory() {
 
     // Make assertions
     let sent_packets = helper.collect_received();
-    sent_packets.assert_count::<InventoryS2c>(1);
+    sent_packets.assert_count::<ContainerSetContentS2c>(1);
 }
 
 fn set_up_open_inventory(app: &mut App, client_ent: Entity) -> Entity {
@@ -293,7 +293,7 @@ fn test_should_modify_open_inventory_click_slot() {
     let inv_state = app.world_mut().get::<ClientInventoryState>(client).unwrap();
     let state_id = inv_state.state_id();
     let window_id = inv_state.window_id();
-    helper.send(&ClickSlotC2s {
+    helper.send(&ContainerClickC2s {
         window_id,
         state_id: VarInt(state_id.0),
         slot_idx: 20,
@@ -315,7 +315,7 @@ fn test_should_modify_open_inventory_click_slot() {
     // because the inventory was modified as a result of the client's click, the
     // server should not send any packets to the client because the client
     // already knows about the change.
-    sent_packets.assert_count::<InventoryS2c>(0);
+    sent_packets.assert_count::<ContainerSetContentS2c>(0);
     sent_packets.assert_count::<ScreenHandlerSlotUpdateS2c>(0);
 
     let inventory = app
@@ -359,7 +359,7 @@ fn test_prevent_modify_open_inventory_click_slot_readonly_inventory() {
     let state_id = inv_state.state_id();
     let window_id = inv_state.window_id();
 
-    helper.send(&ClickSlotC2s {
+    helper.send(&ContainerClickC2s {
         window_id,
         state_id: VarInt(state_id.0),
         slot_idx: 20,
@@ -382,7 +382,7 @@ fn test_prevent_modify_open_inventory_click_slot_readonly_inventory() {
 
     // because the inventory is readonly, we need to resync the client's inventory.
     // 2 resync packets are sent, see above.
-    sent_packets.assert_count::<InventoryS2c>(2);
+    sent_packets.assert_count::<ContainerSetContentS2c>(2);
     sent_packets.assert_count::<ScreenHandlerSlotUpdateS2c>(0);
 
     // Make assertions
@@ -485,7 +485,7 @@ fn test_hotbar_item_swap_container() {
     // The player hovers over the iron ingots in the open inventory, and tries
     // to move them to their own (via pressing 1), which should swap the iron
     // for the diamonds.
-    helper.send(&ClickSlotC2s {
+    helper.send(&ContainerClickC2s {
         window_id,
         state_id: VarInt(state_id.0),
         slot_idx: 0,
@@ -515,7 +515,7 @@ fn test_hotbar_item_swap_container() {
     let sent_packets = helper.collect_received();
 
     // No resyncs because the client was in sync and sent us the updates
-    sent_packets.assert_count::<InventoryS2c>(0);
+    sent_packets.assert_count::<ContainerSetContentS2c>(0);
 
     // Make assertions
     let player_inventory = app
@@ -586,7 +586,7 @@ fn test_prevent_hotbar_item_click_container_readonly_inventory() {
     // to move them to their own (via pressing 1), which should swap the iron
     // for the diamonds. However the opened inventory is read-only, so nothing
     // should happen.
-    helper.send(&ClickSlotC2s {
+    helper.send(&ContainerClickC2s {
         window_id,
         state_id: VarInt(state_id.0),
         slot_idx: 0,
@@ -616,7 +616,7 @@ fn test_prevent_hotbar_item_click_container_readonly_inventory() {
     let sent_packets = helper.collect_received();
 
     // 1 resync for each inventory
-    sent_packets.assert_count::<InventoryS2c>(2);
+    sent_packets.assert_count::<ContainerSetContentS2c>(2);
 
     // Make assertions
     let player_inventory = app
@@ -686,7 +686,7 @@ fn test_still_allow_hotbar_item_click_in_own_inventory_if_container_readonly_inv
     // The player's inventory is not readonly, so the player should still be
     // able to move items from the hotbar to other parts of the inventory even
     // if the other inventory is still open.
-    helper.send(&ClickSlotC2s {
+    helper.send(&ContainerClickC2s {
         window_id,
         state_id: VarInt(state_id.0),
         slot_idx: 27,
@@ -709,7 +709,7 @@ fn test_still_allow_hotbar_item_click_in_own_inventory_if_container_readonly_inv
     app.update();
     // Make assertions
     let sent_packets = helper.collect_received();
-    sent_packets.assert_count::<InventoryS2c>(2);
+    sent_packets.assert_count::<ContainerSetContentS2c>(2);
 
     let player_inventory = app
         .world_mut()
@@ -766,7 +766,7 @@ fn test_prevent_shift_item_click_container_readonly_inventory() {
 
     // The player tries to Shift-click transfer the stack of diamonds into
     // the open container
-    helper.send(&ClickSlotC2s {
+    helper.send(&ContainerClickC2s {
         window_id,
         state_id: VarInt(state_id.0),
         slot_idx: 27,
@@ -793,7 +793,7 @@ fn test_prevent_shift_item_click_container_readonly_inventory() {
     // Make assertions
     let sent_packets = helper.collect_received();
     // 1 resync per inventory
-    sent_packets.assert_count::<InventoryS2c>(2);
+    sent_packets.assert_count::<ContainerSetContentS2c>(2);
 
     let player_inventory = app
         .world_mut()
@@ -838,7 +838,7 @@ fn test_should_sync_entire_open_inventory() {
 
     // Make assertions
     let sent_packets = helper.collect_received();
-    sent_packets.assert_count::<InventoryS2c>(1);
+    sent_packets.assert_count::<ContainerSetContentS2c>(1);
 }
 
 #[test]
@@ -860,7 +860,7 @@ fn test_set_creative_mode_slot_handling() {
     app.update();
     helper.clear_received();
 
-    helper.send(&CreativeInventoryActionC2s {
+    helper.send(&SetCreativeModeSlotC2s {
         slot: 36,
         clicked_item: ItemStack::new(ItemKind::Diamond, 2, None),
     });
@@ -898,7 +898,7 @@ fn test_ignore_set_creative_mode_slot_if_not_creative() {
     app.update();
     helper.clear_received();
 
-    helper.send(&CreativeInventoryActionC2s {
+    helper.send(&SetCreativeModeSlotC2s {
         slot: 36,
         clicked_item: ItemStack::new(ItemKind::Diamond, 2, None),
     });
@@ -1285,7 +1285,7 @@ mod dropping_items {
             .entity_mut(client)
             .insert(GameMode::Creative);
 
-        helper.send(&CreativeInventoryActionC2s {
+        helper.send(&SetCreativeModeSlotC2s {
             slot: -1,
             clicked_item: ItemStack::new(ItemKind::IronIngot, 32, None),
         });
@@ -1333,7 +1333,7 @@ mod dropping_items {
             .expect("could not find client");
         let state_id = inv_state.state_id().0;
 
-        helper.send(&ClickSlotC2s {
+        helper.send(&ContainerClickC2s {
             window_id: 0,
             state_id: VarInt(state_id),
             slot_idx: -999,
@@ -1396,7 +1396,7 @@ mod dropping_items {
 
         inventory.set_slot(40, ItemStack::new(ItemKind::IronIngot, 32, None));
 
-        helper.send(&ClickSlotC2s {
+        helper.send(&ContainerClickC2s {
             window_id: 0,
             slot_idx: 40,
             button: 0,
@@ -1457,7 +1457,7 @@ mod dropping_items {
         inventory.readonly = true;
         inventory.set_slot(40, ItemStack::new(ItemKind::IronIngot, 32, None));
 
-        helper.send(&ClickSlotC2s {
+        helper.send(&ContainerClickC2s {
             window_id: 0,
             slot_idx: 40,
             button: 0,
@@ -1523,7 +1523,7 @@ mod dropping_items {
 
         inventory.set_slot(40, ItemStack::new(ItemKind::IronIngot, 32, None));
 
-        helper.send(&ClickSlotC2s {
+        helper.send(&ContainerClickC2s {
             window_id: 0,
             slot_idx: 40,
             button: 1, // pressing control
@@ -1584,7 +1584,7 @@ mod dropping_items {
         inventory.readonly = true;
         inventory.set_slot(40, ItemStack::new(ItemKind::IronIngot, 32, None));
 
-        helper.send(&ClickSlotC2s {
+        helper.send(&ContainerClickC2s {
             window_id: 0,
             slot_idx: 40,
             button: 1, // pressing control
@@ -1661,7 +1661,7 @@ mod dropping_items {
         let state_id = inv_state.state_id().0;
         let window_id = inv_state.window_id();
 
-        helper.send(&ClickSlotC2s {
+        helper.send(&ContainerClickC2s {
             window_id,
             state_id: VarInt(state_id),
             slot_idx: 50, // not pressing control
@@ -1747,7 +1747,7 @@ mod dropping_items {
         let state_id = inv_state.state_id().0;
         let window_id = inv_state.window_id();
 
-        helper.send(&ClickSlotC2s {
+        helper.send(&ContainerClickC2s {
             window_id,
             state_id: VarInt(state_id),
             slot_idx: 50, // not pressing control
@@ -1826,7 +1826,7 @@ fn should_drop_item_stack_player_open_inventory_with_dropkey() {
     let state_id = inv_state.state_id().0;
     let window_id = inv_state.window_id();
 
-    helper.send(&ClickSlotC2s {
+    helper.send(&ContainerClickC2s {
         window_id,
         state_id: VarInt(state_id),
         slot_idx: 50, // pressing control, the whole stack is dropped
@@ -1894,7 +1894,7 @@ fn dragging_items() {
     let window_id = inv_state.window_id();
     let state_id = inv_state.state_id().0;
 
-    let drag_packet = ClickSlotC2s {
+    let drag_packet = ContainerClickC2s {
         window_id,
         state_id: VarInt(state_id),
         slot_idx: -999,

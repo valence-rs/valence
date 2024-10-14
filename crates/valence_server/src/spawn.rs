@@ -7,7 +7,7 @@ use bevy_ecs::prelude::*;
 use bevy_ecs::query::QueryData;
 use derive_more::{Deref, DerefMut};
 use valence_entity::EntityLayerId;
-use valence_protocol::packets::play::{GameJoinS2c, PlayerRespawnS2c, PlayerSpawnPositionS2c};
+use valence_protocol::packets::play::{LoginS2c, PlayerRespawnS2c, PlayerSpawnPositionS2c};
 use valence_protocol::{BlockPos, GameMode, GlobalPos, Ident, VarInt, WritePacket};
 use valence_registry::tags::TagsRegistry;
 use valence_registry::{BiomeRegistry, RegistryCodec};
@@ -109,7 +109,7 @@ pub(super) fn initial_join(
 
         // The login packet is prepended so that it's sent before all the other packets.
         // Some packets don't work correctly when sent before the game join packet.
-        _ = client.enc.prepend_packet(&GameJoinS2c {
+        _ = client.enc.prepend_packet(&LoginS2c {
             entity_id: 0, // We reserve ID 0 for clients.
             is_hardcore: spawn.is_hardcore.0,
             game_mode: *spawn.game_mode,

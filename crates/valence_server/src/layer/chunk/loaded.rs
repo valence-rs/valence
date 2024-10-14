@@ -10,7 +10,7 @@ use valence_protocol::encode::{PacketWriter, WritePacket};
 use valence_protocol::packets::play::chunk_data_s2c::ChunkDataBlockEntity;
 use valence_protocol::packets::play::chunk_delta_update_s2c::ChunkDeltaUpdateEntry;
 use valence_protocol::packets::play::{
-    BlockEntityUpdateS2c, BlockUpdateS2c, ChunkDataS2c, ChunkDeltaUpdateS2c,
+    BlockEntityUpdateS2c, BlockUpdateS2c, LevelChunkWithLightS2c, SectionBlocksUpdateS2c,
 };
 use valence_protocol::{BlockPos, BlockState, ChunkPos, ChunkSectionPos, Encode};
 use valence_registry::biome::BiomeId;
@@ -222,7 +222,7 @@ impl LoadedChunk {
                     messages.send_local_infallible(LocalMsg::PacketAt { pos }, |buf| {
                         let mut writer = PacketWriter::new(buf, info.threshold);
 
-                        writer.write_packet(&ChunkDeltaUpdateS2c {
+                        writer.write_packet(&SectionBlocksUpdateS2c {
                             chunk_sect_pos,
                             blocks: Cow::Borrowed(entries),
                         });
@@ -438,18 +438,20 @@ impl LoadedChunk {
                 })
                 .collect();
 
-            PacketWriter::new(&mut init_packets, info.threshold).write_packet(&ChunkDataS2c {
-                pos,
-                heightmaps: Cow::Owned(heightmaps),
-                blocks_and_biomes: &blocks_and_biomes,
-                block_entities: Cow::Owned(block_entities),
-                sky_light_mask: Cow::Borrowed(&[]),
-                block_light_mask: Cow::Borrowed(&[]),
-                empty_sky_light_mask: Cow::Borrowed(&[]),
-                empty_block_light_mask: Cow::Borrowed(&[]),
-                sky_light_arrays: Cow::Borrowed(&[]),
-                block_light_arrays: Cow::Borrowed(&[]),
-            })
+            PacketWriter::new(&mut init_packets, info.threshold).write_packet(
+                &LevelChunkWithLightS2c {
+                    pos,
+                    heightmaps: Cow::Owned(heightmaps),
+                    blocks_and_biomes: &blocks_and_biomes,
+                    block_entities: Cow::Owned(block_entities),
+                    sky_light_mask: Cow::Borrowed(&[]),
+                    block_light_mask: Cow::Borrowed(&[]),
+                    empty_sky_light_mask: Cow::Borrowed(&[]),
+                    empty_block_light_mask: Cow::Borrowed(&[]),
+                    sky_light_arrays: Cow::Borrowed(&[]),
+                    block_light_arrays: Cow::Borrowed(&[]),
+                },
+            )
         }
 
         writer.write_packet_bytes(&init_packets);

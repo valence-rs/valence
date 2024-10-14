@@ -3,7 +3,7 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use valence_protocol::encode::WritePacket;
-use valence_protocol::packets::play::{ChatMessageC2s, GameMessageS2c};
+use valence_protocol::packets::play::{ChatC2s, SystemChatS2c};
 use valence_protocol::text::IntoText;
 
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
@@ -26,14 +26,14 @@ pub trait SendMessage {
 
 impl<T: WritePacket> SendMessage for T {
     fn send_chat_message<'a>(&mut self, msg: impl IntoText<'a>) {
-        self.write_packet(&GameMessageS2c {
+        self.write_packet(&SystemChatS2c {
             chat: msg.into_cow_text(),
             overlay: false,
         });
     }
 
     fn send_action_bar_message<'a>(&mut self, msg: impl IntoText<'a>) {
-        self.write_packet(&GameMessageS2c {
+        self.write_packet(&SystemChatS2c {
             chat: msg.into_cow_text(),
             overlay: true,
         });
@@ -52,7 +52,7 @@ pub fn handle_chat_message(
     mut events: EventWriter<ChatMessageEvent>,
 ) {
     for packet in packets.read() {
-        if let Some(pkt) = packet.decode::<ChatMessageC2s>() {
+        if let Some(pkt) = packet.decode::<ChatC2s>() {
             events.send(ChatMessageEvent {
                 client: packet.client,
                 message: pkt.message.0.into(),

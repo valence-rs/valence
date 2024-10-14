@@ -9,7 +9,7 @@ use valence::layer::chunk::UnloadedChunk;
 use valence::layer::LayerBundle;
 use valence::math::DVec3;
 use valence::network::NetworkPlugin;
-use valence::protocol::packets::play::{FullC2s, HandSwingC2s};
+use valence::protocol::packets::play::{MovePlayerPosRotC2s, SwingC2s};
 use valence::registry::{BiomeRegistry, DimensionTypeRegistry};
 use valence::testing::create_mock_client;
 use valence::{ident, ChunkPos, DefaultPlugins, Hand, Server, ServerSettings};
@@ -100,14 +100,14 @@ fn run_many_players(bencher: Bencher, client_count: usize, view_dist: u8, world_
 
             let offset = DVec3::new(rng.gen_range(-1.0..=1.0), 0.0, rng.gen_range(-1.0..=1.0));
 
-            helper.send(&FullC2s {
+            helper.send(&MovePlayerPosRotC2s {
                 position: pos + offset,
                 yaw: rng.gen_range(0.0..=360.0),
                 pitch: rng.gen_range(0.0..=360.0),
                 on_ground: rng.gen(),
             });
 
-            helper.send(&HandSwingC2s { hand: Hand::Main });
+            helper.send(&SwingC2s { hand: Hand::Main });
         }
 
         drop(rng);

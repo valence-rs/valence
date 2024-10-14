@@ -1,13 +1,13 @@
 use valence_server::protocol::anyhow::{self, bail, ensure};
 use valence_server::protocol::packets::play::click_slot_c2s::ClickMode;
-use valence_server::protocol::packets::play::ClickSlotC2s;
+use valence_server::protocol::packets::play::ContainerClickC2s;
 
 use super::{CursorItem, Inventory, InventoryWindow};
 use crate::player_inventory::PlayerInventory;
 
 /// Validates a click slot packet enforcing that all fields are valid.
 pub(super) fn validate_click_slot_packet(
-    packet: &ClickSlotC2s,
+    packet: &ContainerClickC2s,
     player_inventory: &Inventory,
     open_inventory: Option<&Inventory>,
     cursor_item: &CursorItem,
@@ -332,7 +332,7 @@ pub(super) fn validate_click_slot_packet(
 /// Returns a positive number if items were added to the window, and a negative
 /// number if items were removed from the window.
 fn calculate_net_item_delta(
-    packet: &ClickSlotC2s,
+    packet: &ContainerClickC2s,
     window: &InventoryWindow,
     cursor_item: &CursorItem,
 ) -> i32 {
@@ -373,7 +373,7 @@ mod tests {
 
     #[test]
     fn net_item_delta_1() {
-        let drag_packet = ClickSlotC2s {
+        let drag_packet = ContainerClickC2s {
             window_id: 2,
             state_id: VarInt(14),
             slot_idx: -999,
@@ -410,7 +410,7 @@ mod tests {
 
     #[test]
     fn net_item_delta_2() {
-        let drag_packet = ClickSlotC2s {
+        let drag_packet = ContainerClickC2s {
             window_id: 2,
             state_id: VarInt(14),
             slot_idx: -999,
@@ -455,7 +455,7 @@ mod tests {
         let mut inventory = Inventory::new(InventoryKind::Generic9x1);
         inventory.set_slot(0, ItemStack::new(ItemKind::Diamond, 20, None));
         let cursor_item = CursorItem::default();
-        let packet = ClickSlotC2s {
+        let packet = ContainerClickC2s {
             window_id: 1,
             button: 0,
             mode: ClickMode::Click,
@@ -486,7 +486,7 @@ mod tests {
         let mut compound = Compound::new();
         compound.insert("Damage", Int(1));
 
-        let packet = ClickSlotC2s {
+        let packet = ContainerClickC2s {
             window_id: 1,
             state_id: VarInt(0),
             slot_idx: 0,
@@ -515,7 +515,7 @@ mod tests {
         let mut inventory2 = Inventory::new(InventoryKind::Generic9x1);
         inventory2.set_slot(0, ItemStack::new(ItemKind::Diamond, 10, None));
         let cursor_item = CursorItem(ItemStack::new(ItemKind::Diamond, 20, None));
-        let packet1 = ClickSlotC2s {
+        let packet1 = ContainerClickC2s {
             window_id: 1,
             button: 0,
             mode: ClickMode::Click,
@@ -528,7 +528,7 @@ mod tests {
             .into(),
             carried_item: ItemStack::EMPTY,
         };
-        let packet2 = ClickSlotC2s {
+        let packet2 = ContainerClickC2s {
             window_id: 1,
             button: 0,
             mode: ClickMode::Click,
@@ -555,7 +555,7 @@ mod tests {
         let mut inventory = Inventory::new(InventoryKind::Generic9x1);
         inventory.set_slot(0, ItemStack::new(ItemKind::Diamond, 20, None));
         let cursor_item = CursorItem(ItemStack::new(ItemKind::Diamond, 64, None));
-        let packet = ClickSlotC2s {
+        let packet = ContainerClickC2s {
             window_id: 1,
             button: 0,
             mode: ClickMode::Click,
@@ -579,7 +579,7 @@ mod tests {
         let mut inventory = Inventory::new(InventoryKind::Generic9x1);
         inventory.set_slot(0, ItemStack::new(ItemKind::IronIngot, 2, None));
         let cursor_item = CursorItem(ItemStack::new(ItemKind::Diamond, 2, None));
-        let packet = ClickSlotC2s {
+        let packet = ContainerClickC2s {
             window_id: 1,
             button: 0,
             mode: ClickMode::Click,
@@ -604,7 +604,7 @@ mod tests {
         let mut inventory2 = Inventory::new(InventoryKind::Generic9x1);
         inventory2.set_slot(0, ItemStack::new(ItemKind::Diamond, 10, None));
         let cursor_item = CursorItem(ItemStack::new(ItemKind::Diamond, 20, None));
-        let packet1 = ClickSlotC2s {
+        let packet1 = ContainerClickC2s {
             window_id: 1,
             button: 0,
             mode: ClickMode::Click,
@@ -617,7 +617,7 @@ mod tests {
             .into(),
             carried_item: ItemStack::EMPTY,
         };
-        let packet2 = ClickSlotC2s {
+        let packet2 = ContainerClickC2s {
             window_id: 1,
             button: 0,
             mode: ClickMode::Click,
@@ -630,7 +630,7 @@ mod tests {
             .into(),
             carried_item: ItemStack::EMPTY,
         };
-        let packet3 = ClickSlotC2s {
+        let packet3 = ContainerClickC2s {
             window_id: 1,
             button: 0,
             mode: ClickMode::Click,
@@ -669,7 +669,7 @@ mod tests {
         let cursor_item = CursorItem::default();
 
         let packets = vec![
-            ClickSlotC2s {
+            ContainerClickC2s {
                 window_id: 0,
                 button: 0,
                 mode: ClickMode::ShiftClick,
@@ -688,7 +688,7 @@ mod tests {
                 .into(),
                 carried_item: ItemStack::EMPTY,
             },
-            ClickSlotC2s {
+            ContainerClickC2s {
                 window_id: 0,
                 button: 0,
                 mode: ClickMode::Hotbar,
@@ -707,7 +707,7 @@ mod tests {
                 .into(),
                 carried_item: ItemStack::EMPTY,
             },
-            ClickSlotC2s {
+            ContainerClickC2s {
                 window_id: 0,
                 button: 0,
                 mode: ClickMode::Click,
@@ -720,7 +720,7 @@ mod tests {
                 .into(),
                 carried_item: ItemStack::new(ItemKind::GoldIngot, 2, None),
             },
-            ClickSlotC2s {
+            ContainerClickC2s {
                 window_id: 0,
                 button: 0,
                 mode: ClickMode::DropKey,
@@ -749,7 +749,7 @@ mod tests {
         player_inventory.set_slot(36, ItemStack::new(ItemKind::Diamond, 32, None));
         let cursor_item = CursorItem::default();
 
-        let packet = ClickSlotC2s {
+        let packet = ContainerClickC2s {
             window_id: 0,
             state_id: VarInt(2),
             slot_idx: 9,
@@ -783,7 +783,7 @@ mod tests {
         player_inventory.set_slot(9, ItemStack::new(ItemKind::Apple, 100, None));
         let cursor_item = CursorItem::default();
 
-        let packet = ClickSlotC2s {
+        let packet = ContainerClickC2s {
             window_id: 0,
             state_id: VarInt(2),
             slot_idx: 9,
@@ -806,7 +806,7 @@ mod tests {
         let player_inventory = Inventory::new(InventoryKind::Player);
         let cursor_item = CursorItem(ItemStack::new(ItemKind::Apple, 100, None));
 
-        let packet = ClickSlotC2s {
+        let packet = ContainerClickC2s {
             window_id: 0,
             state_id: VarInt(2),
             slot_idx: 9,

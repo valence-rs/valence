@@ -1,6 +1,6 @@
 use valence_server::entity::living::Health;
 use valence_server::entity::player::{Food, Saturation};
-use valence_server::protocol::packets::play::HealthUpdateS2c;
+use valence_server::protocol::packets::play::SetHealthS2c;
 use valence_server::protocol::VarInt;
 
 use crate::testing::ScenarioSingleClient;
@@ -28,9 +28,9 @@ fn test_hunger() {
     // make sure the packet was sent
     let sent_packets = helper.collect_received();
 
-    sent_packets.assert_count::<HealthUpdateS2c>(1);
+    sent_packets.assert_count::<SetHealthS2c>(1);
 
-    let packet = sent_packets.first::<HealthUpdateS2c>();
+    let packet = sent_packets.first::<SetHealthS2c>();
 
     assert_eq!(packet.health, og_health);
     assert_eq!(packet.food, VarInt(5));

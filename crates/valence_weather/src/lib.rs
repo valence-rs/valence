@@ -5,7 +5,7 @@ use bevy_ecs::prelude::*;
 use derive_more::{Deref, DerefMut};
 use valence_server::client::{Client, FlushPacketsSet, UpdateClientsSet, VisibleChunkLayer};
 use valence_server::protocol::packets::play::game_state_change_s2c::GameEventKind;
-use valence_server::protocol::packets::play::GameStateChangeS2c;
+use valence_server::protocol::packets::play::GameEventS2c;
 use valence_server::protocol::WritePacket;
 use valence_server::ChunkLayer;
 
@@ -55,7 +55,7 @@ fn init_weather_on_layer_join(
         if let Ok((rain, thunder)) = layers.get(visible_chunk_layer.0) {
             if let Some(rain) = rain {
                 if rain.0 != 0.0 {
-                    client.write_packet(&GameStateChangeS2c {
+                    client.write_packet(&GameEventS2c {
                         kind: GameEventKind::RainLevelChange,
                         value: rain.0,
                     });
@@ -64,7 +64,7 @@ fn init_weather_on_layer_join(
 
             if let Some(thunder) = thunder {
                 if thunder.0 != 0.0 {
-                    client.write_packet(&GameStateChangeS2c {
+                    client.write_packet(&GameEventS2c {
                         kind: GameEventKind::ThunderLevelChange,
                         value: thunder.0,
                     });
@@ -78,7 +78,7 @@ fn change_layer_rain_level(
     mut layers: Query<(&mut ChunkLayer, &Rain), (Changed<Rain>, Without<Client>)>,
 ) {
     for (mut layer, rain) in &mut layers {
-        layer.write_packet(&GameStateChangeS2c {
+        layer.write_packet(&GameEventS2c {
             kind: GameEventKind::RainLevelChange,
             value: rain.0,
         });
@@ -89,7 +89,7 @@ fn change_layer_thunder_level(
     mut layers: Query<(&mut ChunkLayer, &Thunder), (Changed<Thunder>, Without<Client>)>,
 ) {
     for (mut layer, thunder) in &mut layers {
-        layer.write_packet(&GameStateChangeS2c {
+        layer.write_packet(&GameEventS2c {
             kind: GameEventKind::ThunderLevelChange,
             value: thunder.0,
         });
@@ -98,7 +98,7 @@ fn change_layer_thunder_level(
 
 fn change_client_rain_level(mut clients: Query<(&mut Client, &Rain), Changed<Rain>>) {
     for (mut client, rain) in &mut clients {
-        client.write_packet(&GameStateChangeS2c {
+        client.write_packet(&GameEventS2c {
             kind: GameEventKind::RainLevelChange,
             value: rain.0,
         });
@@ -107,7 +107,7 @@ fn change_client_rain_level(mut clients: Query<(&mut Client, &Rain), Changed<Rai
 
 fn change_client_thunder_level(mut clients: Query<(&mut Client, &Thunder), Changed<Thunder>>) {
     for (mut client, thunder) in &mut clients {
-        client.write_packet(&GameStateChangeS2c {
+        client.write_packet(&GameEventS2c {
             kind: GameEventKind::RainLevelChange,
             value: thunder.0,
         });

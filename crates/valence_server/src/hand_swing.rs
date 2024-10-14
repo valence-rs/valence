@@ -1,7 +1,7 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use valence_entity::{EntityAnimation, EntityAnimations};
-use valence_protocol::packets::play::HandSwingC2s;
+use valence_protocol::packets::play::SwingC2s;
 use valence_protocol::Hand;
 
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
@@ -27,7 +27,7 @@ fn handle_hand_swing(
     mut events: EventWriter<HandSwingEvent>,
 ) {
     for packet in packets.read() {
-        if let Some(pkt) = packet.decode::<HandSwingC2s>() {
+        if let Some(pkt) = packet.decode::<SwingC2s>() {
             if let Ok(mut anim) = clients.get_mut(packet.client) {
                 anim.trigger(match pkt.hand {
                     Hand::Main => EntityAnimation::SwingMainHand,

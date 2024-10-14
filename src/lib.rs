@@ -128,7 +128,7 @@ pub mod prelude {
         View, ViewDistance, VisibleChunkLayer, VisibleEntityLayers,
     };
     pub use valence_server::client_command::{
-        ClientCommand, JumpWithHorseEvent, JumpWithHorseState, LeaveBedEvent, SneakEvent,
+        JumpWithHorseEvent, JumpWithHorseState, LeaveBedEvent, PlayerCommand, SneakEvent,
         SneakState, SprintEvent, SprintState,
     };
     pub use valence_server::entity::hitbox::{Hitbox, HitboxShape};

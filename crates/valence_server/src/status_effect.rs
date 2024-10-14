@@ -6,7 +6,7 @@ use valence_entity::active_status_effects::{ActiveStatusEffect, ActiveStatusEffe
 use valence_entity::entity::Flags;
 use valence_entity::living::{PotionSwirlsAmbient, PotionSwirlsColor};
 use valence_protocol::packets::play::{
-    entity_status_effect_s2c, EntityStatusEffectS2c, RemoveEntityStatusEffectS2c,
+    entity_status_effect_s2c, RemoveEntityStatusEffectS2c, UpdateMobEffectS2c,
 };
 use valence_protocol::status_effects::StatusEffect;
 use valence_protocol::{VarInt, WritePacket};
@@ -56,8 +56,8 @@ fn update_active_status_effects(
     }
 }
 
-fn create_packet(effect: &ActiveStatusEffect) -> EntityStatusEffectS2c {
-    EntityStatusEffectS2c {
+fn create_packet(effect: &ActiveStatusEffect) -> UpdateMobEffectS2c {
+    UpdateMobEffectS2c {
         entity_id: VarInt(0), // We reserve ID 0 for clients.
         effect_id: VarInt(i32::from(effect.status_effect().to_raw())),
         amplifier: effect.amplifier(),

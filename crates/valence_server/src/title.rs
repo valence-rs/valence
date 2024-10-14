@@ -1,6 +1,6 @@
 use valence_protocol::encode::WritePacket;
 use valence_protocol::packets::play::{
-    ClearTitleS2c, OverlayMessageS2c, SubtitleS2c, TitleFadeS2c, TitleS2c,
+    ClearTitlesS2c, OverlayMessageS2c, SubtitleS2c, TitleFadeS2c, TitleS2c,
 };
 use valence_protocol::text::IntoText;
 
@@ -55,10 +55,10 @@ impl<T: WritePacket> SetTitle for T {
     }
 
     fn clear_title(&mut self) {
-        self.write_packet(&ClearTitleS2c { reset: false });
+        self.write_packet(&ClearTitlesS2c { reset: false });
     }
 
     fn reset_title(&mut self) {
-        self.write_packet(&ClearTitleS2c { reset: true });
+        self.write_packet(&ClearTitlesS2c { reset: true });
     }
 }
