@@ -47,6 +47,8 @@ pub use valence_boss_bar as boss_bar;
 pub use valence_command as command;
 #[cfg(feature = "command")]
 pub use valence_command_macros as command_macros;
+#[cfg(feature = "equipment")]
+pub use valence_equipment as equipment;
 #[cfg(feature = "inventory")]
 pub use valence_inventory as inventory;
 pub use valence_lang as lang;
