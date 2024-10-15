@@ -7,7 +7,7 @@ use valence_math::DVec3;
 use valence_protocol::encode::WritePacket;
 use valence_protocol::packets::play::{
     AddEntityS2c, AddExperienceOrbS2c, AnimateS2c, EntityEventS2c, MoveEntityPosRotS2c,
-    MoveRelativeS2c, PlayerSpawnS2c, RotateAndMoveRelativeS2c, RotateHeadS2c, RotateS2c,
+    MoveEntityPosS2c, PlayerSpawnS2c, RotateAndMoveRelativeS2c, RotateHeadS2c, RotateS2c,
     SetEntityDataS2c, SetEntityMotionS2c, UpdateAttributesS2c,
 };
 use valence_protocol::var_int::VarInt;
@@ -123,7 +123,7 @@ impl UpdateEntityQueryItem<'_> {
             });
         } else {
             if changed_position && !needs_teleport {
-                writer.write_packet(&MoveRelativeS2c {
+                writer.write_packet(&MoveEntityPosS2c {
                     entity_id,
                     delta: (position_delta * 4096.0).to_array().map(|v| v as i16),
                     on_ground: self.on_ground.0,

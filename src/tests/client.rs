@@ -3,7 +3,7 @@ use crate::layer::chunk::UnloadedChunk;
 use crate::layer::ChunkLayer;
 use crate::math::DVec3;
 use crate::protocol::packets::play::{
-    MovePlayerPosRotC2s, MoveRelativeS2c, PlayerPositionLookS2c, TeleportConfirmC2s,
+    MoveEntityPosS2c, MovePlayerPosRotC2s, PlayerPositionLookS2c, TeleportConfirmC2s,
 };
 use crate::testing::{create_mock_client, ScenarioSingleClient};
 use crate::{ChunkPos, GameMode};
@@ -58,7 +58,7 @@ fn client_teleport_and_move() {
     // Check that the other client saw the client moving.
     helper_2
         .collect_received()
-        .assert_count::<MoveRelativeS2c>(1);
+        .assert_count::<MoveEntityPosS2c>(1);
 }
 
 #[test]

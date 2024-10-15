@@ -18,7 +18,7 @@ use valence_math::{DVec3, Vec3};
 use valence_nbt::Compound;
 use valence_protocol::encode::{PacketWriter, WritePacket};
 use valence_protocol::packets::play::particle_s2c::Particle;
-use valence_protocol::packets::play::{ParticleS2c, PlaySoundS2c};
+use valence_protocol::packets::play::{LevelParticlesS2c, SoundS2c};
 use valence_protocol::sound::{Sound, SoundCategory, SoundId};
 use valence_protocol::{BiomePos, BlockPos, ChunkPos, CompressionThreshold, Encode, Ident, Packet};
 use valence_registry::biome::{BiomeId, BiomeRegistry};
@@ -397,7 +397,7 @@ impl ChunkLayer {
     {
         let position = position.into();
 
-        self.view_writer(position).write_packet(&ParticleS2c {
+        self.view_writer(position).write_packet(&LevelParticlesS2c {
             particle: Cow::Borrowed(particle),
             long_distance,
             position,
@@ -421,7 +421,7 @@ impl ChunkLayer {
     ) {
         let position = position.into();
 
-        self.view_writer(position).write_packet(&PlaySoundS2c {
+        self.view_writer(position).write_packet(&SoundS2c {
             id: SoundId::Direct {
                 id: sound.to_ident().into(),
                 range: None,

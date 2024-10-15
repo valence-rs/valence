@@ -2,7 +2,7 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use derive_more::Deref;
 use valence_protocol::packets::play::player_action_c2s::PlayerAction;
-use valence_protocol::packets::play::{PlayerActionC2s, PlayerActionResponseS2c};
+use valence_protocol::packets::play::{BlockChangedAckS2c, PlayerActionC2s};
 use valence_protocol::{BlockPos, Direction, VarInt, WritePacket};
 
 use crate::client::{Client, UpdateClientsSet};
@@ -102,7 +102,7 @@ fn acknowledge_player_actions(
 ) {
     for (mut client, mut action_seq) in &mut clients {
         if action_seq.0 != 0 {
-            client.write_packet(&PlayerActionResponseS2c {
+            client.write_packet(&BlockChangedAckS2c {
                 sequence: VarInt(action_seq.0),
             });
 

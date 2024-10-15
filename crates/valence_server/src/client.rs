@@ -27,9 +27,10 @@ use valence_protocol::packets::play::chunk_biome_data_s2c::ChunkBiome;
 use valence_protocol::packets::play::game_state_change_s2c::GameEventKind;
 use valence_protocol::packets::play::particle_s2c::Particle;
 use valence_protocol::packets::play::{
-    ChunksBiomesS2c, DisconnectS2c, EntityEventS2c, GameEventS2c, ParticleS2c, PlaySoundS2c,
+    ChunksBiomesS2c, DisconnectS2c, EntityEventS2c, GameEventS2c, LevelParticlesS2c,
     PlayerCombatKillS2c, RemoveEntitiesS2c, SetChunkCacheCenterS2c, SetChunkCacheRadiusS2c,
-    SetEntityDataS2c, SetEntityMotionS2c, SetHealthS2c, UnloadChunkS2c, UpdateAttributesS2c,
+    SetEntityDataS2c, SetEntityMotionS2c, SetHealthS2c, SoundS2c, UnloadChunkS2c,
+    UpdateAttributesS2c,
 };
 use valence_protocol::profile::Property;
 use valence_protocol::sound::{Sound, SoundCategory, SoundId};
@@ -325,7 +326,7 @@ impl Client {
         P: Into<DVec3>,
         O: Into<Vec3>,
     {
-        self.write_packet(&ParticleS2c {
+        self.write_packet(&LevelParticlesS2c {
             particle: Cow::Borrowed(particle),
             long_distance,
             position: position.into(),
@@ -346,7 +347,7 @@ impl Client {
     ) {
         let position = position.into();
 
-        self.write_packet(&PlaySoundS2c {
+        self.write_packet(&SoundS2c {
             id: SoundId::Direct {
                 id: sound.to_ident().into(),
                 range: None,

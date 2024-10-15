@@ -60,7 +60,7 @@ pub use global_pos::GlobalPos;
 pub use hand::Hand;
 pub use ident::ident;
 pub use item::{ItemKind, ItemStack};
-pub use packets::play::particle_s2c::Particle;
+pub use packets::play::level_particles_s2c::Particle;
 pub use raw::RawBytes;
 use serde::{Deserialize, Serialize};
 pub use sound::Sound;

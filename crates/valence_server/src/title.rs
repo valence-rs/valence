@@ -1,6 +1,6 @@
 use valence_protocol::encode::WritePacket;
 use valence_protocol::packets::play::{
-    ClearTitlesS2c, OverlayMessageS2c, SubtitleS2c, TitleFadeS2c, TitleS2c,
+    ClearTitlesS2c, SetActionBarTextS2c, SubtitleS2c, TitleFadeS2c, TitleS2c,
 };
 use valence_protocol::text::IntoText;
 
@@ -41,7 +41,7 @@ impl<T: WritePacket> SetTitle for T {
     }
 
     fn set_action_bar<'a>(&mut self, text: impl IntoText<'a>) {
-        self.write_packet(&OverlayMessageS2c {
+        self.write_packet(&SetActionBarTextS2c {
             action_bar_text: text.into_cow_text(),
         });
     }

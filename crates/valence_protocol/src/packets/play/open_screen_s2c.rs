@@ -20,6 +20,7 @@ pub enum WindowType {
     Generic9x5,
     Generic9x6,
     Generic3x3,
+    Crafter3x3,
     Anvil,
     Beacon,
     BlastFurnace,

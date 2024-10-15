@@ -8,8 +8,8 @@ use crate::entity::{EntityLayerId, Position};
 use crate::layer::chunk::UnloadedChunk;
 use crate::layer::{ChunkLayer, EntityLayer};
 use crate::protocol::packets::play::{
-    AddEntityS2c, BlockEntityUpdateS2c, LevelChunkWithLightS2c, MoveRelativeS2c, RemoveEntitiesS2c,
-    SectionBlocksUpdateS2c, UnloadChunkS2c,
+    AddEntityS2c, BlockEntityUpdateS2c, LevelChunkWithLightS2c, MoveEntityPosS2c,
+    RemoveEntitiesS2c, SectionBlocksUpdateS2c, UnloadChunkS2c,
 };
 use crate::protocol::Packet;
 use crate::testing::ScenarioSingleClient;
@@ -371,7 +371,9 @@ fn chunk_entity_spawn_despawn() {
 
     app.update();
 
-    helper.collect_received().assert_count::<MoveRelativeS2c>(1);
+    helper
+        .collect_received()
+        .assert_count::<MoveEntityPosS2c>(1);
 
     // Despawning the chunk should delete the chunk and not the entity contained
     // within.

@@ -1,6 +1,6 @@
 use crate::{Decode, Encode, Packet};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-pub struct PlayPingS2c {
-    pub id: i32,
+pub struct MovePlayerStatusOnlyC2s {
+    pub on_ground: bool,
 }
