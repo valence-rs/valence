@@ -229,21 +229,11 @@ fn test_ensure_living_entities_only() {
         ..Default::default()
     };
 
-    let zombie = app
-        .world_mut()
-        .spawn(zombie_bundle)
-        .insert(Equipment::default())
-        .id();
-    let armor_stand = app
-        .world_mut()
-        .spawn(armor_stand_bundle)
-        .insert(Equipment::default())
-        .id();
-    let item = app
-        .world_mut()
-        .spawn(item_bundle)
-        .insert(Equipment::default())
-        .id();
+    let zombie = app.world_mut().spawn(zombie_bundle).id();
+
+    let armor_stand = app.world_mut().spawn(armor_stand_bundle).id();
+
+    let item = app.world_mut().spawn(item_bundle).id();
 
     app.update();
 

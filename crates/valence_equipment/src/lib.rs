@@ -1,6 +1,6 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use valence_server::client::{Client, FlushPacketsSet, LoadEntityForClientEvent, SpawnClientsSet};
+use valence_server::client::{Client, FlushPacketsSet, LoadEntityForClientEvent};
 use valence_server::entity::living::LivingEntity;
 use valence_server::entity::{EntityId, EntityLayerId, Position};
 use valence_server::protocol::packets::play::entity_equipment_update_s2c::EquipmentEntry;
@@ -12,22 +12,15 @@ pub struct EquipmentPlugin;
 
 impl Plugin for EquipmentPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            PreUpdate,
-            (
-                init_new_client_equipment.after(SpawnClientsSet),
-                on_entity_init,
-            ),
-        )
-        .add_systems(
-            Update,
-            (
-                update_equipment.before(FlushPacketsSet),
-                emit_equipment_change_event,
-                on_entity_load.before(FlushPacketsSet),
-            ),
-        )
-        .add_event::<EquipmentChangeEvent>();
+        app.add_systems(PreUpdate, (on_entity_init,))
+            .add_systems(
+                Update,
+                (
+                    update_equipment.before(FlushPacketsSet),
+                    on_entity_load.before(FlushPacketsSet),
+                ),
+            )
+            .add_event::<EquipmentChangeEvent>();
     }
 }
 
@@ -49,10 +42,17 @@ impl Equipment {
     pub const CHESTPLATE_IDX: u8 = 4;
     pub const HELMET_IDX: u8 = 5;
 
-    pub fn new(equipment: [ItemStack; Self::SLOT_COUNT]) -> Self {
+    pub fn new(
+        main_hand: ItemStack,
+        off_hand: ItemStack,
+        boots: ItemStack,
+        leggings: ItemStack,
+        chestplate: ItemStack,
+        helmet: ItemStack,
+    ) -> Self {
         Self {
-            equipment,
-            changed: u8::MAX,
+            equipment: [main_hand, off_hand, boots, leggings, chestplate, helmet],
+            changed: 0,
         }
     }
 
@@ -130,12 +130,6 @@ impl Equipment {
     }
 }
 
-fn init_new_client_equipment(clients: Query<Entity, Added<Client>>, mut commands: Commands) {
-    for entity in &clients {
-        commands.entity(entity).insert(Equipment::default());
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct EquipmentSlotChange {
     idx: u8,
@@ -148,11 +142,19 @@ pub struct EquipmentChangeEvent {
     pub changed: Vec<EquipmentSlotChange>,
 }
 
-fn emit_equipment_change_event(
-    mut clients: Query<(Entity, &mut Equipment), Changed<Equipment>>,
+fn update_equipment(
+    mut clients: Query<
+        (Entity, &EntityId, &EntityLayerId, &Position, &mut Equipment),
+        Changed<Equipment>,
+    >,
     mut event_writer: EventWriter<EquipmentChangeEvent>,
+    mut entity_layer: Query<&mut EntityLayer>,
 ) {
-    for (entity, mut equipment) in &mut clients {
+    for (entity, entity_id, entity_layer_id, position, mut equipment) in &mut clients {
+        let Ok(mut entity_layer) = entity_layer.get_mut(entity_layer_id.0) else {
+            continue;
+        };
+
         if equipment.changed != 0 {
             let mut slots_changed: Vec<EquipmentSlotChange> =
                 Vec::with_capacity(Equipment::SLOT_COUNT);
@@ -166,54 +168,25 @@ fn emit_equipment_change_event(
                 }
             }
 
+            entity_layer
+                .view_except_writer(position.0, entity)
+                .write_packet(&EntityEquipmentUpdateS2c {
+                    entity_id: entity_id.get().into(),
+                    equipment: slots_changed
+                        .iter()
+                        .map(|change| EquipmentEntry {
+                            slot: change.idx as i8,
+                            item: change.stack.clone(),
+                        })
+                        .collect(),
+                });
+
             event_writer.send(EquipmentChangeEvent {
                 client: entity,
                 changed: slots_changed,
             });
 
             equipment.changed = 0;
-        }
-    }
-}
-
-fn update_equipment(
-    mut clients: Query<(&EntityId, &EntityLayerId, &Position)>,
-    mut entity_layer_query: Query<&mut EntityLayer>,
-    mut events: EventReader<EquipmentChangeEvent>,
-) {
-    for event in events.read() {
-        let Ok((entity_id, entity_layer_id, position)) = clients.get(event.client) else {
-            continue;
-        };
-
-        let Ok(mut entity_layer) = entity_layer_query.get_mut(entity_layer_id.0) else {
-            continue;
-        };
-
-        // The entity ID of the entity that changed equipment.
-        let entity_id_changed_equipment = entity_id.get();
-        let entity_pos_changed_equipment = *position;
-
-        let mut entries: Vec<EquipmentEntry> = Vec::with_capacity(event.changed.len());
-        for change in &event.changed {
-            entries.push(EquipmentEntry {
-                slot: change.idx as i8,
-                item: change.stack.clone(),
-            });
-        }
-
-        for (entity_id, _, _) in &mut clients {
-            // Dont send the packet to the entity that changed equipment.
-            if entity_id.get() == entity_id_changed_equipment {
-                continue;
-            }
-
-            entity_layer
-                .view_writer(entity_pos_changed_equipment.0)
-                .write_packet(&EntityEquipmentUpdateS2c {
-                    entity_id: entity_id_changed_equipment.into(),
-                    equipment: entries.clone(),
-                })
         }
     }
 }
