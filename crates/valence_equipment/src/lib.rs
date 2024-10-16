@@ -294,7 +294,7 @@ mod inventory_sync {
                 if equipment.changed & (1 << equipment_slot) != 0 {
                     let item = equipment.slot(equipment_slot).clone();
                     inventory.set_slot(inventory_slot, item);
-                } else if inventory.is_changed() {
+                } else if inventory.changed & (1 << inventory_slot) != 0 {
                     let item = inventory.slot(inventory_slot).clone();
                     equipment.set_slot(equipment_slot, item);
                 }
