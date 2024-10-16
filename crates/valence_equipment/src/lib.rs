@@ -1,5 +1,7 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+#[cfg(feature = "inventory")]
+pub use inventory_sync::EquipmentInventorySync;
 use valence_server::client::{Client, FlushPacketsSet, LoadEntityForClientEvent};
 use valence_server::entity::living::LivingEntity;
 use valence_server::entity::{EntityId, EntityLayerId, Position};
@@ -12,15 +14,24 @@ pub struct EquipmentPlugin;
 
 impl Plugin for EquipmentPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PreUpdate, (on_entity_init,))
-            .add_systems(
-                Update,
-                (
-                    update_equipment.before(FlushPacketsSet),
-                    on_entity_load.before(FlushPacketsSet),
-                ),
-            )
-            .add_event::<EquipmentChangeEvent>();
+        app.add_systems(
+            PreUpdate,
+            (
+                on_entity_init,
+                #[cfg(feature = "inventory")]
+                inventory_sync::on_attach_inventory_sync,
+            ),
+        )
+        .add_systems(
+            Update,
+            (
+                update_equipment.before(FlushPacketsSet),
+                on_entity_load.before(FlushPacketsSet),
+                #[cfg(feature = "inventory")]
+                inventory_sync::equipment_inventory_sync,
+            ),
+        )
+        .add_event::<EquipmentChangeEvent>();
     }
 }
 
@@ -37,10 +48,10 @@ impl Equipment {
 
     pub const MAIN_HAND_IDX: u8 = 0;
     pub const OFF_HAND_IDX: u8 = 1;
-    pub const BOOTS_IDX: u8 = 2;
-    pub const LEGGINGS_IDX: u8 = 3;
-    pub const CHESTPLATE_IDX: u8 = 4;
-    pub const HELMET_IDX: u8 = 5;
+    pub const FEET_IDX: u8 = 2;
+    pub const LEGS_IDX: u8 = 3;
+    pub const CHEST_IDX: u8 = 4;
+    pub const HEAD_IDX: u8 = 5;
 
     pub fn new(
         main_hand: ItemStack,
@@ -79,20 +90,20 @@ impl Equipment {
         self.slot(Self::OFF_HAND_IDX)
     }
 
-    pub fn boots(&self) -> &ItemStack {
-        self.slot(Self::BOOTS_IDX)
+    pub fn feet(&self) -> &ItemStack {
+        self.slot(Self::FEET_IDX)
     }
 
-    pub fn leggings(&self) -> &ItemStack {
-        self.slot(Self::LEGGINGS_IDX)
+    pub fn legs(&self) -> &ItemStack {
+        self.slot(Self::LEGS_IDX)
     }
 
-    pub fn chestplate(&self) -> &ItemStack {
-        self.slot(Self::CHESTPLATE_IDX)
+    pub fn chest(&self) -> &ItemStack {
+        self.slot(Self::CHEST_IDX)
     }
 
-    pub fn helmet(&self) -> &ItemStack {
-        self.slot(Self::HELMET_IDX)
+    pub fn head(&self) -> &ItemStack {
+        self.slot(Self::HEAD_IDX)
     }
 
     pub fn set_main_hand(&mut self, item: ItemStack) {
@@ -103,20 +114,20 @@ impl Equipment {
         self.set_slot(Self::OFF_HAND_IDX, item);
     }
 
-    pub fn set_boots(&mut self, item: ItemStack) {
-        self.set_slot(Self::BOOTS_IDX, item);
+    pub fn set_feet(&mut self, item: ItemStack) {
+        self.set_slot(Self::FEET_IDX, item);
     }
 
-    pub fn set_leggings(&mut self, item: ItemStack) {
-        self.set_slot(Self::LEGGINGS_IDX, item);
+    pub fn set_legs(&mut self, item: ItemStack) {
+        self.set_slot(Self::LEGS_IDX, item);
     }
 
-    pub fn set_chestplate(&mut self, item: ItemStack) {
-        self.set_slot(Self::CHESTPLATE_IDX, item);
+    pub fn set_chest(&mut self, item: ItemStack) {
+        self.set_slot(Self::CHEST_IDX, item);
     }
 
     pub fn set_helmet(&mut self, item: ItemStack) {
-        self.set_slot(Self::HELMET_IDX, item);
+        self.set_slot(Self::HEAD_IDX, item);
     }
 
     pub fn clear(&mut self) {
@@ -234,5 +245,73 @@ fn on_entity_init(
 ) {
     for entity in &mut entities {
         commands.entity(entity).insert(Equipment::default());
+    }
+}
+
+#[cfg(feature = "inventory")]
+mod inventory_sync {
+    use valence_inventory::player_inventory::PlayerInventory;
+    use valence_inventory::{HeldItem, Inventory};
+    use valence_server::entity::player::PlayerEntity;
+
+    use super::*;
+    #[derive(Debug, Default, Clone, Component)]
+    pub struct EquipmentInventorySync;
+
+    /// Syncs the player [`Equipment`] with the [`Inventory`].
+    /// If a change in the player's inventory and in the equipment occurs in the
+    /// same tick, the equipment change has priority.
+    pub(crate) fn equipment_inventory_sync(
+        mut clients: Query<
+            (&mut Equipment, &mut Inventory, &mut HeldItem),
+            (
+                Or<(Changed<Equipment>, Changed<Inventory>, Changed<HeldItem>)>,
+                With<EquipmentInventorySync>,
+                With<PlayerEntity>,
+            ),
+        >,
+    ) {
+        for (mut equipment, mut inventory, held_item) in &mut clients {
+            // Equipment change has priority over held item changes
+            if equipment.changed & (1 << Equipment::MAIN_HAND_IDX) != 0 {
+                let item = equipment.main_hand().clone();
+                inventory.set_slot(held_item.slot(), item);
+            } else if held_item.is_changed() {
+                let item = inventory.slot(held_item.slot()).clone();
+                equipment.set_main_hand(item);
+            }
+
+            let slots = [
+                (Equipment::OFF_HAND_IDX, PlayerInventory::SLOT_OFFHAND),
+                (Equipment::HEAD_IDX, PlayerInventory::SLOT_HEAD),
+                (Equipment::CHEST_IDX, PlayerInventory::SLOT_CHEST),
+                (Equipment::LEGS_IDX, PlayerInventory::SLOT_LEGS),
+                (Equipment::FEET_IDX, PlayerInventory::SLOT_FEET),
+            ];
+
+            for (equipment_slot, inventory_slot) in slots {
+                // Equipment has priority over inventory changes
+                if equipment.changed & (1 << equipment_slot) != 0 {
+                    let item = equipment.slot(equipment_slot).clone();
+                    inventory.set_slot(inventory_slot, item);
+                } else if inventory.is_changed() {
+                    let item = inventory.slot(inventory_slot).clone();
+                    equipment.set_slot(equipment_slot, item);
+                }
+            }
+        }
+    }
+
+    pub(crate) fn on_attach_inventory_sync(
+        entities: Query<Option<&PlayerEntity>, (Added<EquipmentInventorySync>, With<Inventory>)>,
+    ) {
+        for entity in &entities {
+            if entity.is_none() {
+                tracing::warn!(
+                    "EquipmentInventorySync attached to non-player entity, this will have no \
+                     effect"
+                );
+            }
+        }
     }
 }

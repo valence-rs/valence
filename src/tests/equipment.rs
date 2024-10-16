@@ -1,4 +1,6 @@
-use valence_equipment::Equipment;
+use valence_equipment::{Equipment, EquipmentInventorySync};
+use valence_inventory::player_inventory::PlayerInventory;
+use valence_inventory::Inventory;
 use valence_server::entity::armor_stand::ArmorStandEntityBundle;
 use valence_server::entity::item::ItemEntityBundle;
 use valence_server::entity::zombie::ZombieEntityBundle;
@@ -27,7 +29,7 @@ fn test_only_send_update_to_other_players() {
         .get_mut::<Equipment>(client)
         .expect("could not get player equipment");
 
-    player_equipment.set_chestplate(ItemStack::new(ItemKind::DiamondChestplate, 1, None));
+    player_equipment.set_chest(ItemStack::new(ItemKind::DiamondChestplate, 1, None));
 
     app.update();
 
@@ -65,7 +67,7 @@ fn test_multiple_entities() {
         .get_mut::<Equipment>(zombie)
         .expect("could not get entity equipment");
 
-    equipment.set_chestplate(ItemStack::new(ItemKind::DiamondChestplate, 1, None));
+    equipment.set_chest(ItemStack::new(ItemKind::DiamondChestplate, 1, None));
     equipment.set_helmet(ItemStack::new(ItemKind::DiamondHelmet, 1, None));
 
     app.update();
@@ -82,7 +84,7 @@ fn test_multiple_entities() {
         .expect("could not get entity equipment");
 
     // Set the zombie's equipment to the same items
-    equipment.set_chestplate(ItemStack::new(ItemKind::DiamondChestplate, 1, None));
+    equipment.set_chest(ItemStack::new(ItemKind::DiamondChestplate, 1, None));
     equipment.set_helmet(ItemStack::new(ItemKind::DiamondHelmet, 1, None));
 
     app.update();
@@ -124,7 +126,7 @@ fn test_update_on_load_entity() {
         .get_mut::<Equipment>(zombie)
         .expect("could not get entity equipment");
 
-    equipment.set_chestplate(ItemStack::new(ItemKind::DiamondChestplate, 1, None));
+    equipment.set_chest(ItemStack::new(ItemKind::DiamondChestplate, 1, None));
     equipment.set_helmet(ItemStack::new(ItemKind::DiamondHelmet, 1, None));
 
     app.update();
@@ -175,7 +177,6 @@ fn test_skip_update_for_empty_equipment() {
         .spawn(zombie_bundle)
         .insert(Equipment::default());
 
-    app.update();
     app.update();
 
     // Make assertions
@@ -245,4 +246,162 @@ fn test_ensure_living_entities_only() {
 
     let item_equipment = app.world_mut().get_mut::<Equipment>(item);
     assert!(item_equipment.is_none());
+}
+
+#[test]
+fn test_inventory_sync_from_equipment() {
+    let ScenarioSingleClient {
+        mut app,
+        client,
+        mut helper,
+        ..
+    } = ScenarioSingleClient::new();
+
+    // Process a tick to get past the "on join" logic.
+    app.update();
+    helper.clear_received();
+
+    app.world_mut()
+        .entity_mut(client)
+        .insert(EquipmentInventorySync);
+
+    let mut player_equipment = app
+        .world_mut()
+        .get_mut::<Equipment>(client)
+        .expect("could not get player equipment");
+
+    player_equipment.set_chest(ItemStack::new(ItemKind::DiamondChestplate, 1, None));
+
+    app.update();
+
+    let player_inventory = app
+        .world()
+        .get::<Inventory>(client)
+        .expect("could not get player equipment");
+
+    let player_equipment = app
+        .world()
+        .get::<Equipment>(client)
+        .expect("could not get player equipment");
+
+    // The inventory should have been updated
+    // after the equipment change
+    assert_eq!(
+        *player_inventory.slot(PlayerInventory::SLOT_CHEST),
+        ItemStack::new(ItemKind::DiamondChestplate, 1, None)
+    );
+
+    assert_eq!(
+        *player_equipment.chest(),
+        ItemStack::new(ItemKind::DiamondChestplate, 1, None)
+    );
+}
+
+#[test]
+fn test_inventory_sync_from_inventory() {
+    let ScenarioSingleClient {
+        mut app,
+        client,
+        mut helper,
+        ..
+    } = ScenarioSingleClient::new();
+
+    // Process a tick to get past the "on join" logic.
+    app.update();
+    helper.clear_received();
+
+    app.world_mut()
+        .entity_mut(client)
+        .insert(EquipmentInventorySync);
+
+    let mut player_inventory = app
+        .world_mut()
+        .get_mut::<Inventory>(client)
+        .expect("could not get player equipment");
+
+    player_inventory.set_slot(
+        PlayerInventory::SLOT_CHEST,
+        ItemStack::new(ItemKind::DiamondChestplate, 1, None),
+    );
+
+    app.update();
+
+    let player_inventory = app
+        .world()
+        .get::<Inventory>(client)
+        .expect("could not get player equipment");
+
+    let player_equipment = app
+        .world()
+        .get::<Equipment>(client)
+        .expect("could not get player equipment");
+
+    // The equipment should have been updated
+    // after the inventory change
+    assert_eq!(
+        *player_inventory.slot(PlayerInventory::SLOT_CHEST),
+        ItemStack::new(ItemKind::DiamondChestplate, 1, None)
+    );
+
+    assert_eq!(
+        *player_equipment.chest(),
+        ItemStack::new(ItemKind::DiamondChestplate, 1, None)
+    );
+}
+
+#[test]
+fn test_equipment_priority_over_inventory() {
+    let ScenarioSingleClient {
+        mut app, client, ..
+    } = ScenarioSingleClient::new();
+
+    // Process a tick to get past the "on join" logic.
+    app.update();
+
+    app.world_mut()
+        .entity_mut(client)
+        .insert(EquipmentInventorySync);
+
+    let mut player_inventory = app
+        .world_mut()
+        .get_mut::<Inventory>(client)
+        .expect("could not get player equipment");
+
+    // Set the slot in the inventory as well as in the equipment in the same tick
+
+    player_inventory.set_slot(
+        PlayerInventory::SLOT_CHEST,
+        ItemStack::new(ItemKind::DiamondChestplate, 1, None),
+    );
+
+    let mut player_equipment = app
+        .world_mut()
+        .get_mut::<Equipment>(client)
+        .expect("could not get player equipment");
+
+    player_equipment.set_chest(ItemStack::new(ItemKind::GoldenChestplate, 1, None));
+
+    app.update();
+
+    // The equipment change should have priority, the inventory change is ignored
+
+    let player_inventory = app
+        .world()
+        .get::<Inventory>(client)
+        .expect("could not get player equipment");
+
+    let player_equipment = app
+        .world()
+        .get::<Equipment>(client)
+        .expect("could not get player equipment");
+
+    assert_eq!(
+        *player_inventory.slot(PlayerInventory::SLOT_CHEST),
+        ItemStack::new(ItemKind::GoldenChestplate, 1, None)
+    );
+
+    assert_eq!(
+        *player_equipment.chest(),
+        ItemStack::new(ItemKind::GoldenChestplate, 1, None)
+    );
 }

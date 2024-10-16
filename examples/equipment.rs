@@ -6,8 +6,7 @@ use rand::Rng;
 use valence::entity::armor_stand::ArmorStandEntityBundle;
 use valence::entity::zombie::ZombieEntityBundle;
 use valence::prelude::*;
-use valence_inventory::player_inventory::PlayerInventory;
-use valence_inventory::HeldItem;
+use valence_equipment::EquipmentInventorySync;
 
 pub fn main() {
     App::new()
@@ -20,7 +19,6 @@ pub fn main() {
                 init_clients,
                 despawn_disconnected_clients,
                 randomize_equipment,
-                update_player_inventory,
             ),
         )
         .run();
@@ -64,8 +62,10 @@ fn setup(
 }
 
 fn init_clients(
+    mut commands: Commands,
     mut clients: Query<
         (
+            Entity,
             &mut Position,
             &mut EntityLayerId,
             &mut VisibleChunkLayer,
@@ -77,6 +77,7 @@ fn init_clients(
     layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
 ) {
     for (
+        player,
         mut pos,
         mut layer_id,
         mut visible_chunk_layer,
@@ -91,6 +92,8 @@ fn init_clients(
         visible_chunk_layer.0 = layer;
         visible_entity_layers.0.insert(layer);
         *game_mode = GameMode::Survival;
+
+        commands.entity(player).insert(EquipmentInventorySync);
     }
 }
 
@@ -114,39 +117,24 @@ fn randomize_equipment(mut query: Query<&mut Equipment>, server: Res<Server>) {
                 ItemStack::new(ItemKind::Shield, 1, None),
             ),
             2 => (
-                Equipment::BOOTS_IDX,
+                Equipment::FEET_IDX,
                 ItemStack::new(ItemKind::DiamondBoots, 1, None),
             ),
             3 => (
-                Equipment::LEGGINGS_IDX,
+                Equipment::LEGS_IDX,
                 ItemStack::new(ItemKind::DiamondLeggings, 1, None),
             ),
             4 => (
-                Equipment::CHESTPLATE_IDX,
+                Equipment::CHEST_IDX,
                 ItemStack::new(ItemKind::DiamondChestplate, 1, None),
             ),
             5 => (
-                Equipment::HELMET_IDX,
+                Equipment::HEAD_IDX,
                 ItemStack::new(ItemKind::DiamondHelmet, 1, None),
             ),
             _ => unreachable!(),
         };
 
         equipment.set_slot(slot, item_stack);
-    }
-}
-
-/// Updating the Equipment will only be visible for other players,
-/// so we need to update the player's inventory as well.
-fn update_player_inventory(
-    mut clients: Query<(&mut Inventory, &Equipment, &HeldItem), Changed<Equipment>>,
-) {
-    for (mut inv, equipment, held_item) in &mut clients {
-        inv.set_slot(PlayerInventory::SLOT_HEAD, equipment.helmet().clone());
-        inv.set_slot(PlayerInventory::SLOT_CHEST, equipment.chestplate().clone());
-        inv.set_slot(PlayerInventory::SLOT_LEGS, equipment.leggings().clone());
-        inv.set_slot(PlayerInventory::SLOT_FEET, equipment.boots().clone());
-        inv.set_slot(PlayerInventory::SLOT_OFFHAND, equipment.off_hand().clone());
-        inv.set_slot(held_item.slot(), equipment.main_hand().clone());
     }
 }
