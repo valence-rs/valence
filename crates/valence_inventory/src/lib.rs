@@ -727,11 +727,12 @@ fn update_open_inventories(
                 // Send the changed slots.
 
                 // The slots that were NOT changed by this client, and they need to be sent.
-                let changed_filtered = (inventory.changed & !open_inventory.client_changed) as u128;
+                let changed_filtered =
+                    u128::from(inventory.changed & !open_inventory.client_changed);
 
                 // The slots changed in the player inventory (e.g by calling
                 // `inventory.set_slot` while the player is viewing the inventory).
-                let mut player_inventory_changed = player_inventory.changed as u128;
+                let mut player_inventory_changed = u128::from(player_inventory.changed);
 
                 // Ignore the armor and crafting grid slots because they are not part of
                 // the open inventory.
