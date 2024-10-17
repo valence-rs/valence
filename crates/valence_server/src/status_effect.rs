@@ -6,7 +6,7 @@ use valence_entity::active_status_effects::{ActiveStatusEffect, ActiveStatusEffe
 use valence_entity::entity::Flags;
 use valence_entity::living::{PotionSwirlsAmbient, PotionSwirlsColor};
 use valence_protocol::packets::play::{
-    entity_status_effect_s2c, RemoveEntityStatusEffectS2c, UpdateMobEffectS2c,
+    entity_status_effect_s2c, RemoveMobEffectS2c, UpdateMobEffectS2c,
 };
 use valence_protocol::status_effects::StatusEffect;
 use valence_protocol::{VarInt, WritePacket};
@@ -127,7 +127,7 @@ fn update_status_effect(query: &mut StatusEffectQueryItem, status_effect: Status
         if let Some(updated_effect) = current_effect {
             client.write_packet(&create_packet(updated_effect));
         } else {
-            client.write_packet(&RemoveEntityStatusEffectS2c {
+            client.write_packet(&RemoveMobEffectS2c {
                 entity_id: VarInt(0),
                 effect_id: VarInt(i32::from(status_effect.to_raw())),
             });

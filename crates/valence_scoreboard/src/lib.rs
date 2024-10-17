@@ -16,7 +16,7 @@ use valence_server::protocol::packets::play::scoreboard_objective_update_s2c::{
 };
 use valence_server::protocol::packets::play::scoreboard_player_update_s2c::ScoreboardPlayerUpdateAction;
 use valence_server::protocol::packets::play::{
-    ScoreboardDisplayS2c, ScoreboardObjectiveUpdateS2c, ScoreboardPlayerUpdateS2c,
+    SetDisplayObjectiveS2c, SetObjectiveS2c, SetScoreS2c,
 };
 use valence_server::protocol::{VarInt, WritePacket};
 use valence_server::text::IntoText;
@@ -91,7 +91,7 @@ fn create_or_update_objectives(
             continue;
         };
 
-        layer.write_packet(&ScoreboardObjectiveUpdateS2c {
+        layer.write_packet(&SetObjectiveS2c {
             objective_name: &objective.0,
             mode,
         });
@@ -107,7 +107,7 @@ fn display_objectives(
     mut layers: Query<&mut EntityLayer>,
 ) {
     for (objective, position, entity_layer) in objectives.iter() {
-        let packet = ScoreboardDisplayS2c {
+        let packet = SetDisplayObjectiveS2c {
             score_name: &objective.0,
             position: *position,
         };
@@ -139,7 +139,7 @@ fn remove_despawned_objectives(
             continue;
         };
 
-        layer.write_packet(&ScoreboardObjectiveUpdateS2c {
+        layer.write_packet(&SetObjectiveS2c {
             objective_name: &objective.0,
             mode: ObjectiveMode::Remove,
         });
@@ -175,7 +175,7 @@ fn handle_new_clients(
             if !removed_layers.contains(&layer.0) {
                 continue;
             }
-            client.write_packet(&ScoreboardObjectiveUpdateS2c {
+            client.write_packet(&SetObjectiveS2c {
                 objective_name: &objective.0,
                 mode: ObjectiveMode::Remove,
             });
@@ -202,20 +202,20 @@ fn handle_new_clients(
                 continue;
             }
 
-            client.write_packet(&ScoreboardObjectiveUpdateS2c {
+            client.write_packet(&SetObjectiveS2c {
                 objective_name: &objective.0,
                 mode: ObjectiveMode::Create {
                     objective_display_name: (&display.0).into_cow_text(),
                     render_type: *render_type,
                 },
             });
-            client.write_packet(&ScoreboardDisplayS2c {
+            client.write_packet(&SetDisplayObjectiveS2c {
                 score_name: &objective.0,
                 position: *position,
             });
 
             for (key, score) in &scores.0 {
-                let packet = ScoreboardPlayerUpdateS2c {
+                let packet = SetScoreS2c {
                     entity_name: key,
                     action: ScoreboardPlayerUpdateAction::Update {
                         objective_name: &objective.0,
@@ -261,7 +261,7 @@ fn update_scores(
                 },
             };
 
-            let packet = ScoreboardPlayerUpdateS2c {
+            let packet = SetScoreS2c {
                 entity_name: changed_key,
                 action,
             };

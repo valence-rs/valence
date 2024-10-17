@@ -6,8 +6,8 @@ use crate::inventory::{
     HeldItem, Inventory, InventoryKind, OpenInventory, SlotChange,
 };
 use crate::protocol::packets::play::{
-    ContainerClickC2s, ContainerCloseS2c, ContainerSetContentS2c, OpenScreenS2c,
-    ScreenHandlerSlotUpdateS2c, SetCreativeModeSlotC2s, UpdateSelectedSlotC2s,
+    ContainerClickC2s, ContainerCloseS2c, ContainerSetContentS2c, ContainerSetSlotS2c,
+    OpenScreenS2c, SetCreativeModeSlotC2s, UpdateSelectedSlotC2s,
 };
 use crate::protocol::VarInt;
 use crate::testing::ScenarioSingleClient;
@@ -173,7 +173,7 @@ fn test_should_modify_player_inventory_click_slot() {
     // server should not send any packets to the client because the client
     // already knows about the change.
     sent_packets.assert_count::<ContainerSetContentS2c>(0);
-    sent_packets.assert_count::<ScreenHandlerSlotUpdateS2c>(0);
+    sent_packets.assert_count::<ContainerSetSlotS2c>(0);
 
     let inventory = app
         .world_mut()
@@ -224,7 +224,7 @@ fn test_should_modify_player_inventory_server_side() {
     let sent_packets = helper.collect_received();
     // because the inventory was modified server side, the client needs to be
     // updated with the change.
-    sent_packets.assert_count::<ScreenHandlerSlotUpdateS2c>(1);
+    sent_packets.assert_count::<ContainerSetSlotS2c>(1);
 }
 
 #[test]
@@ -316,7 +316,7 @@ fn test_should_modify_open_inventory_click_slot() {
     // server should not send any packets to the client because the client
     // already knows about the change.
     sent_packets.assert_count::<ContainerSetContentS2c>(0);
-    sent_packets.assert_count::<ScreenHandlerSlotUpdateS2c>(0);
+    sent_packets.assert_count::<ContainerSetSlotS2c>(0);
 
     let inventory = app
         .world_mut()
@@ -383,7 +383,7 @@ fn test_prevent_modify_open_inventory_click_slot_readonly_inventory() {
     // because the inventory is readonly, we need to resync the client's inventory.
     // 2 resync packets are sent, see above.
     sent_packets.assert_count::<ContainerSetContentS2c>(2);
-    sent_packets.assert_count::<ScreenHandlerSlotUpdateS2c>(0);
+    sent_packets.assert_count::<ContainerSetSlotS2c>(0);
 
     // Make assertions
     let inventory = app
@@ -432,7 +432,7 @@ fn test_should_modify_open_inventory_server_side() {
 
     // because the inventory was modified server side, the client needs to be
     // updated with the change.
-    sent_packets.assert_count::<ScreenHandlerSlotUpdateS2c>(1);
+    sent_packets.assert_count::<ContainerSetSlotS2c>(1);
 
     let inventory = app
         .world_mut()
@@ -1036,7 +1036,7 @@ fn should_send_cursor_item_change_when_modified_on_the_server() {
 
     let sent_packets = helper.collect_received();
 
-    sent_packets.assert_count::<ScreenHandlerSlotUpdateS2c>(1);
+    sent_packets.assert_count::<ContainerSetSlotS2c>(1);
 }
 
 mod dropping_items {
@@ -1101,7 +1101,7 @@ mod dropping_items {
 
         let sent_packets = helper.collect_received();
 
-        sent_packets.assert_count::<ScreenHandlerSlotUpdateS2c>(0);
+        sent_packets.assert_count::<ContainerSetSlotS2c>(0);
     }
 
     #[test]
@@ -1158,7 +1158,7 @@ mod dropping_items {
         let sent_packets = helper.collect_received();
 
         // we do need to update the player inventory so we dont desync
-        sent_packets.assert_count::<ScreenHandlerSlotUpdateS2c>(1);
+        sent_packets.assert_count::<ContainerSetSlotS2c>(1);
     }
 
     #[test]

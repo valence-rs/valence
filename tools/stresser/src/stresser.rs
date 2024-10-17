@@ -7,11 +7,9 @@ use tokio::net::TcpStream;
 use uuid::Uuid;
 use valence_protocol::packets::handshaking::intention_c2s::HandshakeNextState;
 use valence_protocol::packets::handshaking::HandshakeC2s;
-use valence_protocol::packets::login::{
-    LoginCompressionS2c, HelloC2s, HelloS2c, SuccessS2c,
-};
+use valence_protocol::packets::login::{HelloC2s, HelloS2c, LoginCompressionS2c, SuccessS2c};
 use valence_protocol::packets::play::{
-    KeepAliveC2s, KeepAliveS2c, PlayerPositionLookS2c, PositionAndOnGroundC2s, TeleportConfirmC2s,
+    KeepAliveC2s, KeepAliveS2c, MovePlayerPosC2s, PlayerPositionS2c, TeleportConfirmC2s,
 };
 use valence_protocol::var_int::VarInt;
 use valence_protocol::{
@@ -116,15 +114,15 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
                     conn.write_all(&enc.take()).await?;
                 }
 
-                PlayerPositionLookS2c::ID => {
-                    let packet: PlayerPositionLookS2c = frame.decode()?;
+                PlayerPositionS2c::ID => {
+                    let packet: PlayerPositionS2c = frame.decode()?;
                     enc.clear();
 
                     enc.append_packet(&TeleportConfirmC2s {
                         teleport_id: packet.teleport_id,
                     })?;
 
-                    enc.append_packet(&PositionAndOnGroundC2s {
+                    enc.append_packet(&MovePlayerPosC2s {
                         position: packet.position,
                         on_ground: true,
                     })?;

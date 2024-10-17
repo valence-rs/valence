@@ -16,9 +16,9 @@ pub use valence_server::protocol::packets::play::click_slot_c2s::{ClickMode, Slo
 use valence_server::protocol::packets::play::open_screen_s2c::WindowType;
 pub use valence_server::protocol::packets::play::player_action_c2s::PlayerAction;
 use valence_server::protocol::packets::play::{
-    ContainerClickC2s, ContainerCloseC2s, ContainerCloseS2c, ContainerSetContentS2c, OpenScreenS2c,
-    PlayerActionC2s, ScreenHandlerSlotUpdateS2c, SetCreativeModeSlotC2s, UpdateSelectedSlotC2s,
-    UpdateSelectedSlotS2c,
+    ContainerClickC2s, ContainerCloseC2s, ContainerCloseS2c, ContainerSetContentS2c,
+    ContainerSetSlotS2c, OpenScreenS2c, PlayerActionC2s, SetCreativeModeSlotC2s,
+    UpdateSelectedSlotC2s, UpdateSelectedSlotS2c,
 };
 use valence_server::protocol::{VarInt, WritePacket};
 use valence_server::text::IntoText;
@@ -643,7 +643,7 @@ fn update_player_inventories(
 
                 for (i, slot) in inventory.slots.iter().enumerate() {
                     if ((changed_filtered >> i) & 1) == 1 {
-                        client.write_packet(&ScreenHandlerSlotUpdateS2c {
+                        client.write_packet(&ContainerSetSlotS2c {
                             window_id: 0,
                             state_id: VarInt(inv_state.state_id.0),
                             slot_idx: i as i16,
@@ -732,7 +732,7 @@ fn update_open_inventories(
 
                     for (i, slot) in inventory.slots.iter().enumerate() {
                         if (changed_filtered >> i) & 1 == 1 {
-                            client.write_packet(&ScreenHandlerSlotUpdateS2c {
+                            client.write_packet(&ContainerSetSlotS2c {
                                 window_id: inv_state.window_id as i8,
                                 state_id: VarInt(inv_state.state_id.0),
                                 slot_idx: i as i16,
@@ -766,7 +766,7 @@ fn update_cursor_item(
             // Contrary to what you might think, we actually don't want to increment the
             // state ID here because the client doesn't actually acknowledge the
             // state_id change for this packet specifically. See #304.
-            client.write_packet(&ScreenHandlerSlotUpdateS2c {
+            client.write_packet(&ContainerSetSlotS2c {
                 window_id: -1,
                 state_id: VarInt(inv_state.state_id.0),
                 slot_idx: -1,
@@ -1360,7 +1360,7 @@ fn handle_creative_inventory_action(
             // creative mode. Simply marking the slot as changed is not enough. This was
             // discovered because shift-clicking the destroy item slot in creative mode does
             // not work without this hack.
-            client.write_packet(&ScreenHandlerSlotUpdateS2c {
+            client.write_packet(&ContainerSetSlotS2c {
                 window_id: 0,
                 state_id: VarInt(inv_state.state_id.0),
                 slot_idx: pkt.slot,

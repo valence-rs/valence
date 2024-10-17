@@ -16,7 +16,7 @@ use event::{handle_advancement_tab_change, AdvancementTabChangeEvent};
 use rustc_hash::FxHashMap;
 use valence_server::client::{Client, FlushPacketsSet, SpawnClientsSet};
 use valence_server::protocol::packets::play::{
-    advancement_update_s2c as packet, SelectAdvancementTabS2c,
+    advancement_update_s2c as packet, SelectAdvancementsTabS2c,
 };
 use valence_server::protocol::{
     anyhow, packet_id, Encode, Packet, PacketSide, PacketState, RawBytes, VarInt, WritePacket,
@@ -280,11 +280,11 @@ fn send_advancement_update_packet(
         match advancement_client_update.force_tab_update {
             ForceTabUpdate::None => {}
             ForceTabUpdate::First => {
-                client.write_packet(&SelectAdvancementTabS2c { identifier: None })
+                client.write_packet(&SelectAdvancementsTabS2c { identifier: None })
             }
             ForceTabUpdate::Spec(spec) => {
                 if let Ok(a_identifier) = update_single_query.advancement_id.get(spec) {
-                    client.write_packet(&SelectAdvancementTabS2c {
+                    client.write_packet(&SelectAdvancementsTabS2c {
                         identifier: Some(a_identifier.0.borrowed()),
                     });
                 }

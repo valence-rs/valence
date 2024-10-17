@@ -3,8 +3,8 @@ use bevy_ecs::prelude::*;
 use tracing::warn;
 use valence_entity::{Look, Position};
 use valence_math::DVec3;
-use valence_protocol::packets::play::player_position_look_s2c::PlayerPositionLookFlags;
-use valence_protocol::packets::play::{PlayerPositionLookS2c, TeleportConfirmC2s};
+use valence_protocol::packets::play::player_position_look_s2c::PlayerPositionFlags;
+use valence_protocol::packets::play::{PlayerPositionS2c, TeleportConfirmC2s};
 use valence_protocol::WritePacket;
 
 use crate::client::{update_view_and_layers, Client, UpdateClientsSet};
@@ -82,14 +82,14 @@ fn teleport(
             state.synced_pos = pos.0;
             state.synced_look = *look;
 
-            let flags = PlayerPositionLookFlags::new()
+            let flags = PlayerPositionFlags::new()
                 .with_x(!changed_pos)
                 .with_y(!changed_pos)
                 .with_z(!changed_pos)
                 .with_y_rot(!changed_yaw)
                 .with_x_rot(!changed_pitch);
 
-            client.write_packet(&PlayerPositionLookS2c {
+            client.write_packet(&PlayerPositionS2c {
                 position: if changed_pos { pos.0 } else { DVec3::ZERO },
                 yaw: if changed_yaw { look.yaw } else { 0.0 },
                 pitch: if changed_pitch { look.pitch } else { 0.0 },

@@ -1,7 +1,7 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use valence_math::Vec3;
-use valence_protocol::packets::play::PlayerInteractBlockC2s;
+use valence_protocol::packets::play::UseItemOnC2s;
 use valence_protocol::{BlockPos, Direction, Hand};
 
 use crate::action::ActionSequence;
@@ -39,7 +39,7 @@ fn handle_interact_block(
     mut events: EventWriter<InteractBlockEvent>,
 ) {
     for packet in packets.read() {
-        if let Some(pkt) = packet.decode::<PlayerInteractBlockC2s>() {
+        if let Some(pkt) = packet.decode::<UseItemOnC2s>() {
             if let Ok(mut action_seq) = clients.get_mut(packet.client) {
                 action_seq.update(pkt.sequence.0);
             }

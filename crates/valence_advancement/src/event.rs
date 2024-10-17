@@ -1,6 +1,6 @@
 use bevy_ecs::prelude::*;
 use valence_server::event_loop::PacketEvent;
-use valence_server::protocol::packets::play::AdvancementTabC2s;
+use valence_server::protocol::packets::play::SeenAdvancementsC2s;
 use valence_server::Ident;
 
 /// This event sends when the client changes or closes advancement's tab.
@@ -16,12 +16,12 @@ pub(crate) fn handle_advancement_tab_change(
     mut advancement_tab_change_events: EventWriter<AdvancementTabChangeEvent>,
 ) {
     for packet in packets.read() {
-        if let Some(pkt) = packet.decode::<AdvancementTabC2s>() {
+        if let Some(pkt) = packet.decode::<SeenAdvancementsC2s>() {
             advancement_tab_change_events.send(AdvancementTabChangeEvent {
                 client: packet.client,
                 opened_tab: match pkt {
-                    AdvancementTabC2s::ClosedScreen => None,
-                    AdvancementTabC2s::OpenedTab { tab_id } => Some(tab_id.into()),
+                    SeenAdvancementsC2s::ClosedScreen => None,
+                    SeenAdvancementsC2s::OpenedTab { tab_id } => Some(tab_id.into()),
                 },
             });
         }

@@ -3,9 +3,7 @@ use valence_scoreboard::*;
 use crate::client::VisibleEntityLayers;
 use crate::entity::EntityLayerId;
 use crate::layer::EntityLayer;
-use crate::protocol::packets::play::{
-    ScoreboardDisplayS2c, ScoreboardObjectiveUpdateS2c, ScoreboardPlayerUpdateS2c,
-};
+use crate::protocol::packets::play::{SetDisplayObjectiveS2c, SetObjectiveS2c, SetScoreS2c};
 use crate::testing::ScenarioSingleClient;
 use crate::text::IntoText;
 use crate::Server;
@@ -49,9 +47,9 @@ fn show_scoreboard_when_added_to_layer() {
     {
         let recvd = helper.collect_received();
 
-        recvd.assert_count::<ScoreboardObjectiveUpdateS2c>(1);
-        recvd.assert_count::<ScoreboardDisplayS2c>(1);
-        recvd.assert_order::<(ScoreboardObjectiveUpdateS2c, ScoreboardDisplayS2c)>();
+        recvd.assert_count::<SetObjectiveS2c>(1);
+        recvd.assert_count::<SetDisplayObjectiveS2c>(1);
+        recvd.assert_order::<(SetObjectiveS2c, SetDisplayObjectiveS2c)>();
     }
 }
 
@@ -90,9 +88,9 @@ fn show_scoreboard_when_client_join() {
     {
         let recvd = helper.collect_received();
 
-        recvd.assert_count::<ScoreboardObjectiveUpdateS2c>(1);
-        recvd.assert_count::<ScoreboardDisplayS2c>(1);
-        recvd.assert_order::<(ScoreboardObjectiveUpdateS2c, ScoreboardDisplayS2c)>();
+        recvd.assert_count::<SetObjectiveS2c>(1);
+        recvd.assert_count::<SetDisplayObjectiveS2c>(1);
+        recvd.assert_order::<(SetObjectiveS2c, SetDisplayObjectiveS2c)>();
     }
 }
 
@@ -140,7 +138,7 @@ fn should_update_score() {
     {
         let recvd = helper.collect_received();
 
-        recvd.assert_count::<ScoreboardPlayerUpdateS2c>(1);
+        recvd.assert_count::<SetScoreS2c>(1);
     }
 }
 
@@ -188,6 +186,6 @@ fn should_only_update_score_diff() {
     {
         let recvd = helper.collect_received();
 
-        recvd.assert_count::<ScoreboardPlayerUpdateS2c>(1);
+        recvd.assert_count::<SetScoreS2c>(1);
     }
 }

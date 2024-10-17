@@ -6,7 +6,7 @@ use valence::nbt::{compound, List};
 use valence::prelude::*;
 use valence::protocol::decode::PacketDecoder;
 use valence::protocol::encode::{PacketEncoder, PacketWriter, WritePacket};
-use valence::protocol::packets::play::{AddEntityS2c, LevelChunkWithLightS2c, PlayerListHeaderS2c};
+use valence::protocol::packets::play::{AddEntityS2c, LevelChunkWithLightS2c, TabListS2c};
 use valence::protocol::{ByteAngle, FixedArray, VarInt};
 use valence::text::IntoText;
 use valence_server::protocol::Velocity;
@@ -15,7 +15,7 @@ use valence_server::CompressionThreshold;
 pub(crate) fn setup<'a>() -> (
     PacketEncoder,
     LevelChunkWithLightS2c<'a>,
-    PlayerListHeaderS2c<'a>,
+    TabListS2c<'a>,
     AddEntityS2c,
 ) {
     let encoder = PacketEncoder::new();
@@ -38,7 +38,7 @@ pub(crate) fn setup<'a>() -> (
         block_light_arrays: Cow::Borrowed(&[]),
     };
 
-    let player_list_header_packet = PlayerListHeaderS2c {
+    let player_list_header_packet = TabListS2c {
         header: ("this".italic() + " is the " + "header".bold().color(Color::RED)).into(),
         footer: ("this".italic()
             + " is the "
@@ -191,7 +191,7 @@ fn decode_player_list_header(bencher: Bencher) {
             .try_next_packet()
             .unwrap()
             .unwrap()
-            .decode::<PlayerListHeaderS2c>()
+            .decode::<TabListS2c>()
             .unwrap();
 
         black_box(decoder);
@@ -266,7 +266,7 @@ fn decode_player_list_header_compressed(bencher: Bencher) {
             .try_next_packet()
             .unwrap()
             .unwrap()
-            .decode::<PlayerListHeaderS2c>()
+            .decode::<TabListS2c>()
             .unwrap();
 
         black_box(decoder);

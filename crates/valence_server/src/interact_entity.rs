@@ -2,7 +2,7 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use valence_entity::EntityManager;
 pub use valence_protocol::packets::play::player_interact_entity_c2s::EntityInteraction;
-use valence_protocol::packets::play::PlayerInteractEntityC2s;
+use valence_protocol::packets::play::InteractC2s;
 
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
 
@@ -32,7 +32,7 @@ fn handle_interact_entity(
     mut events: EventWriter<InteractEntityEvent>,
 ) {
     for packet in packets.read() {
-        if let Some(pkt) = packet.decode::<PlayerInteractEntityC2s>() {
+        if let Some(pkt) = packet.decode::<InteractC2s>() {
             // TODO: check that the entity is in the same instance as the player.
             // TODO: check that the distance between the player and the interacted entity is
             // within some configurable tolerance level.

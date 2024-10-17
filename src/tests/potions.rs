@@ -1,5 +1,5 @@
 use valence_server::entity::active_status_effects::{ActiveStatusEffect, ActiveStatusEffects};
-use valence_server::protocol::packets::play::{RemoveEntityStatusEffectS2c, UpdateMobEffectS2c};
+use valence_server::protocol::packets::play::{RemoveMobEffectS2c, UpdateMobEffectS2c};
 use valence_server::protocol::status_effects::StatusEffect;
 use valence_server::protocol::VarInt;
 
@@ -62,9 +62,9 @@ fn test_status_effects_packets() {
 
     let sent_packets = helper.collect_received();
 
-    sent_packets.assert_count::<RemoveEntityStatusEffectS2c>(1);
+    sent_packets.assert_count::<RemoveMobEffectS2c>(1);
 
-    let packet = sent_packets.first::<RemoveEntityStatusEffectS2c>();
+    let packet = sent_packets.first::<RemoveMobEffectS2c>();
 
     assert_eq!(packet.entity_id, VarInt(0)); // Client entity ID is always 0
     assert_eq!(packet.effect_id, VarInt(31)); // Bad Omen

@@ -1,7 +1,8 @@
-use crate::{Decode, Encode, Packet};
+use crate::{Bounded, Decode, Encode, Packet};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
 pub struct RenameItemC2s<'a> {
-    // Surprisingly, this is not bounded as of 1.20.1.
-    pub item_name: &'a str,
+    // In the notican server: The item name may be no longer than 50 characters long, and if it is
+    // longer than that, then the rename is silently ignored.
+    pub item_name: Bounded<&'a str, 32767>,
 }

@@ -1,6 +1,6 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use valence_protocol::packets::play::PlayerInteractItemC2s;
+use valence_protocol::packets::play::UseItemC2s;
 use valence_protocol::Hand;
 
 use crate::action::ActionSequence;
@@ -28,7 +28,7 @@ fn handle_player_interact_item(
     mut events: EventWriter<InteractItemEvent>,
 ) {
     for packet in packets.read() {
-        if let Some(pkt) = packet.decode::<PlayerInteractItemC2s>() {
+        if let Some(pkt) = packet.decode::<UseItemC2s>() {
             if let Ok(mut action_seq) = clients.get_mut(packet.client) {
                 action_seq.update(pkt.sequence.0);
             }

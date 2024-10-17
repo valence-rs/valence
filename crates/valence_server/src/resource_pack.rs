@@ -1,6 +1,6 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use valence_protocol::packets::play::{ResourcePackSendS2c, ResourcePackStatusC2s};
+use valence_protocol::packets::play::{ResourcePackPushS2c, ResourcePackStatusC2s};
 use valence_protocol::text::Text;
 use valence_protocol::WritePacket;
 
@@ -40,7 +40,7 @@ impl Client {
         forced: bool,
         prompt_message: Option<Text>,
     ) {
-        self.write_packet(&ResourcePackSendS2c {
+        self.write_packet(&ResourcePackPushS2c {
             url,
             hash: hash.into(),
             forced,

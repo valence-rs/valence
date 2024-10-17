@@ -7,7 +7,7 @@ use bevy_ecs::prelude::*;
 use bevy_ecs::query::QueryData;
 use derive_more::{Deref, DerefMut};
 use valence_entity::EntityLayerId;
-use valence_protocol::packets::play::{LoginS2c, PlayerRespawnS2c, PlayerSpawnPositionS2c};
+use valence_protocol::packets::play::{LoginS2c, RespawnS2c, SetDefaultSpawnPositionS2c};
 use valence_protocol::{BlockPos, GameMode, GlobalPos, Ident, VarInt, WritePacket};
 use valence_registry::tags::TagsRegistry;
 use valence_registry::{BiomeRegistry, RegistryCodec};
@@ -176,7 +176,7 @@ pub(super) fn respawn(
             position: *pos,
         });
 
-        client.write_packet(&PlayerRespawnS2c {
+        client.write_packet(&RespawnS2c {
             dimension_type_name: dimension_name.into(),
             dimension_name: dimension_name.into(),
             hashed_seed: hashed_seed.0,
@@ -199,7 +199,7 @@ pub(super) fn update_respawn_position(
     mut clients: Query<(&mut Client, &RespawnPosition), Changed<RespawnPosition>>,
 ) {
     for (mut client, respawn_pos) in &mut clients {
-        client.write_packet(&PlayerSpawnPositionS2c {
+        client.write_packet(&SetDefaultSpawnPositionS2c {
             position: respawn_pos.pos,
             angle: respawn_pos.yaw,
         });

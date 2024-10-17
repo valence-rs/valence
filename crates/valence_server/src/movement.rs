@@ -3,7 +3,7 @@ use bevy_ecs::prelude::*;
 use valence_entity::{HeadYaw, Look, OnGround, Position};
 use valence_math::DVec3;
 use valence_protocol::packets::play::{
-    MovePlayerPosRotC2s, MovePlayerRotC2s, MovePlayerStatusOnlyC2s, PositionAndOnGroundC2s,
+    MovePlayerPosC2s, MovePlayerPosRotC2s, MovePlayerRotC2s, MovePlayerStatusOnlyC2s,
     VehicleMoveC2s,
 };
 
@@ -48,7 +48,7 @@ fn handle_client_movement(
     mut movement_events: EventWriter<MovementEvent>,
 ) {
     for packet in packets.read() {
-        if let Some(pkt) = packet.decode::<PositionAndOnGroundC2s>() {
+        if let Some(pkt) = packet.decode::<MovePlayerPosC2s>() {
             if let Ok((pos, look, head_yaw, on_ground, teleport_state)) =
                 clients.get_mut(packet.client)
             {
