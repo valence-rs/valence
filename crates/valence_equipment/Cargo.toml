@@ -1,6 +1,6 @@
 [package]
 name = "valence_equipment"
-description = "Equipment syncing support for Valence"
+description = "Equipment support for Valence"
 readme = "README.md"
 version.workspace = true
 edition.workspace = true
@@ -11,16 +11,10 @@ license.workspace = true
 [lints]
 workspace = true
 
-[features]
-default = [
-    "inventory"
-]
-inventory = ["dep:valence_inventory"]
-
 [dependencies]
 bevy_app.workspace = true
 bevy_ecs.workspace = true
 derive_more.workspace = true
 tracing.workspace = true
 valence_server.workspace = true
-valence_inventory = { workspace = true, optional = true }
+valence_inventory.workspace = true
