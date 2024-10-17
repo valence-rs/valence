@@ -68,7 +68,7 @@ fn test_multiple_entities() {
         .expect("could not get entity equipment");
 
     equipment.set_chest(ItemStack::new(ItemKind::DiamondChestplate, 1, None));
-    equipment.set_helmet(ItemStack::new(ItemKind::DiamondHelmet, 1, None));
+    equipment.set_head(ItemStack::new(ItemKind::DiamondHelmet, 1, None));
 
     app.update();
 
@@ -85,7 +85,7 @@ fn test_multiple_entities() {
 
     // Set the zombie's equipment to the same items
     equipment.set_chest(ItemStack::new(ItemKind::DiamondChestplate, 1, None));
-    equipment.set_helmet(ItemStack::new(ItemKind::DiamondHelmet, 1, None));
+    equipment.set_head(ItemStack::new(ItemKind::DiamondHelmet, 1, None));
 
     app.update();
 
@@ -127,7 +127,7 @@ fn test_update_on_load_entity() {
         .expect("could not get entity equipment");
 
     equipment.set_chest(ItemStack::new(ItemKind::DiamondChestplate, 1, None));
-    equipment.set_helmet(ItemStack::new(ItemKind::DiamondHelmet, 1, None));
+    equipment.set_head(ItemStack::new(ItemKind::DiamondHelmet, 1, None));
 
     app.update();
 

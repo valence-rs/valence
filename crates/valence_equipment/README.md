@@ -6,55 +6,36 @@ component to a entity (currently only Players).
 ## Example
 
 ```rust 
-use valence::prelude::*;
+use bevy_ecs::prelude::*;
 use valence_equipment::*;
-
-// Spawn a player with full armor, a sword and a shield.
-fn init_clients(
-    mut commands: Commands,
+use valence_server::{
+    ItemStack, ItemKind,
+    entity::player::PlayerEntity,
+};
+// Add equipment to players when they are added to the world.
+fn init_equipment(
     mut clients: Query<
+        &mut Equipment,
         (
-            Entity,
-            &mut Position,
-            &mut EntityLayerId,
-            &mut VisibleChunkLayer,
-            &mut VisibleEntityLayers,
-            &mut GameMode,
+            Added<Equipment>,
+            With<PlayerEntity>,
         ),
-        Added<Client>,
     >,
-    layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
 ) {
-    for (
-        player,
-        mut pos,
-        mut layer_id,
-        mut visible_chunk_layer,
-        mut visible_entity_layers,
-        mut game_mode,
-    ) in &mut clients
+    for mut equipment in &mut clients
     {
-        let layer = layers.single();
-
-        pos.0 = [0.0, f64::from(SPAWN_Y) + 1.0, 0.0].into();
-        layer_id.0 = layer;
-        visible_chunk_layer.0 = layer;
-        visible_entity_layers.0.insert(layer);
-        *game_mode = GameMode::Survival;
-
-        let equipment = Equipment::new(
-            ItemStack::new(ItemKind::DiamondSword, 1, None), // Main hand
-            ItemStack::new(ItemKind::Shield, 1, None), // Off hand
-            ItemStack::new(ItemKind::DiamondBoots, 1, None), // Feet
-            ItemStack::new(ItemKind::DiamondLeggings, 1, None), // Legs
-            ItemStack::new(ItemKind::DiamondChestplate, 1, None), // Chest
-            ItemStack::new(ItemKind::DiamondHelmet, 1, None), // Head
-        );
-
-        commands.entity(player).insert(equipment); // Add the equipment to the player
-
-        commands.entity(player).insert(EquipmentInventorySync); // Sync the equipment with the player's inventory. This is not required if you want to only show equipment for other players.
+        equipment.set_main_hand(ItemStack::new(ItemKind::DiamondSword, 1, None));
+        equipment.set_off_hand(ItemStack::new(ItemKind::Shield, 1, None));
+        equipment.set_feet(ItemStack::new(ItemKind::DiamondBoots, 1, None));
+        equipment.set_legs(ItemStack::new(ItemKind::DiamondLeggings, 1, None));
+        equipment.set_chest(ItemStack::new(ItemKind::DiamondChestplate, 1, None));
+        equipment.set_head(ItemStack::new(ItemKind::DiamondHelmet, 1, None));
     }
 }
 ```
+
+### See also
+
+Examples related to inventories in the `valence/examples/` directory:
+- `equipment`
 

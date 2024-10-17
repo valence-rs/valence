@@ -126,7 +126,7 @@ impl Equipment {
         self.set_slot(Self::CHEST_IDX, item);
     }
 
-    pub fn set_helmet(&mut self, item: ItemStack) {
+    pub fn set_head(&mut self, item: ItemStack) {
         self.set_slot(Self::HEAD_IDX, item);
     }
 
