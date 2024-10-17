@@ -1,0 +1,20 @@
+[package]
+name = "valence_equipment"
+description = "Equipment support for Valence"
+readme = "README.md"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+documentation.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+bevy_app.workspace = true
+bevy_ecs.workspace = true
+derive_more.workspace = true
+tracing.workspace = true
+valence_server.workspace = true
+valence_inventory.workspace = true
