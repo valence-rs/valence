@@ -62,8 +62,7 @@ pub(crate) fn equipment_inventory_sync(
 }
 
 /// Handles the case where the client changes the slot (the bevy change is
-/// suppressed for this). See
-/// [`valence_inventory::handle_update_selected_slot`].
+/// suppressed for this)
 pub(crate) fn equipment_held_item_sync_from_client(
     mut clients: Query<(&HeldItem, &Inventory, &mut Equipment), With<EquipmentInventorySync>>,
     mut events: EventReader<UpdateSelectedSlotEvent>,
