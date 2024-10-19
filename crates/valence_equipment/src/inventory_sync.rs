@@ -27,7 +27,10 @@ pub(crate) fn equipment_inventory_sync(
         if equipment.changed & (1 << Equipment::MAIN_HAND_IDX) != 0 {
             let item = equipment.main_hand().clone();
             inventory.set_slot(held_item.slot(), item);
-        } else if held_item.is_changed() {
+        } else {
+            // If we change the inventory (e.g by pickung up an item)
+            // then the HeldItem slot wont be changed
+
             // This will only be called if we change the held item from valence,
             // the client change is handled in `equipment_held_item_sync_from_client`
             let item = inventory.slot(held_item.slot()).clone();
