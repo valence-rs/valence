@@ -1,12 +1,14 @@
 use valence_equipment::{Equipment, EquipmentInventorySync};
 use valence_inventory::player_inventory::PlayerInventory;
-use valence_inventory::Inventory;
+use valence_inventory::{ClickMode, ClientInventoryState, Inventory, SlotChange};
 use valence_server::entity::armor_stand::ArmorStandEntityBundle;
 use valence_server::entity::item::ItemEntityBundle;
 use valence_server::entity::zombie::ZombieEntityBundle;
 use valence_server::entity::{EntityLayerId, Position};
 use valence_server::math::DVec3;
-use valence_server::protocol::packets::play::EntityEquipmentUpdateS2c;
+use valence_server::protocol::packets::play::{
+    ClickSlotC2s, EntityEquipmentUpdateS2c, UpdateSelectedSlotC2s,
+};
 use valence_server::{ItemKind, ItemStack};
 
 use crate::testing::ScenarioSingleClient;
@@ -298,7 +300,7 @@ fn test_inventory_sync_from_equipment() {
 }
 
 #[test]
-fn test_inventory_sync_from_inventory() {
+fn test_equipment_sync_from_inventory() {
     let ScenarioSingleClient {
         mut app,
         client,
@@ -403,5 +405,139 @@ fn test_equipment_priority_over_inventory() {
     assert_eq!(
         *player_equipment.chest(),
         ItemStack::new(ItemKind::GoldenChestplate, 1, None)
+    );
+}
+
+#[test]
+fn test_equipment_change_from_player() {
+    let ScenarioSingleClient {
+        mut app,
+        client,
+        mut helper,
+        ..
+    } = ScenarioSingleClient::new();
+
+    // Process a tick to get past the "on join" logic.
+    app.update();
+    helper.clear_received();
+
+    app.world_mut()
+        .entity_mut(client)
+        .insert(EquipmentInventorySync);
+
+    let mut player_inventory = app
+        .world_mut()
+        .get_mut::<Inventory>(client)
+        .expect("could not get player equipment");
+
+    player_inventory.set_slot(36, ItemStack::new(ItemKind::DiamondChestplate, 1, None));
+    app.update();
+    helper.clear_received();
+
+    let state_id = app
+        .world()
+        .get::<ClientInventoryState>(client)
+        .expect("could not get player equipment")
+        .state_id();
+
+    app.update();
+
+    helper.send(&ClickSlotC2s {
+        window_id: 0,
+        button: 0,
+        mode: ClickMode::Hotbar,
+        state_id: state_id.0.into(),
+        slot_idx: 36,
+        slot_changes: vec![
+            SlotChange {
+                idx: 36,
+                stack: ItemStack::EMPTY,
+            },
+            SlotChange {
+                idx: PlayerInventory::SLOT_CHEST as i16,
+                stack: ItemStack::new(ItemKind::DiamondChestplate, 1, None),
+            },
+        ]
+        .into(),
+        carried_item: ItemStack::EMPTY,
+    });
+
+    app.update();
+    app.update();
+
+    let player_inventory = app
+        .world()
+        .get::<Inventory>(client)
+        .expect("could not get player equipment");
+
+    let player_equipment = app
+        .world()
+        .get::<Equipment>(client)
+        .expect("could not get player equipment");
+
+    assert_eq!(
+        player_inventory.slot(PlayerInventory::SLOT_CHEST),
+        &ItemStack::new(ItemKind::DiamondChestplate, 1, None)
+    );
+
+    assert_eq!(player_inventory.slot(36), &ItemStack::EMPTY);
+
+    assert_eq!(
+        player_equipment.chest(),
+        &ItemStack::new(ItemKind::DiamondChestplate, 1, None)
+    );
+}
+
+#[test]
+fn test_held_item_change_from_client() {
+    let ScenarioSingleClient {
+        mut app,
+        client,
+        mut helper,
+        ..
+    } = ScenarioSingleClient::new();
+
+    // Process a tick to get past the "on join" logic.
+    app.update();
+    helper.clear_received();
+
+    app.world_mut()
+        .entity_mut(client)
+        .insert(EquipmentInventorySync);
+
+    let mut player_inventory = app
+        .world_mut()
+        .get_mut::<Inventory>(client)
+        .expect("could not get player equipment");
+
+    player_inventory.set_slot(36, ItemStack::new(ItemKind::DiamondSword, 1, None));
+    player_inventory.set_slot(37, ItemStack::new(ItemKind::IronSword, 1, None));
+
+    app.update();
+
+    let player_equipment = app
+        .world()
+        .get::<Equipment>(client)
+        .expect("could not get player equipment");
+
+    assert_eq!(
+        player_equipment.main_hand(),
+        &ItemStack::new(ItemKind::DiamondSword, 1, None)
+    );
+
+    // Change the held item from the client
+    helper.send(&UpdateSelectedSlotC2s { slot: 1 });
+
+    app.update(); // handle change slot
+    app.update(); // handle change equipment
+
+    let player_equipment = app
+        .world()
+        .get::<Equipment>(client)
+        .expect("could not get player equipment");
+
+    assert_eq!(
+        player_equipment.main_hand(),
+        &ItemStack::new(ItemKind::IronSword, 1, None)
     );
 }

@@ -22,6 +22,7 @@ impl Plugin for EquipmentPlugin {
                 on_entity_init,
                 inventory_sync::on_attach_inventory_sync,
                 inventory_sync::equipment_inventory_sync,
+                inventory_sync::equipment_held_item_sync_from_client,
             ),
         )
         .add_systems(
