@@ -291,13 +291,17 @@ pub(super) fn validate_click_slot_packet(
                     window.slot(packet.slot_changes[0].idx as u16),
                     window.slot(packet.slot_changes[1].idx as u16),
                 ];
+                // There are some cases where the client will add NBT data that did not
+                // previously exist.
                 ensure!(
                     old_slots
                         .iter()
-                        .any(|s| *s == &packet.slot_changes[0].stack)
+                        .any(|s| s.item == packet.slot_changes[0].stack.item
+                            && s.count == packet.slot_changes[0].stack.count)
                         && old_slots
                             .iter()
-                            .any(|s| *s == &packet.slot_changes[1].stack),
+                            .any(|s| s.item == packet.slot_changes[1].stack.item
+                                && s.count == packet.slot_changes[1].stack.count),
                     "swapped items must match"
                 );
             }
