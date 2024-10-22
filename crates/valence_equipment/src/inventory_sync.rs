@@ -20,7 +20,6 @@ pub(crate) fn equipment_inventory_sync(
             With<PlayerEntity>,
         ),
     >,
-    // mut change_slot_events
 ) {
     for (mut equipment, mut inventory, held_item) in &mut clients {
         // Equipment change has priority over held item changes
