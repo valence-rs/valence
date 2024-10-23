@@ -443,20 +443,20 @@ mod tests {
         let add_id = "my_attr".to_string();
         let mut attributes = EntityAttributes::new();
         attributes.set_base_value(EntityAttribute::GenericMaxHealth, 20.0);
-        attributes.set_add_modifier(EntityAttribute::GenericMaxHealth, add_id.clone(), 10.0);
+        attributes.set_add_modifier(EntityAttribute::GenericMaxHealth, &add_id, 10.0);
         attributes.set_multiply_base_modifier(
             EntityAttribute::GenericMaxHealth,
-            Uuid::new_v4(),
+            &"1".to_string(),
             0.2,
         );
         attributes.set_multiply_base_modifier(
             EntityAttribute::GenericMaxHealth,
-            Uuid::new_v4(),
+            &"2".to_string(),
             0.2,
         );
         attributes.set_multiply_total_modifier(
             EntityAttribute::GenericMaxHealth,
-            Uuid::new_v4(),
+            &"3".to_string(),
             0.5,
         );
 
