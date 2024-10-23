@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 
@@ -407,6 +409,61 @@ fn test_should_modify_open_inventory_click_slot() {
         .get::<CursorItem>(client)
         .expect("could not find client");
     assert_eq!(cursor_item.0, ItemStack::new(ItemKind::Diamond, 2, None));
+}
+
+#[test]
+fn test_sync_inventory_change_made_from_valence_while_inventory_is_opened() {
+    let ScenarioSingleClient {
+        mut app,
+        client,
+        mut helper,
+        ..
+    } = ScenarioSingleClient::new();
+
+    // Process a tick to get past the "on join" logic.
+    app.update();
+    helper.clear_received();
+
+    // Open a inventory for the player. (27 slots)
+    set_up_open_inventory(&mut app, client);
+    app.update();
+    helper.clear_received();
+
+    // Modify the player's inventory.
+    let client_inv_state = app
+        .world_mut()
+        .get::<ClientInventoryState>(client)
+        .expect("could not find client inventory state");
+
+    let inv_state_window_id = client_inv_state.window_id();
+    let inv_state_state_id = client_inv_state.state_id();
+
+    let mut inventory = app
+        .world_mut()
+        .get_mut::<Inventory>(client)
+        .expect("could not find inventory for client");
+
+    inventory.set_slot(9, ItemStack::new(ItemKind::Diamond, 2, None));
+
+    app.update();
+
+    // Make assertions
+    let sent_packets = helper.collect_received();
+
+    let received = sent_packets.0[0]
+        .decode::<ScreenHandlerSlotUpdateS2c>()
+        .unwrap();
+
+    assert_eq!(received.window_id, inv_state_window_id as i8,);
+
+    assert_eq!(received.slot_idx, 27);
+
+    assert_eq!(
+        received.slot_data,
+        Cow::Borrowed(&ItemStack::new(ItemKind::Diamond, 2, None))
+    );
+
+    assert_eq!(received.state_id, VarInt(inv_state_state_id.0));
 }
 
 #[test]

@@ -679,7 +679,9 @@ fn update_open_inventories(
     for (client_entity, mut client, mut inv_state, cursor_item, mut open_inventory) in &mut clients
     {
         // Validate that the inventory exists.
-        let Ok(inventory) = inventories.get_mut(open_inventory.entity) else {
+        let Ok([inventory, player_inventory]) =
+            inventories.get_many_mut([open_inventory.entity, client_entity])
+        else {
             // The inventory no longer exists, so close the inventory.
             commands.entity(client_entity).remove::<OpenInventory>();
 
@@ -725,12 +727,34 @@ fn update_open_inventories(
                 // Send the changed slots.
 
                 // The slots that were NOT changed by this client, and they need to be sent.
-                let changed_filtered = inventory.changed & !open_inventory.client_changed;
+                let changed_filtered =
+                    u128::from(inventory.changed & !open_inventory.client_changed);
+
+                // The slots changed in the player inventory (e.g by calling
+                // `inventory.set_slot` while the player is viewing the inventory).
+                let mut player_inventory_changed = u128::from(player_inventory.changed);
+
+                // Ignore the armor and crafting grid slots because they are not part of
+                // the open inventory.
+                player_inventory_changed >>= *PlayerInventory::SLOTS_MAIN.start();
+                // "Append" the player inventory to the end of the slots belonging to the opened
+                // inventory.
+                player_inventory_changed <<= inventory.slot_count();
+
+                let changed_filtered = changed_filtered | player_inventory_changed;
 
                 if changed_filtered != 0 {
-                    inv_state.state_id += 1;
-
-                    for (i, slot) in inventory.slots.iter().enumerate() {
+                    for (i, slot) in inventory
+                        .slots
+                        .iter()
+                        .chain(
+                            player_inventory
+                                .slots
+                                .iter()
+                                .skip(*PlayerInventory::SLOTS_MAIN.start() as usize),
+                        )
+                        .enumerate()
+                    {
                         if (changed_filtered >> i) & 1 == 1 {
                             client.write_packet(&ScreenHandlerSlotUpdateS2c {
                                 window_id: inv_state.window_id as i8,
@@ -740,6 +764,10 @@ fn update_open_inventories(
                             });
                         }
                     }
+
+                    player_inventory
+                        .map_unchanged(|f| &mut f.changed)
+                        .set_if_neq(0);
                 }
             }
         }
