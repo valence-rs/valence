@@ -139,16 +139,3 @@ impl Decode<'_> for ItemKind {
         ItemKind::from_raw(id.try_into().context(errmsg)?).context(errmsg)
     }
 }
-
-impl Encode for NbtText {
-    fn encode(&self, w: impl Write) -> anyhow::Result<()> {
-        self.serialize(valence_nbt::serde::CompoundSerializer)?
-            .encode(w)
-    }
-}
-
-impl Decode<'_> for NbtText {
-    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
-        Ok(Self::deserialize(Compound::new())?)
-    }
-}

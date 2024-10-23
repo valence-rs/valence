@@ -128,6 +128,9 @@ pub(super) fn initial_join(
             is_flat: spawn.is_flat.0,
             last_death_location,
             portal_cooldown: VarInt(spawn.portal_cooldown.0),
+            do_limited_crafting: todo!(),
+            dimension_type: todo!(),
+            enforeces_secure_chat: todo!(),
         });
 
         client.write_packet_bytes(tags.sync_tags_packet());

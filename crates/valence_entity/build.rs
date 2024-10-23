@@ -154,8 +154,12 @@ impl Value {
             Value::BlockState(_) => quote!(valence_protocol::BlockState),
             Value::OptionalBlockState(_) => quote!(valence_protocol::BlockState),
             Value::NbtCompound(_) => quote!(valence_nbt::Compound),
-            Value::Particle(_) => quote!(valence_protocol::packets::play::particle_s2c::Particle),
-            Value::ParticleList(_) => quote!(Vec<valence_protocol::packets::play::particle_s2c::Particle>),
+            Value::Particle(_) => {
+                quote!(valence_protocol::packets::play::level_particles_s2c::Particle)
+            }
+            Value::ParticleList(_) => {
+                quote!(Vec<valence_protocol::packets::play::level_particles_s2c::Particle>)
+            }
             Value::VillagerData { .. } => quote!(crate::VillagerData),
             Value::OptionalInt(_) => quote!(Option<i32>),
             Value::EntityPose(_) => quote!(crate::Pose),
@@ -223,10 +227,17 @@ impl Value {
                 assert_eq!(s, "{}");
                 quote!(valence_nbt::Compound::default())
             }
-            Value::Particle(p) => {
-                let variant = ident(p.to_pascal_case());
-                quote!(valence_protocol::packets::play::particle_s2c::Particle::#variant)
-            }
+            Value::Particle(p) => match p.to_pascal_case().as_str() {
+                // TODO: fix this, now an entyity has this as the default, so we need to extract
+                // the data here too somehow
+                "EntityEffect" => {
+                    quote!(valence_protocol::packets::play::level_particles_s2c::Particle::EntityEffect { color: 0 })
+                }
+                other => {
+                    let variant = ident(other);
+                    quote!(valence_protocol::packets::play::level_particles_s2c::Particle::#variant)
+                }
+            },
             Value::ParticleList(_) => quote!(Vec::new()),
             Value::VillagerData {
                 typ,
@@ -252,15 +263,18 @@ impl Value {
                 quote!(crate::Pose::#variant)
             }
             Value::CatVariant(c) => {
-                let variant = ident(c.to_pascal_case());
+                let stripped_variant = c.trim_start_matches("minecraft");
+                let variant = ident(stripped_variant.to_pascal_case());
                 quote!(crate::CatKind::#variant)
             }
             Value::WolfVariant(w) => {
-                let variant = ident(w.to_pascal_case());
+                let stripped_variant = w.trim_start_matches("minecraft");
+                let variant = ident(stripped_variant.to_pascal_case());
                 quote!(crate::WolfKind::#variant)
             }
             Value::FrogVariant(f) => {
-                let variant = ident(f.to_pascal_case());
+                let stripped_variant = f.trim_start_matches("minecraft");
+                let variant = ident(stripped_variant.to_pascal_case());
                 quote!(crate::FrogKind::#variant)
             }
             Value::OptionalGlobalPos(_) => quote!(()),

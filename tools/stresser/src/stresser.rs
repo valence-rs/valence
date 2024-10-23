@@ -6,8 +6,8 @@ use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use uuid::Uuid;
 use valence_protocol::packets::handshaking::intention_c2s::HandshakeNextState;
-use valence_protocol::packets::handshaking::HandshakeC2s;
-use valence_protocol::packets::login::{HelloC2s, HelloS2c, LoginCompressionS2c, SuccessS2c};
+use valence_protocol::packets::handshaking::IntentionC2s;
+use valence_protocol::packets::login::{GameProfileS2c, HelloC2s, HelloS2c, LoginCompressionS2c};
 use valence_protocol::packets::play::{
     AcceptTeleportationC2s, KeepAliveC2s, KeepAliveS2c, MovePlayerPosC2s, PlayerPositionS2c,
 };
@@ -45,7 +45,7 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
 
     let server_addr_str = sock_addr.ip().to_string();
 
-    let handshake_pkt = HandshakeC2s {
+    let handshake_pkt = IntentionC2s {
         protocol_version: VarInt(PROTOCOL_VERSION),
         server_address: server_addr_str.as_str().into(),
         server_port: sock_addr.port(),
@@ -88,7 +88,7 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
                     enc.set_compression(CompressionThreshold(threshold));
                 }
 
-                SuccessS2c::ID => {
+                GameProfileS2c::ID => {
                     break;
                 }
 

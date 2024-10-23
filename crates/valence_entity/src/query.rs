@@ -6,9 +6,9 @@ use bevy_ecs::world::Ref;
 use valence_math::DVec3;
 use valence_protocol::encode::WritePacket;
 use valence_protocol::packets::play::{
-    AddEntityS2c, AddExperienceOrbS2c, AnimateS2c, EntityEventS2c, MoveEntityPosS2c,
-    MoveEntityRotS2c, PlayerSpawnS2c, RotateHeadS2c, SetEntityDataS2c, SetEntityMotionS2c,
-    TeleportEntityS2c, TeleportEntityS2c, UpdateAttributesS2c,
+    AddEntityS2c, AddExperienceOrbS2c, AnimateS2c, EntityEventS2c, MoveEntityPosRotS2c,
+    MoveEntityPosS2c, MoveEntityRotS2c, RotateHeadS2c, SetEntityDataS2c, SetEntityMotionS2c,
+    TeleportEntityS2c, UpdateAttributesS2c,
 };
 use valence_protocol::var_int::VarInt;
 use valence_protocol::ByteAngle;
@@ -46,21 +46,6 @@ impl EntityInitQueryItem<'_> {
                     entity_id: self.entity_id.get().into(),
                     position: pos,
                     count: self.object_data.0 as i16,
-                });
-            }
-            EntityKind::PLAYER => {
-                writer.write_packet(&PlayerSpawnS2c {
-                    entity_id: self.entity_id.get().into(),
-                    player_uuid: self.uuid.0,
-                    position: pos,
-                    yaw: ByteAngle::from_degrees(self.look.yaw),
-                    pitch: ByteAngle::from_degrees(self.look.pitch),
-                });
-
-                // Player spawn packet doesn't include head yaw for some reason.
-                writer.write_packet(&RotateHeadS2c {
-                    entity_id: self.entity_id.get().into(),
-                    head_yaw: ByteAngle::from_degrees(self.head_yaw.0),
                 });
             }
             _ => writer.write_packet(&AddEntityS2c {
@@ -114,7 +99,7 @@ impl UpdateEntityQueryItem<'_> {
         let changed_position = self.pos.0 != self.old_pos.get();
 
         if changed_position && !needs_teleport && self.look.is_changed() {
-            writer.write_packet(&TeleportEntityS2c {
+            writer.write_packet(&MoveEntityPosRotS2c {
                 entity_id,
                 delta: (position_delta * 4096.0).to_array().map(|v| v as i16),
                 yaw: ByteAngle::from_degrees(self.look.yaw),

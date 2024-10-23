@@ -128,7 +128,8 @@ public class Misc implements Main.Extractor {
         for (var state : ArmadilloEntity.State.values()) {
             armadilloStateJson.addProperty(state.name().toLowerCase(Locale.ROOT), state.ordinal());
         }
-        miscJson.add("sniffer_state", armadilloStateJson);
+        miscJson.add("armadillo_state", armadilloStateJson);
+
 
         var trackedDataHandlerJson = new JsonObject();
         for (var field : TrackedDataHandlerRegistry.class.getDeclaredFields()) {

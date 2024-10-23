@@ -393,6 +393,15 @@
     "trial_omen": 108
   },
   "sniffer_state": {
+    "idling": 0,
+    "feeling_happy": 1,
+    "scenting": 2,
+    "sniffing": 3,
+    "searching": 4,
+    "digging": 5,
+    "rising": 6
+  },
+  "armadillo_state": {
     "idle": 0,
     "rolling": 1,
     "scared": 2,

@@ -3088,6 +3088,10 @@
     "english_translation": "Ender Pearl"
   },
   {
+    "key": "tag.item.c.crops.sugar_cane",
+    "english_translation": "Sugar Cane Crops"
+  },
+  {
     "key": "subtitles.entity.piglin_brute.hurt",
     "english_translation": "Piglin Brute hurts"
   },
@@ -5158,6 +5162,10 @@
   {
     "key": "mco.configure.world.subscription.unknown",
     "english_translation": "Unknown"
+  },
+  {
+    "key": "tag.item.c.crops.pumpkin",
+    "english_translation": "Pumpkin Crops"
   },
   {
     "key": "block.minecraft.banner.half_vertical.orange",
@@ -10320,6 +10328,10 @@
     "english_translation": "Friend Pottery Sherd"
   },
   {
+    "key": "tag.item.c.crops.cocoa_bean",
+    "english_translation": "Cocoa Bean Crops"
+  },
+  {
     "key": "mco.upload.select.world.title",
     "english_translation": "Upload World"
   },
@@ -12024,6 +12036,10 @@
     "english_translation": "de_aztec"
   },
   {
+    "key": "tag.item.c.crops.beetroot",
+    "english_translation": "Beetroot Crops"
+  },
+  {
     "key": "item.minecraft.command_block_minecart",
     "english_translation": "Minecart with Command Block"
   },
@@ -13672,6 +13688,10 @@
     "english_translation": "Vindicator Spawn Egg"
   },
   {
+    "key": "tag.item.c.crops.nether_wart",
+    "english_translation": "Nether Wart Crops"
+  },
+  {
     "key": "mco.configure.world.edit.slot.name",
     "english_translation": "World Name"
   },
@@ -14070,6 +14090,10 @@
   {
     "key": "options.graphics.fabulous.tooltip",
     "english_translation": "%s graphics uses screen shaders for drawing weather, clouds, and particles behind translucent blocks and water.\nThis may severely impact performance for portable devices and 4K displays."
+  },
+  {
+    "key": "tag.item.c.crops.potato",
+    "english_translation": "Potato Crops"
   },
   {
     "key": "subtitles.entity.fox.sleep",
@@ -14534,6 +14558,10 @@
   {
     "key": "narrator.position.tab",
     "english_translation": "Selected tab %s out of %s"
+  },
+  {
+    "key": "tag.item.c.crops",
+    "english_translation": "Crops"
   },
   {
     "key": "subtitles.item.goat_horn.play",
@@ -16348,6 +16376,10 @@
     "english_translation": "Lime Dye"
   },
   {
+    "key": "tag.item.c.crops.cactus",
+    "english_translation": "Cactus Crops"
+  },
+  {
     "key": "tag.item.c.rods.breeze",
     "english_translation": "Breeze Rods"
   },
@@ -16382,6 +16414,10 @@
   {
     "key": "gui.recipebook.toggleRecipes.all",
     "english_translation": "Showing All"
+  },
+  {
+    "key": "tag.item.c.crops.melon",
+    "english_translation": "Melon Crops"
   },
   {
     "key": "block.minecraft.deepslate_lapis_ore",
@@ -17702,6 +17738,10 @@
   {
     "key": "block.minecraft.banner.piglin.black",
     "english_translation": "Black Snout"
+  },
+  {
+    "key": "tag.item.c.slime_balls",
+    "english_translation": "Slimeballs"
   },
   {
     "key": "attribute.name.generic.armor_toughness",
@@ -19228,6 +19268,10 @@
     "english_translation": "New World"
   },
   {
+    "key": "tag.item.c.crops.carrot",
+    "english_translation": "Carrot Crops"
+  },
+  {
     "key": "item.minecraft.nether_star",
     "english_translation": "Nether Star"
   },
@@ -19794,6 +19838,10 @@
   {
     "key": "advancements.adventure.minecraft_trials_edition.description",
     "english_translation": "Step foot in a Trial Chamber"
+  },
+  {
+    "key": "tag.item.c.fertilizers",
+    "english_translation": "Fertilizers"
   },
   {
     "key": "block.minecraft.pink_candle",
@@ -24584,6 +24632,10 @@
     "english_translation": "Gray Flow"
   },
   {
+    "key": "tag.item.c.crops.wheat",
+    "english_translation": "Wheat Crops"
+  },
+  {
     "key": "chat_screen.usage",
     "english_translation": "Input message and press Enter to send"
   },
@@ -24806,6 +24858,10 @@
   {
     "key": "subtitles.entity.warden.attack_impact",
     "english_translation": "Warden lands hit"
+  },
+  {
+    "key": "tag.item.c.animal_foods",
+    "english_translation": "Animal Foods"
   },
   {
     "key": "mco.snapshot.creating",
@@ -25418,6 +25474,10 @@
   {
     "key": "advancements.adventure.honey_block_slide.description",
     "english_translation": "Jump into a Honey Block to break your fall"
+  },
+  {
+    "key": "tag.item.c.nuggets.iron",
+    "english_translation": "Iron Nuggets"
   },
   {
     "key": "advancements.adventure.two_birds_one_arrow.title",
@@ -27294,6 +27354,10 @@
   {
     "key": "commands.forceload.added.multiple",
     "english_translation": "Marked %s chunks in %s from %s to %s to be force loaded"
+  },
+  {
+    "key": "tag.item.c.nuggets.gold",
+    "english_translation": "Gold Nuggets"
   },
   {
     "key": "tag.item.c.foods.bread",

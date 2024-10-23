@@ -17,7 +17,7 @@ pub use unloaded::UnloadedChunk;
 use valence_math::{DVec3, Vec3};
 use valence_nbt::Compound;
 use valence_protocol::encode::{PacketWriter, WritePacket};
-use valence_protocol::packets::play::particle_s2c::Particle;
+use valence_protocol::packets::play::level_particles_s2c::Particle;
 use valence_protocol::packets::play::{LevelParticlesS2c, SoundS2c};
 use valence_protocol::sound::{Sound, SoundCategory, SoundId};
 use valence_protocol::{BiomePos, BlockPos, ChunkPos, CompressionThreshold, Encode, Ident, Packet};

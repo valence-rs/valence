@@ -501,6 +501,27 @@ pub enum CatKind {
     Jellie,
     AllBlack,
 }
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug, Encode, Decode)]
+pub enum WolfKind {
+    Ashen,
+    Black,
+    Chestnut,
+    #[default]
+    Pale,
+    Rusty,
+    Snowy,
+    Spotted,
+    Striped,
+    Woods,
+}
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug, Encode, Decode)]
+pub enum ArmadilloState {
+    #[default]
+    Idle,
+    Rolling,
+    Scared,
+    Unrolling,
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug, Encode, Decode)]
 pub enum FrogKind {
