@@ -37,7 +37,7 @@ impl Plugin for EquipmentPlugin {
 }
 
 /// Contains the visible equipment of a [`LivingEntity`], such as armor and held
-/// items. By default this is not synced with a player's [`Inventory`], so the
+/// items. By default this is not synced with a player's [`valence_inventory::Inventory`], so the
 /// armor the player has equipped in their inventory, will not be visible by
 /// other players. You would have to change the equipment in this component here
 /// or attach the [`EquipmentInventorySync`] component to the player
