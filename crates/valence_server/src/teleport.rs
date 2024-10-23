@@ -3,7 +3,7 @@ use bevy_ecs::prelude::*;
 use tracing::warn;
 use valence_entity::{Look, Position};
 use valence_math::DVec3;
-use valence_protocol::packets::play::player_position_look_s2c::PlayerPositionFlags;
+use valence_protocol::packets::play::player_position_s2c::PlayerPositionFlags;
 use valence_protocol::packets::play::{AcceptTeleportationC2s, PlayerPositionS2c};
 use valence_protocol::WritePacket;
 

@@ -4,9 +4,9 @@ use bevy_ecs::query::QueryData;
 use bevy_ecs::system::SystemState;
 use valence_entity::active_status_effects::{ActiveStatusEffect, ActiveStatusEffects};
 use valence_entity::entity::Flags;
-use valence_entity::living::{PotionSwirlsAmbient, PotionSwirlsColor};
+use valence_entity::living::PotionSwirlsAmbient;
 use valence_protocol::packets::play::{
-    entity_status_effect_s2c, RemoveMobEffectS2c, UpdateMobEffectS2c,
+    update_mob_effect_s2c, RemoveMobEffectS2c, UpdateMobEffectS2c,
 };
 use valence_protocol::status_effects::StatusEffect;
 use valence_protocol::{VarInt, WritePacket};
@@ -62,11 +62,10 @@ fn create_packet(effect: &ActiveStatusEffect) -> UpdateMobEffectS2c {
         effect_id: VarInt(i32::from(effect.status_effect().to_raw())),
         amplifier: effect.amplifier(),
         duration: VarInt(effect.remaining_duration().unwrap_or(-1)),
-        flags: entity_status_effect_s2c::Flags::new()
+        flags: update_mob_effect_s2c::Flags::new()
             .with_is_ambient(effect.ambient())
             .with_show_particles(effect.show_particles())
             .with_show_icon(effect.show_icon()),
-        factor_codec: None,
     }
 }
 
@@ -77,7 +76,6 @@ struct StatusEffectQuery {
     active_effects: &'static mut ActiveStatusEffects,
     client: Option<&'static mut Client>,
     entity_flags: Option<&'static mut Flags>,
-    swirl_color: Option<&'static mut PotionSwirlsColor>,
     swirl_ambient: Option<&'static mut PotionSwirlsAmbient>,
 }
 
@@ -93,11 +91,7 @@ fn add_status_effects(
             continue;
         }
 
-        set_swirl(
-            &query.active_effects,
-            &mut query.swirl_color,
-            &mut query.swirl_ambient,
-        );
+        set_swirl(&query.active_effects, &mut query.swirl_ambient);
 
         for (status_effect, prev) in updated {
             if query.active_effects.has_effect(status_effect) {
@@ -137,7 +131,6 @@ fn update_status_effect(query: &mut StatusEffectQueryItem, status_effect: Status
 
 fn set_swirl(
     active_status_effects: &ActiveStatusEffects,
-    swirl_color: &mut Option<Mut<'_, PotionSwirlsColor>>,
     swirl_ambient: &mut Option<Mut<'_, PotionSwirlsAmbient>>,
 ) {
     if let Some(ref mut swirl_ambient) = swirl_ambient {
@@ -145,10 +138,6 @@ fn set_swirl(
             .get_current_effects()
             .iter()
             .any(|effect| effect.ambient());
-    }
-
-    if let Some(ref mut swirl_color) = swirl_color {
-        swirl_color.0 = get_color(active_status_effects);
     }
 }
 

@@ -1,7 +1,7 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use valence_entity::EntityManager;
-pub use valence_protocol::packets::play::player_interact_entity_c2s::EntityInteraction;
+pub use valence_protocol::packets::play::interact_c2s::EntityInteraction;
 use valence_protocol::packets::play::InteractC2s;
 
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};

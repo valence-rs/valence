@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use bevy_ecs::prelude::*;
 use indexmap::IndexMap;
-use uuid::Uuid;
 pub use valence_generated::attributes::{EntityAttribute, EntityAttributeOperation};
 use valence_protocol::packets::play::update_attributes_s2c::*;
 use valence_protocol::{Ident, VarInt};

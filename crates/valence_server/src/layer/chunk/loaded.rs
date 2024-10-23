@@ -7,10 +7,10 @@ use parking_lot::Mutex; // Using nonstandard mutex to avoid poisoning API.
 use valence_generated::block::{PropName, PropValue};
 use valence_nbt::{compound, Compound, Value};
 use valence_protocol::encode::{PacketWriter, WritePacket};
-use valence_protocol::packets::play::chunk_data_s2c::ChunkDataBlockEntity;
-use valence_protocol::packets::play::chunk_delta_update_s2c::ChunkDeltaUpdateEntry;
+use valence_protocol::packets::play::level_chunk_with_light_s2c::ChunkDataBlockEntity;
+use valence_protocol::packets::play::section_blocks_update_s2c::ChunkDeltaUpdateEntry;
 use valence_protocol::packets::play::{
-    BlockEntityUpdateS2c, BlockUpdateS2c, LevelChunkWithLightS2c, SectionBlocksUpdateS2c,
+    BlockEntityDataS2c, BlockUpdateS2c, LevelChunkWithLightS2c, SectionBlocksUpdateS2c,
 };
 use valence_protocol::{BlockPos, BlockState, ChunkPos, ChunkSectionPos, Encode};
 use valence_registry::biome::BiomeId;
@@ -258,9 +258,9 @@ impl LoadedChunk {
             messages.send_local_infallible(LocalMsg::PacketAt { pos }, |buf| {
                 let mut writer = PacketWriter::new(buf, info.threshold);
 
-                writer.write_packet(&BlockEntityUpdateS2c {
+                writer.write_packet(&BlockEntityDataS2c {
                     location: BlockPos::new(global_x, global_y, global_z),
-                    r#type: kind,
+                    kind,
                     data: Cow::Borrowed(nbt),
                 });
             });
