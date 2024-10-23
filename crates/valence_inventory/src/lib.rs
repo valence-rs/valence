@@ -1436,6 +1436,9 @@ fn handle_update_selected_slot(
     for packet in packets.read() {
         if let Some(pkt) = packet.decode::<UpdateSelectedSlotC2s>() {
             if let Ok(mut mut_held) = clients.get_mut(packet.client) {
+                // We bypass the change detection here because the server listens for changes
+                // of `HeldItem` in order to send the update to the client.
+                // This is not required here because the update is coming from the client.
                 let held = mut_held.bypass_change_detection();
                 if pkt.slot > 8 {
                     // The client is trying to interact with a slot that does not exist, ignore.

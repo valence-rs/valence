@@ -1,5 +1,6 @@
 mod boss_bar;
 mod client;
+mod equipment;
 mod example;
 mod hunger;
 mod inventory;

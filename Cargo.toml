@@ -19,6 +19,7 @@ default = [
     "advancement",
     "anvil",
     "boss_bar",
+    "equipment",
     "inventory",
     "log",
     "network",
@@ -32,6 +33,7 @@ default = [
 advancement = ["dep:valence_advancement"]
 anvil = ["dep:valence_anvil"]
 boss_bar = ["dep:valence_boss_bar"]
+equipment = ["dep:valence_equipment"]
 inventory = ["dep:valence_inventory"]
 log = ["dep:bevy_log"]
 network = ["dep:valence_network"]
@@ -59,6 +61,7 @@ valence_command = { workspace = true, optional = true }
 valence_command_macros = { workspace = true, optional = true }
 valence_ident_macros.workspace = true
 valence_ident.workspace = true
+valence_equipment = { workspace = true, optional = true }
 valence_inventory = { workspace = true, optional = true }
 valence_lang.workspace = true
 valence_network = { workspace = true, optional = true }
@@ -192,6 +195,7 @@ valence_entity = { path = "crates/valence_entity", version = "0.2.0-alpha.1" }
 valence_generated = { path = "crates/valence_generated", version = "0.2.0-alpha.1" }
 valence_ident = { path = "crates/valence_ident", version = "0.2.0-alpha.1" }
 valence_ident_macros = { path = "crates/valence_ident_macros", version = "0.2.0-alpha.1" }
+valence_equipment = { path = "crates/valence_equipment", version = "0.2.0-alpha.1" }
 valence_inventory = { path = "crates/valence_inventory", version = "0.2.0-alpha.1" }
 valence_lang = { path = "crates/valence_lang", version = "0.2.0-alpha.1" }
 valence_math = { path = "crates/valence_math", version = "0.2.0-alpha.1" }

@@ -47,6 +47,8 @@ pub use valence_boss_bar as boss_bar;
 pub use valence_command as command;
 #[cfg(feature = "command")]
 pub use valence_command_macros as command_macros;
+#[cfg(feature = "equipment")]
+pub use valence_equipment as equipment;
 #[cfg(feature = "inventory")]
 pub use valence_inventory as inventory;
 pub use valence_lang as lang;
@@ -108,6 +110,8 @@ pub mod prelude {
         event::AdvancementTabChangeEvent, Advancement, AdvancementBundle, AdvancementClientUpdate,
         AdvancementCriteria, AdvancementDisplay, AdvancementFrameType, AdvancementRequirements,
     };
+    #[cfg(feature = "equipment")]
+    pub use valence_equipment::Equipment;
     #[cfg(feature = "inventory")]
     pub use valence_inventory::{
         CursorItem, Inventory, InventoryKind, InventoryWindow, InventoryWindowMut, OpenInventory,
@@ -212,6 +216,11 @@ impl PluginGroup for DefaultPlugins {
         #[cfg(feature = "player_list")]
         {
             group = group.add(valence_player_list::PlayerListPlugin)
+        }
+
+        #[cfg(feature = "equipment")]
+        {
+            group = group.add(valence_equipment::EquipmentPlugin)
         }
 
         #[cfg(feature = "inventory")]
