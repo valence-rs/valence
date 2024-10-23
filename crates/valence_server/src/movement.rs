@@ -4,7 +4,7 @@ use valence_entity::{HeadYaw, Look, OnGround, Position};
 use valence_math::DVec3;
 use valence_protocol::packets::play::{
     MovePlayerPosC2s, MovePlayerPosRotC2s, MovePlayerRotC2s, MovePlayerStatusOnlyC2s,
-    VehicleMoveC2s,
+    MoveVehicleC2s,
 };
 
 use crate::event_loop::{EventLoopPreUpdate, PacketEvent};
@@ -150,7 +150,7 @@ fn handle_client_movement(
                     &mut movement_events,
                 );
             }
-        } else if let Some(pkt) = packet.decode::<VehicleMoveC2s>() {
+        } else if let Some(pkt) = packet.decode::<MoveVehicleC2s>() {
             if let Ok((pos, look, head_yaw, on_ground, teleport_state)) =
                 clients.get_mut(packet.client)
             {

@@ -4,7 +4,7 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use valence_protocol::encode::{PacketWriter, WritePacket};
 pub use valence_protocol::packets::play::synchronize_tags_s2c::RegistryMap;
-use valence_protocol::packets::play::SynchronizeTagsS2c;
+use valence_protocol::packets::play::UpdateTagsS2c;
 use valence_server_common::Server;
 
 use crate::RegistrySet;
@@ -22,8 +22,8 @@ pub(super) fn build(app: &mut App) {
 }
 
 impl TagsRegistry {
-    fn build_synchronize_tags(&self) -> SynchronizeTagsS2c {
-        SynchronizeTagsS2c {
+    fn build_synchronize_tags(&self) -> UpdateTagsS2c {
+        UpdateTagsS2c {
             groups: Cow::Borrowed(&self.registries),
         }
     }

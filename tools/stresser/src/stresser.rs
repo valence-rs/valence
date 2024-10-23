@@ -9,7 +9,7 @@ use valence_protocol::packets::handshaking::intention_c2s::HandshakeNextState;
 use valence_protocol::packets::handshaking::HandshakeC2s;
 use valence_protocol::packets::login::{HelloC2s, HelloS2c, LoginCompressionS2c, SuccessS2c};
 use valence_protocol::packets::play::{
-    KeepAliveC2s, KeepAliveS2c, MovePlayerPosC2s, PlayerPositionS2c, TeleportConfirmC2s,
+    AcceptTeleportationC2s, KeepAliveC2s, KeepAliveS2c, MovePlayerPosC2s, PlayerPositionS2c,
 };
 use valence_protocol::var_int::VarInt;
 use valence_protocol::{
@@ -118,7 +118,7 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
                     let packet: PlayerPositionS2c = frame.decode()?;
                     enc.clear();
 
-                    enc.append_packet(&TeleportConfirmC2s {
+                    enc.append_packet(&AcceptTeleportationC2s {
                         teleport_id: packet.teleport_id,
                     })?;
 

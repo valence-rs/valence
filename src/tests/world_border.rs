@@ -1,7 +1,6 @@
 use crate::protocol::packets::play::{
-    WorldBorderCenterChangedS2c, WorldBorderInitializeS2c, WorldBorderInterpolateSizeS2c,
-    WorldBorderSizeChangedS2c, WorldBorderWarningBlocksChangedS2c,
-    WorldBorderWarningTimeChangedS2c,
+    InitializeBorderS2c, SetBorderCenterS2c, SetBorderLerpSizeS2c, SetBorderSizeS2c,
+    SetBorderWarningDelayS2c, SetBorderWarningDistanceS2c,
 };
 use crate::testing::*;
 use crate::world_border::{
@@ -21,7 +20,7 @@ fn test_initialize_on_join() {
 
     // Check if a world border initialize packet was sent
     let frames = helper.collect_received();
-    frames.assert_count::<WorldBorderInitializeS2c>(1);
+    frames.assert_count::<InitializeBorderS2c>(1);
 }
 
 #[test]
@@ -45,7 +44,7 @@ fn test_center_change() {
 
     // Check if a world border center changed packet was sent
     let frames = helper.collect_received();
-    frames.assert_count::<WorldBorderCenterChangedS2c>(1);
+    frames.assert_count::<SetBorderCenterS2c>(1);
 }
 
 #[test]
@@ -69,7 +68,7 @@ fn test_diameter_change() {
 
     // Check if a world border size changed packet was sent
     let frames = helper.collect_received();
-    frames.assert_count::<WorldBorderSizeChangedS2c>(1);
+    frames.assert_count::<SetBorderSizeS2c>(1);
 }
 
 #[test]
@@ -97,7 +96,7 @@ fn test_interpolation() {
 
     // Check if a world border interpolate size packet was sent
     let frames = helper.collect_received();
-    frames.assert_count::<WorldBorderInterpolateSizeS2c>(1);
+    frames.assert_count::<SetBorderLerpSizeS2c>(1);
 
     // Check if the interpolation is finished
     let lerp = app.world_mut().get_mut::<WorldBorderLerp>(layer).unwrap();
@@ -129,7 +128,7 @@ fn test_warning_blocks_change() {
 
     // Check if a world border warning blocks changed packet was sent
     let frames = helper.collect_received();
-    frames.assert_count::<WorldBorderWarningBlocksChangedS2c>(1);
+    frames.assert_count::<SetBorderWarningDistanceS2c>(1);
 }
 
 #[test]
@@ -156,7 +155,7 @@ fn test_warning_time_change() {
 
     // Check if a world border warning time changed packet was sent
     let frames = helper.collect_received();
-    frames.assert_count::<WorldBorderWarningTimeChangedS2c>(1);
+    frames.assert_count::<SetBorderWarningDelayS2c>(1);
 }
 
 #[test]
@@ -183,7 +182,7 @@ fn test_portal_tp_boundary_change() {
 
     // Check if a world border initialize packet was sent
     let frames = helper.collect_received();
-    frames.assert_count::<WorldBorderInitializeS2c>(1);
+    frames.assert_count::<InitializeBorderS2c>(1);
 }
 
 fn prepare() -> ScenarioSingleClient {

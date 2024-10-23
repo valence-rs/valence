@@ -1,7 +1,7 @@
 use crate::{Decode, Encode, Packet, VarInt, VarLong};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-pub struct WorldBorderInitializeS2c {
+pub struct InitializeBorderS2c {
     pub x: f64,
     pub z: f64,
     pub old_diameter: f64,

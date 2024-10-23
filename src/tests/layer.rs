@@ -8,8 +8,8 @@ use crate::entity::{EntityLayerId, Position};
 use crate::layer::chunk::UnloadedChunk;
 use crate::layer::{ChunkLayer, EntityLayer};
 use crate::protocol::packets::play::{
-    AddEntityS2c, BlockEntityUpdateS2c, LevelChunkWithLightS2c, MoveEntityPosS2c,
-    RemoveEntitiesS2c, SectionBlocksUpdateS2c, UnloadChunkS2c,
+    AddEntityS2c, BlockEntityUpdateS2c, ForgetLevelChunkS2c, LevelChunkWithLightS2c,
+    MoveEntityPosS2c, RemoveEntitiesS2c, SectionBlocksUpdateS2c,
 };
 use crate::protocol::Packet;
 use crate::testing::ScenarioSingleClient;
@@ -130,8 +130,8 @@ fn layer_chunk_view_change() {
                 // Newly received chunk was not previously loaded.
                 assert!(loaded_chunks.insert(pos), "({pos:?})");
             }
-            UnloadChunkS2c::ID => {
-                let UnloadChunkS2c { pos } = f.decode().unwrap();
+            ForgetLevelChunkS2c::ID => {
+                let ForgetLevelChunkS2c { pos } = f.decode().unwrap();
                 // Newly removed chunk was previously loaded.
                 assert!(loaded_chunks.remove(&pos), "({pos:?})");
             }
@@ -187,7 +187,7 @@ fn chunk_viewer_count() {
         let recvd = helper.collect_received();
 
         recvd.assert_count::<LevelChunkWithLightS2c>(1);
-        recvd.assert_count::<UnloadChunkS2c>(2)
+        recvd.assert_count::<ForgetLevelChunkS2c>(2)
     };
 
     let mut layer = app.world_mut().get_mut::<ChunkLayer>(layer_ent).unwrap();
@@ -362,7 +362,7 @@ fn chunk_entity_spawn_despawn() {
 
         recvd.assert_count::<LevelChunkWithLightS2c>(1);
         recvd.assert_count::<AddEntityS2c>(1);
-        recvd.assert_count::<UnloadChunkS2c>(0);
+        recvd.assert_count::<ForgetLevelChunkS2c>(0);
         recvd.assert_count::<RemoveEntitiesS2c>(0)
     };
 
@@ -386,7 +386,7 @@ fn chunk_entity_spawn_despawn() {
     {
         let recvd = helper.collect_received();
 
-        recvd.assert_count::<UnloadChunkS2c>(1);
+        recvd.assert_count::<ForgetLevelChunkS2c>(1);
         recvd.assert_count::<RemoveEntitiesS2c>(0);
         recvd.assert_count::<LevelChunkWithLightS2c>(0);
         recvd.assert_count::<AddEntityS2c>(0)
@@ -405,7 +405,7 @@ fn chunk_entity_spawn_despawn() {
 
         recvd.assert_count::<LevelChunkWithLightS2c>(1);
         recvd.assert_count::<AddEntityS2c>(0);
-        recvd.assert_count::<UnloadChunkS2c>(0);
+        recvd.assert_count::<ForgetLevelChunkS2c>(0);
         recvd.assert_count::<RemoveEntitiesS2c>(0)
     };
 
@@ -419,7 +419,7 @@ fn chunk_entity_spawn_despawn() {
     {
         let recvd = helper.collect_received();
 
-        recvd.assert_count::<UnloadChunkS2c>(1);
+        recvd.assert_count::<ForgetLevelChunkS2c>(1);
         recvd.assert_count::<RemoveEntitiesS2c>(1);
         recvd.assert_count::<LevelChunkWithLightS2c>(0);
         recvd.assert_count::<AddEntityS2c>(0)
@@ -443,7 +443,7 @@ fn chunk_entity_spawn_despawn() {
 
         recvd.assert_count::<LevelChunkWithLightS2c>(1);
         recvd.assert_count::<AddEntityS2c>(1);
-        recvd.assert_count::<UnloadChunkS2c>(0);
+        recvd.assert_count::<ForgetLevelChunkS2c>(0);
         recvd.assert_count::<RemoveEntitiesS2c>(0)
     };
 
@@ -467,7 +467,7 @@ fn chunk_entity_spawn_despawn() {
 
         recvd.assert_count::<LevelChunkWithLightS2c>(0);
         recvd.assert_count::<AddEntityS2c>(0);
-        recvd.assert_count::<UnloadChunkS2c>(0);
+        recvd.assert_count::<ForgetLevelChunkS2c>(0);
         recvd.assert_count::<RemoveEntitiesS2c>(0)
     };
 }

@@ -7,7 +7,7 @@ use valence_ident::Ident;
 use crate::{Decode, Encode, Packet, VarInt};
 
 #[derive(Clone, PartialEq, Eq, Debug, Packet)]
-pub struct UnlockRecipesS2c<'a> {
+pub struct RecipeS2c<'a> {
     pub action: UpdateRecipeBookAction<'a>,
     pub crafting_recipe_book_open: bool,
     pub crafting_recipe_book_filter_active: bool,
@@ -20,7 +20,7 @@ pub struct UnlockRecipesS2c<'a> {
     pub recipe_ids: Vec<Ident<Cow<'a, str>>>,
 }
 
-impl<'a> Decode<'a> for UnlockRecipesS2c<'a> {
+impl<'a> Decode<'a> for RecipeS2c<'a> {
     fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
         let action_id = VarInt::decode(r)?.0;
 
@@ -56,7 +56,7 @@ impl<'a> Decode<'a> for UnlockRecipesS2c<'a> {
     }
 }
 
-impl Encode for UnlockRecipesS2c<'_> {
+impl Encode for RecipeS2c<'_> {
     fn encode(&self, _w: impl Write) -> anyhow::Result<()> {
         todo!()
     }

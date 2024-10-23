@@ -3,7 +3,7 @@ use bitfield_struct::bitfield;
 use crate::{BlockPos, Bounded, Decode, Encode, Packet, VarLong};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-pub struct UpdateStructureBlockC2s<'a> {
+pub struct SetStructureBlockC2s<'a> {
     pub position: BlockPos,
     pub action: Action,
     pub mode: Mode,

@@ -4,7 +4,7 @@ use tracing::warn;
 use valence_entity::{Look, Position};
 use valence_math::DVec3;
 use valence_protocol::packets::play::player_position_look_s2c::PlayerPositionFlags;
-use valence_protocol::packets::play::{PlayerPositionS2c, TeleportConfirmC2s};
+use valence_protocol::packets::play::{AcceptTeleportationC2s, PlayerPositionS2c};
 use valence_protocol::WritePacket;
 
 use crate::client::{update_view_and_layers, Client, UpdateClientsSet};
@@ -109,7 +109,7 @@ fn handle_teleport_confirmations(
     mut commands: Commands,
 ) {
     for packet in packets.read() {
-        if let Some(pkt) = packet.decode::<TeleportConfirmC2s>() {
+        if let Some(pkt) = packet.decode::<AcceptTeleportationC2s>() {
             if let Ok(mut state) = clients.get_mut(packet.client) {
                 if state.pending_teleports == 0 {
                     warn!(

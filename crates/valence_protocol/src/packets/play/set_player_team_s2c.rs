@@ -8,7 +8,7 @@ use valence_text::Text;
 use crate::{Decode, Encode, Packet};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-pub struct TeamS2c<'a> {
+pub struct SetPlayerTeamS2c<'a> {
     pub team_name: &'a str,
     pub mode: Mode<'a>,
 }

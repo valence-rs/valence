@@ -3,7 +3,7 @@ use crate::layer::chunk::UnloadedChunk;
 use crate::layer::ChunkLayer;
 use crate::math::DVec3;
 use crate::protocol::packets::play::{
-    MoveEntityPosS2c, MovePlayerPosRotC2s, PlayerPositionS2c, TeleportConfirmC2s,
+    AcceptTeleportationC2s, MoveEntityPosS2c, MovePlayerPosRotC2s, PlayerPositionS2c,
 };
 use crate::testing::{create_mock_client, ScenarioSingleClient};
 use crate::{ChunkPos, GameMode};
@@ -41,7 +41,7 @@ fn client_teleport_and_move() {
         .assert_count::<PlayerPositionS2c>(1);
 
     // Confirm the initial teleport from the server.
-    helper_1.send(&TeleportConfirmC2s {
+    helper_1.send(&AcceptTeleportationC2s {
         teleport_id: 0.into(),
     });
 

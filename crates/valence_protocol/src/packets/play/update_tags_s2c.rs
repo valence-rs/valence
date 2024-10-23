@@ -6,7 +6,7 @@ use valence_ident::Ident;
 use crate::{Decode, Encode, Packet, VarInt};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-pub struct SynchronizeTagsS2c<'a> {
+pub struct UpdateTagsS2c<'a> {
     pub groups: Cow<'a, RegistryMap>,
 }
 

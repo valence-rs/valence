@@ -7,7 +7,7 @@ use valence_ident::Ident;
 use crate::{Decode, Encode, ItemStack, Packet, RawBytes};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
-pub struct SynchronizeRecipesS2c<'a> {
+pub struct UpdateRecipesS2c<'a> {
     // TODO: this should be a Vec<Recipe<'a>>
     pub recipes: RawBytes<'a>,
 }
@@ -21,9 +21,9 @@ pub struct Recipe<'a> {
 
 #[derive(Clone, Debug, Encode)]
 pub enum RecipeData<'a> {
+    CraftingShaped,
     CraftingShapeless(CraftingShapedData<'a>),
     // TODO: fill in the rest.
-    CraftingShaped,
     CraftingSpecialArmordye,
     CraftingSpecialBookcloning,
     CraftingSpecialMapcloning,
@@ -31,12 +31,12 @@ pub enum RecipeData<'a> {
     CraftingSpecialFireworkRocket,
     CraftingSpecialFireworkStar,
     CraftingSpecialFireworkStarFade,
-    CraftingSpecialRepairitem,
     CraftingSpecialTippedarrow,
     CraftingSpecialBannerduplicate,
     CraftingSpecialShielddecoration,
     CraftingSpecialShulkerboxcoloring,
     CraftingSpecialSuspiciousStew,
+    CraftingSpecialRepairitem,
     CraftingDecoratedPot,
     Smelting,
     Blasting,
@@ -49,10 +49,10 @@ pub enum RecipeData<'a> {
 
 #[derive(Clone, Debug)]
 pub struct CraftingShapedData<'a> {
-    pub width: u32,
-    pub height: u32,
     pub group: &'a str,
     pub category: CraftingShapedCategory,
+    pub width: u32,
+    pub height: u32,
     /// Length must be width * height.
     pub ingredients: Cow<'a, [Ingredient<'a>]>,
     pub result: ItemStack,

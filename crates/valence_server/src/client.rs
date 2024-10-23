@@ -27,9 +27,9 @@ use valence_protocol::packets::play::chunk_biome_data_s2c::ChunkBiome;
 use valence_protocol::packets::play::game_state_change_s2c::GameEventKind;
 use valence_protocol::packets::play::particle_s2c::Particle;
 use valence_protocol::packets::play::{
-    ChunksBiomesS2c, DisconnectS2c, EntityEventS2c, GameEventS2c, LevelParticlesS2c,
-    PlayerCombatKillS2c, RemoveEntitiesS2c, SetChunkCacheCenterS2c, SetChunkCacheRadiusS2c,
-    SetEntityDataS2c, SetEntityMotionS2c, SetHealthS2c, SoundS2c, UnloadChunkS2c,
+    ChunksBiomesS2c, DisconnectS2c, EntityEventS2c, ForgetLevelChunkS2c, GameEventS2c,
+    LevelParticlesS2c, PlayerCombatKillS2c, RemoveEntitiesS2c, SetChunkCacheCenterS2c,
+    SetChunkCacheRadiusS2c, SetEntityDataS2c, SetEntityMotionS2c, SetHealthS2c, SoundS2c,
     UpdateAttributesS2c,
 };
 use valence_protocol::profile::Property;
@@ -733,7 +733,7 @@ fn handle_layer_messages(
                             }
                             [.., ChunkLayer::UNLOAD] => {
                                 // Unload chunk.
-                                client.write_packet(&UnloadChunkS2c { pos });
+                                client.write_packet(&ForgetLevelChunkS2c { pos });
                                 debug_assert!(chunk_layer.chunk(pos).is_none());
                             }
                             _ => unreachable!("invalid message data while changing chunk state"),
@@ -938,7 +938,7 @@ pub(crate) fn update_view_and_layers(
                 if let Ok(layer) = chunk_layers.get(old_chunk_layer.0) {
                     for pos in old_view.iter() {
                         if let Some(chunk) = layer.chunk(pos) {
-                            client.write_packet(&UnloadChunkS2c { pos });
+                            client.write_packet(&ForgetLevelChunkS2c { pos });
                             chunk.dec_viewer_count();
                         }
                     }
@@ -1038,7 +1038,7 @@ pub(crate) fn update_view_and_layers(
                     if let Ok(layer) = chunk_layers.get(chunk_layer.0) {
                         for pos in old_view.diff(view) {
                             if let Some(chunk) = layer.chunk(pos) {
-                                client.write_packet(&UnloadChunkS2c { pos });
+                                client.write_packet(&ForgetLevelChunkS2c { pos });
                                 chunk.dec_viewer_count();
                             }
                         }

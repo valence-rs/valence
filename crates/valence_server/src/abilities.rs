@@ -2,7 +2,7 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use derive_more::{Deref, DerefMut};
 pub use valence_protocol::packets::play::player_abilities_s2c::PlayerAbilitiesFlags;
-use valence_protocol::packets::play::{PlayerAbilitiesS2c, UpdatePlayerAbilitiesC2s};
+use valence_protocol::packets::play::{PlayerAbilitiesC2s, PlayerAbilitiesS2c};
 use valence_protocol::{GameMode, WritePacket};
 
 use crate::client::{update_game_mode, Client, UpdateClientsSet};
@@ -150,17 +150,17 @@ fn update_server_player_abilities(
     mut client_query: Query<&mut PlayerAbilitiesFlags>,
 ) {
     for packets in packet_events.read() {
-        if let Some(pkt) = packets.decode::<UpdatePlayerAbilitiesC2s>() {
+        if let Some(pkt) = packets.decode::<PlayerAbilitiesC2s>() {
             if let Ok(mut mut_flags) = client_query.get_mut(packets.client) {
                 let flags = mut_flags.bypass_change_detection();
                 match pkt {
-                    UpdatePlayerAbilitiesC2s::StartFlying => {
+                    PlayerAbilitiesC2s::StartFlying => {
                         flags.set_flying(true);
                         player_start_flying_event_writer.send(PlayerStartFlyingEvent {
                             client: packets.client,
                         });
                     }
-                    UpdatePlayerAbilitiesC2s::StopFlying => {
+                    PlayerAbilitiesC2s::StopFlying => {
                         flags.set_flying(false);
                         player_stop_flying_event_writer.send(PlayerStopFlyingEvent {
                             client: packets.client,

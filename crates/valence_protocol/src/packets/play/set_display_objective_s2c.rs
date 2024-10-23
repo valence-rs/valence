@@ -1,6 +1,6 @@
 use bevy_ecs::prelude::Component;
 
-use super::team_s2c::TeamColor;
+use super::set_player_team_s2c::TeamColor;
 use crate::{Decode, Encode, Packet};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]

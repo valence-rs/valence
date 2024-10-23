@@ -1,6 +1,6 @@
 use valence_protocol::encode::WritePacket;
 use valence_protocol::packets::play::{
-    ClearTitlesS2c, SetActionBarTextS2c, SetSubtitleTextS2c, TitleFadeS2c, TitleS2c,
+    ClearTitlesS2c, SetActionBarTextS2c, SetSubtitleTextS2c, SetTitleTextS2c, SetTitlesAnimationS2c,
 };
 use valence_protocol::text::IntoText;
 
@@ -29,7 +29,7 @@ pub trait SetTitle {
 
 impl<T: WritePacket> SetTitle for T {
     fn set_title<'a>(&mut self, text: impl IntoText<'a>) {
-        self.write_packet(&TitleS2c {
+        self.write_packet(&SetTitleTextS2c {
             title_text: text.into_cow_text(),
         });
     }
@@ -47,7 +47,7 @@ impl<T: WritePacket> SetTitle for T {
     }
 
     fn set_title_times(&mut self, fade_in: i32, stay: i32, fade_out: i32) {
-        self.write_packet(&TitleFadeS2c {
+        self.write_packet(&SetTitlesAnimationS2c {
             fade_in,
             stay,
             fade_out,

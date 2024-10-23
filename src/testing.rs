@@ -13,7 +13,7 @@ use valence_registry::{BiomeRegistry, DimensionTypeRegistry};
 use valence_server::client::{ClientBundle, ClientBundleArgs, ClientConnection, ReceivedPacket};
 use valence_server::keepalive::KeepaliveSettings;
 use valence_server::protocol::decode::PacketFrame;
-use valence_server::protocol::packets::play::{PlayerPositionS2c, TeleportConfirmC2s};
+use valence_server::protocol::packets::play::{AcceptTeleportationC2s, PlayerPositionS2c};
 use valence_server::protocol::{Decode, Encode, Packet, PacketDecoder, PacketEncoder, VarInt};
 use valence_server::{ChunkLayer, EntityLayer, Server, ServerSettings};
 
@@ -230,7 +230,7 @@ impl MockClientHelper {
             if pkt.id == PlayerPositionS2c::ID {
                 pkt.decode::<PlayerPositionS2c>().unwrap();
 
-                self.send(&TeleportConfirmC2s {
+                self.send(&AcceptTeleportationC2s {
                     teleport_id: counter.into(),
                 });
 
