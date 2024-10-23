@@ -3,6 +3,9 @@ use valence_inventory::{HeldItem, Inventory, UpdateSelectedSlotEvent};
 use valence_server::entity::player::PlayerEntity;
 
 use super::*;
+
+/// This component will sync a player's [`Equipment`], which is visible to other
+/// players, with the player [`Inventory`].
 #[derive(Debug, Default, Clone, Component)]
 pub struct EquipmentInventorySync;
 
