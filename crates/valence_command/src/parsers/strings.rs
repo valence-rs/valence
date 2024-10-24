@@ -1,5 +1,5 @@
 use bevy_derive::Deref;
-use valence_server::protocol::packets::play::command_tree_s2c::StringArg;
+use valence_server::protocol::packets::play::commands_s2c::StringArg;
 
 use super::Parser;
 use crate::parsers::{CommandArg, CommandArgParseError, ParseInput};

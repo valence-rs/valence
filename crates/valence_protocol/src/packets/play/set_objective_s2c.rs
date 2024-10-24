@@ -25,6 +25,12 @@ pub enum ObjectiveMode<'a> {
         render_type: ObjectiveRenderType,
         number_format: Option<NumberFormat<'a>>,
     },
+    AddEntitiesToTeam {
+        entities: Vec<String>,
+    },
+    RemoveEntitiesFromTeam {
+        entities: Vec<String>,
+    },
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Component, Default)]

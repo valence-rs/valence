@@ -16,6 +16,7 @@ pub use entity::EntityLayer;
 use valence_entity::{InitEntitiesSet, UpdateTrackedDataSet};
 use valence_protocol::encode::WritePacket;
 use valence_protocol::{BlockPos, ChunkPos, Ident};
+use valence_registry::dimension_type::DimensionTypeId;
 use valence_registry::{BiomeRegistry, DimensionTypeRegistry};
 use valence_server_common::Server;
 
@@ -125,14 +126,14 @@ pub struct LayerBundle {
 
 impl LayerBundle {
     /// Returns a new layer bundle.
-    pub fn new<N: Into<Ident<String>>>(
-        dimension_type_name: N,
+    pub fn new(
+        dimension_type: DimensionTypeId,
         dimensions: &DimensionTypeRegistry,
         biomes: &BiomeRegistry,
         server: &Server,
     ) -> Self {
         Self {
-            chunk: ChunkLayer::new(dimension_type_name, dimensions, biomes, server),
+            chunk: ChunkLayer::new(dimension_type, dimensions, biomes, server),
             entity: EntityLayer::new(server),
         }
     }

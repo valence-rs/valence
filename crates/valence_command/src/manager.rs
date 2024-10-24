@@ -12,7 +12,7 @@ use petgraph::{Direction, Graph};
 use tracing::{debug, info, trace, warn};
 use valence_server::client::{Client, SpawnClientsSet};
 use valence_server::event_loop::PacketEvent;
-use valence_server::protocol::packets::play::command_tree_s2c::NodeData;
+use valence_server::protocol::packets::play::commands_s2c::NodeData;
 use valence_server::protocol::packets::play::{ChatCommandSignedC2s, CommandsS2c};
 use valence_server::protocol::WritePacket;
 use valence_server::EventLoopPreUpdate;

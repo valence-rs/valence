@@ -699,6 +699,7 @@ impl Chunk for LoadedChunk {
 #[cfg(test)]
 mod tests {
     use valence_protocol::{ident, CompressionThreshold};
+    use valence_registry::dimension_type::DimensionTypeId;
 
     use super::*;
 
@@ -724,7 +725,7 @@ mod tests {
         #[track_caller]
         fn check<T>(chunk: &mut LoadedChunk, change: impl FnOnce(&mut LoadedChunk) -> T) {
             let info = ChunkLayerInfo {
-                dimension_type_name: ident!("whatever").into(),
+                dimension_type: DimensionTypeId::new(0),
                 height: 512,
                 min_y: -16,
                 biome_registry_len: 200,

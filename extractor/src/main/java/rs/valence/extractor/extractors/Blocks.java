@@ -25,6 +25,7 @@ public class Blocks implements Main.Extractor {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public JsonElement extract() {
         var topLevelJson = new JsonObject();
 
@@ -72,6 +73,8 @@ public class Blocks implements Main.Extractor {
                 stateJson.addProperty("luminance", state.getLuminance());
                 stateJson.addProperty("opaque", state.isOpaque());
                 stateJson.addProperty("replaceable", state.isReplaceable());
+                // This uses a depricated api, but minecraft uses the same depricated api, so we use it for now
+                stateJson.addProperty("blocks_motion", state.blocksMovement());
 
                 if (block.getDefaultState().equals(state)) {
                     blockJson.addProperty("default_state_id", id);

@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use bevy_ecs::prelude::*;
 use derive_more::{Deref, DerefMut};
 use valence_server::entity::EntityLayerId;
-use valence_server::protocol::packets::play::scoreboard_display_s2c::ScoreboardPosition;
-use valence_server::protocol::packets::play::scoreboard_objective_update_s2c::ObjectiveRenderType;
+use valence_server::protocol::packets::play::set_display_objective_s2c::ScoreboardPosition;
+use valence_server::protocol::packets::play::set_objective_s2c::ObjectiveRenderType;
 use valence_server::text::IntoText;
 use valence_server::Text;
 

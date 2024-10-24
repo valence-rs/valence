@@ -4,7 +4,7 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use derive_more::{Deref, DerefMut};
 use valence_server::client::{Client, FlushPacketsSet, UpdateClientsSet, VisibleChunkLayer};
-use valence_server::protocol::packets::play::game_state_change_s2c::GameEventKind;
+use valence_server::protocol::packets::play::game_event_s2c::GameEventKind;
 use valence_server::protocol::packets::play::GameEventS2c;
 use valence_server::protocol::WritePacket;
 use valence_server::ChunkLayer;

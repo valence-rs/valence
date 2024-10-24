@@ -23,9 +23,9 @@ use valence_entity::{
 };
 use valence_math::{DVec3, Vec3};
 use valence_protocol::encode::{PacketEncoder, WritePacket};
-use valence_protocol::packets::play::chunk_biome_data_s2c::ChunkBiome;
-use valence_protocol::packets::play::game_state_change_s2c::GameEventKind;
-use valence_protocol::packets::play::particle_s2c::Particle;
+use valence_protocol::packets::play::chunks_biomes_s2c::ChunkBiome;
+use valence_protocol::packets::play::game_event_s2c::GameEventKind;
+use valence_protocol::packets::play::level_particles_s2c::Particle;
 use valence_protocol::packets::play::{
     ChunksBiomesS2c, DisconnectS2c, EntityEventS2c, ForgetLevelChunkS2c, GameEventS2c,
     LevelParticlesS2c, PlayerCombatKillS2c, RemoveEntitiesS2c, SetChunkCacheCenterS2c,

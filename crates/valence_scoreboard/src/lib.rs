@@ -10,13 +10,12 @@ use tracing::{debug, warn};
 use valence_server::client::{Client, OldVisibleEntityLayers, VisibleEntityLayers};
 use valence_server::entity::EntityLayerId;
 use valence_server::layer::UpdateLayersPreClientSet;
-use valence_server::protocol::packets::play::scoreboard_display_s2c::ScoreboardPosition;
-use valence_server::protocol::packets::play::scoreboard_objective_update_s2c::{
+use valence_server::protocol::packets::play::set_display_objective_s2c::ScoreboardPosition;
+use valence_server::protocol::packets::play::set_objective_s2c::{
     ObjectiveMode, ObjectiveRenderType,
 };
-use valence_server::protocol::packets::play::scoreboard_player_update_s2c::ScoreboardPlayerUpdateAction;
 use valence_server::protocol::packets::play::{
-    SetDisplayObjectiveS2c, SetObjectiveS2c, SetScoreS2c,
+    reset_score_s2c, ResetScoreS2c, SetDisplayObjectiveS2c, SetObjectiveS2c, SetScoreS2c,
 };
 use valence_server::protocol::{VarInt, WritePacket};
 use valence_server::text::IntoText;
@@ -75,11 +74,13 @@ fn create_or_update_objectives(
             ObjectiveMode::Create {
                 objective_display_name: (&display.0).into_cow_text(),
                 render_type: *render_type,
+                number_format: None,
             }
         } else {
             ObjectiveMode::Update {
                 objective_display_name: (&display.0).into_cow_text(),
                 render_type: *render_type,
+                number_format: None,
             }
         };
 
@@ -207,6 +208,7 @@ fn handle_new_clients(
                 mode: ObjectiveMode::Create {
                     objective_display_name: (&display.0).into_cow_text(),
                     render_type: *render_type,
+                    number_format: None,
                 },
             });
             client.write_packet(&SetDisplayObjectiveS2c {
@@ -217,10 +219,10 @@ fn handle_new_clients(
             for (key, score) in &scores.0 {
                 let packet = SetScoreS2c {
                     entity_name: key,
-                    action: ScoreboardPlayerUpdateAction::Update {
-                        objective_name: &objective.0,
-                        objective_score: VarInt(*score),
-                    },
+                    objective_name: &objective.0,
+                    value: VarInt(*score),
+                    display_name: None,
+                    number_format: None,
                 };
 
                 client.write_packet(&packet);
@@ -251,22 +253,27 @@ fn update_scores(
         };
 
         for changed_key in old_scores.diff(scores) {
-            let action = match scores.0.get(changed_key) {
-                Some(score) => ScoreboardPlayerUpdateAction::Update {
-                    objective_name: &objective.0,
-                    objective_score: VarInt(*score),
-                },
-                None => ScoreboardPlayerUpdateAction::Remove {
-                    objective_name: &objective.0,
-                },
-            };
+            match scores.0.get(changed_key) {
+                Some(score) => {
+                    let packet = SetScoreS2c {
+                        entity_name: changed_key,
+                        objective_name: &objective.0,
+                        value: VarInt(*score),
+                        display_name: None,
+                        number_format: None,
+                    };
 
-            let packet = SetScoreS2c {
-                entity_name: changed_key,
-                action,
-            };
+                    layer.write_packet(&packet);
+                }
+                None => {
+                    let packet = ResetScoreS2c {
+                        entity_name: changed_key,
+                        objective_name: Some(&objective.0),
+                    };
 
-            layer.write_packet(&packet);
+                    layer.write_packet(&packet);
+                }
+            };
         }
 
         old_scores.0.clone_from(&scores.0);

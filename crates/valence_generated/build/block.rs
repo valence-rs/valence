@@ -54,6 +54,7 @@ struct State {
     luminance: u8,
     opaque: bool,
     replaceable: bool,
+    blocks_motion: bool,
     collision_shapes: Vec<u16>,
     block_entity_type: Option<u32>,
 }
@@ -149,7 +150,18 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
         })
         .collect::<TokenStream>();
 
-    
+    let state_to_blocks_motion_arms = blocks
+        .iter()
+        .flat_map(|b| {
+            b.states.iter().filter(|s| s.blocks_motion).map(|s| {
+                let id = s.id;
+                quote! {
+                    #id => true,
+                }
+            })
+        })
+        .collect::<TokenStream>();
+
     let shapes = shapes.iter().map(|s| {
         let min_x = s.min_x;
         let min_y = s.min_y;
@@ -672,7 +684,12 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                     _ => false,
                 }
             }
-
+            pub const fn blocks_motion(self) -> bool {
+                match self.0 {
+                    #state_to_blocks_motion_arms
+                    _ => false,
+                }
+            }
             const SHAPES: [Aabb; #shape_count] = [
                 #(#shapes,)*
             ];

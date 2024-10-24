@@ -1,5 +1,5 @@
 use valence_server::protocol::anyhow::{self, bail, ensure};
-use valence_server::protocol::packets::play::click_slot_c2s::ClickMode;
+use valence_server::protocol::packets::play::container_click_c2s::ClickMode;
 use valence_server::protocol::packets::play::ContainerClickC2s;
 
 use super::{CursorItem, Inventory, InventoryWindow};
@@ -364,7 +364,7 @@ fn calculate_net_item_delta(
 mod tests {
     use valence_server::nbt::Compound;
     use valence_server::nbt::Value::Int;
-    use valence_server::protocol::packets::play::click_slot_c2s::SlotChange;
+    use valence_server::protocol::packets::play::container_click_c2s::SlotChange;
     use valence_server::protocol::VarInt;
     use valence_server::{ItemKind, ItemStack};
 

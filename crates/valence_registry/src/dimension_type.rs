@@ -85,6 +85,15 @@ impl DimensionTypeRegistry {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub struct DimensionTypeId(u16);
 
+impl DimensionTypeId {
+    pub fn new(value: u16) -> Self {
+        DimensionTypeId(value)
+    }
+    pub fn get_value(&self) -> u16 {
+        self.0
+    }
+}
+
 impl RegistryIdx for DimensionTypeId {
     const MAX: usize = u16::MAX as usize;
 

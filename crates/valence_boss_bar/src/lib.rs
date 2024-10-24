@@ -8,10 +8,10 @@ use valence_server::client::{
     Client, OldViewDistance, OldVisibleEntityLayers, ViewDistance, VisibleEntityLayers,
 };
 use valence_server::layer::UpdateLayersPreClientSet;
-pub use valence_server::protocol::packets::play::boss_bar_s2c::{
+pub use valence_server::protocol::packets::play::boss_event_s2c::{
     BossBarAction, BossBarColor, BossBarDivision, BossBarFlags,
 };
-use valence_server::protocol::packets::play::BossBarS2c;
+use valence_server::protocol::packets::play::BossEventS2c;
 use valence_server::protocol::WritePacket;
 use valence_server::{ChunkView, Despawned, EntityLayer, Layer, UniqueId};
 
@@ -45,7 +45,7 @@ fn update_boss_bar<T: Component + ToPacketAction>(
 ) {
     for (id, part, entity_layer_id, pos) in boss_bars_query.iter() {
         if let Ok(mut entity_layer) = entity_layers_query.get_mut(entity_layer_id.0) {
-            let packet = BossBarS2c {
+            let packet = BossEventS2c {
                 id: id.0,
                 action: part.to_packet_action(),
             };
@@ -103,7 +103,7 @@ fn update_boss_bar_layer_view(
             {
                 if let Some(position) = boss_bar_position {
                     if view.contains(position.0.into()) {
-                        client.write_packet(&BossBarS2c {
+                        client.write_packet(&BossEventS2c {
                             id: id.0,
                             action: BossBarAction::Add {
                                 title: Cow::Borrowed(&title.0),
@@ -115,7 +115,7 @@ fn update_boss_bar_layer_view(
                         });
                     }
                 } else {
-                    client.write_packet(&BossBarS2c {
+                    client.write_packet(&BossEventS2c {
                         id: id.0,
                         action: BossBarAction::Add {
                             title: Cow::Borrowed(&title.0),
@@ -136,13 +136,13 @@ fn update_boss_bar_layer_view(
             {
                 if let Some(position) = boss_bar_position {
                     if view.contains(position.0.into()) {
-                        client.write_packet(&BossBarS2c {
+                        client.write_packet(&BossEventS2c {
                             id: id.0,
                             action: BossBarAction::Remove,
                         });
                     }
                 } else {
-                    client.write_packet(&BossBarS2c {
+                    client.write_packet(&BossEventS2c {
                         id: id.0,
                         action: BossBarAction::Remove,
                     });
@@ -196,7 +196,7 @@ fn update_boss_bar_chunk_view(
                 if view.contains(boss_bar_position.0.into())
                     && !old_view.contains(boss_bar_position.0.into())
                 {
-                    client.write_packet(&BossBarS2c {
+                    client.write_packet(&BossEventS2c {
                         id: id.0,
                         action: BossBarAction::Add {
                             title: Cow::Borrowed(&title.0),
@@ -209,7 +209,7 @@ fn update_boss_bar_chunk_view(
                 } else if !view.contains(boss_bar_position.0.into())
                     && old_view.contains(boss_bar_position.0.into())
                 {
-                    client.write_packet(&BossBarS2c {
+                    client.write_packet(&BossEventS2c {
                         id: id.0,
                         action: BossBarAction::Remove,
                     });
@@ -225,7 +225,7 @@ fn boss_bar_despawn(
 ) {
     for (id, entity_layer_id, position) in boss_bars_query.iter() {
         if let Ok(mut entity_layer) = entity_layer_query.get_mut(entity_layer_id.0) {
-            let packet = BossBarS2c {
+            let packet = BossEventS2c {
                 id: id.0,
                 action: BossBarAction::Remove,
             };

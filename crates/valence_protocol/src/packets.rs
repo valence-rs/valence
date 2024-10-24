@@ -79,7 +79,9 @@ pub mod play {
     pub mod block_event_s2c;
     pub use block_event_s2c::BlockEventS2c;
     pub mod block_update_s2c;
+    pub mod reset_score_s2c;
     pub use block_update_s2c::BlockUpdateS2c;
+    pub use reset_score_s2c::ResetScoreS2c;
     pub mod paddle_boat_c2s;
     pub use paddle_boat_c2s::PaddleBoatC2s;
     pub mod edit_book_c2s;

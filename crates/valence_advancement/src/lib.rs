@@ -16,7 +16,7 @@ use event::{handle_advancement_tab_change, AdvancementTabChangeEvent};
 use rustc_hash::FxHashMap;
 use valence_server::client::{Client, FlushPacketsSet, SpawnClientsSet};
 use valence_server::protocol::packets::play::{
-    advancement_update_s2c as packet, SelectAdvancementsTabS2c,
+    update_advancements_s2c as packet, SelectAdvancementsTabS2c,
 };
 use valence_server::protocol::{
     anyhow, packet_id, Encode, Packet, PacketSide, PacketState, RawBytes, VarInt, WritePacket,
@@ -105,7 +105,6 @@ impl<'w, 's> UpdateAdvancementCachedBytesQuery<'w, 's> {
         let mut pkt = packet::Advancement {
             parent_id: None,
             display_data: None,
-            criteria: vec![],
             requirements: vec![],
             sends_telemetry_data: false,
         };
@@ -126,15 +125,6 @@ impl<'w, 's> UpdateAdvancementCachedBytesQuery<'w, 's> {
                 x_coord: a_display.x_coord,
                 y_coord: a_display.y_coord,
             });
-        }
-
-        if let Some(a_children) = a_children {
-            for a_child in a_children {
-                let Ok(c_identifier) = criteria_query.get(*a_child) else {
-                    continue;
-                };
-                pkt.criteria.push((c_identifier.0.borrowed(), ()));
-            }
         }
 
         for requirements in &a_requirements.0 {
@@ -218,7 +208,7 @@ impl<'w, 's, 'a> Encode for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
             ..
         } = &self.client_update;
 
-        let mut pkt = packet::GenericAdvancementUpdateS2c {
+        let mut pkt = packet::GenericUpdateAdvancementsS2c {
             reset: *reset,
             advancement_mapping: vec![],
             identifiers: vec![],
@@ -265,7 +255,7 @@ impl<'w, 's, 'a> Encode for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
 }
 
 impl<'w, 's, 'a> Packet for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
-    const ID: i32 = packet_id::ADVANCEMENT_UPDATE_S2C;
+    const ID: i32 = packet_id::PLAY_UPDATE_ADVANCEMENTS_S2C;
     const NAME: &'static str = "AdvancementUpdateEncodeS2c";
     const SIDE: PacketSide = PacketSide::Clientbound;
     const STATE: PacketState = PacketState::Play;

@@ -31,7 +31,7 @@ pub use swizzle::Swizzle;
 use thiserror::Error;
 pub use time::Time;
 use tracing::error;
-pub(crate) use valence_server::protocol::packets::play::command_tree_s2c::Parser;
+pub(crate) use valence_server::protocol::packets::play::commands_s2c::Parser;
 pub use vec2::Vec2;
 pub use vec3::Vec3;
 

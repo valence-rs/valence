@@ -11254,7 +11254,7 @@
         "type": "villager_data",
         "default_value": {
           "type": "plains",
-          "profession": "fletcher",
+          "profession": "armorer",
           "level": 1
         }
       }

@@ -75,9 +75,7 @@ use std::fmt::{Display, Formatter};
 
 use petgraph::dot::Dot;
 use petgraph::prelude::*;
-use valence_server::protocol::packets::play::command_tree_s2c::{
-    Node, NodeData, Parser, StringArg,
-};
+use valence_server::protocol::packets::play::commands_s2c::{Node, NodeData, Parser, StringArg};
 use valence_server::protocol::packets::play::CommandsS2c;
 use valence_server::protocol::VarInt;
 
