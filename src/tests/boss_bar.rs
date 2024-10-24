@@ -4,7 +4,7 @@ use valence_boss_bar::{
 };
 use valence_server::client::VisibleEntityLayers;
 use valence_server::entity::EntityLayerId;
-use valence_server::protocol::packets::play::BossBarS2c;
+use valence_server::protocol::packets::play::BossEventS2c;
 use valence_server::text::IntoText;
 use valence_server::Despawned;
 
@@ -31,7 +31,7 @@ fn test_initialize_on_join() {
 
     // We should receive a boss bar packet with the ADD action
     let frames = scenario.helper.collect_received();
-    frames.assert_count::<BossBarS2c>(1);
+    frames.assert_count::<BossEventS2c>(1);
 }
 
 #[test]
@@ -50,7 +50,7 @@ fn test_despawn() {
 
     // We should receive a boss bar packet with the REMOVE action
     let frames = helper.collect_received();
-    frames.assert_count::<BossBarS2c>(1);
+    frames.assert_count::<BossEventS2c>(1);
 }
 
 #[test]
@@ -71,7 +71,7 @@ fn test_title_update() {
 
     // We should receive a boss bar packet with the UPDATE_TITLE action
     let frames = helper.collect_received();
-    frames.assert_count::<BossBarS2c>(1);
+    frames.assert_count::<BossEventS2c>(1);
 }
 
 #[test]
@@ -90,7 +90,7 @@ fn test_health_update() {
 
     // We should receive a boss bar packet with the UPDATE_HEALTH action
     let frames = helper.collect_received();
-    frames.assert_count::<BossBarS2c>(1);
+    frames.assert_count::<BossEventS2c>(1);
 }
 
 #[test]
@@ -112,7 +112,7 @@ fn test_style_update() {
 
     // We should receive a boss bar packet with the UPDATE_STYLE action
     let frames = helper.collect_received();
-    frames.assert_count::<BossBarS2c>(1);
+    frames.assert_count::<BossEventS2c>(1);
 }
 
 #[test]
@@ -133,7 +133,7 @@ fn test_flags_update() {
 
     // We should receive a boss bar packet with the UPDATE_FLAGS action
     let frames = helper.collect_received();
-    frames.assert_count::<BossBarS2c>(1);
+    frames.assert_count::<BossEventS2c>(1);
 }
 
 #[test]
@@ -158,7 +158,7 @@ fn test_client_layer_change() {
 
     // We should receive a boss bar packet with the REMOVE action
     let frames = helper.collect_received();
-    frames.assert_count::<BossBarS2c>(1);
+    frames.assert_count::<BossEventS2c>(1);
 
     // Add the layer back to the client
     {
@@ -173,7 +173,7 @@ fn test_client_layer_change() {
 
     // We should receive a boss bar packet with the ADD action
     let frames = helper.collect_received();
-    frames.assert_count::<BossBarS2c>(1);
+    frames.assert_count::<BossEventS2c>(1);
 }
 
 fn prepare() -> ScenarioSingleClient {

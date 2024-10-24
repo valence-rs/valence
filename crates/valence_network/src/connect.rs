@@ -19,17 +19,17 @@ use tokio::net::{TcpListener, TcpStream};
 use tracing::{error, info, trace, warn};
 use uuid::Uuid;
 use valence_lang::keys;
+use valence_protocol::packets::status::{
+    PingRequestC2s, PongResponseS2c, StatusRequestC2s, StatusResponseS2c,
+};
 use valence_protocol::profile::Property;
 use valence_protocol::Decode;
 use valence_server::client::Properties;
 use valence_server::protocol::packets::handshaking::intention_c2s::HandshakeNextState;
-use valence_server::protocol::packets::handshaking::HandshakeC2s;
+use valence_server::protocol::packets::handshaking::IntentionC2s;
 use valence_server::protocol::packets::login::{
-    LoginCompressionS2c, LoginDisconnectS2c, HelloC2s, HelloS2c, KeyC2s,
-    CustomQueryS2c, CustomQueryAnswerC2s, SuccessS2c,
-};
-use valence_server::protocol::packets::status::{
-    PingC2s, PongS2c, RequestC2s, ResponseS2c,
+    CustomQueryAnswerC2s, CustomQueryS2c, GameProfileS2c, HelloC2s, HelloS2c, KeyC2s,
+    LoginCompressionS2c, LoginDisconnectS2c,
 };
 use valence_server::protocol::{PacketDecoder, PacketEncoder, RawBytes, VarInt};
 use valence_server::text::{Color, IntoText};
@@ -131,7 +131,7 @@ async fn handle_handshake(
     mut io: PacketIo,
     remote_addr: SocketAddr,
 ) -> anyhow::Result<()> {
-    let handshake = io.recv_packet::<HandshakeC2s>().await?;
+    let handshake = io.recv_packet::<IntentionC2s>().await?;
 
     let next_state = handshake.next_state;
 
@@ -181,7 +181,7 @@ async fn handle_status(
     remote_addr: SocketAddr,
     handshake: HandshakeData,
 ) -> anyhow::Result<()> {
-    io.recv_packet::<RequestC2s>().await?;
+    io.recv_packet::<StatusRequestC2s>().await?;
 
     match shared
         .0
@@ -234,7 +234,7 @@ async fn handle_status(
                 json["favicon"] = Value::String(buf);
             }
 
-            io.send_packet(&ResponseS2c {
+            io.send_packet(&StatusResponseS2c {
                 json: &json.to_string(),
             })
             .await?;
@@ -242,9 +242,9 @@ async fn handle_status(
         ServerListPing::Ignore => return Ok(()),
     }
 
-    let PingC2s { payload } = io.recv_packet().await?;
+    let PingRequestC2s { payload } = io.recv_packet().await?;
 
-    io.send_packet(&PongS2c { payload }).await?;
+    io.send_packet(&PongResponseS2c { payload }).await?;
 
     Ok(())
 }
@@ -305,7 +305,7 @@ async fn handle_login(
         }
     };
 
-    io.send_packet(&SuccessS2c {
+    io.send_packet(&GameProfileS2c {
         uuid: info.uuid,
         username: info.username.as_str().into(),
         properties: Default::default(),
@@ -328,6 +328,7 @@ async fn login_online(
         server_id: "".into(), // Always empty
         public_key: &shared.0.public_key_der,
         verify_token: &my_verify_token,
+        should_authenticate: true,
     })
     .await?;
 

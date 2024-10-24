@@ -9,6 +9,7 @@ use bytes::{Buf, BufMut, BytesMut};
 use uuid::Uuid;
 use valence_ident::ident;
 use valence_network::NetworkPlugin;
+use valence_registry::dimension_type::DimensionTypeId;
 use valence_registry::{BiomeRegistry, DimensionTypeRegistry};
 use valence_server::client::{ClientBundle, ClientBundleArgs, ClientConnection, ReceivedPacket};
 use valence_server::keepalive::KeepaliveSettings;
@@ -49,7 +50,7 @@ impl ScenarioSingleClient {
         app.update(); // Initialize plugins.
 
         let chunk_layer = ChunkLayer::new(
-            ident!("overworld"),
+            DimensionTypeId::new(0),
             app.world().resource::<DimensionTypeRegistry>(),
             app.world().resource::<BiomeRegistry>(),
             app.world().resource::<Server>(),

@@ -8,7 +8,7 @@ use crate::entity::{EntityLayerId, Position};
 use crate::layer::chunk::UnloadedChunk;
 use crate::layer::{ChunkLayer, EntityLayer};
 use crate::protocol::packets::play::{
-    AddEntityS2c, BlockEntityUpdateS2c, ForgetLevelChunkS2c, LevelChunkWithLightS2c,
+    AddEntityS2c, BlockEntityDataS2c, ForgetLevelChunkS2c, LevelChunkWithLightS2c,
     MoveEntityPosS2c, RemoveEntitiesS2c, SectionBlocksUpdateS2c,
 };
 use crate::protocol::Packet;
@@ -45,7 +45,7 @@ fn block_create_destroy() {
         let recvd = helper.collect_received();
 
         recvd.assert_count::<SectionBlocksUpdateS2c>(1);
-        recvd.assert_count::<BlockEntityUpdateS2c>(3)
+        recvd.assert_count::<BlockEntityDataS2c>(3)
     };
 
     let mut layer = app.world_mut().get_mut::<ChunkLayer>(layer_ent).unwrap();
@@ -60,7 +60,7 @@ fn block_create_destroy() {
         let recvd = helper.collect_received();
 
         recvd.assert_count::<SectionBlocksUpdateS2c>(1);
-        recvd.assert_count::<BlockEntityUpdateS2c>(0);
+        recvd.assert_count::<BlockEntityDataS2c>(0);
     }
 }
 

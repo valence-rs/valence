@@ -148,7 +148,7 @@ pub mod prelude {
     pub use valence_server::math::{DVec2, DVec3, Vec2, Vec3};
     pub use valence_server::message::SendMessage as _;
     pub use valence_server::nbt::Compound;
-    pub use valence_server::protocol::packets::play::particle_s2c::Particle;
+    pub use valence_server::protocol::packets::play::level_particles_s2c::Particle;
     pub use valence_server::protocol::text::{Color, IntoText, Text};
     pub use valence_server::spawn::{ClientSpawnQuery, ClientSpawnQueryReadOnly, RespawnPosition};
     pub use valence_server::title::SetTitle as _;
