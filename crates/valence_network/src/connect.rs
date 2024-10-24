@@ -309,6 +309,7 @@ async fn handle_login(
         uuid: info.uuid,
         username: info.username.as_str().into(),
         properties: Default::default(),
+        strict_error_handling: true,
     })
     .await?;
 

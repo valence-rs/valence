@@ -116,7 +116,7 @@ pub(super) fn initial_join(
             game_mode: *spawn.game_mode,
             previous_game_mode: spawn.prev_game_mode.0.into(),
             dimension_names: Cow::Owned(dimension_names),
-            dimension_name: Ident::new("").unwrap(),
+            dimension_name: Ident::new("overworld").unwrap(),
             hashed_seed: spawn.hashed_seed.0 as i64,
             max_players: VarInt(0), // Ignored by clients.
             view_distance: VarInt(i32::from(spawn.view_distance.get())),
@@ -180,7 +180,7 @@ pub(super) fn respawn(
 
         client.write_packet(&RespawnS2c {
             dimension_type: VarInt(dimension_type.get_value().into()),
-            dimension_name: Ident::new("").unwrap(),
+            dimension_name: Ident::new("overworld").unwrap(),
             hashed_seed: hashed_seed.0,
             game_mode: *game_mode,
             previous_game_mode: prev_game_mode.0.into(),
