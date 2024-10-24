@@ -19,11 +19,15 @@ use tokio::net::{TcpListener, TcpStream};
 use tracing::{error, info, trace, warn};
 use uuid::Uuid;
 use valence_lang::keys;
+use valence_protocol::packets::configuration::{
+    FinishConfigurationC2s, FinishConfigurationS2c, RegistryDataS2c,
+};
+use valence_protocol::packets::login::LoginAcknowledgedC2s;
 use valence_protocol::packets::status::{
     PingRequestC2s, PongResponseS2c, StatusRequestC2s, StatusResponseS2c,
 };
 use valence_protocol::profile::Property;
-use valence_protocol::Decode;
+use valence_protocol::{Decode, Packet};
 use valence_server::client::Properties;
 use valence_server::protocol::packets::handshaking::intention_c2s::HandshakeNextState;
 use valence_server::protocol::packets::handshaking::IntentionC2s;
@@ -312,6 +316,32 @@ async fn handle_login(
         strict_error_handling: true,
     })
     .await?;
+    let LoginAcknowledgedC2s {} = io.recv_packet().await?;
+
+    // now in configuration state
+
+    // TODO: send our regestries and stuff, the client will not be happy to join if
+    // the regestries to show the current stuff is not present
+
+    io.send_packet(&RegistryDataS2c {
+        id: todo!(),
+        entries: todo!(),
+    })
+    .await?;
+    io.send_packet(&FinishConfigurationS2c {}).await?;
+    loop {
+        info!("In loop");
+        if let Ok(frame) = io.try_recv_packet().await {
+            match frame.id {
+                FinishConfigurationC2s::ID => {
+                    break;
+                }
+
+                e => info!("got packet id: {}", e), /* ignore any packets that do not progress to
+                                                     * next step */
+            }
+        }
+    }
 
     Ok(Some((info, cleanup)))
 }
