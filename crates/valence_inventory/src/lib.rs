@@ -12,6 +12,7 @@ use player_inventory::PlayerInventory;
 use tracing::{debug, warn};
 use valence_server::client::{Client, FlushPacketsSet, SpawnClientsSet};
 use valence_server::event_loop::{EventLoopPreUpdate, PacketEvent};
+use valence_server::interact_block::InteractBlockEvent;
 pub use valence_server::protocol::packets::play::click_slot_c2s::{ClickMode, SlotChange};
 use valence_server::protocol::packets::play::open_screen_s2c::WindowType;
 pub use valence_server::protocol::packets::play::player_action_c2s::PlayerAction;
@@ -22,7 +23,7 @@ use valence_server::protocol::packets::play::{
 };
 use valence_server::protocol::{VarInt, WritePacket};
 use valence_server::text::IntoText;
-use valence_server::{GameMode, ItemKind, ItemStack, Text};
+use valence_server::{GameMode, Hand, ItemKind, ItemStack, Text};
 
 pub mod player_inventory;
 mod validate;
@@ -54,6 +55,7 @@ impl Plugin for InventoryPlugin {
                 handle_creative_inventory_action,
                 handle_close_handled_screen,
                 handle_player_actions,
+                resync_readonly_inventory_after_block_interaction,
             ),
         )
         .init_resource::<InventorySettings>()
@@ -1333,6 +1335,35 @@ fn handle_player_actions(
                 _ => {}
             }
         }
+    }
+}
+
+/// If the player tries to place a block while their inventory is readonly
+/// it will be desynced, therefore we set the slot as changed.
+fn resync_readonly_inventory_after_block_interaction(
+    mut clients: Query<(&mut Inventory, &HeldItem)>,
+    mut events: EventReader<InteractBlockEvent>,
+) {
+    for event in events.read() {
+        let Ok((mut inventory, held_item)) = clients.get_mut(event.client) else {
+            continue;
+        };
+
+        if !inventory.readonly {
+            continue;
+        }
+
+        let slot = if event.hand == Hand::Main {
+            held_item.slot()
+        } else {
+            PlayerInventory::SLOT_OFFHAND
+        };
+
+        if inventory.slot(slot).is_empty() {
+            continue;
+        }
+
+        inventory.changed |= 1 << slot;
     }
 }
 
