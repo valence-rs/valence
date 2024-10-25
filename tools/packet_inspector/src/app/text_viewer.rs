@@ -2,10 +2,6 @@ use super::{SharedState, Tab, View};
 
 mod utils {
     use packet_inspector::Packet as ProxyPacket;
-    use valence_protocol::packets::handshaking::*;
-    use valence_protocol::packets::login::*;
-    use valence_protocol::packets::play::*;
-    use valence_protocol::packets::status::*;
     use valence_protocol::{Decode, Packet};
 
     include!(concat!(env!("OUT_DIR"), "/packet_to_string.rs"));

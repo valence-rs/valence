@@ -2,8 +2,8 @@ use crate::{Bounded, Decode, Encode, Packet, PacketState, VarInt};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 #[packet(state = PacketState::Handshake)]
-/// Sent by the client to the server to indicate its intention to switch to the given state. 
-/// Either the `Status` or `Login` state will be selected.
+/// Sent by the client to the server to indicate its intention to switch to the
+/// given state. Either the `Status` or `Login` state will be selected.
 pub struct IntentionC2s<'a> {
     pub protocol_version: VarInt,
     pub server_address: Bounded<&'a str, 255>,

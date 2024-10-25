@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use heck::ToPascalCase;
 use proc_macro2::TokenStream;
 use quote::quote;
 use serde::Deserialize;
@@ -9,7 +10,7 @@ use valence_build_utils::write_generated_file;
 struct Packet {
     name: String,
     side: String,
-    state: String,
+    phase: String,
     id: i32,
 }
 
@@ -65,8 +66,9 @@ fn write_packets(packets: &Vec<Packet>) -> anyhow::Result<()> {
             _ => unreachable!(),
         };
 
-        let state = match packet.state.as_str() {
-            "handshaking" => quote! { valence_protocol::PacketState::Handshaking },
+        let phase = match packet.phase.as_str() {
+            "handshake" => quote! { valence_protocol::PacketState::Handshake },
+            "configuration" => quote! { valence_protocol::PacketState::Configuration },
             "status" => quote! { valence_protocol::PacketState::Status },
             "login" => quote! { valence_protocol::PacketState::Login },
             "play" => quote! { valence_protocol::PacketState::Play },
@@ -79,7 +81,7 @@ fn write_packets(packets: &Vec<Packet>) -> anyhow::Result<()> {
             crate::packet_registry::Packet {
                 id: #id,
                 side: #side,
-                state: #state,
+                state: #phase,
                 timestamp: None,
                 name: #name,
                 data: None,
@@ -109,8 +111,9 @@ fn write_transformer(packets: &[Packet]) -> anyhow::Result<()> {
             _ => panic!("Invalid side"),
         };
 
-        let state = match packet.state.as_str() {
-            "handshaking" => "Handshaking".to_owned(),
+        let state = match packet.phase.as_str() {
+            "handshake" => "Handshake".to_owned(),
+            "configuration" => "Configuration".to_owned(),
             "status" => "Status".to_owned(),
             "login" => "Login".to_owned(),
             "play" => "Play".to_owned(),
@@ -161,17 +164,19 @@ fn write_transformer(packets: &[Packet]) -> anyhow::Result<()> {
         for (state, id_map) in state_map.iter_mut() {
             let mut match_arms = TokenStream::new();
 
+            let lowercase_state = state.to_lowercase();
+            let state = syn::parse_str::<syn::Ident>(state).unwrap();
+            let lowercase_state = syn::parse_str::<syn::Ident>(&lowercase_state).unwrap();
             for name in id_map.iter_mut() {
-                let name = syn::parse_str::<syn::Ident>(name).unwrap();
+                let name = name.to_pascal_case();
+                let name = syn::parse_str::<syn::Ident>(&name).unwrap();
 
                 match_arms.extend(quote! {
-                    #name::ID => {
-                        Ok(format!("{:#?}", #name::decode(&mut data)))
+                    valence_protocol::packets::#lowercase_state::#name::ID => {
+                        Ok(format!("{:#?}", valence_protocol::packets::#lowercase_state::#name::decode(&mut data)))
                     }
                 });
             }
-
-            let state = syn::parse_str::<syn::Ident>(state).unwrap();
 
             side_arms.extend(quote! {
                 valence_protocol::PacketState::#state => match packet.id {

@@ -4,7 +4,7 @@
 //! used in. Names are derived from the minecraft canonical packet names for
 //! consistency.
 
-pub mod handshaking {
+pub mod handshake {
     pub mod intention_c2s;
     pub use intention_c2s::IntentionC2s;
 }
@@ -65,13 +65,75 @@ pub mod configuration {
     pub use resource_pack_pop_s2c::ResourcePackPopS2c;
     pub mod resource_pack_push_s2c;
     pub use resource_pack_push_s2c::ResourcePackPushS2c;
+    pub mod store_cookie_s2c;
+    pub use store_cookie_s2c::StoreCookieS2c;
+    pub mod transfer_s2c;
+    pub use transfer_s2c::TransferS2c;
+    pub mod update_enabled_features_s2c;
+    pub use update_enabled_features_s2c::UpdateEnabledFeaturesS2c;
+    pub mod select_known_packs_s2c;
+    pub use select_known_packs_s2c::SelectKnownPacksS2c;
+    pub mod select_known_packs_c2s;
+    pub use select_known_packs_c2s::SelectKnownPacksC2s;
+    pub mod custom_report_details_s2c;
+    pub use custom_report_details_s2c::CustomReportDetailsS2c;
+    pub mod server_links_s2c;
+    pub use server_links_s2c::ServerLinksS2c;
+    pub mod client_information_c2s;
+    pub use client_information_c2s::ClientInformationC2s;
+    pub mod resource_pack_c2s;
+    pub use resource_pack_c2s::ResourcePackC2s;
+    pub mod update_tags_s2c;
+    pub use update_tags_s2c::UpdateTagsS2c;
 }
 
 pub mod play {
+    pub mod chat_command_c2s;
+    pub use chat_command_c2s::ChatCommandC2s;
+    pub mod chunk_batch_received_c2s;
+    pub use chunk_batch_received_c2s::ChunkBatchReceivedC2s;
+    pub mod configuration_acknowledged_c2s;
+    pub use configuration_acknowledged_c2s::ConfigurationAcknowledgedC2s;
+    pub mod container_slot_state_changed_c2s;
+    pub use container_slot_state_changed_c2s::ContainerSlotStateChangedC2s;
+    pub mod debug_sample_subscription_c2s;
+    pub use debug_sample_subscription_c2s::DebugSampleSubscriptionC2s;
+    pub mod debug_sample_s2c;
+    pub use debug_sample_s2c::DebugSampleS2c;
+    pub mod chunk_batch_finished_s2c;
+    pub use chunk_batch_finished_s2c::ChunkBatchFinishedS2c;
+    pub mod chunk_batch_start_s2c;
+    pub use chunk_batch_start_s2c::ChunkBatchStartS2c;
+    pub mod start_configuration_s2c;
+    pub use start_configuration_s2c::StartConfigurationS2c;
+    pub mod ticking_state_s2c;
+    pub use ticking_state_s2c::TickingStateS2c;
+    pub mod ticking_step_s2c;
+    pub use ticking_step_s2c::TickingStepS2c;
+    pub mod pong_response_s2c;
+    pub use pong_response_s2c::PongResponseS2c;
+    pub mod resource_pack_pop_s2c;
+    pub use resource_pack_pop_s2c::ResourcePackPopS2c;
+    pub mod store_cookie_s2c;
+    pub use store_cookie_s2c::StoreCookieS2c;
+    pub mod projectile_power_s2c;
+    pub use projectile_power_s2c::ProjectilePowerS2c;
     pub mod seen_advancements_c2s;
     pub use seen_advancements_c2s::SeenAdvancementsC2s;
     pub mod update_advancements_s2c;
     pub use update_advancements_s2c::UpdateAdvancementsS2c;
+    pub mod cookie_response_c2s;
+    pub use cookie_response_c2s::CookieResponseC2s;
+    pub mod ping_request_c2s;
+    pub use ping_request_c2s::PingRequestC2s;
+    pub mod cookie_request_s2c;
+    pub use cookie_request_s2c::CookieRequestS2c;
+    pub mod transfer_s2c;
+    pub use transfer_s2c::TransferS2c;
+    pub mod custom_report_details_s2c;
+    pub use custom_report_details_s2c::CustomReportDetailsS2c;
+    pub mod server_links_s2c;
+    pub use server_links_s2c::ServerLinksS2c;
     pub mod block_destruction_s2c;
     pub use block_destruction_s2c::BlockDestructionS2c;
     pub mod block_entity_data_s2c;
