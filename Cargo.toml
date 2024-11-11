@@ -176,7 +176,7 @@ sha2 = "0.10.8"
 syn = "2.0.77"
 syntect = { version = "5.2.0", default-features = false }
 tempfile = "3.12.0"
-thiserror = "1.0.63"
+thiserror = "2.0.3"
 time = "0.3.36"
 tokio = { version = "1.40.0", features = ["full"] }
 toml = "0.8.19"
