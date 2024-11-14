@@ -29,8 +29,8 @@ use valence_protocol::packets::status::{
 use valence_protocol::profile::Property;
 use valence_protocol::{Decode, Packet};
 use valence_server::client::Properties;
-use valence_server::protocol::packets::handshaking::intention_c2s::HandshakeNextState;
-use valence_server::protocol::packets::handshaking::IntentionC2s;
+use valence_server::protocol::packets::handshake::intention_c2s::HandshakeNextState;
+use valence_server::protocol::packets::handshake::IntentionC2s;
 use valence_server::protocol::packets::login::{
     CustomQueryAnswerC2s, CustomQueryS2c, GameProfileS2c, HelloC2s, HelloS2c, KeyC2s,
     LoginCompressionS2c, LoginDisconnectS2c,

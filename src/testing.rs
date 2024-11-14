@@ -50,7 +50,7 @@ impl ScenarioSingleClient {
         app.update(); // Initialize plugins.
 
         let chunk_layer = ChunkLayer::new(
-            DimensionTypeId::new(0),
+            ident!("overworld"),
             app.world().resource::<DimensionTypeRegistry>(),
             app.world().resource::<BiomeRegistry>(),
             app.world().resource::<Server>(),

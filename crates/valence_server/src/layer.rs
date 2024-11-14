@@ -127,7 +127,7 @@ pub struct LayerBundle {
 impl LayerBundle {
     /// Returns a new layer bundle.
     pub fn new(
-        dimension_type: DimensionTypeId,
+        dimension_type: Ident<&str>,
         dimensions: &DimensionTypeRegistry,
         biomes: &BiomeRegistry,
         server: &Server,

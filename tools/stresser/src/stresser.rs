@@ -5,8 +5,8 @@ use anyhow::bail;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use uuid::Uuid;
-use valence_protocol::packets::handshaking::intention_c2s::HandshakeNextState;
-use valence_protocol::packets::handshaking::IntentionC2s;
+use valence_protocol::packets::handshake::intention_c2s::HandshakeNextState;
+use valence_protocol::packets::handshake::IntentionC2s;
 use valence_protocol::packets::login::{GameProfileS2c, HelloC2s, HelloS2c, LoginCompressionS2c};
 use valence_protocol::packets::play::{
     AcceptTeleportationC2s, KeepAliveC2s, KeepAliveS2c, MovePlayerPosC2s, PlayerPositionS2c,
@@ -56,7 +56,7 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
 
     enc.append_packet(&HelloC2s {
         username: sess_name.into(),
-        profile_id: Some(Uuid::new_v4()),
+        profile_id: Uuid::new_v4(),
     })?;
 
     let write_buf = enc.take();

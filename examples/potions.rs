@@ -161,7 +161,7 @@ fn apply_potion_attribute(
     amplifier: u8,
     attr: AttributeModifier,
 ) {
-    attributes.remove_modifier(attr.attribute, attr.uuid);
+    attributes.remove_modifier(attr.attribute, attr.);
 
     let amount = adjust_modifier_amount(amplifier, attr.value);
 

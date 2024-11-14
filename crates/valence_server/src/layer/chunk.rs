@@ -20,7 +20,7 @@ use valence_protocol::encode::{PacketWriter, WritePacket};
 use valence_protocol::packets::play::level_particles_s2c::Particle;
 use valence_protocol::packets::play::{LevelParticlesS2c, SoundS2c};
 use valence_protocol::sound::{Sound, SoundCategory, SoundId};
-use valence_protocol::{BiomePos, BlockPos, ChunkPos, CompressionThreshold, Encode, Packet};
+use valence_protocol::{BiomePos, BlockPos, ChunkPos, CompressionThreshold, Encode, Ident, Packet};
 use valence_registry::biome::{BiomeId, BiomeRegistry};
 use valence_registry::dimension_type::DimensionTypeId;
 use valence_registry::DimensionTypeRegistry;
@@ -128,12 +128,14 @@ impl ChunkLayer {
     /// Creates a new chunk layer.
     #[track_caller]
     pub fn new(
-        dimension_type: DimensionTypeId,
+        dimension_type: Ident<&str>,
         dimensions: &DimensionTypeRegistry,
         biomes: &BiomeRegistry,
         server: &Server,
     ) -> Self {
-        let dim = &dimensions[dimension_type];
+        let dim = &dimensions
+            .get(dimension_type)
+            .expect("invalid dimension type");
 
         assert!(
             (0..MAX_HEIGHT as i32).contains(&dim.height),
@@ -145,7 +147,7 @@ impl ChunkLayer {
             messages: Messages::new(),
             chunks: Default::default(),
             info: ChunkLayerInfo {
-                dimension_type,
+                dimension_type: dimensions.index_of(dimension_type).unwrap(),
                 height: dim.height as u32,
                 min_y: dim.min_y,
                 biome_registry_len: biomes.iter().len(),

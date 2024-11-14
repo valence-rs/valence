@@ -13,6 +13,7 @@ use valence::protocol::packets::play::{MovePlayerPosRotC2s, SwingC2s};
 use valence::registry::{BiomeRegistry, DimensionTypeRegistry};
 use valence::testing::create_mock_client;
 use valence::{ident, ChunkPos, DefaultPlugins, Hand, Server, ServerSettings};
+use valence_registry::dimension_type::DimensionTypeId;
 use valence_server::CompressionThreshold;
 
 #[divan::bench]
@@ -41,6 +42,7 @@ fn run_many_players(bencher: Bencher, client_count: usize, view_dist: u8, world_
 
     app.update(); // Initialize plugins.
 
+    let dimension_types = app.world().resource::<DimensionTypeRegistry>();
     let mut layer = LayerBundle::new(
         ident!("overworld"),
         app.world().resource::<DimensionTypeRegistry>(),

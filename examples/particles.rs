@@ -108,7 +108,6 @@ fn dbg_name(dbg: &impl fmt::Debug) -> String {
 
 fn create_particle_vec() -> Vec<Particle> {
     vec![
-        Particle::AmbientEntityEffect,
         Particle::AngryVillager,
         Particle::Block(BlockState::OAK_PLANKS),
         Particle::BlockMarker(BlockState::GOLD_BLOCK),
@@ -136,7 +135,6 @@ fn create_particle_vec() -> Vec<Particle> {
         Particle::EnchantedHit,
         Particle::Enchant,
         Particle::EndRod,
-        Particle::EntityEffect,
         Particle::ExplosionEmitter,
         Particle::Explosion,
         Particle::SonicBoom,
@@ -219,5 +217,13 @@ fn create_particle_vec() -> Vec<Particle> {
         Particle::Scrape,
         Particle::Shriek { delay: 0 },
         Particle::EggCrack,
+        Particle::DustPlume,
+        Particle::TrialSpawnerDetection,
+        Particle::TrialSpawnerDetectionOminous,
+        Particle::VaultConnection,
+        Particle::DustPillar(BlockState::STONE),
+        Particle::OminousSpawning,
+        Particle::RaidOmen,
+        Particle::TrialOmen,
     ]
 }
