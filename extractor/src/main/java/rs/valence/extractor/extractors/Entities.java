@@ -1,8 +1,9 @@
 package rs.valence.extractor.extractors;
 
 import com.google.gson.*;
-
 import com.mojang.authlib.GameProfile;
+import java.lang.reflect.ParameterizedType;
+import java.util.*;
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityPose;
@@ -30,23 +31,23 @@ import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
-
 import rs.valence.extractor.ClassComparator;
 import rs.valence.extractor.DummyPlayerEntity;
 import rs.valence.extractor.DummyWorld;
 import rs.valence.extractor.Main;
 
-import java.lang.reflect.ParameterizedType;
-import java.util.*;
-
 public class Entities implements Main.Extractor {
+
     private final ServerWorld world;
 
     public Entities(MinecraftServer server) {
         this.world = server.getOverworld();
     }
 
-    private static Main.Pair<String, JsonElement> trackedDataToJson(TrackedData<?> data, DataTracker tracker) {
+    private static Main.Pair<String, JsonElement> trackedDataToJson(
+        TrackedData<?> data,
+        DataTracker tracker
+    ) {
         final var handler = data.dataType();
         final var val = tracker.get(data);
 
@@ -62,13 +63,23 @@ public class Entities implements Main.Extractor {
             return new Main.Pair<>("string", new JsonPrimitive((String) val));
         } else if (handler == TrackedDataHandlerRegistry.TEXT_COMPONENT) {
             // TODO: return text as json element.
-            return new Main.Pair<>("text_component", new JsonPrimitive(((Text) val).getString()));
-        } else if (handler == TrackedDataHandlerRegistry.OPTIONAL_TEXT_COMPONENT) {
-            var res = ((Optional<?>) val).map(o -> (JsonElement) new JsonPrimitive(((Text) o).getString()))
-                    .orElse(JsonNull.INSTANCE);
+            return new Main.Pair<>(
+                "text_component",
+                new JsonPrimitive(((Text) val).getString())
+            );
+        } else if (
+            handler == TrackedDataHandlerRegistry.OPTIONAL_TEXT_COMPONENT
+        ) {
+            var res =
+                ((Optional<?>) val).map(o ->
+                        (JsonElement) new JsonPrimitive(((Text) o).getString())
+                    ).orElse(JsonNull.INSTANCE);
             return new Main.Pair<>("optional_text_component", res);
         } else if (handler == TrackedDataHandlerRegistry.ITEM_STACK) {
-            return new Main.Pair<>("item_stack", new JsonPrimitive(((ItemStack) val).toString()));
+            return new Main.Pair<>(
+                "item_stack",
+                new JsonPrimitive(((ItemStack) val).toString())
+            );
         } else if (handler == TrackedDataHandlerRegistry.BOOLEAN) {
             return new Main.Pair<>("boolean", new JsonPrimitive((Boolean) val));
         } else if (handler == TrackedDataHandlerRegistry.ROTATION) {
@@ -86,40 +97,57 @@ public class Entities implements Main.Extractor {
             json.addProperty("z", bp.getZ());
             return new Main.Pair<>("block_pos", json);
         } else if (handler == TrackedDataHandlerRegistry.OPTIONAL_BLOCK_POS) {
-            return new Main.Pair<>("optional_block_pos", ((Optional<?>) val).map(o -> {
-                var bp = (BlockPos) o;
-                var json = new JsonObject();
-                json.addProperty("x", bp.getX());
-                json.addProperty("y", bp.getY());
-                json.addProperty("z", bp.getZ());
-                return (JsonElement) json;
-            }).orElse(JsonNull.INSTANCE));
+            return new Main.Pair<>(
+                "optional_block_pos",
+                ((Optional<?>) val).map(o -> {
+                        var bp = (BlockPos) o;
+                        var json = new JsonObject();
+                        json.addProperty("x", bp.getX());
+                        json.addProperty("y", bp.getY());
+                        json.addProperty("z", bp.getZ());
+                        return (JsonElement) json;
+                    }).orElse(JsonNull.INSTANCE)
+            );
         } else if (handler == TrackedDataHandlerRegistry.FACING) {
             return new Main.Pair<>("facing", new JsonPrimitive(val.toString()));
         } else if (handler == TrackedDataHandlerRegistry.OPTIONAL_UUID) {
-            var res = ((Optional<?>) val).map(o -> (JsonElement) new JsonPrimitive(o.toString()))
-                    .orElse(JsonNull.INSTANCE);
+            var res =
+                ((Optional<?>) val).map(o ->
+                        (JsonElement) new JsonPrimitive(o.toString())
+                    ).orElse(JsonNull.INSTANCE);
             return new Main.Pair<>("optional_uuid", res);
         } else if (handler == TrackedDataHandlerRegistry.BLOCK_STATE) {
             // TODO: get raw block state ID.
             var state = (BlockState) val;
-            return new Main.Pair<>("block_state", new JsonPrimitive(state.toString()));
+            return new Main.Pair<>(
+                "block_state",
+                new JsonPrimitive(state.toString())
+            );
         } else if (handler == TrackedDataHandlerRegistry.OPTIONAL_BLOCK_STATE) {
             // TODO: get raw block state ID.
-            var res = ((Optional<?>) val).map(o -> (JsonElement) new JsonPrimitive(o.toString()))
-                    .orElse(JsonNull.INSTANCE);
+            var res =
+                ((Optional<?>) val).map(o ->
+                        (JsonElement) new JsonPrimitive(o.toString())
+                    ).orElse(JsonNull.INSTANCE);
             return new Main.Pair<>("optional_block_state", res);
         } else if (handler == TrackedDataHandlerRegistry.NBT_COMPOUND) {
             // TODO: base64 binary representation or SNBT?
-            return new Main.Pair<>("nbt_compound", new JsonPrimitive(val.toString()));
+            return new Main.Pair<>(
+                "nbt_compound",
+                new JsonPrimitive(val.toString())
+            );
         } else if (handler == TrackedDataHandlerRegistry.PARTICLE) {
-            var id = Registries.PARTICLE_TYPE.getId(((ParticleEffect) val).getType());
+            var id = Registries.PARTICLE_TYPE.getId(
+                ((ParticleEffect) val).getType()
+            );
             return new Main.Pair<>("particle", new JsonPrimitive(id.getPath()));
         } else if (handler == TrackedDataHandlerRegistry.PARTICLE_LIST) {
             List<ParticleEffect> particleList = (List<ParticleEffect>) val;
             JsonArray json = new JsonArray();
             for (ParticleEffect particleEffect : particleList) {
-                var id = Registries.PARTICLE_TYPE.getId(((ParticleEffect) val).getType());
+                var id = Registries.PARTICLE_TYPE.getId(
+                    ((ParticleEffect) val).getType()
+                );
                 json.add(id.getPath());
             }
             return new Main.Pair<>("particle_list", json);
@@ -127,48 +155,93 @@ public class Entities implements Main.Extractor {
             var vd = (VillagerData) val;
             var json = new JsonObject();
             var type = Registries.VILLAGER_TYPE.getId(vd.getType()).getPath();
-            var profession = Registries.VILLAGER_PROFESSION.getId(vd.getProfession()).getPath();
+            var profession = Registries.VILLAGER_PROFESSION.getId(
+                vd.getProfession()
+            ).getPath();
             json.addProperty("type", type);
             json.addProperty("profession", profession);
             json.addProperty("level", vd.getLevel());
             return new Main.Pair<>("villager_data", json);
         } else if (handler == TrackedDataHandlerRegistry.OPTIONAL_INT) {
             var opt = (OptionalInt) val;
-            return new Main.Pair<>("optional_int", opt.isPresent() ? new JsonPrimitive(opt.getAsInt()) : JsonNull.INSTANCE);
+            return new Main.Pair<>(
+                "optional_int",
+                opt.isPresent()
+                    ? new JsonPrimitive(opt.getAsInt())
+                    : JsonNull.INSTANCE
+            );
         } else if (handler == TrackedDataHandlerRegistry.ENTITY_POSE) {
-            return new Main.Pair<>("entity_pose", new JsonPrimitive(((EntityPose) val).name().toLowerCase(Locale.ROOT)));
+            return new Main.Pair<>(
+                "entity_pose",
+                new JsonPrimitive(
+                    ((EntityPose) val).name().toLowerCase(Locale.ROOT)
+                )
+            );
         } else if (handler == TrackedDataHandlerRegistry.CAT_VARIANT) {
-            return new Main.Pair<>("cat_variant",
-                    new JsonPrimitive(((RegistryEntry<CatVariant>) val).getIdAsString()));
+            return new Main.Pair<>(
+                "cat_variant",
+                new JsonPrimitive(
+                    ((RegistryEntry<CatVariant>) val).getIdAsString()
+                )
+            );
         } else if (handler == TrackedDataHandlerRegistry.WOLF_VARIANT) {
-            return new Main.Pair<>("wolf_variant",
-                    new JsonPrimitive(((RegistryEntry<WolfVariant>) val).getIdAsString()));
+            return new Main.Pair<>(
+                "wolf_variant",
+                new JsonPrimitive(
+                    ((RegistryEntry<WolfVariant>) val).getIdAsString()
+                )
+            );
         } else if (handler == TrackedDataHandlerRegistry.FROG_VARIANT) {
-            return new Main.Pair<>("frog_variant",
-                    new JsonPrimitive(((RegistryEntry<FrogVariant>) val).getIdAsString()));
+            return new Main.Pair<>(
+                "frog_variant",
+                new JsonPrimitive(
+                    ((RegistryEntry<FrogVariant>) val).getIdAsString()
+                )
+            );
         } else if (handler == TrackedDataHandlerRegistry.OPTIONAL_GLOBAL_POS) {
-            return new Main.Pair<>("optional_global_pos", ((Optional<?>) val).map(o -> {
-                var gp = (GlobalPos) o;
-                var json = new JsonObject();
-                json.addProperty("dimension", gp.dimension().getValue().toString());
+            return new Main.Pair<>(
+                "optional_global_pos",
+                ((Optional<?>) val).map(o -> {
+                        var gp = (GlobalPos) o;
+                        var json = new JsonObject();
+                        json.addProperty(
+                            "dimension",
+                            gp.dimension().getValue().toString()
+                        );
 
-                var posJson = new JsonObject();
-                posJson.addProperty("x", gp.pos().getX());
-                posJson.addProperty("y", gp.pos().getY());
-                posJson.addProperty("z", gp.pos().getZ());
+                        var posJson = new JsonObject();
+                        posJson.addProperty("x", gp.pos().getX());
+                        posJson.addProperty("y", gp.pos().getY());
+                        posJson.addProperty("z", gp.pos().getZ());
 
-                json.add("position", posJson);
-                return (JsonElement) json;
-            }).orElse(JsonNull.INSTANCE));
+                        json.add("position", posJson);
+                        return (JsonElement) json;
+                    }).orElse(JsonNull.INSTANCE)
+            );
         } else if (handler == TrackedDataHandlerRegistry.PAINTING_VARIANT) {
-            var variant = ((RegistryEntry<?>) val).getKey().map(k -> k.getValue().getPath()).orElse("");
-            return new Main.Pair<>("painting_variant", new JsonPrimitive(variant));
+            var variant =
+                ((RegistryEntry<?>) val).getKey()
+                    .map(k -> k.getValue().getPath())
+                    .orElse("");
+            return new Main.Pair<>(
+                "painting_variant",
+                new JsonPrimitive(variant)
+            );
         } else if (handler == TrackedDataHandlerRegistry.SNIFFER_STATE) {
-            return new Main.Pair<>("sniffer_state",
-                    new JsonPrimitive(((SnifferEntity.State) val).name().toLowerCase(Locale.ROOT)));
+            return new Main.Pair<>(
+                "sniffer_state",
+                new JsonPrimitive(
+                    ((SnifferEntity.State) val).name().toLowerCase(Locale.ROOT)
+                )
+            );
         } else if (handler == TrackedDataHandlerRegistry.ARMADILLO_STATE) {
-            return new Main.Pair<>("armadillo_state",
-                    new JsonPrimitive(((ArmadilloEntity.State) val).name().toLowerCase(Locale.ROOT)));
+            return new Main.Pair<>(
+                "armadillo_state",
+                new JsonPrimitive(
+                    ((ArmadilloEntity.State) val).name()
+                        .toLowerCase(Locale.ROOT)
+                )
+            );
         } else if (handler == TrackedDataHandlerRegistry.VECTOR3F) {
             var vec = (Vector3f) val;
             var json = new JsonObject();
@@ -186,7 +259,10 @@ public class Entities implements Main.Extractor {
             return new Main.Pair<>("quaternionf", json);
         } else {
             throw new IllegalArgumentException(
-                    "Unexpected tracked handler of ID " + TrackedDataHandlerRegistry.getId(handler) + handler.toString());
+                "Unexpected tracked handler of ID " +
+                TrackedDataHandlerRegistry.getId(handler) +
+                handler.toString()
+            );
         }
     }
 
@@ -197,14 +273,20 @@ public class Entities implements Main.Extractor {
 
     @Override
     @SuppressWarnings("unchecked")
-    public JsonElement extract() throws IllegalAccessException, NoSuchFieldException {
-
-        final var entityList = new ArrayList<Main.Pair<Class<? extends Entity>, EntityType<?>>>();
-        var entityClassTypeMap = new HashMap<Class<? extends Entity>, EntityType<?>>();
+    public JsonElement extract()
+        throws IllegalAccessException, NoSuchFieldException {
+        final var entityList = new ArrayList<
+            Main.Pair<Class<? extends Entity>, EntityType<?>>
+        >();
+        var entityClassTypeMap = new HashMap<
+            Class<? extends Entity>,
+            EntityType<?>
+        >();
         for (var f : EntityType.class.getFields()) {
             if (f.getType().equals(EntityType.class)) {
-                var entityClass = (Class<? extends Entity>) ((ParameterizedType) f.getGenericType())
-                        .getActualTypeArguments()[0];
+                var entityClass = (Class<
+                        ? extends Entity
+                    >) ((ParameterizedType) f.getGenericType()).getActualTypeArguments()[0];
                 var entityType = (EntityType<?>) f.get(null);
 
                 entityList.add(new Main.Pair<>(entityClass, entityType));
@@ -212,10 +294,13 @@ public class Entities implements Main.Extractor {
             }
         }
 
-        final var dataTrackerField = Entity.class.getDeclaredField("dataTracker");
+        final var dataTrackerField =
+            Entity.class.getDeclaredField("dataTracker");
         dataTrackerField.setAccessible(true);
 
-        var entitiesMap = new TreeMap<Class<? extends Entity>, JsonElement>(new ClassComparator());
+        var entitiesMap = new TreeMap<Class<? extends Entity>, JsonElement>(
+            new ClassComparator()
+        );
 
         for (var entry : entityList) {
             var entityClass = entry.left();
@@ -230,26 +315,41 @@ public class Entities implements Main.Extractor {
             // the data tracker field from the base entity class.
             // We also handle player entities specially since they cannot be spawned with
             // EntityType#create.
-            final var entityInstance = entityType.equals(EntityType.PLAYER) ? new DummyPlayerEntity(world, BlockPos.ofFloored(0, 70, 0), 0, new GameProfile(UUID.randomUUID(), "cooldude"), null)
-                    : entityType.create(world);
+            final var entityInstance = entityType.equals(EntityType.PLAYER)
+                ? new DummyPlayerEntity(
+                    world,
+                    BlockPos.ofFloored(0, 70, 0),
+                    0,
+                    new GameProfile(UUID.randomUUID(), "cooldude"),
+                    null
+                )
+                : entityType.create(world);
 
-
-            final var dataTracker = (DataTracker) dataTrackerField.get(entityInstance);
+            final var dataTracker = (DataTracker) dataTrackerField.get(
+                entityInstance
+            );
 
             while (null == entitiesMap.get(entityClass)) {
                 var entityJson = new JsonObject();
 
                 var parent = entityClass.getSuperclass();
-                var hasParent = null != parent && Entity.class.isAssignableFrom(parent);
+                var hasParent =
+                    null != parent && Entity.class.isAssignableFrom(parent);
 
                 if (hasParent) {
                     entityJson.addProperty("parent", parent.getSimpleName());
                 }
 
                 if (null != entityType) {
-                    entityJson.addProperty("type", Registries.ENTITY_TYPE.getId(entityType).getPath());
+                    entityJson.addProperty(
+                        "type",
+                        Registries.ENTITY_TYPE.getId(entityType).getPath()
+                    );
 
-                    entityJson.add("translation_key", new JsonPrimitive(entityType.getTranslationKey()));
+                    entityJson.add(
+                        "translation_key",
+                        new JsonPrimitive(entityType.getTranslationKey())
+                    );
                 }
 
                 var fieldsJson = new JsonArray();
@@ -257,15 +357,21 @@ public class Entities implements Main.Extractor {
                     if (entityField.getType().equals(TrackedData.class)) {
                         entityField.setAccessible(true);
 
-                        var trackedData = (TrackedData<?>) entityField.get(null);
-
+                        var trackedData = (TrackedData<?>) entityField.get(
+                            null
+                        );
 
                         var fieldJson = new JsonObject();
-                        var fieldName = entityField.getName().toLowerCase(Locale.ROOT);
+                        var fieldName = entityField
+                            .getName()
+                            .toLowerCase(Locale.ROOT);
                         fieldJson.addProperty("name", fieldName);
                         fieldJson.addProperty("index", trackedData.id());
 
-                        var data = Entities.trackedDataToJson(trackedData, dataTracker);
+                        var data = Entities.trackedDataToJson(
+                            trackedData,
+                            dataTracker
+                        );
                         fieldJson.addProperty("type", data.left());
                         fieldJson.add("default_value", data.right());
 
@@ -279,19 +385,32 @@ public class Entities implements Main.Extractor {
                     var defaultAttributes = DefaultAttributeRegistry.get(type);
                     var attributesJson = new JsonArray();
                     if (null != defaultAttributes) {
-                        var instancesField = defaultAttributes.getClass().getDeclaredField("instances");
+                        var instancesField = defaultAttributes
+                            .getClass()
+                            .getDeclaredField("instances");
                         instancesField.setAccessible(true);
-                        var instances = (Map<EntityAttribute, EntityAttributeInstance>) instancesField
-                                .get(defaultAttributes);
+                        var instances = (Map<
+                                EntityAttribute,
+                                EntityAttributeInstance
+                            >) instancesField.get(defaultAttributes);
 
                         for (var instance : instances.values()) {
                             var attribute = instance.getAttribute().value();
 
                             var attributeJson = new JsonObject();
 
-                            attributeJson.addProperty("id", Registries.ATTRIBUTE.getRawId(attribute));
-                            attributeJson.addProperty("name", Registries.ATTRIBUTE.getId(attribute).getPath());
-                            attributeJson.addProperty("base_value", instance.getBaseValue());
+                            attributeJson.addProperty(
+                                "id",
+                                Registries.ATTRIBUTE.getRawId(attribute)
+                            );
+                            attributeJson.addProperty(
+                                "name",
+                                Registries.ATTRIBUTE.getId(attribute).getPath()
+                            );
+                            attributeJson.addProperty(
+                                "base_value",
+                                instance.getBaseValue()
+                            );
 
                             attributesJson.add(attributeJson);
                         }

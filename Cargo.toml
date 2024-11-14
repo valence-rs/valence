@@ -75,7 +75,7 @@ anyhow.workspace = true
 clap.workspace = true
 divan.workspace = true
 flume.workspace = true
-noise.workspace = true     # For the terrain example.
+noise.workspace = true   # For the terrain example.
 tracing.workspace = true
 
 [dev-dependencies.reqwest]
@@ -118,7 +118,9 @@ bevy_derive = "0.14.2"
 bevy_ecs = { version = "0.14.2", default-features = false, features = [
     "multi_threaded",
 ] }
-bevy_hierarchy = { version = "0.14.2", default-features = false, features = ["bevy_app"] }
+bevy_hierarchy = { version = "0.14.2", default-features = false, features = [
+    "bevy_app",
+] }
 bevy_log = { version = "0.14.2" }
 bevy_mod_debugdump = { version = "0.11.1" }
 bevy_utils = { version = "0.14.2" }
@@ -180,7 +182,7 @@ toml = "0.8.19"
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
 url = { version = "2.5.2", features = ["serde"] }
-uuid = "1.10.0"
+uuid = { version = "1.10.0", features = ["v4"] }
 valence = { path = ".", version = "0.2.0-alpha.1" }
 valence_advancement = { path = "crates/valence_advancement", version = "0.2.0-alpha.1" }
 valence_anvil = { path = "crates/valence_anvil", version = "0.1.0" }

@@ -21,7 +21,7 @@ pub(super) fn derive_packet(item: TokenStream) -> Result<TokenStream> {
     let state = packet_attr
         .state
         .unwrap_or_else(|| parse_quote!(::valence_protocol::PacketState::Play));
-    
+
     // Get phase from the last part of the module path
     let phase = state.to_token_stream().to_string().split("::").last().unwrap().to_shouty_snake_case();
     let suffix = phase + "_";

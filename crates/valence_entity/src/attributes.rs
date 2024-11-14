@@ -319,7 +319,7 @@ impl EntityAttributes {
     pub fn set_modifier(
         &mut self,
         attribute: EntityAttribute,
-        id: &String,
+        id: impl Into<String>,
         modifier: f64,
         operation: EntityAttributeOperation,
     ) {
@@ -327,14 +327,14 @@ impl EntityAttributes {
         self.attributes
             .entry(attribute)
             .or_insert_with(|| EntityAttributeInstance::new(attribute))
-            .with_modifier(id, modifier, operation);
+            .with_modifier(&id.into(), modifier, operation);
     }
 
     /// Removes a modifier of an attribute.
-    pub fn remove_modifier(&mut self, attribute: EntityAttribute, id: &String) {
+    pub fn remove_modifier(&mut self, attribute: EntityAttribute, id: impl Into<String>) {
         self.mark_recently_changed(attribute);
         if let Some(instance) = self.attributes.get_mut(&attribute) {
-            instance.remove_modifier(id);
+            instance.remove_modifier(&id.into());
         }
     }
 
@@ -347,10 +347,10 @@ impl EntityAttributes {
     }
 
     /// Checks if a modifier exists on an attribute.
-    pub fn has_modifier(&self, attribute: EntityAttribute, id: &String) -> bool {
+    pub fn has_modifier(&self, attribute: EntityAttribute, id: impl Into<String>) -> bool {
         self.attributes
             .get(&attribute)
-            .is_some_and(|inst| inst.has_modifier(id))
+            .is_some_and(|inst| inst.has_modifier(&id.into()))
     }
 
     /// **For internal use only.**

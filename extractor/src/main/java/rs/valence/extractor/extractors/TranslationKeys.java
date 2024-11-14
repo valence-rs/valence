@@ -3,11 +3,10 @@ package rs.valence.extractor.extractors;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import net.minecraft.util.Language;
-import rs.valence.extractor.Main;
-
 import java.lang.reflect.Field;
 import java.util.Map;
+import net.minecraft.util.Language;
+import rs.valence.extractor.Main;
 
 public class TranslationKeys implements Main.Extractor {
 
@@ -27,7 +26,10 @@ public class TranslationKeys implements Main.Extractor {
 
             var translationJson = new JsonObject();
             translationJson.addProperty("key", translationKey);
-            translationJson.addProperty("english_translation", translationValue);
+            translationJson.addProperty(
+                "english_translation",
+                translationValue
+            );
 
             translationsJson.add(translationJson);
         }
@@ -47,10 +49,19 @@ public class TranslationKeys implements Main.Extractor {
                     return (Map<String, String>) fieldValue;
                 }
             } catch (IllegalAccessException e) {
-                throw new RuntimeException("Failed reflection on field '" + field + "' on class '" + anonymousClass + "'", e);
+                throw new RuntimeException(
+                    "Failed reflection on field '" +
+                    field +
+                    "' on class '" +
+                    anonymousClass +
+                    "'",
+                    e
+                );
             }
         }
 
-        throw new RuntimeException("Did not find anonymous map under 'net.minecraft.util.Language.create()'");
+        throw new RuntimeException(
+            "Did not find anonymous map under 'net.minecraft.util.Language.create()'"
+        );
     }
 }

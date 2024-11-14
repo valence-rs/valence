@@ -4,15 +4,16 @@ package rs.valence.extractor;
  * Utility class for various methods.
  */
 public class ValenceUtils {
+
     private ValenceUtils() {
-        throw new UnsupportedOperationException("This class cannot be instantiated");
+        throw new UnsupportedOperationException(
+            "This class cannot be instantiated"
+        );
     }
-
-
 
     /**
      * Converts a string to PascalCase.
-     * 
+     *
      * @param str The string to convert.
      * @return The converted string.
      */

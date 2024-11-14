@@ -160,12 +160,13 @@ fn apply_potion_attribute(
     health: &mut Option<Mut<Health>>,
     amplifier: u8,
     attr: AttributeModifier,
+    name: &str,
 ) {
-    attributes.remove_modifier(attr.attribute, attr.);
+    attributes.remove_modifier(attr.attribute, name);
 
     let amount = adjust_modifier_amount(amplifier, attr.value);
 
-    attributes.set_modifier(attr.attribute, attr.uuid, amount, attr.operation);
+    attributes.set_modifier(attr.attribute, name, amount, attr.operation);
 
     // not quite how vanilla does it, but it's close enough
     if attr.attribute == EntityAttribute::GenericMaxHealth {
@@ -183,8 +184,9 @@ fn remove_potion_attribute(
     attributes: &mut Mut<EntityAttributes>,
     health: &mut Option<Mut<Health>>,
     attr: AttributeModifier,
+    name: &str,
 ) {
-    attributes.remove_modifier(attr.attribute, attr.uuid);
+    attributes.remove_modifier(attr.attribute, name);
 
     if attr.attribute == EntityAttribute::GenericMaxHealth {
         if let Some(ref mut health) = health {
@@ -246,6 +248,7 @@ pub fn handle_status_effect_added(
                             &mut health,
                             effect.amplifier(),
                             attr,
+                            status.name().as_str(),
                         );
                     }
                 }
@@ -282,7 +285,12 @@ pub fn handle_status_effect_removed(
                 }
                 status => {
                     for attr in status.attribute_modifiers() {
-                        remove_potion_attribute(&mut attributes, &mut health, attr);
+                        remove_potion_attribute(
+                            &mut attributes,
+                            &mut health,
+                            attr,
+                            status.name().as_str(),
+                        );
                     }
                 }
             }

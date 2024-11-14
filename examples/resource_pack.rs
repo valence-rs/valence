@@ -3,7 +3,7 @@
 use valence::entity::sheep::SheepEntityBundle;
 use valence::message::SendMessage;
 use valence::prelude::*;
-use valence::protocol::packets::play::ResourcePackC2s;
+use valence::protocol::packets::play::resource_pack_c2s::ResourcePackStatus;
 use valence::resource_pack::ResourcePackStatusEvent;
 
 const SPAWN_Y: i32 = 64;
@@ -109,22 +109,34 @@ fn on_resource_pack_status(
     mut clients: Query<&mut Client>,
     mut events: EventReader<ResourcePackStatusEvent>,
 ) {
-    for event in events.read() {
-        if let Ok(mut client) = clients.get_mut(event.client) {
-            match event.status {
-                ResourcePackStatusC2s::Accepted => {
+    for (client, event) in events.read().map(|e| (e.client, e.status)) {
+        if let Ok(mut client) = clients.get_mut(client) {
+            match event.result {
+                ResourcePackStatus::Accepted => {
                     client.send_chat_message("Resource pack accepted.".color(Color::GREEN));
                 }
-                ResourcePackStatusC2s::Declined => {
+                ResourcePackStatus::Declined => {
                     client.send_chat_message("Resource pack declined.".color(Color::RED));
                 }
-                ResourcePackStatusC2s::FailedDownload => {
+                ResourcePackStatus::FailedDownload => {
                     client.send_chat_message("Resource pack failed to download.".color(Color::RED));
                 }
-                ResourcePackStatusC2s::SuccessfullyLoaded => {
+                ResourcePackStatus::SuccessfullyLoaded => {
                     client.send_chat_message(
                         "Resource pack successfully downloaded.".color(Color::BLUE),
                     );
+                }
+                ResourcePackStatus::Downloaded => {
+                    client.send_chat_message("Resource pack downloaded.".color(Color::BLUE));
+                }
+                ResourcePackStatus::InvalidUrl => {
+                    client.send_chat_message("Resource pack URL is invalid.".color(Color::RED));
+                }
+                ResourcePackStatus::FailedToReload => {
+                    client.send_chat_message("Resource pack failed to reload.".color(Color::RED));
+                }
+                ResourcePackStatus::Discarded => {
+                    client.send_chat_message("Resource pack discarded.".color(Color::RED));
                 }
             }
         };

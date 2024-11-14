@@ -2,6 +2,8 @@ package rs.valence.extractor.extractors;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import java.lang.reflect.Modifier;
+import java.util.Locale;
 import net.fabricmc.fabric.impl.biome.modification.BuiltInRegistryKeys;
 import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EntityStatuses;
@@ -16,10 +18,9 @@ import net.minecraft.registry.*;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.math.Direction;
 import rs.valence.extractor.Main;
-import java.lang.reflect.Modifier;
-import java.util.Locale;
 
 public class Misc implements Main.Extractor {
+
     private final DynamicRegistryManager.Immutable registryManager;
 
     public Misc(MinecraftServer server) {
@@ -37,8 +38,10 @@ public class Misc implements Main.Extractor {
 
         var entityTypeJson = new JsonObject();
         for (var type : Registries.ENTITY_TYPE) {
-            entityTypeJson.addProperty(Registries.ENTITY_TYPE.getId(type).getPath(),
-                    Registries.ENTITY_TYPE.getRawId(type));
+            entityTypeJson.addProperty(
+                Registries.ENTITY_TYPE.getId(type).getPath(),
+                Registries.ENTITY_TYPE.getRawId(type)
+            );
         }
         miscJson.add("entity_type", entityTypeJson);
 
@@ -48,7 +51,10 @@ public class Misc implements Main.Extractor {
                 if ("field_30030".equals(field.getName())) {
                     entityStatusJson.addProperty("stop_attack", code);
                 } else {
-                    entityStatusJson.addProperty(field.getName().toLowerCase(Locale.ROOT), code);
+                    entityStatusJson.addProperty(
+                        field.getName().toLowerCase(Locale.ROOT),
+                        code
+                    );
                 }
             }
         }
@@ -57,44 +63,64 @@ public class Misc implements Main.Extractor {
         var entityAnimationJson = new JsonObject();
         for (var field : EntityAnimationS2CPacket.class.getDeclaredFields()) {
             field.setAccessible(true);
-            if (Modifier.isStatic(field.getModifiers()) && field.canAccess(null)
-                    && field.get(null) instanceof Integer i) {
-                entityAnimationJson.addProperty(field.getName().toLowerCase(Locale.ROOT), i);
+            if (
+                Modifier.isStatic(field.getModifiers()) &&
+                field.canAccess(null) &&
+                field.get(null) instanceof Integer i
+            ) {
+                entityAnimationJson.addProperty(
+                    field.getName().toLowerCase(Locale.ROOT),
+                    i
+                );
             }
         }
         miscJson.add("entity_animation", entityAnimationJson);
 
         var villagerTypeJson = new JsonObject();
         for (var type : Registries.VILLAGER_TYPE) {
-            villagerTypeJson.addProperty(Registries.VILLAGER_TYPE.getId(type).getPath(),
-                    Registries.VILLAGER_TYPE.getRawId(type));
+            villagerTypeJson.addProperty(
+                Registries.VILLAGER_TYPE.getId(type).getPath(),
+                Registries.VILLAGER_TYPE.getRawId(type)
+            );
         }
         miscJson.add("villager_type", villagerTypeJson);
 
         var villagerProfessionJson = new JsonObject();
         for (var profession : Registries.VILLAGER_PROFESSION) {
-            villagerProfessionJson.addProperty(profession.id(), Registries.VILLAGER_PROFESSION.getRawId(profession));
+            villagerProfessionJson.addProperty(
+                profession.id(),
+                Registries.VILLAGER_PROFESSION.getRawId(profession)
+            );
         }
         miscJson.add("villager_profession", villagerProfessionJson);
 
         var catVariantJson = new JsonObject();
         for (var variant : Registries.CAT_VARIANT) {
-            catVariantJson.addProperty(Registries.CAT_VARIANT.getId(variant).getPath(),
-                    Registries.CAT_VARIANT.getRawId(variant));
+            catVariantJson.addProperty(
+                Registries.CAT_VARIANT.getId(variant).getPath(),
+                Registries.CAT_VARIANT.getRawId(variant)
+            );
         }
         miscJson.add("cat_variant", catVariantJson);
 
         var frogVariantJson = new JsonObject();
         for (var variant : Registries.FROG_VARIANT) {
-            frogVariantJson.addProperty(Registries.FROG_VARIANT.getId(variant).getPath(),
-                    Registries.FROG_VARIANT.getRawId(variant));
+            frogVariantJson.addProperty(
+                Registries.FROG_VARIANT.getId(variant).getPath(),
+                Registries.FROG_VARIANT.getRawId(variant)
+            );
         }
         miscJson.add("frog_variant", frogVariantJson);
 
         var wolfVariantJson = new JsonObject();
         for (var variant : registryManager.get(RegistryKeys.WOLF_VARIANT)) {
-            wolfVariantJson.addProperty(registryManager.get(RegistryKeys.WOLF_VARIANT).getId(variant).getPath(),
-                    registryManager.get(RegistryKeys.WOLF_VARIANT).getRawId(variant));
+            wolfVariantJson.addProperty(
+                registryManager
+                    .get(RegistryKeys.WOLF_VARIANT)
+                    .getId(variant)
+                    .getPath(),
+                registryManager.get(RegistryKeys.WOLF_VARIANT).getRawId(variant)
+            );
         }
         miscJson.add("wolf_variant", wolfVariantJson);
 
@@ -107,34 +133,47 @@ public class Misc implements Main.Extractor {
         var entityPoseJson = new JsonObject();
         var poses = EntityPose.values();
         for (int i = 0; i < poses.length; i++) {
-            entityPoseJson.addProperty(poses[i].name().toLowerCase(Locale.ROOT), i);
+            entityPoseJson.addProperty(
+                poses[i].name().toLowerCase(Locale.ROOT),
+                i
+            );
         }
         miscJson.add("entity_pose", entityPoseJson);
 
         var particleTypesJson = new JsonObject();
         for (var type : Registries.PARTICLE_TYPE) {
-            particleTypesJson.addProperty(Registries.PARTICLE_TYPE.getId(type).getPath(),
-                    Registries.PARTICLE_TYPE.getRawId(type));
+            particleTypesJson.addProperty(
+                Registries.PARTICLE_TYPE.getId(type).getPath(),
+                Registries.PARTICLE_TYPE.getRawId(type)
+            );
         }
         miscJson.add("particle_type", particleTypesJson);
 
         var snifferStateJson = new JsonObject();
         for (var state : SnifferEntity.State.values()) {
-            snifferStateJson.addProperty(state.name().toLowerCase(Locale.ROOT), state.ordinal());
+            snifferStateJson.addProperty(
+                state.name().toLowerCase(Locale.ROOT),
+                state.ordinal()
+            );
         }
         miscJson.add("sniffer_state", snifferStateJson);
 
         var armadilloStateJson = new JsonObject();
         for (var state : ArmadilloEntity.State.values()) {
-            armadilloStateJson.addProperty(state.name().toLowerCase(Locale.ROOT), state.ordinal());
+            armadilloStateJson.addProperty(
+                state.name().toLowerCase(Locale.ROOT),
+                state.ordinal()
+            );
         }
         miscJson.add("armadillo_state", armadilloStateJson);
-
 
         var trackedDataHandlerJson = new JsonObject();
         for (var field : TrackedDataHandlerRegistry.class.getDeclaredFields()) {
             field.setAccessible(true);
-            if (Modifier.isStatic(field.getModifiers()) && field.get(null) instanceof TrackedDataHandler<?> handler) {
+            if (
+                Modifier.isStatic(field.getModifiers()) &&
+                field.get(null) instanceof TrackedDataHandler<?> handler
+            ) {
                 var name = field.getName().toLowerCase(Locale.ROOT);
                 var id = TrackedDataHandlerRegistry.getId(handler);
 

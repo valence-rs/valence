@@ -4,8 +4,8 @@ use crate::{Decode, Encode, Packet};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Packet)]
 pub struct ResourcePackC2s {
-    uuid: Uuid,
-    result: ResourcePackStatus,
+    pub uuid: Uuid,
+    pub result: ResourcePackStatus,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]

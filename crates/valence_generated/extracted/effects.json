@@ -8,7 +8,6 @@
     "category": "BENEFICIAL",
     "attribute_modifiers": [
       {
-        "attribute_id": 21,
         "attribute_name": "generic.movement_speed",
         "operation": 2,
         "base_value": 0.20000000298023224
@@ -24,7 +23,6 @@
     "category": "HARMFUL",
     "attribute_modifiers": [
       {
-        "attribute_id": 21,
         "attribute_name": "generic.movement_speed",
         "operation": 2,
         "base_value": -0.15000000596046448
@@ -40,7 +38,6 @@
     "category": "BENEFICIAL",
     "attribute_modifiers": [
       {
-        "attribute_id": 4,
         "attribute_name": "generic.attack_speed",
         "operation": 2,
         "base_value": 0.10000000149011612
@@ -56,7 +53,6 @@
     "category": "HARMFUL",
     "attribute_modifiers": [
       {
-        "attribute_id": 4,
         "attribute_name": "generic.attack_speed",
         "operation": 2,
         "base_value": -0.10000000149011612
@@ -72,7 +68,6 @@
     "category": "BENEFICIAL",
     "attribute_modifiers": [
       {
-        "attribute_id": 2,
         "attribute_name": "generic.attack_damage",
         "operation": 0,
         "base_value": 3.0
@@ -104,7 +99,6 @@
     "category": "BENEFICIAL",
     "attribute_modifiers": [
       {
-        "attribute_id": 23,
         "attribute_name": "generic.safe_fall_distance",
         "operation": 0,
         "base_value": 1.0
@@ -192,7 +186,6 @@
     "category": "HARMFUL",
     "attribute_modifiers": [
       {
-        "attribute_id": 2,
         "attribute_name": "generic.attack_damage",
         "operation": 0,
         "base_value": -4.0
@@ -224,7 +217,6 @@
     "category": "BENEFICIAL",
     "attribute_modifiers": [
       {
-        "attribute_id": 18,
         "attribute_name": "generic.max_health",
         "operation": 0,
         "base_value": 4.0
@@ -240,7 +232,6 @@
     "category": "BENEFICIAL",
     "attribute_modifiers": [
       {
-        "attribute_id": 17,
         "attribute_name": "generic.max_absorption",
         "operation": 0,
         "base_value": 4.0
@@ -280,7 +271,6 @@
     "category": "BENEFICIAL",
     "attribute_modifiers": [
       {
-        "attribute_id": 16,
         "attribute_name": "generic.luck",
         "operation": 0,
         "base_value": 1.0
@@ -296,7 +286,6 @@
     "category": "HARMFUL",
     "attribute_modifiers": [
       {
-        "attribute_id": 16,
         "attribute_name": "generic.luck",
         "operation": 0,
         "base_value": -1.0

@@ -7,8 +7,8 @@ import net.minecraft.registry.Registries;
 import rs.valence.extractor.Main;
 
 public class Sounds implements Main.Extractor {
-    public Sounds() {
-    }
+
+    public Sounds() {}
 
     @Override
     public String fileName() {
@@ -22,7 +22,10 @@ public class Sounds implements Main.Extractor {
         for (var sound : Registries.SOUND_EVENT) {
             var itemJson = new JsonObject();
             itemJson.addProperty("id", Registries.SOUND_EVENT.getRawId(sound));
-            itemJson.addProperty("name", Registries.SOUND_EVENT.getId(sound).getPath());
+            itemJson.addProperty(
+                "name",
+                Registries.SOUND_EVENT.getId(sound).getPath()
+            );
             itemsJson.add(itemJson);
         }
 

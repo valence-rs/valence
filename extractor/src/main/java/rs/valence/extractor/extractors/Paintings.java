@@ -27,14 +27,26 @@ public class Paintings implements Main.Extractor {
     public JsonElement extract() throws Exception {
         var dataDrivenMiscJson = new JsonObject();
 
-        var paintingRegistry = registryManager.get(RegistryKeys.PAINTING_VARIANT);
+        var paintingRegistry = registryManager.get(
+            RegistryKeys.PAINTING_VARIANT
+        );
 
         var codec = PaintingVariant.CODEC;
 
         JsonObject json = new JsonObject();
-        paintingRegistry.streamEntries().forEach(entry -> {
-            json.add(entry.getKey().orElseThrow().getValue().toString(), codec.encodeStart(RegistryOps.of(JsonOps.INSTANCE, registryManager), entry.value()).getOrThrow());
-        });
+        paintingRegistry
+            .streamEntries()
+            .forEach(entry -> {
+                json.add(
+                    entry.getKey().orElseThrow().getValue().toString(),
+                    codec
+                        .encodeStart(
+                            RegistryOps.of(JsonOps.INSTANCE, registryManager),
+                            entry.value()
+                        )
+                        .getOrThrow()
+                );
+            });
 
         return json;
     }

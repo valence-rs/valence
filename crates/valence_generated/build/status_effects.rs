@@ -14,7 +14,6 @@ pub(crate) enum StatusEffectCategory {
 
 #[derive(Deserialize, Debug)]
 pub(crate) struct AttributeModifiers {
-    attribute_id: u8,
     operation: u8,
     attribute_name: String,
     base_value: f64,
@@ -145,7 +144,7 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                     let attribute =  ident(modifier.attribute_name.to_pascal_case());
                     let operation = &modifier.operation;
                     let value = &modifier.base_value;
-                    
+
                     quote! {
                         AttributeModifier {
                             attribute: EntityAttribute::#attribute,

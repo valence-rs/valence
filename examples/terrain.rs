@@ -297,7 +297,12 @@ fn chunk_worker(state: Arc<ChunkWorkerState>) {
                                 chunk.set_block_state(offset_x, y + 1, offset_z, upper);
                                 chunk.set_block_state(offset_x, y, offset_z, lower);
                             } else {
-                                chunk.set_block_state(offset_x, y, offset_z, BlockState::GRASS);
+                                chunk.set_block_state(
+                                    offset_x,
+                                    y,
+                                    offset_z,
+                                    BlockState::GRASS_BLOCK,
+                                );
                             }
                         }
                     }

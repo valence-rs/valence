@@ -1,5 +1,7 @@
 package rs.valence.extractor;
 
+import java.util.List;
+import java.util.function.Supplier;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.component.type.MapIdComponent;
@@ -35,8 +37,6 @@ import net.minecraft.world.event.GameEvent;
 import net.minecraft.world.tick.QueryableTickScheduler;
 import net.minecraft.world.tick.TickManager;
 import org.jetbrains.annotations.Nullable;
-import java.util.List;
-import java.util.function.Supplier;
 
 public class DummyWorld extends World {
 
@@ -53,35 +53,79 @@ public class DummyWorld extends World {
             var propertiesField = World.class.getDeclaredField("properties");
             propertiesField.setAccessible(true);
             propertiesField.set(INSTANCE, new DummyMutableWorldProperties());
-
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private DummyWorld(MutableWorldProperties properties, RegistryKey<World> registryRef, DynamicRegistryManager registryManager, RegistryEntry<DimensionType> dimension, Supplier<Profiler> profiler, boolean isClient, boolean debugWorld, long seed, int maxChainedNeighborUpdates) {
-        super(properties, registryRef, registryManager, dimension, profiler, isClient, debugWorld, seed, maxChainedNeighborUpdates);
+    private DummyWorld(
+        MutableWorldProperties properties,
+        RegistryKey<World> registryRef,
+        DynamicRegistryManager registryManager,
+        RegistryEntry<DimensionType> dimension,
+        Supplier<Profiler> profiler,
+        boolean isClient,
+        boolean debugWorld,
+        long seed,
+        int maxChainedNeighborUpdates
+    ) {
+        super(
+            properties,
+            registryRef,
+            registryManager,
+            dimension,
+            profiler,
+            isClient,
+            debugWorld,
+            seed,
+            maxChainedNeighborUpdates
+        );
     }
 
     @Override
-    public void updateListeners(BlockPos pos, BlockState oldState, BlockState newState, int flags) {
-
-    }
-
-    @Override
-    public void playSound(@Nullable PlayerEntity except, double x, double y, double z, RegistryEntry<SoundEvent> sound, SoundCategory category, float volume, float pitch, long seed) {
-
-    }
+    public void updateListeners(
+        BlockPos pos,
+        BlockState oldState,
+        BlockState newState,
+        int flags
+    ) {}
 
     @Override
-    public void playSound(@Nullable PlayerEntity except, double x, double y, double z, SoundEvent sound, SoundCategory category, float volume, float pitch, long seed) {
-
-    }
+    public void playSound(
+        @Nullable PlayerEntity except,
+        double x,
+        double y,
+        double z,
+        RegistryEntry<SoundEvent> sound,
+        SoundCategory category,
+        float volume,
+        float pitch,
+        long seed
+    ) {}
 
     @Override
-    public void playSoundFromEntity(@Nullable PlayerEntity except, Entity entity, RegistryEntry<SoundEvent> sound, SoundCategory category, float volume, float pitch, long seed) {
+    public void playSound(
+        @Nullable PlayerEntity except,
+        double x,
+        double y,
+        double z,
+        SoundEvent sound,
+        SoundCategory category,
+        float volume,
+        float pitch,
+        long seed
+    ) {}
 
-    }
+    @Override
+    public void playSoundFromEntity(
+        @Nullable PlayerEntity except,
+        Entity entity,
+        RegistryEntry<SoundEvent> sound,
+        SoundCategory category,
+        float volume,
+        float pitch,
+        long seed
+    ) {}
 
     @Override
     public String asString() {
@@ -106,9 +150,7 @@ public class DummyWorld extends World {
     }
 
     @Override
-    public void putMapState(MapIdComponent id, MapState state) {
-
-    }
+    public void putMapState(MapIdComponent id, MapState state) {}
 
     @Override
     public MapIdComponent increaseAndGetMapId() {
@@ -116,9 +158,11 @@ public class DummyWorld extends World {
     }
 
     @Override
-    public void setBlockBreakingInfo(int entityId, BlockPos pos, int progress) {
-
-    }
+    public void setBlockBreakingInfo(
+        int entityId,
+        BlockPos pos,
+        int progress
+    ) {}
 
     @Override
     public Scoreboard getScoreboard() {
@@ -151,15 +195,19 @@ public class DummyWorld extends World {
     }
 
     @Override
-    public void syncWorldEvent(@Nullable PlayerEntity player, int eventId, BlockPos pos, int data) {
-
-    }
+    public void syncWorldEvent(
+        @Nullable PlayerEntity player,
+        int eventId,
+        BlockPos pos,
+        int data
+    ) {}
 
     @Override
-    public void emitGameEvent(RegistryEntry<GameEvent> event, Vec3d emitterPos, GameEvent.Emitter emitter) {
-
-    }
-
+    public void emitGameEvent(
+        RegistryEntry<GameEvent> event,
+        Vec3d emitterPos,
+        GameEvent.Emitter emitter
+    ) {}
 
     @Override
     public DynamicRegistryManager getRegistryManager() {
@@ -187,12 +235,16 @@ public class DummyWorld extends World {
     }
 
     @Override
-    public RegistryEntry<Biome> getGeneratorStoredBiome(int biomeX, int biomeY, int biomeZ) {
+    public RegistryEntry<Biome> getGeneratorStoredBiome(
+        int biomeX,
+        int biomeY,
+        int biomeZ
+    ) {
         return null;
     }
 
-    private static class DummyMutableWorldProperties implements MutableWorldProperties {
-
+    private static class DummyMutableWorldProperties
+        implements MutableWorldProperties {
 
         @Override
         public BlockPos getSpawnPos() {
@@ -203,7 +255,6 @@ public class DummyWorld extends World {
         public float getSpawnAngle() {
             return 0;
         }
-
 
         @Override
         public long getTime() {
@@ -226,9 +277,7 @@ public class DummyWorld extends World {
         }
 
         @Override
-        public void setRaining(boolean raining) {
-
-        }
+        public void setRaining(boolean raining) {}
 
         @Override
         public boolean isHardcore() {
@@ -251,8 +300,6 @@ public class DummyWorld extends World {
         }
 
         @Override
-        public void setSpawnPos(BlockPos pos, float angle) {
-
-        }
+        public void setSpawnPos(BlockPos pos, float angle) {}
     }
 }

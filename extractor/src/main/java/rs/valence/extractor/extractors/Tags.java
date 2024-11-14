@@ -4,6 +4,9 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.datafixers.util.Pair;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 import net.minecraft.registry.CombinedDynamicRegistries;
 import net.minecraft.registry.Registry;
 import net.minecraft.registry.SerializableRegistries;
@@ -15,12 +18,11 @@ import net.minecraft.util.Identifier;
 import rs.valence.extractor.Main;
 import rs.valence.extractor.RegistryKeyComparator;
 
-import java.util.Map;
-import java.util.TreeMap;
-import java.util.stream.Collectors;
-
 public class Tags implements Main.Extractor {
-    private final CombinedDynamicRegistries<ServerDynamicRegistryType> dynamicRegistryManager;
+
+    private final CombinedDynamicRegistries<
+        ServerDynamicRegistryType
+    > dynamicRegistryManager;
 
     public Tags(MinecraftServer server) {
         this.dynamicRegistryManager = server.getCombinedDynamicRegistries();
@@ -36,11 +38,21 @@ public class Tags implements Main.Extractor {
         var tagsJson = new JsonObject();
 
         final var registryTags =
-                SerializableRegistries.streamRegistryManagerEntries(this.dynamicRegistryManager)
-                        .map(registry -> Pair.of(registry.key(), serializeTags(registry.value())))
-                        .filter(pair -> !(pair.getSecond()).isEmpty())
-                        .collect(Collectors.toMap(Pair::getFirst, Pair::getSecond, (l, r) -> r,
-                                () -> new TreeMap<>(new RegistryKeyComparator())));
+            SerializableRegistries.streamRegistryManagerEntries(
+                this.dynamicRegistryManager
+            )
+                .map(registry ->
+                    Pair.of(registry.key(), serializeTags(registry.value()))
+                )
+                .filter(pair -> !(pair.getSecond()).isEmpty())
+                .collect(
+                    Collectors.toMap(
+                        Pair::getFirst,
+                        Pair::getSecond,
+                        (l, r) -> r,
+                        () -> new TreeMap<>(new RegistryKeyComparator())
+                    )
+                );
 
         for (var registry : registryTags.entrySet()) {
             var registryIdent = registry.getKey().getValue().toString();
@@ -58,19 +70,28 @@ public class Tags implements Main.Extractor {
         return tagsJson;
     }
 
-    private static <T> Map<Identifier, JsonArray> serializeTags(Registry<T> registry) {
+    private static <T> Map<Identifier, JsonArray> serializeTags(
+        Registry<T> registry
+    ) {
         TreeMap<Identifier, JsonArray> map = new TreeMap<>();
-        registry.streamTagsAndEntries().forEach(pair -> {
-            RegistryEntryList<T> registryEntryList = pair.getSecond();
-            JsonArray intList = new JsonArray(registryEntryList.size());
-            for (RegistryEntry<T> registryEntry : registryEntryList) {
-                if (RegistryEntry.Type.REFERENCE != registryEntry.getType()) {
-                    throw new IllegalStateException("Can't serialize unregistered value " + registryEntry);
+        registry
+            .streamTagsAndEntries()
+            .forEach(pair -> {
+                RegistryEntryList<T> registryEntryList = pair.getSecond();
+                JsonArray intList = new JsonArray(registryEntryList.size());
+                for (RegistryEntry<T> registryEntry : registryEntryList) {
+                    if (
+                        RegistryEntry.Type.REFERENCE != registryEntry.getType()
+                    ) {
+                        throw new IllegalStateException(
+                            "Can't serialize unregistered value " +
+                            registryEntry
+                        );
+                    }
+                    intList.add(registry.getRawId(registryEntry.value()));
                 }
-                intList.add(registry.getRawId(registryEntry.value()));
-            }
-            map.put(pair.getFirst().id(), intList);
-        });
+                map.put(pair.getFirst().id(), intList);
+            });
         return map;
     }
 }

@@ -7,8 +7,8 @@ import java.util.Comparator;
  * Compare Class objects by their simple names lexicographically.
  */
 public class ClassComparator implements Comparator<Class<?>>, Serializable {
-    public ClassComparator() {
-    }
+
+    public ClassComparator() {}
 
     @Override
     public int compare(Class<?> c1, Class<?> c2) {

@@ -1,13 +1,13 @@
 package rs.valence.extractor;
 
-import net.minecraft.registry.RegistryKey;
-
 import java.io.Serializable;
 import java.util.Comparator;
+import net.minecraft.registry.RegistryKey;
 
-public class RegistryKeyComparator implements Comparator<RegistryKey<?>>, Serializable {
-    public RegistryKeyComparator() {
-    }
+public class RegistryKeyComparator
+    implements Comparator<RegistryKey<?>>, Serializable {
+
+    public RegistryKeyComparator() {}
 
     @Override
     public int compare(RegistryKey<?> o1, RegistryKey<?> o2) {

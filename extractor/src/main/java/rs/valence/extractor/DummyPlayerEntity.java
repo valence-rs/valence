@@ -10,6 +10,7 @@ import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
 public class DummyPlayerEntity extends PlayerEntity {
+
     public static final DummyPlayerEntity INSTANCE;
 
     static {
@@ -18,7 +19,13 @@ public class DummyPlayerEntity extends PlayerEntity {
         INSTANCE.initDataTracker(new DataTracker.Builder(INSTANCE));
     }
 
-    public DummyPlayerEntity(World world, BlockPos pos, float yaw, GameProfile gameProfile, @Nullable PlayerPublicKey publicKey) {
+    public DummyPlayerEntity(
+        World world,
+        BlockPos pos,
+        float yaw,
+        GameProfile gameProfile,
+        @Nullable PlayerPublicKey publicKey
+    ) {
         super(world, pos, yaw, gameProfile);
     }
 
