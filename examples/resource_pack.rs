@@ -122,9 +122,8 @@ fn on_resource_pack_status(
                     client.send_chat_message("Resource pack failed to download.".color(Color::RED));
                 }
                 ResourcePackStatus::SuccessfullyLoaded => {
-                    client.send_chat_message(
-                        "Resource pack successfully downloaded.".color(Color::BLUE),
-                    );
+                    client
+                        .send_chat_message("Resource pack successfully loaded.".color(Color::BLUE));
                 }
                 ResourcePackStatus::Downloaded => {
                     client.send_chat_message("Resource pack downloaded.".color(Color::BLUE));

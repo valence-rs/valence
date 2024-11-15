@@ -1,279 +1,288 @@
 {
-  "generic.armor": {
+  "armor": {
     "id": 0,
-    "name": "generic.armor",
+    "name": "armor",
     "default_value": 0.0,
-    "translation_key": "attribute.name.generic.armor",
+    "translation_key": "attribute.name.armor",
     "tracked": true,
     "min_value": 0.0,
     "max_value": 30.0
   },
-  "generic.armor_toughness": {
+  "armor_toughness": {
     "id": 1,
-    "name": "generic.armor_toughness",
+    "name": "armor_toughness",
     "default_value": 0.0,
-    "translation_key": "attribute.name.generic.armor_toughness",
+    "translation_key": "attribute.name.armor_toughness",
     "tracked": true,
     "min_value": 0.0,
     "max_value": 20.0
   },
-  "generic.attack_damage": {
+  "attack_damage": {
     "id": 2,
-    "name": "generic.attack_damage",
+    "name": "attack_damage",
     "default_value": 2.0,
-    "translation_key": "attribute.name.generic.attack_damage",
+    "translation_key": "attribute.name.attack_damage",
     "tracked": false,
     "min_value": 0.0,
     "max_value": 2048.0
   },
-  "generic.attack_knockback": {
+  "attack_knockback": {
     "id": 3,
-    "name": "generic.attack_knockback",
+    "name": "attack_knockback",
     "default_value": 0.0,
-    "translation_key": "attribute.name.generic.attack_knockback",
+    "translation_key": "attribute.name.attack_knockback",
     "tracked": false,
     "min_value": 0.0,
     "max_value": 5.0
   },
-  "generic.attack_speed": {
+  "attack_speed": {
     "id": 4,
-    "name": "generic.attack_speed",
+    "name": "attack_speed",
     "default_value": 4.0,
-    "translation_key": "attribute.name.generic.attack_speed",
+    "translation_key": "attribute.name.attack_speed",
     "tracked": true,
     "min_value": 0.0,
     "max_value": 1024.0
   },
-  "player.block_break_speed": {
+  "block_break_speed": {
     "id": 5,
-    "name": "player.block_break_speed",
+    "name": "block_break_speed",
     "default_value": 1.0,
-    "translation_key": "attribute.name.player.block_break_speed",
+    "translation_key": "attribute.name.block_break_speed",
     "tracked": true,
     "min_value": 0.0,
     "max_value": 1024.0
   },
-  "player.block_interaction_range": {
+  "block_interaction_range": {
     "id": 6,
-    "name": "player.block_interaction_range",
+    "name": "block_interaction_range",
     "default_value": 4.5,
-    "translation_key": "attribute.name.player.block_interaction_range",
+    "translation_key": "attribute.name.block_interaction_range",
     "tracked": true,
     "min_value": 0.0,
     "max_value": 64.0
   },
-  "generic.burning_time": {
+  "burning_time": {
     "id": 7,
-    "name": "generic.burning_time",
+    "name": "burning_time",
     "default_value": 1.0,
-    "translation_key": "attribute.name.generic.burning_time",
+    "translation_key": "attribute.name.burning_time",
     "tracked": true,
     "min_value": 0.0,
     "max_value": 1024.0
   },
-  "generic.explosion_knockback_resistance": {
+  "explosion_knockback_resistance": {
     "id": 8,
-    "name": "generic.explosion_knockback_resistance",
+    "name": "explosion_knockback_resistance",
     "default_value": 0.0,
-    "translation_key": "attribute.name.generic.explosion_knockback_resistance",
+    "translation_key": "attribute.name.explosion_knockback_resistance",
     "tracked": true,
     "min_value": 0.0,
     "max_value": 1.0
   },
-  "player.entity_interaction_range": {
+  "entity_interaction_range": {
     "id": 9,
-    "name": "player.entity_interaction_range",
+    "name": "entity_interaction_range",
     "default_value": 3.0,
-    "translation_key": "attribute.name.player.entity_interaction_range",
+    "translation_key": "attribute.name.entity_interaction_range",
     "tracked": true,
     "min_value": 0.0,
     "max_value": 64.0
   },
-  "generic.fall_damage_multiplier": {
+  "fall_damage_multiplier": {
     "id": 10,
-    "name": "generic.fall_damage_multiplier",
+    "name": "fall_damage_multiplier",
     "default_value": 1.0,
-    "translation_key": "attribute.name.generic.fall_damage_multiplier",
+    "translation_key": "attribute.name.fall_damage_multiplier",
     "tracked": true,
     "min_value": 0.0,
     "max_value": 100.0
   },
-  "generic.flying_speed": {
+  "flying_speed": {
     "id": 11,
-    "name": "generic.flying_speed",
+    "name": "flying_speed",
     "default_value": 0.4,
-    "translation_key": "attribute.name.generic.flying_speed",
+    "translation_key": "attribute.name.flying_speed",
     "tracked": true,
     "min_value": 0.0,
     "max_value": 1024.0
   },
-  "generic.follow_range": {
+  "follow_range": {
     "id": 12,
-    "name": "generic.follow_range",
+    "name": "follow_range",
     "default_value": 32.0,
-    "translation_key": "attribute.name.generic.follow_range",
+    "translation_key": "attribute.name.follow_range",
     "tracked": false,
     "min_value": 0.0,
     "max_value": 2048.0
   },
-  "generic.gravity": {
+  "gravity": {
     "id": 13,
-    "name": "generic.gravity",
+    "name": "gravity",
     "default_value": 0.08,
-    "translation_key": "attribute.name.generic.gravity",
+    "translation_key": "attribute.name.gravity",
     "tracked": true,
     "min_value": -1.0,
     "max_value": 1.0
   },
-  "generic.jump_strength": {
+  "jump_strength": {
     "id": 14,
-    "name": "generic.jump_strength",
+    "name": "jump_strength",
     "default_value": 0.41999998688697815,
-    "translation_key": "attribute.name.generic.jump_strength",
+    "translation_key": "attribute.name.jump_strength",
     "tracked": true,
     "min_value": 0.0,
     "max_value": 32.0
   },
-  "generic.knockback_resistance": {
+  "knockback_resistance": {
     "id": 15,
-    "name": "generic.knockback_resistance",
+    "name": "knockback_resistance",
     "default_value": 0.0,
-    "translation_key": "attribute.name.generic.knockback_resistance",
+    "translation_key": "attribute.name.knockback_resistance",
     "tracked": false,
     "min_value": 0.0,
     "max_value": 1.0
   },
-  "generic.luck": {
+  "luck": {
     "id": 16,
-    "name": "generic.luck",
+    "name": "luck",
     "default_value": 0.0,
-    "translation_key": "attribute.name.generic.luck",
+    "translation_key": "attribute.name.luck",
     "tracked": true,
     "min_value": -1024.0,
     "max_value": 1024.0
   },
-  "generic.max_absorption": {
+  "max_absorption": {
     "id": 17,
-    "name": "generic.max_absorption",
+    "name": "max_absorption",
     "default_value": 0.0,
-    "translation_key": "attribute.name.generic.max_absorption",
+    "translation_key": "attribute.name.max_absorption",
     "tracked": true,
     "min_value": 0.0,
     "max_value": 2048.0
   },
-  "generic.max_health": {
+  "max_health": {
     "id": 18,
-    "name": "generic.max_health",
+    "name": "max_health",
     "default_value": 20.0,
-    "translation_key": "attribute.name.generic.max_health",
+    "translation_key": "attribute.name.max_health",
     "tracked": true,
     "min_value": 1.0,
     "max_value": 1024.0
   },
-  "player.mining_efficiency": {
+  "mining_efficiency": {
     "id": 19,
-    "name": "player.mining_efficiency",
+    "name": "mining_efficiency",
     "default_value": 0.0,
-    "translation_key": "attribute.name.player.mining_efficiency",
+    "translation_key": "attribute.name.mining_efficiency",
     "tracked": true,
     "min_value": 0.0,
     "max_value": 1024.0
   },
-  "generic.movement_efficiency": {
+  "movement_efficiency": {
     "id": 20,
-    "name": "generic.movement_efficiency",
+    "name": "movement_efficiency",
     "default_value": 0.0,
-    "translation_key": "attribute.name.generic.movement_efficiency",
+    "translation_key": "attribute.name.movement_efficiency",
     "tracked": true,
     "min_value": 0.0,
     "max_value": 1.0
   },
-  "generic.movement_speed": {
+  "movement_speed": {
     "id": 21,
-    "name": "generic.movement_speed",
+    "name": "movement_speed",
     "default_value": 0.7,
-    "translation_key": "attribute.name.generic.movement_speed",
+    "translation_key": "attribute.name.movement_speed",
     "tracked": true,
     "min_value": 0.0,
     "max_value": 1024.0
   },
-  "generic.oxygen_bonus": {
+  "oxygen_bonus": {
     "id": 22,
-    "name": "generic.oxygen_bonus",
+    "name": "oxygen_bonus",
     "default_value": 0.0,
-    "translation_key": "attribute.name.generic.oxygen_bonus",
+    "translation_key": "attribute.name.oxygen_bonus",
     "tracked": true,
     "min_value": 0.0,
     "max_value": 1024.0
   },
-  "generic.safe_fall_distance": {
+  "safe_fall_distance": {
     "id": 23,
-    "name": "generic.safe_fall_distance",
+    "name": "safe_fall_distance",
     "default_value": 3.0,
-    "translation_key": "attribute.name.generic.safe_fall_distance",
+    "translation_key": "attribute.name.safe_fall_distance",
     "tracked": true,
     "min_value": -1024.0,
     "max_value": 1024.0
   },
-  "generic.scale": {
+  "scale": {
     "id": 24,
-    "name": "generic.scale",
+    "name": "scale",
     "default_value": 1.0,
-    "translation_key": "attribute.name.generic.scale",
+    "translation_key": "attribute.name.scale",
     "tracked": true,
     "min_value": 0.0625,
     "max_value": 16.0
   },
-  "player.sneaking_speed": {
+  "sneaking_speed": {
     "id": 25,
-    "name": "player.sneaking_speed",
+    "name": "sneaking_speed",
     "default_value": 0.3,
-    "translation_key": "attribute.name.player.sneaking_speed",
+    "translation_key": "attribute.name.sneaking_speed",
     "tracked": true,
     "min_value": 0.0,
     "max_value": 1.0
   },
-  "zombie.spawn_reinforcements": {
+  "spawn_reinforcements": {
     "id": 26,
-    "name": "zombie.spawn_reinforcements",
+    "name": "spawn_reinforcements",
     "default_value": 0.0,
-    "translation_key": "attribute.name.zombie.spawn_reinforcements",
+    "translation_key": "attribute.name.spawn_reinforcements",
     "tracked": false,
     "min_value": 0.0,
     "max_value": 1.0
   },
-  "generic.step_height": {
+  "step_height": {
     "id": 27,
-    "name": "generic.step_height",
+    "name": "step_height",
     "default_value": 0.6,
-    "translation_key": "attribute.name.generic.step_height",
+    "translation_key": "attribute.name.step_height",
     "tracked": true,
     "min_value": 0.0,
     "max_value": 10.0
   },
-  "player.submerged_mining_speed": {
+  "submerged_mining_speed": {
     "id": 28,
-    "name": "player.submerged_mining_speed",
+    "name": "submerged_mining_speed",
     "default_value": 0.2,
-    "translation_key": "attribute.name.player.submerged_mining_speed",
+    "translation_key": "attribute.name.submerged_mining_speed",
     "tracked": true,
     "min_value": 0.0,
     "max_value": 20.0
   },
-  "player.sweeping_damage_ratio": {
+  "sweeping_damage_ratio": {
     "id": 29,
-    "name": "player.sweeping_damage_ratio",
+    "name": "sweeping_damage_ratio",
     "default_value": 0.0,
-    "translation_key": "attribute.name.player.sweeping_damage_ratio",
+    "translation_key": "attribute.name.sweeping_damage_ratio",
     "tracked": true,
     "min_value": 0.0,
     "max_value": 1.0
   },
-  "generic.water_movement_efficiency": {
+  "tempt_range": {
     "id": 30,
-    "name": "generic.water_movement_efficiency",
+    "name": "tempt_range",
+    "default_value": 10.0,
+    "translation_key": "attribute.name.tempt_range",
+    "tracked": false,
+    "min_value": 0.0,
+    "max_value": 2048.0
+  },
+  "water_movement_efficiency": {
+    "id": 31,
+    "name": "water_movement_efficiency",
     "default_value": 0.0,
-    "translation_key": "attribute.name.generic.water_movement_efficiency",
+    "translation_key": "attribute.name.water_movement_efficiency",
     "tracked": true,
     "min_value": 0.0,
     "max_value": 1.0

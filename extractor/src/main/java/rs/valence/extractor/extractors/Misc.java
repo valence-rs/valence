@@ -113,13 +113,17 @@ public class Misc implements Main.Extractor {
         miscJson.add("frog_variant", frogVariantJson);
 
         var wolfVariantJson = new JsonObject();
-        for (var variant : registryManager.get(RegistryKeys.WOLF_VARIANT)) {
+        for (var variant : registryManager.getOrThrow(
+            RegistryKeys.WOLF_VARIANT
+        )) {
             wolfVariantJson.addProperty(
                 registryManager
-                    .get(RegistryKeys.WOLF_VARIANT)
+                    .getOrThrow(RegistryKeys.WOLF_VARIANT)
                     .getId(variant)
                     .getPath(),
-                registryManager.get(RegistryKeys.WOLF_VARIANT).getRawId(variant)
+                registryManager
+                    .getOrThrow(RegistryKeys.WOLF_VARIANT)
+                    .getRawId(variant)
             );
         }
         miscJson.add("wolf_variant", wolfVariantJson);

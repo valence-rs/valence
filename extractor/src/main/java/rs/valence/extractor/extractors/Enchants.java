@@ -30,7 +30,7 @@ public class Enchants implements Main.Extractor {
         var enchantsJson = new JsonObject();
 
         for (var enchant : registryManager
-            .get(RegistryKeys.ENCHANTMENT)
+            .getOrThrow(RegistryKeys.ENCHANTMENT)
             .streamEntries()
             .toList()) {
             enchantsJson.add(

@@ -88,6 +88,16 @@ public class Main implements ModInitializer {
 
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             LOGGER.info("Server starting, Running startup extractors...");
+            server
+                .getSaveProperties()
+                .updateLevelInfo(
+                    server
+                        .getSaveProperties()
+                        .getDataConfiguration()
+                        .withFeaturesAdded(
+                            DummyWorld.INSTANCE.getEnabledFeatures()
+                        )
+                );
             // TODO: make `Codec` implement `Extractor`
             // TODO: the way to get Codex has changed, this is not working anymore
             var packetRegistryExtractor = new PacketRegistries(server);

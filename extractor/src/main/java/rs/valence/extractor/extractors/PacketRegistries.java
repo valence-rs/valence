@@ -31,7 +31,7 @@ public class PacketRegistries implements Main.Extractor {
         CombinedDynamicRegistries<ServerDynamicRegistryType> combinedRegistries
     ) {
         Codec<T> codec = registry_entry.elementCodec();
-        Registry<T> registry = registryManager.get(registry_entry.key());
+        Registry<T> registry = registryManager.getOrThrow(registry_entry.key());
         JsonObject json = new JsonObject();
         registry
             .streamEntries()

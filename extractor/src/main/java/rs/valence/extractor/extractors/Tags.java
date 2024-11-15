@@ -1,9 +1,12 @@
 package rs.valence.extractor.extractors;
 
+import com.google.common.collect.Lists;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.datafixers.util.Pair;
+
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
@@ -75,9 +78,10 @@ public class Tags implements Main.Extractor {
     ) {
         TreeMap<Identifier, JsonArray> map = new TreeMap<>();
         registry
-            .streamTagsAndEntries()
+                .streamTags()
+                .map(key -> Pair.of(key, registry.iterateEntries(key.getTag())))
             .forEach(pair -> {
-                RegistryEntryList<T> registryEntryList = pair.getSecond();
+                var registryEntryList = Lists.newArrayList(pair.getSecond());
                 JsonArray intList = new JsonArray(registryEntryList.size());
                 for (RegistryEntry<T> registryEntry : registryEntryList) {
                     if (
@@ -90,7 +94,7 @@ public class Tags implements Main.Extractor {
                     }
                     intList.add(registry.getRawId(registryEntry.value()));
                 }
-                map.put(pair.getFirst().id(), intList);
+                map.put(pair.getFirst().getTag().id(), intList);
             });
         return map;
     }

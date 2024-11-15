@@ -5,10 +5,7 @@ import com.mojang.authlib.GameProfile;
 import java.lang.reflect.ParameterizedType;
 import java.util.*;
 import net.minecraft.block.BlockState;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityPose;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.*;
 import net.minecraft.entity.attribute.DefaultAttributeRegistry;
 import net.minecraft.entity.attribute.EntityAttribute;
 import net.minecraft.entity.attribute.EntityAttributeInstance;
@@ -242,14 +239,14 @@ public class Entities implements Main.Extractor {
                         .toLowerCase(Locale.ROOT)
                 )
             );
-        } else if (handler == TrackedDataHandlerRegistry.VECTOR3F) {
+        } else if (handler == TrackedDataHandlerRegistry.VECTOR_3F) {
             var vec = (Vector3f) val;
             var json = new JsonObject();
             json.addProperty("x", vec.x);
             json.addProperty("y", vec.y);
             json.addProperty("z", vec.z);
             return new Main.Pair<>("vector3f", json);
-        } else if (handler == TrackedDataHandlerRegistry.QUATERNIONF) {
+        } else if (handler == TrackedDataHandlerRegistry.QUATERNION_F) {
             var quat = (Quaternionf) val;
             var json = new JsonObject();
             json.addProperty("x", quat.x);
@@ -323,7 +320,7 @@ public class Entities implements Main.Extractor {
                     new GameProfile(UUID.randomUUID(), "cooldude"),
                     null
                 )
-                : entityType.create(world);
+                : entityType.create(world, SpawnReason.COMMAND);
 
             final var dataTracker = (DataTracker) dataTrackerField.get(
                 entityInstance

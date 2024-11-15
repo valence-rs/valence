@@ -6,9 +6,12 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.component.type.MapIdComponent;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.fluid.Fluid;
+import net.minecraft.item.FuelRegistry;
 import net.minecraft.item.map.MapState;
+import net.minecraft.particle.ParticleEffect;
 import net.minecraft.recipe.BrewingRecipeRegistry;
 import net.minecraft.recipe.RecipeManager;
 import net.minecraft.registry.DynamicRegistryManager;
@@ -34,6 +37,7 @@ import net.minecraft.world.chunk.ChunkManager;
 import net.minecraft.world.dimension.DimensionType;
 import net.minecraft.world.entity.EntityLookup;
 import net.minecraft.world.event.GameEvent;
+import net.minecraft.world.explosion.ExplosionBehavior;
 import net.minecraft.world.tick.QueryableTickScheduler;
 import net.minecraft.world.tick.TickManager;
 import org.jetbrains.annotations.Nullable;
@@ -74,7 +78,7 @@ public class DummyWorld extends World {
             registryRef,
             registryManager,
             dimension,
-            profiler,
+            //            profiler,
             isClient,
             debugWorld,
             seed,
@@ -221,7 +225,39 @@ public class DummyWorld extends World {
 
     @Override
     public FeatureSet getEnabledFeatures() {
-        return FeatureSet.of(FeatureFlags.VANILLA, FeatureFlags.BUNDLE);
+        return FeatureSet.of(
+            FeatureFlags.VANILLA,
+            FeatureFlags.WINTER_DROP,
+            FeatureFlags.MINECART_IMPROVEMENTS,
+            FeatureFlags.REDSTONE_EXPERIMENTS,
+            FeatureFlags.TRADE_REBALANCE
+        );
+    }
+
+    @Override
+    public FuelRegistry getFuelRegistry() {
+        return null;
+    }
+
+    @Override
+    public void createExplosion(
+        @Nullable Entity entity,
+        @Nullable DamageSource damageSource,
+        @Nullable ExplosionBehavior behavior,
+        double x,
+        double y,
+        double z,
+        float power,
+        boolean createFire,
+        ExplosionSourceType explosionSourceType,
+        ParticleEffect smallParticle,
+        ParticleEffect largeParticle,
+        RegistryEntry<SoundEvent> soundEvent
+    ) {}
+
+    @Override
+    public int getSeaLevel() {
+        return 0;
     }
 
     @Override
@@ -282,11 +318,6 @@ public class DummyWorld extends World {
         @Override
         public boolean isHardcore() {
             return false;
-        }
-
-        @Override
-        public GameRules getGameRules() {
-            return null;
         }
 
         @Override
