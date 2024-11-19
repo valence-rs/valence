@@ -28,8 +28,8 @@ pub mod login {
     pub use custom_query_s2c::CustomQueryS2c;
     pub mod custom_query_answer_c2s;
     pub use custom_query_answer_c2s::CustomQueryAnswerC2s;
-    pub mod game_profile_s2c;
-    pub use game_profile_s2c::GameProfileS2c;
+    pub mod login_finished_s2c;
+    pub use login_finished_s2c::LoginFinishedS2c;
     pub mod login_acknowledged_c2s;
     pub use login_acknowledged_c2s::LoginAcknowledgedC2s;
 }
@@ -88,6 +88,10 @@ pub mod configuration {
 }
 
 pub mod play {
+    pub mod move_minecart_along_track_s2c;
+    pub use move_minecart_along_track_s2c::MoveMinecartAlongTrackS2c;
+    pub mod player_rotation_s2c;
+    pub use player_rotation_s2c::PlayerRotationS2c;
     pub mod chat_command_c2s;
     pub use chat_command_c2s::ChatCommandC2s;
     pub mod chunk_batch_received_c2s;

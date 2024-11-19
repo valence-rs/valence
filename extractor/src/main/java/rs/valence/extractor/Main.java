@@ -129,6 +129,7 @@ public class Main implements ModInitializer {
                 new Entities(server),
                 new Items(server),
                 new Misc(server),
+                    new Recipe(server),
             };
 
             for (var ext : startupExtractors) {

@@ -27,6 +27,7 @@ pub mod encode;
 pub mod game_mode;
 mod global_pos;
 mod hand;
+mod id_set;
 mod impls;
 pub mod item;
 pub mod packets;

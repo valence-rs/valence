@@ -25,8 +25,6 @@ public class Paintings implements Main.Extractor {
 
     @Override
     public JsonElement extract() throws Exception {
-        var dataDrivenMiscJson = new JsonObject();
-
         var paintingRegistry = registryManager.getOrThrow(
             RegistryKeys.PAINTING_VARIANT
         );

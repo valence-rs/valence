@@ -6,6 +6,6 @@ use crate::{Decode, Encode, Packet};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 pub struct PlaceGhostRecipeS2c<'a> {
-    pub window_id: u8,
-    pub recipe: Ident<Cow<'a, str>>,
+    pub window_id: VarInt,
+    pub recipe_display: VarInt,
 }
