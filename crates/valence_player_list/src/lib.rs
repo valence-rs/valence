@@ -208,6 +208,8 @@ fn init_player_list_for_clients(
                             ping: ping.0,
                             game_mode: *game_mode,
                             display_name: display_name.0.as_ref().map(Cow::Borrowed),
+                            priority: 0,
+                            // priority: todo!("Implement priority"),
                         }
                     },
                 )
@@ -344,6 +346,8 @@ fn update_entries(
             ping: ping.0,
             game_mode: *game_mode,
             display_name: display_name.0.as_ref().map(|x| x.into()),
+            priority: 0,
+            // priority: todo!("Implement priority"),
         };
 
         writer.write_packet(&PlayerInfoUpdateS2c {

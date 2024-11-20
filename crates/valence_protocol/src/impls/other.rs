@@ -1,15 +1,12 @@
 use std::io::Write;
 
 use anyhow::Context;
-use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valence_generated::block::{BlockEntityKind, BlockKind, BlockState};
 use valence_generated::item::ItemKind;
 use valence_ident::{Ident, IdentError};
 use valence_nbt::Compound;
-use valence_text::Text;
 
-use crate::text_component::NbtText;
 use crate::{Decode, Encode, VarInt};
 
 impl<T: Encode> Encode for Option<T> {

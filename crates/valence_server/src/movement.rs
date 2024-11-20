@@ -58,7 +58,7 @@ fn handle_client_movement(
                     old_position: pos.0,
                     look: *look,
                     old_look: *look,
-                    on_ground: pkt.on_ground,
+                    on_ground: pkt.flags.on_ground(),
                     old_on_ground: on_ground.0,
                 };
 
@@ -85,7 +85,7 @@ fn handle_client_movement(
                         pitch: pkt.pitch,
                     },
                     old_look: *look,
-                    on_ground: pkt.on_ground,
+                    on_ground: pkt.flags.on_ground(),
                     old_on_ground: on_ground.0,
                 };
 
@@ -112,7 +112,7 @@ fn handle_client_movement(
                         pitch: pkt.pitch,
                     },
                     old_look: *look,
-                    on_ground: pkt.on_ground,
+                    on_ground: pkt.flags.on_ground(),
                     old_on_ground: on_ground.0,
                 };
 
@@ -136,7 +136,7 @@ fn handle_client_movement(
                     old_position: pos.0,
                     look: *look,
                     old_look: *look,
-                    on_ground: pkt.on_ground,
+                    on_ground: pkt.flags.on_ground(),
                     old_on_ground: on_ground.0,
                 };
 

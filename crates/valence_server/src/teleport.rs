@@ -91,6 +91,8 @@ fn teleport(
 
             client.write_packet(&PlayerPositionS2c {
                 position: if changed_pos { pos.0 } else { DVec3::ZERO },
+                // FIXME: add missing velocity
+                velocity: if changed_pos { pos.0 } else { DVec3::ZERO },
                 yaw: if changed_yaw { look.yaw } else { 0.0 },
                 pitch: if changed_pitch { look.pitch } else { 0.0 },
                 flags,

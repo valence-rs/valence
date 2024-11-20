@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use tracing::{debug, error};
+use tracing::error;
 use valence_ident::Ident;
 use valence_nbt::{compound, Compound, List, Value};
 
@@ -66,7 +66,7 @@ impl Default for RegistryCodec {
                 continue;
             };
 
-            for (k,v) in inner {
+            for (k, v) in inner {
                 let name = match Ident::new(k) {
                     Ok(n) => n.into(),
                     Err(e) => {
@@ -74,7 +74,7 @@ impl Default for RegistryCodec {
                         continue;
                     }
                 };
-                
+
                 let value = match v {
                     Value::Compound(c) => c,
                     _ => {
