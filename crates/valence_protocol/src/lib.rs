@@ -30,6 +30,7 @@ mod hand;
 mod id_set;
 mod impls;
 pub mod item;
+pub mod movement_flags;
 pub mod packets;
 pub mod profile;
 mod raw;

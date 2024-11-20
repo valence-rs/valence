@@ -4,16 +4,19 @@ use crate::{Decode, Encode, Packet};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
 pub struct PlayerInputC2s {
-    pub sideways: f32,
-    pub forward: f32,
     pub flags: PlayerInputFlags,
 }
 
 #[bitfield(u8)]
 #[derive(PartialEq, Eq, Encode, Decode)]
 pub struct PlayerInputFlags {
+    pub forward: bool,
+    pub back: bool,
+    pub left: bool,
+    pub right: bool,
     pub jump: bool,
-    pub unmount: bool,
-    #[bits(6)]
-    _pad: u8,
+    pub sneak: bool,
+    pub sprint: bool,
+    #[bits(1)]
+    _padding: u8,
 }

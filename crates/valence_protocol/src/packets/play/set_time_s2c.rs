@@ -8,4 +8,5 @@ pub struct SetTimeS2c {
     /// The value should be in the range \[0, 24000].
     /// 6000 is noon, 12000 is sunset, and 18000 is midnight.
     pub time_of_day: i64,
+    pub time_increasing: bool,
 }

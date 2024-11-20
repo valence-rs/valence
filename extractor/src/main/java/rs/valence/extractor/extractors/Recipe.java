@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
+import java.util.Optional;
 import net.minecraft.entity.decoration.painting.PaintingVariant;
 import net.minecraft.recipe.RecipeSerializer;
 import net.minecraft.recipe.RecipeType;
@@ -16,8 +17,6 @@ import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.RegistryOps;
 import net.minecraft.server.MinecraftServer;
 import rs.valence.extractor.Main;
-
-import java.util.Optional;
 
 public class Recipe implements Main.Extractor {
 
@@ -36,24 +35,63 @@ public class Recipe implements Main.Extractor {
 
     @Override
     public JsonElement extract() throws Exception {
-        Codec<net.minecraft.recipe.Recipe<?>> codec = Registries.RECIPE_SERIALIZER.getCodec().dispatch(net.minecraft.recipe.Recipe::getSerializer, RecipeSerializer::codec);
+        Codec<net.minecraft.recipe.Recipe<?>> codec =
+            Registries.RECIPE_SERIALIZER.getCodec()
+                .dispatch(
+                    net.minecraft.recipe.Recipe::getSerializer,
+                    RecipeSerializer::codec
+                );
         JsonObject json = new JsonObject();
+
+        JsonObject recipesJson = new JsonObject();
         recipeManager
-                .values()
+            .values()
             .forEach(entry -> {
-//                JsonObject inner = new JsonObject();
-//                inner.addProperty("type", recipe.getType().toString());
-//                var list = new JsonArray();
-//                recipe.getDisplays().forEach(layout -> {
-//                    list.add(RecipeDisplay.CODEC.encodeStart(JsonOps.INSTANCE, layout).getOrThrow());
-//                });
-//                inner.add("displays", list);
-//
-                json.add(
+                recipesJson.add(
                     entry.id().getValue().getPath(),
-                    codec.encodeStart(JsonOps.INSTANCE, entry.value()).getOrThrow()
+                    codec
+                        .encodeStart(JsonOps.INSTANCE, entry.value())
+                        .getOrThrow()
                 );
             });
+
+        JsonObject displaysJson = new JsonObject();
+        var displays = registryManager.getOrThrow(RegistryKeys.RECIPE_DISPLAY);
+        var displayCodec = displays.getCodec();
+
+        displays
+            .stream()
+            .forEach(display -> {
+                displaysJson.addProperty(
+                    displayCodec
+                        .encodeStart(JsonOps.INSTANCE, display)
+                        .getOrThrow()
+                        .getAsString(),
+                    displays.getRawId(display)
+                );
+            });
+
+        JsonObject bookCategoryJson = new JsonObject();
+        var bookCategory = registryManager.getOrThrow(
+            RegistryKeys.RECIPE_BOOK_CATEGORY
+        );
+        var bookCategoryCodec = bookCategory.getEntryCodec();
+
+        bookCategory
+            .streamEntries()
+            .forEach(entry -> {
+                bookCategoryJson.addProperty(
+                    bookCategoryCodec
+                        .encodeStart(JsonOps.INSTANCE, entry)
+                        .getOrThrow()
+                        .getAsString(),
+                    bookCategory.getRawId(entry.value())
+                );
+            });
+
+        json.add("recipes", recipesJson);
+        json.add("displays", displaysJson);
+        json.add("book_categories", bookCategoryJson);
 
         return json;
     }

@@ -1,6 +1,6 @@
-use crate::{Decode, Encode, Packet};
+use crate::{movement_flags::MovementFlags, Decode, Encode, Packet};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
 pub struct MovePlayerStatusOnlyC2s {
-    pub on_ground: bool,
+    pub flags: MovementFlags,
 }

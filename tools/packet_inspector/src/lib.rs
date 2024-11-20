@@ -13,9 +13,8 @@ use tokio::task::JoinHandle;
 use valence_protocol::decode::PacketFrame;
 use valence_protocol::packets::handshake::intention_c2s::HandshakeNextState;
 use valence_protocol::packets::handshake::IntentionC2s;
-use valence_protocol::packets::login::{
-    GameProfileS2c, HelloS2c, LoginCompressionS2c, LoginDisconnectS2c,
-};
+use valence_protocol::packets::login::{HelloS2c, LoginCompressionS2c, LoginDisconnectS2c};
+use valence_protocol::packets::play::LoginS2c;
 use valence_protocol::packets::{configuration, play};
 use valence_protocol::text::color::NamedColor;
 use valence_protocol::text::{Color, IntoText};
@@ -253,7 +252,7 @@ impl Proxy {
                         *threshold_lock.write().await = CompressionThreshold(threshold.0);
                     }
 
-                    if extrapolate_packet::<GameProfileS2c>(&packet).is_some() {
+                    if extrapolate_packet::<LoginS2c>(&packet).is_some() {
                         *state_lock.write().await = PacketState::Configuration;
                     }
                 }

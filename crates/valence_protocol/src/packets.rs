@@ -88,6 +88,20 @@ pub mod configuration {
 }
 
 pub mod play {
+    pub mod bundle_item_selected_c2s;
+    pub use bundle_item_selected_c2s::BundleItemSelectedC2s;
+    pub mod client_tick_end_c2s;
+    pub use client_tick_end_c2s::ClientTickEndC2s;
+    pub mod entity_position_sync_s2c;
+    pub use entity_position_sync_s2c::EntityPositionSyncS2c;
+    pub mod recipe_book_add_s2c;
+    pub use recipe_book_add_s2c::RecipeBookAddS2c;
+    pub mod recipe_book_remove_s2c;
+    pub use recipe_book_remove_s2c::RecipeBookRemoveS2c;
+    pub mod recipe_book_settings_s2c;
+    pub use recipe_book_settings_s2c::RecipeBookSettingsS2c;
+    pub mod set_player_inventory_s2c;
+    pub use set_player_inventory_s2c::SetPlayerInventoryS2c;
     pub mod move_minecart_along_track_s2c;
     pub use move_minecart_along_track_s2c::MoveMinecartAlongTrackS2c;
     pub mod player_rotation_s2c;
@@ -412,8 +426,6 @@ pub mod play {
     pub use set_title_text_s2c::SetTitleTextS2c;
     pub mod forget_level_chunk_s2c;
     pub use forget_level_chunk_s2c::ForgetLevelChunkS2c;
-    pub mod recipe_s2c;
-    pub use recipe_s2c::RecipeS2c;
     pub mod set_beacon_c2s;
     pub use set_beacon_c2s::SetBeaconC2s;
     pub mod set_command_block_c2s;
@@ -430,8 +442,6 @@ pub mod play {
     pub use player_abilities_c2s::PlayerAbilitiesC2s;
     pub mod set_carried_item_c2s;
     pub use set_carried_item_c2s::SetCarriedItemC2s;
-    pub mod set_carried_item_s2c;
-    pub use set_carried_item_s2c::SetCarriedItemS2c;
     pub mod sign_update_c2s;
     pub use sign_update_c2s::SignUpdateC2s;
     pub mod set_structure_block_c2s;

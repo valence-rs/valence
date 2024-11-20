@@ -9,5 +9,6 @@ pub struct UseItemOnC2s {
     pub face: Direction,
     pub cursor_pos: Vec3,
     pub head_inside_block: bool,
+    pub world_border_hit: bool,
     pub sequence: VarInt,
 }
