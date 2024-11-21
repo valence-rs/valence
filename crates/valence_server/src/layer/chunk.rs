@@ -4,7 +4,6 @@ pub mod loaded;
 mod paletted_container;
 pub mod unloaded;
 
-use std::borrow::Cow;
 use std::collections::hash_map::{Entry, OccupiedEntry, VacantEntry};
 use std::fmt;
 
@@ -399,7 +398,7 @@ impl ChunkLayer {
         let position = position.into();
 
         self.view_writer(position).write_packet(&LevelParticlesS2c {
-            particle: Cow::Borrowed(particle),
+            particle: particle.clone(),
             long_distance,
             position,
             offset: offset.into(),

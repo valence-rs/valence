@@ -3,13 +3,14 @@ use std::io::Write;
 use crate::{Decode, Encode, VarInt};
 
 #[derive(Debug, PartialEq, Eq)]
-/// Represents a set of IDs in a certain registry, either directly (enumerated IDs)
-/// or indirectly (tag name).
+/// Represents a set of IDs in a certain registry, either directly (enumerated
+/// IDs) or indirectly (tag name).
 ///
 /// # Variants
 ///
 /// - `NamedSet(String)`: Represents a named set of IDs defined by a tag.
-/// - `AdHocSet(Vec<VarInt>)`: Represents an ad-hoc set of IDs enumerated inline.
+/// - `AdHocSet(Vec<VarInt>)`: Represents an ad-hoc set of IDs enumerated
+///   inline.
 pub enum IDSet {
     NamedSet(String),
     AdHocSet(Vec<VarInt>),

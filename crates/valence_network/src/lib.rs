@@ -268,8 +268,8 @@ impl Default for NetworkSettings {
             max_connections: 1024,
             max_players: 20,
             address: SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 25565).into(),
-            connection_mode: ConnectionMode::Online {
-                prevent_proxy_connections: false,
+            connection_mode: ConnectionMode::Offline {
+                // prevent_proxy_connections: false,
             },
             incoming_byte_limit: 2097152, // 2 MiB
             outgoing_byte_limit: 8388608, // 8 MiB

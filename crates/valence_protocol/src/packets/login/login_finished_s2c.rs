@@ -16,5 +16,5 @@ pub struct LoginFinishedS2c<'a> {
     pub username: Bounded<&'a str, 16>,
     pub properties: Cow<'a, [Property<&'a str>]>,
     // This field was temporarily added in 1.20.5, it will be removed in 1.21.2
-    pub strict_error_handling: bool,
+    // pub strict_error_handling: bool,
 }

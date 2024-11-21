@@ -15,7 +15,7 @@ use valence_server::protocol::packets::play::set_objective_s2c::{
     ObjectiveMode, ObjectiveRenderType,
 };
 use valence_server::protocol::packets::play::{
-    reset_score_s2c, ResetScoreS2c, SetDisplayObjectiveS2c, SetObjectiveS2c, SetScoreS2c,
+    ResetScoreS2c, SetDisplayObjectiveS2c, SetObjectiveS2c, SetScoreS2c,
 };
 use valence_server::protocol::{VarInt, WritePacket};
 use valence_server::text::IntoText;

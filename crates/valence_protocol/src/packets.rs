@@ -442,6 +442,8 @@ pub mod play {
     pub use player_abilities_c2s::PlayerAbilitiesC2s;
     pub mod set_carried_item_c2s;
     pub use set_carried_item_c2s::SetCarriedItemC2s;
+    pub mod set_held_slot_s2c;
+    pub use set_held_slot_s2c::SetHeldSlotS2c;
     pub mod sign_update_c2s;
     pub use sign_update_c2s::SignUpdateC2s;
     pub mod set_structure_block_c2s;
@@ -466,6 +468,8 @@ pub mod play {
     pub use level_event_s2c::LevelEventS2c;
     pub mod set_time_s2c;
     pub use set_time_s2c::SetTimeS2c;
+    pub mod set_cursor_item_s2c;
+    pub use set_cursor_item_s2c::SetCursorItemS2c;
 }
 
 pub mod status {

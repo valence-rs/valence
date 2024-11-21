@@ -19,25 +19,28 @@ use tokio::net::{TcpListener, TcpStream};
 use tracing::{error, info, trace, warn};
 use uuid::Uuid;
 use valence_lang::keys;
+use valence_protocol::packets::configuration::select_known_packs_s2c::KnownPack;
 use valence_protocol::packets::configuration::{
-    FinishConfigurationC2s, FinishConfigurationS2c, RegistryDataS2c,
+    ClientInformationC2s, CustomPayloadS2c, FinishConfigurationC2s, FinishConfigurationS2c,
+    RegistryDataS2c, SelectKnownPacksC2s, SelectKnownPacksS2c, UpdateEnabledFeaturesS2c,
 };
-use valence_protocol::packets::login::LoginAcknowledgedC2s;
+use valence_protocol::packets::login::{LoginAcknowledgedC2s, LoginFinishedS2c};
 use valence_protocol::packets::status::{
     PingRequestC2s, PongResponseS2c, StatusRequestC2s, StatusResponseS2c,
 };
 use valence_protocol::profile::Property;
-use valence_protocol::{Decode, Packet};
+use valence_protocol::{Bounded, Decode};
 use valence_server::client::Properties;
 use valence_server::protocol::packets::handshake::intention_c2s::HandshakeNextState;
 use valence_server::protocol::packets::handshake::IntentionC2s;
 use valence_server::protocol::packets::login::{
-    CustomQueryAnswerC2s, CustomQueryS2c, GameProfileS2c, HelloC2s, HelloS2c, KeyC2s,
-    LoginCompressionS2c, LoginDisconnectS2c,
+    CustomQueryAnswerC2s, CustomQueryS2c, HelloC2s, HelloS2c, KeyC2s, LoginCompressionS2c,
+    LoginDisconnectS2c,
 };
 use valence_server::protocol::{PacketDecoder, PacketEncoder, RawBytes, VarInt};
+use valence_server::registry::{RegistryCodec, TagsRegistry};
 use valence_server::text::{Color, IntoText};
-use valence_server::{ident, Text, MINECRAFT_VERSION, PROTOCOL_VERSION};
+use valence_server::{ident, Ident, Text, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
 use crate::legacy_ping::try_handle_legacy_ping;
 use crate::packet_io::PacketIo;
@@ -309,39 +312,54 @@ async fn handle_login(
         }
     };
 
-    io.send_packet(&GameProfileS2c {
+    io.send_packet(&LoginFinishedS2c {
         uuid: info.uuid,
         username: info.username.as_str().into(),
         properties: Default::default(),
-        strict_error_handling: true,
     })
     .await?;
+
     let LoginAcknowledgedC2s {} = io.recv_packet().await?;
+    let _: CustomQueryAnswerC2s = io.recv_packet().await?;
+    let _: ClientInformationC2s = io.recv_packet().await?;
 
-    // now in configuration state
-
-    // TODO: send our regestries and stuff, the client will not be happy to join if
-    // the regestries to show the current stuff is not present
-
-    io.send_packet(&RegistryDataS2c {
-        id: todo!(),
-        entries: todo!(),
+    io.send_packet(&CustomPayloadS2c {
+        channel: Ident::new("minecraft:brand").unwrap(),
+        data: Bounded(RawBytes(&[&[0x07], "vanilla".as_bytes()].concat())),
     })
     .await?;
-    io.send_packet(&FinishConfigurationS2c {}).await?;
-    loop {
-        info!("In loop");
-        if let Ok(frame) = io.try_recv_packet().await {
-            match frame.id {
-                FinishConfigurationC2s::ID => {
-                    break;
-                }
 
-                e => info!("got packet id: {}", e), /* ignore any packets that do not progress to
-                                                     * next step */
-            }
-        }
+    io.send_packet(&UpdateEnabledFeaturesS2c {
+        features: vec![ident!("minecraft:vanilla").into()],
+    })
+    .await?;
+
+    io.send_packet(&SelectKnownPacksS2c {
+        packs: vec![KnownPack {
+            namespace: "minecraft".into(),
+            id: "core".into(),
+            version: "1.21.3".into(),
+        }],
+    })
+    .await?;
+
+    let _: SelectKnownPacksC2s = io.recv_packet().await?;
+
+    for (id, entries) in RegistryCodec::default().registries.into_iter() {
+        io.send_packet(&RegistryDataS2c {
+            id: id.into(),
+            entries: entries
+                .into_iter()
+                .map(|value| (value.name.into(), None))
+                .collect(),
+        })
+        .await?;
     }
+
+    io.send_packet(&TagsRegistry::default_tags()).await?;
+    io.send_packet(&FinishConfigurationS2c {}).await?;
+
+    let _: FinishConfigurationC2s = io.recv_packet().await?;
 
     Ok(Some((info, cleanup)))
 }
@@ -532,7 +550,7 @@ async fn login_velocity(
 
     let data = plugin_response
         .data
-        .context("missing plugin response data")?
+        // .context("missing plugin response data")?
         .0;
 
     ensure!(data.len() >= 32, "invalid plugin response data length");

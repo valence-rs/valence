@@ -17,8 +17,8 @@ use valence_server::protocol::packets::play::open_screen_s2c::WindowType;
 pub use valence_server::protocol::packets::play::player_action_c2s::PlayerAction;
 use valence_server::protocol::packets::play::{
     ContainerClickC2s, ContainerCloseC2s, ContainerCloseS2c, ContainerSetContentS2c,
-    ContainerSetSlotS2c, OpenScreenS2c, PlayerActionC2s, SetCarriedItemC2s, SetCarriedItemS2c,
-    SetCreativeModeSlotC2s,
+    ContainerSetSlotS2c, OpenScreenS2c, PlayerActionC2s, SetCarriedItemC2s, SetCreativeModeSlotC2s,
+    SetHeldSlotS2c,
 };
 use valence_server::protocol::{VarInt, WritePacket};
 use valence_server::text::IntoText;
@@ -374,7 +374,7 @@ pub struct ClientInventoryState {
 
 impl ClientInventoryState {
     #[doc(hidden)]
-    pub fn window_id(&self) -> u8 {
+    pub fn window_id(&self) -> VarInt {
         self.window_id
     }
 
@@ -585,7 +585,7 @@ fn init_new_client_inventories(clients: Query<Entity, Added<Client>>, mut comman
             Inventory::new(InventoryKind::Player),
             CursorItem(ItemStack::EMPTY),
             ClientInventoryState {
-                window_id: 0,
+                window_id: VarInt(0),
                 state_id: Wrapping(0),
                 slots_changed: 0,
                 client_updated_cursor_item: None,
@@ -692,7 +692,7 @@ fn update_open_inventories(
 
         if open_inventory.is_added() {
             // Send the inventory to the client if the client just opened the inventory.
-            inv_state.window_id = inv_state.window_id % 100 + 1;
+            inv_state.window_id = VarInt(inv_state.window_id.0 % 100 + 1);
             open_inventory.client_changed = 0;
 
             client.write_packet(&OpenScreenS2c {
@@ -733,7 +733,7 @@ fn update_open_inventories(
                     for (i, slot) in inventory.slots.iter().enumerate() {
                         if (changed_filtered >> i) & 1 == 1 {
                             client.write_packet(&ContainerSetSlotS2c {
-                                window_id: inv_state.window_id as i8,
+                                window_id: inv_state.window_id,
                                 state_id: VarInt(inv_state.state_id.0),
                                 slot_idx: i as i16,
                                 slot_data: Cow::Borrowed(slot),
@@ -873,7 +873,7 @@ fn handle_click_slot(
                 window_id: if open_inv.is_some() {
                     inv_state.window_id
                 } else {
-                    0
+                    VarInt(0)
                 },
                 state_id: VarInt(inv_state.state_id.0),
                 slots: Cow::Borrowed(open_inv.unwrap_or(client_inv).slot_slice()),
@@ -1040,11 +1040,11 @@ fn handle_click_slot(
             // The player is clicking a slot in an inventory.
 
             // Validate the window id.
-            if (pkt.window_id == 0) != open_inventory.is_none() {
+            if (pkt.window_id.0 == 0) != open_inventory.is_none() {
                 warn!(
                     "Client sent a click with an invalid window id for current state: window_id = \
                      {}, open_inventory present = {}",
-                    pkt.window_id,
+                    pkt.window_id.0,
                     open_inventory.is_some()
                 );
                 continue;
@@ -1386,7 +1386,7 @@ pub struct UpdateSelectedSlotEvent {
 /// indicates that the server has changed the selected hotbar slot.
 fn update_player_selected_slot(mut clients: Query<(&mut Client, &HeldItem), Changed<HeldItem>>) {
     for (mut client, held_item) in &mut clients {
-        client.write_packet(&SetCarriedItemS2c {
+        client.write_packet(&SetHeldSlotS2c {
             slot: held_item.hotbar_idx(),
         });
     }

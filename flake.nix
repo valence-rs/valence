@@ -18,18 +18,21 @@
         inherit system overlays;
       };
 
-      rust = pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default);
+      rust = pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default.override {
+        extensions = [ "rust-src" "rust-analyzer" ];
+      });
 
       appNativeBuildInputs = with pkgs; [
           # required for the packet inspector on nix
           pkg-config
       ];
       appBuildInputs = with pkgs; [
-          rust rust-analyzer
+          rust
           # dependencies for the packet inspector
           udev alsa-lib vulkan-loader wayland
           xorg.libX11 xorg.libXcursor xorg.libXi xorg.libXrandr
           libxkbcommon wayland
+          gradle jdk17 jdk21 jdt-language-server
       ];
     in 
     rec
@@ -39,6 +42,7 @@
             buildInputs = appBuildInputs;    
             shellHook = ''
                 export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${pkgs.lib.makeLibraryPath appBuildInputs}"
+                export JAVA_HOME="${pkgs.jdk21}"
             '';
         };
     });

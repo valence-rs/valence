@@ -12,4 +12,12 @@ pub struct ClientInformationC2s<'a> {
     pub main_arm: MainArm,
     pub enable_text_filtering: bool,
     pub allow_server_listings: bool,
+    pub particle_mode: ParticleMode,
+}
+
+#[derive(Clone, Debug, Encode, Decode)]
+pub enum ParticleMode {
+    All,
+    Decreased,
+    Minimal,
 }

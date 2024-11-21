@@ -327,7 +327,7 @@ impl Client {
         O: Into<Vec3>,
     {
         self.write_packet(&LevelParticlesS2c {
-            particle: Cow::Borrowed(particle),
+            particle: particle.clone(),
             long_distance,
             position: position.into(),
             offset: offset.into(),

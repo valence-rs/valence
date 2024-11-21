@@ -5,6 +5,7 @@ use bevy_ecs::query::QueryData;
 use bevy_ecs::world::Ref;
 use valence_math::DVec3;
 use valence_protocol::encode::WritePacket;
+use valence_protocol::movement_flags::MovementFlags;
 use valence_protocol::packets::play::{
     AddEntityS2c, AddExperienceOrbS2c, AnimateS2c, EntityEventS2c, MoveEntityPosRotS2c,
     MoveEntityPosS2c, MoveEntityRotS2c, RotateHeadS2c, SetEntityDataS2c, SetEntityMotionS2c,
@@ -104,7 +105,8 @@ impl UpdateEntityQueryItem<'_> {
                 delta: (position_delta * 4096.0).to_array().map(|v| v as i16),
                 yaw: ByteAngle::from_degrees(self.look.yaw),
                 pitch: ByteAngle::from_degrees(self.look.pitch),
-                on_ground: self.on_ground.0,
+                // FIXME: add missing pushing_against_wall
+                flags: MovementFlags::new().with_on_ground(self.on_ground.0),
             });
         } else {
             if changed_position && !needs_teleport {

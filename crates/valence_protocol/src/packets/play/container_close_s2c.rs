@@ -1,7 +1,7 @@
-use crate::{Decode, Encode, Packet};
+use crate::{Decode, Encode, Packet, VarInt};
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
 pub struct ContainerCloseS2c {
     /// Ignored by notchian clients.
-    pub window_id: u8,
+    pub window_id: VarInt,
 }
