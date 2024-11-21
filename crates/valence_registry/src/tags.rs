@@ -34,6 +34,18 @@ impl TagsRegistry {
     }
 }
 
+impl TagsRegistry {
+    pub fn default_tags() -> valence_protocol::packets::configuration::UpdateTagsS2c<'static> {
+        let registries =
+            serde_json::from_str::<RegistryMap>(include_str!("../extracted/tags.json"))
+                .expect("tags.json must have expected structure");
+
+        valence_protocol::packets::configuration::UpdateTagsS2c {
+            groups: Cow::Owned(registries),
+        }
+    }
+}
+
 fn init_tags_registry(mut tags: ResMut<TagsRegistry>) {
     let registries = serde_json::from_str::<RegistryMap>(include_str!("../extracted/tags.json"))
         .expect("tags.json must have expected structure");
