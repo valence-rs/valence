@@ -7,8 +7,11 @@ use bevy_ecs::prelude::*;
 use bevy_ecs::query::QueryData;
 use derive_more::{Deref, DerefMut};
 use valence_entity::EntityLayerId;
+use valence_protocol::packets::play::game_event_s2c::GameEventKind;
 use valence_protocol::packets::play::respawn_s2c::DataKeptFlags;
-use valence_protocol::packets::play::{LoginS2c, RespawnS2c, SetDefaultSpawnPositionS2c};
+use valence_protocol::packets::play::{
+    GameEventS2c, LoginS2c, RespawnS2c, SetDefaultSpawnPositionS2c,
+};
 use valence_protocol::{BlockPos, GameMode, GlobalPos, Ident, VarInt, WritePacket};
 use valence_registry::tags::TagsRegistry;
 use valence_registry::{DimensionTypeRegistry, RegistryCodec};
@@ -135,6 +138,11 @@ pub(super) fn initial_join(
         });
 
         client.write_packet_bytes(tags.sync_tags_packet());
+
+        client.write_packet(&GameEventS2c {
+            kind: GameEventKind::StartWaitingForLevelChunks,
+            value: 0.0,
+        });
 
         /*
         // TODO: enable all the features?
