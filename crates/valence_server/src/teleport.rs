@@ -1,8 +1,8 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use tracing::warn;
-use valence_entity::{Look, Position};
-use valence_math::DVec3;
+use valence_entity::{Look, Position, Velocity};
+use valence_math::{DVec3, Vec3};
 use valence_protocol::packets::play::player_position_s2c::TeleportRelativeFlags;
 use valence_protocol::packets::play::{AcceptTeleportationC2s, PlayerPositionS2c};
 use valence_protocol::WritePacket;
@@ -35,6 +35,7 @@ pub struct TeleportState {
     /// this is nonzero.
     pending_teleports: u32,
     pub(super) synced_pos: DVec3,
+    pub(super) synced_velocity: Vec3,
     pub(super) synced_look: Look,
 }
 
@@ -46,6 +47,7 @@ impl TeleportState {
             // Set initial synced pos and look to NaN so a teleport always happens when first
             // joining.
             synced_pos: DVec3::NAN,
+            synced_velocity: Vec3::NAN,
             synced_look: Look {
                 yaw: f32::NAN,
                 pitch: f32::NAN,
@@ -69,30 +71,38 @@ impl TeleportState {
 #[allow(clippy::type_complexity)]
 fn teleport(
     mut clients: Query<
-        (&mut Client, &mut TeleportState, &Position, &Look),
-        Or<(Changed<Position>, Changed<Look>)>,
+        (&mut Client, &mut TeleportState, &Position, &Velocity, &Look),
+        Or<(Changed<Position>, Changed<Velocity>, Changed<Look>)>,
     >,
 ) {
-    for (mut client, mut state, pos, look) in &mut clients {
+    for (mut client, mut state, pos, velocity, look) in &mut clients {
         let changed_pos = pos.0 != state.synced_pos;
+        let changed_velocity = velocity.0 != state.synced_velocity;
         let changed_yaw = look.yaw != state.synced_look.yaw;
         let changed_pitch = look.pitch != state.synced_look.pitch;
 
-        if changed_pos || changed_yaw || changed_pitch {
+        if changed_pos || changed_velocity || changed_yaw || changed_pitch {
             state.synced_pos = pos.0;
+            state.synced_velocity = velocity.0;
             state.synced_look = *look;
 
             let flags = TeleportRelativeFlags::new()
                 .with_x(!changed_pos)
                 .with_y(!changed_pos)
                 .with_z(!changed_pos)
+                .with_x_vel(!changed_velocity)
+                .with_y_vel(!changed_velocity)
+                .with_z_vel(!changed_velocity)
                 .with_y_rot(!changed_yaw)
                 .with_x_rot(!changed_pitch);
 
             client.write_packet(&PlayerPositionS2c {
                 position: if changed_pos { pos.0 } else { DVec3::ZERO },
-                // FIXME: add missing velocity
-                velocity: if changed_pos { pos.0 } else { DVec3::ZERO },
+                velocity: if changed_velocity {
+                    velocity.0.into()
+                } else {
+                    DVec3::ZERO
+                },
                 yaw: if changed_yaw { look.yaw } else { 0.0 },
                 pitch: if changed_pitch { look.pitch } else { 0.0 },
                 flags,
