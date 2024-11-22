@@ -80,7 +80,7 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
 
     Ok(quote!(
         /// An attribute modifier operation.
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Encode, Decode)]
         pub enum EntityAttributeOperation {
             /// Adds the modifier to the base value.
             Add,

@@ -1,8 +1,8 @@
 use crate::{Bounded, Decode, Encode, Packet, VarInt};
 
-pub const MAX_TITLE_CHARS: usize = 128;
-pub const MAX_PAGE_CHARS: usize = 8192;
-pub const MAX_PAGES: usize = 200;
+pub const MAX_TITLE_CHARS: usize = 32;
+pub const MAX_PAGE_CHARS: usize = 1024;
+pub const MAX_PAGES: usize = 100;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 pub struct EditBookC2s<'a> {
