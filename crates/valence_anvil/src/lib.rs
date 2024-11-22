@@ -557,14 +557,14 @@ impl Region {
             Compression::Gzip => valence_nbt::to_binary(
                 chunk,
                 GzEncoder::new(&mut compress_cursor, flate2::Compression::default()),
-                "",
+                Some(""),
             )?,
             Compression::Zlib => valence_nbt::to_binary(
                 chunk,
                 ZlibEncoder::new(&mut compress_cursor, flate2::Compression::default()),
-                "",
+                Some(""),
             )?,
-            Compression::None => valence_nbt::to_binary(chunk, &mut compress_cursor, "")?,
+            Compression::None => valence_nbt::to_binary(chunk, &mut compress_cursor, Some(""))?,
         }
         let compress_buf = compress_cursor.into_inner();
 
