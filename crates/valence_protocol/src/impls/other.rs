@@ -45,7 +45,7 @@ impl<'a> Decode<'a> for Uuid {
 
 impl Encode for Compound {
     fn encode(&self, w: impl Write) -> anyhow::Result<()> {
-        Ok(valence_nbt::to_binary(self, w, "")?)
+        Ok(valence_nbt::to_binary(self, w, None::<&'static str>)?)
     }
 }
 

@@ -16,7 +16,7 @@ use crate::{Compound, Error, List, Result, Value};
 ///
 /// Additionally, the root compound can be given a name. Typically the empty
 /// string `""` is used.
-pub fn to_binary<W, S, R>(comp: &Compound<S>, writer: W, root_name: &R) -> Result<()>
+pub fn to_binary<W, S, R>(comp: &Compound<S>, writer: W, root_name: Option<&R>) -> Result<()>
 where
     W: Write,
     S: ToModifiedUtf8 + Hash + Ord,
@@ -25,7 +25,9 @@ where
     let mut state = EncodeState { writer };
 
     state.write_tag(Tag::Compound)?;
-    state.write_string(root_name)?;
+    if let Some(root_name) = root_name {
+        state.write_string(root_name)?;
+    }
     state.write_compound(comp)?;
 
     Ok(())

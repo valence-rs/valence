@@ -11,7 +11,7 @@ use crate::{Compound, Error, List, Result, Value};
 ///
 /// The string returned in the tuple is the name of the root compound
 /// (typically the empty string).
-pub fn from_binary<'de, S>(slice: &mut &'de [u8]) -> Result<(Compound<S>, S)>
+pub fn from_binary<'de, S>(slice: &mut &'de [u8]) -> Result<(Compound<S>, Option<S>)>
 where
     S: FromModifiedUtf8<'de> + Hash + Ord,
 {
@@ -26,7 +26,18 @@ where
         )));
     }
 
-    let root_name = state.read_string::<S>()?;
+    let root_name = {
+        let mut slice = *state.slice;
+        let mut peek_state = DecodeState {
+            slice: &mut slice,
+            depth: 0,
+        };
+
+        match peek_state.read_string::<S>() {
+            Ok(_) => Some(state.read_string().unwrap()),
+            Err(_) => None,
+        }
+    };
     let root = state.read_compound()?;
 
     debug_assert_eq!(state.depth, 0);
