@@ -1,5 +1,6 @@
 use bitfield_struct::bitfield;
 
+use crate::packets::configuration::client_information_c2s::ParticleMode;
 use crate::{Decode, Encode, Packet};
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
@@ -12,6 +13,7 @@ pub struct ClientInformationC2s<'a> {
     pub main_arm: MainArm,
     pub enable_text_filtering: bool,
     pub allow_server_listings: bool,
+    pub particle_mode: ParticleMode,
 }
 
 #[bitfield(u8)]
