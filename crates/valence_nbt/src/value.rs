@@ -206,7 +206,7 @@ macro_rules! impl_value {
     }
 }
 
-impl_value!(Value,,(*),);
+impl_value!(Value, , (*),);
 impl_value!(ValueRef, 'a, (**), &'a);
 impl_value!(ValueMut, 'a, (**), &'a mut);
 

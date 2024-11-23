@@ -1,5 +1,7 @@
 use std::io::Write;
 
+use valence_generated::registry_id::RegistryId;
+
 use crate::{Decode, Encode, VarInt};
 
 #[derive(Debug, PartialEq, Eq)]
@@ -13,7 +15,7 @@ use crate::{Decode, Encode, VarInt};
 ///   inline.
 pub enum IDSet {
     NamedSet(String),
-    AdHocSet(Vec<VarInt>),
+    AdHocSet(Vec<RegistryId>),
 }
 
 impl Encode for IDSet {

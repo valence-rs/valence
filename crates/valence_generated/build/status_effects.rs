@@ -170,6 +170,7 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
         use uuid::Uuid;
         use valence_ident::{Ident, ident};
         use super::attributes::{EntityAttribute, EntityAttributeOperation};
+        use crate::registry_id::RegistryId;
 
         /// Represents an attribute modifier.
         #[derive(Debug, Clone, Copy, PartialEq)]
@@ -277,6 +278,12 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
 
             /// An array of all effects.
             pub const ALL: [Self; #effect_count] = [#(Self::#effect_variants,)*];
+        }
+
+        impl From<StatusEffect> for RegistryId {
+            fn from(effect: StatusEffect) -> Self {
+                RegistryId::new(effect.to_raw() as i32)
+            }
         }
     })
 }

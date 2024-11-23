@@ -2,7 +2,7 @@ use std::io::Write;
 
 use valence_generated::attributes::{EntityAttribute, EntityAttributeOperation};
 pub use valence_generated::item::ItemKind;
-pub use valence_generated::sound::Sounds;
+pub use valence_generated::sound::Sound;
 use valence_ident::Ident;
 use valence_nbt::Compound;
 use valence_text::Text;
@@ -11,13 +11,13 @@ use crate::{sound::SoundId, Decode, Encode, IDSet, VarInt};
 
 /// A stack of items in an inventory.
 #[derive(Clone, PartialEq, Debug, Default)]
-pub struct ItemStack {
+pub struct ItemStack<'a> {
     pub item: ItemKind,
     pub count: i8,
-    pub components: Vec<ItemComponent>,
+    pub components: Vec<ItemComponent<'a>>,
 }
 
-type Ident<'a> = Ident<Cow<'a, str>>;
+type StrIdent<'a> = Ident<Cow<'a, str>>;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum ItemComponent<'a> {
@@ -112,7 +112,7 @@ pub enum ItemComponent<'a> {
         /// How long it takes to consume the item.
         consume_seconds: f32,
         /// The animation type.
-        animation: ConsumabeAnimation,
+        animation: ConsumableAnimation,
         /// The sound event.
         sound: SoundId,
         /// Whether the item has consume particles.
@@ -132,12 +132,12 @@ pub enum ItemComponent<'a> {
         /// The cooldown duration in seconds.
         seconds: f32,
         /// The cooldown group identifier.
-        cooldown_group: Option<Ident<'a>>,
+        cooldown_group: Option<StrIdent<'a>>,
     },
     /// Marks this item as damage resistant.
     DamageResistant {
         /// Tag specifying damage types the item is immune to. Not prefixed by '#'.
-        types: Ident<'a>,
+        types: StrIdent<'a>,
     },
     /// Allows the item to be enchanted by an enchanting table.
     Enchantable {
@@ -179,7 +179,7 @@ pub enum ItemComponent<'a> {
     /// Custom textures for the item tooltip.
     TooltipStyle {
         /// The style identifier.
-        style: Ident<'a>,
+        style: StrIdent<'a>,
     },
     /// Makes the item function like a totem of undying.
     DeathProtection {
@@ -190,8 +190,6 @@ pub enum ItemComponent<'a> {
     },
     /// Alters the speed at which this item breaks certain blocks.
     Tool {
-        /// The number of elements in the following array.
-        number_of_rules: VarInt,
         /// The rules.
         rules: Vec<(
             Vec<VarInt>,
@@ -432,7 +430,7 @@ pub enum ItemComponent<'a> {
         /// The number of elements in the following array.
         number_of_items: VarInt,
         /// The items.
-        items: Vec<ItemStack>,
+        items: Vec<ItemStack<'a>>,
     },
     /// State of a block.
     BlockState {

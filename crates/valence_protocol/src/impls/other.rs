@@ -2,11 +2,14 @@ use std::io::Write;
 
 use anyhow::Context;
 use uuid::Uuid;
+use valence_generated::attributes::EntityAttributeModifier;
 use valence_generated::block::{BlockEntityKind, BlockKind, BlockState};
 use valence_generated::item::ItemKind;
+use valence_generated::registry_id::RegistryId;
 use valence_ident::{Ident, IdentError};
 use valence_nbt::Compound;
 
+use crate::packets::play::update_attributes_s2c::AttributeModifier;
 use crate::{Decode, Encode, VarInt};
 
 impl<T: Encode> Encode for Option<T> {
@@ -134,5 +137,35 @@ impl Decode<'_> for ItemKind {
         let errmsg = "invalid item ID";
 
         ItemKind::from_raw(id.try_into().context(errmsg)?).context(errmsg)
+    }
+}
+
+impl Encode for RegistryId {
+    fn encode(&self, w: impl Write) -> anyhow::Result<()> {
+        VarInt(self.id()).encode(w)
+    }
+}
+
+impl<'a> Decode<'a> for RegistryId {
+    fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
+        let id = VarInt::decode(r)?;
+        Ok(RegistryId::new(id.0))
+    }
+}
+
+impl Encode for EntityAttributeOperation {
+    fn encode(&self, w: impl Write) -> anyhow::Result<()> {
+        VarInt(self as i32).encode(w)
+    }
+}
+
+impl Decode<'_> for EntityAttributeOperation {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
+        match VarInt::decode(r)?.0 {
+            0 => Ok(EntityAttributeOperation::Add),
+            1 => Ok(EntityAttributeOperation::Multiply),
+            2 => Ok(EntityAttributeOperation::MultiplyBase),
+            _ => Err(anyhow::anyhow!("invalid entity attribute operation")),
+        }
     }
 }

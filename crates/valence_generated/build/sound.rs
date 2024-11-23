@@ -73,6 +73,7 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
 
     Ok(quote! {
         use valence_ident::{Ident, ident};
+        use crate::registry_id::RegistryId;
 
         /// Represents a sound from the game
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -117,6 +118,13 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
 
             /// An array of all sounds.
             pub const ALL: [Self; #sound_count] = [#(Self::#sound_variants,)*];
+        }
+
+
+        impl From<Sound> for RegistryId {
+            fn from(sound: Sound) -> Self {
+                RegistryId::new(sound.to_raw() as i32)
+            }
         }
     })
 }

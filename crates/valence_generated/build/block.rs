@@ -579,6 +579,7 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
 
     Ok(quote! {
         use valence_math::{Aabb, DVec3};
+        use crate::registry_id::RegistryId;
 
         /// Represents the state of a block. This does not include block entity data such as
         /// the text on a sign, the design on a banner, or the content of a spawner.
@@ -816,6 +817,12 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
 
             /// An array of all block kinds.
             pub const ALL: [Self; #block_kind_count] = [#(Self::#block_kind_variants,)*];
+        }
+
+        impl From<BlockKind> for RegistryId {
+            fn from(kind: BlockKind) -> Self {
+                RegistryId::new(kind.to_raw() as i32)
+            }
         }
 
         /// The default block kind is `air`.

@@ -7,15 +7,11 @@ use valence_ident::Ident;
 use crate::var_int::VarInt;
 use crate::{Decode, Encode};
 
-#[derive(Clone, PartialEq, Debug)]
-pub enum SoundId<'a> {
-    Direct {
-        id: Ident<Cow<'a, str>>,
-        range: Option<f32>,
-    },
-    Reference {
-        id: VarInt,
-    },
+pub type SoundId = IdOr<SoundDirect>;
+
+struct SoundDirect<'a> {
+    id: Ident<Cow<'a, str>>,
+    range: Option<f32>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
