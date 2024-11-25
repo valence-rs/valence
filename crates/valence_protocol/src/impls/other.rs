@@ -2,7 +2,9 @@ use std::io::Write;
 
 use anyhow::Context;
 use uuid::Uuid;
-use valence_generated::attributes::EntityAttributeModifier;
+use valence_generated::attributes::{
+    EntityAttribute, EntityAttributeModifier, EntityAttributeOperation,
+};
 use valence_generated::block::{BlockEntityKind, BlockKind, BlockState};
 use valence_generated::item::ItemKind;
 use valence_generated::registry_id::RegistryId;
@@ -155,7 +157,7 @@ impl<'a> Decode<'a> for RegistryId {
 
 impl Encode for EntityAttributeOperation {
     fn encode(&self, w: impl Write) -> anyhow::Result<()> {
-        VarInt(self as i32).encode(w)
+        VarInt(*self as i32).encode(w)
     }
 }
 
@@ -163,9 +165,23 @@ impl Decode<'_> for EntityAttributeOperation {
     fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         match VarInt::decode(r)?.0 {
             0 => Ok(EntityAttributeOperation::Add),
-            1 => Ok(EntityAttributeOperation::Multiply),
+            1 => Ok(EntityAttributeOperation::MultiplyTotal),
             2 => Ok(EntityAttributeOperation::MultiplyBase),
             _ => Err(anyhow::anyhow!("invalid entity attribute operation")),
         }
+    }
+}
+
+impl Encode for EntityAttribute {
+    fn encode(&self, w: impl Write) -> anyhow::Result<()> {
+        VarInt(self.get_id() as i32).encode(w)?;
+        Ok(())
+    }
+}
+
+impl<'a> Decode<'a> for EntityAttribute {
+    fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
+        let id = VarInt::decode(r)?.0;
+        EntityAttribute::from_id(id as u8).context("invalid entity attribute ID")
     }
 }
