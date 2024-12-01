@@ -144,7 +144,7 @@ impl Value {
             Value::String(_) => quote!(String),
             Value::TextComponent(_) => quote!(valence_protocol::Text),
             Value::OptionalTextComponent(_) => quote!(Option<valence_protocol::Text>),
-            Value::ItemStack(_) => quote!(valence_protocol::ItemStack),
+            Value::ItemStack(_) => quote!(valence_protocol::ItemStack<'a>),
             Value::Boolean(_) => quote!(bool),
             Value::Rotation { .. } => quote!(crate::EulerAngle),
             Value::BlockPos(_) => quote!(valence_protocol::BlockPos),
@@ -166,7 +166,7 @@ impl Value {
             Value::CatVariant(_) => quote!(crate::CatKind),
             Value::WolfVariant(_) => quote!(crate::WolfKind),
             Value::FrogVariant(_) => quote!(crate::FrogKind),
-            Value::OptionalGlobalPos(_) => quote!(()), // TODO
+            Value::OptionalGlobalPos(_) => quote!(Option<Pos>),
             Value::PaintingVariant(_) => quote!(crate::PaintingKind),
             Value::SnifferState(_) => quote!(crate::SnifferState),
             Value::ArmadilloState(_) => quote!(crate::ArmadilloState),
@@ -543,10 +543,15 @@ fn build_entities() -> anyhow::Result<TokenStream> {
         }
 
         for field in &entity.fields {
-            let pascal_field_name_ident = ident(field.name.to_pascal_case());
+            let mut pascal_field_name_ident = ident(field.name.to_pascal_case());
             let snake_field_name = field.name.to_snake_case();
             let inner_type = field.default_value.field_type();
             let default_expr = field.default_value.default_expr();
+
+            // if feild has a lifetime in the type, add it to the field name (mabye a lil botch but eh)
+            if inner_type.to_string().contains("'a") {
+                pascal_field_name_ident = ident(format!("{pascal_field_name_ident}<'a>"));
+            }
 
             module_body.extend([quote! {
                 #[derive(bevy_ecs::component::Component, PartialEq, Clone, Debug, ::derive_more::Deref, ::derive_more::DerefMut)]

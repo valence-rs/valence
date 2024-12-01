@@ -9,7 +9,7 @@ use valence_text::Text;
 use crate::{packet_id, Decode, Encode, ItemStack, Packet, VarInt};
 
 pub type UpdateAdvancementsS2c<'a> =
-    GenericUpdateAdvancementsS2c<'a, (Ident<Cow<'a, str>>, Advancement<'a, ItemStack>)>;
+    GenericUpdateAdvancementsS2c<'a, (Ident<Cow<'a, str>>, Advancement<'a, ItemStack<'a>>)>;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 #[packet(id = packet_id::PLAY_UPDATE_ADVANCEMENTS_S2C)]

@@ -88,6 +88,7 @@ fn draw_clear_button(state: &mut SharedState, ui: &mut Ui) {
     if ui.button("Clear").clicked() {
         state.selected_packet = None;
         state.packets.write().unwrap().clear();
+        state.failed_packets.write().unwrap().clear();
     }
 }
 
@@ -219,7 +220,7 @@ fn draw_packet_widget(ui: &mut Ui, packet: &Packet, selected: bool) -> Response 
     response
 }
 
-fn get_triangle(direction: PacketSide, outer_rect: &Rect) -> PathShape {
+pub(crate) fn get_triangle(direction: PacketSide, outer_rect: &Rect) -> PathShape {
     let rect = Rect::from_min_size(
         Pos2 {
             x: outer_rect.left() + 6.0,

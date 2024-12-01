@@ -173,7 +173,7 @@ fn write_transformer(packets: &[Packet]) -> anyhow::Result<()> {
 
                 match_arms.extend(quote! {
                     valence_protocol::packets::#lowercase_state::#name::ID => {
-                        Ok(format!("{:#?}", valence_protocol::packets::#lowercase_state::#name::decode(&mut data)))
+                        Ok(format!("{:#?}", valence_protocol::packets::#lowercase_state::#name::decode(&mut data)?))
                     }
                 });
             }

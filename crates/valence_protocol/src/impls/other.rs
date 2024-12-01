@@ -3,7 +3,7 @@ use std::io::Write;
 use anyhow::Context;
 use uuid::Uuid;
 use valence_generated::attributes::{
-    EntityAttribute, EntityAttributeModifier, EntityAttributeOperation,
+    EntityAttribute, EntityAttributeOperation,
 };
 use valence_generated::block::{BlockEntityKind, BlockKind, BlockState};
 use valence_generated::item::ItemKind;

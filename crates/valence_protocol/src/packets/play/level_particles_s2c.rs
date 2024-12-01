@@ -7,17 +7,17 @@ use valence_math::{DVec3, Vec3};
 use crate::{BlockPos, Decode, Encode, ItemStack, Packet, VarInt};
 
 #[derive(Clone, Debug, Packet, Decode, Encode)]
-pub struct LevelParticlesS2c {
+pub struct LevelParticlesS2c<'a> {
     pub long_distance: bool,
     pub position: DVec3,
     pub offset: Vec3,
     pub max_speed: f32,
     pub count: i32,
-    pub particle: Particle,
+    pub particle: Particle<'a>,
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub enum Particle {
+pub enum Particle<'a> {
     AngryVillager,
     Block(BlockState),
     BlockMarker(BlockState),
@@ -73,7 +73,7 @@ pub enum Particle {
     Composter,
     Heart,
     InstantEffect,
-    Item(ItemStack),
+    Item(ItemStack<'a>),
     /// The 'Block' variant of the 'Vibration' particle
     VibrationBlock {
         block_pos: BlockPos,
@@ -152,7 +152,7 @@ pub enum Particle {
     TrialOmen,
 }
 
-impl Particle {
+impl<'a> Particle<'a> {
     pub const fn id(&self) -> i32 {
         match self {
             Particle::AngryVillager => 0,
@@ -269,7 +269,7 @@ impl Particle {
     }
 
     /// Decodes the particle assuming the given particle ID.
-    pub fn decode_with_id(particle_id: i32, r: &mut &[u8]) -> anyhow::Result<Self> {
+    pub fn decode_with_id(particle_id: i32, r: &mut &'a [u8]) -> anyhow::Result<Self> {
         Ok(match particle_id {
             0 => Particle::AngryVillager,
             1 => Particle::Block(BlockState::decode(r)?),
@@ -410,7 +410,7 @@ impl Particle {
 }
 
 /// Encodes the particle without an ID.
-impl Encode for Particle {
+impl<'a> Encode for Particle<'a> {
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         VarInt(self.id()).encode(&mut w)?;
         match self {
@@ -455,7 +455,7 @@ impl Encode for Particle {
     }
 }
 
-impl<'a> Decode<'a> for Particle {
+impl<'a> Decode<'a> for Particle<'a> {
     fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
         let particle_id = VarInt::decode(r)?.0;
         Ok(match particle_id {

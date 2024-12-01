@@ -1,11 +1,5 @@
 use super::{SharedState, Tab, View};
-
-mod utils {
-    use packet_inspector::Packet as ProxyPacket;
-    use valence_protocol::{Decode, Packet};
-
-    include!(concat!(env!("OUT_DIR"), "/packet_to_string.rs"));
-}
+use crate::utils;
 
 pub(crate) struct TextView {
     last_packet_id: Option<usize>,

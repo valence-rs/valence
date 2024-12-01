@@ -5,11 +5,13 @@ use anyhow::bail;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use uuid::Uuid;
+use valence_protocol::movement_flags::MovementFlags;
 use valence_protocol::packets::handshake::intention_c2s::HandshakeNextState;
 use valence_protocol::packets::handshake::IntentionC2s;
-use valence_protocol::packets::login::{GameProfileS2c, HelloC2s, HelloS2c, LoginCompressionS2c};
+use valence_protocol::packets::login::{HelloC2s, HelloS2c, LoginCompressionS2c};
 use valence_protocol::packets::play::{
-    AcceptTeleportationC2s, KeepAliveC2s, KeepAliveS2c, MovePlayerPosC2s, PlayerPositionS2c,
+    AcceptTeleportationC2s, KeepAliveC2s, KeepAliveS2c, LoginS2c, MovePlayerPosC2s,
+    PlayerPositionS2c,
 };
 use valence_protocol::var_int::VarInt;
 use valence_protocol::{
@@ -88,7 +90,7 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
                     enc.set_compression(CompressionThreshold(threshold));
                 }
 
-                GameProfileS2c::ID => {
+                LoginS2c::ID => {
                     break;
                 }
 
@@ -124,7 +126,7 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
 
                     enc.append_packet(&MovePlayerPosC2s {
                         position: packet.position,
-                        on_ground: true,
+                        flags: MovementFlags::new().with_on_ground(true),
                     })?;
 
                     conn.write_all(&enc.take()).await?;

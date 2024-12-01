@@ -45,7 +45,7 @@ impl<'a> Decode<'a> for IDSet<'a> {
         } else {
             let mut ids = Vec::with_capacity((type_id - 1) as usize);
             for _ in 0..(type_id - 1) {
-                ids.push(RegistryId::from(VarInt::decode(r)?.into()));
+                ids.push(RegistryId::new(VarInt::decode(r)?.0));
             }
             Ok(IDSet::AdHocSet(ids))
         }

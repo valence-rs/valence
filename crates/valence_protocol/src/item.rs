@@ -117,7 +117,7 @@ pub enum ItemComponent<'a> {
         /// The animation type.
         animation: ConsumableAnimation,
         /// The sound event.
-        sound: SoundId,
+        sound: SoundId<'a>,
         /// Whether the item has consume particles.
         has_consume_particles: bool,
         /// Number of elements in the following array.
@@ -695,7 +695,7 @@ impl<'a> Encode for ItemStack<'a> {
 }
 
 impl<'a> Decode<'a> for ItemStack<'a> {
-    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
+    fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
         let present = bool::decode(r)?;
         if !present {
             return Ok(ItemStack::EMPTY);
@@ -703,9 +703,9 @@ impl<'a> Decode<'a> for ItemStack<'a> {
 
         let item = ItemKind::decode(r)?;
         let count = i8::decode(r)?;
-        let components = Vec::<ItemComponent>::decode(r)?;
+        let components = Vec::<ItemComponent<'a>>::decode(r)?;
 
-        let stack = ItemStack {
+        let stack = ItemStack::<'a> {
             item,
             count,
             components,

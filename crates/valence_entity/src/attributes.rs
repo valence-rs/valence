@@ -442,33 +442,21 @@ mod tests {
     fn test_compute_value() {
         let add_id = "my_attr".to_string();
         let mut attributes = EntityAttributes::new();
-        attributes.set_base_value(EntityAttribute::GenericMaxHealth, 20.0);
-        attributes.set_add_modifier(EntityAttribute::GenericMaxHealth, &add_id, 10.0);
-        attributes.set_multiply_base_modifier(
-            EntityAttribute::GenericMaxHealth,
-            &"1".to_string(),
-            0.2,
-        );
-        attributes.set_multiply_base_modifier(
-            EntityAttribute::GenericMaxHealth,
-            &"2".to_string(),
-            0.2,
-        );
-        attributes.set_multiply_total_modifier(
-            EntityAttribute::GenericMaxHealth,
-            &"3".to_string(),
-            0.5,
-        );
+        attributes.set_base_value(EntityAttribute::MaxHealth, 20.0);
+        attributes.set_add_modifier(EntityAttribute::MaxHealth, &add_id, 10.0);
+        attributes.set_multiply_base_modifier(EntityAttribute::MaxHealth, &"1".to_string(), 0.2);
+        attributes.set_multiply_base_modifier(EntityAttribute::MaxHealth, &"2".to_string(), 0.2);
+        attributes.set_multiply_total_modifier(EntityAttribute::MaxHealth, &"3".to_string(), 0.5);
 
         assert_eq!(
-            attributes.get_compute_value(EntityAttribute::GenericMaxHealth),
+            attributes.get_compute_value(EntityAttribute::MaxHealth),
             Some(63.0) // ((20 + 10) * (1 + 0.2 + 0.2)) * (1 + 0.5)
         );
 
-        attributes.remove_modifier(EntityAttribute::GenericMaxHealth, &add_id);
+        attributes.remove_modifier(EntityAttribute::MaxHealth, &add_id);
 
         assert_eq!(
-            attributes.get_compute_value(EntityAttribute::GenericMaxHealth),
+            attributes.get_compute_value(EntityAttribute::MaxHealth),
             Some(42.0) // ((20) * (1 + 0.2 + 0.2)) * (1 + 0.5)
         );
     }

@@ -26,7 +26,7 @@ use valence_protocol::{
 
 use crate::packet_io::PacketIo;
 pub use crate::packet_registry::Packet;
-use crate::packet_registry::PacketRegistry;
+pub use crate::packet_registry::PacketRegistry;
 
 include!(concat!(env!("OUT_DIR"), "/packets.rs"));
 
@@ -325,4 +325,11 @@ where
     let mut r = &packet.body[..];
     let packet = P::decode(&mut r).ok()?;
     Some(packet)
+}
+
+pub(crate) mod utils {
+    use crate::Packet as ProxyPacket;
+    use valence_protocol::{Decode, Packet};
+
+    include!(concat!(env!("OUT_DIR"), "/packet_to_string.rs"));
 }

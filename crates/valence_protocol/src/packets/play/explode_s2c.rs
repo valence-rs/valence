@@ -10,7 +10,6 @@ use crate::{sound::SoundId, Decode, Encode, Packet, Particle, VarInt};
 pub struct ExplodeS2c<'a> {
     pub pos: DVec3,
     pub player_motion: Option<Vec3>,
-    pub particle: Particle,
+    pub particle: Particle<'a>,
     pub sound: SoundId<'a>,
-    //TODO: particle data and sound
 }
