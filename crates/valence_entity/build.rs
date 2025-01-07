@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use anyhow::Context;
 use heck::{ToPascalCase, ToShoutySnakeCase, ToSnakeCase};
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{quote, ToTokens};
 use serde::Deserialize;
 use valence_build_utils::{ident, rerun_if_changed, write_generated_file};
 
@@ -543,14 +543,14 @@ fn build_entities() -> anyhow::Result<TokenStream> {
         }
 
         for field in &entity.fields {
-            let mut pascal_field_name_ident = ident(field.name.to_pascal_case());
+            let mut pascal_field_name_ident = ident(field.name.to_pascal_case()).to_token_stream();
             let snake_field_name = field.name.to_snake_case();
             let inner_type = field.default_value.field_type();
             let default_expr = field.default_value.default_expr();
 
             // if feild has a lifetime in the type, add it to the field name (mabye a lil botch but eh)
             if inner_type.to_string().contains("'a") {
-                pascal_field_name_ident = ident(format!("{pascal_field_name_ident}<'a>"));
+                pascal_field_name_ident = quote! {#pascal_field_name_ident<'a>};
             }
 
             module_body.extend([quote! {
