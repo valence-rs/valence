@@ -16,3 +16,15 @@ flamegraph*.svg
 perf.data
 perf.data.old
 /graph.svg
+
+extractor/.classpath
+
+extractor/.factorypath
+
+extractor/.project
+
+extractor/.settings/org.eclipse.buildship.core.prefs
+
+extractor/.settings/org.eclipse.jdt.apt.core.prefs
+
+extractor/.settings/org.eclipse.jdt.core.prefs
