@@ -1,12 +1,12 @@
+#![allow(unused_imports)]
 use std::fmt;
 
-pub use de::*;
-pub use ser::*;
+use ser::*;
 
 use crate::Error;
 
-mod de;
-mod ser;
+pub mod de;
+pub mod ser;
 #[cfg(test)]
 mod tests;
 
