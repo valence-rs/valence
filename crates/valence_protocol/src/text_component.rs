@@ -4,7 +4,7 @@ use anyhow::ensure;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use valence_nbt::binary::{FromModifiedUtf8, ToModifiedUtf8};
-use valence_nbt::serde::CompoundSerializer;
+use valence_nbt::serde::ser::CompoundSerializer;
 use valence_nbt::{Compound, Tag};
 use valence_text::{IntoText, Text};
 
