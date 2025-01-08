@@ -29,6 +29,7 @@ valence_protocol.workspace = true
 indexmap.workspace = true
 
 [build-dependencies]
+valence_generated.workspace = true
 anyhow.workspace = true
 proc-macro2.workspace = true
 quote.workspace = true

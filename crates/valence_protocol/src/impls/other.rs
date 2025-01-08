@@ -10,7 +10,6 @@ use valence_ident::{Ident, IdentError};
 use valence_nbt::Compound;
 use valence_text::color::RgbColor;
 
-use crate::packets::play::update_attributes_s2c::AttributeModifier;
 use crate::{Decode, Encode, VarInt};
 
 impl<T: Encode> Encode for Option<T> {

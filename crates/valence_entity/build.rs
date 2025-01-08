@@ -191,7 +191,15 @@ impl Value {
                 quote!(None)
             }
             Value::ItemStack(stack) => {
-                quote!(valence_protocol::ItemStack::default())
+                let parts = stack.split(" ").collect::<Vec<_>>();
+                assert!(parts.len() == 2);
+                let count = parts[0].parse::<u8>().unwrap();
+                let item = ItemKind::from_str(stack.strip_prefix("minecraft:").unwrap());
+                quote!(valence_protocol::ItemStack {
+                    item: #item
+                    count: #count,
+                    ..Default::default()
+                })
             }
             Value::Boolean(b) => quote!(#b),
             Value::Rotation { pitch, yaw, roll } => quote! {

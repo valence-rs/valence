@@ -9,7 +9,7 @@ fn round_trip() {
 
     let compound = example_compound();
 
-    to_binary(&compound, &mut buf, ROOT_NAME).unwrap();
+    to_binary(&compound, &mut buf, Some(ROOT_NAME)).unwrap();
 
     println!("{buf:?}");
 
@@ -28,7 +28,7 @@ fn check_min_sizes() {
         let dbg = format!("{min_val:?}");
         let mut buf = vec![];
 
-        to_binary(&compound!("" => min_val), &mut buf, "").unwrap();
+        to_binary(&compound!("" => min_val), &mut buf, None).unwrap();
 
         assert_eq!(
             expected_size,
