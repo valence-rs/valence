@@ -2,14 +2,13 @@ use std::io::Write;
 
 use anyhow::Context;
 use uuid::Uuid;
-use valence_generated::attributes::{
-    EntityAttribute, EntityAttributeOperation,
-};
+use valence_generated::attributes::{EntityAttribute, EntityAttributeOperation};
 use valence_generated::block::{BlockEntityKind, BlockKind, BlockState};
 use valence_generated::item::ItemKind;
 use valence_generated::registry_id::RegistryId;
 use valence_ident::{Ident, IdentError};
 use valence_nbt::Compound;
+use valence_text::color::RgbColor;
 
 use crate::packets::play::update_attributes_s2c::AttributeModifier;
 use crate::{Decode, Encode, VarInt};
@@ -183,5 +182,22 @@ impl<'a> Decode<'a> for EntityAttribute {
     fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
         let id = VarInt::decode(r)?.0;
         EntityAttribute::from_id(id as u8).context("invalid entity attribute ID")
+    }
+}
+
+impl Encode for RgbColor {
+    fn encode(&self, w: impl Write) -> anyhow::Result<()> {
+        (self.r + (self.g << 8) + (self.b << 16)).encode(w)
+    }
+}
+
+impl Decode<'_> for RgbColor {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
+        let color = u32::decode(r)?;
+        Ok(RgbColor {
+            r: (color & 0xFF) as u8,
+            g: ((color >> 8) & 0xFF) as u8,
+            b: ((color >> 16) & 0xFF) as u8,
+        })
     }
 }

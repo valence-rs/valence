@@ -8,7 +8,7 @@ use valence_generated::{
 };
 use valence_ident::Ident;
 use valence_nbt::Compound;
-use valence_text::Text;
+use valence_text::{color::RgbColor, Color, Text};
 
 use crate::{sound::SoundId, Decode, Encode, IDSet, VarInt};
 
@@ -123,7 +123,7 @@ pub enum ItemComponent<'a> {
         /// Number of elements in the following array.
         number_of_effects: VarInt,
         /// The effects.
-        effects: Vec<u64>, // TODO
+        effects: Vec<u8>, // TODO
     },
     /// This specifies the item produced after using the current item.
     UseRemainder {
@@ -150,21 +150,16 @@ pub enum ItemComponent<'a> {
     /// Allows the item to be equipped by the player.
     Equippable {
         /// The slot type.
-        slot: VarInt,
+        slot: EquipSlot,
         /// The equip sound event.
-        equip_sound: String,
-        /// Whether the item has a model.
-        has_model: bool,
-        /// The model identifier. Only present if Has model is true.
+        equip_sound: SoundId<'a>,
+        /// The model identifier.
         model: Option<String>,
-        /// Whether the item has a camera overlay.
-        has_camera_overlay: bool,
-        /// The camera overlay identifier. Only present if Has camera overlay is true.
+        /// The camera overlay identifier.
         camera_overlay: Option<String>,
         /// Whether the item has allowed entities.
-        has_allowed_entities: bool,
-        /// The allowed entities. Only present if Has allowed entities is true.
-        allowed_entities: Option<Vec<String>>,
+        /// The allowed entities.
+        allowed_entities: IDSet<'a>,
         /// Whether the item is dispensable.
         dispensable: bool,
         /// Whether the item is swappable.
@@ -186,8 +181,6 @@ pub enum ItemComponent<'a> {
     },
     /// Makes the item function like a totem of undying.
     DeathProtection {
-        /// Number of elements in the following array.
-        number_of_effects: VarInt,
         /// The effects.
         effects: Vec<u64>, // TODO
     },
@@ -207,14 +200,14 @@ pub enum ItemComponent<'a> {
     /// Color of dyed leather armor.
     DyedColor {
         /// The RGB components of the color, encoded as an integer.
-        color: VarInt,
+        color: RgbColor,
         /// Whether the armor's color should be shown on the item's tooltip.
         show_in_tooltip: bool,
     },
     /// Color of the markings on the map item model.
     MapColor {
         /// The RGB components of the color, encoded as an integer.
-        color: VarInt,
+        color: RgbColor,
     },
     /// The ID of the map.
     MapId { id: VarInt },
@@ -225,37 +218,25 @@ pub enum ItemComponent<'a> {
     },
     /// Used internally by the client when expanding or locking a map. Display extra information on the item's tooltip when the component is present.
     MapPostProcessing {
-        /// Type of post processing. Can be either:
-        /// * 0 - Lock
-        /// * 1 - Scale
-        type_: VarInt,
+        /// Type of post processing.
+        type_: MapPostProcessingType,
     },
     /// Projectiles loaded into a charged crossbow.
     ChargedProjectiles {
-        /// The number of elements in the following array.
-        number_of_projectiles: VarInt,
         /// The projectiles.
         projectiles: Vec<ItemStack<'a>>,
     },
     /// Contents of a bundle.
     BundleContents {
-        /// The number of elements in the following array.
-        number_of_items: VarInt,
         /// The items.
         items: Vec<ItemStack<'a>>,
     },
     /// Visual and effects of a potion item.
     PotionContents {
-        /// Whether this potion has an ID in the potion registry. If true, it has the default effects associated with the potion type.
-        has_potion_id: bool,
-        /// The ID of the potion type in the potion registry. Only present if Has Potion ID is true.
-        potion_id: Option<VarInt>,
-        /// Whether this potion has a custom color. If false, it uses the default color associated with the potion type.
-        has_custom_color: bool,
-        /// The RGB components of the color, encoded as an integer. Only present if Has Custom Color is true.
-        custom_color: Option<VarInt>,
-        /// The number of elements in the following array.
-        number_of_custom_effects: VarInt,
+        /// The ID of the potion type in the potion registry.
+        potion_id: Option<RegistryId>,
+        /// The RGB components of the color, encoded as an integer.
+        custom_color: Option<RgbColor>,
         /// Any custom effects the potion might have.
         custom_effects: Vec<(
             VarInt,
@@ -536,20 +517,35 @@ struct ItemAttribute {
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
 enum AttributeSlot {
-    Any = 0,
-    MainHand = 1,
-    OffHand = 2,
-    Hand = 3,
-    Feet = 4,
-    Legs = 5,
-    Chest = 6,
-    Head = 7,
-    Armor = 8,
-    Body = 9,
+    Any,
+    MainHand,
+    OffHand,
+    Hand,
+    Feet,
+    Legs,
+    Chest,
+    Head,
+    Armor,
+    Body,
 }
 
+#[derive(Clone, PartialEq, Debug, Encode, Decode)]
+enum EquipSlot {
+    Hand,
+    Feet,
+    Legs,
+    Chest,
+    Head,
+    Offhand,
+    Body,
+}
+
+pub enum MapPostProcessingType {
+    Lock,
+    Expand,
+}
 #[derive(Clone, Copy, PartialEq, Debug, Encode, Decode)]
-enum ConsumableAnimation {
+pub enum ConsumableAnimation {
     None,
     Eat,
     Drink,

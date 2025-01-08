@@ -88,6 +88,8 @@ pub mod configuration {
 }
 
 pub mod play {
+    pub mod player_loaded_c2s;
+    pub use player_loaded_c2s::PlayerLoadedC2s;
     pub mod bundle_item_selected_c2s;
     pub use bundle_item_selected_c2s::BundleItemSelectedC2s;
     pub mod client_tick_end_c2s;
@@ -314,8 +316,10 @@ pub mod play {
     pub use set_action_bar_text_s2c::SetActionBarTextS2c;
     pub mod level_particles_s2c;
     pub use level_particles_s2c::LevelParticlesS2c;
-    pub mod pick_item_c2s;
-    pub use pick_item_c2s::PickItemC2s;
+    pub mod pick_item_from_block_c2s;
+    pub use pick_item_from_block_c2s::PickItemFromBlockC2s;
+    pub mod pick_item_from_entity_c2s;
+    pub use pick_item_from_entity_c2s::PickItemFromEntityC2s;
     pub mod ping_s2c;
     pub use ping_s2c::PingS2c;
     pub mod pong_c2s;

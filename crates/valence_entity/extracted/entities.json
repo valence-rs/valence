@@ -2162,6 +2162,18 @@
         "index": 17,
         "type": "boolean",
         "default_value": false
+      },
+      {
+        "name": "crumbling",
+        "index": 18,
+        "type": "boolean",
+        "default_value": false
+      },
+      {
+        "name": "home_pos",
+        "index": 19,
+        "type": "optional_block_pos",
+        "default_value": null
       }
     ],
     "attributes": [
@@ -2178,7 +2190,7 @@
       {
         "id": 21,
         "name": "movement_speed",
-        "base_value": 0.30000001192092896
+        "base_value": 0.4000000059604645
       },
       {
         "id": 0,
@@ -2198,7 +2210,7 @@
       {
         "id": 27,
         "name": "step_height",
-        "base_value": 1.0
+        "base_value": 1.0625
       },
       {
         "id": 24,
@@ -2263,7 +2275,7 @@
       {
         "id": 2,
         "name": "attack_damage",
-        "base_value": 2.0
+        "base_value": 3.0
       }
     ],
     "default_bounding_box": {
@@ -7775,8 +7787,8 @@
       {
         "name": "variant",
         "index": 17,
-        "type": "string",
-        "default_value": "medium"
+        "type": "integer",
+        "default_value": 1
       }
     ],
     "attributes": [
@@ -9726,119 +9738,6 @@
       "size_z": 0.8999999761581421
     }
   },
-  "TransientCreakingEntity": {
-    "parent": "CreakingEntity",
-    "type": "creaking_transient",
-    "translation_key": "entity.minecraft.creaking_transient",
-    "fields": [],
-    "attributes": [
-      {
-        "id": 18,
-        "name": "max_health",
-        "base_value": 1.0
-      },
-      {
-        "id": 15,
-        "name": "knockback_resistance",
-        "base_value": 0.0
-      },
-      {
-        "id": 21,
-        "name": "movement_speed",
-        "base_value": 0.30000001192092896
-      },
-      {
-        "id": 0,
-        "name": "armor",
-        "base_value": 0.0
-      },
-      {
-        "id": 1,
-        "name": "armor_toughness",
-        "base_value": 0.0
-      },
-      {
-        "id": 17,
-        "name": "max_absorption",
-        "base_value": 0.0
-      },
-      {
-        "id": 27,
-        "name": "step_height",
-        "base_value": 1.0
-      },
-      {
-        "id": 24,
-        "name": "scale",
-        "base_value": 1.0
-      },
-      {
-        "id": 13,
-        "name": "gravity",
-        "base_value": 0.08
-      },
-      {
-        "id": 23,
-        "name": "safe_fall_distance",
-        "base_value": 3.0
-      },
-      {
-        "id": 10,
-        "name": "fall_damage_multiplier",
-        "base_value": 1.0
-      },
-      {
-        "id": 14,
-        "name": "jump_strength",
-        "base_value": 0.41999998688697815
-      },
-      {
-        "id": 22,
-        "name": "oxygen_bonus",
-        "base_value": 0.0
-      },
-      {
-        "id": 7,
-        "name": "burning_time",
-        "base_value": 1.0
-      },
-      {
-        "id": 8,
-        "name": "explosion_knockback_resistance",
-        "base_value": 0.0
-      },
-      {
-        "id": 31,
-        "name": "water_movement_efficiency",
-        "base_value": 0.0
-      },
-      {
-        "id": 20,
-        "name": "movement_efficiency",
-        "base_value": 0.0
-      },
-      {
-        "id": 3,
-        "name": "attack_knockback",
-        "base_value": 0.0
-      },
-      {
-        "id": 12,
-        "name": "follow_range",
-        "base_value": 32.0
-      },
-      {
-        "id": 2,
-        "name": "attack_damage",
-        "base_value": 2.0
-      }
-    ],
-    "default_bounding_box": {
-      "size_x": 0.8999999761581421,
-      "size_y": 2.700000047683716,
-      "size_z": 0.8999999761581421
-    }
-  },
   "TridentEntity": {
     "parent": "PersistentProjectileEntity",
     "type": "trident",
@@ -11684,7 +11583,7 @@
         "type": "villager_data",
         "default_value": {
           "type": "plains",
-          "profession": "none",
+          "profession": "farmer",
           "level": 1
         }
       }

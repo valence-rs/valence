@@ -310,6 +310,7 @@ pub struct ActiveStatusEffect {
     amplifier: u8,
     /// The initial duration of the effect in ticks.
     /// If `None`, the effect is infinite.
+    /// (encoded as -1 if infinite)
     ///
     /// # Default Value
     /// Some(600) (30 seconds)

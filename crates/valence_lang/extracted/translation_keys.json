@@ -436,6 +436,10 @@
     "english_translation": "Sniffer Egg cracks"
   },
   {
+    "key": "block.minecraft.resin_brick_slab",
+    "english_translation": "Resin Brick Slab"
+  },
+  {
     "key": "item.modifiers.head",
     "english_translation": "When on Head:"
   },
@@ -866,6 +870,10 @@
   {
     "key": "enchantment.minecraft.luck_of_the_sea",
     "english_translation": "Luck of the Sea"
+  },
+  {
+    "key": "subtitles.block.generic.fall",
+    "english_translation": "Something falls on a block"
   },
   {
     "key": "item.minecraft.fox_spawn_egg",
@@ -3700,12 +3708,16 @@
     "english_translation": "Could not connect to Realm"
   },
   {
+    "key": "subtitles.ambient.sound",
+    "english_translation": "Eerie noise"
+  },
+  {
     "key": "advancements.story.enter_the_nether.title",
     "english_translation": "We Need to Go Deeper"
   },
   {
     "key": "subtitles.entity.creaking.activate",
-    "english_translation": "Creaking activates"
+    "english_translation": "Creaking watches"
   },
   {
     "key": "block.minecraft.dark_oak_wall_hanging_sign",
@@ -3766,6 +3778,10 @@
   {
     "key": "recover_world.no_fallback",
     "english_translation": "No state to recover from available"
+  },
+  {
+    "key": "tag.item.c.bricks.resin",
+    "english_translation": "Resin Bricks"
   },
   {
     "key": "block.minecraft.banner.diagonal_right.gray",
@@ -4612,6 +4628,10 @@
     "english_translation": "Cherry Planks"
   },
   {
+    "key": "subtitles.entity.creaking.twitch",
+    "english_translation": "Creaking twitches"
+  },
+  {
     "key": "argument.range.empty",
     "english_translation": "Expected value or range of values"
   },
@@ -4722,6 +4742,10 @@
   {
     "key": "gameMode.spectator",
     "english_translation": "Spectator Mode"
+  },
+  {
+    "key": "item.minecraft.resin_clump",
+    "english_translation": "Resin Clump"
   },
   {
     "key": "subtitles.entity.shulker.shoot",
@@ -4936,6 +4960,10 @@
     "english_translation": "Bad Luck"
   },
   {
+    "key": "tag.item.c.storage_blocks.resin",
+    "english_translation": "Resin Storage Blocks"
+  },
+  {
     "key": "commands.data.storage.modified",
     "english_translation": "Modified storage %s"
   },
@@ -5114,10 +5142,6 @@
   {
     "key": "subtitles.entity.magma_cube.hurt",
     "english_translation": "Magma Cube hurts"
-  },
-  {
-    "key": "dataPack.winter_drop.description",
-    "english_translation": "New features and content for the Winter Drop"
   },
   {
     "key": "advancements.story.cure_zombie_villager.description",
@@ -5456,10 +5480,6 @@
     "english_translation": "Door creaks"
   },
   {
-    "key": "subtitles.entity.creaking.angry",
-    "english_translation": "Creaking sees player"
-  },
-  {
     "key": "multiplayer.disconnect.outdated_client",
     "english_translation": "Incompatible client! Please use %s"
   },
@@ -5650,6 +5670,10 @@
   {
     "key": "commands.enchant.failed.entity",
     "english_translation": "%s is not a valid entity for this command"
+  },
+  {
+    "key": "block.minecraft.resin_block",
+    "english_translation": "Block of Resin"
   },
   {
     "key": "tag.item.c.dyes.light_blue",
@@ -5869,7 +5893,7 @@
   },
   {
     "key": "subtitles.entity.creaking.spawn",
-    "english_translation": "Creaking lives"
+    "english_translation": "Creaking manifests"
   },
   {
     "key": "options.videoTitle",
@@ -5890,10 +5914,6 @@
   {
     "key": "painting.minecraft.bust.author",
     "english_translation": "Kristoffer Zetterstrand"
-  },
-  {
-    "key": "subtitles.block.creaking_heart.idle",
-    "english_translation": "Eerie noise"
   },
   {
     "key": "telemetry.property.ticks_since_load.title",
@@ -6161,7 +6181,7 @@
   },
   {
     "key": "subtitles.entity.creaking.deactivate",
-    "english_translation": "Creaking deactivates"
+    "english_translation": "Creaking calms"
   },
   {
     "key": "fabric-registry-sync-v0.unknown-remote.footer",
@@ -6526,6 +6546,10 @@
   {
     "key": "block.minecraft.bamboo_planks",
     "english_translation": "Bamboo Planks"
+  },
+  {
+    "key": "block.minecraft.chiseled_resin_bricks",
+    "english_translation": "Chiseled Resin Bricks"
   },
   {
     "key": "block.minecraft.banner.small_stripes.purple",
@@ -8092,6 +8116,10 @@
     "english_translation": "Glow Item Frame broken"
   },
   {
+    "key": "block.minecraft.potted_open_eyeblossom",
+    "english_translation": "Potted Open Eyeblossom"
+  },
+  {
     "key": "block.minecraft.red_nether_brick_stairs",
     "english_translation": "Red Nether Brick Stairs"
   },
@@ -8928,6 +8956,10 @@
     "english_translation": "Blue Chief Sinister Canton"
   },
   {
+    "key": "block.minecraft.resin_bricks",
+    "english_translation": "Resin Bricks"
+  },
+  {
     "key": "item.minecraft.leather_leggings",
     "english_translation": "Leather Pants"
   },
@@ -9404,6 +9436,10 @@
     "english_translation": "Smooth Red Sandstone"
   },
   {
+    "key": "block.minecraft.potted_closed_eyeblossom",
+    "english_translation": "Potted Closed Eyeblossom"
+  },
+  {
     "key": "block.minecraft.candle",
     "english_translation": "Candle"
   },
@@ -9574,6 +9610,10 @@
   {
     "key": "subtitles.entity.sniffer.searching",
     "english_translation": "Sniffer searches"
+  },
+  {
+    "key": "trim_material.minecraft.resin",
+    "english_translation": "Resin Material"
   },
   {
     "key": "item.minecraft.potion.effect.infested",
@@ -9818,6 +9858,10 @@
   {
     "key": "mco.invites.button.accept",
     "english_translation": "Accept"
+  },
+  {
+    "key": "subtitles.block.eyeblossom.open",
+    "english_translation": "Eyeblossom opens"
   },
   {
     "key": "multiplayerWarning.header",
@@ -10338,10 +10382,6 @@
   {
     "key": "tag.item.c.gems.lapis",
     "english_translation": "Lapis Gems"
-  },
-  {
-    "key": "entity.minecraft.creaking_transient",
-    "english_translation": "Creaking"
   },
   {
     "key": "gui.socialInteractions.server_label.single",
@@ -11396,6 +11436,10 @@
     "english_translation": "Must be converted!"
   },
   {
+    "key": "block.minecraft.resin_brick_wall",
+    "english_translation": "Resin Brick Wall"
+  },
+  {
     "key": "item.minecraft.iron_hoe",
     "english_translation": "Iron Hoe"
   },
@@ -11896,8 +11940,20 @@
     "english_translation": "Trade with a Villager at the build height limit"
   },
   {
+    "key": "item.op_warning.line2",
+    "english_translation": "Use of this item might lead to command execution"
+  },
+  {
     "key": "subtitles.chiseled_bookshelf.take_enchanted",
     "english_translation": "Enchanted Book taken"
+  },
+  {
+    "key": "item.op_warning.line1",
+    "english_translation": "Warning:"
+  },
+  {
+    "key": "item.op_warning.line3",
+    "english_translation": "Do not use unless you know the exact contents!"
   },
   {
     "key": "block.minecraft.mud_brick_wall",
@@ -11992,6 +12048,10 @@
     "english_translation": "Hoglin attacks"
   },
   {
+    "key": "subtitles.entity.skeleton_horse.jump_water",
+    "english_translation": "Skeleton Horse jumps"
+  },
+  {
     "key": "item.minecraft.cocoa_beans",
     "english_translation": "Cocoa Beans"
   },
@@ -12001,7 +12061,7 @@
   },
   {
     "key": "subtitles.block.creaking_heart.hurt",
-    "english_translation": "Creaking Heart screams"
+    "english_translation": "Creaking Heart grumbles"
   },
   {
     "key": "multiplayer.disconnect.unverified_username",
@@ -13180,6 +13240,10 @@
     "english_translation": "Cartographer"
   },
   {
+    "key": "fabric-registry-sync-v0.unknown-registry.title.plural",
+    "english_translation": "Received %s registries that are unknown to this client.\n"
+  },
+  {
     "key": "block.minecraft.smooth_stone",
     "english_translation": "Smooth Stone"
   },
@@ -13198,6 +13262,10 @@
   {
     "key": "item.minecraft.brush",
     "english_translation": "Brush"
+  },
+  {
+    "key": "commands.attribute.base_value.reset.success",
+    "english_translation": "Base value for attribute %s for entity %s reset to default %s"
   },
   {
     "key": "block.minecraft.banner.stripe_bottom.blue",
@@ -13349,7 +13417,7 @@
   },
   {
     "key": "subtitles.entity.creaking.sway",
-    "english_translation": "Creaking is shielded"
+    "english_translation": "Creaking is hit"
   },
   {
     "key": "stat.minecraft.damage_resisted",
@@ -14798,6 +14866,10 @@
   {
     "key": "itemGroup.search",
     "english_translation": "Search Items"
+  },
+  {
+    "key": "tag.item.c.clumps.resin",
+    "english_translation": "Resin Clumps"
   },
   {
     "key": "argument.entity.notfound.entity",
@@ -16576,6 +16648,10 @@
     "english_translation": "Server Links..."
   },
   {
+    "key": "fabric-registry-sync-v0.unknown-registry.footer",
+    "english_translation": "And %s more..."
+  },
+  {
     "key": "block.minecraft.smooth_quartz",
     "english_translation": "Smooth Quartz Block"
   },
@@ -17892,6 +17968,10 @@
     "english_translation": "[ F4 ]"
   },
   {
+    "key": "block.minecraft.resin_brick_stairs",
+    "english_translation": "Resin Brick Stairs"
+  },
+  {
     "key": "block.minecraft.muddy_mangrove_roots",
     "english_translation": "Muddy Mangrove Roots"
   },
@@ -18112,10 +18192,6 @@
     "english_translation": "The authentication servers are currently not reachable. Please try again."
   },
   {
-    "key": "dataPack.winter_drop.name",
-    "english_translation": "Winter Drop"
-  },
-  {
     "key": "mco.warning",
     "english_translation": "Warning!"
   },
@@ -18314,6 +18390,10 @@
   {
     "key": "block.minecraft.banner.base.gray",
     "english_translation": "Fully Gray Field"
+  },
+  {
+    "key": "subtitles.block.eyeblossom.close",
+    "english_translation": "Eyeblossom closes"
   },
   {
     "key": "item.minecraft.experience_bottle",
@@ -18928,6 +19008,10 @@
     "english_translation": "Magenta Per Pale"
   },
   {
+    "key": "block.minecraft.closed_eyeblossom",
+    "english_translation": "Closed Eyeblossom"
+  },
+  {
     "key": "chat.deleted_marker",
     "english_translation": "This chat message has been deleted by the server."
   },
@@ -19201,7 +19285,7 @@
   },
   {
     "key": "subtitles.entity.creaking.death",
-    "english_translation": "Creaking dies"
+    "english_translation": "Creaking crumbles"
   },
   {
     "key": "block.minecraft.deepslate_gold_ore",
@@ -19728,10 +19812,6 @@
     "english_translation": "Mossy Cobblestone Slab"
   },
   {
-    "key": "subtitles.ambient.cave",
-    "english_translation": "Eerie noise"
-  },
-  {
     "key": "subtitles.block.pointed_dripstone.drip_lava",
     "english_translation": "Lava drips"
   },
@@ -20166,6 +20246,10 @@
   {
     "key": "gui.no",
     "english_translation": "No"
+  },
+  {
+    "key": "block.minecraft.open_eyeblossom",
+    "english_translation": "Open Eyeblossom"
   },
   {
     "key": "commands.bossbar.get.max",
@@ -22380,6 +22464,10 @@
     "english_translation": "Kristoffer Zetterstrand"
   },
   {
+    "key": "tag.block.c.storage_blocks.resin",
+    "english_translation": "Resin Storage Blocks"
+  },
+  {
     "key": "trim_pattern.minecraft.sentry",
     "english_translation": "Sentry Armor Trim"
   },
@@ -22812,6 +22900,10 @@
     "english_translation": "Resource Packs..."
   },
   {
+    "key": "block.minecraft.resin_clump",
+    "english_translation": "Resin Clump"
+  },
+  {
     "key": "subtitles.entity.wither.hurt",
     "english_translation": "Wither hurts"
   },
@@ -22890,6 +22982,10 @@
   {
     "key": "block.minecraft.banner.gradient_up.gray",
     "english_translation": "Gray Base Gradient"
+  },
+  {
+    "key": "tag.item.c.clumps",
+    "english_translation": "Clumps"
   },
   {
     "key": "multiplayer.player.list.narration",
@@ -23600,6 +23696,10 @@
     "english_translation": "Goat bleats"
   },
   {
+    "key": "fabric-registry-sync-v0.unknown-registry.title.singular",
+    "english_translation": "Received a registry that is unknown to this client.\n"
+  },
+  {
     "key": "subtitles.entity.tadpole.flop",
     "english_translation": "Tadpole flops"
   },
@@ -24012,6 +24112,10 @@
     "english_translation": "Jungle Boat with Chest"
   },
   {
+    "key": "subtitles.item.elytra.flying",
+    "english_translation": "Swoosh"
+  },
+  {
     "key": "team.visibility.hideForOtherTeams",
     "english_translation": "Hide for other teams"
   },
@@ -24402,6 +24506,10 @@
   {
     "key": "commands.schedule.created.tag",
     "english_translation": "Scheduled tag '%s' in %s tick(s) at gametime %s"
+  },
+  {
+    "key": "item.minecraft.resin_brick",
+    "english_translation": "Resin Brick"
   },
   {
     "key": "arguments.nbtpath.node.invalid",
@@ -25652,6 +25760,10 @@
     "english_translation": "Swamp Explorer Map"
   },
   {
+    "key": "fabric-registry-sync-v0.unknown-registry.subtitle.2",
+    "english_translation": " See the client logs for more details.\nThe following registries are not present on the client:\n\n"
+  },
+  {
     "key": "gamerule.doInsomnia",
     "english_translation": "Spawn phantoms"
   },
@@ -25754,6 +25866,10 @@
   {
     "key": "block.minecraft.hanging_roots",
     "english_translation": "Hanging Roots"
+  },
+  {
+    "key": "fabric-registry-sync-v0.unknown-registry.subtitle.1",
+    "english_translation": "This is usually caused by a mismatched mod set between the client and server."
   },
   {
     "key": "block.minecraft.birch_sapling",
@@ -27466,6 +27582,10 @@
   {
     "key": "structure_block.invalid_structure_name",
     "english_translation": "Invalid structure name '%s'"
+  },
+  {
+    "key": "subtitles.entity.fish.swim",
+    "english_translation": "Splashes"
   },
   {
     "key": "effect.minecraft.raid_omen",

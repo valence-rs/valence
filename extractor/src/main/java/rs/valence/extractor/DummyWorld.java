@@ -1,11 +1,13 @@
 package rs.valence.extractor;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.function.Supplier;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.component.type.MapIdComponent;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.boss.dragon.EnderDragonPart;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.fluid.Fluid;
@@ -29,7 +31,6 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.random.Random;
 import net.minecraft.util.profiler.Profiler;
 import net.minecraft.world.Difficulty;
-import net.minecraft.world.GameRules;
 import net.minecraft.world.MutableWorldProperties;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.Biome;
@@ -178,6 +179,12 @@ public class DummyWorld extends World {
         return null;
     }
 
+
+    @Override
+    public Collection<EnderDragonPart> getEnderDragonParts() {
+        return null;
+    }
+
     @Override
     protected EntityLookup<Entity> getEntityLookup() {
         return null;
@@ -227,7 +234,6 @@ public class DummyWorld extends World {
     public FeatureSet getEnabledFeatures() {
         return FeatureSet.of(
             FeatureFlags.VANILLA,
-            FeatureFlags.WINTER_DROP,
             FeatureFlags.MINECART_IMPROVEMENTS,
             FeatureFlags.REDSTONE_EXPERIMENTS,
             FeatureFlags.TRADE_REBALANCE
