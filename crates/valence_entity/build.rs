@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use valence_generated::item::ItemKind;
 
 use anyhow::Context;
 use heck::{ToPascalCase, ToShoutySnakeCase, ToSnakeCase};
@@ -194,9 +195,9 @@ impl Value {
                 let parts = stack.split(" ").collect::<Vec<_>>();
                 assert!(parts.len() == 2);
                 let count = parts[0].parse::<u8>().unwrap();
-                let item = ItemKind::from_str(stack.strip_prefix("minecraft:").unwrap());
+                let item = stack.strip_prefix("minecraft:").unwrap_or("");
                 quote!(valence_protocol::ItemStack {
-                    item: #item
+                    item: ItemKind::from_str(#item),
                     count: #count,
                     ..Default::default()
                 })
