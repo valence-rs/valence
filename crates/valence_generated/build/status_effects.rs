@@ -167,7 +167,6 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
         .collect::<Vec<_>>();
 
     Ok(quote! {
-        use uuid::Uuid;
         use valence_ident::{Ident, ident};
         use super::attributes::{EntityAttribute, EntityAttributeOperation};
         use crate::registry_id::RegistryId;

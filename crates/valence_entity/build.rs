@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use valence_generated::item::ItemKind;
 
 use anyhow::Context;
 use heck::{ToPascalCase, ToShoutySnakeCase, ToSnakeCase};
@@ -156,7 +155,7 @@ impl Value {
             Value::OptionalBlockState(_) => quote!(valence_protocol::BlockState),
             Value::NbtCompound(_) => quote!(valence_nbt::Compound),
             Value::Particle(_) => {
-                quote!(valence_protocol::packets::play::level_particles_s2c::Particle)
+                quote!(valence_protocol::packets::play::level_particles_s2c::Particle<'a>)
             }
             Value::ParticleList(_) => {
                 quote!(Vec<valence_protocol::packets::play::level_particles_s2c::Particle>)
@@ -194,10 +193,14 @@ impl Value {
             Value::ItemStack(stack) => {
                 let parts = stack.split(" ").collect::<Vec<_>>();
                 assert!(parts.len() == 2);
-                let count = parts[0].parse::<u8>().unwrap();
-                let item = stack.strip_prefix("minecraft:").unwrap_or("");
+                let count = parts[0].parse::<i8>().unwrap();
+                let item = stack.strip_prefix("minecraft:");
+                let item_kind = match item {
+                    Some(item) => quote! {valence_protocol::ItemKind::from_str(#item)},
+                    None => quote! { valence_protocol::ItemKind::Air},
+                };
                 quote!(valence_protocol::ItemStack {
-                    item: ItemKind::from_str(#item),
+                    item: #item_kind,
                     count: #count,
                     ..Default::default()
                 })
@@ -553,6 +556,7 @@ fn build_entities() -> anyhow::Result<TokenStream> {
 
         for field in &entity.fields {
             let mut pascal_field_name_ident = ident(field.name.to_pascal_case()).to_token_stream();
+            let mut field_lifetime = TokenStream::new();
             let snake_field_name = field.name.to_snake_case();
             let inner_type = field.default_value.field_type();
             let default_expr = field.default_value.default_expr();
@@ -560,6 +564,7 @@ fn build_entities() -> anyhow::Result<TokenStream> {
             // if feild has a lifetime in the type, add it to the field name (mabye a lil botch but eh)
             if inner_type.to_string().contains("'a") {
                 pascal_field_name_ident = quote! {#pascal_field_name_ident<'a>};
+                field_lifetime = quote! {<'a>};
             }
 
             module_body.extend([quote! {
@@ -567,7 +572,7 @@ fn build_entities() -> anyhow::Result<TokenStream> {
                 pub struct #pascal_field_name_ident(pub #inner_type);
 
                 #[allow(clippy::derivable_impls)]
-                impl Default for #pascal_field_name_ident {
+                impl #field_lifetime Default for #pascal_field_name_ident {
                     fn default() -> Self {
                         Self(#default_expr)
                     }
