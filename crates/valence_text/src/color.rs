@@ -3,6 +3,7 @@
 use std::fmt;
 use std::hash::Hash;
 
+use bitfield_struct::bitfield;
 use serde::de::Visitor;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
@@ -22,8 +23,10 @@ pub enum Color {
 }
 
 /// RGB Color
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[bitfield(u32)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RgbColor {
+    _padding: u8,
     /// Red channel
     pub r: u8,
     /// Green channel
@@ -95,22 +98,22 @@ impl Color {
 
     /// Constructs a new RGB color
     pub const fn rgb(r: u8, g: u8, b: u8) -> Self {
-        Self::Rgb(RgbColor::new(r, g, b))
+        Self::Rgb(RgbColor::rgb(r, g, b))
     }
 }
 
 impl RgbColor {
-    /// Constructs a new color from red, green, and blue components.
-    pub const fn new(r: u8, g: u8, b: u8) -> Self {
-        Self { r, g, b }
+    /// Constructs a new RGB color
+    pub const fn rgb(r: u8, g: u8, b: u8) -> Self {
+        Self::new().with_r(r).with_g(g).with_b(b)
     }
     /// Converts the RGB color to the closest [`NamedColor`] equivalent (lossy).
     pub fn to_named_lossy(self) -> NamedColor {
         // calculates the squared distance between 2 colors
         fn squared_distance(c1: RgbColor, c2: RgbColor) -> i32 {
-            (i32::from(c1.r) - i32::from(c2.r)).pow(2)
-                + (i32::from(c1.g) - i32::from(c2.g)).pow(2)
-                + (i32::from(c1.b) - i32::from(c2.b)).pow(2)
+            (i32::from(c1.r()) - i32::from(c2.r())).pow(2)
+                + (i32::from(c1.g()) - i32::from(c2.g())).pow(2)
+                + (i32::from(c1.b()) - i32::from(c2.b())).pow(2)
         }
 
         [
@@ -198,22 +201,22 @@ impl Hash for Color {
 impl From<NamedColor> for RgbColor {
     fn from(value: NamedColor) -> Self {
         match value {
-            NamedColor::Aqua => Self::new(85, 255, 255),
-            NamedColor::Black => Self::new(0, 0, 0),
-            NamedColor::Blue => Self::new(85, 85, 255),
-            NamedColor::DarkAqua => Self::new(0, 170, 170),
-            NamedColor::DarkBlue => Self::new(0, 0, 170),
-            NamedColor::DarkGray => Self::new(85, 85, 85),
-            NamedColor::DarkGreen => Self::new(0, 170, 0),
-            NamedColor::DarkPurple => Self::new(170, 0, 170),
-            NamedColor::DarkRed => Self::new(170, 0, 0),
-            NamedColor::Gold => Self::new(255, 170, 0),
-            NamedColor::Gray => Self::new(170, 170, 170),
-            NamedColor::Green => Self::new(85, 255, 85),
-            NamedColor::LightPurple => Self::new(255, 85, 255),
-            NamedColor::Red => Self::new(255, 85, 85),
-            NamedColor::White => Self::new(255, 255, 255),
-            NamedColor::Yellow => Self::new(255, 255, 85),
+            NamedColor::Aqua => Self::rgb(85, 255, 255),
+            NamedColor::Black => Self::rgb(0, 0, 0),
+            NamedColor::Blue => Self::rgb(85, 85, 255),
+            NamedColor::DarkAqua => Self::rgb(0, 170, 170),
+            NamedColor::DarkBlue => Self::rgb(0, 0, 170),
+            NamedColor::DarkGray => Self::rgb(85, 85, 85),
+            NamedColor::DarkGreen => Self::rgb(0, 170, 0),
+            NamedColor::DarkPurple => Self::rgb(170, 0, 170),
+            NamedColor::DarkRed => Self::rgb(170, 0, 0),
+            NamedColor::Gold => Self::rgb(255, 170, 0),
+            NamedColor::Gray => Self::rgb(170, 170, 170),
+            NamedColor::Green => Self::rgb(85, 255, 85),
+            NamedColor::LightPurple => Self::rgb(255, 85, 255),
+            NamedColor::Red => Self::rgb(255, 85, 85),
+            NamedColor::White => Self::rgb(255, 255, 255),
+            NamedColor::Yellow => Self::rgb(255, 255, 85),
         }
     }
 }
@@ -284,11 +287,11 @@ impl TryFrom<&str> for RgbColor {
         };
 
         if let &[b'#', r0, r1, g0, g1, b0, b1] = value.as_bytes() {
-            Ok(RgbColor {
-                r: to_num(r0)? << 4 | to_num(r1)?,
-                g: to_num(g0)? << 4 | to_num(g1)?,
-                b: to_num(b0)? << 4 | to_num(b1)?,
-            })
+            Ok(RgbColor::rgb(
+                to_num(r0)? << 4 | to_num(r1)?,
+                to_num(g0)? << 4 | to_num(g1)?,
+                to_num(b0)? << 4 | to_num(b1)?,
+            ))
         } else {
             Err(ColorError)
         }
@@ -333,7 +336,7 @@ impl fmt::Display for Color {
 
 impl fmt::Display for RgbColor {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "#{:02x}{:02x}{:02x}", self.r, self.g, self.b)
+        write!(f, "#{:02x}{:02x}{:02x}", self.r(), self.g(), self.b())
     }
 }
 
@@ -351,11 +354,11 @@ mod tests {
     fn colors() {
         assert_eq!(
             Color::try_from("#aBcDeF"),
-            Ok(RgbColor::new(0xab, 0xcd, 0xef).into())
+            Ok(RgbColor::rgb(0xab, 0xcd, 0xef).into())
         );
         assert_eq!(
             Color::try_from("#fFfFfF"),
-            Ok(RgbColor::new(255, 255, 255).into())
+            Ok(RgbColor::rgb(255, 255, 255).into())
         );
         assert_eq!(Color::try_from("#000000"), Ok(NamedColor::Black.into()));
         assert_eq!(Color::try_from("red"), Ok(NamedColor::Red.into()));
