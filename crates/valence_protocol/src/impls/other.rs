@@ -186,17 +186,13 @@ impl<'a> Decode<'a> for EntityAttribute {
 
 impl Encode for RgbColor {
     fn encode(&self, w: impl Write) -> anyhow::Result<()> {
-        (self.r + (self.g << 8) + (self.b << 16)).encode(w)
+        self.into_bits().encode(w)
     }
 }
 
 impl Decode<'_> for RgbColor {
     fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         let color = u32::decode(r)?;
-        Ok(RgbColor {
-            r: (color & 0xFF) as u8,
-            g: ((color >> 8) & 0xFF) as u8,
-            b: ((color >> 16) & 0xFF) as u8,
-        })
+        Ok(Self::from_bits(color))
     }
 }
