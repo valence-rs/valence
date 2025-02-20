@@ -1,8 +1,5 @@
-#![allow(clippy::mutable_key_type)]
-
-use packet_inspector::PacketRegistry;
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::RwLock;
 
 use egui::Context;
 use packet_inspector::Packet;
