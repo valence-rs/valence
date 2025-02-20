@@ -2,7 +2,6 @@ package rs.valence.extractor;
 
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
-import io.netty.handler.codec.EncoderException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -11,7 +10,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.minecraft.nbt.NbtIo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rs.valence.extractor.extractors.*;

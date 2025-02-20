@@ -6,7 +6,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.datafixers.util.Pair;
 
-import java.util.ArrayList;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
@@ -15,7 +14,6 @@ import net.minecraft.registry.Registry;
 import net.minecraft.registry.SerializableRegistries;
 import net.minecraft.registry.ServerDynamicRegistryType;
 import net.minecraft.registry.entry.RegistryEntry;
-import net.minecraft.registry.entry.RegistryEntryList;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.Identifier;
 import rs.valence.extractor.Main;

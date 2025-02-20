@@ -5,7 +5,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.registry.Registries;
 import rs.valence.extractor.Main;
-import rs.valence.extractor.ValenceUtils;
 
 public class Effects implements Main.Extractor {
 
