@@ -325,10 +325,3 @@ where
     let packet = P::decode(&mut r).ok()?;
     Some(packet)
 }
-
-pub(crate) mod utils {
-    use crate::Packet as ProxyPacket;
-    use valence_protocol::{Decode, Packet};
-
-    include!(concat!(env!("OUT_DIR"), "/packet_to_string.rs"));
-}
