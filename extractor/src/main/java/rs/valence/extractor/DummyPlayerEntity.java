@@ -1,7 +1,6 @@
 package rs.valence.extractor;
 
 import com.mojang.authlib.GameProfile;
-import net.minecraft.entity.Entity;
 import net.minecraft.entity.data.DataTracker;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.network.encryption.PlayerPublicKey;

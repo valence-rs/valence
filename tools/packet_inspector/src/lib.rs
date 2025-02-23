@@ -14,9 +14,8 @@ use valence_protocol::decode::PacketFrame;
 use valence_protocol::packets::handshake::intention_c2s::HandshakeNextState;
 use valence_protocol::packets::handshake::IntentionC2s;
 use valence_protocol::packets::login::{
-    self, HelloS2c, LoginCompressionS2c, LoginDisconnectS2c, LoginFinishedS2c,
+    HelloS2c, LoginCompressionS2c, LoginDisconnectS2c, LoginFinishedS2c,
 };
-use valence_protocol::packets::play::LoginS2c;
 use valence_protocol::packets::{configuration, play};
 use valence_protocol::text::color::NamedColor;
 use valence_protocol::text::{Color, IntoText};
@@ -325,11 +324,4 @@ where
     let mut r = &packet.body[..];
     let packet = P::decode(&mut r).ok()?;
     Some(packet)
-}
-
-pub(crate) mod utils {
-    use crate::Packet as ProxyPacket;
-    use valence_protocol::{Decode, Packet};
-
-    include!(concat!(env!("OUT_DIR"), "/packet_to_string.rs"));
 }

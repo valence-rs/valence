@@ -8,7 +8,7 @@ use valence_generated::{
 };
 use valence_ident::Ident;
 use valence_nbt::Compound;
-use valence_text::{color::RgbColor, Color, Text};
+use valence_text::{color::RgbColor, Text};
 
 use crate::{sound::SoundId, Decode, Encode, IDSet, VarInt};
 
@@ -436,7 +436,7 @@ pub enum ItemComponent<'a> {
 }
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
-enum Rarity {
+pub enum Rarity {
     Common,
     Uncommon,
     Rare,
@@ -506,7 +506,7 @@ impl<'a> Decode<'a> for Property {
 }
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
-struct ItemAttribute {
+pub struct ItemAttribute {
     pub effect: EntityAttribute,
     pub uuid: uuid::Uuid,
     pub name: String,
@@ -516,7 +516,7 @@ struct ItemAttribute {
 }
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
-enum AttributeSlot {
+pub enum AttributeSlot {
     Any,
     MainHand,
     OffHand,
@@ -530,7 +530,7 @@ enum AttributeSlot {
 }
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
-enum EquipSlot {
+pub enum EquipSlot {
     Hand,
     Feet,
     Legs,
@@ -540,10 +540,12 @@ enum EquipSlot {
     Body,
 }
 
+#[derive(Clone, Copy, PartialEq, Debug, Encode, Decode)]
 pub enum MapPostProcessingType {
     Lock,
     Expand,
 }
+
 #[derive(Clone, Copy, PartialEq, Debug, Encode, Decode)]
 pub enum ConsumableAnimation {
     None,
@@ -559,14 +561,14 @@ pub enum ConsumableAnimation {
 }
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
-struct ToolRule<'a> {
+pub struct ToolRule<'a> {
     pub blocks: IDSet<'a>,
     pub speed: Option<f32>,
     pub correct_drop_for_blocks: Option<bool>,
 }
 
 impl<'a> ItemComponent<'a> {
-    fn id(self) -> u32 {
+    pub fn id(self) -> u32 {
         match self {
             ItemComponent::CustomData { .. } => 0,
             ItemComponent::MaxStackSize { .. } => 1,

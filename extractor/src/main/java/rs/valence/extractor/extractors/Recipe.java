@@ -1,20 +1,14 @@
 package rs.valence.extractor.extractors;
 
-import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
-import java.util.Optional;
-import net.minecraft.entity.decoration.painting.PaintingVariant;
 import net.minecraft.recipe.RecipeSerializer;
-import net.minecraft.recipe.RecipeType;
 import net.minecraft.recipe.ServerRecipeManager;
-import net.minecraft.recipe.display.RecipeDisplay;
 import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.RegistryKeys;
-import net.minecraft.registry.RegistryOps;
 import net.minecraft.server.MinecraftServer;
 import rs.valence.extractor.Main;
 
