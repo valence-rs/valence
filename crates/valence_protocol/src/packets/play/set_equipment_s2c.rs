@@ -3,18 +3,18 @@ use std::io::Write;
 use crate::{Decode, Encode, ItemStack, Packet, VarInt};
 
 #[derive(Clone, PartialEq, Debug, Packet)]
-pub struct SetEquipmentS2c<'a> {
+pub struct SetEquipmentS2c {
     pub entity_id: VarInt,
-    pub equipment: Vec<EquipmentEntry<'a>>,
+    pub equipment: Vec<EquipmentEntry>,
 }
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
-pub struct EquipmentEntry<'a> {
+pub struct EquipmentEntry {
     pub slot: i8,
-    pub item: ItemStack<'a>,
+    pub item: ItemStack,
 }
 
-impl<'a> Encode for SetEquipmentS2c<'a> {
+impl Encode for SetEquipmentS2c {
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         self.entity_id.encode(&mut w)?;
 
@@ -32,7 +32,7 @@ impl<'a> Encode for SetEquipmentS2c<'a> {
     }
 }
 
-impl<'a> Decode<'a> for SetEquipmentS2c<'a> {
+impl<'a> Decode<'a> for SetEquipmentS2c {
     fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
         let entity_id = VarInt::decode(r)?;
 

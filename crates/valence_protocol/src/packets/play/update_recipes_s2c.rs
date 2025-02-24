@@ -54,8 +54,8 @@ pub struct CraftingShapedData<'a> {
     pub width: u32,
     pub height: u32,
     /// Length must be width * height.
-    pub ingredients: Cow<'a, [Ingredient<'a>]>,
-    pub result: ItemStack<'a>,
+    pub ingredients: Cow<'a, [ItemStack]>,
+    pub result: ItemStack,
     pub show_notification: bool,
 }
 
@@ -102,5 +102,3 @@ pub enum CraftingShapedCategory {
     Equipment,
     Misc,
 }
-
-pub type Ingredient<'a> = Cow<'a, [ItemStack<'a>]>;

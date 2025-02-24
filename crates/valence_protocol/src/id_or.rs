@@ -6,13 +6,12 @@ use valence_generated::registry_id::RegistryId;
 use crate::{Decode, Encode, VarInt};
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum IdOr<'a, T: Decode<'a> + Encode + Clone + Debug + PartialEq> {
+pub enum IdOr<T: Encode + Clone + Debug + PartialEq> {
     Id(RegistryId),
     Inline(T),
-    Phantom(std::marker::PhantomData<&'a T>),
 }
 
-impl<'a, T: Decode<'a> + Encode + Clone + Debug + PartialEq> IdOr<'a, T> {
+impl<T: Encode + Clone + Debug + PartialEq> IdOr<T> {
     pub fn id(id: impl Into<RegistryId>) -> Self {
         Self::Id(id.into())
     }
@@ -22,7 +21,7 @@ impl<'a, T: Decode<'a> + Encode + Clone + Debug + PartialEq> IdOr<'a, T> {
     }
 }
 
-impl<'a, T: Decode<'a> + Encode + Clone + Debug + PartialEq> Encode for IdOr<'a, T> {
+impl<T: Encode + Clone + Debug + PartialEq> Encode for IdOr<T> {
     fn encode(&self, mut buf: impl Write) -> anyhow::Result<()> {
         match self {
             Self::Id(id) => (id.id() + 1).encode(buf),
@@ -35,7 +34,7 @@ impl<'a, T: Decode<'a> + Encode + Clone + Debug + PartialEq> Encode for IdOr<'a,
     }
 }
 
-impl<'a, T: Decode<'a> + Encode + Clone + Debug + PartialEq> Decode<'a> for IdOr<'a, T> {
+impl<'a, T: Decode<'a> + Encode + Clone + Debug + PartialEq> Decode<'a> for IdOr<T> {
     fn decode(buf: &mut &'a [u8]) -> Result<Self, Error> {
         let id = VarInt::decode(buf)?;
         if id == VarInt(0) {

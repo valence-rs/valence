@@ -6,11 +6,11 @@ use valence_ident::Ident;
 use crate::id_or::IdOr;
 use crate::{Decode, Encode};
 
-pub type SoundId<'a> = IdOr<'a, SoundDirect<'a>>;
+pub type SoundId = IdOr<SoundDirect>;
 
 #[derive(Clone, Debug, Encode, Decode, PartialEq)]
-pub struct SoundDirect<'a> {
-    pub id: Ident<Cow<'a, str>>,
+pub struct SoundDirect {
+    pub id: Ident<String>,
     pub range: Option<f32>,
 }
 

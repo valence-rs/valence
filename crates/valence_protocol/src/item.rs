@@ -13,17 +13,17 @@ use valence_text::{color::RgbColor, Text};
 use crate::{sound::SoundId, Decode, Encode, IDSet, VarInt};
 
 /// A stack of items in an inventory.
-#[derive(Clone, PartialEq, Debug, Default)]
-pub struct ItemStack<'a> {
+#[derive(Clone, PartialEq, Debug)]
+pub struct ItemStack {
     pub item: ItemKind,
     pub count: i8,
-    pub components: Vec<ItemComponent<'a>>,
+    pub components: Vec<ItemComponent>,
 }
 
-type StrIdent<'a> = Ident<Cow<'a, str>>;
+type StrIdent = Ident<String>;
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
-pub enum ItemComponent<'a> {
+pub enum ItemComponent {
     /// Customizable data that doesn't fit any specific component.
     CustomData {
         /// Always a Compound Tag.
@@ -69,14 +69,14 @@ pub enum ItemComponent<'a> {
     /// List of blocks this block can be placed on when in adventure mode.
     CanPlaceOn {
         /// The block predicates.
-        block_predicates: Vec<BlockPredicate<'a>>,
+        block_predicates: Vec<BlockPredicate>,
         /// Whether the Unbreakable indicator should be shown on the item's tooltip.
         show_in_tooltip: bool,
     },
     /// List of blocks this item can break when in adventure mode.
     CanBreak {
         /// The block predicates.
-        block_predicates: Vec<BlockPredicate<'a>>,
+        block_predicates: Vec<BlockPredicate>,
         /// Whether the Unbreakable indicator should be shown on the item's tooltip.
         show_in_tooltip: bool,
     },
@@ -117,7 +117,7 @@ pub enum ItemComponent<'a> {
         /// The animation type.
         animation: ConsumableAnimation,
         /// The sound event.
-        sound: SoundId<'a>,
+        sound: SoundId,
         /// Whether the item has consume particles.
         has_consume_particles: bool,
         /// Number of elements in the following array.
@@ -128,19 +128,19 @@ pub enum ItemComponent<'a> {
     /// This specifies the item produced after using the current item.
     UseRemainder {
         /// The remainder item.
-        remainder: ItemStack<'a>,
+        remainder: ItemStack,
     },
     /// Cooldown to apply on use of the item.
     UseCooldown {
         /// The cooldown duration in seconds.
         seconds: f32,
         /// The cooldown group identifier.
-        cooldown_group: Option<StrIdent<'a>>,
+        cooldown_group: Option<StrIdent>,
     },
     /// Marks this item as damage resistant.
     DamageResistant {
         /// Tag specifying damage types the item is immune to. Not prefixed by '#'.
-        types: StrIdent<'a>,
+        types: StrIdent,
     },
     /// Allows the item to be enchanted by an enchanting table.
     Enchantable {
@@ -152,14 +152,14 @@ pub enum ItemComponent<'a> {
         /// The slot type.
         slot: EquipSlot,
         /// The equip sound event.
-        equip_sound: SoundId<'a>,
+        equip_sound: SoundId,
         /// The model identifier.
         model: Option<String>,
         /// The camera overlay identifier.
         camera_overlay: Option<String>,
         /// Whether the item has allowed entities.
         /// The allowed entities.
-        allowed_entities: IDSet<'a>,
+        allowed_entities: IDSet,
         /// Whether the item is dispensable.
         dispensable: bool,
         /// Whether the item is swappable.
@@ -170,14 +170,14 @@ pub enum ItemComponent<'a> {
     /// Items that can be combined with this item in an anvil to repair it.
     Repairable {
         /// The items.
-        items: IDSet<'a>,
+        items: IDSet,
     },
     /// Makes the item function like elytra.
     Glider,
     /// Custom textures for the item tooltip.
     TooltipStyle {
         /// The style identifier.
-        style: StrIdent<'a>,
+        style: StrIdent,
     },
     /// Makes the item function like a totem of undying.
     DeathProtection {
@@ -187,7 +187,7 @@ pub enum ItemComponent<'a> {
     /// Alters the speed at which this item breaks certain blocks.
     Tool {
         /// The rules.
-        rules: Vec<ToolRule<'a>>,
+        rules: Vec<ToolRule>,
         mining_speed: f32,
         damage_per_block: VarInt,
     },
@@ -224,12 +224,12 @@ pub enum ItemComponent<'a> {
     /// Projectiles loaded into a charged crossbow.
     ChargedProjectiles {
         /// The projectiles.
-        projectiles: Vec<ItemStack<'a>>,
+        projectiles: Vec<ItemStack>,
     },
     /// Contents of a bundle.
     BundleContents {
         /// The items.
-        items: Vec<ItemStack<'a>>,
+        items: Vec<ItemStack>,
     },
     /// Visual and effects of a potion item.
     PotionContents {
@@ -407,7 +407,7 @@ pub enum ItemComponent<'a> {
         /// The number of elements in the following array.
         number_of_items: VarInt,
         /// The items.
-        items: Vec<ItemStack<'a>>,
+        items: Vec<ItemStack>,
     },
     /// State of a block.
     BlockState {
@@ -444,8 +444,8 @@ pub enum Rarity {
 }
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
-pub struct BlockPredicate<'a> {
-    pub blocks: Option<IDSet<'a>>,
+pub struct BlockPredicate {
+    pub blocks: Option<IDSet>,
     pub properties: Option<Vec<Property>>,
     pub nbt: Option<Compound>,
 }
@@ -561,13 +561,13 @@ pub enum ConsumableAnimation {
 }
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
-pub struct ToolRule<'a> {
-    pub blocks: IDSet<'a>,
+pub struct ToolRule {
+    pub blocks: IDSet,
     pub speed: Option<f32>,
     pub correct_drop_for_blocks: Option<bool>,
 }
 
-impl<'a> ItemComponent<'a> {
+impl ItemComponent {
     pub fn id(self) -> u32 {
         match self {
             ItemComponent::CustomData { .. } => 0,
@@ -641,15 +641,15 @@ impl<'a> ItemComponent<'a> {
     }
 }
 
-impl<'a> ItemStack<'a> {
-    pub const EMPTY: ItemStack<'a> = ItemStack {
+impl ItemStack {
+    pub const EMPTY: ItemStack = ItemStack {
         item: ItemKind::Air,
         count: 0,
         components: Vec::new(),
     };
 
     #[must_use]
-    pub const fn new(item: ItemKind, count: i8, components: Vec<ItemComponent<'a>>) -> Self {
+    pub const fn new(item: ItemKind, count: i8, components: Vec<ItemComponent>) -> Self {
         Self {
             item,
             count,
@@ -670,7 +670,7 @@ impl<'a> ItemStack<'a> {
     }
 
     #[must_use]
-    pub fn with_components(mut self, components: Vec<ItemComponent<'a>>) -> Self {
+    pub fn with_components(mut self, components: Vec<ItemComponent>) -> Self {
         self.components = components;
         self
     }
@@ -680,7 +680,7 @@ impl<'a> ItemStack<'a> {
     }
 }
 
-impl<'a> Encode for ItemStack<'a> {
+impl Encode for ItemStack {
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         if self.is_empty() {
             0.encode(w)
@@ -692,7 +692,7 @@ impl<'a> Encode for ItemStack<'a> {
     }
 }
 
-impl<'a> Decode<'a> for ItemStack<'a> {
+impl<'a> Decode<'a> for ItemStack {
     fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
         let present = bool::decode(r)?;
         if !present {
@@ -701,9 +701,9 @@ impl<'a> Decode<'a> for ItemStack<'a> {
 
         let item = ItemKind::decode(r)?;
         let count = i8::decode(r)?;
-        let components = Vec::<ItemComponent<'a>>::decode(r)?;
+        let components = Vec::<ItemComponent>::decode(r)?;
 
-        let stack = ItemStack::<'a> {
+        let stack = ItemStack {
             item,
             count,
             components,

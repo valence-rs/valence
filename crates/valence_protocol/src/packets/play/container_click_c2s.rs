@@ -11,8 +11,8 @@ pub struct ContainerClickC2s<'a> {
     /// because the meaning of this value depends on the mode.
     pub button: i8,
     pub mode: ClickMode,
-    pub slot_changes: Cow<'a, [SlotChange<'a>]>,
-    pub carried_item: ItemStack<'a>,
+    pub slot_changes: Cow<'a, [SlotChange]>,
+    pub carried_item: ItemStack,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Encode, Decode)]
@@ -27,7 +27,7 @@ pub enum ClickMode {
 }
 
 #[derive(Clone, Debug, Encode, Decode)]
-pub struct SlotChange<'a> {
+pub struct SlotChange {
     pub idx: i16,
-    pub stack: ItemStack<'a>,
+    pub stack: ItemStack,
 }

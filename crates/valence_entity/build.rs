@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use anyhow::Context;
 use heck::{ToPascalCase, ToShoutySnakeCase, ToSnakeCase};
 use proc_macro2::TokenStream;
-use quote::{quote, ToTokens};
+use quote::quote;
 use serde::Deserialize;
 use valence_build_utils::{ident, rerun_if_changed, write_generated_file};
 
@@ -144,7 +144,7 @@ impl Value {
             Value::String(_) => quote!(String),
             Value::TextComponent(_) => quote!(valence_protocol::Text),
             Value::OptionalTextComponent(_) => quote!(Option<valence_protocol::Text>),
-            Value::ItemStack(_) => quote!(valence_protocol::ItemStack<'a>),
+            Value::ItemStack(_) => quote!(valence_protocol::ItemStack),
             Value::Boolean(_) => quote!(bool),
             Value::Rotation { .. } => quote!(crate::EulerAngle),
             Value::BlockPos(_) => quote!(valence_protocol::BlockPos),
@@ -155,7 +155,7 @@ impl Value {
             Value::OptionalBlockState(_) => quote!(valence_protocol::BlockState),
             Value::NbtCompound(_) => quote!(valence_nbt::Compound),
             Value::Particle(_) => {
-                quote!(valence_protocol::packets::play::level_particles_s2c::Particle<'a>)
+                quote!(valence_protocol::packets::play::level_particles_s2c::Particle)
             }
             Value::ParticleList(_) => {
                 quote!(Vec<valence_protocol::packets::play::level_particles_s2c::Particle>)
@@ -166,7 +166,7 @@ impl Value {
             Value::CatVariant(_) => quote!(crate::CatKind),
             Value::WolfVariant(_) => quote!(crate::WolfKind),
             Value::FrogVariant(_) => quote!(crate::FrogKind),
-            Value::OptionalGlobalPos(_) => quote!(Option<Pos>),
+            Value::OptionalGlobalPos(_) => quote!(()), // TODO
             Value::PaintingVariant(_) => quote!(crate::PaintingKind),
             Value::SnifferState(_) => quote!(crate::SnifferState),
             Value::ArmadilloState(_) => quote!(crate::ArmadilloState),
@@ -191,19 +191,7 @@ impl Value {
                 quote!(None)
             }
             Value::ItemStack(stack) => {
-                let parts = stack.split(" ").collect::<Vec<_>>();
-                assert!(parts.len() == 2);
-                let count = parts[0].parse::<i8>().unwrap();
-                let item = stack.strip_prefix("minecraft:");
-                let item_kind = match item {
-                    Some(item) => quote! {valence_protocol::ItemKind::from_str(#item)},
-                    None => quote! { valence_protocol::ItemKind::Air},
-                };
-                quote!(valence_protocol::ItemStack {
-                    item: #item_kind,
-                    count: #count,
-                    ..Default::default()
-                })
+                quote!(valence_protocol::ItemStack::default())
             }
             Value::Boolean(b) => quote!(#b),
             Value::Rotation { pitch, yaw, roll } => quote! {
@@ -555,24 +543,17 @@ fn build_entities() -> anyhow::Result<TokenStream> {
         }
 
         for field in &entity.fields {
-            let mut pascal_field_name_ident = ident(field.name.to_pascal_case()).to_token_stream();
-            let mut field_lifetime = TokenStream::new();
+            let pascal_field_name_ident = ident(field.name.to_pascal_case());
             let snake_field_name = field.name.to_snake_case();
             let inner_type = field.default_value.field_type();
             let default_expr = field.default_value.default_expr();
-
-            // if feild has a lifetime in the type, add it to the field name (mabye a lil botch but eh)
-            if inner_type.to_string().contains("'a") {
-                pascal_field_name_ident = quote! {#pascal_field_name_ident<'a>};
-                field_lifetime = quote! {<'a>};
-            }
 
             module_body.extend([quote! {
                 #[derive(bevy_ecs::component::Component, PartialEq, Clone, Debug, ::derive_more::Deref, ::derive_more::DerefMut)]
                 pub struct #pascal_field_name_ident(pub #inner_type);
 
                 #[allow(clippy::derivable_impls)]
-                impl #field_lifetime Default for #pascal_field_name_ident {
+                impl Default for #pascal_field_name_ident {
                     fn default() -> Self {
                         Self(#default_expr)
                     }
