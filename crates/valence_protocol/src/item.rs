@@ -128,7 +128,8 @@ pub enum ItemComponent {
     /// This specifies the item produced after using the current item.
     UseRemainder {
         /// The remainder item.
-        remainder: ItemStack,
+        // FIX: remainder: ItemStack,
+        remainder: u8,
     },
     /// Cooldown to apply on use of the item.
     UseCooldown {
@@ -224,12 +225,14 @@ pub enum ItemComponent {
     /// Projectiles loaded into a charged crossbow.
     ChargedProjectiles {
         /// The projectiles.
-        projectiles: Vec<ItemStack>,
+        // FIX: projectiles: Vec<ItemStack>,
+        projectiles: Vec<u8>,
     },
     /// Contents of a bundle.
     BundleContents {
         /// The items.
-        items: Vec<ItemStack>,
+        // FIX: items: Vec<ItemStack>,
+        items: Vec<u8>,
     },
     /// Visual and effects of a potion item.
     PotionContents {
@@ -407,7 +410,8 @@ pub enum ItemComponent {
         /// The number of elements in the following array.
         number_of_items: VarInt,
         /// The items.
-        items: Vec<ItemStack>,
+        // FIX: items: Vec<ItemStack>,
+        items: Vec<u8>,
     },
     /// State of a block.
     BlockState {
