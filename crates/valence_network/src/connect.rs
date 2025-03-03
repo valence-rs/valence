@@ -338,7 +338,7 @@ async fn handle_login(
         packs: vec![KnownPack {
             namespace: "minecraft".into(),
             id: "core".into(),
-            version: "1.21.3".into(),
+            version: MINECRAFT_VERSION.into(),
         }],
     })
     .await?;
