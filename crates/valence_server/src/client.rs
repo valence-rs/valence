@@ -33,7 +33,7 @@ use valence_protocol::packets::play::{
     UpdateAttributesS2c,
 };
 use valence_protocol::profile::Property;
-use valence_protocol::sound::{Sound, SoundCategory, SoundId};
+use valence_protocol::sound::{Sound, SoundCategory, SoundDirect, SoundId};
 use valence_protocol::text::{IntoText, Text};
 use valence_protocol::var_int::VarInt;
 use valence_protocol::{BlockPos, ChunkPos, Encode, GameMode, Packet};
@@ -348,10 +348,10 @@ impl Client {
         let position = position.into();
 
         self.write_packet(&SoundS2c {
-            id: SoundId::Direct {
+            id: SoundId::Inline(SoundDirect {
                 id: sound.to_ident().into(),
                 range: None,
-            },
+            }),
             category,
             position: (position * 8.0).as_ivec3(),
             volume,

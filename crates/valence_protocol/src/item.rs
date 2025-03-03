@@ -13,7 +13,7 @@ use valence_text::{color::RgbColor, Text};
 use crate::{sound::SoundId, Decode, Encode, IDSet, VarInt};
 
 /// A stack of items in an inventory.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Default)]
 pub struct ItemStack {
     pub item: ItemKind,
     pub count: i8,

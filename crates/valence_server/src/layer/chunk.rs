@@ -18,7 +18,7 @@ use valence_nbt::Compound;
 use valence_protocol::encode::{PacketWriter, WritePacket};
 use valence_protocol::packets::play::level_particles_s2c::Particle;
 use valence_protocol::packets::play::{LevelParticlesS2c, SoundS2c};
-use valence_protocol::sound::{Sound, SoundCategory, SoundId};
+use valence_protocol::sound::{Sound, SoundCategory, SoundDirect, SoundId};
 use valence_protocol::{BiomePos, BlockPos, ChunkPos, CompressionThreshold, Encode, Ident, Packet};
 use valence_registry::biome::{BiomeId, BiomeRegistry};
 use valence_registry::dimension_type::DimensionTypeId;
@@ -422,10 +422,10 @@ impl ChunkLayer {
         let position = position.into();
 
         self.view_writer(position).write_packet(&SoundS2c {
-            id: SoundId::Direct {
+            id: SoundId::Inline(SoundDirect {
                 id: sound.to_ident().into(),
                 range: None,
-            },
+            }),
             category,
             position: (position * 8.0).as_ivec3(),
             volume,
