@@ -432,9 +432,11 @@ fn process_paths_struct(
                     }
 
                     if path_first {
-                        inner_expansion = quote! {
-                            #inner_expansion.with_scopes(vec![#(#outer_scopes),*])
-                        };
+                        if !outer_scopes.is_empty() {
+                            inner_expansion = quote! {
+                                #inner_expansion.with_scopes(vec![#(#outer_scopes),*])
+                            }
+                        }
                         path_first = false;
                     }
                 }
@@ -593,10 +595,11 @@ fn process_paths_struct(
                     }
 
                     if path_first {
-                        inner_expansion = quote! {
-                            #inner_expansion
-                                .with_scopes(vec![#(#outer_scopes),*])
-                        };
+                        if !outer_scopes.is_empty() {
+                            inner_expansion = quote! {
+                                #inner_expansion.with_scopes(vec![#(#outer_scopes),*])
+                            };
+                        }
                         path_first = false;
                     }
                 }
