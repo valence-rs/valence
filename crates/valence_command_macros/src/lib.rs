@@ -53,6 +53,7 @@ fn command(input: DeriveInput) -> Result<TokenStream> {
                         &fields,
                         variant_ident.clone(),
                         true,
+                        outer_scopes
                     );
                     quote! { #processed; }
                 });
@@ -183,6 +184,7 @@ fn process_paths_enum(
     fields: &Fields,
     variant_ident: Ident,
     executables: bool,
+    outer_scopes: Vec<String>,
 ) -> proc_macro2::TokenStream {
     let mut inner_expansion = quote! {};
     let mut first = true;
