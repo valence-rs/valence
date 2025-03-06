@@ -228,8 +228,12 @@ fn process_paths_enum(
                 CommandArg::Literal(lit) => {
                     inner_expansion = quote! {
                         #inner_expansion.literal(#lit)
-                                .with_scopes(vec![#(#outer_scopes),*])
                     };
+                    if !outer_scopes.is_empty() {
+                        inner_expansion = quote! {
+                            #inner_expansion.with_scopes(vec![#(#outer_scopes),*])
+                        }
+                    }
                     if executables && i == path.len() - 1 {
                         inner_expansion = quote! {
                             #inner_expansion
@@ -429,8 +433,7 @@ fn process_paths_struct(
 
                     if path_first {
                         inner_expansion = quote! {
-                            #inner_expansion
-                                .with_scopes(vec![#(#outer_scopes),*])
+                            #inner_expansion.with_scopes(vec![#(#outer_scopes),*])
                         };
                         path_first = false;
                     }
@@ -464,11 +467,15 @@ fn process_paths_struct(
                         };
                     }
 
+
                     if path_first {
-                        inner_expansion = quote! {
-                            #inner_expansion
-                                .with_scopes(vec![#(#outer_scopes),*])
-                        };
+
+
+                        if !outer_scopes.is_empty() {
+                            inner_expansion = quote! {
+                                #inner_expansion.with_scopes(vec![#(#outer_scopes),*])
+                            };
+                        }
                         path_first = false;
                     }
                 }
