@@ -53,7 +53,7 @@ fn command(input: DeriveInput) -> Result<TokenStream> {
                         &fields,
                         variant_ident.clone(),
                         true,
-                        outer_scopes
+                        outer_scopes.clone(),
                     );
                     quote! { #processed; }
                 });
@@ -67,6 +67,7 @@ fn command(input: DeriveInput) -> Result<TokenStream> {
                     format_ident!("{}Root", input_name), // this is more of placeholder
                     // (should never be used)
                     false,
+                    outer_scopes.clone(),
                 ); // this will error if the base path has args
                 let mut expanded_main_command = quote! {
                     let command_root_node = #processed
@@ -93,6 +94,7 @@ fn command(input: DeriveInput) -> Result<TokenStream> {
                         &Fields::Unit,
                         format_ident!("{}Root", input_name),
                         false,
+                        outer_scopes.clone(),
                     );
 
                     alias_expansion = quote! {
