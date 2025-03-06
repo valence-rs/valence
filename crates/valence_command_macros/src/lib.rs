@@ -469,10 +469,7 @@ fn process_paths_struct(
                         };
                     }
 
-
                     if path_first {
-
-
                         if !outer_scopes.is_empty() {
                             inner_expansion = quote! {
                                 #inner_expansion.with_scopes(vec![#(#outer_scopes),*])
