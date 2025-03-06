@@ -224,7 +224,7 @@ fn process_paths_enum(
                 CommandArg::Literal(lit) => {
                     inner_expansion = quote! {
                         #inner_expansion.literal(#lit)
-
+                                .with_scopes(vec![#(#outer_scopes),*])
                     };
                     if executables && i == path.len() - 1 {
                         inner_expansion = quote! {
