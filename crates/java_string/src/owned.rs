@@ -394,7 +394,7 @@ impl JavaString {
             del_bytes: usize,
         }
 
-        impl<'a> Drop for SetLenOnDrop<'a> {
+        impl Drop for SetLenOnDrop<'_> {
             #[inline]
             fn drop(&mut self) {
                 let new_len = self.idx - self.del_bytes;
@@ -959,7 +959,7 @@ impl From<JavaString> for Arc<JavaStr> {
     }
 }
 
-impl<'a> From<JavaString> for Cow<'a, JavaStr> {
+impl From<JavaString> for Cow<'_, JavaStr> {
     #[inline]
     fn from(value: JavaString) -> Self {
         Cow::Owned(value)
@@ -1240,7 +1240,7 @@ impl<'a> PartialEq<&'a str> for JavaString {
     }
 }
 
-impl<'a> PartialEq<JavaString> for &'a str {
+impl PartialEq<JavaString> for &str {
     #[inline]
     fn eq(&self, other: &JavaString) -> bool {
         *self == other
@@ -1282,7 +1282,7 @@ impl<'a> PartialEq<Cow<'a, str>> for JavaString {
     }
 }
 
-impl<'a> PartialEq<JavaString> for Cow<'a, str> {
+impl PartialEq<JavaString> for Cow<'_, str> {
     #[inline]
     fn eq(&self, other: &JavaString) -> bool {
         self == &other[..]
@@ -1296,7 +1296,7 @@ impl<'a> PartialEq<Cow<'a, JavaStr>> for JavaString {
     }
 }
 
-impl<'a> PartialEq<JavaString> for Cow<'a, JavaStr> {
+impl PartialEq<JavaString> for Cow<'_, JavaStr> {
     #[inline]
     fn eq(&self, other: &JavaString) -> bool {
         self == &other[..]

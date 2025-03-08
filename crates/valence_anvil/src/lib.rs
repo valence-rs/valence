@@ -570,7 +570,7 @@ impl Region {
 
         // additional 5 bytes for exact chunk size + compression type, then add
         // SECTOR_SIZE - 1 for rounding up
-        let num_sectors_needed = (compress_buf.len() + 5 + SECTOR_SIZE - 1) / SECTOR_SIZE;
+        let num_sectors_needed = (compress_buf.len() + 5).div_ceil(SECTOR_SIZE);
         let (start_sector, num_sectors) = if num_sectors_needed >= 256 {
             if options.skip_oversized_chunks {
                 return Err(RegionError::OversizedChunk);

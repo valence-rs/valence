@@ -249,7 +249,7 @@ impl IntoBlock for Block {
     }
 }
 
-impl<'a> IntoBlock for BlockRef<'a> {
+impl IntoBlock for BlockRef<'_> {
     fn into_block(self) -> Block {
         Block {
             state: self.state,

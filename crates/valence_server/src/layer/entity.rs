@@ -228,7 +228,7 @@ pub struct ViewWriter<'a> {
     pos: ChunkPos,
 }
 
-impl<'a> WritePacket for ViewWriter<'a> {
+impl WritePacket for ViewWriter<'_> {
     fn write_packet_fallible<P>(&mut self, packet: &P) -> anyhow::Result<()>
     where
         P: Packet + Encode,

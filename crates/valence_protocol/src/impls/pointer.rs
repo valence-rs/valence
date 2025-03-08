@@ -53,7 +53,7 @@ impl<'a, T: Decode<'a>> Decode<'a> for Arc<T> {
     }
 }
 
-impl<'a, B> Encode for Cow<'a, B>
+impl<B> Encode for Cow<'_, B>
 where
     B: ToOwned + Encode + ?Sized,
 {
@@ -62,7 +62,7 @@ where
     }
 }
 
-impl<'a, 'b, B> Decode<'a> for Cow<'b, B>
+impl<'a, B> Decode<'a> for Cow<'_, B>
 where
     B: ToOwned + ?Sized,
     B::Owned: Decode<'a>,

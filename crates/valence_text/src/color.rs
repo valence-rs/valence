@@ -285,9 +285,9 @@ impl TryFrom<&str> for RgbColor {
 
         if let &[b'#', r0, r1, g0, g1, b0, b1] = value.as_bytes() {
             Ok(RgbColor {
-                r: to_num(r0)? << 4 | to_num(r1)?,
-                g: to_num(g0)? << 4 | to_num(g1)?,
-                b: to_num(b0)? << 4 | to_num(b1)?,
+                r: (to_num(r0)? << 4) | to_num(r1)?,
+                g: (to_num(g0)? << 4) | to_num(g1)?,
+                b: (to_num(b0)? << 4) | to_num(b1)?,
             })
         } else {
             Err(ColorError)
@@ -309,7 +309,7 @@ impl<'de> Deserialize<'de> for Color {
 
 struct ColorVisitor;
 
-impl<'de> Visitor<'de> for ColorVisitor {
+impl Visitor<'_> for ColorVisitor {
     type Value = Color;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {

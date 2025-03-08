@@ -69,15 +69,13 @@ impl ActiveStatusEffects {
     /// Returns true if there are no effects of the given type.
     pub fn no_effect(&self, effect: StatusEffect) -> bool {
         self.current_effects
-            .get(&effect)
-            .map_or(true, |effects| effects.is_empty())
+            .get(&effect).is_none_or(|effects| effects.is_empty())
     }
 
     /// Returns true if there is an effect of the given type.
     pub fn has_effect(&self, effect: StatusEffect) -> bool {
         self.current_effects
-            .get(&effect)
-            .map_or(false, |effects| !effects.is_empty())
+            .get(&effect).is_some_and(|effects| !effects.is_empty())
     }
 
     /// Returns true if there are no effects.
@@ -439,8 +437,7 @@ impl ActiveStatusEffect {
     pub fn expired(&self) -> bool {
         self.status_effect().instant()
             || self
-                .remaining_duration()
-                .map_or(false, |duration| duration <= 0)
+                .remaining_duration().is_some_and(|duration| duration <= 0)
     }
 }
 

@@ -553,7 +553,7 @@ impl<T: IntoText<'static>> ops::AddAssign<T> for Text {
     }
 }
 
-impl<'a> From<Text> for Cow<'a, Text> {
+impl From<Text> for Cow<'_, Text> {
     fn from(value: Text) -> Self {
         Cow::Owned(value)
     }

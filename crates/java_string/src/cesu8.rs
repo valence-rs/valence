@@ -242,7 +242,7 @@ impl JavaString {
 
 #[inline]
 fn dec_surrogate(second: u8, third: u8) -> u32 {
-    0xd000 | u32::from(second & CONT_MASK) << 6 | u32::from(third & CONT_MASK)
+    0xd000 | (u32::from(second & CONT_MASK) << 6) | u32::from(third & CONT_MASK)
 }
 
 #[inline]

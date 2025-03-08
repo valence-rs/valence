@@ -163,7 +163,7 @@ impl<'de> Deserialize<'de> for JavaCodePoint {
 
 struct JavaCodePointVisitor;
 
-impl<'de> Visitor<'de> for JavaCodePointVisitor {
+impl Visitor<'_> for JavaCodePointVisitor {
     type Value = JavaCodePoint;
 
     fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {

@@ -16,7 +16,7 @@ impl<const BIT_COUNT: usize, const BYTE_COUNT: usize> FixedBitSet<BIT_COUNT, BYT
             "bit index of {idx} out of range for bitset with {BIT_COUNT} bits"
         );
 
-        self.0[idx / 8] >> (idx % 8) & 1 == 1
+        (self.0[idx / 8] >> (idx % 8)) & 1 == 1
     }
 
     pub fn set_bit(&mut self, idx: usize, val: bool) {
