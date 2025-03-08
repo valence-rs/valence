@@ -95,7 +95,10 @@ fn init_clients(
         visible_entity_layers.0.insert(layer);
         *game_mode = GameMode::Survival;
         inv.set_slot(36, ItemStack::new(ItemKind::Bow, 1, None));
-        inv.set_slot(37, ItemStack::new(ItemKind::GoldenApple, 1, None));
+        inv.set_slot(37, ItemStack::new(ItemKind::Crossbow, 1, None));
+        inv.set_slot(38, ItemStack::new(ItemKind::GoldenApple, 1, None));
+        inv.set_slot(44, ItemStack::new(ItemKind::Arrow, 1, None));
+        inv.set_slot(45, ItemStack::new(ItemKind::FireworkRocket, 1, None));
 
         commands
             .entity(player)
