@@ -1,13 +1,18 @@
 use valence_inventory::PlayerAction;
-use valence_server::{entity::living::LivingFlags, event_loop::PacketEvent, interact_item::InteractItemEvent, protocol::packets::play::PlayerActionC2s};
+use valence_server::entity::living::LivingFlags;
+use valence_server::event_loop::PacketEvent;
+use valence_server::interact_item::InteractItemEvent;
+use valence_server::protocol::packets::play::PlayerActionC2s;
 
 use super::*;
 
-/// This component will broadcast item interactions (e.g. drawing a bow, eating food) to other players by setting the "using_item" LivingFlag.
+/// This component will broadcast item interactions (e.g. drawing a bow, eating
+/// food) to other players by setting the "using_item" LivingFlag.
 #[derive(Debug, Default, Clone, Component)]
 pub struct EquipmentInteractionBroadcast;
 
-// Sets "using_item" flag to true when the client starts interacting with an item.
+// Sets "using_item" flag to true when the client starts interacting with an
+// item.
 pub(crate) fn start_interaction(
     mut clients: Query<&mut LivingFlags, (With<Client>, With<EquipmentInteractionBroadcast>)>,
     mut events: EventReader<InteractItemEvent>,
@@ -19,8 +24,8 @@ pub(crate) fn start_interaction(
     }
 }
 
-
-// Sets "using_item" flag to false when the client stops interacting with an item.
+// Sets "using_item" flag to false when the client stops interacting with an
+// item.
 pub(crate) fn stop_interaction(
     mut clients: Query<&mut LivingFlags, (With<Client>, With<EquipmentInteractionBroadcast>)>,
     mut packets: EventReader<PacketEvent>,

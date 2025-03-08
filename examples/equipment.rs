@@ -97,7 +97,9 @@ fn init_clients(
         inv.set_slot(36, ItemStack::new(ItemKind::Bow, 1, None));
         inv.set_slot(37, ItemStack::new(ItemKind::GoldenApple, 1, None));
 
-        commands.entity(player).insert((EquipmentInventorySync, EquipmentInteractionBroadcast));
+        commands
+            .entity(player)
+            .insert((EquipmentInventorySync, EquipmentInteractionBroadcast));
     }
 }
 
