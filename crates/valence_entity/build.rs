@@ -608,8 +608,8 @@ fn build_entities() -> anyhow::Result<TokenStream> {
     }
 
     systems.extend([quote! {
-        /// Special case for `living::Absorption`.
-        /// Updates the `AbsorptionAmount` component of the player entity.
+        #[doc = "Special case for `living::Absorption`."]
+        #[doc = "Updates the `AbsorptionAmount` component of the player entity."]
         fn update_living_and_player_absorption(
             mut query: Query<(&living::Absorption, &mut player::AbsorptionAmount), Changed<living::Absorption>>
         ) {
@@ -618,7 +618,7 @@ fn build_entities() -> anyhow::Result<TokenStream> {
             }
         }
 
-        /// Special case for `living::Attributes`.
+        #[doc = "Special case for `living::Attributes`."]
         fn update_living_attributes(
             mut query: Query<(
                 &mut attributes::TrackedEntityAttributes,
@@ -676,8 +676,8 @@ fn build_entities() -> anyhow::Result<TokenStream> {
 
         #modules
 
-        /// Identifies the type of an entity.
-        /// As a component, the entity kind should not be modified.
+        #[doc = "Identifies the type of an entity."]
+        #[doc = "As a component, the entity kind should not be modified."]
         #[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, ::derive_more::Deref)]
         pub struct EntityKind(i32);
 

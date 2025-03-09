@@ -74,16 +74,16 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
     Ok(quote! {
         use valence_ident::{Ident, ident};
 
-        /// Represents a sound from the game
+        #[doc = "Represents a sound from the game"]
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
         pub enum Sound {
             #(#sound_variants,)*
         }
 
         impl Sound {
-            /// Constructs a sound from a raw item ID.
-            ///
-            /// If the given ID is invalid, `None` is returned.
+            #[doc = "Constructs a sound from a raw item ID."]
+            #[doc = ""]
+            #[doc = "If the given ID is invalid, `None` is returned."]
             pub const fn from_raw(id: u16) -> Option<Self> {
                 match id {
                     #sound_from_raw_id_arms
@@ -91,16 +91,16 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Gets the raw sound ID from the sound
+            #[doc = "Gets the raw sound ID from the sound"]
             pub const fn to_raw(self) -> u16 {
                 match self {
                     #sound_to_raw_id_arms
                 }
             }
 
-            /// Construct a sound from its snake_case name.
-            ///
-            /// Returns `None` if the name is invalid.
+            #[doc = "Construct a sound from its snake_case name."]
+            #[doc = ""]
+            #[doc = "Returns `None` if the name is invalid."]
             pub fn from_ident(id: Ident<&str>) -> Option<Self> {
                 match id.as_str() {
                     #sound_from_ident_arms
@@ -108,14 +108,14 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Gets the identifier of this sound.
+            #[doc = "Gets the identifier of this sound."]
             pub const fn to_ident(self) -> Ident<&'static str> {
                 match self {
                     #sound_to_ident_arms
                 }
             }
 
-            /// An array of all sounds.
+            #[doc = "An array of all sounds."]
             pub const ALL: [Self; #sound_count] = [#(Self::#sound_variants,)*];
         }
     })

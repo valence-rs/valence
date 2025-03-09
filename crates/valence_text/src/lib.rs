@@ -494,8 +494,7 @@ impl Text {
                 this.0.underlined,
                 this.0.italic,
             ]
-            .iter()
-            .any(|m| *m == Some(false))
+            .contains(&Some(false))
                 || this.0.color == Some(Color::Reset)
             {
                 // Reset and print sum of old and new modifiers

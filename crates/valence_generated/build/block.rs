@@ -580,22 +580,22 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
     Ok(quote! {
         use valence_math::{Aabb, DVec3};
 
-        /// Represents the state of a block. This does not include block entity data such as
-        /// the text on a sign, the design on a banner, or the content of a spawner.
+        #[doc = "Represents the state of a block. This does not include block entity data such as"]
+        #[doc = "the text on a sign, the design on a banner, or the content of a spawner."]
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
         pub struct BlockState(u16);
 
         impl BlockState {
-            /// Returns the default block state for a given block type.
+            #[doc = "Returns the default block state for a given block type."]
             pub const fn from_kind(kind: BlockKind) -> Self {
                 match kind {
                     #kind_to_state_arms
                 }
             }
 
-            /// Constructs a block state from a raw block state ID.
-            ///
-            /// If the given ID is invalid, `None` is returned.
+            #[doc = "Constructs a block state from a raw block state ID."]
+            #[doc = ""]
+            #[doc = "If the given ID is invalid, `None` is returned."]
             pub const fn from_raw(id: u16) -> Option<Self> {
                 if id <= #max_state_id {
                     Some(Self(id))
@@ -604,7 +604,7 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Returns the [`BlockKind`] of this block state.
+            #[doc = "Returns the [`BlockKind`] of this block state."]
             pub const fn to_kind(self) -> BlockKind {
                 match self.0 {
                     #state_to_kind_arms
@@ -612,21 +612,21 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Converts this block state to its underlying raw block state ID.
-            ///
-            /// The original block state can be recovered with [`BlockState::from_raw`].
+            #[doc = "Converts this block state to its underlying raw block state ID."]
+            #[doc = ""]
+            #[doc = "The original block state can be recovered with [`BlockState::from_raw`]."]
             pub const fn to_raw(self) -> u16 {
                 self.0
             }
 
-            /// Returns the maximum block state ID.
+            #[doc = "Returns the maximum block state ID."]
             pub const fn max_raw() -> u16 {
                 #max_state_id
             }
 
-            /// Returns the wall variant of the block state.
-            ///
-            /// If the given block state doesn't have a wall variant, `None` is returned.
+            #[doc = "Returns the wall variant of the block state."]
+            #[doc = ""]
+            #[doc = "If the given block state doesn't have a wall variant, `None` is returned."]
             pub const fn wall_block_id(self) -> Option<Self> {
                 match self {
                     #state_to_wall_variant_arms
@@ -634,9 +634,9 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Gets the value of the property with the given name from this block.
-            ///
-            /// If this block does not have the property, then `None` is returned.
+            #[doc = "Gets the value of the property with the given name from this block."]
+            #[doc = ""]
+            #[doc = "If this block does not have the property, then `None` is returned."]
             pub const fn get(self, name: PropName) -> Option<PropValue> {
                 match self.to_kind() {
                     #get_arms
@@ -644,10 +644,10 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Sets the value of a property on this block, returning the modified block.
-            ///
-            /// If this block does not have the given property or the property value is invalid,
-            /// then the original block is returned unchanged.
+            #[doc = "Sets the value of a property on this block, returning the modified block."]
+            #[doc = ""]
+            #[doc = "If this block does not have the given property or the property value is invalid,"]
+            #[doc = "then the original block is returned unchanged."]
             #[must_use]
             pub const fn set(self, name: PropName, val: PropValue) -> Self {
                 match self.to_kind() {
@@ -656,7 +656,7 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// If this block is `air`, `cave_air` or `void_air`.
+            #[doc = "If this block is `air`, `cave_air` or `void_air`."]
             pub const fn is_air(self) -> bool {
                 matches!(
                     self,
@@ -666,7 +666,7 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
 
             // TODO: is_solid
 
-            /// If this block is water or lava.
+            #[doc = "If this block is water or lava."]
             pub const fn is_liquid(self) -> bool {
                 matches!(self.to_kind(), BlockKind::Water | BlockKind::Lava)
             }
@@ -728,16 +728,16 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
             #default_block_states
         }
 
-        /// An enumeration of all block kinds.
+        #[doc = "An enumeration of all block kinds."]
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
         pub enum BlockKind {
             #(#block_kind_variants,)*
         }
 
         impl BlockKind {
-            /// Construct a block kind from its snake_case name.
-            ///
-            /// Returns `None` if the name is invalid.
+            #[doc = "Construct a block kind from its snake_case name."]
+            #[doc = ""]
+            #[doc = "Returns `None` if the name is invalid."]
             pub fn from_str(name: &str) -> Option<Self> {
                 match name {
                     #block_kind_from_str_arms
@@ -745,19 +745,19 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Get the snake_case name of this block kind.
+            #[doc = "Get the snake_case name of this block kind."]
             pub const fn to_str(self) -> &'static str {
                 match self {
                     #block_kind_to_str_arms
                 }
             }
 
-            /// Returns the default block state for a given block kind.
+            #[doc = "Returns the default block state for a given block kind."]
             pub const fn to_state(self) -> BlockState {
                 BlockState::from_kind(self)
             }
 
-            /// Returns a slice of all properties this block kind has.
+            #[doc = "Returns a slice of all properties this block kind has."]
             pub const fn props(self) -> &'static [PropName] {
                 match self {
                     #block_kind_props_arms
@@ -771,9 +771,9 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Converts a block kind to its corresponding item kind.
-            ///
-            /// [`ItemKind::Air`] is used to indicate the absence of an item.
+            #[doc = "Converts a block kind to its corresponding item kind."]
+            #[doc = ""]
+            #[doc = "[`ItemKind::Air`] is used to indicate the absence of an item."]
             pub const fn to_item_kind(self) -> ItemKind {
                 let id = match self {
                     #block_kind_to_item_kind_arms
@@ -786,9 +786,9 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Constructs a block kind from an item kind.
-            ///
-            /// If the given item does not have a corresponding block, `None` is returned.
+            #[doc = "Constructs a block kind from an item kind."]
+            #[doc = ""]
+            #[doc = "If the given item does not have a corresponding block, `None` is returned."]
             pub const fn from_item_kind(item: ItemKind) -> Option<Self> {
                 // The "default" blocks are ordered before the other variants.
                 // For instance, `torch` comes before `wall_torch` so this match
@@ -800,9 +800,9 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Constructs a block kind from a raw block kind ID.
-            ///
-            /// If the given ID is invalid, `None` is returned.
+            #[doc = "Constructs a block kind from a raw block kind ID."]
+            #[doc = ""]
+            #[doc = "If the given ID is invalid, `None` is returned."]
             pub const fn from_raw(id: u16) -> Option<Self> {
                 match id {
                     #block_kind_from_raw_arms
@@ -810,36 +810,36 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Converts this block kind to its underlying raw block state ID.
-            ///
-            /// The original block kind can be recovered with [`BlockKind::from_raw`].
+            #[doc = "Converts this block kind to its underlying raw block state ID."]
+            #[doc = ""]
+            #[doc = "The original block kind can be recovered with [`BlockKind::from_raw`]."]
             pub const fn to_raw(self) -> u16 {
                 self as u16
             }
 
-            /// An array of all block kinds.
+            #[doc = "An array of all block kinds."]
             pub const ALL: [Self; #block_kind_count] = [#(Self::#block_kind_variants,)*];
         }
 
-        /// The default block kind is `air`.
+        #[doc = "The default block kind is `air`."]
         impl Default for BlockKind {
             fn default() -> Self {
                 Self::Air
             }
         }
 
-        /// Contains all possible block state property names.
-        ///
-        /// For example, `waterlogged`, `facing`, and `half` are all property names.
+        #[doc = "Contains all possible block state property names."]
+        #[doc = ""]
+        #[doc = "For example, `waterlogged`, `facing`, and `half` are all property names."]
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
         pub enum PropName {
             #(#prop_name_variants,)*
         }
 
         impl PropName {
-            /// Construct a property name from its snake_case name.
-            ///
-            /// Returns `None` if the given name is not valid.
+            #[doc = "Construct a property name from its snake_case name."]
+            #[doc = ""]
+            #[doc = "Returns `None` if the given name is not valid."]
             pub fn from_str(name: &str) -> Option<Self> {
                 // TODO: match on str in const fn.
                 match name {
@@ -848,29 +848,29 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Get the snake_case name of this property name.
+            #[doc = "Get the snake_case name of this property name."]
             pub const fn to_str(self) -> &'static str {
                 match self {
                     #prop_name_to_str_arms
                 }
             }
 
-            /// An array of all property names.
+            #[doc = "An array of all property names."]
             pub const ALL: [Self; #prop_name_count] = [#(Self::#prop_name_variants,)*];
         }
 
-        /// Contains all possible values that a block property might have.
-        ///
-        /// For example, `upper`, `true`, and `2` are all property values.
+        #[doc = "Contains all possible values that a block property might have."]
+        #[doc = ""]
+        #[doc = "For example, `upper`, `true`, and `2` are all property values."]
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
         pub enum PropValue {
             #(#prop_value_variants,)*
         }
 
         impl PropValue {
-            /// Construct a property value from its snake_case name.
-            ///
-            /// Returns `None` if the given name is not valid.
+            #[doc = "Construct a property value from its snake_case name."]
+            #[doc = ""]
+            #[doc = "Returns `None` if the given name is not valid."]
             pub fn from_str(name: &str) -> Option<Self> {
                 match name {
                     #prop_value_from_str_arms
@@ -878,16 +878,16 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Get the snake_case name of this property value.
+            #[doc = "Get the snake_case name of this property value."]
             pub const fn to_str(self) -> &'static str {
                 match self {
                     #prop_value_to_str_arms
                 }
             }
 
-            /// Converts a `u16` into a numeric property value.
-            /// Returns `None` if the given number does not have a
-            /// corresponding property value.
+            #[doc = "Converts a `u16` into a numeric property value."]
+            #[doc = "Returns `None` if the given number does not have a"]
+            #[doc = "corresponding property value."]
             pub const fn from_u16(n: u16) -> Option<Self> {
                 match n {
                     #prop_value_from_u16_arms
@@ -895,8 +895,8 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Converts this property value into a `u16` if it is numeric.
-            /// Returns `None` otherwise.
+            #[doc = "Converts this property value into a `u16` if it is numeric."]
+            #[doc = "Returns `None` otherwise."]
             pub const fn to_u16(self) -> Option<u16> {
                 match self {
                     #prop_value_to_u16_arms
@@ -904,7 +904,7 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Converts a `bool` to a `True` or `False` property value.
+            #[doc = "Converts a `bool` to a `True` or `False` property value."]
             pub const fn from_bool(b: bool) -> Self {
                 if b {
                     Self::True
@@ -913,9 +913,9 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Converts a `True` or `False` property value to a `bool`.
-            ///
-            /// Returns `None` if this property value is not `True` or `False`
+            #[doc = "Converts a `True` or `False` property value to a `bool`."]
+            #[doc = ""]
+            #[doc = "Returns `None` if this property value is not `True` or `False`"]
             pub const fn to_bool(self) -> Option<bool> {
                 match self {
                     Self::True => Some(true),
@@ -924,7 +924,7 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// An array of all property values.
+            #[doc = "An array of all property values."]
             pub const ALL: [Self; #prop_value_count] = [#(Self::#prop_value_variants,)*];
         }
 

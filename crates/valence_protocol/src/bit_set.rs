@@ -50,7 +50,7 @@ impl<const BIT_COUNT: usize, const BYTE_COUNT: usize> Decode<'_>
 }
 
 const fn check_counts(bits: usize, bytes: usize) {
-    assert!((bits + 7) / 8 == bytes)
+    assert!(bits.div_ceil(8) == bytes)
 }
 
 impl<const BIT_COUNT: usize, const BYTE_COUNT: usize> fmt::Debug
