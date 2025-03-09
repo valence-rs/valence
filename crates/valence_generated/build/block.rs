@@ -692,6 +692,7 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
+            #[allow(clippy::large_stack_arrays)]
             const SHAPES: [Aabb; #shape_count] = [
                 #(#shapes,)*
             ];
