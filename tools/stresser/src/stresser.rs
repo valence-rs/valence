@@ -24,7 +24,7 @@ pub struct SessionParams<'a> {
     pub read_buffer_size: usize,
 }
 
-pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> {
+pub async fn make_session(params: &SessionParams<'_>) -> anyhow::Result<()> {
     let sock_addr = params.socket_addr;
     let sess_name = params.session_name;
     let rb_size = params.read_buffer_size;
