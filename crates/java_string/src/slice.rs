@@ -1679,7 +1679,7 @@ impl<'a> Add<&JavaStr> for Cow<'a, JavaStr> {
     }
 }
 
-impl<'a> AddAssign<&JavaStr> for Cow<'a, JavaStr> {
+impl AddAssign<&JavaStr> for Cow<'_, JavaStr> {
     #[inline]
     fn add_assign(&mut self, rhs: &JavaStr) {
         if !rhs.is_empty() {
@@ -1881,21 +1881,21 @@ where
     }
 }
 
-impl<'a, 'b> PartialEq<&'b JavaStr> for Cow<'a, str> {
+impl<'b> PartialEq<&'b JavaStr> for Cow<'_, str> {
     #[inline]
     fn eq(&self, other: &&'b JavaStr) -> bool {
         self == *other
     }
 }
 
-impl<'a, 'b> PartialEq<&'b JavaStr> for Cow<'a, JavaStr> {
+impl<'b> PartialEq<&'b JavaStr> for Cow<'_, JavaStr> {
     #[inline]
     fn eq(&self, other: &&'b JavaStr) -> bool {
         self == *other
     }
 }
 
-impl<'a, 'b> PartialEq<Cow<'a, str>> for &'b JavaStr {
+impl<'a> PartialEq<Cow<'a, str>> for &JavaStr {
     #[inline]
     fn eq(&self, other: &Cow<'a, str>) -> bool {
         *self == other
@@ -1909,7 +1909,7 @@ impl<'a> PartialEq<Cow<'a, str>> for JavaStr {
     }
 }
 
-impl<'a, 'b> PartialEq<Cow<'a, JavaStr>> for &'b JavaStr {
+impl<'a> PartialEq<Cow<'a, JavaStr>> for &JavaStr {
     #[inline]
     fn eq(&self, other: &Cow<'a, JavaStr>) -> bool {
         *self == other
@@ -1923,7 +1923,7 @@ impl<'a> PartialEq<Cow<'a, JavaStr>> for JavaStr {
     }
 }
 
-impl<'a> PartialEq<String> for &'a JavaStr {
+impl PartialEq<String> for &JavaStr {
     #[inline]
     fn eq(&self, other: &String) -> bool {
         *self == other
@@ -1944,7 +1944,7 @@ impl PartialEq<JavaStr> for String {
     }
 }
 
-impl<'a> PartialEq<JavaString> for &'a JavaStr {
+impl PartialEq<JavaString> for &JavaStr {
     #[inline]
     fn eq(&self, other: &JavaString) -> bool {
         *self == other
@@ -1958,7 +1958,7 @@ impl PartialEq<JavaString> for JavaStr {
     }
 }
 
-impl<'a> PartialEq<JavaStr> for Cow<'a, str> {
+impl PartialEq<JavaStr> for Cow<'_, str> {
     #[inline]
     fn eq(&self, other: &JavaStr) -> bool {
         match self {
@@ -1968,7 +1968,7 @@ impl<'a> PartialEq<JavaStr> for Cow<'a, str> {
     }
 }
 
-impl<'a> PartialEq<JavaStr> for Cow<'a, JavaStr> {
+impl PartialEq<JavaStr> for Cow<'_, JavaStr> {
     #[inline]
     fn eq(&self, other: &JavaStr) -> bool {
         match self {
@@ -1985,7 +1985,7 @@ impl PartialEq<JavaStr> for str {
     }
 }
 
-impl<'a> PartialEq<JavaStr> for &'a str {
+impl PartialEq<JavaStr> for &str {
     #[inline]
     fn eq(&self, other: &JavaStr) -> bool {
         self.as_bytes() == &other.inner
@@ -2006,7 +2006,7 @@ impl<'a> PartialEq<&'a str> for JavaStr {
     }
 }
 
-impl<'a> PartialEq<JavaStr> for &'a JavaStr {
+impl PartialEq<JavaStr> for &JavaStr {
     #[inline]
     fn eq(&self, other: &JavaStr) -> bool {
         self.inner == other.inner

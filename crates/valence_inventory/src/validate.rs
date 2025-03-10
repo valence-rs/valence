@@ -166,7 +166,7 @@ pub(super) fn validate_click_slot_packet(
                 );
             } else {
                 // If the user clicked on an empty slot for example
-                if packet.slot_changes.len() == 0 {
+                if packet.slot_changes.is_empty() {
                     let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
                     ensure!(
                         count_deltas == 0,
@@ -216,7 +216,7 @@ pub(super) fn validate_click_slot_packet(
         }
         ClickMode::ShiftClick => {
             // If the user clicked on an empty slot for example
-            if packet.slot_changes.len() == 0 {
+            if packet.slot_changes.is_empty() {
                 let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
                 ensure!(
                     count_deltas == 0,
@@ -265,7 +265,7 @@ pub(super) fn validate_click_slot_packet(
         }
 
         ClickMode::Hotbar => {
-            if packet.slot_changes.len() == 0 {
+            if packet.slot_changes.is_empty() {
                 let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
                 ensure!(
                     count_deltas == 0,
@@ -308,7 +308,7 @@ pub(super) fn validate_click_slot_packet(
         }
         ClickMode::CreativeMiddleClick => {}
         ClickMode::DropKey => {
-            if packet.slot_changes.len() == 0 {
+            if packet.slot_changes.is_empty() {
                 let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
                 ensure!(
                     count_deltas == 0,

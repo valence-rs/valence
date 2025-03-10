@@ -30,7 +30,7 @@ pub enum MessageFilterType {
     PartiallyFiltered,
 }
 
-impl<'a> Encode for ChatMessageS2c<'a> {
+impl Encode for ChatMessageS2c<'_> {
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         self.sender.encode(&mut w)?;
         self.index.encode(&mut w)?;
@@ -103,7 +103,7 @@ pub struct MessageSignature<'a> {
     pub signature: Option<&'a [u8; 256]>,
 }
 
-impl<'a> Encode for MessageSignature<'a> {
+impl Encode for MessageSignature<'_> {
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         VarInt(self.message_id + 1).encode(&mut w)?;
 

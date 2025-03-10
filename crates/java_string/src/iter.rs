@@ -140,7 +140,7 @@ pub struct EscapeDebug<'a> {
 }
 delegate!(Iterator for EscapeDebug<'a> => char);
 delegate!(FusedIterator for EscapeDebug<'a>);
-impl<'a> Display for EscapeDebug<'a> {
+impl Display for EscapeDebug<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.clone().try_for_each(|c| f.write_char(c))
     }
@@ -153,7 +153,7 @@ pub struct EscapeDefault<'a> {
 }
 delegate!(Iterator for EscapeDefault<'a> => char);
 delegate!(FusedIterator for EscapeDefault<'a>);
-impl<'a> Display for EscapeDefault<'a> {
+impl Display for EscapeDefault<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.clone().try_for_each(|c| f.write_char(c))
     }
@@ -166,7 +166,7 @@ pub struct EscapeUnicode<'a> {
 }
 delegate!(Iterator for EscapeUnicode<'a> => char);
 delegate!(FusedIterator for EscapeUnicode<'a>);
-impl<'a> Display for EscapeUnicode<'a> {
+impl Display for EscapeUnicode<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.clone().try_for_each(|c| f.write_char(c))
     }
@@ -187,7 +187,7 @@ pub struct Chars<'a> {
     pub(crate) inner: slice::Iter<'a, u8>,
 }
 
-impl<'a> Iterator for Chars<'a> {
+impl Iterator for Chars<'_> {
     type Item = JavaCodePoint;
 
     #[inline]
@@ -203,10 +203,7 @@ impl<'a> Iterator for Chars<'a> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let len = self.inner.len();
-        // `(len + 3)` can't overflow, because we know that the `slice::Iter`
-        // belongs to a slice in memory which has a maximum length of
-        // `isize::MAX` (that's well below `usize::MAX`).
-        ((len + 3) / 4, Some(len))
+        (len.div_ceil(4), Some(len))
     }
 
     #[inline]
@@ -225,7 +222,7 @@ impl Debug for Chars<'_> {
     }
 }
 
-impl<'a> DoubleEndedIterator for Chars<'a> {
+impl DoubleEndedIterator for Chars<'_> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
         // SAFETY: `JavaStr` invariant says `self.inner` is a semi-valid UTF-8 string
@@ -256,7 +253,7 @@ pub struct CharIndices<'a> {
     pub(crate) inner: Chars<'a>,
 }
 
-impl<'a> Iterator for CharIndices<'a> {
+impl Iterator for CharIndices<'_> {
     type Item = (usize, JavaCodePoint);
 
     #[inline]
@@ -290,7 +287,7 @@ impl<'a> Iterator for CharIndices<'a> {
     }
 }
 
-impl<'a> DoubleEndedIterator for CharIndices<'a> {
+impl DoubleEndedIterator for CharIndices<'_> {
     #[inline]
     fn next_back(&mut self) -> Option<(usize, JavaCodePoint)> {
         self.inner.next_back().map(|ch| {
@@ -337,7 +334,7 @@ where
     }
 }
 
-impl<'a, P> DoubleEndedIterator for Matches<'a, P>
+impl<P> DoubleEndedIterator for Matches<'_, P>
 where
     P: JavaStrPattern,
 {
@@ -373,7 +370,7 @@ where
     }
 }
 
-impl<'a, P> DoubleEndedIterator for RMatches<'a, P>
+impl<P> DoubleEndedIterator for RMatches<'_, P>
 where
     P: JavaStrPattern,
 {
@@ -414,7 +411,7 @@ where
     }
 }
 
-impl<'a, P> DoubleEndedIterator for MatchIndices<'a, P>
+impl<P> DoubleEndedIterator for MatchIndices<'_, P>
 where
     P: JavaStrPattern,
 {
@@ -449,7 +446,7 @@ where
     }
 }
 
-impl<'a, P> DoubleEndedIterator for RMatchIndices<'a, P>
+impl<P> DoubleEndedIterator for RMatchIndices<'_, P>
 where
     P: JavaStrPattern,
 {
@@ -693,7 +690,7 @@ where
     }
 }
 
-impl<'a, P> DoubleEndedIterator for Split<'a, P>
+impl<P> DoubleEndedIterator for Split<'_, P>
 where
     P: JavaStrPattern,
 {
@@ -703,7 +700,7 @@ where
     }
 }
 
-impl<'a, P> FusedIterator for Split<'a, P> where P: JavaStrPattern {}
+impl<P> FusedIterator for Split<'_, P> where P: JavaStrPattern {}
 
 #[derive(Clone, Debug)]
 pub struct RSplit<'a, P> {
@@ -734,7 +731,7 @@ where
     }
 }
 
-impl<'a, P> DoubleEndedIterator for RSplit<'a, P>
+impl<P> DoubleEndedIterator for RSplit<'_, P>
 where
     P: JavaStrPattern,
 {
@@ -744,7 +741,7 @@ where
     }
 }
 
-impl<'a, P> FusedIterator for RSplit<'a, P> where P: JavaStrPattern {}
+impl<P> FusedIterator for RSplit<'_, P> where P: JavaStrPattern {}
 
 #[derive(Clone, Debug)]
 pub struct SplitTerminator<'a, P> {
@@ -775,7 +772,7 @@ where
     }
 }
 
-impl<'a, P> DoubleEndedIterator for SplitTerminator<'a, P>
+impl<P> DoubleEndedIterator for SplitTerminator<'_, P>
 where
     P: JavaStrPattern,
 {
@@ -785,7 +782,7 @@ where
     }
 }
 
-impl<'a, P> FusedIterator for SplitTerminator<'a, P> where P: JavaStrPattern {}
+impl<P> FusedIterator for SplitTerminator<'_, P> where P: JavaStrPattern {}
 
 #[derive(Clone, Debug)]
 pub struct RSplitTerminator<'a, P> {
@@ -816,7 +813,7 @@ where
     }
 }
 
-impl<'a, P> DoubleEndedIterator for RSplitTerminator<'a, P>
+impl<P> DoubleEndedIterator for RSplitTerminator<'_, P>
 where
     P: JavaStrPattern,
 {
@@ -826,7 +823,7 @@ where
     }
 }
 
-impl<'a, P> FusedIterator for RSplitTerminator<'a, P> where P: JavaStrPattern {}
+impl<P> FusedIterator for RSplitTerminator<'_, P> where P: JavaStrPattern {}
 
 #[derive(Clone, Debug)]
 pub struct SplitInclusive<'a, P> {
@@ -857,7 +854,7 @@ where
     }
 }
 
-impl<'a, P> DoubleEndedIterator for SplitInclusive<'a, P>
+impl<P> DoubleEndedIterator for SplitInclusive<'_, P>
 where
     P: JavaStrPattern,
 {
@@ -867,7 +864,7 @@ where
     }
 }
 
-impl<'a, P> FusedIterator for SplitInclusive<'a, P> where P: JavaStrPattern {}
+impl<P> FusedIterator for SplitInclusive<'_, P> where P: JavaStrPattern {}
 
 #[derive(Clone, Debug)]
 pub struct SplitN<'a, P> {
@@ -910,7 +907,7 @@ where
     }
 }
 
-impl<'a, P> FusedIterator for SplitN<'a, P> where P: JavaStrPattern {}
+impl<P> FusedIterator for SplitN<'_, P> where P: JavaStrPattern {}
 
 #[derive(Clone, Debug)]
 pub struct RSplitN<'a, P> {
@@ -953,7 +950,7 @@ where
     }
 }
 
-impl<'a, P> FusedIterator for RSplitN<'a, P> where P: JavaStrPattern {}
+impl<P> FusedIterator for RSplitN<'_, P> where P: JavaStrPattern {}
 
 #[derive(Clone, Debug)]
 pub struct SplitAsciiWhitespace<'a> {

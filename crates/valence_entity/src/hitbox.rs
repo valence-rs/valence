@@ -300,7 +300,7 @@ fn update_passive_child_hitbox(
             EntityKind::GOAT => {
                 if pose_query
                     .get(entity)
-                    .map_or(false, |v| v.0 == Pose::LongJumping)
+                    .is_ok_and(|v| v.0 == Pose::LongJumping)
                 {
                     [0.63, 0.91, 0.63]
                 } else {
