@@ -203,9 +203,6 @@ impl Iterator for Chars<'_> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let len = self.inner.len();
-        // `(len + 3)` can't overflow, because we know that the `slice::Iter`
-        // belongs to a slice in memory which has a maximum length of
-        // `isize::MAX` (that's well below `usize::MAX`).
         (len.div_ceil(4), Some(len))
     }
 
