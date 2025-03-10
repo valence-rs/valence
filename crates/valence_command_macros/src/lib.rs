@@ -53,6 +53,7 @@ fn command(input: DeriveInput) -> Result<TokenStream> {
                         &fields,
                         variant_ident.clone(),
                         true,
+                        outer_scopes.clone(),
                     );
                     quote! { #processed; }
                 });
@@ -66,6 +67,7 @@ fn command(input: DeriveInput) -> Result<TokenStream> {
                     format_ident!("{}Root", input_name), // this is more of placeholder
                     // (should never be used)
                     false,
+                    outer_scopes.clone(),
                 ); // this will error if the base path has args
                 let mut expanded_main_command = quote! {
                     let command_root_node = #processed
@@ -92,6 +94,7 @@ fn command(input: DeriveInput) -> Result<TokenStream> {
                         &Fields::Unit,
                         format_ident!("{}Root", input_name),
                         false,
+                        outer_scopes.clone(),
                     );
 
                     alias_expansion = quote! {
@@ -183,6 +186,7 @@ fn process_paths_enum(
     fields: &Fields,
     variant_ident: Ident,
     executables: bool,
+    outer_scopes: Vec<String>,
 ) -> proc_macro2::TokenStream {
     let mut inner_expansion = quote! {};
     let mut first = true;
@@ -224,8 +228,12 @@ fn process_paths_enum(
                 CommandArg::Literal(lit) => {
                     inner_expansion = quote! {
                         #inner_expansion.literal(#lit)
-
                     };
+                    if !outer_scopes.is_empty() {
+                        inner_expansion = quote! {
+                            #inner_expansion.with_scopes(vec![#(#outer_scopes),*])
+                        }
+                    }
                     if executables && i == path.len() - 1 {
                         inner_expansion = quote! {
                             #inner_expansion
@@ -424,10 +432,11 @@ fn process_paths_struct(
                     }
 
                     if path_first {
-                        inner_expansion = quote! {
-                            #inner_expansion
-                                .with_scopes(vec![#(#outer_scopes),*])
-                        };
+                        if !outer_scopes.is_empty() {
+                            inner_expansion = quote! {
+                                #inner_expansion.with_scopes(vec![#(#outer_scopes),*])
+                            }
+                        }
                         path_first = false;
                     }
                 }
@@ -461,10 +470,11 @@ fn process_paths_struct(
                     }
 
                     if path_first {
-                        inner_expansion = quote! {
-                            #inner_expansion
-                                .with_scopes(vec![#(#outer_scopes),*])
-                        };
+                        if !outer_scopes.is_empty() {
+                            inner_expansion = quote! {
+                                #inner_expansion.with_scopes(vec![#(#outer_scopes),*])
+                            };
+                        }
                         path_first = false;
                     }
                 }
@@ -582,10 +592,11 @@ fn process_paths_struct(
                     }
 
                     if path_first {
-                        inner_expansion = quote! {
-                            #inner_expansion
-                                .with_scopes(vec![#(#outer_scopes),*])
-                        };
+                        if !outer_scopes.is_empty() {
+                            inner_expansion = quote! {
+                                #inner_expansion.with_scopes(vec![#(#outer_scopes),*])
+                            };
+                        }
                         path_first = false;
                     }
                 }
