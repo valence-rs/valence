@@ -126,7 +126,7 @@ impl<S> Ident<S> {
     }
 }
 
-impl<'a> Ident<Cow<'a, str>> {
+impl Ident<Cow<'_, str>> {
     pub fn borrowed(&self) -> Ident<Cow<str>> {
         Ident::new_unchecked(Cow::Borrowed(self.as_str()))
     }
@@ -200,7 +200,7 @@ impl<'a> From<Ident<Cow<'a, str>>> for Ident<String> {
     }
 }
 
-impl<'a> From<Ident<String>> for Ident<Cow<'a, str>> {
+impl From<Ident<String>> for Ident<Cow<'_, str>> {
     fn from(value: Ident<String>) -> Self {
         Self {
             string: value.string.into(),
@@ -272,7 +272,7 @@ impl<'a> TryFrom<&'a str> for Ident<Cow<'a, str>> {
     }
 }
 
-impl<'a> TryFrom<String> for Ident<Cow<'a, str>> {
+impl TryFrom<String> for Ident<Cow<'_, str>> {
     type Error = IdentError;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {

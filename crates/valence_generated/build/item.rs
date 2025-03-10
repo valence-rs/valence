@@ -173,7 +173,7 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
         .collect::<TokenStream>();
 
     Ok(quote! {
-        /// Represents an item from the game
+        #[doc = "Represents an item from the game"]
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
         #[repr(u16)]
         pub enum ItemKind {
@@ -181,9 +181,9 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
             #(#item_kind_variants,)*
         }
 
-        /// Contains food information about an item.
-        ///
-        /// Only food items have a food component.
+        #[doc = "Contains food information about an item."]
+        #[doc = ""]
+        #[doc = "Only food items have a food component."]
         #[derive(Clone, Copy, PartialEq, PartialOrd, Debug)]
         pub struct FoodComponent {
             pub hunger: u16,
@@ -194,9 +194,9 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
         }
 
         impl ItemKind {
-            /// Constructs a item kind from a raw item ID.
-            ///
-            /// If the given ID is invalid, `None` is returned.
+            #[doc = "Constructs a item kind from a raw item ID."]
+            #[doc = ""]
+            #[doc = "If the given ID is invalid, `None` is returned."]
             pub const fn from_raw(id: u16) -> Option<Self> {
                 match id {
                     #item_kind_from_raw_id_arms
@@ -204,16 +204,16 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Gets the raw item ID from the item kind
+            #[doc = "Gets the raw item ID from the item kind"]
             pub const fn to_raw(self) -> u16 {
                 match self {
                     #item_kind_to_raw_id_arms
                 }
             }
 
-            /// Construct an item kind for its snake_case name.
-            ///
-            /// Returns `None` if the name is invalid.
+            #[doc = "Construct an item kind for its snake_case name."]
+            #[doc = ""]
+            #[doc = "Returns `None` if the name is invalid."]
             #[allow(clippy::should_implement_trait)]
             pub fn from_str(name: &str) -> Option<ItemKind> {
                 match name {
@@ -222,30 +222,30 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Gets the snake_case name of this item kind.
+            #[doc = "Gets the snake_case name of this item kind."]
             pub const fn to_str(self) -> &'static str {
                 match self {
                     #item_kind_to_str_arms
                 }
             }
 
-            /// Gets the translation key of this item kind.
+            #[doc = "Gets the translation key of this item kind."]
             pub const fn translation_key(self) -> &'static str {
                 match self {
                     #item_kind_to_translation_key_arms
                 }
             }
 
-            /// Returns the maximum stack count.
+            #[doc = "Returns the maximum stack count."]
             pub const fn max_stack(self) -> i8 {
                 match self {
                     #item_kind_to_max_stack_arms
                 }
             }
 
-            /// Returns a food component which stores hunger, saturation etc.
-            ///
-            /// If the item kind can't be eaten, `None` will be returned.
+            #[doc = "Returns a food component which stores hunger, saturation etc."]
+            #[doc = ""]
+            #[doc = "If the item kind can't be eaten, `None` will be returned."]
             pub const fn food_component(self) -> Option<FoodComponent> {
                 match self {
                     #item_kind_to_food_component_arms
@@ -253,9 +253,9 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Returns the maximum durability before the item will break.
-            ///
-            /// If the item doesn't have durability, `0` is returned.
+            #[doc = "Returns the maximum durability before the item will break."]
+            #[doc = ""]
+            #[doc = "If the item doesn't have durability, `0` is returned."]
             pub const fn max_durability(self) -> u16 {
                 match self {
                     #item_kind_to_max_durability_arms
@@ -263,9 +263,9 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Returns the enchantability of the item kind.
-            ///
-            /// If the item doesn't have durability, `0` is returned.
+            #[doc = "Returns the enchantability of the item kind."]
+            #[doc = ""]
+            #[doc = "If the item doesn't have durability, `0` is returned."]
             pub const fn enchantability(self) -> u8 {
                 match self {
                     #item_kind_to_enchantability_arms
@@ -273,7 +273,7 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Returns if the item can survive in fire/lava.
+            #[doc = "Returns if the item can survive in fire/lava."]
             pub const fn fireproof(self) -> bool {
                 #[allow(clippy::match_like_matches_macro)]
                 match self {
@@ -283,21 +283,21 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
             }
 
             /*
-            /// Constructs an item kind from a block kind.
-            ///
-            /// [`ItemKind::Air`] is used to indicate the absence of an item.
+            #[doc = "Constructs an item kind from a block kind."]
+            #[doc = ""]
+            #[doc = "[`ItemKind::Air`] is used to indicate the absence of an item."]
             pub const fn from_block_kind(kind: BlockKind) -> Self {
                 kind.to_item_kind()
             }
 
-            /// Constructs a block kind from an item kind.
-            ///
-            /// If the given item kind doesn't have a corresponding block kind, `None` is returned.
+            #[doc = "Constructs a block kind from an item kind."]
+            #[doc = ""]
+            #[doc = "If the given item kind doesn't have a corresponding block kind, `None` is returned."]
             pub const fn to_block_kind(self) -> Option<BlockKind> {
                 BlockKind::from_item_kind(self)
             }*/
 
-            /// An array of all item kinds.
+            #[doc = "An array of all item kinds."]
             pub const ALL: [Self; #item_kind_count] = [#(Self::#item_kind_variants,)*];
         }
     })

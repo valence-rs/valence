@@ -21,7 +21,7 @@ pub(crate) fn setup<'a>() -> (
     let encoder = PacketEncoder::new();
 
     const BLOCKS_AND_BIOMES: [u8; 2000] = [0x80; 2000];
-    const SKY_LIGHT_ARRAYS: [FixedArray<u8, 2048>; 26] = [FixedArray([0xff; 2048]); 26];
+    static SKY_LIGHT_ARRAYS: [FixedArray<u8, 2048>; 26] = [FixedArray([0xff; 2048]); 26];
 
     let chunk_data_packet = ChunkDataS2c {
         pos: ChunkPos::new(123, 456),

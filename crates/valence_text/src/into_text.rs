@@ -256,7 +256,7 @@ impl<'a> From<Cow<'a, Text>> for Text {
         value.into_owned()
     }
 }
-impl<'a, 'b> IntoText<'a> for &'a Cow<'b, Text> {
+impl<'a> IntoText<'a> for &'a Cow<'_, Text> {
     fn into_cow_text(self) -> Cow<'a, Text> {
         self.clone()
     }
@@ -277,7 +277,7 @@ impl From<String> for Text {
         value.into_text()
     }
 }
-impl<'a, 'b> IntoText<'b> for &'a String {
+impl<'b> IntoText<'b> for &String {
     fn into_cow_text(self) -> Cow<'b, Text> {
         Cow::Owned(Text::text(self.clone()))
     }
@@ -298,7 +298,7 @@ impl From<Cow<'static, str>> for Text {
         value.into_text()
     }
 }
-impl<'a> IntoText<'static> for &'a Cow<'static, str> {
+impl IntoText<'static> for &Cow<'static, str> {
     fn into_cow_text(self) -> Cow<'static, Text> {
         Cow::Owned(Text::text(self.clone()))
     }
@@ -332,7 +332,7 @@ impl<'a, 'b, T: IntoText<'a>, const N: usize> IntoText<'b> for [T; N] {
     }
 }
 
-impl<'a, 'b, 'c, T: IntoText<'a> + Clone, const N: usize> IntoText<'c> for &'b [T; N] {
+impl<'a, 'c, T: IntoText<'a> + Clone, const N: usize> IntoText<'c> for &[T; N] {
     fn into_cow_text(self) -> Cow<'c, Text> {
         let mut txt = Text::text("");
 

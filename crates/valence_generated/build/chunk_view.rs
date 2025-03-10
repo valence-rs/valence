@@ -30,7 +30,7 @@ pub(crate) fn build() -> TokenStream {
     let array_len = MAX_VIEW_DIST as usize + 1;
 
     quote! {
-        /// The maximum view distance for a `ChunkView`.
+        #[doc = "The maximum view distance for a `ChunkView`."]
         pub const MAX_VIEW_DIST: u8 = #MAX_VIEW_DIST;
 
         pub const EXTRA_VIEW_RADIUS: i32 = #EXTRA_VIEW_RADIUS;

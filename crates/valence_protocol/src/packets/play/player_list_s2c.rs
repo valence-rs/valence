@@ -14,7 +14,7 @@ pub struct PlayerListS2c<'a> {
     pub entries: Cow<'a, [PlayerListEntry<'a>]>,
 }
 
-impl<'a> Encode for PlayerListS2c<'a> {
+impl Encode for PlayerListS2c<'_> {
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         self.actions.0.encode(&mut w)?;
 

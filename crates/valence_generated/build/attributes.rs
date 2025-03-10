@@ -79,19 +79,19 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
     }
 
     Ok(quote!(
-        /// An attribute modifier operation.
+        #[doc = "An attribute modifier operation."]
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
         pub enum EntityAttributeOperation {
-            /// Adds the modifier to the base value.
+            #[doc = "Adds the modifier to the base value."]
             Add,
-            /// Multiplies the modifier with the base value.
+            #[doc = "Multiplies the modifier with the base value."]
             MultiplyBase,
-            /// Multiplies the modifier with the total value.
+            #[doc = "Multiplies the modifier with the total value."]
             MultiplyTotal,
         }
 
         impl EntityAttributeOperation {
-            /// Converts from a raw [`u8`].
+            #[doc = "Converts from a raw [`u8`]."]
             pub fn from_raw(raw: u8) -> Option<Self> {
                 match raw {
                     0 => Some(Self::Add),
@@ -101,7 +101,7 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Converts to a raw [`u8`].
+            #[doc = "Converts to a raw [`u8`]."]
             pub fn to_raw(self) -> u8 {
                 match self {
                     Self::Add => 0,

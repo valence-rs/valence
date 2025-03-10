@@ -87,7 +87,7 @@ struct UpdateAdvancementCachedBytesQuery<'w, 's> {
     criteria_query: Query<'w, 's, &'static AdvancementCriteria>,
 }
 
-impl<'w, 's> UpdateAdvancementCachedBytesQuery<'w, 's> {
+impl UpdateAdvancementCachedBytesQuery<'_, '_> {
     fn write(
         &self,
         a_identifier: &Advancement,
@@ -201,7 +201,7 @@ pub(crate) struct AdvancementUpdateEncodeS2c<'w, 's, 'a> {
     queries: &'a SingleAdvancementUpdateQuery<'w, 's>,
 }
 
-impl<'w, 's, 'a> Encode for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
+impl Encode for AdvancementUpdateEncodeS2c<'_, '_, '_> {
     fn encode(&self, w: impl Write) -> anyhow::Result<()> {
         let SingleAdvancementUpdateQuery {
             advancement_bytes: advancement_bytes_query,
@@ -264,7 +264,7 @@ impl<'w, 's, 'a> Encode for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
     }
 }
 
-impl<'w, 's, 'a> Packet for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
+impl Packet for AdvancementUpdateEncodeS2c<'_, '_, '_> {
     const ID: i32 = packet_id::ADVANCEMENT_UPDATE_S2C;
     const NAME: &'static str = "AdvancementUpdateEncodeS2c";
     const SIDE: PacketSide = PacketSide::Clientbound;

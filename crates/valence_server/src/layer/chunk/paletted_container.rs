@@ -237,7 +237,7 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize> Default
 
 impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize> Indirect<T, LEN, HALF_LEN> {
     pub(super) fn get(&self, idx: usize) -> T {
-        let palette_idx = self.indices[idx / 2] >> (idx % 2 * 4) & 0b1111;
+        let palette_idx = (self.indices[idx / 2] >> (idx % 2 * 4)) & 0b1111;
         self.palette[palette_idx as usize]
     }
 

@@ -49,14 +49,14 @@ pub(crate) unsafe fn next_code_point<'a, I: Iterator<Item = &'a u8>>(bytes: &mut
         // so the iterator must produce a value here.
         let z = unsafe { *bytes.next().unwrap_unchecked() };
         let y_z = utf8_acc_cont_byte((y & CONT_MASK).into(), z);
-        ch = init << 12 | y_z;
+        ch = (init << 12) | y_z;
         if x >= 0xf0 {
             // [x y z w] case
             // use only the lower 3 bits of `init`
             // SAFETY: `bytes` produces an UTF-8-like string,
             // so the iterator must produce a value here.
             let w = unsafe { *bytes.next().unwrap_unchecked() };
-            ch = (init & 7) << 18 | utf8_acc_cont_byte(y_z, w);
+            ch = ((init & 7) << 18) | utf8_acc_cont_byte(y_z, w);
         }
     }
 

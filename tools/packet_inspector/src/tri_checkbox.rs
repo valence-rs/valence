@@ -43,7 +43,7 @@ impl<'a> TriCheckbox<'a> {
     }
 }
 
-impl<'a> Widget for TriCheckbox<'a> {
+impl Widget for TriCheckbox<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
         let TriCheckbox { checked, text } = self;
 
