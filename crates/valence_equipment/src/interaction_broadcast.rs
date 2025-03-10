@@ -1,5 +1,3 @@
-use std::i8;
-
 use valence_inventory::{HeldItem, Inventory, PlayerAction};
 use valence_server::entity::living::LivingFlags;
 use valence_server::event_loop::PacketEvent;
@@ -10,11 +8,11 @@ use valence_server::ItemKind;
 use super::*;
 
 /// This component will broadcast item interactions (e.g. drawing a bow, eating
-/// food) to other players by setting the "using_item" LivingFlag.
+/// food) to other players using `LivingFlags::set_using_item`.
 #[derive(Debug, Default, Clone, Component)]
 pub struct EquipmentInteractionBroadcast;
 
-// Sets "using_item" flag to true when the client starts interacting with an
+// Sets flag to true when the client starts interacting with an
 // item.
 pub(crate) fn start_interaction(
     mut clients: Query<
@@ -39,7 +37,7 @@ pub(crate) fn start_interaction(
     }
 }
 
-// Sets "using_item" flag to false when the client stops interacting with an
+// Sets flag to false when the client stops interacting with an
 // item.
 pub(crate) fn stop_interaction(
     mut clients: Query<&mut LivingFlags, (With<Client>, With<EquipmentInteractionBroadcast>)>,
