@@ -17,7 +17,7 @@ impl Encode for str {
 
 impl<const MAX_CHARS: usize> Encode for Bounded<&'_ str, MAX_CHARS> {
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
-        let char_count = self.encode_utf16().count();
+        let char_count = self.chars().map(char::len_utf16).sum::<usize>();
 
         ensure!(
             char_count <= MAX_CHARS,
@@ -49,7 +49,7 @@ impl<'a, const MAX_CHARS: usize> Decode<'a> for Bounded<&'a str, MAX_CHARS> {
         let (res, remaining) = r.split_at(len);
         let res = std::str::from_utf8(res)?;
 
-        let char_count = res.encode_utf16().count();
+        let char_count = res.chars().map(char::len_utf16).sum::<usize>();
         ensure!(
             char_count <= MAX_CHARS,
             "char count of string exceeds maximum (expected <= {MAX_CHARS}, got {char_count})"
