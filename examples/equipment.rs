@@ -6,7 +6,7 @@ use rand::Rng;
 use valence::entity::armor_stand::ArmorStandEntityBundle;
 use valence::entity::zombie::ZombieEntityBundle;
 use valence::prelude::*;
-use valence_equipment::EquipmentInventorySync;
+use valence_equipment::{EquipmentInteractionBroadcast, EquipmentInventorySync};
 
 pub fn main() {
     App::new()
@@ -71,6 +71,7 @@ fn init_clients(
             &mut VisibleChunkLayer,
             &mut VisibleEntityLayers,
             &mut GameMode,
+            &mut Inventory,
         ),
         Added<Client>,
     >,
@@ -83,6 +84,7 @@ fn init_clients(
         mut visible_chunk_layer,
         mut visible_entity_layers,
         mut game_mode,
+        mut inv,
     ) in &mut clients
     {
         let layer = layers.single();
@@ -92,12 +94,19 @@ fn init_clients(
         visible_chunk_layer.0 = layer;
         visible_entity_layers.0.insert(layer);
         *game_mode = GameMode::Survival;
+        inv.set_slot(36, ItemStack::new(ItemKind::Bow, 1, None));
+        inv.set_slot(37, ItemStack::new(ItemKind::Crossbow, 1, None));
+        inv.set_slot(38, ItemStack::new(ItemKind::GoldenApple, 1, None));
+        inv.set_slot(44, ItemStack::new(ItemKind::Arrow, 1, None));
+        inv.set_slot(45, ItemStack::new(ItemKind::FireworkRocket, 1, None));
 
-        commands.entity(player).insert(EquipmentInventorySync);
+        commands
+            .entity(player)
+            .insert((EquipmentInventorySync, EquipmentInteractionBroadcast));
     }
 }
 
-fn randomize_equipment(mut query: Query<&mut Equipment>, server: Res<Server>) {
+fn randomize_equipment(mut query: Query<&mut Equipment, Without<Client>>, server: Res<Server>) {
     let ticks = server.current_tick() as u32;
     // every second
     if ticks % server.tick_rate() != 0 {

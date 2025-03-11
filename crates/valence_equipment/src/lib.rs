@@ -2,6 +2,8 @@
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+mod interaction_broadcast;
+pub use interaction_broadcast::EquipmentInteractionBroadcast;
 mod inventory_sync;
 pub use inventory_sync::EquipmentInventorySync;
 use valence_server::client::{Client, FlushPacketsSet, LoadEntityForClientEvent};
@@ -20,6 +22,8 @@ impl Plugin for EquipmentPlugin {
             PreUpdate,
             (
                 on_entity_init,
+                interaction_broadcast::start_interaction,
+                interaction_broadcast::stop_interaction,
                 inventory_sync::on_attach_inventory_sync,
                 inventory_sync::equipment_inventory_sync,
                 inventory_sync::equipment_held_item_sync_from_client,
