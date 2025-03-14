@@ -5,7 +5,7 @@ import re
 def check(lines: list[str]) -> list[tuple[int, str]]:
     results = []
     for (i, line) in enumerate(lines):
-        result = re.search(r"((//|/\*|///).*TODO|todo!)(?!.*\(#\d+\))", line)
+        result = re.search(r"((//|/\*|///|#).*TODO|todo!)(?!.*\(#\d+\))", line)
         if result:
             results.append((i, line))
     return results
