@@ -226,3 +226,15 @@ jobs:
 
       - name: Check for unused dependencies
         run: cargo udeps --all --all-features
+  check-todos:
+    name: Check TODOs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Actions Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+      
+      - name: Run todo checker script
+        run: python scripts/check_todos.py .github assets benches crates examples extractor/src scripts src tools website
