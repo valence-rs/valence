@@ -1,5 +1,6 @@
 import pathlib
 import re
+import sys
 
 
 def check(lines: list[str]) -> list[tuple[int, str]]:
@@ -11,7 +12,9 @@ def check(lines: list[str]) -> list[tuple[int, str]]:
     return results
 
 if __name__ == "__main__":
-    paths = list(pathlib.Path(".").rglob("*"))
+    paths = []
+    for directory in sys.argv[1:]:
+        paths.extend(pathlib.Path(directory).rglob("*"))
 
     clean = True
     for path in paths:
