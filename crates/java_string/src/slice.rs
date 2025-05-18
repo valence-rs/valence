@@ -2190,12 +2190,14 @@ unsafe impl JavaStrSliceIndex for RangeFrom<usize> {
 
     #[inline]
     unsafe fn get_unchecked(self, slice: *const JavaStr) -> *const JavaStr {
+        #[allow(clippy::needless_borrow)]
         let len = unsafe { (&(*(slice as *const [u8]))).len() };
         unsafe { (self.start..len).get_unchecked(slice) }
     }
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut JavaStr) -> *mut JavaStr {
+        #[allow(clippy::needless_borrow)]
         let len = unsafe { (&(*(slice as *mut [u8]))).len() };
         unsafe { (self.start..len).get_unchecked_mut(slice) }
     }
