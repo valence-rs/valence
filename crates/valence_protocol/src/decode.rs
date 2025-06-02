@@ -15,13 +15,13 @@ type Cipher = cfb8::Decryptor<aes::Aes128>;
 
 #[derive(Default)]
 pub struct PacketDecoder {
-    buf: BytesMut,
+    pub buf: BytesMut,
     #[cfg(feature = "compression")]
-    decompress_buf: BytesMut,
+    pub decompress_buf: BytesMut,
     #[cfg(feature = "compression")]
-    threshold: CompressionThreshold,
+    pub threshold: CompressionThreshold,
     #[cfg(feature = "encryption")]
-    cipher: Option<Cipher>,
+    pub cipher: Option<Cipher>,
 }
 
 impl PacketDecoder {
