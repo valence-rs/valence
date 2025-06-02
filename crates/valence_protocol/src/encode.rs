@@ -41,7 +41,7 @@ impl PacketEncoder {
     ///     adding a packet length varint to the start of the frame
     ///     adding a data length varint after the packet length, if compression is enabled
     ///     compressing the packet, if compression is enabled
-    fn enframe_from(&mut self, from: usize) -> anyhow::Result<()> {
+    pub fn enframe_from(&mut self, from: usize) -> anyhow::Result<()> {
 		let data_len = self.buf.len() - from;
 
 		#[cfg(feature = "compression")]
