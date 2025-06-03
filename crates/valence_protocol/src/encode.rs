@@ -8,6 +8,7 @@ use anyhow::ensure;
 use bytes::{BufMut, BytesMut};
 use tracing::warn;
 
+use crate::decode::PacketFrame;
 use crate::var_int::VarInt;
 use crate::{CompressionThreshold, Encode, Packet, MAX_PACKET_SIZE};
 
@@ -120,52 +121,45 @@ impl PacketEncoder {
         Ok(())
     }
 
-    pub fn prepend_frame<P>(&mut self, frame: &[u8]) -> anyhow::Result<()>
-    where
-        P: Packet + Encode,
-    {
-        let start_len = self.buf.len();
-        self.append_frame(frame)?;
-
-        let end_len = self.buf.len();
-        let total_packet_len = end_len - start_len;
-
+    fn move_to_back(&mut self, from: usize) {
         // 1) Move everything back by the length of the packet.
         // 2) Move the packet to the new space at the front.
         // 3) Truncate the old packet away.
-        self.buf.put_bytes(0, total_packet_len);
-        self.buf.copy_within(..end_len, total_packet_len);
-        self.buf.copy_within(total_packet_len + start_len.., 0);
-        self.buf.truncate(end_len);
+        let to = self.buf.len();
+        let len = to - from;
 
+        self.buf.put_bytes(0, len);
+        self.buf.copy_within(..to, len);
+        self.buf.copy_within(to.., 0);
+        self.buf.truncate(to);
+    }
+
+    pub fn append_packet_frame(&mut self, frame: &PacketFrame) -> anyhow::Result<()> {
+        let start_len = self.buf.len();
+        VarInt(frame.id).encode((&mut self.buf).writer())?;
+        self.append_bytes(&frame.body);
+        self.enframe_from(start_len)?;
         Ok(())
     }
 
-    pub fn prepend_packet<P>(&mut self, pkt: &P) -> anyhow::Result<()>
-    where
-        P: Packet + Encode,
-    {
+    pub fn prepend_packet_frame<P>(&mut self, frame: &PacketFrame) -> anyhow::Result<()> {
         let start_len = self.buf.len();
-        self.append_packet(pkt)?;
-
-        let end_len = self.buf.len();
-        let total_packet_len = end_len - start_len;
-
-        // 1) Move everything back by the length of the packet.
-        // 2) Move the packet to the new space at the front.
-        // 3) Truncate the old packet away.
-        self.buf.put_bytes(0, total_packet_len);
-        self.buf.copy_within(..end_len, total_packet_len);
-        self.buf.copy_within(total_packet_len + start_len.., 0);
-        self.buf.truncate(end_len);
-
+        self.append_packet_frame(frame)?;
+        self.move_to_back(start_len);
         Ok(())
     }
     
-    pub fn append_frame(&mut self, frame: &[u8]) -> anyhow::Result<()> {
+    pub fn append_raw_frame(&mut self, frame: &[u8]) -> anyhow::Result<()> {
         let start_len = self.buf.len();
         self.append_bytes(frame);
         self.enframe_from(start_len)?;
+        Ok(())
+    }
+
+    pub fn prepend_raw_frame<P>(&mut self, frame: &[u8]) -> anyhow::Result<()> {
+        let start_len = self.buf.len();
+        self.append_raw_frame(frame)?;
+        self.move_to_back(start_len);
         Ok(())
     }
     
@@ -177,6 +171,16 @@ impl PacketEncoder {
         let start_len = self.buf.len();
         pkt.encode_with_id((&mut self.buf).writer())?;
         self.enframe_from(start_len)?;
+        Ok(())
+    }
+
+    pub fn prepend_packet<P>(&mut self, pkt: &P) -> anyhow::Result<()>
+    where
+        P: Packet + Encode,
+    {
+        let start_len = self.buf.len();
+        self.append_packet(pkt)?;
+        self.move_to_back(start_len);
         Ok(())
     }
 
