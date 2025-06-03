@@ -296,6 +296,12 @@ pub enum PacketState {
     Play,
 }
 
+impl Default for PacketState {
+    fn default() -> Self {
+        Self::Handshaking
+    }
+}
+
 #[allow(dead_code)]
 #[cfg(test)]
 mod tests {
