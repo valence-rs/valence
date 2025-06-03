@@ -38,7 +38,7 @@ impl PacketEncoder {
         self.buf.extend_from_slice(bytes)
     }
 
-    /// frames the bytes in a range from `from` to the end of the buffer, framing is:
+    /// frames the bytes in a range from `from` to the end of the buffer:
     ///     adding a packet length varint to the start of the frame
     ///     adding a data length varint after the packet length, if compression is enabled
     ///     compressing the packet, if compression is enabled
