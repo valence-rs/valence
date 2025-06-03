@@ -85,26 +85,40 @@ public class Misc implements Main.Extractor {
         var villagerProfessionJson = new JsonObject();
         for (var profession : Registries.VILLAGER_PROFESSION) {
             villagerProfessionJson.addProperty(
-                profession.id(),
+                profession.id().getString().toLowerCase(),
                 Registries.VILLAGER_PROFESSION.getRawId(profession)
             );
         }
         miscJson.add("villager_profession", villagerProfessionJson);
 
         var catVariantJson = new JsonObject();
-        for (var variant : Registries.CAT_VARIANT) {
+        for (var variant : registryManager.getOrThrow(
+                RegistryKeys.CAT_VARIANT
+        )) {
             catVariantJson.addProperty(
-                Registries.CAT_VARIANT.getId(variant).getPath(),
-                Registries.CAT_VARIANT.getRawId(variant)
+                    registryManager
+                            .getOrThrow(RegistryKeys.CAT_VARIANT)
+                            .getId(variant)
+                            .getPath(),
+                    registryManager
+                            .getOrThrow(RegistryKeys.CAT_VARIANT)
+                            .getRawId(variant)
             );
         }
         miscJson.add("cat_variant", catVariantJson);
 
         var frogVariantJson = new JsonObject();
-        for (var variant : Registries.FROG_VARIANT) {
-            frogVariantJson.addProperty(
-                Registries.FROG_VARIANT.getId(variant).getPath(),
-                Registries.FROG_VARIANT.getRawId(variant)
+        for (var variant : registryManager.getOrThrow(
+                RegistryKeys.FROG_VARIANT
+        )) {
+            catVariantJson.addProperty(
+                    registryManager
+                            .getOrThrow(RegistryKeys.FROG_VARIANT)
+                            .getId(variant)
+                            .getPath(),
+                    registryManager
+                            .getOrThrow(RegistryKeys.FROG_VARIANT)
+                            .getRawId(variant)
             );
         }
         miscJson.add("frog_variant", frogVariantJson);
@@ -125,9 +139,89 @@ public class Misc implements Main.Extractor {
         }
         miscJson.add("wolf_variant", wolfVariantJson);
 
+        var pigVariant = new JsonObject();
+        for (var variant : registryManager.getOrThrow(
+                RegistryKeys.PIG_VARIANT
+        )) {
+            catVariantJson.addProperty(
+                    registryManager
+                            .getOrThrow(RegistryKeys.PIG_VARIANT)
+                            .getId(variant)
+                            .getPath(),
+                    registryManager
+                            .getOrThrow(RegistryKeys.PIG_VARIANT)
+                            .getRawId(variant)
+            );
+        }
+        miscJson.add("pig_variant", pigVariant);
+
+        var cowVariant = new JsonObject();
+        for (var variant : registryManager.getOrThrow(
+                RegistryKeys.COW_VARIANT
+        )) {
+            catVariantJson.addProperty(
+                    registryManager
+                            .getOrThrow(RegistryKeys.COW_VARIANT)
+                            .getId(variant)
+                            .getPath(),
+                    registryManager
+                            .getOrThrow(RegistryKeys.COW_VARIANT)
+                            .getRawId(variant)
+            );
+        }
+        miscJson.add("cow_variant", cowVariant);
+
+        var chickenVariant = new JsonObject();
+        for (var variant : registryManager.getOrThrow(
+                RegistryKeys.CHICKEN_VARIANT
+        )) {
+            catVariantJson.addProperty(
+                    registryManager
+                            .getOrThrow(RegistryKeys.CHICKEN_VARIANT)
+                            .getId(variant)
+                            .getPath(),
+                    registryManager
+                            .getOrThrow(RegistryKeys.CHICKEN_VARIANT)
+                            .getRawId(variant)
+            );
+        }
+        miscJson.add("chicken_variant", chickenVariant);
+
+        var paintingVariant = new JsonObject();
+        for (var variant : registryManager.getOrThrow(
+                RegistryKeys.PAINTING_VARIANT
+        )) {
+            catVariantJson.addProperty(
+                    registryManager
+                            .getOrThrow(RegistryKeys.PAINTING_VARIANT)
+                            .getId(variant)
+                            .getPath(),
+                    registryManager
+                            .getOrThrow(RegistryKeys.PAINTING_VARIANT)
+                            .getRawId(variant)
+            );
+        }
+        miscJson.add("painting_variant", paintingVariant);
+
+        var wolfSoundVariant = new JsonObject();
+        for (var variant : registryManager.getOrThrow(
+                RegistryKeys.WOLF_SOUND_VARIANT
+        )) {
+            catVariantJson.addProperty(
+                    registryManager
+                            .getOrThrow(RegistryKeys.WOLF_SOUND_VARIANT)
+                            .getId(variant)
+                            .getPath(),
+                    registryManager
+                            .getOrThrow(RegistryKeys.WOLF_SOUND_VARIANT)
+                            .getRawId(variant)
+            );
+        }
+        miscJson.add("wolf_sound_variant", wolfSoundVariant);
+
         var directionJson = new JsonObject();
         for (var dir : Direction.values()) {
-            directionJson.addProperty(dir.getName(), dir.getId());
+            directionJson.addProperty(dir.name(), dir.getId());
         }
         miscJson.add("direction", directionJson);
 

@@ -26,6 +26,11 @@
     "parent": "AbstractBoatEntity",
     "fields": []
   },
+  "AbstractCowEntity": {
+    "parent": "AnimalEntity",
+    "fields": [],
+    "attributes": []
+  },
   "AbstractDecorationEntity": {
     "parent": "BlockAttachedEntity",
     "fields": []
@@ -69,22 +74,16 @@
     "parent": "VehicleEntity",
     "fields": [
       {
-        "name": "custom_block_id",
+        "name": "custom_block_state",
         "index": 11,
-        "type": "integer",
-        "default_value": 0
+        "type": "optional_block_state",
+        "default_value": null
       },
       {
-        "name": "custom_block_offset",
+        "name": "block_offset",
         "index": 12,
         "type": "integer",
-        "default_value": 6
-      },
-      {
-        "name": "custom_block_present",
-        "index": 13,
-        "type": "boolean",
-        "default_value": false
+        "default_value": 8
       }
     ]
   },
@@ -268,7 +267,7 @@
         "default_value": false
       },
       {
-        "name": "particle_id",
+        "name": "particle",
         "index": 10,
         "type": "particle",
         "default_value": "entity_effect"
@@ -1792,7 +1791,14 @@
     "parent": "AnimalEntity",
     "type": "chicken",
     "translation_key": "entity.minecraft.chicken",
-    "fields": [],
+    "fields": [
+      {
+        "name": "variant",
+        "index": 17,
+        "type": "chicken_variant",
+        "default_value": "minecraft:temperate"
+      }
+    ],
     "attributes": [
       {
         "id": 18,
@@ -2016,13 +2022,13 @@
     "fields": [
       {
         "name": "command",
-        "index": 14,
+        "index": 13,
         "type": "string",
         "default_value": ""
       },
       {
         "name": "last_output",
-        "index": 15,
+        "index": 14,
         "type": "text_component",
         "default_value": ""
       }
@@ -2034,10 +2040,17 @@
     }
   },
   "CowEntity": {
-    "parent": "AnimalEntity",
+    "parent": "AbstractCowEntity",
     "type": "cow",
     "translation_key": "entity.minecraft.cow",
-    "fields": [],
+    "fields": [
+      {
+        "name": "variant",
+        "index": 17,
+        "type": "cow_variant",
+        "default_value": "minecraft:temperate"
+      }
+    ],
     "attributes": [
       {
         "id": 18,
@@ -2535,24 +2548,14 @@
     "translation_key": "entity.minecraft.dolphin",
     "fields": [
       {
-        "name": "treasure_pos",
-        "index": 17,
-        "type": "block_pos",
-        "default_value": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        }
-      },
-      {
         "name": "has_fish",
-        "index": 18,
+        "index": 17,
         "type": "boolean",
         "default_value": false
       },
       {
         "name": "moistness",
-        "index": 19,
+        "index": 18,
         "type": "integer",
         "default_value": 2400
       }
@@ -3617,7 +3620,14 @@
     "parent": "Entity",
     "type": "experience_orb",
     "translation_key": "entity.minecraft.experience_orb",
-    "fields": [],
+    "fields": [
+      {
+        "name": "value",
+        "index": 8,
+        "type": "integer",
+        "default_value": 0
+      }
+    ],
     "default_bounding_box": {
       "size_x": 0.5,
       "size_y": 0.5,
@@ -3756,7 +3766,7 @@
     "translation_key": "entity.minecraft.fox",
     "fields": [
       {
-        "name": "type",
+        "name": "variant",
         "index": 17,
         "type": "integer",
         "default_value": 0
@@ -3770,14 +3780,14 @@
       {
         "name": "owner",
         "index": 19,
-        "type": "optional_uuid",
-        "default_value": null
+        "type": "lazy_entity_reference",
+        "default_value": {}
       },
       {
         "name": "other_trusted",
         "index": 20,
-        "type": "optional_uuid",
-        "default_value": null
+        "type": "lazy_entity_reference",
+        "default_value": {}
       }
     ],
     "attributes": [
@@ -4031,7 +4041,7 @@
     "fields": [
       {
         "name": "lit",
-        "index": 14,
+        "index": 13,
         "type": "boolean",
         "default_value": false
       }
@@ -5394,6 +5404,17 @@
       "size_z": 0.0
     }
   },
+  "LingeringPotionEntity": {
+    "parent": "PotionEntity",
+    "type": "lingering_potion",
+    "translation_key": "entity.minecraft.lingering_potion",
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.25,
+      "size_y": 0.25,
+      "size_z": 0.25
+    }
+  },
   "LivingEntity": {
     "parent": "Entity",
     "fields": [
@@ -5739,15 +5760,15 @@
     "attributes": []
   },
   "MooshroomEntity": {
-    "parent": "CowEntity",
+    "parent": "AbstractCowEntity",
     "type": "mooshroom",
     "translation_key": "entity.minecraft.mooshroom",
     "fields": [
       {
-        "name": "type",
+        "name": "variant",
         "index": 17,
-        "type": "string",
-        "default_value": "red"
+        "type": "integer",
+        "default_value": 0
       }
     ],
     "attributes": [
@@ -6588,16 +6609,16 @@
     "translation_key": "entity.minecraft.pig",
     "fields": [
       {
-        "name": "saddled",
-        "index": 17,
-        "type": "boolean",
-        "default_value": false
-      },
-      {
         "name": "boost_time",
-        "index": 18,
+        "index": 17,
         "type": "integer",
         "default_value": 0
+      },
+      {
+        "name": "variant",
+        "index": 18,
+        "type": "pig_variant",
+        "default_value": "minecraft:temperate"
       }
     ],
     "attributes": [
@@ -7390,14 +7411,7 @@
   },
   "PotionEntity": {
     "parent": "ThrownItemEntity",
-    "type": "potion",
-    "translation_key": "entity.minecraft.potion",
-    "fields": [],
-    "default_bounding_box": {
-      "size_x": 0.25,
-      "size_y": 0.25,
-      "size_z": 0.25
-    }
+    "fields": []
   },
   "ProjectileEntity": {
     "parent": "Entity",
@@ -7524,7 +7538,7 @@
     "translation_key": "entity.minecraft.rabbit",
     "fields": [
       {
-        "name": "rabbit_type",
+        "name": "variant",
         "index": 17,
         "type": "integer",
         "default_value": 0
@@ -9040,6 +9054,17 @@
       "size_z": 0.699999988079071
     }
   },
+  "SplashPotionEntity": {
+    "parent": "PotionEntity",
+    "type": "splash_potion",
+    "translation_key": "entity.minecraft.splash_potion",
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.25,
+      "size_y": 0.25,
+      "size_z": 0.25
+    }
+  },
   "SquidEntity": {
     "parent": "WaterAnimalEntity",
     "type": "squid",
@@ -9281,12 +9306,6 @@
         "index": 18,
         "type": "boolean",
         "default_value": false
-      },
-      {
-        "name": "saddled",
-        "index": 19,
-        "type": "boolean",
-        "default_value": false
       }
     ],
     "attributes": [
@@ -9522,8 +9541,8 @@
       {
         "name": "owner_uuid",
         "index": 18,
-        "type": "optional_uuid",
-        "default_value": null
+        "type": "lazy_entity_reference",
+        "default_value": {}
       }
     ],
     "attributes": []
@@ -9883,46 +9902,14 @@
     "translation_key": "entity.minecraft.turtle",
     "fields": [
       {
-        "name": "home_pos",
-        "index": 17,
-        "type": "block_pos",
-        "default_value": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        }
-      },
-      {
         "name": "has_egg",
-        "index": 18,
+        "index": 17,
         "type": "boolean",
         "default_value": false
       },
       {
         "name": "digging_sand",
-        "index": 19,
-        "type": "boolean",
-        "default_value": false
-      },
-      {
-        "name": "travel_pos",
-        "index": 20,
-        "type": "block_pos",
-        "default_value": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        }
-      },
-      {
-        "name": "land_bound",
-        "index": 21,
-        "type": "boolean",
-        "default_value": false
-      },
-      {
-        "name": "actively_traveling",
-        "index": 22,
+        "index": 18,
         "type": "boolean",
         "default_value": false
       }
@@ -11081,6 +11068,12 @@
         "index": 22,
         "type": "wolf_variant",
         "default_value": "minecraft:pale"
+      },
+      {
+        "name": "sound_variant",
+        "index": 23,
+        "type": "wolf_sound_variant",
+        "default_value": "minecraft:classic"
       }
     ],
     "attributes": [
@@ -11583,7 +11576,7 @@
         "type": "villager_data",
         "default_value": {
           "type": "plains",
-          "profession": "farmer",
+          "profession": "cartographer",
           "level": 1
         }
       }

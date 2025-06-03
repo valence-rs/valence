@@ -5,6 +5,7 @@ import net.minecraft.entity.data.DataTracker;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.network.encryption.PlayerPublicKey;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.GameMode;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
@@ -26,6 +27,12 @@ public class DummyPlayerEntity extends PlayerEntity {
         @Nullable PlayerPublicKey publicKey
     ) {
         super(world, pos, yaw, gameProfile);
+    }
+
+    @Nullable
+    @Override
+    public GameMode getGameMode() {
+        return GameMode.SURVIVAL;
     }
 
     @Override

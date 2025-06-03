@@ -73,9 +73,9 @@ public class Entities implements Main.Extractor {
         } else if (handler == TrackedDataHandlerRegistry.ROTATION) {
             var json = new JsonObject();
             var ea = (EulerAngle) val;
-            json.addProperty("pitch", ea.getPitch());
-            json.addProperty("yaw", ea.getYaw());
-            json.addProperty("roll", ea.getRoll());
+            json.addProperty("pitch", ea.pitch());
+            json.addProperty("yaw", ea.yaw());
+            json.addProperty("roll", ea.roll());
             return new Main.Pair<>("rotation", json);
         } else if (handler == TrackedDataHandlerRegistry.BLOCK_POS) {
             var bp = (BlockPos) val;
@@ -97,10 +97,6 @@ public class Entities implements Main.Extractor {
                     }).orElse(JsonNull.INSTANCE));
         } else if (handler == TrackedDataHandlerRegistry.FACING) {
             return new Main.Pair<>("facing", new JsonPrimitive(val.toString()));
-        } else if (handler == TrackedDataHandlerRegistry.OPTIONAL_UUID) {
-            var res = ((Optional<?>) val).map(o -> (JsonElement) new JsonPrimitive(o.toString()))
-                    .orElse(JsonNull.INSTANCE);
-            return new Main.Pair<>("optional_uuid", res);
         } else if (handler == TrackedDataHandlerRegistry.BLOCK_STATE) {
             // TODO: get raw block state ID.
             var state = (BlockState) val;
@@ -133,12 +129,12 @@ public class Entities implements Main.Extractor {
         } else if (handler == TrackedDataHandlerRegistry.VILLAGER_DATA) {
             var vd = (VillagerData) val;
             var json = new JsonObject();
-            var type = Registries.VILLAGER_TYPE.getId(vd.getType()).getPath();
+            var type = Registries.VILLAGER_TYPE.getId(vd.type().value()).getPath();
             var profession = Registries.VILLAGER_PROFESSION.getId(
-                    vd.getProfession()).getPath();
+                    vd.profession().value()).getPath();
             json.addProperty("type", type);
             json.addProperty("profession", profession);
-            json.addProperty("level", vd.getLevel());
+            json.addProperty("level", vd.level());
             return new Main.Pair<>("villager_data", json);
         } else if (handler == TrackedDataHandlerRegistry.OPTIONAL_INT) {
             var opt = (OptionalInt) val;
@@ -157,6 +153,11 @@ public class Entities implements Main.Extractor {
                     "cat_variant",
                     new JsonPrimitive(
                             ((RegistryEntry<?>) val).getIdAsString()));
+        } else if (handler == TrackedDataHandlerRegistry.WOLF_SOUND_VARIANT) {
+            return new Main.Pair<>(
+                    "wolf_sound_variant",
+                    new JsonPrimitive(
+                            ((RegistryEntry<?>) val).getIdAsString()));
         } else if (handler == TrackedDataHandlerRegistry.WOLF_VARIANT) {
             return new Main.Pair<>(
                     "wolf_variant",
@@ -165,6 +166,21 @@ public class Entities implements Main.Extractor {
         } else if (handler == TrackedDataHandlerRegistry.FROG_VARIANT) {
             return new Main.Pair<>(
                     "frog_variant",
+                    new JsonPrimitive(
+                            ((RegistryEntry<?>) val).getIdAsString()));
+        } else if (handler == TrackedDataHandlerRegistry.COW_VARIANT) {
+            return new Main.Pair<>(
+                    "cow_variant",
+                    new JsonPrimitive(
+                            ((RegistryEntry<?>) val).getIdAsString()));
+        } else if (handler == TrackedDataHandlerRegistry.CHICKEN_VARIANT) {
+            return new Main.Pair<>(
+                    "chicken_variant",
+                    new JsonPrimitive(
+                            ((RegistryEntry<?>) val).getIdAsString()));
+        } else if (handler == TrackedDataHandlerRegistry.PIG_VARIANT) {
+            return new Main.Pair<>(
+                    "pig_variant",
                     new JsonPrimitive(
                             ((RegistryEntry<?>) val).getIdAsString()));
         } else if (handler == TrackedDataHandlerRegistry.OPTIONAL_GLOBAL_POS) {
@@ -218,6 +234,8 @@ public class Entities implements Main.Extractor {
             json.addProperty("z", quat.z);
             json.addProperty("w", quat.w);
             return new Main.Pair<>("quaternionf", json);
+        } else if (handler == TrackedDataHandlerRegistry.LAZY_ENTITY_REFERENCE) {
+            return new Main.Pair<>("lazy_entity_reference", new JsonObject());
         } else {
             throw new IllegalArgumentException(
                     "Unexpected tracked handler of ID " +
