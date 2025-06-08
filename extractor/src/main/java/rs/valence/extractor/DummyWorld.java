@@ -96,41 +96,14 @@ public class DummyWorld extends World {
     ) {}
 
     @Override
-    public void playSound(
-        @Nullable PlayerEntity except,
-        double x,
-        double y,
-        double z,
-        RegistryEntry<SoundEvent> sound,
-        SoundCategory category,
-        float volume,
-        float pitch,
-        long seed
-    ) {}
+    public void playSound(@Nullable Entity source, double x, double y, double z, RegistryEntry<SoundEvent> sound, SoundCategory category, float volume, float pitch, long seed) {
+
+    }
 
     @Override
-    public void playSound(
-        @Nullable PlayerEntity except,
-        double x,
-        double y,
-        double z,
-        SoundEvent sound,
-        SoundCategory category,
-        float volume,
-        float pitch,
-        long seed
-    ) {}
+    public void playSoundFromEntity(@Nullable Entity source, Entity entity, RegistryEntry<SoundEvent> sound, SoundCategory category, float volume, float pitch, long seed) {
 
-    @Override
-    public void playSoundFromEntity(
-        @Nullable PlayerEntity except,
-        Entity entity,
-        RegistryEntry<SoundEvent> sound,
-        SoundCategory category,
-        float volume,
-        float pitch,
-        long seed
-    ) {}
+    }
 
     @Override
     public String asString() {
@@ -151,14 +124,6 @@ public class DummyWorld extends World {
     @Nullable
     @Override
     public MapState getMapState(MapIdComponent id) {
-        return null;
-    }
-
-    @Override
-    public void putMapState(MapIdComponent id, MapState state) {}
-
-    @Override
-    public MapIdComponent increaseAndGetMapId() {
         return null;
     }
 
@@ -206,12 +171,9 @@ public class DummyWorld extends World {
     }
 
     @Override
-    public void syncWorldEvent(
-        @Nullable PlayerEntity player,
-        int eventId,
-        BlockPos pos,
-        int data
-    ) {}
+    public void syncWorldEvent(@Nullable Entity source, int eventId, BlockPos pos, int data) {
+
+    }
 
     @Override
     public void emitGameEvent(

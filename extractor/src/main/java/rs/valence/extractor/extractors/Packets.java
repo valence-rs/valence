@@ -5,7 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.netty.buffer.ByteBuf;
 import java.io.IOException;
-import net.minecraft.network.NetworkState;
+import net.minecraft.network.state.NetworkState;
 import net.minecraft.network.listener.PacketListener;
 import net.minecraft.network.state.*;
 import rs.valence.extractor.Main;
@@ -37,14 +37,15 @@ public class Packets implements Main.Extractor {
     private static <
         T extends PacketListener, B extends ByteBuf
     > void serializeFactory(
-        NetworkState.Factory<T, B> factory,
+        NetworkState.Factory factory,
         JsonArray json
     ) {
-        factory.forEachPacketType((type, i) -> {
+        var unboundFactory = factory.buildUnbound();
+        unboundFactory.forEachPacketType((type, i) -> {
             var packetJson = new JsonObject();
             packetJson.addProperty("name", type.id().getPath());
-            packetJson.addProperty("phase", factory.phase().getId());
-            packetJson.addProperty("side", factory.side().getName());
+            packetJson.addProperty("phase", unboundFactory.phase().getId());
+            packetJson.addProperty("side", unboundFactory.side().getName());
             packetJson.addProperty("id", i);
             json.add(packetJson);
         });
