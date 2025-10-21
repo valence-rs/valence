@@ -98,7 +98,7 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            #[doc = "Construct a sound from its snake_case name."]
+            #[doc = "Construct a sound from its `snake_case` name."]
             #[doc = ""]
             #[doc = "Returns `None` if the name is invalid."]
             pub fn from_ident(id: Ident<&str>) -> Option<Self> {

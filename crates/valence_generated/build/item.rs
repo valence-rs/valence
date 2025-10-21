@@ -211,7 +211,7 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            #[doc = "Construct an item kind for its snake_case name."]
+            #[doc = "Construct an item kind for its `snake_case` name."]
             #[doc = ""]
             #[doc = "Returns `None` if the name is invalid."]
             #[allow(clippy::should_implement_trait)]
@@ -222,7 +222,7 @@ pub(crate) fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            #[doc = "Gets the snake_case name of this item kind."]
+            #[doc = "Gets the `snake_case` name of this item kind."]
             pub const fn to_str(self) -> &'static str {
                 match self {
                     #item_kind_to_str_arms
