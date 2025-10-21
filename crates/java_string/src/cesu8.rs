@@ -28,7 +28,7 @@ impl JavaStr {
     /// assert!(result.is_err());
     /// ```
     #[inline]
-    pub fn from_modified_utf8(bytes: &[u8]) -> Result<Cow<JavaStr>, Utf8Error> {
+    pub fn from_modified_utf8(bytes: &[u8]) -> Result<Cow<'_, JavaStr>, Utf8Error> {
         match JavaStr::from_full_utf8(bytes) {
             Ok(str) => Ok(Cow::Borrowed(str)),
             Err(_) => JavaString::from_modified_utf8_internal(bytes).map(Cow::Owned),
@@ -57,7 +57,7 @@ impl JavaStr {
     /// ```
     #[inline]
     #[must_use]
-    pub fn to_modified_utf8(&self) -> Cow<[u8]> {
+    pub fn to_modified_utf8(&self) -> Cow<'_, [u8]> {
         if is_valid_cesu8(self) {
             Cow::Borrowed(self.as_bytes())
         } else {

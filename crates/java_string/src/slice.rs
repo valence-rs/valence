@@ -7,7 +7,7 @@ use std::ops::{
     RangeTo, RangeToInclusive,
 };
 use std::rc::Rc;
-use std::str::{from_utf8_unchecked_mut, FromStr};
+use std::str::FromStr;
 use std::sync::Arc;
 use std::{ptr, slice};
 
@@ -586,7 +586,7 @@ impl JavaStr {
     /// assert_eq!(v, [(0, JavaStr::from_str("aba"))]); // only the first `aba`
     /// ```
     #[inline]
-    pub fn match_indices<P>(&self, pat: P) -> MatchIndices<P>
+    pub fn match_indices<P>(&self, pat: P) -> MatchIndices<'_, P>
     where
         P: JavaStrPattern,
     {
@@ -626,7 +626,7 @@ impl JavaStr {
     /// );
     /// ```
     #[inline]
-    pub fn matches<P>(&self, pat: P) -> Matches<P>
+    pub fn matches<P>(&self, pat: P) -> Matches<'_, P>
     where
         P: JavaStrPattern,
     {
@@ -778,7 +778,7 @@ impl JavaStr {
     /// assert_eq!(v, [(2, JavaStr::from_str("aba"))]); // only the last `aba`
     /// ```
     #[inline]
-    pub fn rmatch_indices<P>(&self, pat: P) -> RMatchIndices<P>
+    pub fn rmatch_indices<P>(&self, pat: P) -> RMatchIndices<'_, P>
     where
         P: JavaStrPattern,
     {
@@ -816,7 +816,7 @@ impl JavaStr {
     /// );
     /// ```
     #[inline]
-    pub fn rmatches<P>(&self, pat: P) -> RMatches<P>
+    pub fn rmatches<P>(&self, pat: P) -> RMatches<'_, P>
     where
         P: JavaStrPattern,
     {
@@ -872,7 +872,7 @@ impl JavaStr {
     /// );
     /// ```
     #[inline]
-    pub fn rsplit<P>(&self, pat: P) -> RSplit<P>
+    pub fn rsplit<P>(&self, pat: P) -> RSplit<'_, P>
     where
         P: JavaStrPattern,
     {
@@ -941,7 +941,7 @@ impl JavaStr {
     /// );
     /// ```
     #[inline]
-    pub fn rsplit_terminator<P>(&self, pat: P) -> RSplitTerminator<P>
+    pub fn rsplit_terminator<P>(&self, pat: P) -> RSplitTerminator<'_, P>
     where
         P: JavaStrPattern,
     {
@@ -988,7 +988,7 @@ impl JavaStr {
     /// );
     /// ```
     #[inline]
-    pub fn rsplitn<P>(&self, n: usize, pat: P) -> RSplitN<P>
+    pub fn rsplitn<P>(&self, n: usize, pat: P) -> RSplitN<'_, P>
     where
         P: JavaStrPattern,
     {
@@ -1066,7 +1066,7 @@ impl JavaStr {
     /// );
     /// ```
     #[inline]
-    pub fn split<P>(&self, pat: P) -> Split<P>
+    pub fn split<P>(&self, pat: P) -> Split<'_, P>
     where
         P: JavaStrPattern,
     {
@@ -1275,7 +1275,7 @@ impl JavaStr {
     /// );
     /// ```
     #[inline]
-    pub fn split_inclusive<P>(&self, pat: P) -> SplitInclusive<P>
+    pub fn split_inclusive<P>(&self, pat: P) -> SplitInclusive<'_, P>
     where
         P: JavaStrPattern,
     {
@@ -1348,7 +1348,7 @@ impl JavaStr {
     /// );
     /// ```
     #[inline]
-    pub fn split_terminator<P>(&self, pat: P) -> SplitTerminator<P>
+    pub fn split_terminator<P>(&self, pat: P) -> SplitTerminator<'_, P>
     where
         P: JavaStrPattern,
     {
@@ -1400,7 +1400,7 @@ impl JavaStr {
     /// assert_eq!(v, [JavaStr::from_str("")]);
     /// ```
     #[inline]
-    pub fn splitn<P>(&self, n: usize, pat: P) -> SplitN<P>
+    pub fn splitn<P>(&self, n: usize, pat: P) -> SplitN<'_, P>
     where
         P: JavaStrPattern,
     {
