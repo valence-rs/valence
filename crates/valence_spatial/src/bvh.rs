@@ -350,7 +350,12 @@ impl<O: Bounded3D + Send + Sync> SpatialIndex for Bvh<O> {
         query_rec(self.traverse()?, &mut collides, &mut f)
     }
 
-    fn raycast<F>(&self, origin: Vec3<f64>, direction: Vec3<f64>, mut f: F) -> Option<RaycastHit<'_, O>>
+    fn raycast<F>(
+        &self,
+        origin: Vec3<f64>,
+        direction: Vec3<f64>,
+        mut f: F,
+    ) -> Option<RaycastHit<'_, O>>
     where
         F: FnMut(RaycastHit<O>) -> bool,
     {
