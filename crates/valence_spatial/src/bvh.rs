@@ -84,7 +84,7 @@ impl<T: Bounded3D + Send + Sync> Bvh<T> {
         debug_assert_eq!(self.internal_nodes.len(), self.leaf_nodes.len() - 1);
     }
 
-    pub fn traverse(&self) -> Option<Node<T>> {
+    pub fn traverse(&self) -> Option<Node<'_, T>> {
         if !self.leaf_nodes.is_empty() {
             Some(Node::from_idx(self, self.root))
         } else {
@@ -350,7 +350,7 @@ impl<O: Bounded3D + Send + Sync> SpatialIndex for Bvh<O> {
         query_rec(self.traverse()?, &mut collides, &mut f)
     }
 
-    fn raycast<F>(&self, origin: Vec3<f64>, direction: Vec3<f64>, mut f: F) -> Option<RaycastHit<O>>
+    fn raycast<F>(&self, origin: Vec3<f64>, direction: Vec3<f64>, mut f: F) -> Option<RaycastHit<'_, O>>
     where
         F: FnMut(RaycastHit<O>) -> bool,
     {

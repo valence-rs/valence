@@ -36,7 +36,7 @@ pub trait SpatialIndex<N = f64> {
         origin: Vec3<f64>,
         direction: Vec3<f64>,
         f: F,
-    ) -> Option<RaycastHit<Self::Object, N>>
+    ) -> Option<RaycastHit<'_, Self::Object, N>>
     where
         F: FnMut(RaycastHit<Self::Object, N>) -> bool;
 }
