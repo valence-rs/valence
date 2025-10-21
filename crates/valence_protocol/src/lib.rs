@@ -1,4 +1,5 @@
 #![doc = include_str!("../README.md")]
+#![allow(deprecated)] // TODO: update aes library
 
 /// Used only by macros. Not public API.
 #[doc(hidden)]
