@@ -162,20 +162,20 @@ impl JavaString {
     /// See [`String::as_str`].
     #[inline]
     #[must_use]
-    pub fn as_java_str(&self) -> &JavaStr {
+    pub const fn as_java_str(&self) -> &JavaStr {
         unsafe {
             // SAFETY: this str has semi-valid UTF-8
-            JavaStr::from_semi_utf8_unchecked(&self.vec)
+            JavaStr::from_semi_utf8_unchecked(self.vec.as_slice())
         }
     }
 
     /// See [`String::as_mut_str`].
     #[inline]
     #[must_use]
-    pub fn as_mut_java_str(&mut self) -> &mut JavaStr {
+    pub const fn as_mut_java_str(&mut self) -> &mut JavaStr {
         unsafe {
             // SAFETY: this str has semi-valid UTF-8
-            JavaStr::from_semi_utf8_unchecked_mut(&mut self.vec)
+            JavaStr::from_semi_utf8_unchecked_mut(self.vec.as_mut_slice())
         }
     }
 
@@ -228,10 +228,24 @@ impl JavaString {
         self.vec.extend_from_slice(string.as_bytes())
     }
 
+    /// See [`String::extend_from_within`]
+    #[inline]
+    pub fn extend_from_within<R>(&mut self, src: R)
+    where
+        R: RangeBounds<usize>,
+    {
+        let src @ Range { start, end } = to_range_checked(src, ..self.len());
+
+        assert!(self.is_char_boundary(start));
+        assert!(self.is_char_boundary(end));
+
+        self.vec.extend_from_within(src);
+    }
+
     /// See [`String::capacity`].
     #[inline]
     #[must_use]
-    pub fn capacity(&self) -> usize {
+    pub const fn capacity(&self) -> usize {
         self.vec.capacity()
     }
 
@@ -294,8 +308,8 @@ impl JavaString {
     /// See [`String::as_bytes`].
     #[inline]
     #[must_use]
-    pub fn as_bytes(&self) -> &[u8] {
-        &self.vec
+    pub const fn as_bytes(&self) -> &[u8] {
+        self.vec.as_slice()
     }
 
     /// See [`String::truncate`].
@@ -532,21 +546,21 @@ impl JavaString {
     /// The returned `Vec` must not have invalid UTF-8 written to it, besides
     /// surrogate pairs.
     #[inline]
-    pub unsafe fn as_mut_vec(&mut self) -> &mut Vec<u8> {
+    pub const unsafe fn as_mut_vec(&mut self) -> &mut Vec<u8> {
         &mut self.vec
     }
 
     /// See [`String::len`].
     #[inline]
     #[must_use]
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.vec.len()
     }
 
     /// See [`String::is_empty`].
     #[inline]
     #[must_use]
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
@@ -997,6 +1011,24 @@ impl From<JavaCodePoint> for JavaString {
     }
 }
 
+impl TryFrom<Vec<u8>> for JavaString {
+    type Error = FromUtf8Error;
+
+    #[inline]
+    fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
+        JavaString::from_semi_utf8(value)
+    }
+}
+
+impl TryFrom<JavaString> for String {
+    type Error = Utf8Error;
+
+    #[inline]
+    fn try_from(value: JavaString) -> Result<Self, Self::Error> {
+        value.into_string()
+    }
+}
+
 impl FromIterator<char> for JavaString {
     #[inline]
     fn from_iter<T: IntoIterator<Item = char>>(iter: T) -> Self {
@@ -1036,6 +1068,15 @@ impl<'a> FromIterator<&'a JavaCodePoint> for JavaString {
 impl<'a> FromIterator<&'a str> for JavaString {
     #[inline]
     fn from_iter<T: IntoIterator<Item = &'a str>>(iter: T) -> Self {
+        let mut buf = JavaString::new();
+        buf.extend(iter);
+        buf
+    }
+}
+
+impl<'a> FromIterator<&'a JavaStr> for JavaString {
+    #[inline]
+    fn from_iter<T: IntoIterator<Item = &'a JavaStr>>(iter: T) -> Self {
         let mut buf = JavaString::new();
         buf.extend(iter);
         buf

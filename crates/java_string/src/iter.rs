@@ -305,6 +305,12 @@ impl<'a> CharIndices<'a> {
     pub fn as_str(&self) -> &'a JavaStr {
         self.inner.as_str()
     }
+
+    #[inline]
+    #[must_use]
+    pub fn offset(&self) -> usize {
+        self.front_offset
+    }
 }
 
 #[must_use]

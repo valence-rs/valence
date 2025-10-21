@@ -1,6 +1,6 @@
 [package]
 name = "java_string"
-version = "0.1.2"
+version = "0.1.3"
 description = "An implementation of Java strings, tolerant of invalid UTF-16 encoding"
 keywords = ["java", "string", "utf16"]
 edition.workspace = true
