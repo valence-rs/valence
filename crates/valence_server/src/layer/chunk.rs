@@ -231,7 +231,7 @@ impl ChunkLayer {
     }
 
     /// Get a [`ChunkEntry`] for the given position.
-    pub fn chunk_entry<P: Into<ChunkPos>>(&mut self, pos: P) -> ChunkEntry {
+    pub fn chunk_entry<P: Into<ChunkPos>>(&mut self, pos: P) -> ChunkEntry<'_> {
         match self.chunks.entry(pos.into()) {
             Entry::Occupied(oe) => ChunkEntry::Occupied(OccupiedChunkEntry {
                 messages: &mut self.messages,
@@ -267,7 +267,7 @@ impl ChunkLayer {
         self.messages.shrink_to_fit();
     }
 
-    pub fn block<P: Into<BlockPos>>(&self, pos: P) -> Option<BlockRef> {
+    pub fn block<P: Into<BlockPos>>(&self, pos: P) -> Option<BlockRef<'_>> {
         let pos = pos.into();
 
         let y = pos

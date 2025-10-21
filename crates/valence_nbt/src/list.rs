@@ -118,7 +118,7 @@ impl<S> List<S> {
 
     /// Gets a reference to the value at the given index in this list, or `None`
     /// if the index is out of bounds.
-    pub fn get(&self, index: usize) -> Option<ValueRef<S>> {
+    pub fn get(&self, index: usize) -> Option<ValueRef<'_, S>> {
         match self {
             List::End => None,
             List::Byte(list) => list.get(index).map(ValueRef::Byte),
@@ -138,7 +138,7 @@ impl<S> List<S> {
 
     /// Gets a mutable reference to the value at the given index in this list,
     /// or `None` if the index is out of bounds.
-    pub fn get_mut(&mut self, index: usize) -> Option<ValueMut<S>> {
+    pub fn get_mut(&mut self, index: usize) -> Option<ValueMut<'_, S>> {
         match self {
             List::End => None,
             List::Byte(list) => list.get_mut(index).map(ValueMut::Byte),
@@ -463,7 +463,7 @@ impl<S> List<S> {
     }
 
     /// Returns an iterator over this list. This iterator yields [`ValueRef`]s.
-    pub fn iter(&self) -> Iter<S> {
+    pub fn iter(&self) -> Iter<'_, S> {
         Iter {
             inner: match self {
                 List::End => IterInner::End,
@@ -485,7 +485,7 @@ impl<S> List<S> {
 
     /// Returns a mutable iterator over this list. This iterator yields
     /// [`ValueMut`]s.
-    pub fn iter_mut(&mut self) -> IterMut<S> {
+    pub fn iter_mut(&mut self) -> IterMut<'_, S> {
         IterMut {
             inner: match self {
                 List::End => IterMutInner::End,

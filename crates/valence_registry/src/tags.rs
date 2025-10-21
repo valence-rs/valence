@@ -22,7 +22,7 @@ pub(super) fn build(app: &mut App) {
 }
 
 impl TagsRegistry {
-    fn build_synchronize_tags(&self) -> SynchronizeTagsS2c {
+    fn build_synchronize_tags(&self) -> SynchronizeTagsS2c<'_> {
         SynchronizeTagsS2c {
             groups: Cow::Borrowed(&self.registries),
         }

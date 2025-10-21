@@ -212,7 +212,7 @@ impl_value!(ValueMut, 'a, (**), &'a mut);
 
 impl<S> Value<S> {
     /// Converts a reference to a value to a [`ValueRef`].
-    pub fn as_value_ref(&self) -> ValueRef<S> {
+    pub fn as_value_ref(&self) -> ValueRef<'_, S> {
         match self {
             Value::Byte(v) => ValueRef::Byte(v),
             Value::Short(v) => ValueRef::Short(v),
@@ -230,7 +230,7 @@ impl<S> Value<S> {
     }
 
     /// Converts a mutable reference to a value to a [`ValueMut`].
-    pub fn as_value_mut(&mut self) -> ValueMut<S> {
+    pub fn as_value_mut(&mut self) -> ValueMut<'_, S> {
         match self {
             Value::Byte(v) => ValueMut::Byte(v),
             Value::Short(v) => ValueMut::Short(v),

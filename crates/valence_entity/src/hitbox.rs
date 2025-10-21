@@ -499,9 +499,9 @@ fn update_painting_hitbox(
         center_pos.x -= f64::from(facing_x) * 0.46875;
         center_pos.z -= f64::from(facing_z) * 0.46875;
 
-        center_pos.x += f64::from(cc_facing_x) * if bounds.x % 2 == 0 { 0.5 } else { 0.0 };
-        center_pos.y += if bounds.y % 2 == 0 { 0.5 } else { 0.0 };
-        center_pos.z += f64::from(cc_facing_z) * if bounds.z % 2 == 0 { 0.5 } else { 0.0 };
+        center_pos.x += f64::from(cc_facing_x) * if bounds.x.is_multiple_of(2) { 0.5 } else { 0.0 };
+        center_pos.y += if bounds.y.is_multiple_of(2) { 0.5 } else { 0.0 };
+        center_pos.z += f64::from(cc_facing_z) * if bounds.z.is_multiple_of(2) { 0.5 } else { 0.0 };
 
         let bounds = match (facing_x, facing_z) {
             (1 | -1, 0) => DVec3::new(0.0625, f64::from(bounds.y), f64::from(bounds.z)),

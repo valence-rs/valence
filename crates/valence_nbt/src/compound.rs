@@ -208,7 +208,7 @@ where
         }
     }
 
-    pub fn entry<K>(&mut self, k: K) -> Entry<S>
+    pub fn entry<K>(&mut self, k: K) -> Entry<'_, S>
     where
         K: Into<S>,
     {
@@ -232,31 +232,31 @@ where
         self.map.is_empty()
     }
 
-    pub fn iter(&self) -> Iter<S> {
+    pub fn iter(&self) -> Iter<'_, S> {
         Iter {
             iter: self.map.iter(),
         }
     }
 
-    pub fn iter_mut(&mut self) -> IterMut<S> {
+    pub fn iter_mut(&mut self) -> IterMut<'_, S> {
         IterMut {
             iter: self.map.iter_mut(),
         }
     }
 
-    pub fn keys(&self) -> Keys<S> {
+    pub fn keys(&self) -> Keys<'_, S> {
         Keys {
             iter: self.map.keys(),
         }
     }
 
-    pub fn values(&self) -> Values<S> {
+    pub fn values(&self) -> Values<'_, S> {
         Values {
             iter: self.map.values(),
         }
     }
 
-    pub fn values_mut(&mut self) -> ValuesMut<S> {
+    pub fn values_mut(&mut self) -> ValuesMut<'_, S> {
         ValuesMut {
             iter: self.map.values_mut(),
         }

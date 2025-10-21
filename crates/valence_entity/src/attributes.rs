@@ -355,7 +355,7 @@ impl EntityAttributes {
     /// **For internal use only.**
     ///
     /// Converts to a [`Vec`] of [`AttributeProperty`]s.
-    pub fn to_properties(&self) -> Vec<AttributeProperty> {
+    pub fn to_properties(&self) -> Vec<AttributeProperty<'_>> {
         self.attributes
             .iter()
             .filter(|(_, instance)| instance.attribute().tracked())
