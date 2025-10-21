@@ -135,8 +135,7 @@ pub(super) fn validate_click_slot_packet(
                 let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
                 ensure!(
                     count_deltas == 0,
-                    "invalid item delta: expected 0, got {}",
-                    count_deltas
+                    "invalid item delta: expected 0, got {count_deltas}"
                 );
             } else if packet.slot_idx == -999 {
                 // Clicked outside the window, so the client is dropping an item
@@ -160,9 +159,7 @@ pub(super) fn validate_click_slot_packet(
                 };
                 ensure!(
                     count_deltas == expected_delta,
-                    "invalid item delta: expected {}, got {}",
-                    expected_delta,
-                    count_deltas
+                    "invalid item delta: expected {expected_delta}, got {count_deltas}"
                 );
             } else {
                 // If the user clicked on an empty slot for example
@@ -170,8 +167,7 @@ pub(super) fn validate_click_slot_packet(
                     let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
                     ensure!(
                         count_deltas == 0,
-                        "invalid item delta: expected 0, got {}",
-                        count_deltas
+                        "invalid item delta: expected 0, got {count_deltas}"
                     );
                 } else {
                     ensure!(
@@ -207,8 +203,7 @@ pub(super) fn validate_click_slot_packet(
                         let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
                         ensure!(
                             count_deltas == 0,
-                            "invalid item delta for stack merge: {}",
-                            count_deltas
+                            "invalid item delta for stack merge: {count_deltas}"
                         );
                     }
                 }
@@ -220,8 +215,7 @@ pub(super) fn validate_click_slot_packet(
                 let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
                 ensure!(
                     count_deltas == 0,
-                    "invalid item delta: expected 0, got {}",
-                    count_deltas
+                    "invalid item delta: expected 0, got {count_deltas}"
                 );
             } else {
                 ensure!(
@@ -233,8 +227,7 @@ pub(super) fn validate_click_slot_packet(
                 let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
                 ensure!(
                     count_deltas == 0,
-                    "invalid item delta: expected 0, got {}",
-                    count_deltas
+                    "invalid item delta: expected 0, got {count_deltas}"
                 );
 
                 let Some(item_kind) = packet
@@ -269,8 +262,7 @@ pub(super) fn validate_click_slot_packet(
                 let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
                 ensure!(
                     count_deltas == 0,
-                    "invalid item delta: expected 0, got {}",
-                    count_deltas
+                    "invalid item delta: expected 0, got {count_deltas}"
                 );
             } else {
                 ensure!(
@@ -282,8 +274,7 @@ pub(super) fn validate_click_slot_packet(
                 let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
                 ensure!(
                     count_deltas == 0,
-                    "invalid item delta: expected 0, got {}",
-                    count_deltas
+                    "invalid item delta: expected 0, got {count_deltas}"
                 );
 
                 // assert that a swap occurs
@@ -312,8 +303,7 @@ pub(super) fn validate_click_slot_packet(
                 let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
                 ensure!(
                     count_deltas == 0,
-                    "invalid item delta: expected 0, got {}",
-                    count_deltas
+                    "invalid item delta: expected 0, got {count_deltas}"
                 );
             } else {
                 ensure!(
@@ -352,9 +342,7 @@ pub(super) fn validate_click_slot_packet(
                 };
                 ensure!(
                     count_deltas == expected_delta,
-                    "invalid item delta: expected {}, got {}",
-                    expected_delta,
-                    count_deltas
+                    "invalid item delta: expected {expected_delta}, got {count_deltas}"
                 );
             }
         }
@@ -363,8 +351,7 @@ pub(super) fn validate_click_slot_packet(
                 let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
                 ensure!(
                     count_deltas == 0,
-                    "invalid item delta: expected 0, got {}",
-                    count_deltas
+                    "invalid item delta: expected 0, got {count_deltas}"
                 );
             } else {
                 ensure!(packet.slot_changes.is_empty() && packet.carried_item == cursor_item.0);
@@ -374,8 +361,7 @@ pub(super) fn validate_click_slot_packet(
             let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
             ensure!(
                 count_deltas == 0,
-                "invalid item delta: expected 0, got {}",
-                count_deltas
+                "invalid item delta: expected 0, got {count_deltas}"
             );
         }
     }

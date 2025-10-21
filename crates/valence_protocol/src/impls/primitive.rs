@@ -161,8 +161,7 @@ impl Encode for f32 {
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         ensure!(
             self.is_finite(),
-            "attempt to encode non-finite f32 ({})",
-            self
+            "attempt to encode non-finite f32 ({self})"
         );
         Ok(w.write_f32::<BigEndian>(*self)?)
     }
@@ -180,8 +179,7 @@ impl Encode for f64 {
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         ensure!(
             self.is_finite(),
-            "attempt to encode non-finite f64 ({})",
-            self
+            "attempt to encode non-finite f64 ({self})"
         );
         Ok(w.write_f64::<BigEndian>(*self)?)
     }
