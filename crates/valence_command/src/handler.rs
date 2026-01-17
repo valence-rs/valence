@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 use bevy_app::{App, Plugin, PostStartup};
 use bevy_ecs::change_detection::ResMut;
 use bevy_ecs::event::{Event, EventReader, EventWriter};
-use bevy_ecs::prelude::{Entity, IntoSystemConfigs, Resource};
+use bevy_ecs::prelude::{Entity, IntoScheduleConfigs, Resource};
 use petgraph::prelude::NodeIndex;
 use valence_server::EventLoopPreUpdate;
 
@@ -116,7 +116,7 @@ fn command_event_system<T>(
     for command_event in commands_executed.read() {
         if let Some(executable) = command.executables.get(&command_event.node) {
             let result = executable(&mut ParseInput::new(&command_event.command));
-            events.send(CommandResultEvent {
+            events.write(CommandResultEvent {
                 result,
                 executor: command_event.executor,
                 modifiers: command_event.modifiers.clone(),

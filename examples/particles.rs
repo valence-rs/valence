@@ -53,7 +53,7 @@ fn init_clients(
         Added<Client>,
     >,
     layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
-) {
+) -> Result {
     for (
         mut layer_id,
         mut visible_chunk_layer,
@@ -62,7 +62,7 @@ fn init_clients(
         mut game_mode,
     ) in &mut clients
     {
-        let layer = layers.single();
+        let layer = layers.single()?;
 
         layer_id.0 = layer;
         visible_chunk_layer.0 = layer;
@@ -70,6 +70,7 @@ fn init_clients(
         pos.set([0.0, f64::from(SPAWN_Y) + 1.0, 0.0]);
         *game_mode = GameMode::Creative;
     }
+    Ok(())
 }
 
 fn manage_particles(
@@ -77,9 +78,9 @@ fn manage_particles(
     server: Res<Server>,
     mut layers: Query<&mut ChunkLayer>,
     mut particle_idx: Local<usize>,
-) {
+) -> Result {
     if server.current_tick() % 10 != 0 {
-        return;
+        return Ok(());
     }
 
     let particle = &particles.0[*particle_idx];
@@ -91,10 +92,11 @@ fn manage_particles(
     let pos = [0.5, f64::from(SPAWN_Y) + 2.0, 5.0];
     let offset = [0.5, 0.5, 0.5];
 
-    let mut layer = layers.single_mut();
+    let mut layer = layers.single_mut()?;
 
     layer.play_particle(particle, true, pos, offset, 0.1, 100);
     layer.set_action_bar(name.bold());
+    Ok(())
 }
 
 fn dbg_name(dbg: &impl fmt::Debug) -> String {

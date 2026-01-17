@@ -17,7 +17,7 @@ pub(crate) fn handle_advancement_tab_change(
 ) {
     for packet in packets.read() {
         if let Some(pkt) = packet.decode::<AdvancementTabC2s>() {
-            advancement_tab_change_events.send(AdvancementTabChangeEvent {
+            advancement_tab_change_events.write(AdvancementTabChangeEvent {
                 client: packet.client,
                 opened_tab: match pkt {
                     AdvancementTabC2s::ClosedScreen => None,

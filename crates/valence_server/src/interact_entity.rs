@@ -38,7 +38,7 @@ fn handle_interact_entity(
             // within some configurable tolerance level.
 
             if let Some(entity) = entities.get_by_id(pkt.entity_id.0) {
-                events.send(InteractEntityEvent {
+                events.write(InteractEntityEvent {
                     client: packet.client,
                     entity,
                     sneaking: pkt.sneaking,

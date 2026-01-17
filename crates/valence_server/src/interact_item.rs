@@ -33,7 +33,7 @@ fn handle_player_interact_item(
                 action_seq.update(pkt.sequence.0);
             }
 
-            events.send(InteractItemEvent {
+            events.write(InteractItemEvent {
                 client: packet.client,
                 hand: pkt.hand,
                 sequence: pkt.sequence.0,

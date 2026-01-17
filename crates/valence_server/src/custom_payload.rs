@@ -37,7 +37,7 @@ fn handle_custom_payload(
 ) {
     for packet in packets.read() {
         if let Some(pkt) = packet.decode::<CustomPayloadC2s>() {
-            events.send(CustomPayloadEvent {
+            events.write(CustomPayloadEvent {
                 client: packet.client,
                 channel: pkt.channel.into(),
                 data: pkt.data.0 .0.into(),

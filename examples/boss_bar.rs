@@ -89,8 +89,8 @@ fn init_clients(
         Added<Client>,
     >,
     layers_query: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
-) {
-    let layer = layers_query.single();
+) -> Result {
+    let layer = layers_query.single()?;
 
     for (
         mut client,
@@ -134,6 +134,7 @@ fn init_clients(
             "Type any number between 0 and 1 to set the health".on_click_suggest_command("health"),
         );
     }
+    Ok(())
 }
 
 fn listen_messages(
@@ -149,14 +150,14 @@ fn listen_messages(
         With<CustomBossBar>,
     >,
     mut clients_query: Query<&mut VisibleEntityLayers, With<Client>>,
-) {
+) -> Result {
     let (
         mut boss_bar_style,
         mut boss_bar_flags,
         mut boss_bar_health,
         mut boss_bar_title,
         entity_layer_id,
-    ) = boss_bars_query.single_mut();
+    ) = boss_bars_query.single_mut()?;
 
     for ChatMessageEvent {
         client, message, ..
@@ -220,4 +221,5 @@ fn listen_messages(
             }
         };
     }
+    Ok(())
 }

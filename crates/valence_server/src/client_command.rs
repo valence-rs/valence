@@ -80,7 +80,7 @@ fn handle_client_command(
                         flags.set_sneaking(true);
                     }
 
-                    sneaking_events.send(SneakEvent {
+                    sneaking_events.write(SneakEvent {
                         client: packet.client,
                         state: SneakState::Start,
                     });
@@ -91,13 +91,13 @@ fn handle_client_command(
                         flags.set_sneaking(false);
                     }
 
-                    sneaking_events.send(SneakEvent {
+                    sneaking_events.write(SneakEvent {
                         client: packet.client,
                         state: SneakState::Stop,
                     });
                 }
                 ClientCommand::LeaveBed => {
-                    leave_bed_events.send(LeaveBedEvent {
+                    leave_bed_events.write(LeaveBedEvent {
                         client: packet.client,
                     });
                 }
@@ -106,7 +106,7 @@ fn handle_client_command(
                         flags.set_sprinting(true);
                     }
 
-                    sprinting_events.send(SprintEvent {
+                    sprinting_events.write(SprintEvent {
                         client: packet.client,
                         state: SprintState::Start,
                     });
@@ -116,13 +116,13 @@ fn handle_client_command(
                         flags.set_sprinting(false);
                     }
 
-                    sprinting_events.send(SprintEvent {
+                    sprinting_events.write(SprintEvent {
                         client: packet.client,
                         state: SprintState::Stop,
                     });
                 }
                 ClientCommand::StartJumpWithHorse => {
-                    jump_with_horse_events.send(JumpWithHorseEvent {
+                    jump_with_horse_events.write(JumpWithHorseEvent {
                         client: packet.client,
                         state: JumpWithHorseState::Start {
                             power: pkt.jump_boost.0 as u8,
@@ -130,7 +130,7 @@ fn handle_client_command(
                     });
                 }
                 ClientCommand::StopJumpWithHorse => {
-                    jump_with_horse_events.send(JumpWithHorseEvent {
+                    jump_with_horse_events.write(JumpWithHorseEvent {
                         client: packet.client,
                         state: JumpWithHorseState::Stop,
                     });

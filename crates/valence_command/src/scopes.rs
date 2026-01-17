@@ -42,9 +42,9 @@ use std::fmt::{Debug, Formatter};
 
 use bevy_app::{App, Plugin, Update};
 use bevy_derive::{Deref, DerefMut};
-use bevy_ecs::prelude::{Component, ResMut};
+use bevy_ecs::prelude::{Component, ResMut, Resource};
 use bevy_ecs::query::Changed;
-use bevy_ecs::system::{Query, Resource};
+use bevy_ecs::system::Query;
 use petgraph::dot;
 use petgraph::dot::Dot;
 use petgraph::prelude::*;

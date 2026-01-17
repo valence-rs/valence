@@ -68,7 +68,7 @@ fn init_clients(
         Added<Client>,
     >,
     layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
-) {
+) -> Result {
     for (
         mut pos,
         mut layer_id,
@@ -78,7 +78,7 @@ fn init_clients(
         mut inventory,
     ) in &mut clients
     {
-        let layer = layers.single();
+        let layer = layers.single()?;
 
         pos.0 = [0.0, f64::from(SPAWN_Y) + 1.0, 0.0].into();
         layer_id.0 = layer;
@@ -89,6 +89,7 @@ fn init_clients(
         // 40 is the fifth hotbar slot
         inventory.set_slot(40, ItemStack::new(ItemKind::Compass, 1, None));
     }
+    Ok(())
 }
 
 fn on_item_interact(
@@ -152,7 +153,7 @@ mod item_menu {
         fn build(&self, app: &mut App) {
             app.add_systems(Update, (open_menu, select_menu_item))
                 .add_event::<MenuItemSelectEvent>()
-                .observe(close_menu);
+                .add_observer(close_menu);
         }
     }
 
@@ -219,7 +220,7 @@ mod item_menu {
                 continue;
             }
 
-            event_writer.send(MenuItemSelectEvent {
+            event_writer.write(MenuItemSelectEvent {
                 client: player,
                 idx: selected_slot as u16,
             });

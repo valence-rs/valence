@@ -51,7 +51,7 @@ fn init_clients(
         Added<Client>,
     >,
     layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
-) {
+) -> Result {
     for (
         mut client,
         mut pos,
@@ -61,7 +61,7 @@ fn init_clients(
         mut game_mode,
     ) in &mut clients
     {
-        let layer = layers.single();
+        let layer = layers.single()?;
 
         pos.0 = [0.0, f64::from(SPAWN_Y) + 1.0, 0.0].into();
         layer_id.0 = layer;
@@ -147,4 +147,5 @@ fn init_clients(
                 + "Scroll up to see the full example!".into_text().not_bold(),
         );
     }
+    Ok(())
 }

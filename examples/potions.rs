@@ -109,7 +109,7 @@ fn init_clients(
         Added<Client>,
     >,
     layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
-) {
+) -> Result {
     for (
         mut client,
         mut layer_id,
@@ -119,7 +119,7 @@ fn init_clients(
         mut game_mode,
     ) in &mut clients
     {
-        let layer = layers.single();
+        let layer = layers.single()?;
 
         layer_id.0 = layer;
         visible_chunk_layer.0 = layer;
@@ -131,6 +131,7 @@ fn init_clients(
         client.send_chat_message("Sneak to apply a random potion effect.".into_text());
         client.send_chat_message("Note: Some potion effects are not implemented yet.".into_text());
     }
+    Ok(())
 }
 
 pub fn add_potion_effect(

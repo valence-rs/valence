@@ -33,12 +33,12 @@ fn handle_status(
         if let Some(pkt) = packet.decode::<ClientStatusC2s>() {
             match pkt {
                 ClientStatusC2s::PerformRespawn => {
-                    respawn_events.send(RequestRespawnEvent {
+                    respawn_events.write(RequestRespawnEvent {
                         client: packet.client,
                     });
                 }
                 ClientStatusC2s::RequestStats => {
-                    request_stats_events.send(RequestStatsEvent {
+                    request_stats_events.write(RequestStatsEvent {
                         client: packet.client,
                     });
                 }

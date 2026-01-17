@@ -101,12 +101,12 @@ fn add_status_effects(
 
         for (status_effect, prev) in updated {
             if query.active_effects.has_effect(status_effect) {
-                add_events.send(StatusEffectAdded {
+                add_events.write(StatusEffectAdded {
                     entity: query.entity,
                     status_effect,
                 });
             } else if let Some(prev) = prev {
-                remove_events.send(StatusEffectRemoved {
+                remove_events.write(StatusEffectRemoved {
                     entity: query.entity,
                     status_effect: prev,
                 });

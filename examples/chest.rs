@@ -68,7 +68,7 @@ fn init_clients(
         Added<Client>,
     >,
     layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
-) {
+) -> Result {
     for (
         mut layer_id,
         mut visible_chunk_layer,
@@ -77,7 +77,7 @@ fn init_clients(
         mut game_mode,
     ) in &mut clients
     {
-        let layer = layers.single();
+        let layer = layers.single()?;
 
         layer_id.0 = layer;
         visible_chunk_layer.0 = layer;
@@ -85,6 +85,7 @@ fn init_clients(
         pos.set([0.0, f64::from(SPAWN_Y) + 1.0, 0.0]);
         *game_mode = GameMode::Creative;
     }
+    Ok(())
 }
 
 fn toggle_gamemode_on_sneak(
@@ -110,12 +111,13 @@ fn open_chest(
     mut commands: Commands,
     inventories: Query<Entity, (With<Inventory>, Without<Client>)>,
     mut events: EventReader<InteractBlockEvent>,
-) {
+) -> Result {
     for event in events.read() {
         if event.position != CHEST_POS.into() {
             continue;
         }
-        let open_inventory = OpenInventory::new(inventories.single());
+        let open_inventory = OpenInventory::new(inventories.single()?);
         commands.entity(event.client).insert(open_inventory);
     }
+    Ok(())
 }

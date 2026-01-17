@@ -65,7 +65,7 @@ fn handle_player_action(
 
             match pkt.action {
                 PlayerAction::StartDestroyBlock => {
-                    digging_events.send(DiggingEvent {
+                    digging_events.write(DiggingEvent {
                         client: packet.client,
                         position: pkt.position,
                         direction: pkt.direction,
@@ -73,7 +73,7 @@ fn handle_player_action(
                     });
                 }
                 PlayerAction::AbortDestroyBlock => {
-                    digging_events.send(DiggingEvent {
+                    digging_events.write(DiggingEvent {
                         client: packet.client,
                         position: pkt.position,
                         direction: pkt.direction,
@@ -81,7 +81,7 @@ fn handle_player_action(
                     });
                 }
                 PlayerAction::StopDestroyBlock => {
-                    digging_events.send(DiggingEvent {
+                    digging_events.write(DiggingEvent {
                         client: packet.client,
                         position: pkt.position,
                         direction: pkt.direction,

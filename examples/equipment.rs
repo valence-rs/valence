@@ -76,7 +76,7 @@ fn init_clients(
         Added<Client>,
     >,
     layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
-) {
+) -> Result {
     for (
         player,
         mut pos,
@@ -87,7 +87,7 @@ fn init_clients(
         mut inv,
     ) in &mut clients
     {
-        let layer = layers.single();
+        let layer = layers.single()?;
 
         pos.0 = [0.0, f64::from(SPAWN_Y) + 1.0, 0.0].into();
         layer_id.0 = layer;
@@ -104,6 +104,7 @@ fn init_clients(
             .entity(player)
             .insert((EquipmentInventorySync, EquipmentInteractionBroadcast));
     }
+    Ok(())
 }
 
 fn randomize_equipment(mut query: Query<&mut Equipment, Without<Client>>, server: Res<Server>) {

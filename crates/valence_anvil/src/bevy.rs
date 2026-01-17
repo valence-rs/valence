@@ -127,7 +127,7 @@ fn remove_unviewed_chunks(
             if chunk.viewer_count_mut() > 0 || anvil.ignored_chunks.contains(&pos) {
                 true
             } else {
-                unload_events.send(ChunkUnloadEvent {
+                unload_events.write(ChunkUnloadEvent {
                     chunk_layer: entity,
                     pos,
                 });
@@ -200,7 +200,7 @@ fn send_recv_chunks(
                 Err(e) => ChunkLoadStatus::Failed(e),
             };
 
-            load_events.send(ChunkLoadEvent {
+            load_events.write(ChunkLoadEvent {
                 chunk_layer: entity,
                 pos,
                 status,

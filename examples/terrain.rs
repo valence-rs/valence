@@ -123,7 +123,7 @@ fn init_clients(
         Added<Client>,
     >,
     layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
-) {
+) -> Result {
     for (
         mut layer_id,
         mut visible_chunk_layer,
@@ -133,7 +133,7 @@ fn init_clients(
         mut is_flat,
     ) in &mut clients
     {
-        let layer = layers.single();
+        let layer = layers.single()?;
 
         layer_id.0 = layer;
         visible_chunk_layer.0 = layer;
@@ -142,20 +142,22 @@ fn init_clients(
         *game_mode = GameMode::Creative;
         is_flat.0 = true;
     }
+    Ok(())
 }
 
-fn remove_unviewed_chunks(mut layers: Query<&mut ChunkLayer>) {
+fn remove_unviewed_chunks(mut layers: Query<&mut ChunkLayer>) -> Result {
     layers
-        .single_mut()
+        .single_mut()?
         .retain_chunks(|_, chunk| chunk.viewer_count_mut() > 0);
+    Ok(())
 }
 
 fn update_client_views(
     mut layers: Query<&mut ChunkLayer>,
     mut clients: Query<(&mut Client, View, OldView)>,
     mut state: ResMut<GameState>,
-) {
-    let layer = layers.single_mut();
+) -> Result {
+    let layer = layers.single_mut()?;
 
     for (client, view, old_view) in &mut clients {
         let view = view.get();
@@ -186,10 +188,11 @@ fn update_client_views(
             }
         }
     }
+    Ok(())
 }
 
-fn send_recv_chunks(mut layers: Query<&mut ChunkLayer>, state: ResMut<GameState>) {
-    let mut layer = layers.single_mut();
+fn send_recv_chunks(mut layers: Query<&mut ChunkLayer>, state: ResMut<GameState>) -> Result {
+    let mut layer = layers.single_mut()?;
     let state = state.into_inner();
 
     // Insert the chunks that are finished generating into the instance.
@@ -214,6 +217,7 @@ fn send_recv_chunks(mut layers: Query<&mut ChunkLayer>, state: ResMut<GameState>
     for (_, pos) in to_send {
         let _ = state.sender.try_send(*pos);
     }
+    Ok(())
 }
 
 fn chunk_worker(state: Arc<ChunkWorkerState>) {

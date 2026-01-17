@@ -83,7 +83,7 @@ fn init_clients(
         Added<Client>,
     >,
     layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
-) {
+) -> Result {
     for (
         mut client,
         mut layer_id,
@@ -93,7 +93,7 @@ fn init_clients(
         mut game_mode,
     ) in &mut clients
     {
-        let layer = layers.single();
+        let layer = layers.single()?;
 
         layer_id.0 = layer;
         visible_chunk_layer.0 = layer;
@@ -108,6 +108,7 @@ fn init_clients(
                 .italic(),
         );
     }
+    Ok(())
 }
 
 #[derive(Resource)]
@@ -187,12 +188,12 @@ fn update_board(
     mut board: ResMut<LifeBoard>,
     mut layers: Query<&mut ChunkLayer>,
     server: Res<Server>,
-) {
+) -> Result {
     if board.playing && server.current_tick() % 2 == 0 {
         board.update();
     }
 
-    let mut layer = layers.single_mut();
+    let mut layer = layers.single_mut()?;
 
     for z in BOARD_MIN_Z..=BOARD_MAX_Z {
         for x in BOARD_MIN_X..=BOARD_MAX_X {
@@ -205,16 +206,17 @@ fn update_board(
             layer.set_block([x, BOARD_Y, z], block);
         }
     }
+    Ok(())
 }
 
 fn pause_on_crouch(
     mut events: EventReader<SneakEvent>,
     mut board: ResMut<LifeBoard>,
     mut layers: Query<&mut EntityLayer>,
-) {
+) -> Result {
     for event in events.read() {
         if event.state == SneakState::Start {
-            let mut layer = layers.single_mut();
+            let mut layer = layers.single_mut()?;
 
             if board.playing {
                 board.playing = false;
@@ -225,6 +227,7 @@ fn pause_on_crouch(
             }
         }
     }
+    Ok(())
 }
 
 fn reset_oob_clients(

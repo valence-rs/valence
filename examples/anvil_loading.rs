@@ -88,7 +88,7 @@ fn init_clients(
         Added<Client>,
     >,
     layers: Query<Entity, With<ChunkLayer>>,
-) {
+) -> Result {
     for (
         mut layer_id,
         mut visible_chunk_layer,
@@ -100,7 +100,7 @@ fn init_clients(
         mut fov_modifier,
     ) in &mut clients
     {
-        let layer = layers.single();
+        let layer = layers.single()?;
 
         layer_id.0 = layer;
         visible_chunk_layer.0 = layer;
@@ -111,13 +111,14 @@ fn init_clients(
         flying_speed.0 = 0.1;
         fov_modifier.0 = 0.05;
     }
+    Ok(())
 }
 
 fn handle_chunk_loads(
     mut events: EventReader<ChunkLoadEvent>,
     mut layers: Query<&mut ChunkLayer, With<AnvilLevel>>,
-) {
-    let mut layer = layers.single_mut();
+) -> Result {
+    let mut layer = layers.single_mut()?;
 
     for event in events.read() {
         match &event.status {
@@ -143,11 +144,15 @@ fn handle_chunk_loads(
             }
         }
     }
+    Ok(())
 }
 
 // Display the number of loaded chunks in the action bar of all clients.
-fn display_loaded_chunk_count(mut layers: Query<&mut ChunkLayer>, mut last_count: Local<usize>) {
-    let mut layer = layers.single_mut();
+fn display_loaded_chunk_count(
+    mut layers: Query<&mut ChunkLayer>,
+    mut last_count: Local<usize>,
+) -> Result {
+    let mut layer = layers.single_mut()?;
 
     let cnt = layer.chunks().count();
 
@@ -155,4 +160,5 @@ fn display_loaded_chunk_count(mut layers: Query<&mut ChunkLayer>, mut last_count
         *last_count = cnt;
         layer.send_action_bar_message("Chunk Count: ".into_text() + cnt.color(Color::LIGHT_PURPLE));
     }
+    Ok(())
 }

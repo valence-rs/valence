@@ -73,7 +73,7 @@ fn init_clients(
         Added<Client>,
     >,
     layers: Query<Entity, With<ChunkLayer>>,
-) {
+) -> Result {
     for (
         mut client,
         mut layer_id,
@@ -84,7 +84,7 @@ fn init_clients(
         main_slot,
     ) in &mut clients
     {
-        let layer = layers.single();
+        let layer = layers.single()?;
 
         layer_id.0 = layer;
         visible_chunk_layer.0 = layer;
@@ -95,6 +95,7 @@ fn init_clients(
         client
             .send_chat_message("Use `add` and `center` chat messages to change the world border.");
     }
+    Ok(())
 }
 
 fn display_diameter(mut layers: Query<(&mut ChunkLayer, &WorldBorderLerp)>) {
@@ -108,38 +109,31 @@ fn display_diameter(mut layers: Query<(&mut ChunkLayer, &WorldBorderLerp)>) {
 fn border_controls(
     mut events: EventReader<ChatMessageEvent>,
     mut layers: Query<(&mut WorldBorderCenter, &mut WorldBorderLerp), With<ChunkLayer>>,
-) {
+) -> Result {
     for x in events.read() {
         let parts: Vec<&str> = x.message.split(' ').collect();
         match parts[0] {
             "add" => {
-                let Ok(value) = parts[1].parse::<f64>() else {
-                    return;
-                };
+                let value = parts[1].parse::<f64>()?;
 
-                let Ok(ticks) = parts[2].parse::<u64>() else {
-                    return;
-                };
+                let ticks = parts[2].parse::<u64>()?;
 
-                let (_, mut lerp) = layers.single_mut();
+                let (_, mut lerp) = layers.single_mut()?;
 
                 lerp.target_diameter = lerp.current_diameter + value;
                 lerp.remaining_ticks = ticks;
             }
             "center" => {
-                let Ok(x) = parts[1].parse::<f64>() else {
-                    return;
-                };
+                let x = parts[1].parse::<f64>()?;
 
-                let Ok(z) = parts[2].parse::<f64>() else {
-                    return;
-                };
+                let z = parts[2].parse::<f64>()?;
 
-                let (mut center, _) = layers.single_mut();
+                let (mut center, _) = layers.single_mut()?;
                 center.x = x;
                 center.z = z;
             }
             _ => (),
         }
     }
+    Ok(())
 }

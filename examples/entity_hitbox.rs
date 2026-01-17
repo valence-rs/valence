@@ -59,7 +59,7 @@ fn init_clients(
         Added<Client>,
     >,
     layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
-) {
+) -> Result {
     for (
         mut client,
         mut layer_id,
@@ -69,7 +69,7 @@ fn init_clients(
         mut game_mode,
     ) in &mut clients
     {
-        let layer = layers.single();
+        let layer = layers.single()?;
 
         layer_id.0 = layer;
         visible_chunk_layer.0 = layer;
@@ -79,6 +79,7 @@ fn init_clients(
 
         client.send_chat_message("To spawn an entity, press shift. F3 + B to activate hitboxes");
     }
+    Ok(())
 }
 
 fn spawn_entity(

@@ -375,7 +375,7 @@ fn init_clients(
     >,
     main_layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
     globals: Res<CtfGlobals>,
-) {
+) -> Result {
     for (
         mut client,
         mut layer_id,
@@ -386,7 +386,7 @@ fn init_clients(
         mut health,
     ) in &mut clients
     {
-        let layer = main_layers.single();
+        let layer = main_layers.single()?;
 
         layer_id.0 = layer;
         visible_chunk_layer.0 = layer;
@@ -400,6 +400,7 @@ fn init_clients(
             "Welcome to Valence! Select a team by jumping in the team's portal.".italic(),
         );
     }
+    Ok(())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
@@ -440,8 +441,8 @@ fn digging(
     mut commands: Commands,
     globals: Res<CtfGlobals>,
     mut flag_manager: ResMut<FlagManager>,
-) {
-    let mut layer = layers.single_mut();
+) -> Result {
+    let mut layer = layers.single_mut()?;
 
     for event in events.read() {
         let Ok((game_mode, team, ent, mut client, mut inv)) = clients.get_mut(event.client) else {
@@ -462,7 +463,7 @@ fn digging(
                         commands.entity(event.client).insert(HasFlag(Team::Red));
                         client.send_chat_message("You have the flag!".italic());
                         flag_manager.red = Some(ent);
-                        return;
+                        return Ok(());
                     }
                 }
                 (Team::Red, BlockState::BLUE_WOOL) => {
@@ -470,7 +471,7 @@ fn digging(
                         commands.entity(event.client).insert(HasFlag(Team::Blue));
                         client.send_chat_message("You have the flag!".italic());
                         flag_manager.blue = Some(ent);
-                        return;
+                        return Ok(());
                     }
                 }
                 _ => {}
@@ -501,14 +502,15 @@ fn digging(
             }
         }
     }
+    Ok(())
 }
 
 fn place_blocks(
     mut clients: Query<(&mut Inventory, &GameMode, &HeldItem)>,
     mut layers: Query<&mut ChunkLayer>,
     mut events: EventReader<InteractBlockEvent>,
-) {
-    let mut layer = layers.single_mut();
+) -> Result {
+    let mut layer = layers.single_mut()?;
 
     for event in events.read() {
         let Ok((mut inventory, game_mode, held)) = clients.get_mut(event.client) else {
@@ -543,6 +545,7 @@ fn place_blocks(
         let real_pos = event.position.get_in_direction(event.face);
         layer.set_block(real_pos, block_kind.to_state());
     }
+    Ok(())
 }
 
 #[derive(Debug, Resource)]
@@ -568,7 +571,7 @@ fn do_team_selector_portals(
     mut commands: Commands,
     ctf_layers: Res<CtfLayers>,
     main_layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
-) {
+) -> Result {
     for player in &mut players {
         let (
             player,
@@ -623,7 +626,7 @@ fn do_team_selector_portals(
             let chat_text: Text = "You are on team ".into_text() + team.team_text() + "!";
             client.send_chat_message(chat_text);
 
-            let main_layer = main_layers.single();
+            let main_layer = main_layers.single()?;
             ent_layers.as_mut().0.remove(&main_layer);
             for t in Team::iter() {
                 let enemy_layer = ctf_layers.enemy_layers[&t];
@@ -658,6 +661,7 @@ fn do_team_selector_portals(
             player_enemy.insert(ClonedEntity(player));
         }
     }
+    Ok(())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -741,9 +745,9 @@ fn update_flag_visuals(
     flag_manager: Res<FlagManager>,
     globals: Res<CtfGlobals>,
     mut layers: Query<&mut ChunkLayer>,
-) {
+) -> Result {
     if !flag_manager.is_changed() {
-        return;
+        return Ok(());
     }
     let red_flag_block = match flag_manager.red {
         Some(_) => BlockState::AIR,
@@ -755,11 +759,12 @@ fn update_flag_visuals(
     };
 
     layers
-        .single_mut()
+        .single_mut()?
         .set_block(globals.red_flag, red_flag_block);
     layers
-        .single_mut()
+        .single_mut()?
         .set_block(globals.blue_flag, blue_flag_block);
+    Ok(())
 }
 
 fn do_flag_capturing(
@@ -1025,7 +1030,7 @@ fn necromancy(
     )>,
     mut events: EventReader<RequestRespawnEvent>,
     layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
-) {
+) -> Result {
     for event in events.read() {
         if let Ok((mut visible_chunk_layer, mut respawn_pos, team, mut health)) =
             clients.get_mut(event.client)
@@ -1033,22 +1038,24 @@ fn necromancy(
             respawn_pos.pos = team.spawn_pos().into();
             health.0 = PLAYER_MAX_HEALTH;
 
-            let main_layer = layers.single();
+            let main_layer = layers.single()?;
 
             // this gets the client to get rid of the respawn screen
             visible_chunk_layer.0 = main_layer;
         }
     }
+    Ok(())
 }
 
 fn update_scoreboard(
     mut objectives: Query<&mut ObjectiveScores, With<Objective>>,
     score: Res<Score>,
-) {
+) -> Result {
     if !score.is_changed() {
-        return;
+        return Ok(());
     }
-    let mut s = objectives.single_mut();
+    let mut s = objectives.single_mut()?;
     s.insert("Red", *score.scores.get(&Team::Red).unwrap_or(&0) as i32);
     s.insert("Blue", *score.scores.get(&Team::Blue).unwrap_or(&0) as i32);
+    Ok(())
 }

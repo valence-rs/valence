@@ -204,7 +204,7 @@ fn update_equipment(
                         .collect(),
                 });
 
-            event_writer.send(EquipmentChangeEvent {
+            event_writer.write(EquipmentChangeEvent {
                 client: entity,
                 changed: slots_changed,
             });

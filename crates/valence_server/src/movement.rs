@@ -203,5 +203,5 @@ fn handle(
     head_yaw.set_if_neq(HeadYaw(mov.look.yaw));
     on_ground.set_if_neq(OnGround(mov.on_ground));
 
-    movement_events.send(mov);
+    movement_events.write(mov);
 }

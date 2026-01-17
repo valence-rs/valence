@@ -35,7 +35,7 @@ fn handle_hand_swing(
                 });
             }
 
-            events.send(HandSwingEvent {
+            events.write(HandSwingEvent {
                 client: packet.client,
                 hand: pkt.hand,
             });

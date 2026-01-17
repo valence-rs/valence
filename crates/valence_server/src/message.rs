@@ -53,7 +53,7 @@ pub fn handle_chat_message(
 ) {
     for packet in packets.read() {
         if let Some(pkt) = packet.decode::<ChatMessageC2s>() {
-            events.send(ChatMessageEvent {
+            events.write(ChatMessageEvent {
                 client: packet.client,
                 message: pkt.message.0.into(),
                 timestamp: pkt.timestamp,

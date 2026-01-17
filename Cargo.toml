@@ -116,15 +116,14 @@ arrayvec = "0.7.6"
 async-trait = "0.1.82"
 atty = "0.2.14"
 base64 = "0.22.1"
-bevy_app = { version = "0.14.2", default-features = false }
-bevy_derive = "0.14.2"
-bevy_ecs = { version = "0.14.2", default-features = false, features = [
+bevy_app = { version = "0.16.1", default-features = false }
+bevy_derive = "0.16.1"
+bevy_ecs = { version = "0.16.1", default-features = false, features = [
     "multi_threaded",
 ] }
-bevy_hierarchy = { version = "0.14.2", default-features = false, features = ["bevy_app"] }
-bevy_log = { version = "0.14.2" }
-bevy_mod_debugdump = { version = "0.11.1" }
-bevy_utils = { version = "0.14.2" }
+bevy_log = { version = "0.16.1" }
+bevy_mod_debugdump = { version = "0.13.0" }
+bevy_utils = { version = "0.16.1" }
 bitfield-struct = "0.8.0"
 bitvec = "1.0.1"
 byteorder = "1.5.0"

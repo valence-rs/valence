@@ -811,7 +811,7 @@ fn update_cursor_item(
 fn handle_close_handled_screen(mut packets: EventReader<PacketEvent>, mut commands: Commands) {
     for packet in packets.read() {
         if packet.decode::<CloseHandledScreenC2s>().is_some() {
-            if let Some(mut entity) = commands.get_entity(packet.client) {
+            if let Ok(mut entity) = commands.get_entity(packet.client) {
                 entity.remove::<OpenInventory>();
             }
         }
@@ -916,7 +916,7 @@ fn handle_click_slot(
             let stack = std::mem::take(&mut cursor_item.0);
 
             if !stack.is_empty() {
-                drop_item_stack_events.send(DropItemStackEvent {
+                drop_item_stack_events.write(DropItemStackEvent {
                     client: packet.client,
                     from_slot: None,
                     stack,
@@ -987,7 +987,7 @@ fn handle_click_slot(
                             old_slot
                         };
 
-                        drop_item_stack_events.send(DropItemStackEvent {
+                        drop_item_stack_events.write(DropItemStackEvent {
                             client: packet.client,
                             from_slot: Some(pkt.slot_idx as u16),
                             stack: dropped,
@@ -1024,7 +1024,7 @@ fn handle_click_slot(
                             old_slot
                         };
 
-                        drop_item_stack_events.send(DropItemStackEvent {
+                        drop_item_stack_events.write(DropItemStackEvent {
                             client: packet.client,
                             from_slot: Some(slot_id),
                             stack: dropped,
@@ -1063,7 +1063,7 @@ fn handle_click_slot(
                         old_slot
                     };
 
-                    drop_item_stack_events.send(DropItemStackEvent {
+                    drop_item_stack_events.write(DropItemStackEvent {
                         client: packet.client,
                         from_slot: Some(pkt.slot_idx as u16),
                         stack: dropped,
@@ -1218,7 +1218,7 @@ fn handle_click_slot(
                 }
             }
 
-            click_slot_events.send(ClickSlotEvent {
+            click_slot_events.write(ClickSlotEvent {
                 client: packet.client,
                 window_id: pkt.window_id,
                 state_id: pkt.state_id.0,
@@ -1265,7 +1265,7 @@ fn handle_player_actions(
                         if !stack.is_empty() {
                             inv_state.slots_changed |= 1 << held.slot();
 
-                            drop_item_stack_events.send(DropItemStackEvent {
+                            drop_item_stack_events.write(DropItemStackEvent {
                                 client: packet.client,
                                 from_slot: Some(held.slot()),
                                 stack,
@@ -1302,7 +1302,7 @@ fn handle_player_actions(
 
                             inv_state.slots_changed |= 1 << held.slot();
 
-                            drop_item_stack_events.send(DropItemStackEvent {
+                            drop_item_stack_events.write(DropItemStackEvent {
                                 client: packet.client,
                                 from_slot: Some(held.slot()),
                                 stack,
@@ -1400,7 +1400,7 @@ fn handle_creative_inventory_action(
                 let stack = pkt.clicked_item.clone();
 
                 if !stack.is_empty() {
-                    drop_item_stack_events.send(DropItemStackEvent {
+                    drop_item_stack_events.write(DropItemStackEvent {
                         client: packet.client,
                         from_slot: None,
                         stack,
@@ -1430,7 +1430,7 @@ fn handle_creative_inventory_action(
                 slot_data: Cow::Borrowed(&pkt.clicked_item),
             });
 
-            inv_action_events.send(CreativeInventoryActionEvent {
+            inv_action_events.write(CreativeInventoryActionEvent {
                 client: packet.client,
                 slot: pkt.slot,
                 clicked_item: pkt.clicked_item,
@@ -1475,7 +1475,7 @@ fn handle_update_selected_slot(
 
                 held.set_hotbar_idx(pkt.slot as u8);
 
-                events.send(UpdateSelectedSlotEvent {
+                events.write(UpdateSelectedSlotEvent {
                     client: packet.client,
                     slot: pkt.slot as u8,
                 });

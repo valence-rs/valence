@@ -55,7 +55,7 @@ fn handle_resource_pack_status(
 ) {
     for packet in packets.read() {
         if let Some(pkt) = packet.decode::<ResourcePackStatusC2s>() {
-            events.send(ResourcePackStatusEvent {
+            events.write(ResourcePackStatusEvent {
                 client: packet.client,
                 status: pkt,
             });

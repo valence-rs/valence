@@ -46,7 +46,7 @@ fn handle_interact_block(
 
             // TODO: check that the block interaction is valid.
 
-            events.send(InteractBlockEvent {
+            events.write(InteractBlockEvent {
                 client: packet.client,
                 hand: pkt.hand,
                 position: pkt.position,

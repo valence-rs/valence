@@ -117,7 +117,7 @@ fn run_event_loop(
     for (entity, mut client) in &mut clients {
         match client.connection_mut().try_recv() {
             Ok(Some(pkt)) => {
-                event_writer.send(PacketEvent {
+                event_writer.write(PacketEvent {
                     client: entity,
                     timestamp: pkt.timestamp,
                     id: pkt.id,
@@ -151,7 +151,7 @@ fn run_event_loop(
             if let Ok((_, mut client)) = clients.get_mut(*entity) {
                 match client.connection_mut().try_recv() {
                     Ok(Some(pkt)) => {
-                        event_writer.send(PacketEvent {
+                        event_writer.write(PacketEvent {
                             client: *entity,
                             timestamp: pkt.timestamp,
                             id: pkt.id,

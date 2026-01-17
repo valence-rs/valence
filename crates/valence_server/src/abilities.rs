@@ -121,21 +121,21 @@ fn update_player_abilities(
                 flags.set_allow_flying(true);
                 flags.set_instant_break(false);
                 flags.set_flying(true);
-                player_start_flying_event_writer.send(PlayerStartFlyingEvent { client: entity });
+                player_start_flying_event_writer.write(PlayerStartFlyingEvent { client: entity });
             }
             GameMode::Survival => {
                 flags.set_invulnerable(false);
                 flags.set_allow_flying(false);
                 flags.set_instant_break(false);
                 flags.set_flying(false);
-                player_stop_flying_event_writer.send(PlayerStopFlyingEvent { client: entity });
+                player_stop_flying_event_writer.write(PlayerStopFlyingEvent { client: entity });
             }
             GameMode::Adventure => {
                 flags.set_invulnerable(false);
                 flags.set_allow_flying(false);
                 flags.set_instant_break(false);
                 flags.set_flying(false);
-                player_stop_flying_event_writer.send(PlayerStopFlyingEvent { client: entity });
+                player_stop_flying_event_writer.write(PlayerStopFlyingEvent { client: entity });
             }
         }
     }
@@ -156,13 +156,13 @@ fn update_server_player_abilities(
                 match pkt {
                     UpdatePlayerAbilitiesC2s::StartFlying => {
                         flags.set_flying(true);
-                        player_start_flying_event_writer.send(PlayerStartFlyingEvent {
+                        player_start_flying_event_writer.write(PlayerStartFlyingEvent {
                             client: packets.client,
                         });
                     }
                     UpdatePlayerAbilitiesC2s::StopFlying => {
                         flags.set_flying(false);
-                        player_stop_flying_event_writer.send(PlayerStopFlyingEvent {
+                        player_stop_flying_event_writer.write(PlayerStopFlyingEvent {
                             client: packets.client,
                         });
                     }

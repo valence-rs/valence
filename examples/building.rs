@@ -61,7 +61,7 @@ fn init_clients(
         Added<Client>,
     >,
     layers: Query<Entity, (With<ChunkLayer>, With<EntityLayer>)>,
-) {
+) -> Result {
     for (
         mut client,
         mut layer_id,
@@ -71,7 +71,7 @@ fn init_clients(
         mut game_mode,
     ) in &mut clients
     {
-        let layer = layers.single();
+        let layer = layers.single()?;
 
         layer_id.0 = layer;
         visible_chunk_layer.0 = layer;
@@ -81,6 +81,7 @@ fn init_clients(
 
         client.send_chat_message("Welcome to Valence! Build something cool.".italic());
     }
+    Ok(())
 }
 
 fn toggle_gamemode_on_sneak(
@@ -105,8 +106,8 @@ fn digging(
     clients: Query<&GameMode>,
     mut layers: Query<&mut ChunkLayer>,
     mut events: EventReader<DiggingEvent>,
-) {
-    let mut layer = layers.single_mut();
+) -> Result {
+    let mut layer = layers.single_mut()?;
 
     for event in events.read() {
         let Ok(game_mode) = clients.get(event.client) else {
@@ -119,14 +120,15 @@ fn digging(
             layer.set_block(event.position, BlockState::AIR);
         }
     }
+    Ok(())
 }
 
 fn place_blocks(
     mut clients: Query<(&mut Inventory, &GameMode, &HeldItem)>,
     mut layers: Query<&mut ChunkLayer>,
     mut events: EventReader<InteractBlockEvent>,
-) {
-    let mut layer = layers.single_mut();
+) -> Result {
+    let mut layer = layers.single_mut()?;
 
     for event in events.read() {
         let Ok((mut inventory, game_mode, held)) = clients.get_mut(event.client) else {
@@ -170,4 +172,5 @@ fn place_blocks(
         );
         layer.set_block(real_pos, state);
     }
+    Ok(())
 }
