@@ -8,11 +8,10 @@ use valence::keepalive::KeepaliveSettings;
 use valence::layer::chunk::UnloadedChunk;
 use valence::layer::LayerBundle;
 use valence::math::DVec3;
-use valence::network::NetworkPlugin;
 use valence::protocol::packets::play::{FullC2s, HandSwingC2s};
 use valence::registry::{BiomeRegistry, DimensionTypeRegistry};
-use valence::testing::create_mock_client;
-use valence::{ident, ChunkPos, DefaultPlugins, Hand, Server, ServerSettings};
+use valence::testing::{self, create_mock_client};
+use valence::{ident, ChunkPos, Hand, Server, ServerSettings};
 use valence_server::CompressionThreshold;
 
 #[divan::bench]
@@ -37,8 +36,7 @@ fn run_many_players(bencher: Bencher, client_count: usize, view_dist: u8, world_
         period: Duration::MAX,
     });
 
-    app.add_plugins(DefaultPlugins.build().disable::<NetworkPlugin>());
-
+    testing::add_plugins(&mut app);
     app.update(); // Initialize plugins.
 
     let mut layer = LayerBundle::new(

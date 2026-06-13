@@ -1,5 +1,5 @@
 use divan::Bencher;
-use valence::prelude::*;
+use valence::{prelude::*, testing};
 
 /// Benches the performance of a single server tick while nothing much is
 /// happening.
@@ -7,7 +7,7 @@ use valence::prelude::*;
 pub(crate) fn idle_update(bencher: Bencher) {
     let mut app = App::new();
 
-    app.add_plugins(DefaultPlugins);
+    testing::add_plugins(&mut app);
     app.add_systems(Startup, setup);
 
     // Run startup schedule.

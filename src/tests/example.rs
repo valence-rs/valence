@@ -12,15 +12,14 @@ use crate::entity::Position;
 use crate::inventory::{Inventory, InventoryKind, OpenInventory};
 use crate::math::DVec3;
 use crate::protocol::packets::play::{InventoryS2c, OpenScreenS2c, PositionAndOnGroundC2s};
-use crate::testing::ScenarioSingleClient;
-use crate::{DefaultPlugins, Server};
+use crate::testing::{self, ScenarioSingleClient};
+use crate::Server;
 
 /// The server's tick should increment every update.
 #[test]
 fn example_test_server_tick_increment() {
     let mut app = App::new();
-
-    app.add_plugins(DefaultPlugins);
+    testing::add_plugins(&mut app);
 
     let tick = app.world_mut().resource::<Server>().current_tick();
 
