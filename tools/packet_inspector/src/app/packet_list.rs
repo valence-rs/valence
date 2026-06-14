@@ -149,7 +149,7 @@ fn draw_packet_widget(ui: &mut Ui, packet: &Packet, selected: bool) -> Response 
 
     if ui.is_rect_visible(rect) {
         ui.painter()
-            .rect(rect, 0.0, fill, Stroke::new(1.0, Rgba::BLACK));
+            .rect(rect, 0.0, fill, Stroke::new(1.0_f32, Rgba::BLACK));
 
         let shape = get_triangle(packet.side, &rect);
         ui.painter().add(Shape::Path(shape));
@@ -264,7 +264,7 @@ fn get_triangle(direction: PacketSide, outer_rect: &Rect) -> PathShape {
         ],
     };
 
-    let mut shape = PathShape::closed_line(points, Stroke::new(2.0, color));
+    let mut shape = PathShape::closed_line(points, Stroke::new(2.0_f32, color));
     shape.fill = color.into();
 
     shape
