@@ -711,7 +711,7 @@ mod tests {
         player_inventory.set_slot(9, ItemStack::new(ItemKind::Lead, 2, None));
         let cursor_item = CursorItem::default();
 
-        let packets = vec![
+        let packets = [
             ClickSlotC2s {
                 window_id: 0,
                 button: 0,

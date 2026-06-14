@@ -615,8 +615,7 @@ impl Region {
             .with_count(num_sectors as u8);
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .map(|duration| duration.as_secs() as u32)
-            .unwrap_or(0);
+            .map_or(0, |duration| duration.as_secs() as u32);
 
         // write changed header information to file
         let chunk_idx = Self::chunk_idx(pos_x, pos_z);

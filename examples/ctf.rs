@@ -457,21 +457,17 @@ fn digging(
             let is_flag = event.position == globals.red_flag || event.position == globals.blue_flag;
 
             match (team, block.state) {
-                (Team::Blue, BlockState::RED_WOOL) => {
-                    if event.position == globals.red_flag {
-                        commands.entity(event.client).insert(HasFlag(Team::Red));
-                        client.send_chat_message("You have the flag!".italic());
-                        flag_manager.red = Some(ent);
-                        return;
-                    }
+                (Team::Blue, BlockState::RED_WOOL) if event.position == globals.red_flag => {
+                    commands.entity(event.client).insert(HasFlag(Team::Red));
+                    client.send_chat_message("You have the flag!".italic());
+                    flag_manager.red = Some(ent);
+                    return;
                 }
-                (Team::Red, BlockState::BLUE_WOOL) => {
-                    if event.position == globals.blue_flag {
-                        commands.entity(event.client).insert(HasFlag(Team::Blue));
-                        client.send_chat_message("You have the flag!".italic());
-                        flag_manager.blue = Some(ent);
-                        return;
-                    }
+                (Team::Red, BlockState::BLUE_WOOL) if event.position == globals.blue_flag => {
+                    commands.entity(event.client).insert(HasFlag(Team::Blue));
+                    client.send_chat_message("You have the flag!".italic());
+                    flag_manager.blue = Some(ent);
+                    return;
                 }
                 _ => {}
             }
@@ -946,8 +942,7 @@ fn handle_combat_events(
     {
         let true_victim_ent = clones
             .get(victim_client)
-            .map(|cloned| cloned.0)
-            .unwrap_or(victim_client);
+            .map_or(victim_client, |cloned| cloned.0);
         let Ok([mut attacker, mut victim]) =
             clients.get_many_mut([attacker_client, true_victim_ent])
         else {
