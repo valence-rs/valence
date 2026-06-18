@@ -6,7 +6,7 @@ mod legacy_ping;
 mod packet_io;
 
 use std::borrow::Cow;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
+use std::net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -267,7 +267,7 @@ impl Default for NetworkSettings {
             tokio_handle: None,
             max_connections: 1024,
             max_players: 20,
-            address: SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 25565).into(),
+            address: SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 25565, 0, 0).into(),
             connection_mode: ConnectionMode::Online {
                 prevent_proxy_connections: false,
             },
