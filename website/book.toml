@@ -1,6 +1,5 @@
 [book]
 language = "en"
-multilingual = false
 src = "book"
 title = "Valence Documentation"
 
