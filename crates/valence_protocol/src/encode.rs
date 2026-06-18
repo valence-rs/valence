@@ -8,6 +8,7 @@ use anyhow::ensure;
 use bytes::{BufMut, BytesMut};
 use tracing::warn;
 
+use crate::decode::PacketFrame;
 use crate::var_int::VarInt;
 use crate::{CompressionThreshold, Encode, Packet, MAX_PACKET_SIZE};
 
@@ -18,13 +19,13 @@ type Cipher = cfb8::Encryptor<aes::Aes128>;
 
 #[derive(Default)]
 pub struct PacketEncoder {
-    buf: BytesMut,
+    pub buf: BytesMut,
     #[cfg(feature = "compression")]
-    compress_buf: Vec<u8>,
+    pub compress_buf: Vec<u8>,
     #[cfg(feature = "compression")]
-    threshold: CompressionThreshold,
+    pub threshold: CompressionThreshold,
     #[cfg(feature = "encryption")]
-    cipher: Option<Cipher>,
+    pub cipher: Option<Cipher>,
 }
 
 impl PacketEncoder {
@@ -37,37 +38,12 @@ impl PacketEncoder {
         self.buf.extend_from_slice(bytes)
     }
 
-    pub fn prepend_packet<P>(&mut self, pkt: &P) -> anyhow::Result<()>
-    where
-        P: Packet + Encode,
-    {
-        let start_len = self.buf.len();
-        self.append_packet(pkt)?;
-
-        let end_len = self.buf.len();
-        let total_packet_len = end_len - start_len;
-
-        // 1) Move everything back by the length of the packet.
-        // 2) Move the packet to the new space at the front.
-        // 3) Truncate the old packet away.
-        self.buf.put_bytes(0, total_packet_len);
-        self.buf.copy_within(..end_len, total_packet_len);
-        self.buf.copy_within(total_packet_len + start_len.., 0);
-        self.buf.truncate(end_len);
-
-        Ok(())
-    }
-
-    #[allow(clippy::needless_borrows_for_generic_args)]
-    pub fn append_packet<P>(&mut self, pkt: &P) -> anyhow::Result<()>
-    where
-        P: Packet + Encode,
-    {
-        let start_len = self.buf.len();
-
-        pkt.encode_with_id((&mut self.buf).writer())?;
-
-        let data_len = self.buf.len() - start_len;
+    /// frames the bytes in a range from `from` to the end of the buffer:
+    ///     adding a packet length varint to the start of the frame
+    ///     adding a data length varint after the packet length, if compression is enabled
+    ///     compressing the packet, if compression is enabled
+    pub fn enframe_from(&mut self, from: usize) -> anyhow::Result<()> {
+        let data_len = self.buf.len() - from;
 
         #[cfg(feature = "compression")]
         if self.threshold.0 >= 0 {
@@ -77,7 +53,7 @@ impl PacketEncoder {
             use flate2::Compression;
 
             if data_len > self.threshold.0 as usize {
-                let mut z = ZlibEncoder::new(&self.buf[start_len..], Compression::new(4));
+                let mut z = ZlibEncoder::new(&self.buf[from..], Compression::new(4));
 
                 self.compress_buf.clear();
 
@@ -92,7 +68,7 @@ impl PacketEncoder {
 
                 drop(z);
 
-                self.buf.truncate(start_len);
+                self.buf.truncate(from);
 
                 let mut writer = (&mut self.buf).writer();
 
@@ -114,9 +90,9 @@ impl PacketEncoder {
 
                 self.buf.put_bytes(0, data_prefix_len);
                 self.buf
-                    .copy_within(start_len..start_len + data_len, start_len + data_prefix_len);
+                    .copy_within(from..from + data_len, from + data_prefix_len);
 
-                let mut front = &mut self.buf[start_len..];
+                let mut front = &mut self.buf[from..];
 
                 VarInt(packet_len as i32).encode(&mut front)?;
                 // Zero for no compression on this packet.
@@ -137,11 +113,74 @@ impl PacketEncoder {
 
         self.buf.put_bytes(0, packet_len_size);
         self.buf
-            .copy_within(start_len..start_len + data_len, start_len + packet_len_size);
+            .copy_within(from..from + data_len, from + packet_len_size);
 
-        let front = &mut self.buf[start_len..];
+        let front = &mut self.buf[from..];
         VarInt(packet_len as i32).encode(front)?;
 
+        Ok(())
+    }
+
+    fn move_to_back(&mut self, from: usize) {
+        // 1) Move everything back by the length of the packet.
+        // 2) Move the packet to the new space at the front.
+        // 3) Truncate the old packet away.
+        let to = self.buf.len();
+        let len = to - from;
+
+        self.buf.put_bytes(0, len);
+        self.buf.copy_within(..to, len);
+        self.buf.copy_within(to.., 0);
+        self.buf.truncate(to);
+    }
+
+    pub fn append_packet_frame(&mut self, frame: &PacketFrame) -> anyhow::Result<()> {
+        let start_len = self.buf.len();
+        VarInt(frame.id).encode((&mut self.buf).writer())?;
+        self.append_bytes(&frame.body);
+        self.enframe_from(start_len)?;
+        Ok(())
+    }
+
+    pub fn prepend_packet_frame<P>(&mut self, frame: &PacketFrame) -> anyhow::Result<()> {
+        let start_len = self.buf.len();
+        self.append_packet_frame(frame)?;
+        self.move_to_back(start_len);
+        Ok(())
+    }
+    
+    pub fn append_raw_frame(&mut self, frame: &[u8]) -> anyhow::Result<()> {
+        let start_len = self.buf.len();
+        self.append_bytes(frame);
+        self.enframe_from(start_len)?;
+        Ok(())
+    }
+
+    pub fn prepend_raw_frame<P>(&mut self, frame: &[u8]) -> anyhow::Result<()> {
+        let start_len = self.buf.len();
+        self.append_raw_frame(frame)?;
+        self.move_to_back(start_len);
+        Ok(())
+    }
+    
+    #[allow(clippy::needless_borrows_for_generic_args)]
+    pub fn append_packet<P>(&mut self, pkt: &P) -> anyhow::Result<()>
+    where
+        P: Packet + Encode,
+    {
+        let start_len = self.buf.len();
+        pkt.encode_with_id((&mut self.buf).writer())?;
+        self.enframe_from(start_len)?;
+        Ok(())
+    }
+
+    pub fn prepend_packet<P>(&mut self, pkt: &P) -> anyhow::Result<()>
+    where
+        P: Packet + Encode,
+    {
+        let start_len = self.buf.len();
+        self.append_packet(pkt)?;
+        self.move_to_back(start_len);
         Ok(())
     }
 
