@@ -98,17 +98,6 @@ impl Encode for VarLong {
         Ok(())
     }
 
-    #[cfg(target_arch = "x86_64")]
-    fn encode_scalar(&self, mut w: impl Write) -> anyhow::Result<()> {
-        use byteorder::WriteBytesExt;
-        let mut val = self.0 as u64;
-        loop {
-            if val & !0x7f == 0 { w.write_u8(val as u8)?; return Ok(()); }
-            w.write_u8(val as u8 & 0b01111111 | 0b10000000)?;
-            val >>= 7;
-        }
-    }
-
     #[cfg(any(
         not(any(target_arch = "x86", target_arch = "x86_64")),
         target_os = "macos"
@@ -119,6 +108,22 @@ impl Encode for VarLong {
         let mut val = self.0 as u64;
         loop {
             if val & 0b1111111111111111111111111111111111111111111111111111111110000000 == 0 {
+                w.write_u8(val as u8)?;
+                return Ok(());
+            }
+            w.write_u8(val as u8 & 0b01111111 | 0b10000000)?;
+            val >>= 7;
+        }
+    }
+}
+
+impl VarLong {
+    #[cfg(target_arch = "x86_64")]
+    fn encode_scalar(&self, mut w: impl Write) -> anyhow::Result<()> {
+        use byteorder::WriteBytesExt;
+        let mut val = self.0 as u64;
+        loop {
+            if val & !0x7f == 0 {
                 w.write_u8(val as u8)?;
                 return Ok(());
             }
