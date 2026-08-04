@@ -50,6 +50,10 @@ impl Encode for VarLong {
         not(target_os = "macos")
     ))]
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
+        #[cfg(target_arch = "x86_64")]
+        if !std::arch::is_x86_feature_detected!("bmi2") {
+            return self.encode_scalar(w);
+        }
         #[cfg(target_arch = "x86")]
         use std::arch::x86::*;
         #[cfg(target_arch = "x86_64")]
@@ -92,6 +96,17 @@ impl Encode for VarLong {
         w.write_all(unsafe { bytes.get_unchecked(..bytes_needed as usize) })?;
 
         Ok(())
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    fn encode_scalar(&self, mut w: impl Write) -> anyhow::Result<()> {
+        use byteorder::WriteBytesExt;
+        let mut val = self.0 as u64;
+        loop {
+            if val & !0x7f == 0 { w.write_u8(val as u8)?; return Ok(()); }
+            w.write_u8(val as u8 & 0b01111111 | 0b10000000)?;
+            val >>= 7;
+        }
     }
 
     #[cfg(any(
