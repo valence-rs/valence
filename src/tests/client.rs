@@ -1,4 +1,5 @@
 use crate::abilities::PlayerAbilitiesFlags;
+use crate::client::Client;
 use crate::layer::chunk::UnloadedChunk;
 use crate::layer::ChunkLayer;
 use crate::math::DVec3;
@@ -59,6 +60,42 @@ fn client_teleport_and_move() {
     helper_2
         .collect_received()
         .assert_count::<MoveRelativeS2c>(1);
+}
+
+#[test]
+fn unexpected_teleport_confirmation_disconnects_client() {
+    let ScenarioSingleClient {
+        mut app,
+        client,
+        mut helper,
+        ..
+    } = ScenarioSingleClient::new();
+
+    app.update();
+
+    // Client received an initial teleport.
+    helper
+        .collect_received()
+        .assert_count::<PlayerPositionLookS2c>(1);
+
+    // Confirm the initial teleport from the server.
+    helper.send(&TeleportConfirmC2s {
+        teleport_id: 0.into(),
+    });
+
+    app.update();
+
+    // Confirm a teleport that the server never sent by using the next
+    // teleport ID. There are no pending teleports left at this point.
+    helper.send(&TeleportConfirmC2s {
+        teleport_id: 1.into(),
+    });
+
+    app.update();
+
+    // The client should be disconnected instead of the server panicking on
+    // the `pending_teleports` underflow.
+    assert!(app.world().get::<Client>(client).is_none());
 }
 
 #[test]

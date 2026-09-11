@@ -117,6 +117,7 @@ fn handle_teleport_confirmations(
                         packet.client
                     );
                     commands.entity(packet.client).remove::<Client>();
+                    continue;
                 }
 
                 let got = pkt.teleport_id.0 as u32;
@@ -128,7 +129,7 @@ fn handle_teleport_confirmations(
                     state.pending_teleports -= 1;
                 } else {
                     warn!(
-                        "unexpected teleport ID for client {:?} (expected {expected}, got {got}",
+                        "unexpected teleport ID for client {:?} (expected {expected}, got {got})",
                         packet.client
                     );
                     commands.entity(packet.client).remove::<Client>();
